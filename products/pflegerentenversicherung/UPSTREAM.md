@@ -1,0 +1,43 @@
+# Upstream provenance: `Pflege_DE_S` (lifelib `delib`)
+
+This folder is the pflegerentenversicherung product of lifelib's `delib` library, copied whole and byte for byte at a pinned commit. Nothing is edited, added or removed; line endings are upstream's (LF).
+
+This file describes the import. Byte identity with upstream holds for the commit of the import; a later commit that changes a file listed here says so, and the hashes below stay those of upstream.
+
+- Upstream repository: https://github.com/lifelib-dev/lifelib
+- Commit: `fb1d195ab5423031cfd6d2548fe25a86b76cd0a1`
+- Commit date: 2026-09-26
+- Source path: `lifelib/libraries/delib/products/pflegerentenversicherung/`
+- Licence: MIT, "Copyright (c) 2022 lifelib Developers". The notice is `LICENSE-lifelib.txt`, copied from `LICENSE.txt` in the upstream repository root.
+
+The `delib` tree, and with it this folder, is identical at `b706d8bbab530cc9ef94e06600e9c9d1468d8cb1` (v0.17.2, 2026-10-10), the upstream head at the time of the import.
+
+modelx, the engine that reads and runs the model, is not copied. It is an unmodified dependency installed from PyPI (see `pyproject.toml`).
+
+The Markdown files and some tables cite insurers and rating agencies as sources. These citations come from upstream and stay byte-identical; the repository's rule against vendor and client names covers our own vendors and clients, not them.
+
+## Files copied verbatim
+
+Each file is byte-identical to upstream at the pinned commit. `tests/test_provenance.py` checks these SHA-256 values and that the folder holds no other file than these and this one.
+
+| File | SHA-256 |
+|---|---|
+| `LICENSE-lifelib.txt` | `f30a3558fa4b497b5dc70f2cf28b1f5309db42e4d405196f8cd621b8ca3d1d51` |
+| `Pflege_DE_S/Data/__init__.py` | `4e56cc6311571bdd3dd30ced4415085ae9645d8e9bded609dbfee485a6ea3af2` |
+| `Pflege_DE_S/Projection/__init__.py` | `12e77ac00c6e2c911ab80aa470dafb0471f0bdb4282305dae9982b0f4ed0f878` |
+| `Pflege_DE_S/__init__.py` | `d085014ce3e2d46e0e0c58ebaef2b9f8065132763e8cb6cf70dde70b887e13c9` |
+| `Pflege_DE_S/_system.json` | `bd2b0595635b2377009e5667654277b31f454e6be52b84cb59725e97d6409334` |
+| `basis_table.csv` | `d4aa72822660802d89b8da5427947c011d438ddc45e2ced6ba98fbd1da300f0e` |
+| `benefit_scale_table.csv` | `0a73bc3c463d15c2f136685ad7d6ee60c55118f3af3d5860ce2a7603c7753568` |
+| `care_table.csv` | `e68a746fca1222bd4527dd57fd64e9c1b2f574719f2b84cd5d61445cea9d81cb` |
+| `expense_table.csv` | `e390b5809b518b9f46f0b99de7a9dcbbdfbad504fcc5a529d26d0df90fb17a9b` |
+| `incidence_table.csv` | `4023b4e2d6b1b826ed79804578bbf879917d6826557e659d55d903483c5351f9` |
+| `lapse_table.csv` | `03fccaadd41f41ec0936a3ad07ad4b94b9e9db622cb0dd75feb083023a77903b` |
+| `model.md` | `6d8ce1ee9992b2cfa124ff117d60cb91374f0008732dcb08c8044a9dfd160f71` |
+| `model_point_table.csv` | `b4f98b583c2c8bb676d9592cf87948e27ec47b5cb98df9edffc2a175f462b6ae` |
+| `mort_table.csv` | `7f424338ae842f206df1758e4e5dd0332f401fa2ccfeab8f46ce808a36d1965a` |
+| `product-spec.md` | `fd906445345847e58027ff471fc6ea265fb84d8bbc9c96e1ddae5a5136c64a53` |
+| `run.py` | `0526596c4d82803b0d71af8d9448a2e2bac6a30ba5905b6e0311787fdd5c5854` |
+| `sources.md` | `79619015bc6840e7119f27cf5d3fdf9894f3195e7355d6e28d3da4c94ecb646d` |
+| `surrender_table.csv` | `7a028403d04a050ce573ed2d05e882fbf407caad332c4cd3637858f945752059` |
+| `technical-notes.md` | `5fb0da9038ee2d09b835bf9243215f30c57be4a2eb3e0cdffbf281b0af58e0b0` |

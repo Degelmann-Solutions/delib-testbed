@@ -1,0 +1,41 @@
+# Upstream provenance: `Basis_DE_S` (lifelib `delib`)
+
+This folder is the basisrente product of lifelib's `delib` library, copied whole and byte for byte at a pinned commit. Nothing is edited, added or removed; line endings are upstream's (LF).
+
+This file describes the import. Byte identity with upstream holds for the commit of the import; a later commit that changes a file listed here says so, and the hashes below stay those of upstream.
+
+- Upstream repository: https://github.com/lifelib-dev/lifelib
+- Commit: `fb1d195ab5423031cfd6d2548fe25a86b76cd0a1`
+- Commit date: 2026-09-26
+- Source path: `lifelib/libraries/delib/products/basisrente/`
+- Licence: MIT, "Copyright (c) 2022 lifelib Developers". The notice is `LICENSE-lifelib.txt`, copied from `LICENSE.txt` in the upstream repository root.
+
+The `delib` tree, and with it this folder, is identical at `b706d8bbab530cc9ef94e06600e9c9d1468d8cb1` (v0.17.2, 2026-10-10), the upstream head at the time of the import.
+
+modelx, the engine that reads and runs the model, is not copied. It is an unmodified dependency installed from PyPI (see `pyproject.toml`).
+
+The Markdown files and some tables cite insurers and rating agencies as sources. These citations come from upstream and stay byte-identical; the repository's rule against vendor and client names covers our own vendors and clients, not them.
+
+## Files copied verbatim
+
+Each file is byte-identical to upstream at the pinned commit. `tests/test_provenance.py` checks these SHA-256 values and that the folder holds no other file than these and this one.
+
+| File | SHA-256 |
+|---|---|
+| `LICENSE-lifelib.txt` | `f30a3558fa4b497b5dc70f2cf28b1f5309db42e4d405196f8cd621b8ca3d1d51` |
+| `Basis_DE_S/Data/__init__.py` | `9bf646d88713a39ce0ca8a3cef447425e5e48e2e12c1f659b997cf21585d4cb5` |
+| `Basis_DE_S/Projection/__init__.py` | `d6e201b6db7e4f51c71c6982adafb7e0d0dd574656ce7be7b9bf0c67fcaf0ec2` |
+| `Basis_DE_S/__init__.py` | `46fd807c99aed48d54c886628dc4b4bfc7dd52505d1e4b0d186d91e5501b9ec7` |
+| `Basis_DE_S/_system.json` | `bd2b0595635b2377009e5667654277b31f454e6be52b84cb59725e97d6409334` |
+| `behaviour_table.csv` | `3b2f52a40eb84e952938a33f2752fad5979c3440fa30cd016cf3a51e85ecac9d` |
+| `charge_table.csv` | `73fb61f10fd3c74fcee720662b9760f08b0ce40f763ac89569840c9897a7edfd` |
+| `model.md` | `8d44e3f3a870666a3aed02fa42d23b4aa81be4e25e4ff473ce11d354ad89b0b8` |
+| `model_point_table.csv` | `946d8c0ee9ad1064a51cacd324ba3a1a96fec3db4782c83ce12dfad68f306786` |
+| `mort_table.csv` | `8da618cf2abd5168e681a766df481ad3ac60cd6eff55679e30bae3d963c66e48` |
+| `option_table.csv` | `f05de44ef951ee6453fa3b5fe0683abbb7f72838b689f7bb1a0856352ad59b69` |
+| `product-spec.md` | `8fc46651d5d102959871ac43308f7c229f7447b378e706ec52d6e5d8b3ebc2fa` |
+| `rentenfaktor_table.csv` | `7f1981335c5be227246b46fef69920f4464087886ee59614ba334a896897cfa5` |
+| `run.py` | `7ed760bd645cd21b56488164c4fd7153ce43c4a88f0fa3541c015e640ebcbe86` |
+| `sources.md` | `312b565298e2af60839955c8019472ff2314daddabfba61616e070c57bb85654` |
+| `surplus_table.csv` | `c698bd0f2931ac3fd7d1ae56e0d2be20411ca87d78bc3f6eb245fe6d968315a7` |
+| `technical-notes.md` | `95e66687a577bb20c32fe33eb029680503fb953816f63f4cce904bb38faa3dd4` |

@@ -1,0 +1,39 @@
+# Upstream provenance: `Sofort_DE_S` (lifelib `delib`)
+
+This folder is the sofortrente product of lifelib's `delib` library, copied whole and byte for byte at a pinned commit. Nothing is edited, added or removed; line endings are upstream's (LF).
+
+This file describes the import. Byte identity with upstream holds for the commit of the import; a later commit that changes a file listed here says so, and the hashes below stay those of upstream.
+
+- Upstream repository: https://github.com/lifelib-dev/lifelib
+- Commit: `fb1d195ab5423031cfd6d2548fe25a86b76cd0a1`
+- Commit date: 2026-09-26
+- Source path: `lifelib/libraries/delib/products/sofortrente/`
+- Licence: MIT, "Copyright (c) 2022 lifelib Developers". The notice is `LICENSE-lifelib.txt`, copied from `LICENSE.txt` in the upstream repository root.
+
+The `delib` tree, and with it this folder, is identical at `b706d8bbab530cc9ef94e06600e9c9d1468d8cb1` (v0.17.2, 2026-10-10), the upstream head at the time of the import.
+
+modelx, the engine that reads and runs the model, is not copied. It is an unmodified dependency installed from PyPI (see `pyproject.toml`).
+
+The Markdown files and some tables cite insurers and rating agencies as sources. These citations come from upstream and stay byte-identical; the repository's rule against vendor and client names covers our own vendors and clients, not them.
+
+## Files copied verbatim
+
+Each file is byte-identical to upstream at the pinned commit. `tests/test_provenance.py` checks these SHA-256 values and that the folder holds no other file than these and this one.
+
+| File | SHA-256 |
+|---|---|
+| `LICENSE-lifelib.txt` | `f30a3558fa4b497b5dc70f2cf28b1f5309db42e4d405196f8cd621b8ca3d1d51` |
+| `Sofort_DE_S/Data/__init__.py` | `32c927ad790528c6f4c7057134c008119d7caab86956ce3604b50f43fe147980` |
+| `Sofort_DE_S/Projection/__init__.py` | `9dcb142ffc88c994f86fa8c29bdc59f3758142866436f3cd1a5148053be0c3c4` |
+| `Sofort_DE_S/__init__.py` | `e3b0d7957a7ddf839980e4bd24d14f073ca257e44a0aeab2b1d08b8c949ad4e7` |
+| `Sofort_DE_S/_system.json` | `bd2b0595635b2377009e5667654277b31f454e6be52b84cb59725e97d6409334` |
+| `hoechstrechnungszins_table.csv` | `b8bb94b4175ab21bc033ad1241dc9d7d811e99c4accfb68daffad929f5b3411e` |
+| `improvement_table.csv` | `8ca9bba1ff8033b9b7f3f99d37b3fa814a724d82d01198b3f46e8914c58332e1` |
+| `model.md` | `de4554214d59cfc2c3af63c26e4ead54760b1907a2f7c1f6864946565d9084e5` |
+| `model_point_table.csv` | `d66726039f0d84f6d3ba6f56ea1b61caa916fbd3393fdcc668b1a0fdef88b234` |
+| `mort_table.csv` | `1ba5bc0bba7b2f9e6559ec4b5461453703e74ca146a99cd98644cca248adc2a5` |
+| `product-spec.md` | `ef273a09c52f4677aed5afc0a28a155c3e5053e189ff25427342adc2217e09bd` |
+| `run.py` | `734bcb642e7297a336aa919149ef4ed2187f9dfd24e368f7f4538e1b4b5eccc8` |
+| `sources.md` | `2be0ea50841fbc1c477907ca6405f43573e2a64b7caa3b1ba7af982773f1f1f1` |
+| `surplus_scale_table.csv` | `1a900a9dfc688321055e189784fe2fca686273bbc8106fbfaf1a9e46b3734d07` |
+| `technical-notes.md` | `1fbd2fb790699131ee00c4d734879828b0f31e9be978791cc2567bdf04ad6694` |

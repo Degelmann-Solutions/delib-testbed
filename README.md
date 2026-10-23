@@ -34,10 +34,43 @@ The repository serves two purposes:
 - No names of our own vendors or clients appear anywhere in the repository; source citations that files copied byte for byte from upstream bring along, such as insurers and rating agencies, are exempt and stay unchanged.
 - The model stays traceable: the trace per contract is not optimised away.
 
+## Layout
+
+- `products/<product>/`: the ten products of upstream `delib`, each a separate model folder (`Basis_DE_S`, `BU_DE_S`, …) with its input tables, `run.py` and upstream's Markdown documents, copied byte for byte. `UPSTREAM.md` records the provenance and the SHA-256 of every copied file; `LICENSE-lifelib.txt` is lifelib's licence notice.
+- `tools/run_baseline.py`: the runner. It projects every shipped model point of one product, evaluates the product's built-in checks and prints one SHA-256 over all `result_cf` frames; with `--write` it stores them.
+- `baseline/<product>/result_cf.csv`: the baseline of each product, all points, columns `point_id,t,<result_cf columns>`, every value written so that it reads back exactly.
+- `tests/`: provenance against the recorded hashes, the runner on scratch copies, and the baseline with its pinned hashes.
+
+## Quick start
+
+```sh
+uv sync
+uv run pytest -q                                          # about 1.5 min
+uv run python tools/run_baseline.py basisrente            # one product: hash and checks
+uv run python tools/run_baseline.py basisrente --write    # rewrite baseline/basisrente/
+```
+
+The runner exits 0 when every check of every point is true, 1 when a point raises or a check is false, and 2 on a usage error. A path instead of a product name runs a copy of a product folder.
+
 ## Licence
 
 MIT, see [LICENSE](LICENSE). Files copied from lifelib keep lifelib's licence notice, which is stored next to them.
 
 ## Status
 
-Phase 1 has not started. The repository holds this description only.
+Phase 1 is done. The ten products are imported unchanged from lifelib at commit `fb1d195ab5423031cfd6d2548fe25a86b76cd0a1` (2026-09-26); the `delib` tree is identical at `b706d8bbab530cc9ef94e06600e9c9d1468d8cb1` (v0.17.2, 2026-10-10). Every product runs on its own shipped model points with all built-in checks true, and its results are stored as its baseline.
+
+Wall time of one runner process per product, measured once on one machine, one product at a time (modelx 0.33.0); it covers the modelx import, the run, the checks and the hash:
+
+| Product | Model | Points | Checks | Wall time |
+|---|---|---:|---:|---:|
+| basisrente | `Basis_DE_S` | 13 | 6 | 5.4 s |
+| berufsunfaehigkeit | `BU_DE_S` | 13 | 7 | 5.0 s |
+| fondsgebundene_rentenversicherung | `FRV_DE_S` | 13 | 7 | 5.0 s |
+| indexpolice | `Index_DE_S` | 13 | 6 | 2.6 s |
+| kapitallebensversicherung | `KLV_DE_S` | 14 | 10 | 7.0 s |
+| klassische_rentenversicherung | `RV_DE_S` | 14 | 9 | 38.1 s |
+| pflegerentenversicherung | `Pflege_DE_S` | 14 | 6 | 36.4 s |
+| riester_rente | `Riester_DE_S` | 13 | 6 | 4.9 s |
+| risikolebensversicherung | `RLV_DE_S` | 14 | 5 | 4.7 s |
+| sofortrente | `Sofort_DE_S` | 14 | 9 | 5.8 s |

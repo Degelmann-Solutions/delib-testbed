@@ -247,3 +247,90 @@ def test_usage_errors_exit_2(runs, name, needle):
 
 def test_runs_leave_products_baseline_and_runner_untouched(runs):
     assert runs["after"] == runs["before"]
+
+
+# --------------------------------------------------------------------------- matrix rows in process
+
+def _baseline_points() -> tuple[str, dict[str, list[str]]]:
+    lines = (ROOT / "baseline" / PRODUCT / "result_cf.csv").read_bytes().decode("ascii").splitlines()
+    points: dict[str, list[str]] = {}
+    for line in lines[1:]:
+        pid, _, rest = line.partition(",")
+        points.setdefault(pid, []).append(rest)
+    return lines[0], points
+
+
+def _measure(argv):
+    args = mm.argparse.Namespace(factor=2, repeats=1, mutants=500, pool=10000, workers=1,
+                                 prepared=None, json=None)
+    for key, value in argv.items():
+        setattr(args, key, value)
+    return mm.measure(PRODUCT, args, ram_mb=64 * 1024)
+
+
+def test_a_failing_point_in_the_child_fails_the_product(monkeypatch, capsys):
+    header, points = _baseline_points()
+    del points["3"]
+    monkeypatch.setattr(mm, "run_child", lambda folder, n: {
+        "n": N_POINTS, "failures": ["point 3: check_x is false"], "header": header,
+        "points": points, "import_s": 0.1, "run_s": 1.0, "maxrss_kib": 1})
+    record = _measure({})
+    assert record["status"] == "failed" and "derived" not in record and "forecast" not in record
+    err = capsys.readouterr().err
+    assert f"FAILED {PRODUCT}: size {N_POINTS} (n), run 1: run_product failure: point 3: check_x is false" in err
+
+
+@pytest.mark.parametrize("returncode, stdout, needle", [
+    (1, "", "child exited 1; stderr tail:\nTraceback\nboom"),
+    (0, "not json\n", "child printed no JSON; stderr tail:\nTraceback\nboom"),
+    (0, "", "child printed no JSON"),
+])
+def test_a_crashing_child_fails_the_product(monkeypatch, capsys, returncode, stdout, needle):
+    monkeypatch.setattr(mm.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(
+        a[0], returncode, stdout, "Traceback\nboom\n"))
+    record = _measure({})
+    assert record["status"] == "failed" and record.get("forecast") is None
+    err = capsys.readouterr().err
+    assert f"FAILED {PRODUCT}: size {N_POINTS} (n), run 1: {needle}" in err
+
+
+def test_a_non_positive_slope_is_unreliable_and_exits_1(monkeypatch, capsys):
+    header, points = _baseline_points()
+
+    def fake(folder, n):
+        size = mm.count_points((folder / mm.TABLE).read_bytes().decode("ascii"))
+        pts = {str(p): points[str(mm.original_of(p, n))] for p in range(1, size + 1)}
+        return {"n": size, "failures": [], "header": header, "points": pts,
+                "import_s": 0.1, "run_s": 2.0, "maxrss_kib": 1024}
+
+    monkeypatch.setattr(mm, "run_child", fake)
+    assert mm.main([PRODUCT, "--repeats", "1"]) == 1
+    out = capsys.readouterr()
+    row = [line for line in out.out.splitlines() if line.startswith(PRODUCT + " ")]
+    assert row[0].endswith(" unreliable") and " - " in row[0]
+    assert f"{PRODUCT}: no forecast (unreliable)" in out.out
+    assert f"UNRELIABLE {PRODUCT}" in out.err
+
+
+def test_all_measures_every_product_in_name_order_and_returns_the_worst(monkeypatch, capsys):
+    seen = []
+
+    def fake(product, args, ram_mb):
+        seen.append(product)
+        return {"product": product, "status": "failed" if len(seen) == 1 else "ok",
+                "runs": [], "errors": [], "forecast": None}
+
+    monkeypatch.setattr(mm, "measure", fake)
+    assert mm.main(["--all"]) == 1
+    assert seen == mm.product_names() and len(seen) == 10 and seen == sorted(seen)
+    rows = [line.split()[0] for line in capsys.readouterr().out.splitlines()[2:12]]
+    assert rows == seen
+
+
+@pytest.mark.parametrize("argv", [[PRODUCT, "--workers", "0"], [PRODUCT, "--repeats", "two"],
+                                  [PRODUCT, "--factor", "1.5"], [], [PRODUCT, "--all"]])
+def test_more_usage_errors_exit_2(argv, capsys):
+    with pytest.raises(SystemExit) as exc:
+        mm.main(argv)
+    assert exc.value.code == 2
+    assert capsys.readouterr().err.startswith("usage: measure_marginal.py")

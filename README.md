@@ -34,6 +34,10 @@ The repository serves two purposes:
 - No vendor or client names appear anywhere in the repository.
 - The model stays traceable: the trace per contract is not optimised away.
 
+## Licence
+
+MIT, see [LICENSE](LICENSE). Files copied from lifelib keep lifelib's licence notice, which is stored next to them.
+
 ## Status
 
 Phase 1 has not started. The repository holds this description only.

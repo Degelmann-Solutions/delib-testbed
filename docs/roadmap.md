@@ -24,6 +24,6 @@ Import upstream `delib` with all standard products at a pinned commit. Then run 
 
 ## Open questions
 
-- Visibility and licence of this repository. Upstream lifelib and delib-history are MIT.
+- Visibility of this repository: private for now. The licence is MIT, like upstream lifelib and delib-history.
 - Order of the products in phase 3.
 - Contract pool for the night-run criterion: size and generator.

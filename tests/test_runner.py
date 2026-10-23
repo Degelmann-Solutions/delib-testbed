@@ -19,6 +19,7 @@ RUNNER = ROOT / "tools" / "run_baseline.py"
 PRODUCT = "risikolebensversicherung"
 FOLDER = ROOT / "products" / PRODUCT
 N_POINTS = 14
+BASELINE = ROOT / "baseline" / PRODUCT / "result_cf.csv"
 
 
 def folder_hashes(folder: Path) -> dict[str, str]:
@@ -58,6 +59,7 @@ def runs(tmp_path_factory):
     ``false_check`` is a scratch copy whose point 1 is in force for its whole term, so its
     policy roll-forward check is false; it also asks for ``--write``. ``raises`` is a
     scratch copy in which points 2 and 13 name a benefit schedule that does not exist.
+    ``path_write`` is a scratch copy named like the product, with ``--write`` and no ``--out``.
     """
     tmp_path = tmp_path_factory.mktemp("runner")
     false_check = scratch_copy(tmp_path, "false_check")
@@ -65,6 +67,7 @@ def runs(tmp_path_factory):
     raises = scratch_copy(tmp_path, "raises")
     edit_point(raises, 2, benefit_schedule_id="nosuch")
     edit_point(raises, 13, benefit_schedule_id="nosuch")
+    named = scratch_copy(tmp_path / "named", PRODUCT)
 
     out = tmp_path / "out"
     commands = {
@@ -73,8 +76,10 @@ def runs(tmp_path_factory):
         "false_check": [str(false_check), "--write", "--out", str(out / "false_check")],
         "raises": [str(raises)],
         "unknown": ["nosuch"],
+        "path_write": [str(named), "--write"],
     }
     before = folder_hashes(FOLDER)
+    baseline_before = BASELINE.read_bytes()
     processes = {
         name: subprocess.Popen([sys.executable, str(RUNNER), *args], cwd=ROOT,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -86,6 +91,7 @@ def runs(tmp_path_factory):
     results["before"] = before
     results["after"] = folder_hashes(FOLDER)
     results["out"] = out
+    results["baseline_unchanged"] = BASELINE.read_bytes() == baseline_before
     return results
 
 
@@ -139,3 +145,12 @@ def test_unknown_product_gives_usage_and_exit_2(runs):
 
 def test_runs_leave_the_product_folder_untouched(runs):
     assert runs["after"] == runs["before"]
+
+
+def test_write_from_a_path_without_out_is_a_usage_error(runs):
+    code, output, stderr = runs["path_write"]
+    assert code == 2
+    assert stderr.startswith("usage: run_baseline.py")
+    assert "--out" in stderr
+    assert output == {}
+    assert runs["baseline_unchanged"]

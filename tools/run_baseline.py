@@ -41,7 +41,7 @@ Nothing is rounded, so any change in any value, row, column or point changes the
 Baseline file
 -------------
 With ``--write`` the runner writes ``result_cf.csv`` to ``--out`` (default
-``baseline/<product>``), and only if every point ran and every check is true. The writer is
+``baseline/<product>``; a path needs ``--out``), and only if every point ran and every check is true. The writer is
 explicit: the header ``point_id,t,<result_cf columns>``, then one line per point and ``t``,
 points ascending and rows in the frame's order, each value as ``repr(float(value))``, which
 round-trips exactly (``-0.0`` and ``nan`` are written as ``repr`` gives them), and ``\\n``
@@ -89,9 +89,13 @@ def csv_lines(point_id: int, frame) -> list[str]:
             for t, row in zip(index, values)]
 
 
+def is_path(arg: str) -> bool:
+    return "/" in arg or "\\" in arg or arg in (".", "..")
+
+
 def resolve_product(arg: str) -> Path:
     """A bare name is a folder under ``products/``; a path is used as given."""
-    if "/" in arg or "\\" in arg or arg in (".", ".."):
+    if is_path(arg):
         folder = Path(arg).resolve()
     else:
         folder = PRODUCTS_DIR / arg
@@ -180,6 +184,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.out is not None and not args.write:
         parser.error("--out needs --write")
+    if args.write and args.out is None and is_path(args.product):
+        parser.error("--write with a path needs --out; only a product name writes to baseline/")
     try:
         folder = resolve_product(args.product)
         model_dir(folder)

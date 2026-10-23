@@ -31,7 +31,7 @@ The repository serves two purposes:
 - Refactor commits of phase 3 stay in the history, including those that break something unnoticed.
 - The interpreter is pinned to its patch version, Python 3.12.13 (`.python-version`).
 - Fund products run on one fixed scenario, without stochastics, at first.
-- No vendor or client names appear anywhere in the repository.
+- No names of our own vendors or clients appear anywhere in the repository; source citations that files copied byte for byte from upstream bring along, such as insurers and rating agencies, are exempt and stay unchanged.
 - The model stays traceable: the trace per contract is not optimised away.
 
 ## Licence

@@ -328,7 +328,8 @@ def test_all_measures_every_product_in_name_order_and_returns_the_worst(monkeypa
 
 
 @pytest.mark.parametrize("argv", [[PRODUCT, "--workers", "0"], [PRODUCT, "--repeats", "two"],
-                                  [PRODUCT, "--factor", "1.5"], [], [PRODUCT, "--all"]])
+                                  [PRODUCT, "--factor", "1.5"], [], [PRODUCT, "--all"],
+                                  [PRODUCT, "--json", "/nonexistent-dir/x.json"]])
 def test_more_usage_errors_exit_2(argv, capsys):
     with pytest.raises(SystemExit) as exc:
         mm.main(argv)

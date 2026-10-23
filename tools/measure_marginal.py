@@ -378,6 +378,9 @@ def main(argv: list[str] | None = None) -> int:
         if not (args.prepared / TABLE).is_file():
             parser.error(f"--prepared folder has no {TABLE}")
 
+    if args.json is not None and not args.json.resolve().parent.is_dir():
+        parser.error(f"--json: no directory {str(args.json.parent)!r}")
+
     ram_mb = total_ram_mb()
     records = [measure(product, args, ram_mb) for product in products]
 

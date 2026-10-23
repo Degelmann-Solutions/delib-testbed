@@ -6,7 +6,7 @@ The marginal time per contract of every product, measured with `tools/measure_ma
 
 - Date: 2026-10-23
 - Commit: `10c2ad819fc00cf967dc0993d1be3a85a96c0682`, clean tree
-- Machine: 12th Gen Intel Core i7-12800HX, 24 logical CPUs, 62 GB RAM, Linux 6.6 under WSL2; Python 3.12.13, modelx 0.33.0, pandas 3.1.0, numpy 2.5.4
+- Machine: 12th Gen Intel Core i7-12800HX, 24 logical CPUs, 62.8 GiB RAM, Linux 6.6 under WSL2; Python 3.12.13, modelx 0.33.0, pandas 3.1.0, numpy 2.5.4
 - Command: `uv run python tools/measure_marginal.py --all --json /tmp/phase2a.json` (defaults: factor K = 2, repeats R = 3, M = 500, P = 10,000, W = 1); exit 0, every run verified, wall time 27 min
 
 ## Method
@@ -58,4 +58,4 @@ Assumptions: M = 500 mutants, P = 10,000 contracts, W = 1 worker, for each produ
 | risikolebensversicherung | 486.0 h | 486.0 h | 260.0 GB |
 | sofortrente | 645.4 h | 645.4 h | 286.2 GB |
 
-No product fits the 10 h night: the gap is a factor of about 32 (`indexpolice`) to 570 (`klassische_rentenversicherung`). For every product the extrapolated memory of one process exceeds the machine's 62.8 GB, so a run over the pool needs per-contract cleanup before anything else.
+No product fits the 10 h night: the gap is a factor of about 32 (`indexpolice`) to 570 (`klassische_rentenversicherung`). For every product the extrapolated memory of one process exceeds the machine's 62.8 GiB, so a run over the pool needs per-contract cleanup before anything else.

@@ -1,0 +1,156 @@
+"""The generic runner ``tools/run_baseline.py``, on scratch copies of one product.
+
+The runs start together in separate processes in a session fixture, so the tests wait for
+the slowest run only.
+"""
+from __future__ import annotations
+
+import hashlib
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+RUNNER = ROOT / "tools" / "run_baseline.py"
+PRODUCT = "risikolebensversicherung"
+FOLDER = ROOT / "products" / PRODUCT
+N_POINTS = 14
+BASELINE = ROOT / "baseline" / PRODUCT / "result_cf.csv"
+
+
+def folder_hashes(folder: Path) -> dict[str, str]:
+    return {p.relative_to(folder).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in sorted(folder.rglob("*")) if p.is_file()}
+
+
+def scratch_copy(tmp_path: Path, name: str) -> Path:
+    target = tmp_path / name
+    shutil.copytree(FOLDER, target)
+    return target
+
+
+def edit_point(folder: Path, point_id: int, **changes: str) -> None:
+    """Change columns of one model point in a scratch copy, as text."""
+    path = folder / "model_point_table.csv"
+    lines = path.read_bytes().decode("ascii").split("\n")
+    columns = lines[0].split(",")
+    values = lines[point_id].split(",")
+    assert values[0] == str(point_id)
+    for column, value in changes.items():
+        assert values[columns.index(column)] != value
+        values[columns.index(column)] = value
+    lines[point_id] = ",".join(values)
+    path.write_bytes("\n".join(lines).encode("ascii"))
+
+
+def parse_output(stdout: str) -> dict[str, str]:
+    return dict(line.split(": ", 1) for line in stdout.splitlines() if ": " in line)
+
+
+@pytest.fixture(scope="session")
+def runs(tmp_path_factory):
+    """Run the runner in parallel processes and collect exit code, output and stderr.
+
+    ``write_a`` and ``write_b`` run the product by name with ``--write`` to two folders.
+    ``false_check`` is a scratch copy whose point 1 is in force for its whole term, so its
+    policy roll-forward check is false; it also asks for ``--write``. ``raises`` is a
+    scratch copy in which points 2 and 13 name a benefit schedule that does not exist.
+    ``path_write`` is a scratch copy named like the product, with ``--write`` and no ``--out``.
+    """
+    tmp_path = tmp_path_factory.mktemp("runner")
+    false_check = scratch_copy(tmp_path, "false_check")
+    edit_point(false_check, 1, duration_y="25")
+    raises = scratch_copy(tmp_path, "raises")
+    edit_point(raises, 2, benefit_schedule_id="nosuch")
+    edit_point(raises, 13, benefit_schedule_id="nosuch")
+    named = scratch_copy(tmp_path / "named", PRODUCT)
+
+    out = tmp_path / "out"
+    commands = {
+        "write_a": [PRODUCT, "--write", "--out", str(out / "a")],
+        "write_b": [PRODUCT, "--write", "--out", str(out / "b")],
+        "false_check": [str(false_check), "--write", "--out", str(out / "false_check")],
+        "raises": [str(raises)],
+        "unknown": ["nosuch"],
+        "path_write": [str(named), "--write"],
+    }
+    before = folder_hashes(FOLDER)
+    baseline_before = BASELINE.read_bytes()
+    processes = {
+        name: subprocess.Popen([sys.executable, str(RUNNER), *args], cwd=ROOT,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        for name, args in commands.items()}
+    results = {}
+    for name, process in processes.items():
+        stdout, stderr = process.communicate(timeout=900)
+        results[name] = (process.returncode, parse_output(stdout), stderr)
+    results["before"] = before
+    results["after"] = folder_hashes(FOLDER)
+    results["out"] = out
+    results["baseline_unchanged"] = BASELINE.read_bytes() == baseline_before
+    return results
+
+
+def test_happy_path_prints_count_hash_time_and_all_true(runs):
+    code, output, stderr = runs["write_a"]
+    assert code == 0, stderr
+    assert int(output["model points"]) == N_POINTS
+    assert re.fullmatch(r"[0-9a-f]{64}", output["sha256"])
+    assert re.fullmatch(r"\d+\.\d s", output["wall time"])
+    assert output["checks"] == "all true"
+    assert "FAILED" not in stderr
+
+
+def test_write_twice_gives_identical_bytes(runs):
+    a = runs["out"] / "a" / "result_cf.csv"
+    b = runs["out"] / "b" / "result_cf.csv"
+    assert a.read_bytes() == b.read_bytes()
+    assert runs["write_a"][1]["sha256"] == runs["write_b"][1]["sha256"]
+    lines = a.read_bytes().split(b"\n")
+    assert lines[0].startswith(b"point_id,t,")
+    assert lines[-1] == b"" and b"\r" not in a.read_bytes()
+
+
+def test_false_check_exits_1_names_point_and_check_and_writes_nothing(runs):
+    code, output, stderr = runs["false_check"]
+    assert code == 1
+    assert "point 1: check_pols_roll_fwd is false" in stderr
+    assert int(output["model points"]) == N_POINTS
+    assert not (runs["out"] / "false_check").exists()
+
+
+def test_raising_point_exits_1_and_the_other_points_still_run(runs):
+    code, output, stderr = runs["raises"]
+    assert code == 1
+    failed = [line for line in stderr.splitlines() if line.startswith("FAILED ")]
+    assert failed, stderr
+    assert "FAILED point 2: result_cf raised FormulaError: KeyError: ('nosuch', 1)" in failed, stderr
+    assert any(line.startswith("FAILED point 13: result_cf raised ") for line in failed), stderr
+    assert {re.match(r"FAILED point (\d+):", line).group(1) for line in failed} == {"2", "13"}
+    assert int(output["model points"]) == N_POINTS
+    assert output["sha256"] != runs["write_a"][1]["sha256"]
+
+
+def test_unknown_product_gives_usage_and_exit_2(runs):
+    code, output, stderr = runs["unknown"]
+    assert code == 2
+    assert stderr.startswith("usage: run_baseline.py")
+    assert "nosuch" in stderr
+    assert output == {}
+
+
+def test_runs_leave_the_product_folder_untouched(runs):
+    assert runs["after"] == runs["before"]
+
+
+def test_write_from_a_path_without_out_is_a_usage_error(runs):
+    code, output, stderr = runs["path_write"]
+    assert code == 2
+    assert stderr.startswith("usage: run_baseline.py")
+    assert "--out" in stderr
+    assert output == {}
+    assert runs["baseline_unchanged"]

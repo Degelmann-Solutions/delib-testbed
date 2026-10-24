@@ -42,9 +42,14 @@ parallel and pays the worker start-up once, so ``t_marginal(W)`` and ``fixed(W)`
 biased slightly low there; this is stated, not corrected.
 
 Memory is ``mem`` = the child's own peak RSS plus, for ``W`` > 1, the sum over the workers
-of each worker's largest Pss: every worker reads its Pss from ``/proc/self/smaps_rollup``
-after each point and the child keeps the maximum per worker pid. Pss divides pages shared
-copy-on-write by the processes sharing them, so they are not counted once per worker.
+of each worker's largest Pss after a point: every worker reads its Pss from
+``/proc/self/smaps_rollup`` after each point (after its cleanup) and the child keeps the
+maximum per worker pid. Pss divides pages shared copy-on-write by the processes sharing
+them, so they are not counted once per worker. Two biases are stated, not corrected: the
+Pss after a point's cleanup understates a worker's true peak during the point, and the
+pages the workers share with the parent are counted close to twice (fully in the parent's
+RSS, plus each worker's share in its Pss), so at ``W`` > 1 ``mem`` overstates by up to the
+parent's shared footprint (about 100 MB).
 ``MB/contract`` is given at ``W`` = 1 only, where ``mem`` is the peak RSS of one process.
 
 Verification
@@ -217,7 +222,7 @@ def forecast_lines(product: str, fc: dict) -> list[str]:
         lines.append(f"{label}: memory, MB/contract × P = "
                      f"{fc['ram_mb_per_process'] / 1024:.1f} GB in one process")
     elif fc.get("mem_kn_mb") is not None:
-        lines.append(f"{label}: memory, parent peak RSS + workers' peak Pss at K·n = "
+        lines.append(f"{label}: memory, parent peak RSS + workers' largest Pss after a point at K·n = "
                      f"{fc['mem_kn_mb']:.0f} MB")
     if fc["ram_warning"]:
         lines.append(f"WARNING {label}: {fc['ram_mb_per_process'] / 1024:.1f} GB exceeds the "
@@ -469,7 +474,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"factor K = {args.factor}, repeats R = {args.repeats}, "
           f"workers W = {','.join(map(str, args.workers))}; times are medians of "
           "run_product, import is the median modelx import, mem is peak RSS plus the workers' "
-          f"peak Pss, cleanup {'off' if args.no_cleanup else 'on'}, engine {args.engine}")
+          f"largest Pss after a point, cleanup {'off' if args.no_cleanup else 'on'}, engine {args.engine}")
     for line in table_lines(records):
         print(line)
     print()

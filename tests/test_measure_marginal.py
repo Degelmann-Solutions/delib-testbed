@@ -101,7 +101,7 @@ def test_forecast_hours_and_lines():
     assert four["ram_mb_per_process"] is None and four["ram_warning"] is False
     lines = mm.forecast_lines("x", four)
     assert lines[0].startswith("x, W = 4: M·P·t_marginal(W) = ")
-    assert lines[-1] == "x, W = 4: memory, parent peak RSS + workers' peak Pss at K·n = 900 MB"
+    assert lines[-1] == "x, W = 4: memory, parent peak RSS + workers' largest Pss after a point at K·n = 900 MB"
 
 
 def test_ram_warning_when_extrapolated_memory_exceeds_the_machine():

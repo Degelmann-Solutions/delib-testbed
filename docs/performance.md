@@ -211,7 +211,7 @@ The same measurement with the runner's worker processes (`--workers W`, new in 2
 
 K is 32 instead of 2: with many workers, the slope of the export engine is small against its fixed cost of about 1.4 s, and K·n = 416 or 448 points gives every worker at W = 24 about 18 points. At a large W, `T(n)` is a single wave of 13 or 14 points in parallel, so `t_marginal(W)` and `fixed(W)` are biased slightly low there; this is stated, not corrected.
 
-**Memory figure: `mem`.** For W = 1 it is the peak RSS of the one process. For W > 1 it is the parent's peak RSS plus, summed over the workers, each worker's largest Pss (read from `/proc/self/smaps_rollup` after every point), so pages the workers share copy-on-write with the parent are not counted once per worker. `MB/contract` is given at W = 1 only.
+**Memory figure: `mem`.** For W = 1 it is the peak RSS of the one process. For W > 1 it is the parent's peak RSS plus, summed over the workers, each worker's largest Pss after a point (read from `/proc/self/smaps_rollup` after every point's cleanup), so pages the workers share copy-on-write with the parent are not counted once per worker. Two biases are stated, not corrected: the Pss after a point's cleanup understates a worker's true peak during the point, and the pages the workers share with the parent are counted close to twice (fully in the parent's RSS, plus each worker's share in its Pss), so at W > 1 `mem` overstates by up to the parent's shared footprint (about 100 MB). `MB/contract` is given at W = 1 only.
 
 ## Result
 
@@ -286,7 +286,7 @@ The single runs are close together: at W = 24 the three `T(K·n)` of a product l
 
 Observations:
 
-- **Scaling:** every product gains from every step in W, but less than linearly: about 3.1 to 3.8× at W = 4, 4.5 to 5.5× at W = 8 and 6.0 to 7.4× at W = 24. The 24 logical CPUs are 16 cores (8 performance cores with two threads each and 8 efficiency cores), so W = 24 cannot give 24×; the gain from 16 to 24 workers is 7 to 14 %. The best W is 24 for every product.
+- **Scaling:** every product gains from every step in W, but less than linearly: about 3.1 to 3.8× at W = 4, 4.5 to 5.4× at W = 8 and 6.0 to 7.4× at W = 24. The 24 logical CPUs are 16 cores (8 performance cores with two threads each and 8 efficiency cores), so W = 24 cannot give 24×; the gain from 16 to 24 workers is 7 to 14 %. The best W is 24 for every product.
 - **W = 1 against 2c:** `t_marginal(1)` lies between −40 % (`riester_rente` 23.5 against 39 ms, `risikolebensversicherung` 18.6 against 27 ms) and +12 % (`pflegerentenversicherung` 653 against 585 ms) of the 2c value. 2c used K = 2, where the slope of nine products rested on a difference `T(K·n) − T(n)` of 0.4 to 1.6 s (`pflegerentenversicherung` 8 s); K = 32 measures it on a difference of 8 to 283 s. The effect of the single BLAS thread is not separable from this; it is not a large speed-up at W = 1.
 - **Memory:** at W = 1 the peak RSS no longer grows with the points: `MB/contract` is 0.00 to 0.06, against 0.0 to 1.6 in 2c. With workers, `mem` grows with W, not with the points: each worker adds about 45 to 80 MB of its own (`berufsunfaehigkeit` about 170 MB), so `mem(K·n)` at W = 24 is 1.2 to 1.8 GB (`berufsunfaehigkeit` 4.4 GB), far below the machine's 62.8 GiB. `mem(n)` is lower than `mem(K·n)` because at n most workers have run one point or none.
 

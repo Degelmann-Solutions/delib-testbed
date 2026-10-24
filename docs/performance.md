@@ -1,8 +1,8 @@
-# Performance: reference measurement of phase 2a, and the phase-2b and phase-2c measurements next to it
+# Performance: reference measurement of phase 2a, and the phase-2b, phase-2c and phase-2d measurements next to it
 
 The marginal time per contract of every product, measured with `tools/measure_marginal.py` on the unchanged phase-1 runner. Later phase-2 changes are measured with the same tool against this table.
 
-The 2a reference was measured at `10c2ad8`, before the runner had per-contract cleanup. Since phase 2b the runner cleans up by default, and since phase 2c it runs on the exported model by default; reproducing the 2a table with the current tool needs `--engine modelx --no-cleanup`, the 2b table `--engine modelx`. The phase-2b and phase-2c measurements follow in their own sections below.
+The 2a reference was measured at `10c2ad8`, before the runner had per-contract cleanup. Since phase 2b the runner cleans up by default, since phase 2c it runs on the exported model by default, and since phase 2d it can run the points in worker processes and the tool measures at several worker counts with K = 32 by default; reproducing the 2a table with the current tool needs `--factor 2 --engine modelx --no-cleanup`, the 2b table `--factor 2 --engine modelx`, the 2c table `--factor 2 --workers 1`. The phase-2b, phase-2c and phase-2d measurements follow in their own sections below.
 
 **Timings depend on the machine.** They compare changes on one machine; they are not a property of the model.
 
@@ -161,7 +161,7 @@ The single runs are close together: the spread of `T` within a size is at most 0
 - The peak RSS grows with the points, but sublinearly: at n = 13 against K·n it is 127 / 137 MB at K = 2, 126 / 152 MB at K = 8, 126 / 170 MB at K = 16, about 0.2 MB per contract beyond 26 points rather than the 0.8 to 1.6 MB of the table's `MB/contract`, so the tool's linear `MB/contract × P` overstates it.
 - A `gc.collect()` after each delete does not stop the growth (121 / 153 MB at K = 16) and raises `t_marginal` from about 83 to 129 ms, so the runner does not do it.
 
-The remaining cause of the growth is open for phase 2d.
+The remaining cause of the growth was open for phase 2d, and 2d answers it: it is the CSV lines the runner collected for every point of the run, whether or not they were written (a `tracemalloc` probe on `basisrente` at K = 16 showed +24.8 MiB from `csv_lines` between point 40 and point 207, with the count of Python objects flat), not the export engine; under modelx in 2b the same growth was hidden in the noise. Since 2d the runner collects the lines only with `--write`, and the measuring tool's child only those of the shipped points, comparing replicas by a digest per point. Checked by hand on `basisrente` without `--write` (2026-10-24): peak RSS 128 MB at 13 points, 138 MB at 26, 140 MB at 104, 142 MB at 208 and 142 MB at 832; it no longer grows with the points.
 
 ## Comparison with 2b
 
@@ -199,3 +199,114 @@ Assumptions as in 2a and 2b: M = 500 mutants, P = 10,000 contracts, W = 1 worker
 | sofortrente | 77.9 h | 78.1 h | 8× | 0.3× |
 
 Still no product fits the 10 h night with one worker: the gap is a factor of about 4 (`risikolebensversicherung`) to 15 (`klassische_rentenversicherung`), and 81 for `pflegerentenversicherung`, against 32 to 579 in 2b. Under perfect scaling over the 24 logical CPUs (W = 24, phase 2d) nine products would fit, `pflegerentenversicherung` would not (factor 3.4). Perfect scaling is an assumption: 24 logical CPUs are not 24 full cores. The memory growth noted above is a point to watch in 2d, where it would add up over the workers.
+
+# Phase 2d: process parallelism
+
+The same measurement with the runner's worker processes (`--workers W`, new in 2d): the parent reads and exports the model once and forks `W` workers, which run single points on the exported model with per-contract cleanup; the parent takes their results in point order. The tool now runs every product at W = 1, 4, 8, 12, 16 and 24, each (W, size, repeat) in a fresh child, and `t_marginal(W)` is wall time per contract across all workers. Two further changes since 2c: the runner no longer collects the CSV lines of every point (see the memory paragraph of 2c), and every process runs with one BLAS/OpenMP thread.
+
+- Date: 2026-10-24
+- Commit: `433004b791e03f8382e6b12c7d4cce04139476d5`, clean tree
+- Machine: the same as for 2a to 2c (12th Gen Intel Core i7-12800HX, 24 logical CPUs, 62.8 GiB RAM, Linux 6.6 under WSL2; Python 3.12.13, modelx 0.33.0, pandas 3.1.0, numpy 2.5.4)
+- Command: `uv run python tools/measure_marginal.py --all --json /tmp/phase2d.json` (defaults: engine export, cleanup on, workers W = 1, 4, 8, 12, 16, 24, factor K = 32, repeats R = 3, M = 500, P = 10,000); exit 0, every run verified, wall time 63 min
+
+K is 32 instead of 2: with many workers, the slope of the export engine is small against its fixed cost of about 1.4 s, and K·n = 416 or 448 points gives every worker at W = 24 about 18 points. At a large W, `T(n)` is a single wave of 13 or 14 points in parallel, so `t_marginal(W)` and `fixed(W)` are biased slightly low there; this is stated, not corrected.
+
+**Memory figure: `mem`.** For W = 1 it is the peak RSS of the one process. For W > 1 it is the parent's peak RSS plus, summed over the workers, each worker's largest Pss after a point (read from `/proc/self/smaps_rollup` after every point's cleanup), so pages the workers share copy-on-write with the parent are not counted once per worker. Two biases are stated, not corrected: the Pss after a point's cleanup understates a worker's true peak during the point, and the pages the workers share with the parent are counted close to twice (fully in the parent's RSS, plus each worker's share in its Pss), so at W > 1 `mem` overstates by up to the parent's shared footprint (about 100 MB). `MB/contract` is given at W = 1 only.
+
+## Result
+
+Speed-up is `t_marginal(1) / t_marginal(W)` of the same product.
+
+| Product | W | T(n) s | T(K·n) s | fixed s | t_marginal ms | speed-up | mem(n) MB | mem(K·n) MB | status |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| basisrente | 1 | 2.37 | 35.56 | 1.40 | 82.4 | 1.0× | 130 | 141 | ok |
+| basisrente | 4 | 1.65 | 10.92 | 1.45 | 23.0 | 3.6× | 287 | 443 | ok |
+| basisrente | 8 | 1.48 | 7.99 | 1.37 | 16.2 | 5.1× | 317 | 724 | ok |
+| basisrente | 12 | 1.51 | 7.16 | 1.42 | 14.0 | 5.9× | 362 | 996 | ok |
+| basisrente | 16 | 1.47 | 6.52 | 1.40 | 12.5 | 6.6× | 360 | 1254 | ok |
+| basisrente | 24 | 1.54 | 6.14 | 1.49 | 11.4 | 7.2× | 340 | 1762 | ok |
+| berufsunfaehigkeit | 1 | 2.14 | 30.11 | 1.33 | 69.4 | 1.0× | 238 | 262 | ok |
+| berufsunfaehigkeit | 4 | 1.72 | 10.27 | 1.54 | 21.2 | 3.3× | 406 | 924 | ok |
+| berufsunfaehigkeit | 8 | 1.48 | 7.59 | 1.37 | 15.2 | 4.6× | 432 | 1649 | ok |
+| berufsunfaehigkeit | 12 | 1.48 | 6.60 | 1.41 | 12.7 | 5.5× | 479 | 2385 | ok |
+| berufsunfaehigkeit | 16 | 1.55 | 6.43 | 1.49 | 12.1 | 5.7× | 475 | 3081 | ok |
+| berufsunfaehigkeit | 24 | 1.62 | 6.08 | 1.57 | 11.1 | 6.3× | 454 | 4375 | ok |
+| fondsgebundene_rentenversicherung | 1 | 2.07 | 28.37 | 1.32 | 65.3 | 1.0× | 123 | 146 | ok |
+| fondsgebundene_rentenversicherung | 4 | 1.46 | 9.30 | 1.30 | 19.5 | 3.4× | 250 | 457 | ok |
+| fondsgebundene_rentenversicherung | 8 | 1.40 | 6.79 | 1.32 | 13.4 | 4.9× | 300 | 734 | ok |
+| fondsgebundene_rentenversicherung | 12 | 1.38 | 6.10 | 1.32 | 11.7 | 5.6× | 344 | 1016 | ok |
+| fondsgebundene_rentenversicherung | 16 | 1.40 | 5.56 | 1.36 | 10.3 | 6.3× | 343 | 1204 | ok |
+| fondsgebundene_rentenversicherung | 24 | 1.47 | 5.31 | 1.44 | 9.5 | 6.9× | 322 | 1471 | ok |
+| indexpolice | 1 | 1.87 | 24.75 | 1.23 | 56.8 | 1.0× | 121 | 122 | ok |
+| indexpolice | 4 | 1.37 | 8.50 | 1.23 | 17.7 | 3.2× | 235 | 347 | ok |
+| indexpolice | 8 | 1.28 | 5.87 | 1.22 | 11.4 | 5.0× | 285 | 537 | ok |
+| indexpolice | 12 | 1.24 | 5.23 | 1.20 | 9.9 | 5.7× | 327 | 720 | ok |
+| indexpolice | 16 | 1.26 | 4.75 | 1.23 | 8.7 | 6.6× | 324 | 897 | ok |
+| indexpolice | 24 | 1.32 | 4.47 | 1.31 | 7.8 | 7.3× | 305 | 1226 | ok |
+| kapitallebensversicherung | 1 | 2.21 | 30.22 | 1.40 | 64.5 | 1.0× | 123 | 124 | ok |
+| kapitallebensversicherung | 4 | 1.54 | 10.49 | 1.34 | 20.6 | 3.1× | 243 | 359 | ok |
+| kapitallebensversicherung | 8 | 1.52 | 7.80 | 1.42 | 14.5 | 4.5× | 295 | 557 | ok |
+| kapitallebensversicherung | 12 | 1.50 | 6.89 | 1.42 | 12.4 | 5.2× | 337 | 746 | ok |
+| kapitallebensversicherung | 16 | 1.51 | 6.17 | 1.46 | 10.7 | 6.0× | 348 | 939 | ok |
+| kapitallebensversicherung | 24 | 1.48 | 5.82 | 1.43 | 10.0 | 6.4× | 326 | 1270 | ok |
+| klassische_rentenversicherung | 1 | 3.05 | 53.33 | 1.52 | 115.9 | 1.0× | 133 | 136 | ok |
+| klassische_rentenversicherung | 4 | 1.79 | 15.77 | 1.43 | 32.2 | 3.6× | 357 | 426 | ok |
+| klassische_rentenversicherung | 8 | 1.67 | 11.06 | 1.46 | 21.6 | 5.4× | 460 | 694 | ok |
+| klassische_rentenversicherung | 12 | 1.76 | 10.69 | 1.57 | 20.6 | 5.6× | 399 | 944 | ok |
+| klassische_rentenversicherung | 16 | 1.66 | 9.42 | 1.51 | 17.9 | 6.5× | 389 | 1201 | ok |
+| klassische_rentenversicherung | 24 | 1.68 | 8.51 | 1.56 | 15.7 | 7.4× | 366 | 1687 | ok |
+| pflegerentenversicherung | 1 | 10.75 | 294.06 | 1.71 | 652.8 | 1.0× | 141 | 143 | ok |
+| pflegerentenversicherung | 4 | 4.50 | 79.71 | 2.16 | 173.3 | 3.8× | 416 | 453 | ok |
+| pflegerentenversicherung | 8 | 3.69 | 55.71 | 2.10 | 119.9 | 5.4× | 635 | 731 | ok |
+| pflegerentenversicherung | 12 | 3.84 | 50.94 | 2.41 | 108.5 | 6.0× | 772 | 1007 | ok |
+| pflegerentenversicherung | 16 | 3.76 | 46.95 | 2.47 | 99.5 | 6.6× | 770 | 1277 | ok |
+| pflegerentenversicherung | 24 | 3.57 | 43.33 | 2.38 | 91.6 | 7.1× | 752 | 1794 | ok |
+| riester_rente | 1 | 1.45 | 10.94 | 1.23 | 23.5 | 1.0× | 126 | 146 | ok |
+| riester_rente | 4 | 1.31 | 4.24 | 1.29 | 7.3 | 3.2× | 351 | 460 | ok |
+| riester_rente | 8 | 1.20 | 3.13 | 1.22 | 4.8 | 4.9× | 309 | 759 | ok |
+| riester_rente | 12 | 1.24 | 2.93 | 1.26 | 4.2 | 5.6× | 359 | 1040 | ok |
+| riester_rente | 16 | 1.26 | 2.86 | 1.29 | 4.0 | 5.9× | 354 | 1311 | ok |
+| riester_rente | 24 | 1.31 | 2.80 | 1.34 | 3.7 | 6.4× | 335 | 1594 | ok |
+| risikolebensversicherung | 1 | 1.18 | 9.27 | 1.00 | 18.6 | 1.0× | 120 | 122 | ok |
+| risikolebensversicherung | 4 | 1.05 | 3.62 | 1.05 | 5.9 | 3.2× | 233 | 360 | ok |
+| risikolebensversicherung | 8 | 1.10 | 2.72 | 1.13 | 3.7 | 5.0× | 282 | 565 | ok |
+| risikolebensversicherung | 12 | 1.07 | 2.62 | 1.10 | 3.6 | 5.2× | 322 | 741 | ok |
+| risikolebensversicherung | 16 | 1.08 | 2.53 | 1.12 | 3.3 | 5.6× | 333 | 912 | ok |
+| risikolebensversicherung | 24 | 1.11 | 2.46 | 1.15 | 3.1 | 6.0× | 313 | 1263 | ok |
+| sofortrente | 1 | 1.70 | 23.09 | 1.09 | 49.3 | 1.0× | 129 | 150 | ok |
+| sofortrente | 4 | 1.29 | 7.66 | 1.17 | 14.7 | 3.4× | 318 | 473 | ok |
+| sofortrente | 8 | 1.16 | 5.33 | 1.12 | 9.6 | 5.1× | 302 | 796 | ok |
+| sofortrente | 12 | 1.18 | 4.84 | 1.14 | 8.4 | 5.8× | 343 | 1093 | ok |
+| sofortrente | 16 | 1.18 | 4.57 | 1.16 | 7.8 | 6.3× | 356 | 1396 | ok |
+| sofortrente | 24 | 1.19 | 4.27 | 1.17 | 7.1 | 6.9× | 335 | 1830 | ok |
+
+Status `ok` for all 60 (product, W) pairs: replicas equal their originals by digest and points `1 … n` reproduce `baseline/` byte for byte at every W. Separately, for every product the runner's sha256 and `--write` bytes are identical at W = 1 and W = 8, and equal to `baseline/`.
+
+The single runs are close together: at W = 24 the three `T(K·n)` of a product lie within 0.2 s of each other (`pflegerentenversicherung` 42.5 to 44.6 s); at W = 1 the spread is up to 5 s for most products and 40 s for `pflegerentenversicherung` (264 to 304 s).
+
+Observations:
+
+- **Scaling:** every product gains from every step in W, but less than linearly: about 3.1 to 3.8× at W = 4, 4.5 to 5.4× at W = 8 and 6.0 to 7.4× at W = 24. The 24 logical CPUs are 16 cores (8 performance cores with two threads each and 8 efficiency cores), so W = 24 cannot give 24×; the gain from 16 to 24 workers is 7 to 14 %. The best W is 24 for every product.
+- **W = 1 against 2c:** `t_marginal(1)` lies between −40 % (`riester_rente` 23.5 against 39 ms, `risikolebensversicherung` 18.6 against 27 ms) and +12 % (`pflegerentenversicherung` 653 against 585 ms) of the 2c value. 2c used K = 2, where the slope of nine products rested on a difference `T(K·n) − T(n)` of 0.4 to 1.6 s (`pflegerentenversicherung` 8 s); K = 32 measures it on a difference of 8 to 283 s. The effect of the single BLAS thread is not separable from this; it is not a large speed-up at W = 1.
+- **Memory:** at W = 1 the peak RSS no longer grows with the points: `MB/contract` is 0.00 to 0.06, against 0.0 to 1.6 in 2c. With workers, `mem` grows with W, not with the points: each worker adds about 45 to 80 MB of its own (`berufsunfaehigkeit` about 170 MB), so `mem(K·n)` at W = 24 is 1.2 to 1.8 GB (`berufsunfaehigkeit` 4.4 GB), far below the machine's 62.8 GiB. `mem(n)` is lower than `mem(K·n)` because at n most workers have run one point or none.
+
+## Forecast
+
+Assumptions: M = 500 mutants, P = 10,000 contracts, each product on its own, slope from the shipped point mix, linearity assumed, not tested; a linear extrapolation without trace pruning and a forecast, not a measurement. Unlike in 2a to 2c, the forecast does not divide by W: `t_marginal(W)` is measured with W workers. The night is 10 h, which needs `t_marginal(W) ≤ 7.2 ms`.
+
+| Product | t_marginal(1) ms | best W | t_marginal(best) ms | speed-up | M·P·t_marginal(1) | M·P·t_marginal(best) | M·(fixed + P·t_marginal), best | gap to 10 h, best W | mem(K·n) at best W MB | MB/contract at W = 1 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| basisrente | 82.4 | 24 | 11.4 | 7.2× | 114.4 h | 15.8 h | 16.1 h | 1.58× | 1762 | 0.03 |
+| berufsunfaehigkeit | 69.4 | 24 | 11.1 | 6.3× | 96.4 h | 15.4 h | 15.6 h | 1.54× | 4375 | 0.06 |
+| fondsgebundene_rentenversicherung | 65.3 | 24 | 9.5 | 6.9× | 90.6 h | 13.2 h | 13.4 h | 1.32× | 1471 | 0.06 |
+| indexpolice | 56.8 | 24 | 7.8 | 7.3× | 78.9 h | 10.9 h | 11.0 h | 1.09× | 1226 | 0.00 |
+| kapitallebensversicherung | 64.5 | 24 | 10.0 | 6.4× | 89.7 h | 13.9 h | 14.1 h | 1.39× | 1270 | 0.00 |
+| klassische_rentenversicherung | 115.9 | 24 | 15.7 | 7.4× | 160.9 h | 21.9 h | 22.1 h | 2.19× | 1687 | 0.01 |
+| pflegerentenversicherung | 652.8 | 24 | 91.6 | 7.1× | 906.7 h | 127.3 h | 127.6 h | 12.73× | 1794 | 0.00 |
+| riester_rente | 23.5 | 24 | 3.7 | 6.4× | 32.7 h | 5.1 h | 5.3 h | 0.51× | 1594 | 0.05 |
+| risikolebensversicherung | 18.6 | 24 | 3.1 | 6.0× | 25.9 h | 4.3 h | 4.5 h | 0.43× | 1263 | 0.00 |
+| sofortrente | 49.3 | 24 | 7.1 | 6.9× | 68.5 h | 9.9 h | 10.0 h | 0.99× | 1830 | 0.05 |
+
+With process parallelism at the best worker count, three products fit the 10 h night by the forecast: `risikolebensversicherung` (4.3 h), `riester_rente` (5.1 h) and, just, `sofortrente` (9.9 h, 10.0 h with the fixed cost per mutant). Six miss it by a factor of 1.1 (`indexpolice`) to 2.2 (`klassische_rentenversicherung`), and `pflegerentenversicherung` by a factor of 12.7. Against 2c at W = 1 (factor 4 to 15, `pflegerentenversicherung` 81) this is the gain of the workers; it is smaller than the "perfect scaling over 24 CPUs" of the 2c forecast (gap at W = 24 of 0.2 to 0.6, `pflegerentenversicherung` 3.4), because the measured speed-up at W = 24 is about 7×, not 24×.
+
+This is as fast as the runner gets at runner level (export engine, per-contract cleanup, process parallelism), which is phase 2's exit criterion in the README. The remaining gap is documented here and is not a condition of phase 2; closing it needs changes to the model (phase 3) or trace pruning, more cores, or fewer mutants or contracts per night.

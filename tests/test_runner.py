@@ -6,6 +6,7 @@ the slowest run only.
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import re
 import shutil
 import subprocess
@@ -20,6 +21,13 @@ PRODUCT = "risikolebensversicherung"
 FOLDER = ROOT / "products" / PRODUCT
 N_POINTS = 14
 BASELINE = ROOT / "baseline" / PRODUCT / "result_cf.csv"
+
+
+def load_runner():
+    spec = importlib.util.spec_from_file_location("run_baseline", RUNNER)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def folder_hashes(folder: Path) -> dict[str, str]:
@@ -60,6 +68,7 @@ def runs(tmp_path_factory):
     policy roll-forward check is false; it also asks for ``--write``. ``raises`` is a
     scratch copy in which points 2 and 13 name a benefit schedule that does not exist.
     ``path_write`` is a scratch copy named like the product, with ``--write`` and no ``--out``.
+    ``write_nc`` and ``raises_nc`` repeat ``write_a`` and ``raises`` with ``--no-cleanup``.
     """
     tmp_path = tmp_path_factory.mktemp("runner")
     false_check = scratch_copy(tmp_path, "false_check")
@@ -75,6 +84,8 @@ def runs(tmp_path_factory):
         "write_b": [PRODUCT, "--write", "--out", str(out / "b")],
         "false_check": [str(false_check), "--write", "--out", str(out / "false_check")],
         "raises": [str(raises)],
+        "write_nc": [PRODUCT, "--no-cleanup", "--write", "--out", str(out / "c")],
+        "raises_nc": [str(raises), "--no-cleanup"],
         "unknown": ["nosuch"],
         "path_write": [str(named), "--write"],
     }
@@ -102,6 +113,7 @@ def test_happy_path_prints_count_hash_time_and_all_true(runs):
     assert re.fullmatch(r"[0-9a-f]{64}", output["sha256"])
     assert re.fullmatch(r"\d+\.\d s", output["wall time"])
     assert output["checks"] == "all true"
+    assert output["cleanup"] == "on"
     assert "FAILED" not in stderr
 
 
@@ -154,3 +166,43 @@ def test_write_from_a_path_without_out_is_a_usage_error(runs):
     assert "--out" in stderr
     assert output == {}
     assert runs["baseline_unchanged"]
+
+
+def test_no_cleanup_gives_the_same_hash_and_bytes(runs):
+    code, output, stderr = runs["write_nc"]
+    assert code == 0, stderr
+    assert output["cleanup"] == "off"
+    assert output["sha256"] == runs["write_a"][1]["sha256"]
+    assert (runs["out"] / "c" / "result_cf.csv").read_bytes() == (
+        runs["out"] / "a" / "result_cf.csv").read_bytes()
+
+
+def test_no_cleanup_gives_the_same_failures(runs):
+    def failed(name):
+        return [line for line in runs[name][2].splitlines() if line.startswith("FAILED ")]
+    code, output, _ = runs["raises_nc"]
+    assert code == 1
+    assert output["cleanup"] == "off" and runs["raises"][1]["cleanup"] == "on"
+    assert failed("raises_nc") == failed("raises") and failed("raises")
+    assert output["sha256"] == runs["raises"][1]["sha256"]
+
+
+@pytest.mark.parametrize("cleanup", [True, False])
+def test_cleanup_deletes_every_itemspace_also_of_raising_points(tmp_path, monkeypatch, cleanup):
+    from modelx.core.space import UserSpace
+
+    raises = scratch_copy(tmp_path, "raises")
+    edit_point(raises, 2, benefit_schedule_id="nosuch")
+    edit_point(raises, 13, benefit_schedule_id="nosuch")
+    deleted = []
+    original = UserSpace.__delitem__
+
+    def spy(self, key):
+        deleted.append(key)
+        return original(self, key)
+
+    monkeypatch.setattr(UserSpace, "__delitem__", spy)
+    count, _checks, _sha, failures, _lines = load_runner().run_product(raises, cleanup=cleanup)
+    assert count == N_POINTS
+    assert {int(re.match(r"point (\d+):", f).group(1)) for f in failures} == {2, 13}
+    assert deleted == (list(range(1, N_POINTS + 1)) if cleanup else [])

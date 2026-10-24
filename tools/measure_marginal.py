@@ -1,13 +1,17 @@
 """Measure the marginal time per contract of one or more products.
 
     uv run python tools/measure_marginal.py risikolebensversicherung
-    uv run python tools/measure_marginal.py --all --json /tmp/phase2a.json
+    uv run python tools/measure_marginal.py --all --json /tmp/phase2b.json
     uv run python tools/measure_marginal.py basisrente --factor 3 --repeats 5 --pool 20000
+    uv run python tools/measure_marginal.py --all --no-cleanup        # reproduces phase 2a
 
 What is measured
 ----------------
-The unchanged ``run_product`` of ``tools/run_baseline.py``: ``read_model``, ``result_cf``,
-every built-in check and the hashing, for every point. Each product runs at two sizes, in
+``run_product`` of ``tools/run_baseline.py`` as it stands: ``read_model``, ``result_cf``,
+every built-in check and the hashing, for every point. By default the runner deletes each
+point's ItemSpace after reading it (per-contract cleanup); ``--no-cleanup`` passes the
+runner's switch through and measures the phase-2a behaviour. The header line above the
+table and the JSON (``cleanup``) state the mode. Each product runs at two sizes, in
 two temporary scratch copies of its folder under one temp root: one with the shipped ``n``
 model points, one with ``K·n`` points whose ids ``n+1 … K·n`` repeat the rows of ids
 ``1 … n`` in order. The product folder itself is only read.
@@ -199,7 +203,7 @@ def total_ram_mb() -> float:
 
 # --------------------------------------------------------------------------- child
 
-def child(folder: Path, originals: int) -> int:
+def child(folder: Path, originals: int, cleanup: bool = True) -> int:
     """Run ``run_product`` once and print the measurement as JSON on the last stdout line."""
     import resource
 
@@ -207,7 +211,7 @@ def child(folder: Path, originals: int) -> int:
     import run_baseline  # noqa: E402  (script mode: tools/ is on sys.path; imports modelx)
     import_s = time.perf_counter() - start
     start = time.perf_counter()
-    count, _checks, _sha, failures, lines = run_baseline.run_product(folder)
+    count, _checks, _sha, failures, lines = run_baseline.run_product(folder, cleanup=cleanup)
     run_s = time.perf_counter() - start
     maxrss_kib = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     points: dict[str, list[str]] = {}
@@ -220,11 +224,12 @@ def child(folder: Path, originals: int) -> int:
     return 0
 
 
-def run_child(folder: Path, originals: int) -> dict:
+def run_child(folder: Path, originals: int, cleanup: bool) -> dict:
     """One fresh child process; raises ``VerificationError`` on a crash or missing JSON."""
-    proc = subprocess.run([sys.executable, str(THIS), "--child", str(folder),
-                           "--originals", str(originals)],
-                          cwd=ROOT, capture_output=True, text=True)
+    command = [sys.executable, str(THIS), "--child", str(folder), "--originals", str(originals)]
+    if not cleanup:
+        command.append("--no-cleanup")
+    proc = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
     tail = "\n".join(proc.stderr.strip().splitlines()[-5:])
     if proc.returncode != 0:
         raise VerificationError(f"child exited {proc.returncode}; stderr tail:\n{tail}")
@@ -240,7 +245,7 @@ def run_child(folder: Path, originals: int) -> dict:
 
 def measure(product: str, args, ram_mb: float) -> dict:
     """Measure one product. The returned record has ``status`` ok, unreliable or failed."""
-    factor, repeats = args.factor, args.repeats
+    factor, repeats, cleanup = args.factor, args.repeats, not args.no_cleanup
     record: dict = {"product": product, "factor": factor, "repeats": repeats,
                     "runs": [], "errors": [], "status": "failed"}
 
@@ -276,7 +281,7 @@ def measure(product: str, args, ram_mb: float) -> dict:
                 print(f"{product}: run {repeat}/{repeats}, {label} = {size} points ...",
                       file=sys.stderr, flush=True)
                 try:
-                    result = run_child(folder, n)
+                    result = run_child(folder, n, cleanup)
                 except VerificationError as exc:
                     return fail(f"size {size} ({label}), run {repeat}: {exc}")
                 problems = verify_run(result, size, n, baseline)
@@ -354,13 +359,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--pool", type=positive_int(1), default=10000, help="P for the forecast (default 10000)")
     parser.add_argument("--workers", type=positive_int(1), default=1, help="W for the forecast (default 1)")
     parser.add_argument("--json", type=Path, metavar="FILE", help="write all measurements as JSON")
+    parser.add_argument("--no-cleanup", action="store_true",
+                        help="run the runner without per-contract cleanup (phase-2a behaviour)")
     parser.add_argument("--child", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--originals", type=positive_int(1), help=argparse.SUPPRESS)
     parser.add_argument("--prepared", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
     if args.child is not None:
-        return child(args.child.resolve(), args.originals or 0)
+        return child(args.child.resolve(), args.originals or 0, cleanup=not args.no_cleanup)
 
     names = product_names()
     if args.all and args.products:
@@ -385,7 +392,8 @@ def main(argv: list[str] | None = None) -> int:
     records = [measure(product, args, ram_mb) for product in products]
 
     print(f"factor K = {args.factor}, repeats R = {args.repeats}; times are medians of "
-          "run_product, import is the median modelx import")
+          "run_product, import is the median modelx import, "
+          f"cleanup {'off' if args.no_cleanup else 'on'}")
     for line in table_lines(records):
         print(line)
     print()
@@ -399,6 +407,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{r['product']}: no forecast ({r['status']})")
     if args.json is not None:
         args.json.write_text(json.dumps({"factor": args.factor, "repeats": args.repeats,
+                                         "cleanup": not args.no_cleanup,
                                          "mutants": args.mutants, "pool": args.pool,
                                          "workers": args.workers, "total_ram_mb": ram_mb,
                                          "products": records}, indent=2) + "\n")

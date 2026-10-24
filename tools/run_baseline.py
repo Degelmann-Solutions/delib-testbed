@@ -3,16 +3,26 @@
     uv run python tools/run_baseline.py basisrente
     uv run python tools/run_baseline.py basisrente --write            # baseline/basisrente/
     uv run python tools/run_baseline.py path/to/scratch --write --out DIR
+    uv run python tools/run_baseline.py basisrente --no-cleanup        # phase-2a behaviour
 
 A bare name resolves to ``products/<name>``; anything with a path separator is used as
 given, which is how the tests run scratch copies. The folder holds the model (the only
 subfolder with a ``_system.json``) and its input CSVs side by side. The runner reads the
 model with modelx, evaluates ``result_cf`` and the product's built-in checks for every
-point of ``model_point_table.csv``, and prints the point count, the check cells, the
-SHA-256 and the wall time. The wall time is measured from the start of this script, before
-modelx is imported, so it covers the import, the run, the checks and the hashing; it does
-not cover interpreter start-up or ``uv run``. It only reads: no modelx writer is called and
-the product folder is left untouched.
+point of ``model_point_table.csv``, and prints the cleanup mode, the point count, the
+check cells, the SHA-256 and the wall time. The wall time is measured from the start of
+this script, before modelx is imported, so it covers the import, the run, the checks and
+the hashing; it does not cover interpreter start-up or ``uv run``. It only reads: no
+modelx writer is called and the product folder is left untouched.
+
+Per-contract cleanup
+--------------------
+By default the runner deletes each point's ItemSpace (``del model.Projection[point_id]``)
+once its ``result_cf`` bytes, its CSV lines and all its checks have been read, also when
+the point raised, so the ItemSpaces of earlier points do not accumulate. ``--no-cleanup``
+keeps every ItemSpace alive until the model is closed, as in phase 2a. The first output
+line names the mode, ``cleanup: on`` or ``cleanup: off``. The results, the hash and the
+written bytes are the same in both modes; how cells are computed and traced is unchanged.
 
 Checks
 ------
@@ -135,8 +145,12 @@ def describe(exc: Exception) -> str:
     return type(exc).__name__ + (f": {lines[0]}" if lines else "")
 
 
-def run_product(folder: Path) -> tuple[int, list[str], str, list[str], list[str]]:
-    """Run all points. Return the point count, the checks, the SHA-256, the failures and the CSV."""
+def run_product(folder: Path, cleanup: bool = True) -> tuple[int, list[str], str, list[str], list[str]]:
+    """Run all points. Return the point count, the checks, the SHA-256, the failures and the CSV.
+
+    With ``cleanup`` (the default) each point's ItemSpace is deleted once its ``result_cf``
+    and checks have been read, also when the point raised (see module docstring).
+    """
     model = mx.read_model(model_dir(folder))
     try:
         checks = check_names(model)
@@ -148,27 +162,31 @@ def run_product(folder: Path) -> tuple[int, list[str], str, list[str], list[str]
         for point_id in point_ids:
             projection = model.Projection[point_id]
             try:
-                frame = projection.result_cf()
-                data = frame_bytes(point_id, frame)
-            except Exception as exc:
-                failures.append(f"point {point_id}: result_cf raised {describe(exc)}")
-                continue
-            digest.update(data)
-            if columns is None:
-                columns = [str(c) for c in frame.columns]
-                lines.append(",".join(["point_id", "t"] + columns))
-            if [str(c) for c in frame.columns] != columns:
-                failures.append(f"point {point_id}: result_cf has other columns than point {point_ids[0]}")
-            else:
-                lines.extend(csv_lines(point_id, frame))
-            for check in checks:
                 try:
-                    passed = getattr(projection, check)()
+                    frame = projection.result_cf()
+                    data = frame_bytes(point_id, frame)
                 except Exception as exc:
-                    failures.append(f"point {point_id}: {check} raised {describe(exc)}")
+                    failures.append(f"point {point_id}: result_cf raised {describe(exc)}")
                     continue
-                if not passed:
-                    failures.append(f"point {point_id}: {check} is false")
+                digest.update(data)
+                if columns is None:
+                    columns = [str(c) for c in frame.columns]
+                    lines.append(",".join(["point_id", "t"] + columns))
+                if [str(c) for c in frame.columns] != columns:
+                    failures.append(f"point {point_id}: result_cf has other columns than point {point_ids[0]}")
+                else:
+                    lines.extend(csv_lines(point_id, frame))
+                for check in checks:
+                    try:
+                        passed = getattr(projection, check)()
+                    except Exception as exc:
+                        failures.append(f"point {point_id}: {check} raised {describe(exc)}")
+                        continue
+                    if not passed:
+                        failures.append(f"point {point_id}: {check} is false")
+            finally:
+                if cleanup:
+                    del model.Projection[point_id]
         return len(point_ids), checks, digest.hexdigest(), failures, lines
     finally:
         model.close()
@@ -181,6 +199,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("product", help="a product name under products/, or a path to a product folder")
     parser.add_argument("--write", action="store_true", help=f"write {CSV_NAME} to --out")
     parser.add_argument("--out", type=Path, help="output folder for --write (default baseline/<product>)")
+    parser.add_argument("--no-cleanup", action="store_true",
+                        help="keep every point's ItemSpace alive until the end (phase-2a behaviour)")
     args = parser.parse_args(argv)
     if args.out is not None and not args.write:
         parser.error("--out needs --write")
@@ -194,8 +214,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
-    count, checks, sha256, failures, lines = run_product(folder)
+    cleanup = not args.no_cleanup
+    count, checks, sha256, failures, lines = run_product(folder, cleanup=cleanup)
     elapsed = time.perf_counter() - _PROCESS_START
+    print(f"cleanup: {'on' if cleanup else 'off'}")
     print(f"model points: {count}")
     print(f"check cells: {','.join(checks)}")
     print(f"sha256: {sha256}")

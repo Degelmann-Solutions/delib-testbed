@@ -162,7 +162,8 @@ def test_line_comparison_finds_baseline_mismatch_missing_points_and_failures():
 def runs(tmp_path_factory):
     """Run the tool in parallel processes and collect exit code, output and stderr.
 
-    ``rlv`` measures the product with K = 2 and one repeat and writes JSON. ``replica``
+    ``rlv`` measures the product with K = 2 and one repeat and writes JSON; ``rlv_nc`` does
+    the same with ``--no-cleanup``. ``replica``
     gets a prepared K·n folder whose replica of point 1 (point 15) has another sum
     assured. The others are usage errors.
     """
@@ -173,8 +174,10 @@ def runs(tmp_path_factory):
     table.write_bytes(mm.replicate_table(table.read_bytes().decode("ascii"), 2).encode("ascii"))
     edit_point(prepared, N_POINTS + 1, sum_assured="123456.0")
     json_path = tmp_path / "rlv.json"
+    json_nc = tmp_path / "rlv_nc.json"
     commands = {
         "rlv": [PRODUCT, "--factor", "2", "--repeats", "1", "--json", str(json_path)],
+        "rlv_nc": [PRODUCT, "--repeats", "1", "--no-cleanup", "--json", str(json_nc)],
         "replica": [PRODUCT, "--repeats", "1", "--prepared", str(prepared)],
         "unknown": ["nosuch"],
         "factor_1": [PRODUCT, "--factor", "1"],
@@ -192,6 +195,7 @@ def runs(tmp_path_factory):
     results["before"] = before
     results["after"] = guarded()
     results["json"] = json.loads(json_path.read_text()) if json_path.exists() else None
+    results["json_nc"] = json.loads(json_nc.read_text()) if json_nc.exists() else None
     return results
 
 
@@ -210,8 +214,8 @@ def test_one_product_prints_a_row_and_the_forecast(runs):
 def test_json_holds_inputs_runs_medians_derived_and_forecast(runs):
     data = runs["json"]
     assert data is not None
-    assert (data["factor"], data["repeats"], data["mutants"], data["pool"], data["workers"]) == (
-        2, 1, 500, 10000, 1)
+    assert (data["factor"], data["repeats"], data["cleanup"], data["mutants"], data["pool"],
+            data["workers"]) == (2, 1, True, 500, 10000, 1)
     (record,) = data["products"]
     assert record["product"] == PRODUCT and record["status"] == "ok"
     assert (record["n"], record["size_kn"]) == (N_POINTS, 2 * N_POINTS)
@@ -222,6 +226,46 @@ def test_json_holds_inputs_runs_medians_derived_and_forecast(runs):
     assert d["t_marginal_s"] == pytest.approx((m["run_s_kn"] - m["run_s_n"]) / N_POINTS)
     assert d["fixed_s"] == pytest.approx(m["import_s"] + m["run_s_n"] - N_POINTS * d["t_marginal_s"])
     assert record["forecast"]["hours"] == pytest.approx(500 * 10000 * d["t_marginal_s"] / 3600)
+
+
+def test_header_line_names_the_cleanup_mode(runs):
+    assert runs["rlv"][1].splitlines()[0].endswith(", cleanup on")
+
+
+def test_no_cleanup_measures_and_verifies_without_cleanup(runs):
+    code, stdout, stderr = runs["rlv_nc"]
+    assert code == 0, stderr
+    assert stdout.splitlines()[0].endswith(", cleanup off")
+    data = runs["json_nc"]
+    assert data is not None and data["cleanup"] is False
+    (record,) = data["products"]
+    assert record["status"] == "ok" and not record["errors"]
+    assert "FAILED" not in stderr
+
+
+def test_the_child_passes_the_switch_to_the_runner(monkeypatch):
+    calls = []
+    monkeypatch.setattr(mm.subprocess, "run", lambda command, **k: calls.append(command) or
+                        subprocess.CompletedProcess(command, 0, "{}\n", ""))
+    mm.run_child(FOLDER, N_POINTS, cleanup=True)
+    mm.run_child(FOLDER, N_POINTS, cleanup=False)
+    assert "--no-cleanup" not in calls[0] and calls[1][-1] == "--no-cleanup"
+
+
+@pytest.mark.parametrize("argv, cleanup", [([], True), (["--no-cleanup"], False)])
+def test_the_child_runs_the_runner_in_the_chosen_mode(monkeypatch, capsys, argv, cleanup):
+    seen = []
+
+    def run_product(folder, cleanup=True):
+        seen.append(cleanup)
+        return 0, [], "", [], []
+
+    fake = type(sys)("run_baseline")
+    fake.run_product = run_product
+    monkeypatch.setitem(sys.modules, "run_baseline", fake)
+    assert mm.main(["--child", str(FOLDER), "--originals", str(N_POINTS), *argv]) == 0
+    assert seen == [cleanup]
+    assert json.loads(capsys.readouterr().out.splitlines()[-1])["n"] == 0
 
 
 def test_a_differing_replica_exits_1_and_names_the_point(runs):
@@ -262,7 +306,7 @@ def _baseline_points() -> tuple[str, dict[str, list[str]]]:
 
 def _measure(argv):
     args = mm.argparse.Namespace(factor=2, repeats=1, mutants=500, pool=10000, workers=1,
-                                 prepared=None, json=None)
+                                 prepared=None, json=None, no_cleanup=False)
     for key, value in argv.items():
         setattr(args, key, value)
     return mm.measure(PRODUCT, args, ram_mb=64 * 1024)
@@ -271,7 +315,7 @@ def _measure(argv):
 def test_a_failing_point_in_the_child_fails_the_product(monkeypatch, capsys):
     header, points = _baseline_points()
     del points["3"]
-    monkeypatch.setattr(mm, "run_child", lambda folder, n: {
+    monkeypatch.setattr(mm, "run_child", lambda folder, n, cleanup: {
         "n": N_POINTS, "failures": ["point 3: check_x is false"], "header": header,
         "points": points, "import_s": 0.1, "run_s": 1.0, "maxrss_kib": 1})
     record = _measure({})
@@ -297,7 +341,7 @@ def test_a_crashing_child_fails_the_product(monkeypatch, capsys, returncode, std
 def test_a_non_positive_slope_is_unreliable_and_exits_1(monkeypatch, capsys):
     header, points = _baseline_points()
 
-    def fake(folder, n):
+    def fake(folder, n, cleanup):
         size = mm.count_points((folder / mm.TABLE).read_bytes().decode("ascii"))
         pts = {str(p): points[str(mm.original_of(p, n))] for p in range(1, size + 1)}
         return {"n": size, "failures": [], "header": header, "points": pts,

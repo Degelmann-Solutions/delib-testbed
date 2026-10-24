@@ -3,24 +3,45 @@
     uv run python tools/run_baseline.py basisrente
     uv run python tools/run_baseline.py basisrente --write            # baseline/basisrente/
     uv run python tools/run_baseline.py path/to/scratch --write --out DIR
-    uv run python tools/run_baseline.py basisrente --no-cleanup        # phase-2a behaviour
+    uv run python tools/run_baseline.py basisrente --engine modelx     # phase-2b behaviour
+    uv run python tools/run_baseline.py basisrente --engine modelx --no-cleanup  # phase 2a
 
 A bare name resolves to ``products/<name>``; anything with a path separator is used as
 given, which is how the tests run scratch copies. The folder holds the model (the only
 subfolder with a ``_system.json``) and its input CSVs side by side. The runner reads the
 model with modelx, evaluates ``result_cf`` and the product's built-in checks for every
-point of ``model_point_table.csv``, and prints the cleanup mode, the point count, the
-check cells, the SHA-256 and the wall time. The wall time is measured from the start of
-this script, before modelx is imported, so it covers the import, the run, the checks and
-the hashing; it does not cover interpreter start-up or ``uv run``. It only reads: no
-modelx writer is called and the product folder is left untouched.
+point of ``model_point_table.csv``, and prints the engine, the cleanup mode, the point
+count, the check cells, the SHA-256 and the wall time. The wall time is measured from the
+start of this script, before modelx is imported, so it covers the import, the export, the
+run, the checks and the hashing; it does not cover interpreter start-up or ``uv run``. It
+only reads the product folder: no modelx writer writes into it and it is left untouched.
+
+Engines
+-------
+``--engine export`` (the default) reads the model with modelx, exports it with
+``mx.export_model`` into a package in a temporary folder, imports that package and runs
+the points and checks on the exported model, which computes the same formulas without
+modelx's per-cell trace and dependency graph. The exported model's ``path`` is set to the
+model folder, so the product's input tables are read from the product folder as under
+modelx. The temporary folder, its entry on ``sys.path`` and the imported modules are
+removed afterwards. An exception from the export or the import is the failure
+``export raised ...``; no point runs and there is no fallback to modelx.
+
+``--engine modelx`` runs on the modelx model itself, as in phases 2a and 2b; it is the
+traced engine, for tracing a contract and for reproducing those measurements. The results,
+the hash and the written bytes are the same in both engines. The failure messages differ
+in one way: under modelx a raising formula is wrapped in a ``FormulaError``, so a failure
+reads ``result_cf raised FormulaError: KeyError: ...``; the exported model raises the plain
+exception, ``result_cf raised KeyError: ...``. The first output line names the engine,
+``engine: export`` or ``engine: modelx``.
 
 Per-contract cleanup
 --------------------
-By default the runner deletes each point's ItemSpace (``del model.Projection[point_id]``)
-once its ``result_cf`` bytes, its CSV lines and all its checks have been read, also when
-the point raised, so the ItemSpaces of earlier points do not accumulate. ``--no-cleanup``
-keeps every ItemSpace alive until the model is closed, as in phase 2a. The first output
+By default the runner deletes each point's ItemSpace (``del Projection[point_id]`` on the
+model being run, the modelx or the exported one) once its ``result_cf`` bytes, its CSV
+lines and all its checks have been read, also when the point raised, so the ItemSpaces of
+earlier points do not accumulate. ``--no-cleanup`` keeps every ItemSpace alive until
+``run_product`` returns, as in phase 2a. The second output
 line names the mode, ``cleanup: on`` or ``cleanup: off``. The results, the hash and the
 written bytes are the same in both modes; how cells are computed and traced is unchanged.
 
@@ -61,8 +82,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib
 import sys
+import tempfile
 import time
+import uuid
 from pathlib import Path
 
 _PROCESS_START = time.perf_counter()  # taken before the modelx import, which takes seconds
@@ -73,6 +97,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PRODUCTS_DIR = ROOT / "products"
 BASELINE_DIR = ROOT / "baseline"
 CSV_NAME = "result_cf.csv"
+ENGINES = ("export", "modelx")
 
 
 class UsageError(Exception):
@@ -145,13 +170,18 @@ def describe(exc: Exception) -> str:
     return type(exc).__name__ + (f": {lines[0]}" if lines else "")
 
 
-def run_product(folder: Path, cleanup: bool = True) -> tuple[int, list[str], str, list[str], list[str]]:
+def run_product(folder: Path, cleanup: bool = True,
+                engine: str = "export") -> tuple[int, list[str], str, list[str], list[str]]:
     """Run all points. Return the point count, the checks, the SHA-256, the failures and the CSV.
 
     With ``cleanup`` (the default) each point's ItemSpace is deleted once its ``result_cf``
-    and checks have been read, also when the point raised (see module docstring).
+    and checks have been read, also when the point raised. ``engine`` is ``export`` (the
+    default) or ``modelx`` (see module docstring).
     """
+    if engine not in ENGINES:
+        raise ValueError(f"unknown engine {engine!r} (engines: {', '.join(ENGINES)})")
     model = mx.read_model(model_dir(folder))
+    pkg = None
     try:
         checks = check_names(model)
         point_ids = sorted(int(i) for i in model.Data.model_point_table().index)
@@ -159,37 +189,59 @@ def run_product(folder: Path, cleanup: bool = True) -> tuple[int, list[str], str
         failures: list[str] = []
         columns = None
         lines: list[str] = []
-        for point_id in point_ids:
-            projection = model.Projection[point_id]
-            try:
+        with tempfile.TemporaryDirectory(prefix="delib-export-") as tmp:
+            if engine == "export":
+                pkg = f"_delib_export_{uuid.uuid4().hex}"
                 try:
-                    frame = projection.result_cf()
-                    data = frame_bytes(point_id, frame)
+                    mx.export_model(model, Path(tmp) / pkg)
+                    model.close()
+                    model = None
+                    sys.path.insert(0, tmp)
+                    space_model = importlib.import_module(pkg).mx_model
+                    # Data.input_dir() is _model.path.parent: point it at the product folder.
+                    space_model.path = model_dir(folder)
                 except Exception as exc:
-                    failures.append(f"point {point_id}: result_cf raised {describe(exc)}")
-                    continue
-                digest.update(data)
-                if columns is None:
-                    columns = [str(c) for c in frame.columns]
-                    lines.append(",".join(["point_id", "t"] + columns))
-                if [str(c) for c in frame.columns] != columns:
-                    failures.append(f"point {point_id}: result_cf has other columns than point {point_ids[0]}")
-                else:
-                    lines.extend(csv_lines(point_id, frame))
-                for check in checks:
+                    failures.append(f"export raised {describe(exc)}")
+                    return len(point_ids), checks, digest.hexdigest(), failures, lines
+            else:
+                space_model = model
+            for point_id in point_ids:
+                projection = space_model.Projection[point_id]
+                try:
                     try:
-                        passed = getattr(projection, check)()
+                        frame = projection.result_cf()
+                        data = frame_bytes(point_id, frame)
                     except Exception as exc:
-                        failures.append(f"point {point_id}: {check} raised {describe(exc)}")
+                        failures.append(f"point {point_id}: result_cf raised {describe(exc)}")
                         continue
-                    if not passed:
-                        failures.append(f"point {point_id}: {check} is false")
-            finally:
-                if cleanup:
-                    del model.Projection[point_id]
-        return len(point_ids), checks, digest.hexdigest(), failures, lines
+                    digest.update(data)
+                    if columns is None:
+                        columns = [str(c) for c in frame.columns]
+                        lines.append(",".join(["point_id", "t"] + columns))
+                    if [str(c) for c in frame.columns] != columns:
+                        failures.append(f"point {point_id}: result_cf has other columns than point {point_ids[0]}")
+                    else:
+                        lines.extend(csv_lines(point_id, frame))
+                    for check in checks:
+                        try:
+                            passed = getattr(projection, check)()
+                        except Exception as exc:
+                            failures.append(f"point {point_id}: {check} raised {describe(exc)}")
+                            continue
+                        if not passed:
+                            failures.append(f"point {point_id}: {check} is false")
+                finally:
+                    if cleanup:
+                        del space_model.Projection[point_id]
+            return len(point_ids), checks, digest.hexdigest(), failures, lines
     finally:
-        model.close()
+        if pkg is not None:
+            while tmp in sys.path:
+                sys.path.remove(tmp)
+            for name in [k for k in sys.modules if k == pkg or k.startswith(pkg + ".")]:
+                del sys.modules[name]
+        if model is not None:
+            model.close()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -201,6 +253,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, help="output folder for --write (default baseline/<product>)")
     parser.add_argument("--no-cleanup", action="store_true",
                         help="keep every point's ItemSpace alive until the end (phase-2a behaviour)")
+    parser.add_argument("--engine", choices=ENGINES, default="export",
+                        help="export: run on the model exported by mx.export_model (default); "
+                             "modelx: run on the traced modelx model (phases 2a and 2b)")
     args = parser.parse_args(argv)
     if args.out is not None and not args.write:
         parser.error("--out needs --write")
@@ -215,8 +270,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     cleanup = not args.no_cleanup
-    count, checks, sha256, failures, lines = run_product(folder, cleanup=cleanup)
+    count, checks, sha256, failures, lines = run_product(folder, cleanup=cleanup, engine=args.engine)
     elapsed = time.perf_counter() - _PROCESS_START
+    print(f"engine: {args.engine}")
     print(f"cleanup: {'on' if cleanup else 'off'}")
     print(f"model points: {count}")
     print(f"check cells: {','.join(checks)}")

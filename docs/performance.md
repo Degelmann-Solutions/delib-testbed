@@ -1,8 +1,8 @@
-# Performance: reference measurement of phase 2a, and the phase-2b measurement next to it
+# Performance: reference measurement of phase 2a, and the phase-2b and phase-2c measurements next to it
 
 The marginal time per contract of every product, measured with `tools/measure_marginal.py` on the unchanged phase-1 runner. Later phase-2 changes are measured with the same tool against this table.
 
-The 2a reference was measured at `10c2ad8`, before the runner had per-contract cleanup. Since phase 2b the runner cleans up by default; reproducing the 2a table with the current tool needs `--no-cleanup`. The phase-2b measurement follows in its own section below.
+The 2a reference was measured at `10c2ad8`, before the runner had per-contract cleanup. Since phase 2b the runner cleans up by default, and since phase 2c it runs on the exported model by default; reproducing the 2a table with the current tool needs `--engine modelx --no-cleanup`, the 2b table `--engine modelx`. The phase-2b and phase-2c measurements follow in their own sections below.
 
 **Timings depend on the machine.** They compare changes on one machine; they are not a property of the model.
 
@@ -125,4 +125,77 @@ Assumptions as in 2a: M = 500 mutants, P = 10,000 contracts, W = 1 worker, each 
 | risikolebensversicherung | 532.8 h | 532.9 h | 53× |
 | sofortrente | 732.7 h | 732.7 h | 73× |
 
-No product fits the 10 h night: the gap is a factor of about 32 (`indexpolice`) to 579 (`klassische_rentenversicherung`), as in 2a. Memory no longer limits a run over the pool: one process stays at its peak RSS of 108 to 544 MB, so many processes fit side by side in 62.8 GiB. The remaining gap is time; it is what process parallelism (phase 2c) addresses, even perfect scaling over the 24 logical CPUs (W = 24) would leave a factor of about 1.3 to 24.
+No product fits the 10 h night: the gap is a factor of about 32 (`indexpolice`) to 579 (`klassische_rentenversicherung`), as in 2a. Memory no longer limits a run over the pool: one process stays at its peak RSS of 108 to 544 MB, so many processes fit side by side in 62.8 GiB. The remaining gap is time; it is what process parallelism (planned as 2c at the time, now phase 2d) addresses, even perfect scaling over the 24 logical CPUs (W = 24) would leave a factor of about 1.3 to 24.
+
+# Phase 2c: export engine
+
+The same measurement with the runner's export engine (the default since phase 2c): the runner reads the model with modelx, exports it with `mx.export_model` into a package in a temporary folder and runs the points and checks on the exported model, which computes the same formulas without modelx's per-cell trace and dependency graph. Per-contract cleanup is on, as in 2b. The export lands in `run_product` and so in `T` and the fixed cost.
+
+- Date: 2026-10-24
+- Commit: `eb36f86d0684cb3950566c3a7007194a9fd9ee04`, clean tree (measured as `5160484`; rebasing a docstring-only rewording into the runner commit gave it this hash, the code is identical)
+- Machine: the same as for 2a and 2b (12th Gen Intel Core i7-12800HX, 24 logical CPUs, 62.8 GiB RAM, Linux 6.6 under WSL2; Python 3.12.13, modelx 0.33.0, pandas 3.1.0, numpy 2.5.4)
+- Command: `uv run python tools/measure_marginal.py --all --json /tmp/phase2c.json` (defaults: engine export, cleanup on, factor K = 2, repeats R = 3, M = 500, P = 10,000, W = 1); exit 0, every run verified, wall time 4.2 min
+
+## Result
+
+| Product | n | K·n | T(n) s | T(K·n) s | import s | fixed s | t_marginal ms | RSS(n) MB | RSS(K·n) MB | MB/contract |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| basisrente | 13 | 26 | 2.23 | 3.35 | 0.10 | 1.20 | 86 | 127 | 138 | 0.8 |
+| berufsunfaehigkeit | 13 | 26 | 2.17 | 3.21 | 0.09 | 1.22 | 80 | 233 | 254 | 1.6 |
+| fondsgebundene_rentenversicherung | 13 | 26 | 2.07 | 2.87 | 0.09 | 1.37 | 61 | 122 | 134 | 0.9 |
+| indexpolice | 13 | 26 | 1.91 | 2.69 | 0.09 | 1.23 | 60 | 120 | 121 | 0.1 |
+| kapitallebensversicherung | 14 | 28 | 2.31 | 3.25 | 0.10 | 1.46 | 67 | 123 | 124 | 0.0 |
+| klassische_rentenversicherung | 14 | 28 | 2.96 | 4.51 | 0.09 | 1.50 | 111 | 132 | 135 | 0.2 |
+| pflegerentenversicherung | 14 | 28 | 10.24 | 18.43 | 0.09 | 2.14 | 585 | 141 | 142 | 0.1 |
+| riester_rente | 13 | 26 | 1.84 | 2.34 | 0.10 | 1.43 | 39 | 126 | 142 | 1.2 |
+| risikolebensversicherung | 14 | 28 | 1.52 | 1.90 | 0.10 | 1.24 | 27 | 120 | 120 | −0.0 |
+| sofortrente | 14 | 28 | 2.05 | 2.83 | 0.10 | 1.37 | 56 | 127 | 146 | 1.3 |
+
+Status `ok` for all ten products: replicas equal their originals and points `1 … n` reproduce `baseline/` byte for byte. Separately, for every product the runner's sha256 and `--write` bytes are identical in the export and the modelx engine, and equal to `baseline/`.
+
+The single runs are close together: the spread of `T` within a size is at most 0.3 s, except `pflegerentenversicherung` n (9.55 to 12.48 s).
+
+**Memory.** Peak RSS stays between 120 and 254 MB. Unlike in 2b, `RSS(K·n)` lies above `RSS(n)` by the same amount in every repeat for five products (11 to 21 MB: `basisrente`, `berufsunfaehigkeit`, `fondsgebundene_rentenversicherung`, `riester_rente`, `sofortrente`). Checked on `basisrente` with `--repeats 1` (2026-10-24):
+
+- In the exported code every ItemSpace sits in a reference cycle (`_mx_roots` in `modelx/export/exporter.py`), so `del Projection[point_id]` frees a point only when Python's cyclic garbage collector runs: over the 13 points the live `Projection` instances go 2, 3, 4, 2, … up to 9 without, and stay at 2 with a `gc.collect()` after each delete.
+- The peak RSS grows with the points, but sublinearly: at n = 13 against K·n it is 127 / 137 MB at K = 2, 126 / 152 MB at K = 8, 126 / 170 MB at K = 16, about 0.2 MB per contract beyond 26 points rather than the 0.8 to 1.6 MB of the table's `MB/contract`, so the tool's linear `MB/contract × P` overstates it.
+- A `gc.collect()` after each delete does not stop the growth (121 / 153 MB at K = 16) and raises `t_marginal` from about 83 to 129 ms, so the runner does not do it.
+
+The remaining cause of the growth is open for phase 2d.
+
+## Comparison with 2b
+
+| Product | t_marginal 2b ms | t_marginal 2c ms | 2b / 2c | fixed 2b s | fixed 2c s |
+|---|---:|---:|---:|---:|---:|
+| basisrente | 654 | 86 | 7.6× | 0.31 | 1.20 |
+| berufsunfaehigkeit | 597 | 80 | 7.5× | 0.36 | 1.22 |
+| fondsgebundene_rentenversicherung | 635 | 61 | 10.4× | 0.04 | 1.37 |
+| indexpolice | 228 | 60 | 3.8× | 0.27 | 1.23 |
+| kapitallebensversicherung | 785 | 67 | 11.7× | 1.19 | 1.46 |
+| klassische_rentenversicherung | 4166 | 111 | 37.7× | 14.86 | 1.50 |
+| pflegerentenversicherung | 4005 | 585 | 6.8× | −3.70 | 2.14 |
+| riester_rente | 452 | 39 | 11.6× | 0.26 | 1.43 |
+| risikolebensversicherung | 384 | 27 | 14.2× | 0.24 | 1.24 |
+| sofortrente | 528 | 56 | 9.4× | 0.28 | 1.37 |
+
+- **Time per contract:** the export engine cuts `t_marginal` by a factor of 3.8 (`indexpolice`) to 38 (`klassische_rentenversicherung`); eight products now take 27 to 111 ms per contract, `pflegerentenversicherung` 585 ms. This confirms that most of the 2b cost was modelx's per-cell machinery, not the formulas.
+- **Fixed cost:** it rises to 1.2 to 2.1 s, which is the export (about 1 s) plus `read_model`. The 2b fixed costs were noisy (from −3.7 to 14.9 s); the 2c ones are consistent.
+
+## Forecast
+
+Assumptions as in 2a and 2b: M = 500 mutants, P = 10,000 contracts, W = 1 worker, each product on its own, slope from the shipped point mix, linearity assumed, not tested; a linear extrapolation without trace pruning and a forecast, not a measurement. The night needs `t_marginal ≤ 7.2 ms` at W = 1.
+
+| Product | M·P·t_marginal/W | M·(fixed + P·t_marginal)/W | gap to 10 h | gap at W = 24 |
+|---|---:|---:|---:|---:|
+| basisrente | 119.9 h | 120.0 h | 12× | 0.5× |
+| berufsunfaehigkeit | 111.2 h | 111.4 h | 11× | 0.5× |
+| fondsgebundene_rentenversicherung | 85.2 h | 85.4 h | 9× | 0.4× |
+| indexpolice | 83.1 h | 83.3 h | 8× | 0.3× |
+| kapitallebensversicherung | 93.5 h | 93.7 h | 9× | 0.4× |
+| klassische_rentenversicherung | 153.7 h | 153.9 h | 15× | 0.6× |
+| pflegerentenversicherung | 812.6 h | 812.9 h | 81× | 3.4× |
+| riester_rente | 54.1 h | 54.3 h | 5× | 0.2× |
+| risikolebensversicherung | 37.6 h | 37.7 h | 4× | 0.2× |
+| sofortrente | 77.9 h | 78.1 h | 8× | 0.3× |
+
+Still no product fits the 10 h night with one worker: the gap is a factor of about 4 (`risikolebensversicherung`) to 15 (`klassische_rentenversicherung`), and 81 for `pflegerentenversicherung`, against 32 to 579 in 2b. Under perfect scaling over the 24 logical CPUs (W = 24, phase 2d) nine products would fit, `pflegerentenversicherung` would not (factor 3.4). Perfect scaling is an assumption: 24 logical CPUs are not 24 full cores. The memory growth noted above is a point to watch in 2d, where it would add up over the workers.

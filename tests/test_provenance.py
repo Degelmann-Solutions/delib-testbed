@@ -89,6 +89,11 @@ def test_product_files_are_lf(product):
         assert b"\r" not in (folder / name).read_bytes(), f"{product}/{name}"
 
 
+# The one allowed writer call: the runner's export engine (phase 2c) exports the model into
+# a package under a ``tempfile.TemporaryDirectory()``, never into the product folder.
+EXPORT_CALL = "mx.export_model(model, Path(tmp) / pkg)"
+
+
 def test_no_modelx_writer_is_mentioned_in_tools():
     # Passes while tools/ does not exist yet; scans every file there once it does.
     tools = ROOT / "tools"
@@ -96,5 +101,11 @@ def test_no_modelx_writer_is_mentioned_in_tools():
                if p.is_file() and "__pycache__" not in p.parts] if tools.exists() else []
     for path in sources:
         source = path.read_text(encoding="utf-8")
+        if path == tools / "run_baseline.py":
+            assert source.count(EXPORT_CALL) == 1, "the runner's export call changed"
+            assert "with tempfile.TemporaryDirectory(" in source
+            calls = [line for line in source.splitlines() if "export_model(" in line]
+            assert [line.strip() for line in calls] == [EXPORT_CALL]
+            source = source.replace("export_model", "")
         for writer in WRITERS:
             assert writer not in source, f"{path.relative_to(ROOT)} mentions {writer}"

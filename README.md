@@ -32,14 +32,14 @@ The repository serves two purposes:
 - The interpreter is pinned to its patch version, Python 3.12.13 (`.python-version`).
 - Fund products run on one fixed scenario, without stochastics, at first.
 - No names of our own vendors or clients appear anywhere in the repository; source citations that files copied byte for byte from upstream bring along, such as insurers and rating agencies, are exempt and stay unchanged.
-- The model stays traceable: the trace per contract is not optimised away.
+- The model stays traceable: the trace per contract is not optimised away. The runner's `--engine modelx` keeps the traced path; the default export engine is for speed.
 
 ## Layout
 
 - `products/<product>/`: the ten products of upstream `delib`, each a separate model folder (`Basis_DE_S`, `BU_DE_S`, …) with its input tables, `run.py` and upstream's Markdown documents, copied byte for byte. `UPSTREAM.md` records the provenance and the SHA-256 of every copied file; `LICENSE-lifelib.txt` is lifelib's licence notice.
-- `tools/run_baseline.py`: the runner. It projects every shipped model point of one product, evaluates the product's built-in checks and prints one SHA-256 over all `result_cf` frames; with `--write` it stores them. By default it deletes each point's ItemSpace once its results and checks are read (per-contract cleanup); `--no-cleanup` keeps them all, as in phase 2a. Its first output line, `cleanup: on` or `cleanup: off`, names the mode; hash and written bytes are the same in both.
-- `tools/measure_marginal.py`: the measuring tool of phase 2. It runs the runner in the chosen mode (per-contract cleanup by default, without it under `--no-cleanup`) on each product at two sizes, the shipped points and a replicated multiple in scratch copies, in fresh processes, and derives the fixed cost and the marginal time per contract; it checks that replicated points equal their originals and that the shipped points reproduce the baseline, and prints the night-run forecast with its assumptions.
-- `docs/performance.md`: the phase-2a reference measurement of all products with the measuring tool and, next to it, the phase-2b measurement with per-contract cleanup, each with date, machine, commit and command.
+- `tools/run_baseline.py`: the runner. It projects every shipped model point of one product, evaluates the product's built-in checks and prints one SHA-256 over all `result_cf` frames; with `--write` it stores them. By default it runs on the model exported by `mx.export_model` into a temporary package (`--engine export`, untraced); `--engine modelx` runs on the traced modelx model, as in phases 2a and 2b. By default it deletes each point's ItemSpace once its results and checks are read (per-contract cleanup); `--no-cleanup` keeps them all, as in phase 2a. Its first two output lines, `engine: export` or `engine: modelx` and `cleanup: on` or `cleanup: off`, name the modes; hash and written bytes are the same in all of them.
+- `tools/measure_marginal.py`: the measuring tool of phase 2. It runs the runner in the chosen modes (export engine by default, the traced modelx model under `--engine modelx`; per-contract cleanup by default, without it under `--no-cleanup`) on each product at two sizes, the shipped points and a replicated multiple in scratch copies, in fresh processes, and derives the fixed cost and the marginal time per contract; it checks that replicated points equal their originals and that the shipped points reproduce the baseline, and prints the night-run forecast with its assumptions. Reproducing the 2a measurement needs `--engine modelx --no-cleanup`, the 2b measurement `--engine modelx`.
+- `docs/performance.md`: the phase-2a reference measurement of all products with the measuring tool and, next to it, the phase-2b measurement with per-contract cleanup and the phase-2c measurement with the export engine, each with date, machine, commit and command.
 - `baseline/<product>/result_cf.csv`: the baseline of each product, all points, columns `point_id,t,<result_cf columns>`, every value written so that it reads back exactly.
 - `tests/`: provenance against the recorded hashes, the runner on scratch copies, and the baseline with its pinned hashes.
 
@@ -51,6 +51,7 @@ uv run pytest -q                                          # about 2 min
 uv run python tools/run_baseline.py basisrente            # one product: hash and checks
 uv run python tools/run_baseline.py basisrente --write    # rewrite baseline/basisrente/
 uv run python tools/run_baseline.py basisrente --no-cleanup  # without per-contract cleanup
+uv run python tools/run_baseline.py basisrente --engine modelx  # on the traced modelx model
 uv run python tools/measure_marginal.py basisrente         # fixed cost, marginal time per contract, forecast
 ```
 

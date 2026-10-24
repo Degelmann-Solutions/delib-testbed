@@ -37,7 +37,7 @@ The repository serves two purposes:
 ## Layout
 
 - `products/<product>/`: the ten products of upstream `delib`, each a separate model folder (`Basis_DE_S`, `BU_DE_S`, …) with its input tables, `run.py` and upstream's Markdown documents, copied byte for byte. `UPSTREAM.md` records the provenance and the SHA-256 of every copied file; `LICENSE-lifelib.txt` is lifelib's licence notice.
-- `tools/run_baseline.py`: the runner. It projects every shipped model point of one product, evaluates the product's built-in checks and prints one SHA-256 over all `result_cf` frames; with `--write` it stores them.
+- `tools/run_baseline.py`: the runner. It projects every shipped model point of one product, evaluates the product's built-in checks and prints one SHA-256 over all `result_cf` frames; with `--write` it stores them. By default it deletes each point's ItemSpace once its results and checks are read (per-contract cleanup); `--no-cleanup` keeps them all, as in phase 2a. Its first output line, `cleanup: on` or `cleanup: off`, names the mode; hash and written bytes are the same in both.
 - `tools/measure_marginal.py`: the measuring tool of phase 2. It runs the unchanged runner on each product at two sizes, the shipped points and a replicated multiple in scratch copies, in fresh processes, and derives the fixed cost and the marginal time per contract; it checks that replicated points equal their originals and that the shipped points reproduce the baseline, and prints the night-run forecast with its assumptions.
 - `docs/performance.md`: the reference measurement of all products with the measuring tool, with date, machine, commit and command.
 - `baseline/<product>/result_cf.csv`: the baseline of each product, all points, columns `point_id,t,<result_cf columns>`, every value written so that it reads back exactly.
@@ -50,6 +50,7 @@ uv sync
 uv run pytest -q                                          # about 2 min
 uv run python tools/run_baseline.py basisrente            # one product: hash and checks
 uv run python tools/run_baseline.py basisrente --write    # rewrite baseline/basisrente/
+uv run python tools/run_baseline.py basisrente --no-cleanup  # without per-contract cleanup
 uv run python tools/measure_marginal.py basisrente         # fixed cost, marginal time per contract, forecast
 ```
 

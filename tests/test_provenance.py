@@ -8,7 +8,7 @@ upstream bytes; these tests compare the files with that list.
 Phase 3 changes product files and adds symlinks to the common core (``docs/core.md``). A
 product's ``UPSTREAM.md`` names every such path in its section ``## Changed in phase 3``;
 the hash check skips the listed files, which stay in the hash table with upstream's hash,
-and every symlink in a product folder must be listed and resolve under ``core/``.
+and every symlink in a product folder must be listed and resolve to a core space folder.
 """
 from __future__ import annotations
 
@@ -134,8 +134,8 @@ def test_every_symlink_is_listed_and_points_into_the_core(product):
     for name in sorted(symlinks(folder)):
         assert name in changed, f"{product}/{name} is a symlink not listed as changed in phase 3"
         target = (folder / name).resolve()
-        assert target.is_relative_to(core) and target.exists(), \
-            f"{product}/{name} does not resolve to a path under core/: {target}"
+        assert target.is_relative_to(core) and target.is_dir(), \
+            f"{product}/{name} does not resolve to a core space folder under core/: {target}"
 
 
 @pytest.mark.parametrize("product", sorted(PRODUCTS))

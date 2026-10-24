@@ -39,6 +39,7 @@ def folder_hashes(folder: Path) -> dict[str, str]:
 def guarded() -> dict[str, str]:
     hashes = {f"products/{k}": v for k, v in folder_hashes(ROOT / "products").items()}
     hashes.update({f"baseline/{k}": v for k, v in folder_hashes(ROOT / "baseline").items()})
+    hashes.update({f"core/{k}": v for k, v in folder_hashes(ROOT / "core").items()})
     hashes["tools/run_baseline.py"] = hashlib.sha256(
         (ROOT / "tools" / "run_baseline.py").read_bytes()).hexdigest()
     return hashes

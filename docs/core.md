@@ -69,7 +69,7 @@ The line starts with `Override reason:` and is not empty after the colon. `tests
 
 ## Changed files in `UPSTREAM.md`
 
-The hash table of a product's `UPSTREAM.md` stays upstream's: it lists every copied file with its upstream SHA-256, also after phase 3 changes the file. A product whose folder phase 3 changes gets a section below the hash table that names every changed or added path:
+The hash table of a product's `UPSTREAM.md` stays upstream's: it lists every copied file with its upstream SHA-256, also after phase 3 changes the file. A product whose folder phase 3 changes gets a section below the hash table that names every changed file and every added symlink:
 
 ```markdown
 ## Changed in phase 3
@@ -77,7 +77,7 @@ The hash table of a product's `UPSTREAM.md` stays upstream's: it lists every cop
 | Path | Change |
 |---|---|
 | `RLV_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core |
-| `RLV_DE_S/CoreProjection` | added: symlink to `core/Core/Projection` |
+| `RLV_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |
 ```
 
-`tests/test_provenance.py` skips the hash check for a listed file, requires every listed regular file to stay in the hash table, and requires every symlink in a product folder to be listed and to resolve to a path under `core/`. A changed file that is not listed fails the hash check as before.
+`tests/test_provenance.py` skips the hash check for a listed file, requires every listed regular file to stay in the hash table, and requires every symlink in a product folder to be listed and to resolve to a core space folder under `core/`. A product adds no regular file, since an added file has no upstream hash; the only paths phase 3 adds are symlinks to core space folders. A changed file that is not listed fails the hash check as before.

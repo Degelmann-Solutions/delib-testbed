@@ -11,9 +11,9 @@ subfolder with a ``_system.json``) and its input CSVs side by side. The runner r
 model with modelx, evaluates ``result_cf`` and the product's built-in checks for every
 point of ``model_point_table.csv``, and prints the cleanup mode, the point count, the
 check cells, the SHA-256 and the wall time. The wall time is measured from the start of
-this script, before modelx is imported, so it covers the import, the run, the checks and the hashing; it does
-not cover interpreter start-up or ``uv run``. It only reads: no modelx writer is called and
-the product folder is left untouched.
+this script, before modelx is imported, so it covers the import, the run, the checks and
+the hashing; it does not cover interpreter start-up or ``uv run``. It only reads: no
+modelx writer is called and the product folder is left untouched.
 
 Per-contract cleanup
 --------------------

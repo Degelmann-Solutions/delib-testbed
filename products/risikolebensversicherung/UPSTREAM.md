@@ -38,3 +38,15 @@ Each file is byte-identical to upstream at the pinned commit. `tests/test_proven
 | `run.py` | `b49e4d68d5ce0279869e4510269c97accf20b501d7fbb8a0eac33035eacc5944` |
 | `sources.md` | `aff8670905cc626607707d636342493ac22daece85b09890482cd4d8c26a745d` |
 | `technical-notes.md` | `391c621f2cfe991d026cef53a618969d143c0ab9e998911bdc32a6e10fc0f799` |
+
+## Changed in phase 3
+
+Phase 3 changes or adds these paths to take shared cells from the common core (`docs/core.md`). A changed file keeps upstream's hash in the table above; `tests/test_provenance.py` skips its hash check. The symlinks are not copied files and have no hash.
+
+| Path | Change |
+|---|---|
+| `RLV_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection` |
+| `RLV_DE_S/Data/__init__.py` | `_bases` names `.CoreData` |
+| `RLV_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it |
+| `RLV_DE_S/CoreData` | added: symlink to `core/Core/Data` |
+| `RLV_DE_S/CoreProjection` | added: symlink to `core/Core/Projection` |

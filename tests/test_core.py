@@ -44,8 +44,19 @@ def core_files() -> list[Path]:
                   if p.is_file() and "__pycache__" not in p.parts)
 
 
+def test_the_core_is_a_model_with_data_and_projection():
+    assert (CORE_MODEL / "_system.json").is_file()
+    model = mx.read_model(CORE_MODEL)
+    try:
+        assert sorted(model.spaces) == ["Data", "Projection"]
+        assert model.Projection.formula.parameters == ("point_id",)
+    finally:
+        model.close()
+
+
 def test_no_core_file_names_a_product():
-    files = core_files() if CORE_DIR.exists() else []
+    files = core_files()
+    assert files, "core/ holds no file"
     found = []
     for path in files:
         text = path.read_text(encoding="utf-8")
@@ -89,6 +100,10 @@ def products_with_core() -> list[str]:
     return sorted(product for product, model in MODELS.items()
                   if any(p.name.startswith(CORE_PREFIX)
                          for p in (PRODUCTS_DIR / product / model).iterdir()))
+
+
+def test_at_least_one_product_has_a_core_base():
+    assert "risikolebensversicherung" in products_with_core()
 
 
 @pytest.mark.parametrize("product", products_with_core())
@@ -143,5 +158,18 @@ def test_override_test_catches_a_missing_reason():
         assert override_violations(model) == ["Projection.cell"]
         projection.cells["cell"].formula = _override_with_reason
         assert override_violations(model) == []
+    finally:
+        model.close()
+
+
+def test_rlv_takes_model_point_from_the_core():
+    model = mx.read_model(PRODUCTS_DIR / "risikolebensversicherung" / "RLV_DE_S")
+    try:
+        assert model.Projection.bases == [model.CoreProjection]
+        assert model.Data.bases == [model.CoreData]
+        cell = model.Projection.model_point
+        assert cell._is_derived()
+        assert cell.formula is model.CoreProjection.model_point.formula
+        assert model.Projection[1].model_point()["policy_id"] == "RLV-000001"
     finally:
         model.close()

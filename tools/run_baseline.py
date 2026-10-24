@@ -247,19 +247,35 @@ def run_point(space_model, point_id: int, checks: list[str], keep_lines: bool | 
             del space_model.Projection[point_id]
 
 
-# The state a forked worker runs its points on: the exported model, the checks, keep_lines
-# and cleanup. Set in the parent before the workers fork, cleared when the pool is done.
+# The state a forked worker runs its points on: the exported model, the checks, keep_lines,
+# cleanup and whether to report Pss. Set in the parent before the workers fork, cleared when
+# the pool is done.
 _WORKER_STATE: tuple | None = None
 
 
+def pss_kib() -> int:
+    """This process's proportional set size in KiB, from ``/proc/self/smaps_rollup``."""
+    with open("/proc/self/smaps_rollup") as f:
+        for line in f:
+            if line.startswith("Pss:"):
+                return int(line.split()[1])
+    raise RuntimeError("no Pss line in /proc/self/smaps_rollup")
+
+
 def worker_point(point_id: int):
-    """``run_point`` on the state inherited from the parent (module-level, so it pickles)."""
-    space_model, checks, keep_lines, cleanup = _WORKER_STATE
-    return run_point(space_model, point_id, checks, keep_lines, cleanup)
+    """``run_point`` on the state inherited from the parent (module-level, so it pickles).
+
+    Returns the point's result, the worker's pid and, if asked for, its Pss in KiB after
+    the point (else ``None``).
+    """
+    space_model, checks, keep_lines, cleanup, report_pss = _WORKER_STATE
+    result = run_point(space_model, point_id, checks, keep_lines, cleanup)
+    return result, os.getpid(), pss_kib() if report_pss else None
 
 
 def run_product(folder: Path, cleanup: bool = True, engine: str = "export",
                 keep_lines: bool | int = True, workers: int = 1,
+                worker_pss: dict[int, int] | None = None,
                 ) -> tuple[int, list[str], str, list[str], list[str], dict[int, str]]:
     """Run all points. Return the point count, the checks, the SHA-256, the failures, the CSV
     lines and the per-point digests.
@@ -277,7 +293,10 @@ def run_product(folder: Path, cleanup: bool = True, engine: str = "export",
     SHA-256 does not depend on ``keep_lines``.
 
     ``workers`` > 1 runs the points in that many forked worker processes (see module
-    docstring, "Workers"); it needs the export engine and cleanup.
+    docstring, "Workers"); it needs the export engine and cleanup. Given a dict as
+    ``worker_pss``, each worker reads its Pss (``/proc/self/smaps_rollup``) after every
+    point and the dict is filled with the largest Pss in KiB per worker pid; it stays empty
+    at ``workers`` = 1. This is for the measuring tool.
     """
     global _WORKER_STATE
     if engine not in ENGINES:
@@ -336,12 +355,14 @@ def run_product(folder: Path, cleanup: bool = True, engine: str = "export",
                 for point_id in point_ids:
                     replay(run_point(space_model, point_id, checks, keep_lines, cleanup))
                 return len(point_ids), checks, digest.hexdigest(), failures, lines, digests
-            _WORKER_STATE = (space_model, checks, keep_lines, cleanup)
+            _WORKER_STATE = (space_model, checks, keep_lines, cleanup, worker_pss is not None)
             try:
                 with ProcessPoolExecutor(max_workers=workers,
                                          mp_context=multiprocessing.get_context("fork")) as pool:
-                    for result in pool.map(worker_point, point_ids):
+                    for result, pid, pss in pool.map(worker_point, point_ids):
                         replay(result)
+                        if worker_pss is not None:
+                            worker_pss[pid] = max(worker_pss.get(pid, 0), pss)
             except BrokenProcessPool as exc:
                 return len(point_ids), checks, digest.hexdigest(), [f"worker crashed: {describe(exc)}"], [], {}
             finally:

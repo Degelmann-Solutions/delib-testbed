@@ -70,7 +70,9 @@ def runs(tmp_path_factory):
     ``path_write`` is a scratch copy named like the product, with ``--write`` and no ``--out``.
     ``write_nc`` and ``raises_nc`` repeat ``write_a`` and ``raises`` with ``--no-cleanup``.
     ``write_mx`` and ``raises_mx`` repeat them with ``--engine modelx``, ``write_mx_nc`` also
-    with ``--no-cleanup``; ``bad_engine`` names an engine that does not exist.
+    with ``--no-cleanup``; ``bad_engine`` names an engine that does not exist. ``write_w4``
+    and ``raises_w4`` repeat ``write_a`` and ``raises`` with ``--workers 4``; ``workers_0``,
+    ``workers_mx`` and ``workers_nc`` are the usage errors of ``--workers``.
     """
     tmp_path = tmp_path_factory.mktemp("runner")
     false_check = scratch_copy(tmp_path, "false_check")
@@ -92,6 +94,11 @@ def runs(tmp_path_factory):
         "raises_mx": [str(raises), "--engine", "modelx"],
         "write_mx_nc": [PRODUCT, "--engine", "modelx", "--no-cleanup", "--write", "--out", str(out / "mnc")],
         "bad_engine": [PRODUCT, "--engine", "foo"],
+        "write_w4": [PRODUCT, "--workers", "4", "--write", "--out", str(out / "w4")],
+        "raises_w4": [str(raises), "--workers", "4"],
+        "workers_0": [PRODUCT, "--workers", "0"],
+        "workers_mx": [PRODUCT, "--workers", "2", "--engine", "modelx"],
+        "workers_nc": [PRODUCT, "--workers", "2", "--no-cleanup"],
         "unknown": ["nosuch"],
         "path_write": [str(named), "--write"],
     }
@@ -124,9 +131,11 @@ def test_happy_path_prints_count_hash_time_and_all_true(runs):
     assert "FAILED" not in stderr
 
 
-def test_engine_and_cleanup_are_the_first_two_output_lines(runs):
-    for name, engine in (("write_a", "export"), ("write_mx", "modelx")):
-        assert list(runs[name][1].items())[:2] == [("engine", engine), ("cleanup", "on")]
+def test_engine_cleanup_and_workers_are_the_first_three_output_lines(runs):
+    for name, engine, workers in (("write_a", "export", "1"), ("write_mx", "modelx", "1"),
+                                  ("write_w4", "export", "4")):
+        assert list(runs[name][1].items())[:3] == [
+            ("engine", engine), ("cleanup", "on"), ("workers", workers)]
 
 
 def test_default_run_writes_the_stored_baseline(runs):
@@ -310,3 +319,73 @@ def test_keep_lines_chooses_the_collected_lines_and_leaves_hash_and_digests_alon
     assert sha_none == sha_three
     assert digests_none == digests_three and sorted(digests_none) == list(range(1, N_POINTS + 1))
     assert len(set(digests_none.values())) == N_POINTS
+
+
+def failed_lines(stderr: str) -> list[str]:
+    return [line for line in stderr.splitlines() if line.startswith("FAILED ")]
+
+
+def test_workers_give_the_same_hash_and_bytes(runs):
+    code, output, stderr = runs["write_w4"]
+    assert code == 0, stderr
+    assert output["workers"] == "4"
+    assert output["sha256"] == runs["write_a"][1]["sha256"]
+    assert (runs["out"] / "w4" / "result_cf.csv").read_bytes() == BASELINE.read_bytes()
+
+
+def test_workers_give_the_same_failures_in_point_order(runs):
+    code, output, stderr = runs["raises_w4"]
+    assert code == 1
+    assert failed_lines(stderr) == failed_lines(runs["raises"][2]) and failed_lines(stderr)
+    assert output["sha256"] == runs["raises"][1]["sha256"]
+
+
+@pytest.mark.parametrize("name, needle", [("workers_0", "--workers must be at least 1"),
+                                          ("workers_mx", "--engine modelx"),
+                                          ("workers_nc", "--no-cleanup")])
+def test_bad_workers_give_usage_and_exit_2(runs, name, needle):
+    code, output, stderr = runs[name]
+    assert code == 2
+    assert stderr.startswith("usage: run_baseline.py")
+    assert needle in stderr
+    assert output == {}
+
+
+def test_failing_export_with_workers_is_the_same_one_failure(monkeypatch):
+    runner = load_runner()
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("cannot export this model")
+
+    monkeypatch.setattr(runner.mx, "export_model", boom)
+    count, _checks, sha, failures, lines, digests = runner.run_product(FOLDER, workers=4)
+    assert (count, failures, lines, digests) == (
+        N_POINTS, ["export raised RuntimeError: cannot export this model"], [], {})
+    assert sha == runner.run_product(FOLDER)[2]
+
+
+def test_a_worker_that_dies_is_one_failure_and_main_writes_nothing(tmp_path, monkeypatch, capsys):
+    import os
+
+    runner = load_runner()
+    # The pool pickles its worker function by module name, so the module must be findable.
+    monkeypatch.setitem(sys.modules, "run_baseline", runner)
+    frame_bytes = runner.frame_bytes
+
+    def dies_on_point_3(point_id, frame):
+        if point_id == 3:
+            os._exit(7)
+        return frame_bytes(point_id, frame)
+
+    monkeypatch.setattr(runner, "frame_bytes", dies_on_point_3)
+    out = tmp_path / "out"
+    assert runner.main([PRODUCT, "--workers", "4", "--write", "--out", str(out)]) == 1
+    captured = capsys.readouterr()
+    assert captured.out.splitlines()[:3] == ["engine: export", "cleanup: on", "workers: 4"]
+    assert "checks: 1 failure(s)" in captured.out
+    failed = failed_lines(captured.err)
+    assert len(failed) == 1 and failed[0].startswith("FAILED worker crashed: BrokenProcessPool"), captured.err
+    assert "nothing written" in captured.err
+    assert not out.exists()
+    assert not [k for k in sys.modules if k.startswith("_delib_export_")]
+    assert not [p for p in sys.path if "delib-export-" in p]

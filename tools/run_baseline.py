@@ -5,16 +5,18 @@
     uv run python tools/run_baseline.py path/to/scratch --write --out DIR
     uv run python tools/run_baseline.py basisrente --engine modelx     # phase-2b behaviour
     uv run python tools/run_baseline.py basisrente --engine modelx --no-cleanup  # phase 2a
+    uv run python tools/run_baseline.py basisrente --workers 8          # eight worker processes
 
 A bare name resolves to ``products/<name>``; anything with a path separator is used as
 given, which is how the tests run scratch copies. The folder holds the model (the only
 subfolder with a ``_system.json``) and its input CSVs side by side. The runner reads the
 model with modelx, evaluates ``result_cf`` and the product's built-in checks for every
-point of ``model_point_table.csv``, and prints the engine, the cleanup mode, the point
-count, the check cells, the SHA-256 and the wall time. The wall time is measured from the
-start of this script, before modelx is imported, so it covers the import, the export, the
-run, the checks and the hashing; it does not cover interpreter start-up or ``uv run``. It
-only reads the product folder: no modelx writer writes into it and it is left untouched.
+point of ``model_point_table.csv``, and prints the engine, the cleanup mode, the worker
+count, the point count, the check cells, the SHA-256 and the wall time. The wall time is
+measured from the start of this script, before modelx is imported, so it covers the
+import, the export, the run, the checks and the hashing; it does not cover interpreter
+start-up or ``uv run``. It only reads the product folder: no modelx writer writes into it
+and it is left untouched.
 
 Engines
 -------
@@ -44,6 +46,22 @@ earlier points do not accumulate. ``--no-cleanup`` keeps every ItemSpace alive u
 ``run_product`` returns, as in phase 2a. The second output
 line names the mode, ``cleanup: on`` or ``cleanup: off``. The results, the hash and the
 written bytes are the same in both modes; how cells are computed and traced is unchanged.
+
+Workers
+-------
+``--workers W`` (default 1) splits the points of one run over ``W`` worker processes. The
+parent reads and exports the model once, as above, and forks the workers from it, so each
+worker starts with the exported model already imported; each worker runs one point at a
+time, with cleanup, and sends back its hash bytes, columns, CSV lines (only those the run
+keeps) and failures. The parent takes the results in ascending ``point_id`` order and does
+what the single process does with them, so the hash, the written bytes and the failure
+lines, in their order, are the same for every ``W``. If a worker dies (a crash, the
+out-of-memory killer), the run has the single failure ``worker crashed: ...``: exit 1,
+nothing written. ``W`` > 1 needs the export engine and per-contract cleanup; with
+``--engine modelx`` or ``--no-cleanup`` it is a usage error. Every process runs with one
+BLAS/OpenMP thread (``OPENBLAS_NUM_THREADS``, ``OMP_NUM_THREADS``, ``MKL_NUM_THREADS``
+default to 1), also at ``W`` = 1. The third output line names the count, ``workers: W``.
+The wall time is that of the whole run across all workers.
 
 Checks
 ------
@@ -84,13 +102,22 @@ from __future__ import annotations
 import argparse
 import hashlib
 import importlib
+import multiprocessing
+import os
 import sys
 import tempfile
 import time
 import uuid
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 
 _PROCESS_START = time.perf_counter()  # taken before the modelx import, which takes seconds
+
+# One BLAS/OpenMP thread per process. The libraries read these when numpy loads, which is
+# with modelx below; in a forked worker it is too late. Set for every W, so W = 1 runs alike.
+for _var in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ.setdefault(_var, "1")
 
 import modelx as mx  # noqa: E402
 
@@ -187,8 +214,52 @@ def keeps(keep_lines: bool | int, point_id: int) -> bool:
     return point_id <= keep_lines
 
 
+def run_point(space_model, point_id: int, checks: list[str], keep_lines: bool | int,
+              cleanup: bool) -> tuple[int, bytes | None, list[str] | None, list[str] | None, list[str]]:
+    """Run one point. Return its id, hash bytes, columns, CSV lines and failures.
+
+    The hash bytes and the columns are ``None`` when ``result_cf`` raised; the lines are
+    ``None`` then and when ``keep_lines`` does not keep the point. The failures are those of
+    ``result_cf`` and of the checks, in check order; the parent adds the columns check.
+    """
+    projection = space_model.Projection[point_id]
+    failures: list[str] = []
+    try:
+        try:
+            frame = projection.result_cf()
+            data = frame_bytes(point_id, frame)
+        except Exception as exc:
+            failures.append(f"point {point_id}: result_cf raised {describe(exc)}")
+            return point_id, None, None, None, failures
+        columns = [str(c) for c in frame.columns]
+        lines = csv_lines(point_id, frame) if keeps(keep_lines, point_id) else None
+        for check in checks:
+            try:
+                passed = getattr(projection, check)()
+            except Exception as exc:
+                failures.append(f"point {point_id}: {check} raised {describe(exc)}")
+                continue
+            if not passed:
+                failures.append(f"point {point_id}: {check} is false")
+        return point_id, data, columns, lines, failures
+    finally:
+        if cleanup:
+            del space_model.Projection[point_id]
+
+
+# The state a forked worker runs its points on: the exported model, the checks, keep_lines
+# and cleanup. Set in the parent before the workers fork, cleared when the pool is done.
+_WORKER_STATE: tuple | None = None
+
+
+def worker_point(point_id: int):
+    """``run_point`` on the state inherited from the parent (module-level, so it pickles)."""
+    space_model, checks, keep_lines, cleanup = _WORKER_STATE
+    return run_point(space_model, point_id, checks, keep_lines, cleanup)
+
+
 def run_product(folder: Path, cleanup: bool = True, engine: str = "export",
-                keep_lines: bool | int = True,
+                keep_lines: bool | int = True, workers: int = 1,
                 ) -> tuple[int, list[str], str, list[str], list[str], dict[int, str]]:
     """Run all points. Return the point count, the checks, the SHA-256, the failures, the CSV
     lines and the per-point digests.
@@ -204,9 +275,17 @@ def run_product(folder: Path, cleanup: bool = True, engine: str = "export",
     The digests map every point whose ``result_cf`` was read to ``point_digest`` of its hash
     bytes; a point whose ``result_cf`` raised has neither lines nor a digest. The overall
     SHA-256 does not depend on ``keep_lines``.
+
+    ``workers`` > 1 runs the points in that many forked worker processes (see module
+    docstring, "Workers"); it needs the export engine and cleanup.
     """
+    global _WORKER_STATE
     if engine not in ENGINES:
         raise ValueError(f"unknown engine {engine!r} (engines: {', '.join(ENGINES)})")
+    if workers < 1:
+        raise ValueError(f"workers must be at least 1: {workers}")
+    if workers > 1 and (engine != "export" or not cleanup):
+        raise ValueError("workers > 1 needs the export engine and cleanup")
     model = mx.read_model(model_dir(folder))
     pkg = None
     try:
@@ -233,36 +312,40 @@ def run_product(folder: Path, cleanup: bool = True, engine: str = "export",
                     return len(point_ids), checks, digest.hexdigest(), failures, lines, digests
             else:
                 space_model = model
-            for point_id in point_ids:
-                projection = space_model.Projection[point_id]
-                try:
-                    try:
-                        frame = projection.result_cf()
-                        data = frame_bytes(point_id, frame)
-                    except Exception as exc:
-                        failures.append(f"point {point_id}: result_cf raised {describe(exc)}")
-                        continue
-                    digest.update(data)
-                    digests[point_id] = point_digest(data)
-                    if columns is None:
-                        columns = [str(c) for c in frame.columns]
-                        if keep_lines is not False:
-                            lines.append(",".join(["point_id", "t"] + columns))
-                    if [str(c) for c in frame.columns] != columns:
-                        failures.append(f"point {point_id}: result_cf has other columns than point {point_ids[0]}")
-                    elif keeps(keep_lines, point_id):
-                        lines.extend(csv_lines(point_id, frame))
-                    for check in checks:
-                        try:
-                            passed = getattr(projection, check)()
-                        except Exception as exc:
-                            failures.append(f"point {point_id}: {check} raised {describe(exc)}")
-                            continue
-                        if not passed:
-                            failures.append(f"point {point_id}: {check} is false")
-                finally:
-                    if cleanup:
-                        del space_model.Projection[point_id]
+
+            def replay(result) -> None:
+                """Today's loop body on one point's result, in ascending point order."""
+                nonlocal columns
+                point_id, data, point_columns, point_lines, point_failures = result
+                if data is None:
+                    failures.extend(point_failures)
+                    return
+                digest.update(data)
+                digests[point_id] = point_digest(data)
+                if columns is None:
+                    columns = point_columns
+                    if keep_lines is not False:
+                        lines.append(",".join(["point_id", "t"] + columns))
+                if point_columns != columns:
+                    failures.append(f"point {point_id}: result_cf has other columns than point {point_ids[0]}")
+                elif point_lines is not None:
+                    lines.extend(point_lines)
+                failures.extend(point_failures)
+
+            if workers == 1:
+                for point_id in point_ids:
+                    replay(run_point(space_model, point_id, checks, keep_lines, cleanup))
+                return len(point_ids), checks, digest.hexdigest(), failures, lines, digests
+            _WORKER_STATE = (space_model, checks, keep_lines, cleanup)
+            try:
+                with ProcessPoolExecutor(max_workers=workers,
+                                         mp_context=multiprocessing.get_context("fork")) as pool:
+                    for result in pool.map(worker_point, point_ids):
+                        replay(result)
+            except BrokenProcessPool as exc:
+                return len(point_ids), checks, digest.hexdigest(), [f"worker crashed: {describe(exc)}"], [], {}
+            finally:
+                _WORKER_STATE = None
             return len(point_ids), checks, digest.hexdigest(), failures, lines, digests
     finally:
         if pkg is not None:
@@ -286,9 +369,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--engine", choices=ENGINES, default="export",
                         help="export: run on the model exported by mx.export_model (default); "
                              "modelx: run on the traced modelx model (phases 2a and 2b)")
+    parser.add_argument("--workers", type=int, default=1, metavar="W",
+                        help="run the points in W forked worker processes (default 1)")
     args = parser.parse_args(argv)
     if args.out is not None and not args.write:
         parser.error("--out needs --write")
+    if args.workers < 1:
+        parser.error(f"--workers must be at least 1: {args.workers}")
+    if args.workers > 1 and args.engine == "modelx":
+        parser.error("--workers > 1 needs the export engine, not --engine modelx")
+    if args.workers > 1 and args.no_cleanup:
+        parser.error("--workers > 1 needs per-contract cleanup, not --no-cleanup")
     if args.write and args.out is None and is_path(args.product):
         parser.error("--write with a path needs --out; only a product name writes to baseline/")
     try:
@@ -301,10 +392,11 @@ def main(argv: list[str] | None = None) -> int:
 
     cleanup = not args.no_cleanup
     count, checks, sha256, failures, lines, _digests = run_product(
-        folder, cleanup=cleanup, engine=args.engine, keep_lines=args.write)
+        folder, cleanup=cleanup, engine=args.engine, keep_lines=args.write, workers=args.workers)
     elapsed = time.perf_counter() - _PROCESS_START
     print(f"engine: {args.engine}")
     print(f"cleanup: {'on' if cleanup else 'off'}")
+    print(f"workers: {args.workers}")
     print(f"model points: {count}")
     print(f"check cells: {','.join(checks)}")
     print(f"sha256: {sha256}")

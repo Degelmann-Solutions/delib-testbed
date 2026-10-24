@@ -1,4 +1,4 @@
-# Performance: reference measurement of phase 2a
+# Performance: reference measurement of phase 2a, and the phase-2b measurement next to it
 
 The marginal time per contract of every product, measured with `tools/measure_marginal.py` on the unchanged phase-1 runner. Later phase-2 changes are measured with the same tool against this table.
 

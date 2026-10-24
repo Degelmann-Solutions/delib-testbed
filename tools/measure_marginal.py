@@ -34,9 +34,12 @@ Two sizes give the slope; that time per contract is constant in n is assumed, no
 Verification
 ------------
 Every run is checked by the parent, and a failed check is an error (exit 1, no slope):
-no point failed and every id is present; every replicated point's ``result_cf`` lines
-equal those of its original exactly; the first ``n`` points reproduce
-``baseline/<product>/result_cf.csv`` byte for byte.
+no point failed and every id is present; every replicated point's ``result_cf`` equals
+that of its original exactly; the first ``n`` points reproduce
+``baseline/<product>/result_cf.csv`` byte for byte. The child asks the runner for the CSV
+lines of the ids ``1 … n`` only, and for a digest of every point's hash bytes without the
+``point_id`` line (``point_digest`` in the runner); replicas are compared with their
+originals by digest. So the child's memory does not grow with collected lines.
 
 Forecast
 --------
@@ -126,17 +129,18 @@ def verify_run(result: dict, size: int, n: int, baseline: bytes) -> list[str]:
     """The failed checks of one child run, empty if it verifies (see module docstring)."""
     problems = [f"run_product failure: {f}" for f in result["failures"]]
     points = {int(k): v for k, v in result["points"].items()}
+    digests = {int(k): v for k, v in result["digests"].items()}
     if result["n"] != size:
         problems.append(f"{result['n']} points run, expected {size}")
-    missing = sorted(set(range(1, size + 1)) - set(points))
-    extra = sorted(set(points) - set(range(1, size + 1)))
+    missing = sorted(set(range(1, size + 1)) - set(digests))
+    extra = sorted(set(digests) - set(range(1, size + 1)))
     if missing:
         problems.append(f"points missing from result_cf: {', '.join(map(str, missing))}")
     if extra:
         problems.append(f"unexpected points in result_cf: {', '.join(map(str, extra))}")
     for pid in range(n + 1, size + 1):
         orig = original_of(pid, n)
-        if pid in points and orig in points and points[pid] != points[orig]:
+        if pid in digests and orig in digests and digests[pid] != digests[orig]:
             problems.append(f"point {pid}: result_cf differs from its original, point {orig}")
     if all(pid in points for pid in range(1, n + 1)):
         csv = baseline_text(result["header"], points, n)
@@ -215,8 +219,8 @@ def child(folder: Path, originals: int, cleanup: bool = True, engine: str = "exp
     import run_baseline  # noqa: E402  (script mode: tools/ is on sys.path; imports modelx)
     import_s = time.perf_counter() - start
     start = time.perf_counter()
-    count, _checks, _sha, failures, lines = run_baseline.run_product(folder, cleanup=cleanup,
-                                                                       engine=engine)
+    count, _checks, _sha, failures, lines, digests = run_baseline.run_product(
+        folder, cleanup=cleanup, engine=engine, keep_lines=originals)
     run_s = time.perf_counter() - start
     maxrss_kib = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     points: dict[str, list[str]] = {}
@@ -225,7 +229,8 @@ def child(folder: Path, originals: int, cleanup: bool = True, engine: str = "exp
         points.setdefault(pid, []).append(rest)
     print(json.dumps({"n": count, "originals": originals, "import_s": import_s,
                       "run_s": run_s, "maxrss_kib": maxrss_kib, "failures": failures,
-                      "header": lines[0] if lines else "", "points": points}))
+                      "header": lines[0] if lines else "", "points": points,
+                      "digests": {str(k): v for k, v in digests.items()}}))
     return 0
 
 

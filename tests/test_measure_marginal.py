@@ -1,7 +1,7 @@
 """The measuring tool ``tools/measure_marginal.py``.
 
 Pure tests cover the arithmetic, the forecast, the replicated table and the comparison of
-lines. One session fixture starts the tool's runs together in separate processes; the
+replicas and the baseline. One session fixture starts the tool's runs together in separate processes; the
 tests assert no timings, since those depend on the machine.
 """
 from __future__ import annotations
@@ -132,27 +132,33 @@ def test_replicated_shipped_table_keeps_every_field_but_the_id():
         assert rows[N_POINTS + i].split(",", 1)[0] == str(N_POINTS + i)
 
 
-def _result(points, failures=(), n=None):
+def _digest(lines) -> str:
+    return hashlib.sha256("\n".join(lines).encode("ascii")).hexdigest()
+
+
+def _result(points, failures=(), n=None, originals=2):
+    """A child result: lines of the ids up to ``originals``, a digest for every point."""
     return {"n": len(points) if n is None else n, "failures": list(failures), "header": "point_id,t,v",
-            "points": {str(k): v for k, v in points.items()}}
+            "points": {str(k): v for k, v in points.items() if k <= originals},
+            "digests": {str(k): _digest(v) for k, v in points.items()}}
 
 
 BASE = b"point_id,t,v\n1,0,1.0\n1,1,2.0\n2,0,3.0\n"
 GOOD = {1: ["0,1.0", "1,2.0"], 2: ["0,3.0"], 3: ["0,1.0", "1,2.0"], 4: ["0,3.0"]}
 
 
-def test_line_comparison_accepts_equal_replicas_and_the_baseline():
+def test_comparison_accepts_equal_replicas_and_the_baseline():
     assert mm.verify_run(_result(GOOD), size=4, n=2, baseline=BASE) == []
     assert mm.verify_run(_result({1: GOOD[1], 2: GOOD[2]}), size=2, n=2, baseline=BASE) == []
 
 
-def test_line_comparison_names_a_differing_replica():
+def test_comparison_names_a_differing_replica_by_its_digest():
     points = {**GOOD, 3: ["0,1.0", "1,2.0000000000000004"]}
     assert mm.verify_run(_result(points), 4, 2, BASE) == [
         "point 3: result_cf differs from its original, point 1"]
 
 
-def test_line_comparison_finds_baseline_mismatch_missing_points_and_failures():
+def test_comparison_finds_baseline_mismatch_missing_points_and_failures():
     assert "do not reproduce the baseline" in mm.verify_run(_result(GOOD), 4, 2, BASE + b"x")[0]
     missing = {k: v for k, v in GOOD.items() if k != 4}
     problems = mm.verify_run(_result(missing, failures=["point 4: check_x is false"], n=4), 4, 2, BASE)
@@ -282,15 +288,15 @@ def test_the_child_passes_the_switch_to_the_runner(monkeypatch):
 def test_the_child_runs_the_runner_in_the_chosen_mode(monkeypatch, capsys, argv, cleanup, engine):
     seen = []
 
-    def run_product(folder, cleanup=True, engine="export"):
-        seen.append((cleanup, engine))
-        return 0, [], "", [], []
+    def run_product(folder, cleanup=True, engine="export", keep_lines=True):
+        seen.append((cleanup, engine, keep_lines))
+        return 0, [], "", [], [], {}
 
     fake = type(sys)("run_baseline")
     fake.run_product = run_product
     monkeypatch.setitem(sys.modules, "run_baseline", fake)
     assert mm.main(["--child", str(FOLDER), "--originals", str(N_POINTS), *argv]) == 0
-    assert seen == [(cleanup, engine)]
+    assert seen == [(cleanup, engine, N_POINTS)]
     assert json.loads(capsys.readouterr().out.splitlines()[-1])["n"] == 0
 
 
@@ -343,7 +349,8 @@ def test_a_failing_point_in_the_child_fails_the_product(monkeypatch, capsys):
     del points["3"]
     monkeypatch.setattr(mm, "run_child", lambda folder, n, cleanup, engine: {
         "n": N_POINTS, "failures": ["point 3: check_x is false"], "header": header,
-        "points": points, "import_s": 0.1, "run_s": 1.0, "maxrss_kib": 1})
+        "points": points, "digests": {k: _digest(v) for k, v in points.items()},
+        "import_s": 0.1, "run_s": 1.0, "maxrss_kib": 1})
     record = _measure({})
     assert record["status"] == "failed" and "derived" not in record and "forecast" not in record
     err = capsys.readouterr().err
@@ -369,8 +376,9 @@ def test_a_non_positive_slope_is_unreliable_and_exits_1(monkeypatch, capsys):
 
     def fake(folder, n, cleanup, engine):
         size = mm.count_points((folder / mm.TABLE).read_bytes().decode("ascii"))
-        pts = {str(p): points[str(mm.original_of(p, n))] for p in range(1, size + 1)}
-        return {"n": size, "failures": [], "header": header, "points": pts,
+        return {"n": size, "failures": [], "header": header, "points": points,
+                "digests": {str(p): _digest(points[str(mm.original_of(p, n))])
+                            for p in range(1, size + 1)},
                 "import_s": 0.1, "run_s": 2.0, "maxrss_kib": 1024}
 
     monkeypatch.setattr(mm, "run_child", fake)

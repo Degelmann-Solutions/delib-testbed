@@ -267,9 +267,11 @@ def test_cleanup_deletes_every_itemspace_also_of_raising_points(tmp_path, monkey
 
         monkeypatch.setattr(importlib, "import_module", spying_import)
     runner = load_runner()
-    count, _checks, _sha, failures, _lines = runner.run_product(raises, cleanup=cleanup, engine=engine)
+    count, _checks, _sha, failures, _lines, digests = runner.run_product(raises, cleanup=cleanup,
+                                                                        engine=engine)
     assert count == N_POINTS
     assert {int(re.match(r"point (\d+):", f).group(1)) for f in failures} == {2, 13}
+    assert sorted(digests) == [i for i in range(1, N_POINTS + 1) if i not in (2, 13)]
     assert deleted == (list(range(1, N_POINTS + 1)) if cleanup else [])
     assert not [k for k in sys.modules if k.startswith("_delib_export_")]
     assert not [p for p in sys.path if "delib-export-" in p]
@@ -282,10 +284,10 @@ def test_failing_export_is_one_failure_and_main_writes_nothing(tmp_path, monkeyp
         raise RuntimeError("cannot export this model")
 
     monkeypatch.setattr(runner.mx, "export_model", boom)
-    count, _checks, _sha, failures, lines = runner.run_product(FOLDER)
+    count, _checks, _sha, failures, lines, digests = runner.run_product(FOLDER)
     assert count == N_POINTS
     assert failures == ["export raised RuntimeError: cannot export this model"]
-    assert lines == []
+    assert lines == [] and digests == {}
     out = tmp_path / "out"
     assert runner.main([PRODUCT, "--write", "--out", str(out)]) == 1
     captured = capsys.readouterr()
@@ -294,3 +296,17 @@ def test_failing_export_is_one_failure_and_main_writes_nothing(tmp_path, monkeyp
     assert "FAILED export raised RuntimeError: cannot export this model" in captured.err
     assert "nothing written" in captured.err
     assert not out.exists()
+
+
+def test_keep_lines_chooses_the_collected_lines_and_leaves_hash_and_digests_alone():
+    runner = load_runner()
+    baseline = BASELINE.read_bytes().decode("ascii").splitlines()
+    _, _, sha_none, failures, lines_none, digests_none = runner.run_product(FOLDER, keep_lines=False)
+    assert failures == [] and lines_none == []
+    _, _, sha_three, failures, lines_three, digests_three = runner.run_product(FOLDER, keep_lines=3)
+    assert failures == []
+    assert lines_three == [baseline[0]] + [line for line in baseline[1:]
+                                           if int(line.split(",", 1)[0]) <= 3]
+    assert sha_none == sha_three
+    assert digests_none == digests_three and sorted(digests_none) == list(range(1, N_POINTS + 1))
+    assert len(set(digests_none.values())) == N_POINTS

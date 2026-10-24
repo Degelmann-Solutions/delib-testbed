@@ -76,7 +76,8 @@ With ``--write`` the runner writes ``result_cf.csv`` to ``--out`` (default
 explicit: the header ``point_id,t,<result_cf columns>``, then one line per point and ``t``,
 points ascending and rows in the frame's order, each value as ``repr(float(value))``, which
 round-trips exactly (``-0.0`` and ``nan`` are written as ``repr`` gives them), and ``\\n``
-line ends. Two runs give identical bytes.
+line ends. Two runs give identical bytes. The runner collects the CSV lines only with
+``--write``; without it the memory does not grow with the points run.
 """
 from __future__ import annotations
 
@@ -170,13 +171,39 @@ def describe(exc: Exception) -> str:
     return type(exc).__name__ + (f": {lines[0]}" if lines else "")
 
 
-def run_product(folder: Path, cleanup: bool = True,
-                engine: str = "export") -> tuple[int, list[str], str, list[str], list[str]]:
-    """Run all points. Return the point count, the checks, the SHA-256, the failures and the CSV.
+def point_digest(data: bytes) -> str:
+    """The SHA-256 of a point's hash bytes without their first line ``point_id=<id>``.
+
+    Without the id line, a point that repeats another point's inputs under another id has
+    the same digest as the original.
+    """
+    return hashlib.sha256(data.split(b"\n", 1)[1]).hexdigest()
+
+
+def keeps(keep_lines: bool | int, point_id: int) -> bool:
+    """Whether ``run_product`` keeps the CSV lines of ``point_id`` (see ``run_product``)."""
+    if isinstance(keep_lines, bool):
+        return keep_lines
+    return point_id <= keep_lines
+
+
+def run_product(folder: Path, cleanup: bool = True, engine: str = "export",
+                keep_lines: bool | int = True,
+                ) -> tuple[int, list[str], str, list[str], list[str], dict[int, str]]:
+    """Run all points. Return the point count, the checks, the SHA-256, the failures, the CSV
+    lines and the per-point digests.
 
     With ``cleanup`` (the default) each point's ItemSpace is deleted once its ``result_cf``
     and checks have been read, also when the point raised. ``engine`` is ``export`` (the
     default) or ``modelx`` (see module docstring).
+
+    ``keep_lines`` chooses which points' CSV lines are collected: ``True`` (the default)
+    every point's, ``False`` none, an integer ``n`` those of the ids ``1 … n``. The header
+    line comes first whenever any point's lines may be kept. Collecting every point's lines
+    makes the memory grow with the points run, so ``main`` keeps them only for ``--write``.
+    The digests map every point whose ``result_cf`` was read to ``point_digest`` of its hash
+    bytes; a point whose ``result_cf`` raised has neither lines nor a digest. The overall
+    SHA-256 does not depend on ``keep_lines``.
     """
     if engine not in ENGINES:
         raise ValueError(f"unknown engine {engine!r} (engines: {', '.join(ENGINES)})")
@@ -189,6 +216,7 @@ def run_product(folder: Path, cleanup: bool = True,
         failures: list[str] = []
         columns = None
         lines: list[str] = []
+        digests: dict[int, str] = {}
         with tempfile.TemporaryDirectory(prefix="delib-export-") as tmp:
             if engine == "export":
                 pkg = f"_delib_export_{uuid.uuid4().hex}"
@@ -202,7 +230,7 @@ def run_product(folder: Path, cleanup: bool = True,
                     space_model.path = model_dir(folder)
                 except Exception as exc:
                     failures.append(f"export raised {describe(exc)}")
-                    return len(point_ids), checks, digest.hexdigest(), failures, lines
+                    return len(point_ids), checks, digest.hexdigest(), failures, lines, digests
             else:
                 space_model = model
             for point_id in point_ids:
@@ -215,12 +243,14 @@ def run_product(folder: Path, cleanup: bool = True,
                         failures.append(f"point {point_id}: result_cf raised {describe(exc)}")
                         continue
                     digest.update(data)
+                    digests[point_id] = point_digest(data)
                     if columns is None:
                         columns = [str(c) for c in frame.columns]
-                        lines.append(",".join(["point_id", "t"] + columns))
+                        if keep_lines is not False:
+                            lines.append(",".join(["point_id", "t"] + columns))
                     if [str(c) for c in frame.columns] != columns:
                         failures.append(f"point {point_id}: result_cf has other columns than point {point_ids[0]}")
-                    else:
+                    elif keeps(keep_lines, point_id):
                         lines.extend(csv_lines(point_id, frame))
                     for check in checks:
                         try:
@@ -233,7 +263,7 @@ def run_product(folder: Path, cleanup: bool = True,
                 finally:
                     if cleanup:
                         del space_model.Projection[point_id]
-            return len(point_ids), checks, digest.hexdigest(), failures, lines
+            return len(point_ids), checks, digest.hexdigest(), failures, lines, digests
     finally:
         if pkg is not None:
             while tmp in sys.path:
@@ -270,7 +300,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     cleanup = not args.no_cleanup
-    count, checks, sha256, failures, lines = run_product(folder, cleanup=cleanup, engine=args.engine)
+    count, checks, sha256, failures, lines, _digests = run_product(
+        folder, cleanup=cleanup, engine=args.engine, keep_lines=args.write)
     elapsed = time.perf_counter() - _PROCESS_START
     print(f"engine: {args.engine}")
     print(f"cleanup: {'on' if cleanup else 'off'}")

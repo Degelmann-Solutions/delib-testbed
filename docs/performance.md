@@ -161,7 +161,7 @@ The single runs are close together: the spread of `T` within a size is at most 0
 - The peak RSS grows with the points, but sublinearly: at n = 13 against K·n it is 127 / 137 MB at K = 2, 126 / 152 MB at K = 8, 126 / 170 MB at K = 16, about 0.2 MB per contract beyond 26 points rather than the 0.8 to 1.6 MB of the table's `MB/contract`, so the tool's linear `MB/contract × P` overstates it.
 - A `gc.collect()` after each delete does not stop the growth (121 / 153 MB at K = 16) and raises `t_marginal` from about 83 to 129 ms, so the runner does not do it.
 
-The remaining cause of the growth is open for phase 2d.
+The remaining cause of the growth was open for phase 2d, and 2d answers it: it is the CSV lines the runner collected for every point of the run, whether or not they were written (a `tracemalloc` probe on `basisrente` at K = 16 showed +24.8 MiB from `csv_lines` between point 40 and point 207, with the count of Python objects flat), not the export engine; under modelx in 2b the same growth was hidden in the noise. Since 2d the runner collects the lines only with `--write`, and the measuring tool's child only those of the shipped points, comparing replicas by a digest per point. Checked by hand on `basisrente` without `--write` (2026-10-24): peak RSS 128 MB at 13 points, 138 MB at 26, 140 MB at 104, 142 MB at 208 and 142 MB at 832; it no longer grows with the points.
 
 ## Comparison with 2b
 

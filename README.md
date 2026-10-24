@@ -19,7 +19,7 @@ The repository serves two purposes:
 |---|---|---|
 | 1 | Import upstream `delib` at a pinned commit: all standard products side by side, unchanged. | Every product runs on its own model points and its results are stored as the per-product baseline. |
 | 2 | Performance at runner level only: process parallelism, per-contract cleanup as a switch, and the like. Model-level fixes wait for phase 3. | The shipped model points of every product run with unchanged output values as fast as is possible at runner level (export engine, per-contract cleanup, process parallelism), measured with the measuring tool at several worker counts. The forecast `N_mutants × N_pool × t_marginal(W)` against one night (about 10 h) is documented per product with its remaining gap; closing that gap is not a condition of this phase. |
-| 3 | Build the common core, largely agent-driven. | Every product reproduces its phase-2 baseline under DeltaRecon's comparison rules (`decimals`, per-quantity bounds). |
+| 3 | Build the common core, largely agent-driven. Layout and commit conventions: [docs/core.md](docs/core.md). | Every product reproduces its phase-2 baseline under DeltaRecon's comparison rules (`decimals`, per-quantity bounds). |
 | 4 | Add new tariffs, tariff generations and products: public product plans first, own products later. | Open-ended. This is the history the test-set builder measures against. |
 
 [docs/roadmap.md](docs/roadmap.md) holds the measurement method for phase 2, the known facts to start from, and the open questions.

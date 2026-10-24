@@ -4,10 +4,16 @@ Every product folder under ``products/`` is upstream's product folder at the pin
 copied whole and byte for byte, plus ``LICENSE-lifelib.txt`` and ``UPSTREAM.md``. The
 ``UPSTREAM.md`` of each product lists every copied file with its SHA-256, taken from the
 upstream bytes; these tests compare the files with that list.
+
+Phase 3 changes product files and adds symlinks to the common core (``docs/core.md``). A
+product's ``UPSTREAM.md`` names every such path in its section ``## Changed in phase 3``;
+the hash check skips the listed files, which stay in the hash table with upstream's hash,
+and every symlink in a product folder must be listed and resolve under ``core/``.
 """
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 from pathlib import Path
 
@@ -15,6 +21,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 PRODUCTS_DIR = ROOT / "products"
+CORE_DIR = ROOT / "core"
 
 UPSTREAM_COMMIT = "fb1d195ab5423031cfd6d2548fe25a86b76cd0a1"
 UPSTREAM_HEAD = "b706d8bbab530cc9ef94e06600e9c9d1468d8cb1"  # v0.17.2, the delib tree is identical
@@ -51,6 +58,27 @@ def recorded_hashes(product: str) -> dict[str, str]:
     return dict(re.findall(r"^\| `([^`]+)` \| `([0-9a-f]{64})` \|$", text, re.MULTILINE))
 
 
+def changed_in_phase_3(product: str) -> dict[str, str]:
+    """The paths listed under ``## Changed in phase 3`` in ``UPSTREAM.md``, with their change."""
+    text = (PRODUCTS_DIR / product / "UPSTREAM.md").read_text(encoding="utf-8")
+    _, found, section = text.partition("\n## Changed in phase 3\n")
+    if not found:
+        return {}
+    section = section.split("\n## ", 1)[0]
+    return dict(re.findall(r"^\| `([^`]+)` \| (.*\S) \|$", section, re.MULTILINE))
+
+
+def symlinks(folder: Path) -> set[str]:
+    """Every symlink below ``folder``, without descending into symlinked directories."""
+    found = set()
+    for dirpath, dirnames, filenames in os.walk(folder):
+        for name in dirnames + filenames:
+            path = Path(dirpath) / name
+            if path.is_symlink():
+                found.add(path.relative_to(folder).as_posix())
+    return found
+
+
 def test_the_ten_products_are_present():
     assert {p.name for p in PRODUCTS_DIR.iterdir() if p.is_dir()} == set(PRODUCTS)
 
@@ -78,8 +106,36 @@ def test_upstream_md_lists_exactly_the_files_present(product):
 @pytest.mark.parametrize("product", sorted(PRODUCTS))
 def test_copied_files_match_their_upstream_hash(product):
     folder = PRODUCTS_DIR / product
+    changed = changed_in_phase_3(product)
     for name, digest in recorded_hashes(product).items():
+        if name in changed:
+            continue
         assert sha256(folder / name) == digest, f"{product}/{name} differs from upstream"
+
+
+@pytest.mark.parametrize("product", sorted(PRODUCTS))
+def test_changed_in_phase_3_lists_hashed_files_and_core_symlinks_only(product):
+    folder = PRODUCTS_DIR / product
+    recorded = recorded_hashes(product)
+    links = symlinks(folder)
+    for name in changed_in_phase_3(product):
+        path = folder / name
+        if name in links:
+            continue
+        assert path.is_file(), f"{product}/{name} is listed as changed but is no file or symlink"
+        assert name in recorded, f"{product}/{name} is listed as changed but not in the hash table"
+
+
+@pytest.mark.parametrize("product", sorted(PRODUCTS))
+def test_every_symlink_is_listed_and_points_into_the_core(product):
+    folder = PRODUCTS_DIR / product
+    changed = changed_in_phase_3(product)
+    core = CORE_DIR.resolve()
+    for name in sorted(symlinks(folder)):
+        assert name in changed, f"{product}/{name} is a symlink not listed as changed in phase 3"
+        target = (folder / name).resolve()
+        assert target.is_relative_to(core) and target.exists(), \
+            f"{product}/{name} does not resolve to a path under core/: {target}"
 
 
 @pytest.mark.parametrize("product", sorted(PRODUCTS))

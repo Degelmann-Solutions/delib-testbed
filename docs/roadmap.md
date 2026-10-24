@@ -22,8 +22,18 @@ Import upstream `delib` with all standard products at a pinned commit. Then run 
 - modelx ships a memory-optimised run (`execute_actions` / `get_calcsteps` in `core/model.py`). Look at it before building per-contract cleanup.
 - For the test-set repository later: recording the trace per contract allows pruning mutants at positions that are never called. Keep the model traceable.
 
+## Where phase 2 ended
+
+Measured in phase 2d (2026-10-24, details and the earlier steps in [performance.md](performance.md)): with the export engine, per-contract cleanup and 24 worker processes, `t_marginal` is 3.1 to 15.7 ms per contract, and 91.6 ms for `pflegerentenversicherung`; the 230 ms above are the phase-1 starting point. By the forecast (M = 500, P = 10,000), `risikolebensversicherung`, `riester_rente` and, just, `sofortrente` fit the 10 h night; six products miss it by a factor of 1.1 to 2.2, `pflegerentenversicherung` by 12.7. Peak memory no longer grows with the points run.
+
+Speed stays a goal beyond phase 2: faster is always better, and phase 3, which may change the model, should take the chances it gets to close the remaining gap.
+
+## Decisions
+
+- Order of the products in phase 3: start with `risikolebensversicherung` (the smallest and fastest product, and the best known from delib-history); `pflegerentenversicherung` comes last.
+- Contract pool for the night-run criterion: P = 10,000 contracts for now.
+
 ## Open questions
 
 - Visibility of this repository: private for now. The licence is MIT, like upstream lifelib and delib-history.
-- Order of the products in phase 3.
-- Contract pool for the night-run criterion: size and generator.
+- Contract pool for the night-run criterion: the generator.

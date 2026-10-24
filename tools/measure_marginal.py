@@ -1,7 +1,7 @@
 """Measure the marginal time per contract of one or more products.
 
     uv run python tools/measure_marginal.py risikolebensversicherung
-    uv run python tools/measure_marginal.py --all --json /tmp/phase2a.json
+    uv run python tools/measure_marginal.py --all --json /tmp/phase2b.json
     uv run python tools/measure_marginal.py basisrente --factor 3 --repeats 5 --pool 20000
     uv run python tools/measure_marginal.py --all --no-cleanup        # reproduces phase 2a
 

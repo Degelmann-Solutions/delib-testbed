@@ -252,6 +252,22 @@ def test_the_child_passes_the_switch_to_the_runner(monkeypatch):
     assert "--no-cleanup" not in calls[0] and calls[1][-1] == "--no-cleanup"
 
 
+@pytest.mark.parametrize("argv, cleanup", [([], True), (["--no-cleanup"], False)])
+def test_the_child_runs_the_runner_in_the_chosen_mode(monkeypatch, capsys, argv, cleanup):
+    seen = []
+
+    def run_product(folder, cleanup=True):
+        seen.append(cleanup)
+        return 0, [], "", [], []
+
+    fake = type(sys)("run_baseline")
+    fake.run_product = run_product
+    monkeypatch.setitem(sys.modules, "run_baseline", fake)
+    assert mm.main(["--child", str(FOLDER), "--originals", str(N_POINTS), *argv]) == 0
+    assert seen == [cleanup]
+    assert json.loads(capsys.readouterr().out.splitlines()[-1])["n"] == 0
+
+
 def test_a_differing_replica_exits_1_and_names_the_point(runs):
     code, stdout, stderr = runs["replica"]
     assert code == 1

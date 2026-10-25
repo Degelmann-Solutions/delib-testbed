@@ -160,6 +160,7 @@ CORE_CELLS = {
                        "kapitallebensversicherung": "derived",
                        "klassische_rentenversicherung": "derived",
                        "pflegerentenversicherung": "derived",
+                       "riester_rente": "override",
                        "risikolebensversicherung": "override",
                        "sofortrente": "override"},
         "lapse_table": {"berufsunfaehigkeit": "derived",

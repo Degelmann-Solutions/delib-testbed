@@ -136,7 +136,7 @@ exactly; what a replacement must preserve is stated in assumption class (c) and 
 
 ### Cells vocabulary
 
-`Data` publishes `input_dir`, `model_point_table`, `mort_table_accum`, `annuity_mort_table`,
+`Data` publishes `input_dir`, `model_point_table`, `mort_table`, `annuity_mort_table`,
 `lapse_table`, `zulage_schedule`, `income_schedule`, `surplus_scenario` and `freq_loading_table`.
 
 `Projection` publishes the library's shared names — **`model_point`, `proj_len`, `age`, `pols_if`,

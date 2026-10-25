@@ -85,7 +85,7 @@ Each table has a filename Reference and a reader Cells, both on
 Reference                  Cells                                  File
 =========================  =====================================  ==========================
 model_point_file           data.model_point_table()               model_point_table.csv
-mort_accum_file            data.mort_table_accum()                mort_table_accum.csv
+mort_file                  data.mort_table()                      mort_table_accum.csv
 annuity_mort_file          data.annuity_mort_table()              annuity_mort_table.csv
 lapse_file                 data.lapse_table()                     lapse_table.csv
 zulage_file                data.zulage_schedule()                 zulage_schedule.csv
@@ -772,7 +772,7 @@ def mort_rate_at_age(x):
     """
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    return float(data.mort_table_accum().at[x, "qx"])                # noqa: F821
+    return float(data.mort_table().at[x, "qx"])                      # noqa: F821
 
 
 def annuity_mort_rate(x, tau):

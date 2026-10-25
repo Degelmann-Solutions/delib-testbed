@@ -353,7 +353,7 @@ conventions suite counts the reads. `Data.input_dir()` resolves the location fro
 `_model.path.parent` at run time, so the model works wherever the repository sits.
 
 Each file has one string Reference and one reader cells on `Data`, named alike:
-`model_point_file` → `model_point_table()`, `mort_accum_file` → `mort_table_accum()`,
+`model_point_file` → `model_point_table()`, `mort_file` → `mort_table()`,
 `annuity_mort_file` → `annuity_mort_table()`, `lapse_file` → `lapse_table()`, `zulage_file` →
 `zulage_schedule()`, `income_file` → `income_schedule()`, `surplus_file` →
 `surplus_scenario()` and `freq_loading_file` → `freq_loading_table()`.

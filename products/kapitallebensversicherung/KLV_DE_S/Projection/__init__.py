@@ -443,18 +443,6 @@ def pols_if_init():
     return float(model_point()["pols_if_init"])
 
 
-def prem_term():
-    """m: the *Beitragszahlungsdauer* in years, at most :func:`policy_term`.
-
-    ``m = 1`` is the *Einmalbeitrag* - the other premium form, and the case in which
-    ``ann_due_prem_1st()`` collapses to 1, the *Beitragssumme* to the single premium itself
-    and the 25 ‰ *Zillmersatz* to almost nothing.  ``m < n`` is the *abgekürzte
-    Beitragszahlungsdauer*: premiums stop while cover runs on, and the reserve then rolls
-    forward with no premium at all.
-    """
-    return int(model_point()["prem_term"])
-
-
 def sum_assured():
     """SE: the guaranteed *Erlebensfallleistung*, in euros - the *Versicherungssumme*.
 

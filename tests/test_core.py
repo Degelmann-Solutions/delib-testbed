@@ -194,6 +194,8 @@ CORE_CELLS = {
                    "risikolebensversicherung": "override"},
         "policy_term": {"kapitallebensversicherung": "derived",
                         "risikolebensversicherung": "derived"},
+        "prem_term": {"kapitallebensversicherung": "derived",
+                      "risikolebensversicherung": "override"},
     },
 }
 

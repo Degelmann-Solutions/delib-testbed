@@ -431,6 +431,10 @@ def prem_term():
     that builds the largest *Deckungskapital* in the shipped set, and the one HGB § 341f
     has in mind when it requires a provision for future administration costs where the
     paying period is shorter than the cover period.
+
+    Override reason: the attribute is specified as ``1 <= prem_term <= policy_term``, and
+    the cell checks the range, products/risikolebensversicherung/technical-notes.md, section
+    Model point attributes
     """
     k = int(model_point()["prem_term"])
     if k < 1 or k > policy_term():

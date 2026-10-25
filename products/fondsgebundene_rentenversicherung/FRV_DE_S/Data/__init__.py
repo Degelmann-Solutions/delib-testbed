@@ -124,24 +124,6 @@ def mort_table():
         input_dir() / mort_file, index_col="age")                    # noqa: F821
 
 
-def lapse_table():
-    """The annual lapse rates by policy year, read from *lapse_table.csv*.
-
-    The ``policy_year`` key is the **contractual 1-based label**, not the model's ``t``:
-    ``Projection.lapse_rate_base(t)`` maps through ``policy_year(t) = t // 12 + 1``, so the
-    file's values did not move when the frame became 0-based.
-
-    **[std]** throughout: no German unit-linked *Stornoquote* was established anywhere.
-    The front-loading in years 1 to 5 is a structural inference from the exit terms — the
-    acquisition charge is being taken and the value is furthest below the premiums paid —
-    and the dip in years 11 and 12 anticipates the twelve-year tax threshold, whose step
-    up is applied in :mod:`~.FRV_DE_S.Projection` rather than stored here, because it
-    depends on the attained age as well as the duration.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
-
-
 def charge_table():
     """The charge scales by ``charge_id``, read from *charge_table.csv*.
 

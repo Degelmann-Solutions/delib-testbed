@@ -153,18 +153,6 @@ def care_table():
         input_dir() / care_file, index_col="pflegegrad")             # noqa: F821
 
 
-def lapse_table():
-    """Annual lapse rates from the **active** state by policy year, from *lapse_table.csv*.
-
-    Policy years 1 to 40; year 40's rate applies to every later year.  A **[std]** shape:
-    no lapse rate for a German *Pflegerente* at any duration was established, and the
-    profile is argued from the *Zillmerung* — the *Rückkaufswert* is near zero for the
-    first years, so an early lapse is expensive to the policyholder.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
-
-
 def surrender_table():
     """The guaranteed *Rückkaufswert* as a fraction of premiums paid to date.
 

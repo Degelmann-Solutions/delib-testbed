@@ -124,18 +124,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def lapse_table():
-    """The surrender rate and the *Stornoabzug* by policy year, from *lapse_table.csv*.
-
-    ``lapse_rate`` is the decrement; ``storno_rate`` is the deduction the surrender value
-    suffers.  Both **[std]**, and they are different quantities — see the Space docstring.
-    The ``policy_year`` key is the **contractual, 1-based** label, read through
-    ``Projection.policy_year(t) = t + 1`` rather than by the 0-based ``t`` directly.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
-
-
 def surplus_rate_table():
     """The declared surplus rates by scenario and policy year, from *surplus_rate_table.csv*.
 

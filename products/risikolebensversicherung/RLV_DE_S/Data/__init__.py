@@ -193,19 +193,6 @@ def nvg_schedule():
         index_col=["nvg_id", "policy_year"])
 
 
-def lapse_table():
-    """The annual lapse rates by **1-based** policy year, read from *lapse_table.csv*.
-
-    Entirely **[std]**: no *Risikoversicherung*-specific German rate exists in the source
-    corpus, and the whole-market *Stornoquote* is deliberately not used.  The final policy
-    year's row is a live 3 % and is overridden to zero by ``Projection.lapse_rate``, which
-    is where the convention belongs — the zero is a property of the last policy year, not
-    of the table.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
-
-
 def freq_loading_table():
     """The *Ratenzahlungszuschlag* and instalment count by *Zahlweise*.
 

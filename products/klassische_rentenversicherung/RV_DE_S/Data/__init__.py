@@ -171,6 +171,9 @@ def lapse_table():
     Schicht-3 surrenders are suppressed approaching duration 12 and spike at it.  Surrender
     is zero from the *Rentenbeginn*, which is imposed in
     :func:`~.RV_DE_S.Projection.lapse_rate` rather than carried in the table.
+
+    Override reason: the table keys the 1-based contractual policy year as ``duration``,
+    products/klassische_rentenversicherung/technical-notes.md, section Assumption inputs
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / lapse_file, index_col="duration")              # noqa: F821

@@ -156,20 +156,6 @@ def occupation_table():
         input_dir() / occupation_file, index_col="berufsgruppe")     # noqa: F821
 
 
-def lapse_table():
-    """The annual *Stornoquote* by policy year, from *lapse_table.csv*.
-
-    Rows 1-5 are policy years 1-5 and **row 6 is the ultimate**, applied to policy year 6
-    and beyond.  **[std]** and low by the standards of every other delib product, which
-    is a real product fact rather than a modelling choice: once health has changed the
-    cover cannot be replaced, so an insured with a claimable impairment cannot rationally
-    lapse.  Lapse *selection* is not modelled; the direction of the resulting error is
-    stated in the technical notes.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
-
-
 def freq_loading_table():
     """The payment frequency table, from *freq_loading_table.csv*.
 

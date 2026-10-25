@@ -51,3 +51,9 @@ def mort_table():
     """The annual death rates by ``sex`` and attained ``age``, read from ``mort_file``."""
     return pd.read_csv(                                              # noqa: F821
         input_dir() / mort_file, index_col=["sex", "age"])           # noqa: F821
+
+
+def lapse_table():
+    """The annual lapse rates by **1-based** ``policy_year``, read from ``lapse_file``."""
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821

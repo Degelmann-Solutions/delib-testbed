@@ -187,6 +187,10 @@ def lapse_table():
     survivors leave as maturities rather than as surrenders.  The step at ``t = 11``
     (policy year 12) is the § 20 Abs. 1 Nr. 6 EStG tax threshold and is the shape's whole
     point; the levels are **[std]**.
+
+    Override reason: the table is keyed by the model's 0-based ``t``, not by the 1-based
+    policy year, products/indexpolice/technical-notes.md, section Model inputs — the
+    external CSVs
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / lapse_file, index_col="t")                     # noqa: F821

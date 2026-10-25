@@ -136,6 +136,10 @@ def lapse_table():
     *Anbieterwechsel* under the statutory *Wechselrecht*, which carries none of those
     consequences.  The second is set **above** the first at every duration for that
     reason, and a model of this book carrying only a lapse rate has mis-specified it.
+
+    Override reason: the table keys the 1-based contract year as ``duration`` and carries a
+    ``transfer_rate`` beside the lapse rate, products/riester_rente/technical-notes.md,
+    section Model inputs
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / lapse_file, index_col="duration")              # noqa: F821

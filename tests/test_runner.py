@@ -35,6 +35,13 @@ def folder_hashes(folder: Path) -> dict[str, str]:
             for p in sorted(folder.rglob("*")) if p.is_file()}
 
 
+def guarded() -> dict[str, str]:
+    """The product folder and the core, which the product reaches through symlinks."""
+    hashes = folder_hashes(FOLDER)
+    hashes.update({f"core/{k}": v for k, v in folder_hashes(ROOT / "core").items()})
+    return hashes
+
+
 def scratch_copy(tmp_path: Path, name: str) -> Path:
     target = tmp_path / name
     shutil.copytree(FOLDER, target)
@@ -102,7 +109,7 @@ def runs(tmp_path_factory):
         "unknown": ["nosuch"],
         "path_write": [str(named), "--write"],
     }
-    before = folder_hashes(FOLDER)
+    before = guarded()
     baseline_before = BASELINE.read_bytes()
     processes = {
         name: subprocess.Popen([sys.executable, str(RUNNER), *args], cwd=ROOT,
@@ -113,7 +120,7 @@ def runs(tmp_path_factory):
         stdout, stderr = process.communicate(timeout=900)
         results[name] = (process.returncode, parse_output(stdout), stderr)
     results["before"] = before
-    results["after"] = folder_hashes(FOLDER)
+    results["after"] = guarded()
     results["out"] = out
     results["baseline_unchanged"] = BASELINE.read_bytes() == baseline_before
     return results

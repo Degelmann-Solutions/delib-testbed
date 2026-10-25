@@ -565,6 +565,15 @@ def proj_len_y():
     return omega_age - age(0) + 1                                    # noqa: F821
 
 
+def k_start():
+    """The first projected year: 0, the frame opens at the valuation date.
+
+    Override reason: ``k`` counts projection years from the valuation date, so the first
+    projected year is 0 and ``t_start()`` derives 0, products/riester_rente/technical-notes.md:36
+    """
+    return 0
+
+
 def k_conv():
     """T: the conversion **year**, ``rentenbeginn_age - age(0)``.
 

@@ -442,6 +442,15 @@ def proj_len_y():
     return omega_age() - age(0) + 1
 
 
+def k_start():
+    """The first projected year: 0, the frame opens at the valuation date.
+
+    Override reason: ``k`` counts projection years from the valuation date, so the first
+    projected year is 0 and ``t_start()`` derives 0, products/basisrente/model.md:57
+    """
+    return 0
+
+
 def is_anniv(t):
     """True in the **last** month of a projection year, ``t % 12 == 11``.
 

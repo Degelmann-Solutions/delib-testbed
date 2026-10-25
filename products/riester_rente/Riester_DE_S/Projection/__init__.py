@@ -637,21 +637,6 @@ def age(t):
     return age_y(proj_year(t))
 
 
-def duration_y(k):
-    """d(k): completed contract years at the start of projection year k, ``duration_init() + k``.
-
-    The **contract** clock rather than the projection clock, and **0-based**, as lifelib's
-    ``duration`` is and as ``Basis_DE_S`` and ``KLV_DE_S`` define it: a point projected from
-    its own inception opens at ``duration_y(0) = 0``.  The contractual band label is the
-    1-based ``duration_y(k) + 1`` — contract year ``k`` is ``duration_y(k) = k - 1`` — and
-    that is the key of *lapse_table.csv*, so the surrender and transfer bands are read at
-    ``duration_y(k) + 1``.  It also gates the five-year acquisition charge and drives the
-    expense inflation factor, so an in-force point inherits the charge window its contract
-    has actually used up.
-    """
-    return duration_init() + k
-
-
 def duration_mth(t):
     """Completed contract **months** at the start of projection month t.
 

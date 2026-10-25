@@ -102,3 +102,8 @@ def duration_mth(t):
 def duration(t):
     """The completed policy years at the start of month t, ``duration_mth(t) // 12``."""
     return duration_mth(t) // 12                                     # noqa: F821
+
+
+def duration_y(k):
+    """The completed policy years at the start of projection year k, ``duration_init() + k``."""
+    return duration_init() + k                                       # noqa: F821

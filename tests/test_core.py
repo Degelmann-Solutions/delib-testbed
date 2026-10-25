@@ -243,6 +243,8 @@ CORE_CELLS = {
                      "riester_rente": "derived",
                      "risikolebensversicherung": "derived",
                      "sofortrente": "derived"},
+        "duration_y": {"basisrente": "derived",
+                       "riester_rente": "derived"},
     },
 }
 

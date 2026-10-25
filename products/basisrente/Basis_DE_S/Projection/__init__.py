@@ -487,20 +487,6 @@ def age(t):
     return age_y(proj_year(t))
 
 
-def duration_y(k):
-    """d(k): **completed** policy years at the start of projection year k.
-
-    ``duration_init + k``, so a new-business point opens at ``duration_y(0) = 0``.  The
-    *Beitragsdynamik*, the *Zillmerung* amortisation window and the *Zuzahlung* end date
-    are all keyed to this rather than to ``k``, which is what makes an in-force model
-    point work: model point 6 opens at ``duration_y(0) = 17`` and its premium at
-    ``prem_base_pp x 1.02^17``.  Keying any of the three to ``k`` is the seventh pitfall.
-
-    The ``dur`` index of *behaviour_table.csv* is the **policy year**, ``duration_y(k) + 1``.
-    """
-    return duration_init() + k
-
-
 def duration_mth(t):
     """**Completed policy months** at the start of projection month t.
 

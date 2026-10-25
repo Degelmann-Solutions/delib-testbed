@@ -137,3 +137,8 @@ def proj_len():
 def calendar_year_y(k):
     """The calendar year of policy year k, ``issue_year() + k``."""
     return issue_year() + k                                          # noqa: F821
+
+
+def calendar_year(t):
+    """The calendar year of month t, ``calendar_year_y(duration(t))``."""
+    return calendar_year_y(duration(t))                              # noqa: F821

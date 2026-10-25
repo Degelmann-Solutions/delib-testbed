@@ -512,16 +512,6 @@ def age(t, life=1):
     return issue_age(life) + t // 12
 
 
-def calendar_year(t):
-    """The calendar year month ``t`` falls in: ``issue_year() + t // 12``.
-
-    Reporting, and the cross-check on the cohort exponent — the year a life attains
-    ``age(t, life)`` is ``birth_year(life) + age(t, life)``, which equals this only when
-    the model point's own consistency convention holds.
-    """
-    return issue_year() + t // 12
-
-
 def mort_rate_at_age(x, table_sex, basis):
     """The table's annual death rate at attained age ``x``.
 

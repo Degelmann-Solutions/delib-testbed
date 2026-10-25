@@ -290,6 +290,10 @@ CORE_CELLS = {
         "calendar_year_y": {"basisrente": "override",
                             "klassische_rentenversicherung": "derived",
                             "riester_rente": "override"},
+        "calendar_year": {"basisrente": "override",
+                          "klassische_rentenversicherung": "derived",
+                          "riester_rente": "override",
+                          "sofortrente": "derived"},
     },
 }
 

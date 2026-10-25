@@ -108,7 +108,7 @@ d(t)                       duration(t)                     The same, read from a
 (none)                     duration_mth(t)                 Completed policy months
 (none)                     policy_year(t)                  Contractual 1-based label
 y(k)                       calendar_year_y(k)              Calendar year in year k
-y(t)                       cal_year(t)                     The same, read from a month
+y(t)                       calendar_year(t)                The same, read from a month
 omega                      omega_age()                     Terminal age of the table
 T                          ret_y()                         Projection year of Rentenbeginn
 12 T                       ret_t()                         Month of the first instalment
@@ -511,11 +511,14 @@ def calendar_year_y(k):
     return issue_year() + duration_init() + k
 
 
-def cal_year(t):
+def calendar_year(t):
     """y(t): calendar year in projection month t, ``calendar_year_y(proj_year(t))``.
 
     Steps on the policy anniversary rather than on 1 January, which is the same convention
     the attained age follows and the one the annual-step model necessarily used.
+
+    Override reason: ``t`` counts months from the valuation date, so the calendar year is
+    read at the projection year, not at the policy year, products/basisrente/model.md:54
     """
     return calendar_year_y(proj_year(t))
 
@@ -873,13 +876,13 @@ def mort_rate_at_age(x, y):
 def mort_rate_base(t):
     """The first-order table rate applying in projection month t, an **annual** rate.
 
-    ``mort_rate_at_age(age(t), cal_year(t))``.  Split from :func:`mort_rate` so that the
+    ``mort_rate_at_age(age(t), calendar_year(t))``.  Split from :func:`mort_rate` so that the
     table rate and the best-estimate rate have separate names and the step between them is
     a single visible factor.  Both are annual rates of the projection year the month falls
     in: the age and the calendar year step on the anniversary, so the twelve months of a
     year share one table rate.
     """
-    return mort_rate_at_age(age(t), cal_year(t))
+    return mort_rate_at_age(age(t), calendar_year(t))
 
 
 def mort_rate(t):

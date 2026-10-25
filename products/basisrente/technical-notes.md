@@ -221,7 +221,7 @@ age-floor cohorts, four guarantee vintages and four boundary cases.
 | `proj_len_y` | Number of projected **years**, `omega_age() − age(0) + 1` | once per model point |
 | `proj_len` | Number of projected **months**, `12 × proj_len_y()`; the frame's exclusive end | once per model point |
 | `ret_y`, `ret_t` | The projection **year** in which *Rentenbeginn* falls, `ret_age − age(0)`, and the **month** of the first instalment, `12 × ret_y()`; **< 0 for a point that opens in payment** | once per model point |
-| `age_y(k)`, `duration_y(k)`, `calendar_year_y(k)` | Attained age, completed policy years and calendar year in projection year `k`; `age(t)`, `duration(t)` and `cal_year(t)` read the same quantities from a month | annual, stepping on the anniversary |
+| `age_y(k)`, `duration_y(k)`, `calendar_year_y(k)` | Attained age, completed policy years and calendar year in projection year `k`; `age(t)`, `duration(t)` and `calendar_year(t)` read the same quantities from a month | annual, stepping on the anniversary |
 | `pols_if(t)` | Policies in force at the **start** of month `t`, paying and premium-free together; the weight on that same `result_cf()` row | monthly recursion |
 | `pols_paying(t)` | The premium-paying subset at the start of month `t` | monthly recursion |
 | `pols_paidup(t)` | The premium-free subset, `pols_if(t) − pols_paying(t)` | monthly |
@@ -918,7 +918,7 @@ month, which is the view only the finer grid can give.
 **Assumptions, each tagged.** *Mortality*: the shipped `mort_table.csv` is a **[std]** DAV 2004
 R-shaped **first-order** proxy, anchored so that `mort_rate_at_age(67, 2005) = 0.014000` exactly, with
 a flat improvement `trend = 0.015` at every age applied from `mort_base_year = 2005`, so that
-`mort_rate_base(t) = qx(age(t)) × (1 − 0.015)^(cal_year(t) − 2005)`; the best-estimate factor is
+`mort_rate_base(t) = qx(age(t)) × (1 − 0.015)^(calendar_year(t) − 2005)`; the best-estimate factor is
 `mort_be_factor = 0.85` **[std]**, giving `mort_rate(t) = 0.85 × mort_rate_base(t)` as the year's
 **annual** rate and `mort_rate_mth(t) = 1 − (1 − mort_rate(t))^(1/12)` as the monthly rate applied. The real basis is
 **DAV 2004 R**, which is the property of the Deutsche Aktuarvereinigung and is **cited by name and

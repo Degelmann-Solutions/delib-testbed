@@ -674,6 +674,9 @@ def calendar_year(t):
 
     It steps on the policy anniversary rather than on 1 January, which is the convention the
     attained age follows and the one the annual-step model necessarily used.
+
+    Override reason: ``t`` counts months from the valuation date, so the calendar year is
+    read at the projection year, not at the policy year, products/riester_rente/technical-notes.md:35
     """
     return calendar_year_y(proj_year(t))
 

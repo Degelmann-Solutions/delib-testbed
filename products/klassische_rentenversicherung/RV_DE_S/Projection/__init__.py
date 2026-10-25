@@ -489,11 +489,6 @@ def is_anniv(t):
     return t % 12 == 11
 
 
-def calendar_year(t):
-    """tau(t): the calendar year of month t, ``calendar_year_y(duration(t))``."""
-    return calendar_year_y(duration(t))
-
-
 def pols_if_init():
     """The number of policies the model point represents; ``pols_if`` at the frame's start."""
     return float(model_point()["pols_if_init"])

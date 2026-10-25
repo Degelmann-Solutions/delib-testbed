@@ -70,7 +70,7 @@ clocks** and the argument of a cells says which. ``t`` counts **policy months** 
 and is 0-based; ``duration(t) = t // 12`` is the 0-based policy year ``k``,
 ``policy_year(t) = duration(t) + 1`` the contractual label, and
 ``proj_len() = 12 x proj_len_y()`` the exclusive end of the frame, with
-``proj_len_y() = ann_start_age - entry_age``. A new-business point starts at ``t = 0``, an
+``proj_len_y() = ann_start_age - issue_age``. A new-business point starts at ``t = 0``, an
 in-force point at ``t = 12 x dur_init``.
 
 **Everything that makes this product what it is stays annual and takes ``k``**, because the
@@ -143,6 +143,8 @@ _name = "Index_DE_S"
 _allow_none = False
 
 _spaces = [
+    "CoreData",
+    "CoreProjection",
     "Data",
     "Projection"
 ]

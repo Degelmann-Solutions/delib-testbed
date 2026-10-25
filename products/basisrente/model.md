@@ -352,7 +352,7 @@ suite counts the reads and asserts the file set.
 | Reference | Cells | File |
 |---|---|---|
 | `model_point_file` | `model_point_table()` | `model_point_table.csv` |
-| `mort_table_file` | `mort_table()` | `mort_table.csv` |
+| `mort_file` | `mort_table()` | `mort_table.csv` |
 | `surplus_file` | `surplus_table()` | `surplus_table.csv` |
 | `rentenfaktor_file` | `rentenfaktor_table()` | `rentenfaktor_table.csv` |
 | `charge_file` | `charge_table()` | `charge_table.csv` |
@@ -375,7 +375,7 @@ not moved. Neither file was re-keyed when the grid went monthly: both are annual
 annual contract, and both are read through the annual clock. `mort_table.csv` is keyed on attained `age` and `rentenfaktor_table.csv` on the
 conversion `age`; neither is a time index. On `model_point_table.csv`, `duration_init` and
 `zuzahlung_end_dur` are **elapsed policy-year counts** and are already 0-based by nature, so
-neither shifts; `conclusion_year` is a calendar year, and `entry_age` and `ret_age` are ages.
+neither shifts; `conclusion_year` is a calendar year, and `issue_age` and `ret_age` are ages.
 
 | File | Contents | Provenance |
 |---|---|---|

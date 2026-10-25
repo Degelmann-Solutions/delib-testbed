@@ -1,6 +1,6 @@
 # Upstream provenance: `Sofort_DE_S` (lifelib `delib`)
 
-This folder is the sofortrente product of lifelib's `delib` library, copied whole and byte for byte at a pinned commit. Nothing is edited, added or removed; line endings are upstream's (LF).
+This folder is the sofortrente product of lifelib's `delib` library, copied whole and byte for byte at a pinned commit. At the import nothing was edited, added or removed; line endings are upstream's (LF). Later changes are listed under `## Changed in phase 3`.
 
 This file describes the import. Byte identity with upstream holds for the commit of the import; a later commit that changes a file listed here says so, and the hashes below stay those of upstream.
 
@@ -18,7 +18,7 @@ The Markdown files and some tables cite insurers and rating agencies as sources.
 
 ## Files copied verbatim
 
-Each file is byte-identical to upstream at the pinned commit. `tests/test_provenance.py` checks these SHA-256 values and that the folder holds no other file than these and this one.
+Each file was byte-identical to upstream at the import; the hashes are upstream's. `tests/test_provenance.py` checks these SHA-256 values, except for the files listed under `## Changed in phase 3`, and that the folder holds no other file than these and this one, besides the symlinks listed there.
 
 | File | SHA-256 |
 |---|---|
@@ -37,3 +37,19 @@ Each file is byte-identical to upstream at the pinned commit. `tests/test_proven
 | `sources.md` | `2be0ea50841fbc1c477907ca6405f43573e2a64b7caa3b1ba7af982773f1f1f1` |
 | `surplus_scale_table.csv` | `1a900a9dfc688321055e189784fe2fca686273bbc8106fbfaf1a9e46b3734d07` |
 | `technical-notes.md` | `1fbd2fb790699131ee00c4d734879828b0f31e9be978791cc2567bdf04ad6694` |
+
+## Changed in phase 3
+
+Phase 3 changes these files and adds these symlinks to take shared cells from the common core (`docs/core.md`); it adds no regular file. A changed file keeps upstream's hash in the table above; `tests/test_provenance.py` skips its hash check. The symlinks are not copied files and have no hash.
+
+| Path | Change |
+|---|---|
+| `Sofort_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection` |
+| `Sofort_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it; Reference `mort_table_file` renamed `mort_file`; `mort_table` overrides the core with a reason (index columns) |
+| `Sofort_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; Reference `mort_table_file` renamed `mort_file` in the header table; `entry_age` renamed `issue_age`; `issue_age` overrides the core with a reason (argument `life`); `sex` overrides the core with a reason (argument `life`) |
+| `model.md` | Reference `mort_table_file` named `mort_file`; `entry_age` named `issue_age` |
+| `model_point_table.csv` | column `entry_age` renamed `issue_age` |
+| `run.py` | calls `issue_age()`, was `entry_age()` |
+| `technical-notes.md` | `entry_age` named `issue_age` |
+| `Sofort_DE_S/CoreData` | added: symlink to the core space folder `core/Core/Data` |
+| `Sofort_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |

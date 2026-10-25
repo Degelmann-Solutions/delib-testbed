@@ -16,7 +16,7 @@ point_id = int(sys.argv[1]) if len(sys.argv) > 1 else 1
 proj = model.Projection[point_id]
 print("model point {}: {} - {}{} {} ({}) - BU-Rente {:,.2f} EUR/month, "
       "cover to {}, benefit to {}".format(
-          point_id, proj.status(), proj.sex(), proj.entry_age(),
+          point_id, proj.status(), proj.sex(), proj.issue_age(),
           proj.berufsgruppe(), proj.occ_factor(), proj.bu_rente_mth(),
           proj.cover_end_age(), proj.benefit_end_age()))
 print("premium form = {}   mode = {} (M = {}, freq_load {:.2f})   "

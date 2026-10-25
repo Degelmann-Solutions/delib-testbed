@@ -14,7 +14,7 @@ projecting model point 1::
 .. rubric:: Two clocks: a monthly frame over an annual *Indexjahr*
 
 ``t`` counts **policy months from issue**, 0-based. ``proj_len() = 12 x proj_len_y()`` is
-the **exclusive end** of the frame, with ``proj_len_y() = ann_start_age - entry_age`` the
+the **exclusive end** of the frame, with ``proj_len_y() = ann_start_age - issue_age`` the
 number of policy years, so ``result_cf().index[-1] == proj_len() - 1`` and the frame of an
 in-force point at ``dur_init = 8`` has 228 rows while still reporting ``proj_len() = 324``.
 A **new-business** point starts at ``t = 0``; an **in-force** point starts at
@@ -93,7 +93,7 @@ surplus_rate_file      data.surplus_rate_table()          surplus_rate_table.csv
 election_file          data.election_table()              election_table.csv
 mort_file              data.mort_table()                  mort_table.csv
 lapse_file             data.lapse_table()                 lapse_table.csv
-freq_load_file         data.freq_load_table()             freq_load_table.csv
+freq_loading_file      data.freq_loading_table()          freq_load_table.csv
 =====================  =================================  ==========================
 
 .. rubric:: Naming
@@ -242,7 +242,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = lambda point_id: None
 
-_bases = []
+_bases = [
+    ".CoreProjection"
+]
 
 _allow_none = None
 
@@ -253,34 +255,9 @@ _spaces = []
 
 # --- the model point ---------------------------------------------------------
 
-def model_point():
-    """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
-
-
 def policy_id():
     """The policy identifier of the selected model point; reporting only."""
     return model_point()["policy_id"]
-
-
-def sex():
-    """``"M"`` or ``"F"``: the row of the best-estimate mortality table to read.
-
-    **Never a rating factor.** Sex may not enter a premium, a charge or a benefit in a
-    contract written after 21 December 2012, and none of them depends on it here; it
-    selects a decrement only.  Because the death benefit of this product is the account
-    value with a floor rather than a sum at risk, mortality is a **timing** assumption and
-    the choice moves the result very little.
-    """
-    v = model_point()["sex"]
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
-
-
-def entry_age():
-    """*Eintrittsalter*: age last birthday at inception, the origin of ``age(t)``."""
-    return int(model_point()["entry_age"])
 
 
 def dur_init():
@@ -327,11 +304,6 @@ def prem_freq():
     if v not in ("annual", "half_yearly", "quarterly", "monthly"):
         raise ValueError("invalid prem_freq")
     return v
-
-
-def prem_term_y():
-    """*Beitragszahlungsdauer* in policy years; 1 on a single premium."""
-    return int(model_point()["prem_term_y"])
 
 
 def av_pp_init():
@@ -463,14 +435,14 @@ def t_start():
 
 
 def proj_len_y():
-    """``n``: the **number of projected policy years**, ``ann_start_age() - entry_age()``.
+    """``n``: the **number of projected policy years**, ``ann_start_age() - issue_age()``.
 
     Policy year ``n - 1`` is the last and ends at *Rentenbeginn*, at time ``n``, when the
     capital falls due.  There is no policy year ``n``: the whole surviving cohort has
     matured, while ``av_pp(n)`` and ``guar_cap_pp(n)`` are defined, being the time-``n``
     per-policy amounts the maturity benefit is struck on.
     """
-    return ann_start_age() - entry_age()
+    return ann_start_age() - issue_age()
 
 
 def proj_len():
@@ -538,8 +510,8 @@ def index_month(t):
 
 
 def age_y(k):
-    """``x(k)``: the attained age in policy year k, ``entry_age() + k``."""
-    return entry_age() + k
+    """``x(k)``: the attained age in policy year k, ``issue_age() + k``."""
+    return issue_age() + k
 
 
 def age(t):
@@ -580,7 +552,7 @@ def freq_load():
     convention, no carrier tariff having been established.  It multiplies the premium
     **collected** and nothing else; see :func:`prem_sum`.
     """
-    return float(data.freq_load_table().loc[                         # noqa: F821
+    return float(data.freq_loading_table().loc[                      # noqa: F821
         prem_freq(), "freq_load"])
 
 

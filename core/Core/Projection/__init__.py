@@ -26,3 +26,39 @@ _spaces = []
 def model_point():
     """The selected model point as a Series."""
     return data.model_point_table().loc[point_id]                    # noqa: F821
+
+
+def issue_age():
+    """The age at issue of the selected model point, from its ``issue_age`` column."""
+    return int(model_point()["issue_age"])                           # noqa: F821
+
+
+def sex():
+    """The sex of the insured life, ``M`` or ``F``, from the model point."""
+    v = model_point()["sex"]                                         # noqa: F821
+    if v not in ("M", "F"):
+        raise ValueError("invalid sex")
+    return v
+
+
+def smoker():
+    """The smoker status of the insured life, ``N`` or ``S``, from the model point."""
+    v = model_point()["smoker"]                                      # noqa: F821
+    if v not in ("N", "S"):
+        raise ValueError("invalid smoker")
+    return v
+
+
+def policy_term():
+    """The policy term in years, from the model point."""
+    return int(model_point()["policy_term"])                         # noqa: F821
+
+
+def prem_term():
+    """The premium payment term in whole years, from the model point."""
+    return int(model_point()["prem_term"])                           # noqa: F821
+
+
+def prem_term_y():
+    """The premium payment term in whole years, from the model point's ``prem_term_y``."""
+    return int(model_point()["prem_term_y"])                         # noqa: F821

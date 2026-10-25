@@ -32,7 +32,7 @@ Reference                 Cells                         File
 model_point_file          model_point_table()           model_point_table.csv
 inception_file            inception_table()             inception_table.csv
 claim_duration_file       claim_duration_table()        claim_duration_table.csv
-mortality_file            mortality_table()             mortality_table.csv
+mort_file                 mort_table()                  mortality_table.csv
 occupation_file           occupation_table()            occupation_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
 freq_loading_file         freq_loading_table()          freq_loading_table.csv
@@ -91,7 +91,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = None
 
-_bases = []
+_bases = [
+    ".CoreData"
+]
 
 _allow_none = None
 
@@ -99,30 +101,6 @@ _spaces = []
 
 # ---------------------------------------------------------------------------
 # Cells
-
-def input_dir():
-    """The directory holding the input CSVs: the model folder's parent.
-
-    Inputs are *external* files, not data stored inside the model, so the model folder
-    is pure formulas.  The path is resolved at run time from where the model was read,
-    following ``annuallife.TradLife_A``.
-    """
-    return _model.path.parent                                        # noqa: F821
-
-
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*.
-
-    Thirteen policies indexed by ``point_id``, each carrying the twenty contractual
-    attributes the projection reads.  The one input file with **no** ``provenance``
-    column, and the only exemption from delib's second ruling: a model point is a
-    *configuration* — one policy's own terms — rather than an assumption, so tagging it
-    row by row would repeat the same provenance once per policy while saying nothing
-    about any assumption.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
 
 def inception_table():
     """The annual *Invalidisierungswahrscheinlichkeit* by attained age, ages 18-66.
@@ -149,7 +127,7 @@ def claim_duration_table():
         input_dir() / claim_duration_file, index_col="dur_year")     # noqa: F821
 
 
-def mortality_table():
+def mort_table():
     """The two annual mortality rates by attained age, ages 18-70.
 
     Read from *mortality_table.csv*: ``mort_rate_actv`` for lives in the *aktiv* and
@@ -158,9 +136,14 @@ def mortality_table():
     ``mort_rate_actv(30) = 0.000350``, with the disabled rate at 4.00x the active one;
     DAV 2008 T and DAV 1997 TI are not shipped.  **Using one rate for both states is a
     numbered pitfall**, which is why the file carries two columns rather than one.
+
+    Override reason: the table carries an active and a disabled rate (``mort_rate_actv``,
+    ``mort_rate_dis``) keyed by ``age`` alone,
+    products/berufsunfaehigkeit/technical-notes.md, section (c) Behavioural / experience
+    assumptions (the modeller's view)
     """
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / mortality_file, index_col="age")               # noqa: F821
+        input_dir() / mort_file, index_col="age")                    # noqa: F821
 
 
 def occupation_table():
@@ -178,20 +161,6 @@ def occupation_table():
         input_dir() / occupation_file, index_col="berufsgruppe")     # noqa: F821
 
 
-def lapse_table():
-    """The annual *Stornoquote* by policy year, from *lapse_table.csv*.
-
-    Rows 1-5 are policy years 1-5 and **row 6 is the ultimate**, applied to policy year 6
-    and beyond.  **[std]** and low by the standards of every other delib product, which
-    is a real product fact rather than a modelling choice: once health has changed the
-    cover cannot be replaced, so an insured with a claimable impairment cannot rationally
-    lapse.  Lapse *selection* is not modelled; the direction of the resulting error is
-    stated in the technical notes.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
-
-
 def freq_loading_table():
     """The payment frequency table, from *freq_loading_table.csv*.
 
@@ -200,6 +169,10 @@ def freq_loading_table():
     1.05.  The loading scales the *Bruttobeitrag* and the *Beitragsverrechnung* together,
     so the quoted *Zahlbeitrag* ratio is untouched by it.  **[std]**: the ladder is the
     recalled German market convention and no retrieved document confirms it.
+
+    Override reason: the table keys the payment frequency as ``prem_mode`` and carries its
+    length in months, products/berufsunfaehigkeit/technical-notes.md, section (c)
+    Behavioural / experience assumptions (the modeller's view)
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / freq_loading_file, index_col="prem_mode")      # noqa: F821
@@ -214,7 +187,7 @@ inception_file = "inception_table.csv"
 
 claim_duration_file = "claim_duration_table.csv"
 
-mortality_file = "mortality_table.csv"
+mort_file = "mortality_table.csv"
 
 occupation_file = "occupation_table.csv"
 

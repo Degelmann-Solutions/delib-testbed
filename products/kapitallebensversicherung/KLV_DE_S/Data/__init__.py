@@ -30,7 +30,7 @@ and a reader Cells:
 Reference                 Cells                         File
 ========================  ============================  ==========================
 model_point_file          model_point_table()           model_point_table.csv
-mort_table_file           mort_table()                  mort_table.csv
+mort_file                 mort_table()                  mort_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
 surplus_rate_file         surplus_rate_table()          surplus_rate_table.csv
 cost_file                 cost_table()                  cost_table.csv
@@ -113,7 +113,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = None
 
-_bases = []
+_bases = [
+    ".CoreData"
+]
 
 _allow_none = None
 
@@ -121,51 +123,6 @@ _spaces = []
 
 # ---------------------------------------------------------------------------
 # Cells
-
-def input_dir():
-    """The directory holding the input CSVs: the model folder's parent.
-
-    Inputs are *external* files, not data stored inside the model, so the model folder is
-    pure formulas.  The path is resolved at run time from where the model was read,
-    following ``annuallife.TradLife_A``.
-    """
-    return _model.path.parent                                        # noqa: F821
-
-
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*.
-
-    Fourteen single-policy configurations indexed by ``point_id``.  The only input file
-    without a ``provenance`` column: a model point is a *configuration* — one policy's own
-    terms — rather than an assumption, and that exemption is the only one in the library.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
-
-def mort_table():
-    """The first-order annual death rates by sex and attained age, from *mort_table.csv*.
-
-    A **[std]** Makeham-form proxy standing in for DAV 2008 T, which is not public and is
-    not redistributed here.  See the Space docstring for the anchor that fixes it and for
-    what a replacement must preserve.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"])
-
-
-def lapse_table():
-    """The surrender rate and the *Stornoabzug* by policy year, from *lapse_table.csv*.
-
-    ``lapse_rate`` is the decrement; ``storno_rate`` is the deduction the surrender value
-    suffers.  Both **[std]**, and they are different quantities — see the Space docstring.
-    The ``policy_year`` key is the **contractual, 1-based** label, read through
-    ``Projection.policy_year(t) = t + 1`` rather than by the 0-based ``t`` directly.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
-
 
 def surplus_rate_table():
     """The declared surplus rates by scenario and policy year, from *surplus_rate_table.csv*.
@@ -195,18 +152,6 @@ def cost_table():
         input_dir() / cost_file, index_col="cost_id")                # noqa: F821
 
 
-def freq_loading_table():
-    """The *Ratenzahlungszuschlag* by payment frequency, from *freq_loading_table.csv*.
-
-    ``instalments`` is the number of payments a year and ``prem_freq_load`` the multiplier
-    on the annual *Bruttobeitrag*.  The loading applies only to an **unechte**
-    unterjährige Zahlweise — an instalment of an annual *Versicherungsperiode* — and is
-    inert where the sub-annual period is genuine.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
-
-
 def deckrv_table():
     """The two DeckRV cohort ceilings by issue year, from *deckrv_table.csv*.
 
@@ -225,7 +170,7 @@ def deckrv_table():
 
 model_point_file = "model_point_table.csv"
 
-mort_table_file = "mort_table.csv"
+mort_file = "mort_table.csv"
 
 lapse_file = "lapse_table.csv"
 

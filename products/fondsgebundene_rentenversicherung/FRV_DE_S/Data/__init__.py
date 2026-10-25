@@ -96,7 +96,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = None
 
-_bases = []
+_bases = [
+    ".CoreData"
+]
 
 _allow_none = None
 
@@ -104,27 +106,6 @@ _spaces = []
 
 # ---------------------------------------------------------------------------
 # Cells
-
-def input_dir():
-    """The directory holding the input CSVs: the model folder's parent.
-
-    Inputs are *external* files, not data stored inside the model, so the model folder
-    is pure formulas.  The path is resolved at run time from where the model was read,
-    following ``annuallife.TradLife_A``.
-    """
-    return _model.path.parent                                        # noqa: F821
-
-
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*.
-
-    Thirteen policies indexed by ``point_id``; model point 1 is the worked example's
-    anchor cell.  This is the library's one **provenance-exempt** input, because a model
-    point is a configuration rather than an assumption.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
 
 def mort_table():
     """The first-order annual death rates by attained age, from *mort_table.csv*.
@@ -134,27 +115,13 @@ def mort_table():
     basis of the *Risikobeitrag* the tariff charges — **not** of the projection's own
     decrement, which is this table scaled by ``mort_be_factor``, and **not** of the
     *Rentenfaktor*, which rests on an annuity table.
+
+    Override reason: the table is the unisex first-order basis of the *Risikobeitrag*, keyed
+    by ``age`` alone, products/fondsgebundene_rentenversicherung/technical-notes.md, section
+    (c) Behavioral / experience assumptions
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / mort_file, index_col="age")                    # noqa: F821
-
-
-def lapse_table():
-    """The annual lapse rates by policy year, read from *lapse_table.csv*.
-
-    The ``policy_year`` key is the **contractual 1-based label**, not the model's ``t``:
-    ``Projection.lapse_rate_base(t)`` maps through ``policy_year(t) = t // 12 + 1``, so the
-    file's values did not move when the frame became 0-based.
-
-    **[std]** throughout: no German unit-linked *Stornoquote* was established anywhere.
-    The front-loading in years 1 to 5 is a structural inference from the exit terms — the
-    acquisition charge is being taken and the value is furthest below the premiums paid —
-    and the dip in years 11 and 12 anticipates the twelve-year tax threshold, whose step
-    up is applied in :mod:`~.FRV_DE_S.Projection` rather than stored here, because it
-    depends on the attained age as well as the duration.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
 
 
 def charge_table():
@@ -196,6 +163,10 @@ def rentenfaktor_table():
     docstring for the derivation and for what the underlying DAV 2004 R basis requires of
     a replacement.  The table is indexed by the **age at *Rentenbeginn***, not by the
     attained age in the last projected month, which is one lower.
+
+    Override reason: the table carries a guaranteed and a current factor per ``factor_id``
+    and ``annuity_age``, products/fondsgebundene_rentenversicherung/technical-notes.md,
+    section *Rentenbeginn*
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / rentenfaktor_file,                             # noqa: F821

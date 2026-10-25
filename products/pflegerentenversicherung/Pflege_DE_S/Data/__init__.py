@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The nine input CSVs are read here, **once per model**, and referenced from
+The eight input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Pflege_DE_S.Projection` as ``data``. :mod:`~.Pflege_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its
 own cells cache; if the readers lived there, every model point would re-read every file.
@@ -32,13 +32,12 @@ Reference                  Cells                           File
 =========================  ==============================  =========================
 model_point_file           model_point_table()             model_point_table.csv
 benefit_scale_file         benefit_scale_table()           benefit_scale_table.csv
-mort_table_file            mort_table()                    mort_table.csv
+mort_file                  mort_table()                    mort_table.csv
 incidence_file             incidence_table()               incidence_table.csv
 care_file                  care_table()                    care_table.csv
 lapse_file                 lapse_table()                   lapse_table.csv
 surrender_file             surrender_table()               surrender_table.csv
-expense_file               expense_table()                 expense_table.csv
-basis_file                 basis_table()                   basis_table.csv
+param_file                 param_table()                   param_table.csv
 =========================  ==============================  =========================
 
 Every file but ``model_point_table.csv`` carries a final ``provenance`` column, one tag
@@ -79,18 +78,30 @@ table in place of these changes the basis with no formula change.
 The remaining tables are standardizations of a different kind: ``lapse_table.csv`` and
 ``surrender_table.csv`` encode a shape argued from the *Zillmerung* and the § 169 VVG
 five-year spread rather than from data — no lapse rate and no *Rückkaufswert* for a German
-*Pflegerente* at any duration was established — and ``expense_table.csv`` carries five
-placeholder levels whose only cited element is the 25 ‰ ceiling the acquisition charge is
-set exactly at. ``basis_table.csv`` holds the *Rechnungszins*, the terminal age, the
-unisex mix, the recovery-damping shape, the *Beitragssumme* convention, the check
-tolerance and the five first-order prudence margins; only the *Rechnungszins* is cited.
+*Pflegerente* at any duration was established — and ``param_table.csv`` holds the scalar
+parameters by ``item``. Its first thirteen rows are the bases and conventions: the
+*Rechnungszins*, the terminal age ``omega_age``, the unisex mix ``unisex_mix_male``, the
+recovery-damping shape ``rec_age_ref`` / ``rec_age_decay``, the ``inc_cap`` shape device,
+the *Beitragssumme* convention ``beitragssumme_cap_age``, the check tolerance
+``roll_fwd_tol`` and the five first-order prudence margins ``inc_margin``, ``det_margin``,
+``rec_margin``, ``care_mort_margin`` and ``act_mort_margin``; only the *Rechnungszins* is
+cited. The last five rows are the expense assumptions with their ``unit``:
+``acq_permille`` (‰ of *Beitragssumme*, charged once at ``t = 0``), ``admin_prem_pct``
+(fraction of each *Beitrag* collected), ``admin_mth_pp`` (EUR per policy in force per month
+at ``t = 0`` prices), ``claim_expense_pp`` (EUR per annuity payment made) and
+``expense_infl`` (annual); they are placeholder levels whose only cited element is the
+25 ‰ ceiling the acquisition charge is set exactly at. The two groups were the files
+``basis_table.csv`` and ``expense_table.csv`` upstream; phase 3 merged them so that the
+loader ``param_table()`` is the common core's.
 """
 
 from modelx.serialize.jsonvalues import *
 
 _formula = None
 
-_bases = []
+_bases = [
+    ".CoreData"
+]
 
 _allow_none = None
 
@@ -98,27 +109,6 @@ _spaces = []
 
 # ---------------------------------------------------------------------------
 # Cells
-
-def input_dir():
-    """The directory holding the input CSVs: the model folder's parent.
-
-    Inputs are *external* files, not data stored inside the model, so the model folder is
-    pure formulas.  The path is resolved at run time from where the model was read,
-    following ``annuallife.TradLife_A``.
-    """
-    return _model.path.parent                                        # noqa: F821
-
-
-def model_point_table():
-    """The fourteen model points, read from *model_point_table.csv*.
-
-    The only input file without a ``provenance`` column: a model point is a
-    *configuration* — one policy's own terms — rather than an assumption, and that is the
-    single exemption from the library's second ruling.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
 
 def benefit_scale_table():
     """The *Leistungsstaffel* by schedule and *Pflegegrad*, from *benefit_scale_table.csv*.
@@ -133,18 +123,6 @@ def benefit_scale_table():
     return pd.read_csv(                                              # noqa: F821
         input_dir() / benefit_scale_file,                            # noqa: F821
         index_col=["staffel_id", "pflegegrad"])
-
-
-def mort_table():
-    """Annual **active-life** mortality by sex and attained age, from *mort_table.csv*.
-
-    A **[std]** Gompertz proxy over ages 18 to 108 with the limiting-age rate of 1.0 at
-    age 109, not a fitted or standard table; see the Space docstring for the four anchor
-    rates a replacement must preserve.  In-care mortality is not tabulated: it is this
-    rate's force multiplied by ``mort_mult`` from *care_table.csv*.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["sex", "age"])     # noqa: F821
 
 
 def incidence_table():
@@ -175,18 +153,6 @@ def care_table():
         input_dir() / care_file, index_col="pflegegrad")             # noqa: F821
 
 
-def lapse_table():
-    """Annual lapse rates from the **active** state by policy year, from *lapse_table.csv*.
-
-    Policy years 1 to 40; year 40's rate applies to every later year.  A **[std]** shape:
-    no lapse rate for a German *Pflegerente* at any duration was established, and the
-    profile is argued from the *Zillmerung* — the *Rückkaufswert* is near zero for the
-    first years, so an early lapse is expensive to the policyholder.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
-
-
 def surrender_table():
     """The guaranteed *Rückkaufswert* as a fraction of premiums paid to date.
 
@@ -204,33 +170,6 @@ def surrender_table():
         input_dir() / surrender_file, index_col="policy_year")       # noqa: F821
 
 
-def expense_table():
-    """The five expense assumptions and their units, from *expense_table.csv*.
-
-    ``acq_permille`` (‰ of *Beitragssumme*, charged once at ``t = 0``),
-    ``admin_prem_pct`` (fraction of each *Beitrag* collected), ``admin_mth_pp`` (EUR per
-    policy in force per month at ``t = 0`` prices), ``claim_expense_pp`` (EUR per annuity
-    payment made) and ``expense_infl`` (annual).  All five levels are **[std]**; only the
-    25 ‰ ceiling the first is set exactly at is cited.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / expense_file, index_col="item")                # noqa: F821
-
-
-def basis_table():
-    """The scalar bases and conventions, from *basis_table.csv*.
-
-    The *Rechnungszins*; the terminal age ``omega_age``; the unisex pricing mix; the
-    ``rec_age_ref`` / ``rec_age_decay`` recovery damping; the ``inc_cap`` shape device; the
-    ``beitragssumme_cap_age`` convention the *Zillmerung* base is struck on; the
-    ``roll_fwd_tol`` every ``check_*`` identity uses; and the five first-order prudence
-    margins ``inc_margin``, ``det_margin``, ``rec_margin``, ``care_mort_margin`` and
-    ``act_mort_margin``.  Only the *Rechnungszins* is cited; everything else is **[std]**.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / basis_file, index_col="param")                 # noqa: F821
-
-
 # ---------------------------------------------------------------------------
 # References
 
@@ -238,7 +177,7 @@ model_point_file = "model_point_table.csv"
 
 benefit_scale_file = "benefit_scale_table.csv"
 
-mort_table_file = "mort_table.csv"
+mort_file = "mort_table.csv"
 
 incidence_file = "incidence_table.csv"
 
@@ -248,8 +187,6 @@ lapse_file = "lapse_table.csv"
 
 surrender_file = "surrender_table.csv"
 
-expense_file = "expense_table.csv"
-
-basis_file = "basis_table.csv"
+param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

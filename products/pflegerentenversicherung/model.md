@@ -49,7 +49,7 @@ them and the four annual rates beside it. `model.Projection.doc` holds the full 
 `model.Data.doc` says what a replacement for each shipped table must preserve.
 
 The grid is **monthly** and `t` is **0-based**: `t = 0` is the month of issue and
-`age(t) = age_at_entry + t // 12`, so the attained age steps at the policy anniversary. The frame
+`age(t) = issue_age + t // 12`, so the attained age steps at the policy anniversary. The frame
 **starts** at `duration_mth_init()` — `0` for new business, the elapsed duration for an in-force
 point — and runs to `proj_len() - 1`, where `proj_len()` is the **number of projected months**, the
 frame's **exclusive end** counted from `t = 0`: `12 × (110 − 45) = 780` on the anchor cell, so
@@ -234,7 +234,7 @@ band rather than against a citation.
 the § 4 DeckRV *Höchstzillmersatz* of 25 ‰ so the ceiling binds visibly [REG-R16] [REG-R20]. A
 lifelong-premium contract has no finite *Beitragssumme* without a convention, and
 `beitragssumme_cap_age = 85` **[std]** is that convention —
-`P × 12 × (min(prem_end_age, 85) − age_at_entry)`, and the *Einmalbeitrag* itself where there is
+`P × 12 × (min(prem_end_age, 85) − issue_age)`, and the *Einmalbeitrag* itself where there is
 one. On the anchor cell that is 30 815,24 € and a charge of 770,38 €, all of it at `t = 0`.
 Charging the per-mille on an *annual* premium instead understates it by a factor of the paying term
 — here forty-fold — and is a listed pitfall. Because the charge falls at `t = 0` only, an
@@ -244,7 +244,7 @@ first row with a new-business point's.
 
 ## Inputs are external files
 
-The nine input CSVs live **in this directory**, beside `run.py`, and `Pflege_DE_S/` holds nothing
+The eight input CSVs live **in this directory**, beside `run.py`, and `Pflege_DE_S/` holds nothing
 but formulas — `__init__.py`, `_system.json`, `Data/__init__.py` and `Projection/__init__.py`, no
 `_data/`, no IOSpec, no embedded values. This follows lifelib's `annuallife/TradLife_A`, which
 keeps its inputs beside the model; it is the opposite of `basiclife/BasicTerm_S`, which stores its
@@ -260,19 +260,18 @@ counts the reads against a registered file set. `Data.input_dir()` resolves the 
 `_model.path.parent`, so it works from any checkout. **The trade-off:** the model is not portable
 on its own — copy `Pflege_DE_S/` without the CSVs and it reads fine, then fails on first
 evaluation. What you gain is that a diff shows logic changes only, and an input can be swapped in
-place: point `Data.mort_table_file` at another same-schema file and the projection follows.
+place: point `Data.mort_file` at another same-schema file and the projection follows.
 
 | Reference | Cells | File | Contents and provenance |
 |---|---|---|---|
 | `model_point_file` | `model_point_table()` | `model_point_table.csv` | Fourteen model points. **Point 1 is the worked-example anchor cell** (F / entry 45 / aktiv / 1 000 € a month at PG5 / `delib_std` / lifelong monthly *Beitrag* derived by equivalence / every option off). Points 2–14 exercise the unisex twin, quarterly, half-yearly, annual and single instalments, the `bahr` grid, an *abgekürzte Beitragszahlungsdauer*, a *Wartezeit* with a *Karenzzeit*, a *Leistungsdynamik*, a *Beitragsrückgewähr*, a supplied premium with a *Stornoabzug*, two in-force points — one of them already in claim — and both ends of the entry-age band. **The one file with no `provenance` column**: a model point is a configuration, not an assumption, and it is the only exemption from delib's second ruling |
 | `benefit_scale_file` | `benefit_scale_table()` | `benefit_scale_table.csv` | The *Leistungsstaffel* by schedule and *Pflegegrad*. `delib_std` is 0 / 30 / 50 / 75 / 100 % **[std]**, the flatter, higher shape a *Pflegerente* aimed at the residential funding gap tends to use; `bahr` is the 10 / 20 / 30 / 40 / 100 % grid the *Pflege-Bahr* market writes **[std]** — § 127 SGB XI fixes no percentage schedule, only a *Geldleistung* at every *Pflegegrad* with a 600 € floor at grade 5 and a ceiling at the SGB XI benefit level [R8] — carried for comparison because a *Pflegerente* cannot be a *geförderter Tarif* |
-| `mort_table_file` | `mort_table()` | `mort_table.csv` | Annual **active-life** mortality by sex, ages 18–109. **[std]** Gompertz proxy `1 − exp(−B c^age)`; **not** DAV 2008 T and **not** the DAV 2008 P active-life table [R15] [R16]. **The anchors a replacement must preserve are `q(65) = 1.35 %` and `q(85) = 10.5 %` male, `q(65) = 0.75 %` and `q(85) = 7.0 %` female**, with `mort_rate = 1.0` at age 109 |
+| `mort_file` | `mort_table()` | `mort_table.csv` | Annual **active-life** mortality by sex, ages 18–109. **[std]** Gompertz proxy `1 − exp(−B c^age)`; **not** DAV 2008 T and **not** the DAV 2008 P active-life table [R15] [R16]. **The anchors a replacement must preserve are `q(65) = 1.35 %` and `q(85) = 10.5 %` male, `q(65) = 0.75 %` and `q(85) = 7.0 %` female**, with `mort_rate = 1.0` at age 109 |
 | `incidence_file` | `incidence_table()` | `incidence_table.csv` | Annual incidence into **any** *Pflegegrad* by sex and age. **[std]** `min(I0 exp(g(age − 65)), 0.50)` with `I0_F = 0.0110`, `g_F = 0.1400`, `I0_M = 0.0085`, `g_M = 0.1380`. The slope is anchored on prevalence roughly doubling every five years of age above 75, `ln 2 / 5 = 0.1386`; the observed *Pflegequoten* put the ratio nearer 1,8 over 70–90, i.e. about 0.117 [R18], which is reported in `sources.md` and not implemented |
 | `care_file` | `care_table()` | `care_table.csv` | The whole in-care basis in five rows: `entry_share` 0.20 / 0.38 / 0.24 / 0.13 / 0.05, `det_rate` 0.28 / 0.24 / 0.20 / 0.16 / 0.00, `rec_rate` 0.10 / 0.06 / 0.04 / 0.02 / 0.01 and `mort_mult` 1.5 / 2.5 / 3.5 / 6.0 / 9.0 on the **force**. All **[std]**. `entry_share` is deliberately **not** the stock distribution of about 9 / 44 / 27 / 14 / 6 % [R18]: entrants skew lower than the stock because deterioration moves people up over a spell |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual lapse from the **active** state by policy year 1–40, year 40's rate applying thereafter: 6,0 / 5,0 / 4,0 / 3,5 / 3,0 % then 2,5 / 2,0 / 1,5 %. **[std]**, and **no lapse rate for a German *Pflegerente* at any duration was established**; the shape is argued from the *Zillmerung*, and the 14-day *Widerruf* sits inside year 1 [REG-R23] |
 | `surrender_file` | `surrender_table()` | `surrender_table.csv` | The guaranteed *Rückkaufswert* as a fraction of premiums paid to date, by *Versicherungsjahr* `y(t) = t // 12 + 1`, 1–40. **[std]** shape encoding two cited facts and no cited level — the 25 ‰ *Zillmerung* allowance, which is why years 1 and 2 are zero [REG-R16], and the § 169 Abs. 3 VVG five-year cost spread, which is why it turns positive in year 3 [REG-R28] |
-| `expense_file` | `expense_table()` | `expense_table.csv` | `acq_permille` 25,000 ‰ of *Beitragssumme*, `admin_prem_pct` 3,0 %, `admin_mth_pp` 2,00 € a month, `claim_expense_pp` 1,50 € per annuity payment, `expense_infl` 1,5 % a year. All levels **[std]**; only the 25 ‰ ceiling the first sits exactly at is cited |
-| `basis_file` | `basis_table()` | `basis_table.csv` | `rechnungszins` 1,00 %, `omega_age` 110, `unisex_mix_male` 0.50, `rec_age_ref` 75, `rec_age_decay` 0.10, `inc_cap` 0.50, `beitragssumme_cap_age` 85, `roll_fwd_tol` 1e−10 and the five first-order margins `inc_margin` 1.25, `det_margin` 1.15, `rec_margin` 0.80, `care_mort_margin` 0.85, `act_mort_margin` 0.90. **Only the *Rechnungszins* is cited** [REG-R14] [REG-R15]; everything else is **[std]** |
+| `param_file` | `param_table()` | `param_table.csv` | The scalar parameters by `item`, with a `unit` column for the expense rows. `rechnungszins` 1,00 %, `omega_age` 110, `unisex_mix_male` 0.50, `rec_age_ref` 75, `rec_age_decay` 0.10, `inc_cap` 0.50, `beitragssumme_cap_age` 85, `roll_fwd_tol` 1e−10 and the five first-order margins `inc_margin` 1.25, `det_margin` 1.15, `rec_margin` 0.80, `care_mort_margin` 0.85, `act_mort_margin` 0.90; **of these only the *Rechnungszins* is cited** [REG-R14] [REG-R15]. Then `acq_permille` 25,000 ‰ of *Beitragssumme*, `admin_prem_pct` 3,0 %, `admin_mth_pp` 2,00 € a month, `claim_expense_pp` 1,50 € per annuity payment, `expense_infl` 1,5 % a year, all **[std]** but the 25 ‰ ceiling the first sits exactly at. Everything not cited is **[std]**. Upstream these were two files, `basis_table.csv` and `expense_table.csv`; phase 3 merged them so that the loader is the common core's |
 
 Every file but the model point table carries a **`provenance` column**, one tag per row — delib's
 second ruling, and it is machine-checked.
@@ -286,7 +285,7 @@ probabilities out of each state summing, with the stay probability, to one.
 ## The published identities
 
 Six `check_*()` cells, each a no-argument `bool` over all `t` with a per-`t` residual
-`check_*_resid(t)`, all scaled by `roll_fwd_tol` from `basis_table.csv`.
+`check_*_resid(t)`, all scaled by `roll_fwd_tol` from `param_table.csv`.
 
 **`check_net_cf` — delib ruling 1, in one line:**
 `net_cf(t) = premiums(t) − claims(t,"ANNUITY") − claims(t,"LAPSE") − claims(t,"DEATH") − expenses(t) − claim_expenses(t)`.

@@ -85,13 +85,13 @@ Each table has a filename Reference and a reader Cells, both on
 Reference                  Cells                                  File
 =========================  =====================================  ==========================
 model_point_file           data.model_point_table()               model_point_table.csv
-mort_accum_file            data.mort_table_accum()                mort_table_accum.csv
+mort_file                  data.mort_table()                      mort_table_accum.csv
 annuity_mort_file          data.annuity_mort_table()              annuity_mort_table.csv
 lapse_file                 data.lapse_table()                     lapse_table.csv
 zulage_file                data.zulage_schedule()                 zulage_schedule.csv
 income_file                data.income_schedule()                 income_schedule.csv
 surplus_file               data.surplus_scenario()                surplus_scenario.csv
-freq_loading_file          data.freq_loading()                    freq_loading.csv
+freq_loading_file          data.freq_loading_table()              freq_loading.csv
 =========================  =====================================  ==========================
 
 .. rubric:: Naming
@@ -315,7 +315,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = lambda point_id: None
 
-_bases = []
+_bases = [
+    ".CoreProjection"
+]
 
 _allow_none = None
 
@@ -325,35 +327,6 @@ _spaces = []
 # Cells
 #
 # === the model point
-
-
-def model_point():
-    """The selected model point as a Series, indexed by ``point_id``."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
-
-
-def sex():
-    """The saver's sex, M or F.  **Reporting only — it must not enter any rate.**
-
-    Riester tariffs have been **unisex** since a 2006 vintage, six years before the
-    general unisex rule, so neither the contribution, the decrements nor the
-    *Rentenfaktor* may read this cells.  It is carried because the administration records
-    it and because its *absence* from every formula is the assertion worth making.
-    """
-    v = model_point()["sex"]
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
-
-
-def issue_age():
-    """The attained age at which the contract was concluded, age last birthday.
-
-    With :func:`duration_init` it fixes ``age(0) = issue_age() + duration_init()``, the
-    attained age at the valuation date.  It does not otherwise enter the projection: no
-    rate in this model is struck at issue.
-    """
-    return int(model_point()["issue_age"])
 
 
 def duration_init():
@@ -512,7 +485,7 @@ def prem_freq_load():
     enlarges :func:`premiums` and leaves :func:`prem_to_av_pp`, :func:`guar_pp` and every
     benefit untouched.
     """
-    return float(data.freq_loading().at[prem_freq(), "load"])        # noqa: F821
+    return float(data.freq_loading_table().at[prem_freq(), "load"])  # noqa: F821
 
 
 def bfs_year():
@@ -799,7 +772,7 @@ def mort_rate_at_age(x):
     """
     if x >= omega_age:                                               # noqa: F821
         return 1.0
-    return float(data.mort_table_accum().at[x, "qx"])                # noqa: F821
+    return float(data.mort_table().at[x, "qx"])                      # noqa: F821
 
 
 def annuity_mort_rate(x, tau):

@@ -1,4 +1,4 @@
-point_id,policy_id,single_prem,entry_age,entry_year,birth_year,sex,defer_years,guar_years,refund_form,surv_pct,surv_age,surv_birth_year,surv_sex,payment_freq,payment_timing,tariff_int_rate,surplus_form,annuity_pp_init,duration_mth_init,pols_if_init
+point_id,policy_id,single_prem,issue_age,entry_year,birth_year,sex,defer_years,guar_years,refund_form,surv_pct,surv_age,surv_birth_year,surv_sex,payment_freq,payment_timing,tariff_int_rate,surplus_form,annuity_pp_init,duration_mth_init,pols_if_init
 1,SOF-000001,100000.00,65,2025,1960,M,0,10,none,0.00,0,0,M,12,advance,0.0100,teildynamisch,0.00,0,1.0
 2,SOF-000002,100000.00,65,2025,1960,M,0,0,none,0.00,0,0,M,12,advance,0.0100,teildynamisch,0.00,0,1.0
 3,SOF-000003,100000.00,65,2025,1960,M,0,0,full,0.00,0,0,M,12,advance,0.0100,teildynamisch,0.00,0,1.0

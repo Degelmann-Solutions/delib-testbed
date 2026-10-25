@@ -1,4 +1,4 @@
-point_id,policy_id,sex,age_at_entry,duration_mth_init,status,rente_mth,staffel_id,prem_end_age,prem_mode,premium_mth,rating_factor,wartezeit_months,karenz_months,leistungsdynamik,beitragsrueckgewaehr,stornoabzug_rate,pols_if_init
+point_id,policy_id,sex,issue_age,duration_mth_init,status,rente_mth,staffel_id,prem_end_age,prem_mode,premium_mth,rating_factor,wartezeit_months,karenz_months,leistungsdynamik,beitragsrueckgewaehr,stornoabzug_rate,pols_if_init
 1,PFL-000001,F,45,0,aktiv,1000.0,delib_std,110,monthly,0.0,1.0,0,0,0.0,False,0.0,1.0
 2,PFL-000002,M,45,0,aktiv,1000.0,delib_std,110,monthly,0.0,1.0,0,0,0.0,False,0.0,1.0
 3,PFL-000003,F,55,0,aktiv,1000.0,delib_std,110,quarterly,0.0,1.0,0,0,0.0,False,0.0,1.0

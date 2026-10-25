@@ -16,7 +16,7 @@ point_id = int(sys.argv[1]) if len(sys.argv) > 1 else 1
 proj = model.Projection[point_id]
 print("model point {}: {} - {} entry {}, {} - Pflegerente {:,.2f} EUR/month at PG5, "
       "Staffel {}".format(
-          point_id, proj.policy_id(), proj.sex(), proj.age_at_entry(),
+          point_id, proj.policy_id(), proj.sex(), proj.issue_age(),
           proj.status_init(), proj.rente_mth(), proj.staffel_id()))
 print("Leistungsstaffel  PG1 {:.0%}  PG2 {:.0%}  PG3 {:.0%}  PG4 {:.0%}  PG5 {:.0%}".format(
     *[proj.benefit_pct(g) for g in range(1, 6)]))

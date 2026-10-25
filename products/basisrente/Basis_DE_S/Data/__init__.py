@@ -32,7 +32,7 @@ and a reader Cells:
 Reference                  Cells                           File
 =========================  ==============================  ==========================
 model_point_file           model_point_table()             model_point_table.csv
-mort_table_file            mort_table()                    mort_table.csv
+mort_file                  mort_table()                    mort_table.csv
 surplus_file               surplus_table()                 surplus_table.csv
 rentenfaktor_file          rentenfaktor_table()            rentenfaktor_table.csv
 charge_file                charge_table()                  charge_table.csv
@@ -114,7 +114,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = None
 
-_bases = []
+_bases = [
+    ".CoreData"
+]
 
 _allow_none = None
 
@@ -123,27 +125,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def input_dir():
-    """The directory holding the input CSVs: the model folder's parent.
-
-    Inputs are *external* files, not data stored inside the model, so the model folder is
-    pure formulas.  The path is resolved at run time from where the model was read,
-    following ``annuallife.TradLife_A``.
-    """
-    return _model.path.parent                                        # noqa: F821
-
-
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*.
-
-    Indexed by ``point_id``.  The single input file exempt from delib's provenance rule:
-    a model point is a configuration — one policy's own terms — rather than an
-    assumption.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
-
 def mort_table():
     """The first-order annual death rates and improvement trends by age.
 
@@ -151,9 +132,13 @@ def mort_table():
     calendar year ``mort_base_year`` and ``trend`` the annual improvement that makes the
     basis generational.  A **[std]** proxy anchored at ``qx(67) = 0.014000``, not DAV
     2004 R; see the Space docstring for what a replacement must preserve.
+
+    Override reason: the table is the unisex first-order basis with a generational ``trend``
+    column, keyed by ``age`` alone, products/basisrente/technical-notes.md, section External
+    input files
     """
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col="age")              # noqa: F821
+        input_dir() / mort_file, index_col="age")                    # noqa: F821
 
 
 def surplus_table():
@@ -168,19 +153,6 @@ def surplus_table():
     return pd.read_csv(                                              # noqa: F821
         input_dir() / surplus_file,                                  # noqa: F821
         index_col=["scenario_id", "t"])
-
-
-def rentenfaktor_table():
-    """The *aktueller Rentenfaktor* by scenario and conversion age.
-
-    Read from *rentenfaktor_table.csv*, indexed by ``rf_scenario_id`` and ``age``:
-    ``rf_curr`` is euro of monthly annuity per 10 000 € of capital at *Rentenbeginn*.
-    Entirely **[std]** — no *Rentenfaktor* level, range or time series exists anywhere in
-    the delib corpus.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / rentenfaktor_file,                             # noqa: F821
-        index_col=["rf_scenario_id", "age"])
 
 
 def charge_table():
@@ -229,7 +201,7 @@ def option_table():
 
 model_point_file = "model_point_table.csv"
 
-mort_table_file = "mort_table.csv"
+mort_file = "mort_table.csv"
 
 surplus_file = "surplus_table.csv"
 

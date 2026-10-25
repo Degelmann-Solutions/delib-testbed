@@ -1,6 +1,6 @@
 # Upstream provenance: `Riester_DE_S` (lifelib `delib`)
 
-This folder is the riester_rente product of lifelib's `delib` library, copied whole and byte for byte at a pinned commit. Nothing is edited, added or removed; line endings are upstream's (LF).
+This folder is the riester_rente product of lifelib's `delib` library, copied whole and byte for byte at a pinned commit. At the import nothing was edited, added or removed; line endings are upstream's (LF). Later changes are listed under `## Changed in phase 3`.
 
 This file describes the import. Byte identity with upstream holds for the commit of the import; a later commit that changes a file listed here says so, and the hashes below stay those of upstream.
 
@@ -18,7 +18,7 @@ The Markdown files and some tables cite insurers and rating agencies as sources.
 
 ## Files copied verbatim
 
-Each file is byte-identical to upstream at the pinned commit. `tests/test_provenance.py` checks these SHA-256 values and that the folder holds no other file than these and this one.
+Each file was byte-identical to upstream at the import; the hashes are upstream's. `tests/test_provenance.py` checks these SHA-256 values, except for the files listed under `## Changed in phase 3`, and that the folder holds no other file than these and this one, besides the symlinks listed there.
 
 | File | SHA-256 |
 |---|---|
@@ -40,3 +40,17 @@ Each file is byte-identical to upstream at the pinned commit. `tests/test_proven
 | `surplus_scenario.csv` | `7d346758efe4d3a00fcd61ae44a5f248caf129ba3e3a18c96c567bc07b9c9a5e` |
 | `technical-notes.md` | `29dc988575b999d4cbb1b45faac84babe55358eccf516e60f1331ed3465ae53c` |
 | `zulage_schedule.csv` | `9ac0848bd3682eb0f5b7948b893aee013123a747280185c4f63e16be43e22984` |
+
+## Changed in phase 3
+
+Phase 3 changes these files and adds these symlinks to take shared cells from the common core (`docs/core.md`); it adds no regular file. A changed file keeps upstream's hash in the table above; `tests/test_provenance.py` skips its hash check. The symlinks are not copied files and have no hash.
+
+| Path | Change |
+|---|---|
+| `Riester_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection` |
+| `Riester_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it; `lapse_table` overrides the core with a reason (index column); cell `freq_loading` renamed `freq_loading_table`; `freq_loading_table` moved to the core and inherited from it; cell `mort_table_accum` renamed `mort_table` and Reference `mort_accum_file` renamed `mort_file`; `mort_table` overrides the core with a reason (index column) |
+| `Riester_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; reads `data.freq_loading_table()`, was `data.freq_loading()`; `issue_age` moved to the core and inherited from it; `sex` moved to the core and inherited from it; reads `data.mort_table()`, was `data.mort_table_accum()`; Reference `mort_accum_file` renamed `mort_file` in the header table |
+| `model.md` | cell `freq_loading` named `freq_loading_table`; Reference `mort_accum_file` named `mort_file`, cell `mort_table_accum` named `mort_table` |
+| `technical-notes.md` | cell `freq_loading` named `freq_loading_table`; cell `mort_table_accum` named `mort_table` |
+| `Riester_DE_S/CoreData` | added: symlink to the core space folder `core/Core/Data` |
+| `Riester_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |

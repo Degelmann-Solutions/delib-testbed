@@ -6,6 +6,8 @@ Phase 3 moves the quantities the ten products share into one core. This file des
 
 - `core/Core/` is a modelx model of its own, with the spaces `Data` and `Projection`. It holds the shared cells and nothing product-specific: no product folder name, model name or model prefix appears anywhere under `core/` (grep test in `tests/test_core.py`). Because it is a readable model, the tests can load it without a product.
 - `core/Core/Projection` is parameterized by `point_id`, like every product's `Projection`; its cells are written against the product's names (`data`, `point_id`), which the product space provides.
+- `core/Core/Data` holds the shared input loaders. Its cells use the product's References (`pd`, `model_point_file`, `param_file`, `mort_file`, `lapse_file`, `rentenfaktor_file`, `freq_loading_file`), which the product's `Data` defines; the core defines no References.
+- A product inherits every core cell, also one it has no use for: a product without a lapse table still has a derived `lapse_table`, which nothing evaluates. `CORE_CELLS` in `tests/test_core.py` lists, for every cell in the core, the products that derive it and those that override it with a reason.
 
 ## How a product reaches the core
 
@@ -80,4 +82,14 @@ The hash table of a product's `UPSTREAM.md` stays upstream's: it lists every cop
 | `RLV_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |
 ```
 
-`tests/test_provenance.py` skips the hash check for a listed file, requires every listed regular file to stay in the hash table, and requires every symlink in a product folder to be listed and to resolve to a core space folder under `core/`. A product adds no regular file, since an added file has no upstream hash; the only paths phase 3 adds are symlinks to core space folders. A changed file that is not listed fails the hash check as before.
+`tests/test_provenance.py` skips the hash check for a listed file, requires every listed changed file to stay in the hash table, and requires every symlink in a product folder to be listed and to resolve to a core space folder under `core/`. A changed file that is not listed fails the hash check as before.
+
+As a rule a product adds no regular file, since an added file has no upstream hash; the paths phase 3 adds are symlinks to core space folders. The exception is a merge of input files, decided for each case (epic Notes): Pflege's `basis_table.csv` and `expense_table.csv` merge into one `param_table.csv`, so that RV and Pflege share the core's `param_table` loader. Such a merge is listed with two kinds of change:
+
+```markdown
+| `param_table.csv` | added: merged from `basis_table.csv` and `expense_table.csv` |
+| `basis_table.csv` | removed: merged into `param_table.csv` |
+| `expense_table.csv` | removed: merged into `param_table.csv` |
+```
+
+A change starting `added:` that is no symlink names a regular file that must be present and is not in the hash table. A change starting `removed:` names a file of the hash table that must be absent; its row with upstream's hash stays. The folder then holds exactly the hash table's files without the removed ones, plus the added ones and `UPSTREAM.md`.

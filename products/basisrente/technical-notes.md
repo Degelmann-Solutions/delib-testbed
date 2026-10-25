@@ -51,7 +51,7 @@ prose, where they are the name of the thing.
   projection **years**. Policy duration at the start of projection year `k` is
   `duration_y(k) = duration_init + k` completed policy years, so the **policy year** — the
   contractual, 1-based label — is `policy_year(t) = duration(t) + 1`; attained age is
-  `age_y(k) = entry_age + duration_init + k` and steps on the **anniversary**; calendar year is
+  `age_y(k) = issue_age + duration_init + k` and steps on the **anniversary**; calendar year is
   `cal_year_y(k) = conclusion_year + duration_init + k` and steps with it. `duration_mth(t) =
   12 duration_init + t` is the completed policy months and `is_anniv(t)` — `t % 12 == 11` — the last
   month of a projection year. A new-business model point has `duration_init = 0`, so `k = 0` is its
@@ -155,7 +155,7 @@ tagged in *Assumption inputs* below: `mort_be_factor`, `elig_surv_prob`, `mort_b
 | `point_id` | int | Index into `model_point_table.csv`; `Projection`'s only parameter | all |
 | `policy_id` | str | The carrier's own reference, carried for reporting | all |
 | `sex` | enum {M, F} | Reporting only. **Must not enter pricing**: unisex is mandatory for contracts concluded from 21 December 2012 [REG-R34] | 1–13 |
-| `entry_age` | int | Age last birthday at conclusion (*Eintrittsalter*) | all |
+| `issue_age` | int | Age last birthday at conclusion (*Eintrittsalter*) | all |
 | `conclusion_year` | int | Calendar year the contract was concluded. Fixes the age-floor cohort (60 before 2012, 62 after) [R1] [R8], the guarantee vintage [REG-R15] and the generational mortality cohort [R17] | 6, 7, 8 (pre-2012 / pre-2015 / pre-2010) |
 | `duration_init` | int | Completed policy years at the valuation date; 0 = new business | 6, 7, 8 |
 | `ret_age` | int | Attained age at *Rentenbeginn* | 6 (60, the pre-2012 floor), 12 (70) |
@@ -201,7 +201,7 @@ which is the honest arrangement: averaging the two cohorts' reserves is pitfall 
 | 5 | ***Einmalbeitrag*** — the late-career deferral of a high-income year | 58 → 67, `prem_form = single`, 60 000 € once |
 | 6 | **In-force, pre-2012 cohort, at the 60 age floor** | concluded 2009, `duration_init = 17`, `ret_age = 60`, `gtd_rate = 2,25 %` |
 | 7 | **In-force and already *beitragsfrei*** | concluded 2014, `duration_init = 12`, `paidup_at_init = 1`, `gtd_rate = 1,75 %` |
-| 8 | **In-force and already in payment** — opens in the *Rentenphase*, `ret_t() < 0` | concluded 2006, `entry_age = 48`, `duration_init = 20`, `ret_age = 65`, `ann_pp_init > 0` |
+| 8 | **In-force and already in payment** — opens in the *Rentenphase*, `ret_t() < 0` | concluded 2006, `issue_age = 48`, `duration_init = 20`, `ret_age = 65`, `ann_pp_init > 0` |
 | 9 | **Boundary — the whole *Höchstbetrag*** | 50 → 67, 30 826 € p.a. annual [R2] [R20] — 124 800 € × 24,7 %, rounded up under § 10 Abs. 3 Satz 1 EStG |
 | 10 | **Boundary — a *Kleinbetragsrente* this model annuitises rather than commutes** | 30 → 67, 300 € p.a. monthly (25 €/month) |
 | 11 | **Boundary — the 50 % rule** | 42 → 67, quarterly, `buz_prem_share = 0.49` |
@@ -426,7 +426,7 @@ The *Beitragssumme* is struck once, at inception, on the contractual *laufender 
 (gap 8):
 
 ```
-S = Σ_{u=0}^{m−1} prem_base_pp × (1 + δ)^u          for prem_form = "regular", m = ret_age − entry_age
+S = Σ_{u=0}^{m−1} prem_base_pp × (1 + δ)^u          for prem_form = "regular", m = ret_age − issue_age
   = prem_base_pp                                    for prem_form = "single"
 ```
 
@@ -898,7 +898,7 @@ any of them, and the research file records the absence as gap 3.
 
 **Configuration.** Model point 1, the anchor cell, exactly as shipped in `model_point_table.csv`:
 `point_id = 1`; `policy_id = DE-BAS-0001`; `sex = M` (reporting only; pricing is unisex [REG-R34]);
-`entry_age = 45`; `conclusion_year = 2026`; `duration_init = 0`; `ret_age = 67`;
+`issue_age = 45`; `conclusion_year = 2026`; `duration_init = 0`; `ret_age = 67`;
 `pols_if_init = 1.0`; `prem_form = regular`; `prem_base_pp = 6,000.00 €` p.a.; `prem_mode = annual`,
 so `prem_freq_load = 1.000`; `prem_dyn_rate = 0.02`; `zuzahlung_pp = 4,000.00 €` p.a.;
 `zuzahlung_end_dur = 22`; `paidup_at_init = 0`; `av_pp_init = 0.00 €`; `ann_pp_init = 0.00 €`;

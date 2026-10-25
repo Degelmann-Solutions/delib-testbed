@@ -37,7 +37,7 @@ surplus_rate_file      surplus_rate_table()        surplus_rate_table.csv
 election_file          election_table()            election_table.csv
 mort_file              mort_table()                mort_table.csv
 lapse_file             lapse_table()               lapse_table.csv
-freq_load_file         freq_load_table()           freq_load_table.csv
+freq_loading_file      freq_loading_table()        freq_load_table.csv
 =====================  ==========================  ==========================
 
 .. rubric:: Every table but the model point table is a [std] construction
@@ -112,7 +112,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = None
 
-_bases = []
+_bases = [
+    ".CoreData"
+]
 
 _allow_none = None
 
@@ -120,28 +122,6 @@ _spaces = []
 
 # ---------------------------------------------------------------------------
 # Cells
-
-def input_dir():
-    """The directory holding the input CSVs: the model folder's parent.
-
-    Inputs are *external* files, not data stored inside the model, so the model folder is
-    pure formulas.  The path is resolved at run time from where the model was read,
-    following ``annuallife.TradLife_A``.
-    """
-    return _model.path.parent                                        # noqa: F821
-
-
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*.
-
-    Thirteen single-policy model points, indexed by ``point_id``, each carrying the
-    twenty-two contract attributes the projection reads.  The one input file exempt from
-    the library's ``provenance`` rule, a model point being a configuration rather than an
-    assumption.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
 
 def index_return_table():
     """The twelve monthly index returns of each *Indexjahr*, from *index_return_table.csv*.
@@ -198,17 +178,6 @@ def election_table():
         input_dir() / election_file, index_col=["elect_id", "t"])    # noqa: F821
 
 
-def mort_table():
-    """The annual death rates by sex and attained age, from *mort_table.csv*.
-
-    A **[std]** Gompertz-form proxy anchored at ``qx(M, 40) = 0.001200``, not a DAV table;
-    see the Space docstring for what it is, what it is not, and what a replacement must
-    preserve.  Sex selects the best-estimate row only and is never a rating factor.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col=["sex", "age"])           # noqa: F821
-
-
 def lapse_table():
     """The base surrender rates by year, read from *lapse_table.csv*.
 
@@ -218,21 +187,13 @@ def lapse_table():
     survivors leave as maturities rather than as surrenders.  The step at ``t = 11``
     (policy year 12) is the § 20 Abs. 1 Nr. 6 EStG tax threshold and is the shape's whole
     point; the levels are **[std]**.
+
+    Override reason: the table is keyed by the model's 0-based ``t``, not by the 1-based
+    policy year, products/indexpolice/technical-notes.md, section Model inputs — the
+    external CSVs
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / lapse_file, index_col="t")                     # noqa: F821
-
-
-def freq_load_table():
-    """The *Ratenzahlungszuschlag* multipliers by payment frequency.
-
-    Read from *freq_load_table.csv*, indexed by ``prem_freq``: the surcharge for paying
-    other than annually, as a multiplier on the annual-mode premium.  It multiplies the
-    premium **collected** and does not enter the *Beitragssumme*, so it changes neither
-    the acquisition charge nor the *Mindesttodesfallschutz* floor.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_load_file, index_col="prem_freq")         # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -252,6 +213,6 @@ mort_file = "mort_table.csv"
 
 lapse_file = "lapse_table.csv"
 
-freq_load_file = "freq_load_table.csv"
+freq_loading_file = "freq_load_table.csv"
 
 pd = ("Module", "pandas")

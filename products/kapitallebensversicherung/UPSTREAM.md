@@ -1,6 +1,6 @@
 # Upstream provenance: `KLV_DE_S` (lifelib `delib`)
 
-This folder is the kapitallebensversicherung product of lifelib's `delib` library, copied whole and byte for byte at a pinned commit. Nothing is edited, added or removed; line endings are upstream's (LF).
+This folder is the kapitallebensversicherung product of lifelib's `delib` library, copied whole and byte for byte at a pinned commit. At the import nothing was edited, added or removed; line endings are upstream's (LF). Later changes are listed under `## Changed in phase 3`.
 
 This file describes the import. Byte identity with upstream holds for the commit of the import; a later commit that changes a file listed here says so, and the hashes below stay those of upstream.
 
@@ -18,7 +18,7 @@ The Markdown files and some tables cite insurers and rating agencies as sources.
 
 ## Files copied verbatim
 
-Each file is byte-identical to upstream at the pinned commit. `tests/test_provenance.py` checks these SHA-256 values and that the folder holds no other file than these and this one.
+Each file was byte-identical to upstream at the import; the hashes are upstream's. `tests/test_provenance.py` checks these SHA-256 values, except for the files listed under `## Changed in phase 3`, and that the folder holds no other file than these and this one, besides the symlinks listed there.
 
 | File | SHA-256 |
 |---|---|
@@ -39,3 +39,16 @@ Each file is byte-identical to upstream at the pinned commit. `tests/test_proven
 | `sources.md` | `6bce9950e81c9b3ae3b5fc7c21cbb659d5c200d7f1fff22805b177a181aead4c` |
 | `surplus_rate_table.csv` | `b3e3165100cf6a3cb2c6cc7f24c3e4d516293e770bd3915c73885e85b2243bbb` |
 | `technical-notes.md` | `bfdaceff340b69dfa6d66c75a618845310b16363da024c1118c154eb706b7bd1` |
+
+## Changed in phase 3
+
+Phase 3 changes these files and adds these symlinks to take shared cells from the common core (`docs/core.md`); it adds no regular file. A changed file keeps upstream's hash in the table above; `tests/test_provenance.py` skips its hash check. The symlinks are not copied files and have no hash.
+
+| Path | Change |
+|---|---|
+| `KLV_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection` |
+| `KLV_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it; Reference `mort_table_file` renamed `mort_file`; `mort_table` moved to the core and inherited from it; `lapse_table` moved to the core and inherited from it; `freq_loading_table` moved to the core and inherited from it |
+| `KLV_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; Reference `mort_table_file` renamed `mort_file` in the header table; `issue_age` moved to the core and inherited from it; `sex` moved to the core and inherited from it; `smoker` moved to the core and inherited from it; `policy_term` moved to the core and inherited from it; `prem_term` moved to the core and inherited from it |
+| `model.md` | Reference `mort_table_file` named `mort_file` |
+| `KLV_DE_S/CoreData` | added: symlink to the core space folder `core/Core/Data` |
+| `KLV_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |

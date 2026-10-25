@@ -1,6 +1,6 @@
 # Upstream provenance: `Pflege_DE_S` (lifelib `delib`)
 
-This folder is the pflegerentenversicherung product of lifelib's `delib` library, copied whole and byte for byte at a pinned commit. Nothing is edited, added or removed; line endings are upstream's (LF).
+This folder is the pflegerentenversicherung product of lifelib's `delib` library, copied whole and byte for byte at a pinned commit. At the import nothing was edited, added or removed; line endings are upstream's (LF). Later changes are listed under `## Changed in phase 3`.
 
 This file describes the import. Byte identity with upstream holds for the commit of the import; a later commit that changes a file listed here says so, and the hashes below stay those of upstream.
 
@@ -18,7 +18,7 @@ The Markdown files and some tables cite insurers and rating agencies as sources.
 
 ## Files copied verbatim
 
-Each file is byte-identical to upstream at the pinned commit. `tests/test_provenance.py` checks these SHA-256 values and that the folder holds no other file than these and this one.
+Each file was byte-identical to upstream at the import; the hashes are upstream's. `tests/test_provenance.py` checks these SHA-256 values, except for the files listed under `## Changed in phase 3`, and that the folder holds no other file than these and this one, besides the symlinks listed there.
 
 | File | SHA-256 |
 |---|---|
@@ -41,3 +41,23 @@ Each file is byte-identical to upstream at the pinned commit. `tests/test_proven
 | `sources.md` | `79619015bc6840e7119f27cf5d3fdf9894f3195e7355d6e28d3da4c94ecb646d` |
 | `surrender_table.csv` | `7a028403d04a050ce573ed2d05e882fbf407caad332c4cd3637858f945752059` |
 | `technical-notes.md` | `5fb0da9038ee2d09b835bf9243215f30c57be4a2eb3e0cdffbf281b0af58e0b0` |
+
+## Changed in phase 3
+
+Phase 3 changes these files and adds these symlinks to take shared cells from the common core (`docs/core.md`). It adds one regular file, `param_table.csv`, merged from the two files it removes (`docs/core.md`, section on changed files). A changed or removed file keeps upstream's hash in the table above; `tests/test_provenance.py` skips its hash check. The added file and the symlinks are not copied files and have no hash.
+
+| Path | Change |
+|---|---|
+| `Pflege_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection`; docstring: eight input CSVs; docstring names `issue_age`, was `age_at_entry` |
+| `Pflege_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it; `basis_table` and `expense_table` replaced by `param_table`, inherited from the core; References `basis_file` and `expense_file` replaced by `param_file`; docstring updated; Reference `mort_table_file` renamed `mort_file`; `mort_table` moved to the core and inherited from it; `lapse_table` moved to the core and inherited from it |
+| `Pflege_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; `data.basis_table()` and `data.expense_table()` read as `data.param_table()`; header table and docstrings name `param_table.csv`; Reference `mort_table_file` renamed `mort_file` in the header table; `age_at_entry` renamed `issue_age`; `issue_age` moved to the core and inherited from it; `sex` moved to the core and inherited from it (the `str()` around the read dropped) |
+| `model.md` | `basis_table.csv` and `expense_table.csv` named as `param_table.csv`; Reference `mort_table_file` named `mort_file`; `age_at_entry` named `issue_age` |
+| `technical-notes.md` | `basis_table.csv` and `expense_table.csv` named as `param_table.csv`; `age_at_entry` named `issue_age` |
+| `sources.md` | `basis_table.csv` and `expense_table.csv` named as `param_table.csv` |
+| `param_table.csv` | added: merged from `basis_table.csv` (column `param` renamed `item`, empty `unit`) and `expense_table.csv`, same values |
+| `basis_table.csv` | removed: merged into `param_table.csv` |
+| `expense_table.csv` | removed: merged into `param_table.csv` |
+| `model_point_table.csv` | column `age_at_entry` renamed `issue_age` |
+| `run.py` | calls `issue_age()`, was `age_at_entry()` |
+| `Pflege_DE_S/CoreData` | added: symlink to the core space folder `core/Core/Data` |
+| `Pflege_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |

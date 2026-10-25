@@ -66,11 +66,11 @@ repeated in prose.
   an instalment**. Deaths fall **during** month `t`, so a life dying in month `t` has already
   received the instalment due at `t`; the *Kapitalrückgewähr* is settled net of it. Expenses accrue
   at the start of the month.
-- **Age basis and generation [std].** `age(t, life) = entry_age(life) + t // 12`: age last birthday
+- **Age basis and generation [std].** `age(t, life) = issue_age(life) + t // 12`: age last birthday
   at inception, incrementing at each 12-month multiple of it. The **birth year is a separate model
   point attribute and is never derived from the projection year**, because the mortality surface is
   generational and the cohort is its key [REG-R49]. The shipped model points satisfy
-  `entry_year == birth_year(1) + entry_age(1)`, which is a **[std]** internal-consistency
+  `entry_year == birth_year(1) + issue_age(1)`, which is a **[std]** internal-consistency
   convention, not a contract fact; a real book will carry a fractional offset of up to a year.
 - **Unisex pricing.** The tariff annuity factor is computed on a **unisex blend** of the sex-distinct
   proxy tables, at a **[std]** portfolio male share; the model point's own `sex` drives only the
@@ -95,7 +95,7 @@ repeated in prose.
 | `point_id` | int | Key; `Projection` is parameterized by it | all |
 | `policy_id` | str | Reference, reporting only | all |
 | `single_prem` | EUR | The *Einmalbeitrag*, `SP` | all |
-| `entry_age` | int | Annuitant's age last birthday at *Vertragsbeginn* | all |
+| `issue_age` | int | Annuitant's age last birthday at *Vertragsbeginn* | all |
 | `entry_year` | int | Calendar year of *Vertragsbeginn*; the *Höchstrechnungszins* vintage | 10, 13 |
 | `birth_year` | int | Annuitant's *Geburtsjahr* — the generational table key | all |
 | `sex` | enum {M, F} | **Decrement only**; the tariff is unisex [REG-R34] | 11, 12 (F) |
@@ -160,8 +160,8 @@ the in-force annuity is a round figure of the right order for a 2012 tariff at 1
 |---|---|---|
 | `t_start()` | First projected month = `duration_mth_init()`; 0 for new business | once |
 | `proj_len()` | **Exclusive end** of the frame, so `result_cf().index[-1] == proj_len() − 1` | once |
-| `horizon_mths(life)` | `12 × (omega_age − entry_age(life))`, the month at which that life's survival reaches zero | once |
-| `age(t, life)` | Attained age = `entry_age(life) + t // 12` | monthly |
+| `horizon_mths(life)` | `12 × (omega_age − issue_age(life))`, the month at which that life's survival reaches zero | once |
+| `age(t, life)` | Attained age = `issue_age(life) + t // 12` | monthly |
 | `duration(t)` | Completed policy years = `t // 12`; 0 through the first policy year | monthly |
 | `policy_year(t)` | Contractual, 1-based policy year = `t // 12 + 1` | monthly |
 | `calendar_year(t)` | `entry_year() + t // 12`; reporting and the cohort cross-check | monthly |
@@ -425,7 +425,7 @@ the tables above.
 
 ### The projection frame, `t` and `proj_len()`
 
-    horizon_mths(life) = 12 × ( omega_age − entry_age(life) )
+    horizon_mths(life) = 12 × ( omega_age − issue_age(life) )
     t_start()          = duration_mth_init()
     proj_len()         = max( horizon_mths(1),
                               first_pay_mth() + 12 × guar_years(),
@@ -663,7 +663,7 @@ For `t = t₀ … n − 1`, in this order:
    survival path `l̃` on the first-order unisex basis; compute `ä`; and strike `R` — directly where
    `annuity_pp_init() > 0`, by `SP_net / (ä (1 + β))` where no refund is elected, and by bisection on
    the implicit equation where one is.
-2. Set the attained ages `x_a(t)`, `x_s(t)` from `entry_age + t // 12`, and read `q⁽²⁾` from the
+2. Set the attained ages `x_a(t)`, `x_s(t)` from `issue_age + t // 12`, and read `q⁽²⁾` from the
    generational surface at each life's own cohort and sex.
 3. Advance the second-order survival: `l_a(t)`, `l_s(t)` from `l(t − 1)` and `mort_rate_mth(t − 1)`.
 4. Set `γ(t)` and `is_payment_mth(t)`.
@@ -715,7 +715,7 @@ becomes a test.
 7. **Indexing the mortality surface by projection year instead of by birth year.** A period-table
    implementation reads age 66 in calendar year 2026 and walks diagonally across cohorts; a
    generational one reads `(g = 1960, x = 66)` whatever the projection year. Assert that two points
-   with the same `entry_age` and different `birth_year` give **different** `mort_rate` at the same
+   with the same `issue_age` and different `birth_year` give **different** `mort_rate` at the same
    attained age.
 8. **Shipping a period-table proxy at all.** A period proxy applied to a forty-year annuity
    understates the liability by a margin that dwarfs every other assumption [REG-R49]. Assert
@@ -802,7 +802,7 @@ Behaviour enters the **basis**, not the projection, as selection effects **[std]
 
 **Configuration.** Model point 1, the anchor cell, is the representative design of `product-spec.md`
 with every attribute stated: `policy_id = SOF-000001`; `single_prem = 100,000.00 €`;
-`entry_age = 65`; `entry_year = 2025`; `birth_year = 1960`; `sex = M`; `defer_years = 0`, so
+`issue_age = 65`; `entry_year = 2025`; `birth_year = 1960`; `sex = M`; `defer_years = 0`, so
 `defer_mths() = 0` and `first_pay_mth() = 0`; `guar_years = 10`, so `guar_end_mth() = 120` and the
 first 120 monthly instalments are certain; `refund_form = none`; `surv_pct = 0.00`, with `surv_age`,
 `surv_birth_year` and `surv_sex` unused and carried as zeros; `payment_freq = 12` and

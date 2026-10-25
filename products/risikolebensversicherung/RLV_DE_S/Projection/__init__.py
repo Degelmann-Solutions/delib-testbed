@@ -66,7 +66,7 @@ Each table has a filename Reference and a reader Cells, both on
 Reference                 Cells                              File
 ========================  =================================  ==========================
 model_point_file          data.model_point_table()           model_point_table.csv
-mort_table_file           data.mort_table()                  mort_table.csv
+mort_file                 data.mort_table()                  mort_table.csv
 benefit_schedule_file     data.benefit_schedule()            benefit_schedule.csv
 nvg_schedule_file         data.nvg_schedule()                nvg_schedule.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
@@ -394,38 +394,6 @@ def policy_id():
     return model_point()["policy_id"]
 
 
-def issue_age():
-    """The *Eintrittsalter* of the first *versicherte Person*.
-
-    The age basis is *Alter am Jahrestag* — the attained age at the policy anniversary,
-    which is also this model's projection step, so ``age(t) = issue_age + t``
-    exactly.  Germany has no counterpart to the French *différence de millésime*, where
-    the rating age steps on 1 January irrespective of birth month; on a real-date
-    implementation the offset here is at most a few months **[std]**.
-    """
-    return int(model_point()["issue_age"])
-
-
-def sex():
-    """The first life's sex, M or F.  **Decrement only — it must never enter pricing.**
-
-    Art. 5(2) of the Gender Directive was struck down by *Test-Achats* with effect for
-    contracts concluded from 21 December 2012, so no German premium written since may
-    differ by sex.  :func:`mort_rate_tar` therefore reads the **blend** of the two tables
-    and never this cells, while :func:`mort_rate` reads it and nothing else does.
-
-    The tension worth knowing is that DAV 2008 T is itself sex-distinct, so every German
-    unisex term tariff is a blend at a mixing ratio the carrier chooses from its own
-    expected new-business mix — proprietary, unpublished and periodically re-estimated.
-    ``sex_mix_male`` is the model's **[std]** 50/50 stand-in for it, and it is one of the
-    largest single sources of unexplained rate spread between German carriers.
-    """
-    v = model_point()["sex"]
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
-
-
 def smoker():
     """The first life's *Raucher* / *Nichtraucher* status, R or N.
 
@@ -435,6 +403,10 @@ def smoker():
     without a *Gesundheitsprüfung***, which is why simplified-issue German death covers
     are aggregate-rated.  It enters both mortality bases, so a smoker pays more *and* is
     expected to claim more.
+
+    Override reason: the product codes a smoker as ``R`` (*Raucher*), as its
+    ``mort_table.csv`` does, products/risikolebensversicherung/technical-notes.md, section
+    Model point attributes
     """
     v = model_point()["smoker"]
     if v not in ("N", "R"):
@@ -451,11 +423,6 @@ def sum_assured():
     return float(model_point()["sum_assured"])
 
 
-def policy_term():
-    """The *Versicherungsdauer* in whole years; equals :func:`proj_len`."""
-    return int(model_point()["policy_term"])
-
-
 def prem_term():
     """k: the *Beitragszahlungsdauer* in whole years, at most :func:`policy_term`.
 
@@ -464,6 +431,10 @@ def prem_term():
     that builds the largest *Deckungskapital* in the shipped set, and the one HGB § 341f
     has in mind when it requires a provision for future administration costs where the
     paying period is shorter than the cover period.
+
+    Override reason: the attribute is specified as ``1 <= prem_term <= policy_term``, and
+    the cell checks the range, products/risikolebensversicherung/technical-notes.md, section
+    Model point attributes
     """
     k = int(model_point()["prem_term"])
     if k < 1 or k > policy_term():

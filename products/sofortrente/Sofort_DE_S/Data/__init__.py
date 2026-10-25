@@ -31,7 +31,7 @@ and a reader Cells:
 Reference                     Cells                           File
 ============================  ==============================  ================================
 model_point_file              model_point_table()             model_point_table.csv
-mort_table_file               mort_table()                    mort_table.csv
+mort_file                     mort_table()                    mort_table.csv
 improvement_file              improvement_table()             improvement_table.csv
 surplus_scale_file            surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
@@ -102,7 +102,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = None
 
-_bases = []
+_bases = [
+    ".CoreData"
+]
 
 _allow_none = None
 
@@ -110,27 +112,6 @@ _spaces = []
 
 # ---------------------------------------------------------------------------
 # Cells
-
-def input_dir():
-    """The directory holding the input CSVs: the model folder's parent.
-
-    Inputs are *external* files, not data stored inside the model, so the model folder is
-    pure formulas.  The path is resolved at run time from where the model was read,
-    following ``annuallife.TradLife_A``.
-    """
-    return _model.path.parent                                        # noqa: F821
-
-
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*.
-
-    Fourteen points, indexed by ``point_id``.  The only input file without a
-    ``provenance`` column: a model point is a configuration rather than an assumption, and
-    its columns are one contract's own terms.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
 
 def mort_table():
     """The annual death rates by basis, sex and attained age, from *mort_table.csv*.
@@ -142,9 +123,13 @@ def mort_table():
 
     A **[std]** proxy, not DAV 2004 R; see the Space docstring for what it is, what its
     anchor is and what a replacement must preserve.
+
+    Override reason: the table carries a first- and a second-order basis, keyed by
+    ``basis``, ``sex`` and ``age``, products/sofortrente/technical-notes.md, section Input
+    files
     """
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
+        input_dir() / mort_file,                                     # noqa: F821
         index_col=["basis", "sex", "age"])
 
 
@@ -196,7 +181,7 @@ def hoechstrechnungszins_table():
 
 model_point_file = "model_point_table.csv"
 
-mort_table_file = "mort_table.csv"
+mort_file = "mort_table.csv"
 
 improvement_file = "improvement_table.csv"
 

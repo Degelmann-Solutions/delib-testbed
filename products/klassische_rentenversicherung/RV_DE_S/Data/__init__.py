@@ -35,7 +35,7 @@ decl_rate_file            decl_rate_table()             decl_rate_table.csv
 rentenfaktor_file         rentenfaktor_table()          rentenfaktor_table.csv
 charge_file               charge_table()                charge_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
-freq_load_file            freq_load_table()             freq_load_table.csv
+freq_loading_file         freq_loading_table()          freq_load_table.csv
 param_file                param_table()                 param_table.csv
 ========================  ============================  ==========================
 
@@ -103,7 +103,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = None
 
-_bases = []
+_bases = [
+    ".CoreData"
+]
 
 _allow_none = None
 
@@ -111,45 +113,6 @@ _spaces = []
 
 # ---------------------------------------------------------------------------
 # Cells
-
-def input_dir():
-    """The directory holding the input CSVs: the model folder's parent.
-
-    Inputs are *external* files, not data stored inside the model, so the model folder is
-    pure formulas.  The path is resolved at run time from where the model was read,
-    following ``annuallife.TradLife_A``.
-    """
-    return _model.path.parent                                        # noqa: F821
-
-
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*, indexed by ``point_id``.
-
-    Fourteen policies, thirty columns.  The one input file exempt from the ``provenance``
-    rule: a model point is a *configuration* — one policy's own terms — rather than an
-    assumption.  Point 1 is the anchor cell of the technical notes' worked example.
-
-    The two in-force points, 6 and 14, carry opening balances (``av_pp_init``,
-    ``av_sur_pp_init``, ``prem_cum_pp_init``, ``alpha_amort_pp_init``) that are the
-    balances this model's own recursion produces for the same contract run from inception,
-    so an in-force cell is the continuation of a projectable contract rather than a
-    free-standing guess.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
-
-def mort_table():
-    """The generational mortality proxy by ``(sex, age)``, from *mort_table.csv*.
-
-    Two columns: ``q_base``, the first-order annual death rate in the 2005 base year, and
-    ``improve``, the annual mortality improvement rate applied from that base year.  A
-    **[std]** proxy, not DAV 2004 R; see the Space docstring for what it is, what it is
-    anchored on and what a replacement must preserve.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col=["sex", "age"])           # noqa: F821
-
 
 def decl_rate_table():
     """The declared *laufende Verzinsung* by ``(scenario_id, calendar_year)``.
@@ -162,19 +125,6 @@ def decl_rate_table():
     return pd.read_csv(                                              # noqa: F821
         input_dir() / decl_rate_file,                                # noqa: F821
         index_col=["scenario_id", "calendar_year"])
-
-
-def rentenfaktor_table():
-    """The *aktueller Rentenfaktor* by ``(rf_scenario_id, age)``, from *rentenfaktor_table.csv*.
-
-    ``annuity_rate_curr`` is the monthly annuity per 10 000 € of conversion capital at the
-    annuitant's attained age at *Rentenbeginn*, on the carrier's then-current
-    immediate-annuity tariff.  Three **[std]** scenario paths — ``base``, ``low``,
-    ``high`` — anchored at age 67 on 32,00 €, 25,50 € and 35,00 €.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / rentenfaktor_file,                             # noqa: F821
-        index_col=["rf_scenario_id", "age"])
 
 
 def charge_table():
@@ -208,34 +158,12 @@ def lapse_table():
     Schicht-3 surrenders are suppressed approaching duration 12 and spike at it.  Surrender
     is zero from the *Rentenbeginn*, which is imposed in
     :func:`~.RV_DE_S.Projection.lapse_rate` rather than carried in the table.
+
+    Override reason: the table keys the 1-based contractual policy year as ``duration``,
+    products/klassische_rentenversicherung/technical-notes.md, section Assumption inputs
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / lapse_file, index_col="duration")              # noqa: F821
-
-
-def freq_load_table():
-    """The *Ratenzahlungszuschlag* by payment frequency, from *freq_load_table.csv*.
-
-    ``freq_load`` is the multiplier on the annual gross premium and ``n_instalments`` the
-    number of instalments a year, carried for documentation: the annual grid charges the
-    loaded annual amount at the start of the year and does not model the instalments
-    themselves.  Levels are **[std]**; no German carrier's loading was established.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_load_file, index_col="prem_freq")         # noqa: F821
-
-
-def param_table():
-    """The scalar assumptions by ``item``, from *param_table.csv*.
-
-    Every scalar that is neither a charge nor a rate table: the four expense levels and
-    their inflation, ``mort_be_factor`` and ``mort_base_year``, ``omega_age``,
-    ``val_reserve_rate``, the three *Überschussrente* parameters and ``roll_fwd_tol``.
-    They live in a file rather than in ``Projection`` References so that each one carries
-    its own provenance tag, which a Reference cannot.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / param_file, index_col="item")                  # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -253,7 +181,7 @@ charge_file = "charge_table.csv"
 
 lapse_file = "lapse_table.csv"
 
-freq_load_file = "freq_load_table.csv"
+freq_loading_file = "freq_load_table.csv"
 
 param_file = "param_table.csv"
 

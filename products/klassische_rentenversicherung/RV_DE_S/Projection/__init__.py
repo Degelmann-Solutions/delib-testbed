@@ -132,7 +132,7 @@ decl_rate_file            data.decl_rate_table()             decl_rate_table.csv
 rentenfaktor_file         data.rentenfaktor_table()          rentenfaktor_table.csv
 charge_file               data.charge_table()                charge_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
-freq_load_file            data.freq_load_table()             freq_load_table.csv
+freq_loading_file         data.freq_loading_table()          freq_load_table.csv
 param_file                data.param_table()                 param_table.csv
 ========================  =================================  ==========================
 
@@ -441,7 +441,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = lambda point_id: None
 
-_bases = []
+_bases = [
+    ".CoreProjection"
+]
 
 _allow_none = None
 
@@ -451,15 +453,6 @@ _spaces = []
 # Cells
 #
 # The model point and the frame
-
-
-def model_point():
-    """The selected model point as a Series, from *model_point_table.csv*.
-
-    Thirty columns; the projection reads them through this one cells so that a model point
-    is fetched once per ItemSpace.  Point 1 is the technical notes' worked-example anchor.
-    """
-    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def omega_age():
@@ -479,7 +472,7 @@ def proj_len_y():
     silently drops the tail the *Rentenfaktor* was priced for.  **71** on the anchor cell,
     whose last policy year ends at attained age 121.
     """
-    return omega_age() - int(model_point()["issue_age"])
+    return omega_age() - issue_age()
 
 
 def proj_len():
@@ -557,7 +550,7 @@ def policy_year(t):
 
 def age_y(k):
     """x(k): the attained age at the start of policy year k, ``issue_age + k``."""
-    return int(model_point()["issue_age"]) + k
+    return issue_age() + k
 
 
 def age(t):
@@ -648,7 +641,7 @@ def freq_load():
     makes the *Versicherungsperiode* genuinely monthly and two model points differ in nothing
     else, which is what justifies the instalment stream.
     """
-    return float(data.freq_load_table().at[                          # noqa: F821
+    return float(data.freq_loading_table().at[                       # noqa: F821
         model_point()["prem_freq"], "freq_load"])
 
 
@@ -665,7 +658,7 @@ def prem_pp_sched(k):
     this cells and not :func:`prem_pp`.
     """
     mp = model_point()
-    if k < 0 or k >= int(mp["aufschub_y"]) or k >= int(mp["prem_term_y"]):
+    if k < 0 or k >= int(mp["aufschub_y"]) or k >= prem_term_y():
         return 0.0
     if mp["premium_form"] == "einmal":
         return float(mp["premium_single_pp"]) if k == 0 else 0.0
@@ -692,7 +685,7 @@ def beitragssumme_pp():
     *Beitragsfreistellung* does not shrink it.
     """
     mp = model_point()
-    last = min(int(mp["prem_term_y"]), int(mp["aufschub_y"]))
+    last = min(prem_term_y(), int(mp["aufschub_y"]))
     return sum(prem_pp_sched(u) for u in range(last))
 
 
@@ -1146,7 +1139,7 @@ def mort_rate_at_age(x):
     Deutsche Aktuarvereinigung, is not public and is not redistributed here.
     """
     return float(data.mort_table().at[                               # noqa: F821
-        (model_point()["sex"], int(x)), "q_base"])
+        (sex(), int(x)), "q_base"])
 
 
 def improve_rate(x):
@@ -1157,7 +1150,7 @@ def improve_rate(x):
     construction uses, documented as one rather than presented as a replication.
     """
     return float(data.mort_table().at[                               # noqa: F821
-        (model_point()["sex"], int(x)), "improve"])
+        (sex(), int(x)), "improve"])
 
 
 def mort_rate_guar(t):
@@ -1680,7 +1673,7 @@ def annuity_rate_curr():
     """
     mp = model_point()
     return float(data.rentenfaktor_table().at[                       # noqa: F821
-        (mp["rf_scenario_id"], int(mp["issue_age"]) + int(mp["aufschub_y"])),
+        (mp["rf_scenario_id"], issue_age() + int(mp["aufschub_y"])),
         "annuity_rate_curr"])
 
 

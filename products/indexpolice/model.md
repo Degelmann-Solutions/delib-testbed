@@ -67,7 +67,7 @@ is, how each index path was built and which rows a replacement must preserve.
 
 `t` is the **policy month index, 0-based and counted from issue**, and
 `proj_len() = 12 × proj_len_y()` is the frame's **exclusive** end, with
-`proj_len_y() = ann_start_age − entry_age` the number of policy years. The anchor publishes
+`proj_len_y() = ann_start_age − issue_age` the number of policy years. The anchor publishes
 **324 rows, `t` = 0 to 323**, twenty-seven policy years; an in-force point opens at
 `t_start() = 12 × dur_init`, so model point 8 (`dur_init = 8`) runs `t = 96 … 323`, 228
 rows, and still reports `proj_len_y() = 27`.
@@ -344,7 +344,7 @@ is checked out.
 | `election_file` | `election_table()` | `election_table.csv` |
 | `mort_file` | `mort_table()` | `mort_table.csv` |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` |
-| `freq_load_file` | `freq_load_table()` | `freq_load_table.csv` |
+| `freq_loading_file` | `freq_loading_table()` | `freq_load_table.csv` |
 
 **The trade-off:** the model is not portable on its own. Copy `Index_DE_S/` without the CSVs
 and it will read fine, then fail on first evaluation. What you gain is that a diff of the
@@ -370,7 +370,7 @@ election path holds `w = 1` through `k = 14`, and the two constructed *Indexjahr
 `mort_table.csv` is keyed on `(sex, age)` and `freq_load_table.csv` on `prem_freq`, neither
 of them time axes. In `model_point_table.csv` nothing shifts: `dur_init` is an elapsed count
 of completed policy years and is 0-based by nature — it *is* `t_start()` — while
-`prem_term_y` is a term length, `entry_age` and `ann_start_age` are ages, and none of them
+`prem_term_y` is a term length, `issue_age` and `ann_start_age` are ages, and none of them
 is a point on the frame's axis.
 
 | File | Contents | Provenance |

@@ -9,12 +9,16 @@ Phase 3 changes product files and adds symlinks to the common core (``docs/core.
 product's ``UPSTREAM.md`` names every such path in its section ``## Changed in phase 3``;
 the hash check skips the listed files, which stay in the hash table with upstream's hash,
 and every symlink in a product folder must be listed and resolve to a core space folder.
+A listed change starting ``added:`` that is no symlink names a regular file phase 3 added,
+which has no upstream hash; one starting ``removed:`` names a copied file phase 3 removed,
+which keeps its row in the hash table and must be absent.
 """
 from __future__ import annotations
 
 import hashlib
 import os
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -68,6 +72,19 @@ def changed_in_phase_3(product: str) -> dict[str, str]:
     return dict(re.findall(r"^\| `([^`]+)` \| (.*\S) \|$", section, re.MULTILINE))
 
 
+def added_files(product: str) -> set[str]:
+    """Regular files listed as ``added:`` under ``## Changed in phase 3`` (symlinks excluded)."""
+    links = symlinks(PRODUCTS_DIR / product)
+    return {name for name, change in changed_in_phase_3(product).items()
+            if change.startswith("added:") and name not in links}
+
+
+def removed_files(product: str) -> set[str]:
+    """Copied files listed as ``removed:`` under ``## Changed in phase 3``."""
+    return {name for name, change in changed_in_phase_3(product).items()
+            if change.startswith("removed:")}
+
+
 def symlinks(folder: Path) -> set[str]:
     """Every symlink below ``folder``, without descending into symlinked directories."""
     found = set()
@@ -100,7 +117,8 @@ def test_upstream_md_lists_exactly_the_files_present(product):
     assert len(recorded) == count + 1
     assert recorded["LICENSE-lifelib.txt"] == LICENSE_SHA256
     assert f"{model}/_system.json" in recorded
-    assert present_files(PRODUCTS_DIR / product) == set(recorded) | {"UPSTREAM.md"}
+    expected = (set(recorded) - removed_files(product)) | added_files(product) | {"UPSTREAM.md"}
+    assert present_files(PRODUCTS_DIR / product) == expected
 
 
 @pytest.mark.parametrize("product", sorted(PRODUCTS))
@@ -118,11 +136,20 @@ def test_changed_in_phase_3_lists_hashed_files_and_core_symlinks_only(product):
     folder = PRODUCTS_DIR / product
     recorded = recorded_hashes(product)
     links = symlinks(folder)
+    added = added_files(product)
+    removed = removed_files(product)
     for name in changed_in_phase_3(product):
         path = folder / name
         if name in links:
             continue
+        if name in removed:
+            assert name in recorded, f"{product}/{name} is listed as removed but not in the hash table"
+            assert not path.exists(), f"{product}/{name} is listed as removed but present"
+            continue
         assert path.is_file(), f"{product}/{name} is listed as changed but is no file or symlink"
+        if name in added:
+            assert name not in recorded, f"{product}/{name} is listed as added but in the hash table"
+            continue
         assert name in recorded, f"{product}/{name} is listed as changed but not in the hash table"
 
 
@@ -165,3 +192,19 @@ def test_no_modelx_writer_is_mentioned_in_tools():
             source = source.replace("export_model", "")
         for writer in WRITERS:
             assert writer not in source, f"{path.relative_to(ROOT)} mentions {writer}"
+
+
+def test_added_and_removed_files_are_read_from_changed_in_phase_3(tmp_path, monkeypatch):
+    product = tmp_path / "probe"
+    (product / "M").mkdir(parents=True)
+    (product / "M" / "Core").symlink_to(tmp_path)
+    (product / "UPSTREAM.md").write_text(
+        "| `a.csv` | `" + "0" * 64 + "` |\n"
+        "\n## Changed in phase 3\n\n| Path | Change |\n|---|---|\n"
+        "| `a.csv` | removed: merged into `b.csv` |\n"
+        "| `b.csv` | added: merged from `a.csv` |\n"
+        "| `M/Core` | added: symlink to the core space folder |\n"
+        "| `M/x.py` | cell renamed |\n", encoding="utf-8")
+    monkeypatch.setattr(sys.modules[__name__], "PRODUCTS_DIR", tmp_path)
+    assert added_files("probe") == {"b.csv"}
+    assert removed_files("probe") == {"a.csv"}

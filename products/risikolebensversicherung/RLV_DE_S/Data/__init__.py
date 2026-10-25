@@ -31,7 +31,7 @@ and a reader Cells:
 Reference                 Cells                         File
 ========================  ============================  ==========================
 model_point_file          model_point_table()           model_point_table.csv
-mort_table_file           mort_table()                  mort_table.csv
+mort_file                 mort_table()                  mort_table.csv
 benefit_schedule_file     benefit_schedule()            benefit_schedule.csv
 nvg_schedule_file         nvg_schedule()                nvg_schedule.csv
 lapse_file                lapse_table()                 lapse_table.csv
@@ -145,27 +145,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def input_dir():
-    """The directory holding the input CSVs: the model folder's parent.
-
-    Inputs are *external* files, not data stored inside the model, so the model folder is
-    pure formulas.  The path is resolved at run time from where the model was read,
-    following ``annuallife.TradLife_A``.
-    """
-    return _model.path.parent                                        # noqa: F821
-
-
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*.
-
-    The one input file with no ``provenance`` column, and the only one exempt from the
-    rule: a model point is a *configuration* — one policy's issue age, sum insured,
-    *Zahlweise* and schedule ids — rather than an assumption about the world.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
-
 def mort_table():
     """The second-order annual death rates, from *mort_table.csv*.
 
@@ -176,9 +155,13 @@ def mort_table():
     The first-order tariff rate is built from it in ``Projection.mort_rate_tar`` by taking
     the unisex blend and applying the *Sicherheitszuschlag*, so there is exactly one
     unsourced mortality level in the model rather than two stacked on each other.
+
+    Override reason: the table carries a table id and the smoker split, keyed by
+    ``table_id``, ``sex``, ``smoker`` and ``age``,
+    products/risikolebensversicherung/technical-notes.md, section External inputs
     """
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
+        input_dir() / mort_file,                                     # noqa: F821
         index_col=["table_id", "sex", "smoker", "age"])
 
 
@@ -210,36 +193,12 @@ def nvg_schedule():
         index_col=["nvg_id", "policy_year"])
 
 
-def lapse_table():
-    """The annual lapse rates by **1-based** policy year, read from *lapse_table.csv*.
-
-    Entirely **[std]**: no *Risikoversicherung*-specific German rate exists in the source
-    corpus, and the whole-market *Stornoquote* is deliberately not used.  The final policy
-    year's row is a live 3 % and is overridden to zero by ``Projection.lapse_rate``, which
-    is where the convention belongs — the zero is a property of the last policy year, not
-    of the table.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
-
-
-def freq_loading_table():
-    """The *Ratenzahlungszuschlag* and instalment count by *Zahlweise*.
-
-    Read from *freq_loading_table.csv*: the multiplier ``prem_freq_load`` applied to the
-    billed amount, and ``instalments``, the number of payments a year, which is carried
-    for reporting and enters no cash flow on an annual grid.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
-
-
 # ---------------------------------------------------------------------------
 # References
 
 model_point_file = "model_point_table.csv"
 
-mort_table_file = "mort_table.csv"
+mort_file = "mort_table.csv"
 
 benefit_schedule_file = "benefit_schedule.csv"
 

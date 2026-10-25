@@ -80,7 +80,7 @@ reached here through the ``data`` Reference:
 Reference                 Cells                              File
 ========================  =================================  ==========================
 model_point_file          data.model_point_table()           model_point_table.csv
-mort_table_file           data.mort_table()                  mort_table.csv
+mort_file                 data.mort_table()                  mort_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 surplus_rate_file         data.surplus_rate_table()          surplus_rate_table.csv
 cost_file                 data.cost_table()                  cost_table.csv
@@ -392,7 +392,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = lambda point_id: None
 
-_bases = []
+_bases = [
+    ".CoreProjection"
+]
 
 _allow_none = None
 
@@ -403,44 +405,9 @@ _spaces = []
 
 # --- the model point -------------------------------------------------------
 
-def model_point():
-    """The selected model point as a Series, indexed by ``point_id``."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
-
-
 def policy_id():
     """The policy identifier of the selected model point, e.g. ``DE-KLV-0001``."""
     return model_point()["policy_id"]
-
-
-def sex():
-    """The insured's sex, M or F.  **Decrement lookup only - never a pricing input.**
-
-    § 20 Abs. 2 Satz 1 AGG was repealed and German new business has been unisex since
-    21 December 2012, so :func:`prem_gross_pp` must be identical for two model points
-    differing only here.  The first-order table is nevertheless sex-specific, because that
-    is the raw material a unisex tariff blends; the blend itself is **[std]** and this model
-    prices every point on its own ``sex`` row only through the *decrements*, which is what
-    model points 1 and 7 exist to make visible.
-    """
-    v = model_point()["sex"]
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
-
-
-def smoker():
-    """The insured's smoker status, N or S.
-
-    Carried because the *Gesundheitsprüfung* asks, and because it is what a *Risikozuschlag*
-    would be struck on.  It feeds :func:`rating_factor` through the model point rather than
-    through a formula: DAV 2008 T R / NR exist for smoker-differentiated pricing but are not
-    public, and no German insurer publishes a loading scale.
-    """
-    v = model_point()["smoker"]
-    if v not in ("N", "S"):
-        raise ValueError("invalid smoker")
-    return v
 
 
 def issue_year():
@@ -452,16 +419,6 @@ def issue_year():
     :func:`check_rechnungszins_cap` is a model invariant rather than a build script.
     """
     return int(model_point()["issue_year"])
-
-
-def issue_age():
-    """The age last birthday at issue, stepping at the policy anniversary **[std]**.
-
-    No located German endowment wording states an age basis, so the convention is a
-    standardization.  On this annual grid an implementation on real dates carries a
-    fractional offset of at most one year.
-    """
-    return int(model_point()["issue_age"])
 
 
 def duration_init():
@@ -484,27 +441,6 @@ def pols_if_init():
     ``result_cf()``'s first ``pols_if`` must equal it exactly.
     """
     return float(model_point()["pols_if_init"])
-
-
-def policy_term():
-    """n: the *Versicherungsdauer* in years.  Equals :func:`proj_len`.
-
-    The *Ablauf* falls at the end of the last policy year, index ``n - 1`` on the frame, and
-    the *Erlebensfallleistung* is paid there to the survivors of that year's mortality.
-    """
-    return int(model_point()["policy_term"])
-
-
-def prem_term():
-    """m: the *Beitragszahlungsdauer* in years, at most :func:`policy_term`.
-
-    ``m = 1`` is the *Einmalbeitrag* - the other premium form, and the case in which
-    ``ann_due_prem_1st()`` collapses to 1, the *Beitragssumme* to the single premium itself
-    and the 25 ‰ *Zillmersatz* to almost nothing.  ``m < n`` is the *abgekürzte
-    Beitragszahlungsdauer*: premiums stop while cover runs on, and the reserve then rolls
-    forward with no premium at all.
-    """
-    return int(model_point()["prem_term"])
 
 
 def sum_assured():

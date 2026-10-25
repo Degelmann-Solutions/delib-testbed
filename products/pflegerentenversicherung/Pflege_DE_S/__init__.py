@@ -44,7 +44,7 @@ ledgers rather than from the closed form.
 **Spaces.** The model contains two:
 
 :mod:`~.Pflege_DE_S.Data`
-    Reads the nine input CSVs and holds their filename References. It takes no
+    Reads the eight input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.Pflege_DE_S.Projection`
@@ -67,7 +67,7 @@ refinement of an annual one: the *Pflegerente* is a monthly annuity, the *Beitra
 monthly instalment, and the *Pflegegrad* can change in any month. ``t`` is the policy
 month index, 0-based; the frame starts at ``duration_mth_init()`` — ``0`` for new
 business, the elapsed duration for an in-force point — and runs to ``proj_len() - 1``,
-where ``proj_len() = 12 * (omega_age - age_at_entry)`` is the **number of projected
+where ``proj_len() = 12 * (omega_age - issue_age)`` is the **number of projected
 months**, the exclusive end of the frame. The *Beitrag*, the *Pflegerente*
 and the per-policy expenses fall at the **start** of the month; transitions act over the
 month; surrender and death benefits fall at the **end** of it.
@@ -112,6 +112,8 @@ _name = "Pflege_DE_S"
 _allow_none = False
 
 _spaces = [
+    "CoreData",
+    "CoreProjection",
     "Data",
     "Projection"
 ]

@@ -31,13 +31,13 @@ and a reader Cells:
 Reference                  Cells                           File
 =========================  ==============================  ==========================
 model_point_file           model_point_table()             model_point_table.csv
-mort_accum_file            mort_table_accum()              mort_table_accum.csv
+mort_file                  mort_table()                    mort_table_accum.csv
 annuity_mort_file          annuity_mort_table()            annuity_mort_table.csv
 lapse_file                 lapse_table()                   lapse_table.csv
 zulage_file                zulage_schedule()               zulage_schedule.csv
 income_file                income_schedule()               income_schedule.csv
 surplus_file               surplus_scenario()              surplus_scenario.csv
-freq_loading_file          freq_loading()                  freq_loading.csv
+freq_loading_file          freq_loading_table()            freq_loading.csv
 =========================  ==============================  ==========================
 
 **Every file but ``model_point_table.csv`` carries a per-row ``provenance`` column**,
@@ -87,7 +87,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = None
 
-_bases = []
+_bases = [
+    ".CoreData"
+]
 
 _allow_none = None
 
@@ -96,40 +98,20 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def input_dir():
-    """The directory holding the input CSVs: the model folder's parent.
-
-    Inputs are *external* files, not data stored inside the model, so the model folder is
-    pure formulas.  The path is resolved at run time from where the model was read,
-    following ``annuallife.TradLife_A``.
-    """
-    return _model.path.parent                                        # noqa: F821
-
-
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*.
-
-    Indexed by ``point_id``, one row per policy, twenty-six columns.  This is the one
-    input file with **no** ``provenance`` column, and the only exemption in the library: a
-    model point is a *configuration* — one policy's own terms — rather than an assumption,
-    so a per-row tag would repeat the same provenance once per policy while saying nothing
-    about any assumption.  Where a column is an assumption in disguise (``rechnungszins``,
-    the opening balances) the technical notes carry the tag.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
-
-def mort_table_accum():
+def mort_table():
     """Accumulation-phase death rates by attained age, from *mort_table_accum.csv*.
 
     A **[std]** proxy for **DAV 2008 T**, which is proprietary and is not redistributed
     here; see the Space docstring for the anchor a replacement must preserve.  Ages 16 to
     110, no improvement dimension: a first-order death basis does not anticipate mortality
     improvement, because on a death cover improvement favours the insurer.
+
+    Override reason: the death basis of the *Aufschubzeit* has no sex key, ``qx`` by ``age``
+    alone (``qx``); the annuitant table is separate, products/riester_rente/technical-notes.md,
+    section Model inputs
     """
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_accum_file, index_col="age")              # noqa: F821
+        input_dir() / mort_file, index_col="age")                    # noqa: F821
 
 
 def annuity_mort_table():
@@ -158,6 +140,10 @@ def lapse_table():
     *Anbieterwechsel* under the statutory *Wechselrecht*, which carries none of those
     consequences.  The second is set **above** the first at every duration for that
     reason, and a model of this book carrying only a lapse rate has mis-specified it.
+
+    Override reason: the table keys the 1-based contract year as ``duration`` and carries a
+    ``transfer_rate`` beside the lapse rate, products/riester_rente/technical-notes.md,
+    section Model inputs
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / lapse_file, index_col="duration")              # noqa: F821
@@ -210,24 +196,12 @@ def surplus_scenario():
         input_dir() / surplus_file, index_col=["scenario_id", "t"])  # noqa: F821
 
 
-def freq_loading():
-    """The *Ratenzuschlag* multiplier by payment frequency, from *freq_loading.csv*.
-
-    A **charge** and never a credit: the saver pays ``eigenbeitrag_pp x load`` while only
-    ``eigenbeitrag_pp`` reaches the *Sparbeitrag* base and the *Beitragsgarantie*, so the
-    loading enlarges the premium income and nothing else.  Crediting it to the account is
-    a listed modeling pitfall.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
-
-
 # ---------------------------------------------------------------------------
 # References
 
 model_point_file = "model_point_table.csv"
 
-mort_accum_file = "mort_table_accum.csv"
+mort_file = "mort_table_accum.csv"
 
 annuity_mort_file = "annuity_mort_table.csv"
 

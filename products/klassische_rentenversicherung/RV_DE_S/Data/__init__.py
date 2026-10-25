@@ -127,19 +127,6 @@ def decl_rate_table():
         index_col=["scenario_id", "calendar_year"])
 
 
-def rentenfaktor_table():
-    """The *aktueller Rentenfaktor* by ``(rf_scenario_id, age)``, from *rentenfaktor_table.csv*.
-
-    ``annuity_rate_curr`` is the monthly annuity per 10 000 € of conversion capital at the
-    annuitant's attained age at *Rentenbeginn*, on the carrier's then-current
-    immediate-annuity tariff.  Three **[std]** scenario paths — ``base``, ``low``,
-    ``high`` — anchored at age 67 on 32,00 €, 25,50 € and 35,00 €.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / rentenfaktor_file,                             # noqa: F821
-        index_col=["rf_scenario_id", "age"])
-
-
 def charge_table():
     """The tariff charge set by ``(charge_id, item)``, from *charge_table.csv*.
 

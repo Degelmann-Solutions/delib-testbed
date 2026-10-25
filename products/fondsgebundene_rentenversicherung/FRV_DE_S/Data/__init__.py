@@ -163,6 +163,10 @@ def rentenfaktor_table():
     docstring for the derivation and for what the underlying DAV 2004 R basis requires of
     a replacement.  The table is indexed by the **age at *Rentenbeginn***, not by the
     attained age in the last projected month, which is one lower.
+
+    Override reason: the table carries a guaranteed and a current factor per ``factor_id``
+    and ``annuity_age``, products/fondsgebundene_rentenversicherung/technical-notes.md,
+    section *Rentenbeginn*
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / rentenfaktor_file,                             # noqa: F821

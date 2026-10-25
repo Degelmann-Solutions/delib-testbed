@@ -155,19 +155,6 @@ def surplus_table():
         index_col=["scenario_id", "t"])
 
 
-def rentenfaktor_table():
-    """The *aktueller Rentenfaktor* by scenario and conversion age.
-
-    Read from *rentenfaktor_table.csv*, indexed by ``rf_scenario_id`` and ``age``:
-    ``rf_curr`` is euro of monthly annuity per 10 000 € of capital at *Rentenbeginn*.
-    Entirely **[std]** — no *Rentenfaktor* level, range or time series exists anywhere in
-    the delib corpus.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / rentenfaktor_file,                             # noqa: F821
-        index_col=["rf_scenario_id", "age"])
-
-
 def charge_table():
     """The charge, expense and commission scale by tariff, from *charge_table.csv*.
 

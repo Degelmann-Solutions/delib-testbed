@@ -169,6 +169,9 @@ CORE_CELLS = {
                         "pflegerentenversicherung": "derived",
                         "riester_rente": "override",
                         "risikolebensversicherung": "derived"},
+        "rentenfaktor_table": {"basisrente": "derived",
+                               "fondsgebundene_rentenversicherung": "override",
+                               "klassische_rentenversicherung": "derived"},
     },
     "Projection": {
         "model_point": dict.fromkeys(MODELS, "derived"),

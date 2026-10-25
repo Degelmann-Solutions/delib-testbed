@@ -47,7 +47,7 @@ Phase 3 changes these files and adds these symlinks to take shared cells from th
 | Path | Change |
 |---|---|
 | `Basis_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection` |
-| `Basis_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it; Reference `mort_table_file` renamed `mort_file`; `mort_table` overrides the core with a reason (index columns) |
+| `Basis_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it; Reference `mort_table_file` renamed `mort_file`; `mort_table` overrides the core with a reason (index columns); `rentenfaktor_table` moved to the core and inherited from it |
 | `Basis_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; Reference `mort_table_file` renamed `mort_file` in the header table |
 | `model.md` | Reference `mort_table_file` named `mort_file` |
 | `Basis_DE_S/CoreData` | added: symlink to the core space folder `core/Core/Data` |

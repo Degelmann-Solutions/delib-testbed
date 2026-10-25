@@ -57,3 +57,10 @@ def lapse_table():
     """The annual lapse rates by **1-based** ``policy_year``, read from ``lapse_file``."""
     return pd.read_csv(                                              # noqa: F821
         input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
+
+
+def rentenfaktor_table():
+    """The *Rentenfaktor* by ``rf_scenario_id`` and ``age``, from ``rentenfaktor_file``."""
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / rentenfaktor_file,                             # noqa: F821
+        index_col=["rf_scenario_id", "age"])

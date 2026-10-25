@@ -398,18 +398,6 @@ def surr_charge_on():
 
 # --- the frame ---------------------------------------------------------------
 
-def k_start():
-    """``k0``: the first projected **policy year**, ``duration_init()`` — the elapsed years.
-
-    New business starts at 0; an in-force point starts partway through its own term, at
-    the count of policy years it has already completed.  Every annual construction in this
-    model — the premium and its charges, the account, the *Indexjahr*, the
-    *Höchststandsicherung* ledger, the death benefit and the surrender value — is defined
-    from here.
-    """
-    return duration_init()
-
-
 def t_start():
     """``t0``: the frame's first **month**, ``12 x k_start()``.
 

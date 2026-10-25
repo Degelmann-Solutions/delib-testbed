@@ -216,6 +216,9 @@ CORE_CELLS = {
                               "fondsgebundene_rentenversicherung": "derived",
                               "pflegerentenversicherung": "derived",
                               "sofortrente": "derived"},
+        "k_start": {"indexpolice": "derived",
+                    "kapitallebensversicherung": "derived",
+                    "klassische_rentenversicherung": "derived"},
     },
 }
 

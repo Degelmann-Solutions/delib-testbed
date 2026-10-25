@@ -617,16 +617,6 @@ def t_start():
     return 12 * duration_init()
 
 
-def k_start():
-    """The first projected **policy year**: ``duration_init()``.
-
-    The annual clock's counterpart of :func:`t_start`, and the two are the same statement in
-    two units: ``t_start() == 12 * k_start()``.  Every annual cells that has to know where
-    the frame opens reads this one, so the two clocks cannot drift apart.
-    """
-    return duration_init()
-
-
 def duration_mth(t):
     """Completed policy months at the start of month t; equal to ``t``.
 

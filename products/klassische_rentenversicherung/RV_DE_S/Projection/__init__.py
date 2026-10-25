@@ -497,16 +497,6 @@ def t_start():
     return 12 * k_start()
 
 
-def k_start():
-    """The frame's first **policy year**: ``duration_init`` itself.
-
-    The annual clock's counterpart to :func:`t_start`.  Every cells taking a policy year ``k``
-    — the premium, the charges, both accounts, the § 169 floor, the surrender value and the
-    death benefit — is defined from here.
-    """
-    return duration_init()
-
-
 def duration_mth(t):
     """The number of **complete policy months** elapsed at the start of month t: ``t`` itself.
 

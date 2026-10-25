@@ -77,3 +77,8 @@ def duration_init():
 def duration_mth_init():
     """The completed policy months at the valuation date, from the model point."""
     return int(model_point()["duration_mth_init"])                   # noqa: F821
+
+
+def k_start():
+    """The first projected policy year, ``duration_init()``."""
+    return duration_init()                                           # noqa: F821

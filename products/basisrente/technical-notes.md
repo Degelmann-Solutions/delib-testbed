@@ -52,7 +52,7 @@ prose, where they are the name of the thing.
   `duration_y(k) = duration_init + k` completed policy years, so the **policy year** — the
   contractual, 1-based label — is `policy_year(t) = duration(t) + 1`; attained age is
   `age_y(k) = issue_age + duration_init + k` and steps on the **anniversary**; calendar year is
-  `cal_year_y(k) = issue_year + duration_init + k` and steps with it. `duration_mth(t) =
+  `calendar_year_y(k) = issue_year + duration_init + k` and steps with it. `duration_mth(t) =
   12 duration_init + t` is the completed policy months and `is_anniv(t)` — `t % 12 == 11` — the last
   month of a projection year. A new-business model point has `duration_init = 0`, so `k = 0` is its
   first policy year; an in-force point opens at whatever duration it has already run, and **the frame
@@ -121,7 +121,7 @@ prose, where they are the name of the thing.
   anniversary **[std]**: no German convention was established, and here mortality drives the annuity's
   duration rather than any benefit amount, so a half-year offset is second order. `mort_rate` is
   generational and depends on the **calendar** year as well as the age [R17] [REG-R49], which is why
-  `cal_year_y(k)` is carried. Both the age and the calendar year step on the anniversary, so the
+  `calendar_year_y(k)` is carried. Both the age and the calendar year step on the anniversary, so the
   twelve months of a projection year share one annual death rate and `mort_rate_mth` is its
   geometric twelfth.
 
@@ -221,7 +221,7 @@ age-floor cohorts, four guarantee vintages and four boundary cases.
 | `proj_len_y` | Number of projected **years**, `omega_age() − age(0) + 1` | once per model point |
 | `proj_len` | Number of projected **months**, `12 × proj_len_y()`; the frame's exclusive end | once per model point |
 | `ret_y`, `ret_t` | The projection **year** in which *Rentenbeginn* falls, `ret_age − age(0)`, and the **month** of the first instalment, `12 × ret_y()`; **< 0 for a point that opens in payment** | once per model point |
-| `age_y(k)`, `duration_y(k)`, `cal_year_y(k)` | Attained age, completed policy years and calendar year in projection year `k`; `age(t)`, `duration(t)` and `cal_year(t)` read the same quantities from a month | annual, stepping on the anniversary |
+| `age_y(k)`, `duration_y(k)`, `calendar_year_y(k)` | Attained age, completed policy years and calendar year in projection year `k`; `age(t)`, `duration(t)` and `cal_year(t)` read the same quantities from a month | annual, stepping on the anniversary |
 | `pols_if(t)` | Policies in force at the **start** of month `t`, paying and premium-free together; the weight on that same `result_cf()` row | monthly recursion |
 | `pols_paying(t)` | The premium-paying subset at the start of month `t` | monthly recursion |
 | `pols_paidup(t)` | The premium-free subset, `pols_if(t) − pols_paying(t)` | monthly |
@@ -343,7 +343,7 @@ surrender, no assignment, no provider transfer, no commutation. That is the prod
 |---|---|---|
 | `t` | — | projection **month**, **0-based**: `t = 0 … 12n − 1`, `12n = proj_len()` |
 | `k` | `proj_year(t)` | projection **year**, `t // 12`, **0-based**: `k = 0 … n − 1`, `n = proj_len_y()`; the contractual policy year is `d(k) + 1` |
-| `x(k)`, `d(k)`, `y(k)` | `age_y(k)`, `duration_y(k)`, `cal_year_y(k)` | attained age, completed policy years, calendar year in year `k`; all three step on the anniversary |
+| `x(k)`, `d(k)`, `y(k)` | `age_y(k)`, `duration_y(k)`, `calendar_year_y(k)` | attained age, completed policy years, calendar year in year `k`; all three step on the anniversary |
 | `T` | `ret_y()` | the projection year in which *Rentenbeginn* falls; `12T = ret_t()` is the month of the first instalment; `T < 0` for a point that opens in payment |
 | `l(t)`, `lᵖ(t)`, `lᶠ(t)` | `pols_if(t)`, `pols_paying(t)`, `pols_paidup(t)` | in force, premium-paying and premium-free at the start of **month** `t`; `l = lᵖ + lᶠ` |
 | `q(t)` | `mort_rate(t)` | best-estimate **annual** death rate of the year month `t` falls in, `mort_rate_base(t) × mort_be_factor` |
@@ -698,7 +698,7 @@ The order is stated per *Versicherungsjahr*, because that is the order the **con
 the months sit inside it. For `k = 0 … n − 1`, and within each year for `t = 12k … 12k + 11`, in
 exactly this order:
 
-1. **Open the year.** Compute `age_y(k)`, `duration_y(k)`, `cal_year_y(k)`; determine the phase from
+1. **Open the year.** Compute `age_y(k)`, `duration_y(k)`, `calendar_year_y(k)`; determine the phase from
    `k < ret_y()` (*Aufschubphase*) or `k ≥ ret_y()` (*Rentenphase*); take the year's annual rates —
    `mort_rate`, `bf_rate`, `cred_rate` — and the monthly death rate `mort_rate_mth` from the first.
 2. **Open the ledgers.** `pols_paying(12k)` and `pols_paidup(12k)` from the previous month's

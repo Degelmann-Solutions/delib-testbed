@@ -287,6 +287,9 @@ CORE_CELLS = {
                      "riester_rente": "derived",
                      "risikolebensversicherung": "derived",
                      "sofortrente": "override"},
+        "calendar_year_y": {"basisrente": "override",
+                            "klassische_rentenversicherung": "derived",
+                            "riester_rente": "override"},
     },
 }
 

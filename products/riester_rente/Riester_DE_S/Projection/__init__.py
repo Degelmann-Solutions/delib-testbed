@@ -662,6 +662,9 @@ def calendar_year_y(k):
     The projection opens at the **1 January 2027** valuation date on every model point, so
     the calendar axis is common across the table.  It enters only the generational annuity
     basis, where ``annuity_mort_rate(x, tau)`` needs both arguments.
+
+    Override reason: every model point opens at the common 1 January 2027 valuation date,
+    so the calendar year is counted from it, products/riester_rente/technical-notes.md:40
     """
     return valuation_year + k                                        # noqa: F821
 

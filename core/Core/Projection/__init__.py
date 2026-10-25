@@ -132,3 +132,8 @@ def proj_len_y():
 def proj_len():
     """The number of projected months, ``12 x proj_len_y()``; the frame's exclusive end."""
     return 12 * proj_len_y()                                         # noqa: F821
+
+
+def calendar_year_y(k):
+    """The calendar year of policy year k, ``issue_year() + k``."""
+    return issue_year() + k                                          # noqa: F821

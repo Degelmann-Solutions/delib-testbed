@@ -107,7 +107,7 @@ d(k)                       duration_y(k)                   Completed policy year
 d(t)                       duration(t)                     The same, read from a month
 (none)                     duration_mth(t)                 Completed policy months
 (none)                     policy_year(t)                  Contractual 1-based label
-y(k)                       cal_year_y(k)                   Calendar year in year k
+y(k)                       calendar_year_y(k)              Calendar year in year k
 y(t)                       cal_year(t)                     The same, read from a month
 omega                      omega_age()                     Terminal age of the table
 T                          ret_y()                         Projection year of Rentenbeginn
@@ -496,7 +496,7 @@ def duration_mth(t):
     return 12 * duration_init() + t
 
 
-def cal_year_y(k):
+def calendar_year_y(k):
     """y(k): calendar year at the start of projection year k.
 
     ``issue_year + duration_init + k``.  Carried because the mortality basis is
@@ -504,17 +504,20 @@ def cal_year_y(k):
     table, so :func:`mort_rate_at_age` needs a calendar year as well as an age.  Two model
     points that reach the same attained age in different calendar years see different
     rates, and treating the basis as a period table is the fifteenth pitfall.
+
+    Override reason: ``k`` is the projection year from the valuation date, not the policy
+    year, so the calendar year adds ``duration_init()``, products/basisrente/model.md:58
     """
     return issue_year() + duration_init() + k
 
 
 def cal_year(t):
-    """y(t): calendar year in projection month t, ``cal_year_y(proj_year(t))``.
+    """y(t): calendar year in projection month t, ``calendar_year_y(proj_year(t))``.
 
     Steps on the policy anniversary rather than on 1 January, which is the same convention
     the attained age follows and the one the annual-step model necessarily used.
     """
-    return cal_year_y(proj_year(t))
+    return calendar_year_y(proj_year(t))
 
 
 def ret_y():

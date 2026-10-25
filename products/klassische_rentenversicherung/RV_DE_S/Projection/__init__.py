@@ -489,21 +489,6 @@ def is_anniv(t):
     return t % 12 == 11
 
 
-def calendar_year_y(k):
-    """tau(k): the calendar year of policy year k, ``issue_year + k``.
-
-    The second index of the generational mortality surface and of the declared-rate path.
-    Because it is derived from the model point's own ``issue_year``, one surface and one
-    declared path serve a book of mixed vintages: policy year 0 of a 2005 contract and policy
-    year 0 of a 2026 contract read different calendar years from the same table.
-
-    Like the attained age, it steps on the **anniversary** and not in a calendar month.  A
-    policy-year grid and a calendar-year grid coincide only for contracts written on
-    1 January, and reconciling the two is a valuation-date question this model does not pose.
-    """
-    return issue_year() + k
-
-
 def calendar_year(t):
     """tau(t): the calendar year of month t, ``calendar_year_y(duration(t))``."""
     return calendar_year_y(duration(t))

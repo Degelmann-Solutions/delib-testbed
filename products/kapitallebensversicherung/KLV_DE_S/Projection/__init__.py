@@ -605,18 +605,6 @@ def proj_len():
     return 12 * proj_len_y()
 
 
-def t_start():
-    """The first projected **month**: ``12 x duration_init()``.
-
-    A new-business point opens at ``t = 0`` and an in-force point at the month its completed
-    duration reaches - an elapsed count of policy **years**, so the conversion is a
-    multiplication and not an offset.  Where the frame *starts* is a product fact and the
-    conventions suite does not assert it; contiguity from here to ``proj_len() - 1`` is what
-    it asserts instead.
-    """
-    return 12 * duration_init()
-
-
 def duration_mth(t):
     """Completed policy months at the start of month t; equal to ``t``.
 

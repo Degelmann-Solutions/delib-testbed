@@ -23,7 +23,7 @@ mp = proj.model_point()
 
 print("model point {}: {} - {}{} -> Rentenbeginn at {}, t = {} .. {}".format(
     point_id, mp["policy_id"], proj.sex(), proj.issue_age(),
-    proj.annuity_age(), proj.proj_start(), proj.proj_len() - 1))
+    proj.annuity_age(), proj.t_start(), proj.proj_len() - 1))
 print("premium: {} {:,.2f} EUR every {} month(s) for {} years   "
       "Beitragssumme {:,.2f} EUR".format(
           proj.prem_form(), proj.prem_pp_base(), proj.prem_mode_months(),
@@ -31,20 +31,20 @@ print("premium: {} {:,.2f} EUR every {} month(s) for {} years   "
 print("charges: {}  acq {:,.2f} EUR over {} instalments of {:,.2f}  "
       "beta {:.2%}  gamma {:.2%} p.a.  Stueckkosten {:,.2f}/month".format(
           proj.charge_id(), proj.charge_acq_total(), proj.acq_instalments(),
-          proj.charge_acq_pp(proj.proj_start()), proj.beta_rate(),
+          proj.charge_acq_pp(proj.t_start()), proj.beta_rate(),
           proj.gamma_rate_ann(), proj.policy_fee_mth()))
 print("fund: scenario {}  gross {:.2%} p.a.  TER {:.2%} p.a.  "
       "net {:.6%} per month   death benefit: {}".format(
-          proj.scenario_id(), proj.fund_return_gross_ann(proj.proj_start()),
-          proj.fund_ter_ann(proj.proj_start()),
-          proj.fund_return_net_mth(proj.proj_start()), proj.db_form()))
+          proj.scenario_id(), proj.fund_return_gross_ann(proj.t_start()),
+          proj.fund_ter_ann(proj.t_start()),
+          proj.fund_return_net_mth(proj.t_start()), proj.db_form()))
 print()
 
 df = proj.result_cf()
-rows = [t for t in (proj.proj_start(), proj.proj_start() + 1, proj.proj_start() + 2,
-                    proj.proj_start() + 3, proj.proj_start() + 4, proj.proj_start() + 5,
+rows = [t for t in (proj.t_start(), proj.t_start() + 1, proj.t_start() + 2,
+                    proj.t_start() + 3, proj.t_start() + 4, proj.t_start() + 5,
                     58, 59, 60, proj.proj_len() - 2, proj.proj_len() - 1)
-        if proj.proj_start() <= t < proj.proj_len()]
+        if proj.t_start() <= t < proj.proj_len()]
 cols = ["pols_if", "premiums", "prem_to_av", "charge_acq", "charge_admin_prem",
         "charge_admin_fund", "charge_policy_fee", "charge_risk", "claims_death",
         "claims_lapse", "claims_maturity", "expenses", "commissions", "net_cf"]

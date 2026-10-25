@@ -398,17 +398,6 @@ def surr_charge_on():
 
 # --- the frame ---------------------------------------------------------------
 
-def t_start():
-    """``t0``: the frame's first **month**, ``12 x k_start()``.
-
-    ``duration_init`` is an elapsed count of policy **years**, so the conversion is a
-    multiplication and no model point column changed.  The frame's *start* is a product fact
-    and is not fixed per model, which is why the conventions suite asserts contiguity and
-    the last index rather than the first.
-    """
-    return 12 * k_start()
-
-
 def proj_len_y():
     """``n``: the **number of projected policy years**, ``ann_start_age() - issue_age()``.
 

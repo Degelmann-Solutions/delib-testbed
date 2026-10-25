@@ -452,6 +452,9 @@ def t_start():
     Where the frame *starts* is a product fact rather than a house convention: a
     new-business point opens at 0 and an in-force point at the duration it has already run.
     What the library asserts instead is contiguity and the frame's *end*.
+
+    Override reason: the model point carries the elapsed duration in months, so the frame
+    opens at ``duration_mth_init()``, products/sofortrente/technical-notes.md:53
     """
     return duration_mth_init()
 

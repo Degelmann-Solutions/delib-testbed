@@ -73,7 +73,7 @@ annual grid cannot place the month-60 cliff, and that cliff is the characteristi
 of a German unit-linked contract's early values. ``t`` is the **0-based** policy month
 counted from the contract's own inception — ``t = 0`` is the inception month — so
 ``t = 60`` means the same thing on every model point. The frame is
-``range(proj_start(), proj_len())`` with ``proj_start() = duration_mth_init`` and
+``range(t_start(), proj_len())`` with ``t_start() = duration_mth_init`` and
 ``proj_len() = 12 x (annuity_age - issue_age)``, the **number** of policy months and so
 the frame's exclusive end; an in-force model point simply opens partway through it. The
 contractual policy year is the 1-based label ``t // 12 + 1``.

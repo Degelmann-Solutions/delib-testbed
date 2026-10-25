@@ -34,15 +34,15 @@ print("premium form = {}   Zahlweise = {} ({} instalments, load {:.3f})   "
 print("rating factor = {:.2f}   NVG schedule = {}   duration = {} y   "
       "frame t = {} .. {} months ({} policy years)".format(
           proj.rating_factor(), proj.nvg_schedule_id(), proj.duration_init(),
-          proj.proj_start(), proj.proj_len() - 1, proj.proj_len_y()))
+          proj.t_start(), proj.proj_len() - 1, proj.proj_len_y()))
 print()
 print("Bruttobeitrag  G  = {:,.4f} EUR   Nettopraemie Gn = {:,.4f} EUR".format(
     proj.prem_gross_level_pp(), proj.prem_net_level_pp()))
 print("Beitragsverrechnungssatz v_d = {:.8f}   Zahlbeitrag = {:,.4f} EUR/y   "
       "Zahl/Brutto = {:.6f}   instalment = {:,.4f} EUR".format(
-          proj.beitragsverrechnung_rate(), proj.prem_paid_pp(proj.proj_start()),
-          proj.prem_paid_pp(proj.proj_start()) / proj.prem_gross_pp(proj.proj_start()),
-          proj.prem_inst_pp(proj.proj_start())))
+          proj.beitragsverrechnung_rate(), proj.prem_paid_pp(proj.t_start()),
+          proj.prem_paid_pp(proj.t_start()) / proj.prem_gross_pp(proj.t_start()),
+          proj.prem_inst_pp(proj.t_start())))
 print()
 df = proj.result_cf()
 print("first 12 months")
@@ -61,8 +61,8 @@ print("                      claims {:,.2f}  expenses {:,.2f}  "
           + df["claims_maturity"].sum(),
           df["expenses"].sum(), df["commissions"].sum(), df["net_cf"].sum()))
 print("decrements: deaths {:.8f}  lapses {:.8f}  expiries {:.8f}".format(
-    sum(proj.pols_death(t) for t in range(proj.proj_start(), proj.proj_len())),
-    sum(proj.pols_lapse(t) for t in range(proj.proj_start(), proj.proj_len())),
+    sum(proj.pols_death(t) for t in range(proj.t_start(), proj.proj_len())),
+    sum(proj.pols_lapse(t) for t in range(proj.t_start(), proj.proj_len())),
     proj.pols_maturity(proj.proj_len() - 1)))
 print("checks: net_cf {}  pols roll fwd {}  prem split {}  "
       "reserve roll fwd {}  no cash value {}".format(

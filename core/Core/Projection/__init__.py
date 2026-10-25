@@ -82,3 +82,8 @@ def duration_mth_init():
 def k_start():
     """The first projected policy year, ``duration_init()``."""
     return duration_init()                                           # noqa: F821
+
+
+def t_start():
+    """The first projected month, ``12 x k_start()``; ``t`` counts months from issue."""
+    return 12 * k_start()                                            # noqa: F821

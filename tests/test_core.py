@@ -219,6 +219,12 @@ CORE_CELLS = {
         "k_start": {"indexpolice": "derived",
                     "kapitallebensversicherung": "derived",
                     "klassische_rentenversicherung": "derived"},
+        "t_start": {"fondsgebundene_rentenversicherung": "override",
+                    "indexpolice": "derived",
+                    "kapitallebensversicherung": "derived",
+                    "klassische_rentenversicherung": "derived",
+                    "risikolebensversicherung": "derived",
+                    "sofortrente": "override"},
     },
 }
 

@@ -487,16 +487,6 @@ def proj_len():
     return 12 * proj_len_y()
 
 
-def t_start():
-    """The frame's first **month**: ``12 x duration_init``.
-
-    ``duration_init`` is an elapsed count of completed policy **years**, so the conversion is
-    a multiplication and no model point column changed.  0 for new business; 168 on an
-    in-force point that has run fourteen years.
-    """
-    return 12 * k_start()
-
-
 def duration_mth(t):
     """The number of **complete policy months** elapsed at the start of month t: ``t`` itself.
 

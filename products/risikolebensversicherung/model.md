@@ -65,9 +65,9 @@ monthly frame.
 **The time index.** `t` counts policy **months** from issue and starts at **0**: month `t`
 runs from time `t` to time `t + 1`. `proj_len()` is the number of projected months,
 `12 × policy_term`, and it is the frame's **exclusive end**: `result_cf()` runs over
-`range(proj_start(), proj_len())`, so its last index is `proj_len() − 1` and it has
+`range(t_start(), proj_len())`, so its last index is `proj_len() − 1` and it has
 `12 × (policy_term − duration_init)` rows — three hundred rows `t = 0 … 299` on the anchor,
-216 rows `t = 144 … 359` on the in-force point 8. `proj_start()` is `12 × duration_init`,
+216 rows `t = 144 … 359` on the in-force point 8. `t_start()` is `12 × duration_init`,
 `duration_init` being an elapsed count of completed policy years that is already 0-based.
 
 **The product is annual and stays annual.** `duration_mth(t) = t`, `duration(t) = t // 12`

@@ -47,10 +47,10 @@ Phase 3 changes these files and adds these symlinks to take shared cells from th
 |---|---|
 | `RLV_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection`; docstring names `duration_init`, was `duration_y` |
 | `RLV_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it; Reference `mort_table_file` renamed `mort_file`; `mort_table` overrides the core with a reason (index columns); `lapse_table` moved to the core and inherited from it; `freq_loading_table` moved to the core and inherited from it |
-| `RLV_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; Reference `mort_table_file` renamed `mort_file` in the header table; `issue_age` moved to the core and inherited from it; `sex` moved to the core and inherited from it; `smoker` overrides the core with a reason (code `R`); `policy_term` moved to the core and inherited from it; `prem_term` overrides the core with a reason (range check); `duration_y` renamed `duration_init`; `duration_init` moved to the core and inherited from it |
-| `model.md` | Reference `mort_table_file` named `mort_file`; `duration_y` named `duration_init` |
+| `RLV_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; Reference `mort_table_file` renamed `mort_file` in the header table; `issue_age` moved to the core and inherited from it; `sex` moved to the core and inherited from it; `smoker` overrides the core with a reason (code `R`); `policy_term` moved to the core and inherited from it; `prem_term` overrides the core with a reason (range check); `duration_y` renamed `duration_init`; `duration_init` moved to the core and inherited from it; `proj_start` renamed `t_start`; `t_start` moved to the core and inherited from it |
+| `model.md` | Reference `mort_table_file` named `mort_file`; `duration_y` named `duration_init`; `proj_start` named `t_start` |
 | `model_point_table.csv` | column `duration_y` renamed `duration_init` |
 | `technical-notes.md` | `duration_y` named `duration_init` |
-| `run.py` | calls `duration_init()`, was `duration_y()` |
+| `run.py` | calls `duration_init()`, was `duration_y()`; calls `t_start()`, was `proj_start()` |
 | `RLV_DE_S/CoreData` | added: symlink to the core space folder `core/Core/Data` |
 | `RLV_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |

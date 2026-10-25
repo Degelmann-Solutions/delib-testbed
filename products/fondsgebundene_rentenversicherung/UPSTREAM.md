@@ -45,13 +45,13 @@ Phase 3 changes these files and adds these symlinks to take shared cells from th
 
 | Path | Change |
 |---|---|
-| `FRV_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection`; docstring names `issue_age`, was `entry_age`; docstring names `duration_mth_init`, was `duration_init_m` |
+| `FRV_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection`; docstring names `issue_age`, was `entry_age`; docstring names `duration_mth_init`, was `duration_init_m`; docstring names `t_start`, was `proj_start` |
 | `FRV_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it; `mort_table` overrides the core with a reason (index columns); `lapse_table` moved to the core and inherited from it; `rentenfaktor_table` overrides the core with a reason (index columns) |
-| `FRV_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; `entry_age` renamed `issue_age`; `issue_age` moved to the core and inherited from it; `sex` moved to the core and inherited from it; `prem_term_y` moved to the core and inherited from it; `duration_init_m` renamed `duration_mth_init`; `duration_mth_init` moved to the core and inherited from it |
-| `model.md` | `entry_age` named `issue_age`; `duration_init_m` named `duration_mth_init` |
+| `FRV_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; `entry_age` renamed `issue_age`; `issue_age` moved to the core and inherited from it; `sex` moved to the core and inherited from it; `prem_term_y` moved to the core and inherited from it; `duration_init_m` renamed `duration_mth_init`; `duration_mth_init` moved to the core and inherited from it; `proj_start` renamed `t_start`; `t_start` overrides the core with a reason (duration in months) |
+| `model.md` | `entry_age` named `issue_age`; `duration_init_m` named `duration_mth_init`; `proj_start` named `t_start` |
 | `model_point_table.csv` | column `entry_age` renamed `issue_age`; column `duration_init_m` renamed `duration_mth_init` |
-| `run.py` | calls `issue_age()`, was `entry_age()` |
+| `run.py` | calls `issue_age()`, was `entry_age()`; calls `t_start()`, was `proj_start()` |
 | `sources.md` | `entry_age` named `issue_age` |
-| `technical-notes.md` | `entry_age` named `issue_age`; `duration_init_m` named `duration_mth_init` |
+| `technical-notes.md` | `entry_age` named `issue_age`; `duration_init_m` named `duration_mth_init`; `proj_start` named `t_start` |
 | `FRV_DE_S/CoreData` | added: symlink to the core space folder `core/Core/Data` |
 | `FRV_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |

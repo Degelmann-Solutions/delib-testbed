@@ -832,7 +832,7 @@ def p_pg_better(t, g):
 def pols_act(t):
     """l_A(t): lives in the **active** state at the start of month ``t``.
 
-    Seeded at ``duration_mth_init()`` from :func:`status_init` and rolled forward as
+    Seeded at ``t_start()`` from :func:`status_init` and rolled forward as
 
         l_A(t+1) = [ l_A(t) p_act_stay(t) + pols_reactiv(t) ] (1 - w(t))
 
@@ -944,7 +944,7 @@ def pols_reactiv(t):
 def pols_pg(t, g):
     """l_g(t): lives in *Pflegegrad* ``g`` at the start of month ``t``, *Karenz* served.
 
-    The ledger the annuity is paid on.  Seeded at ``duration_mth_init()`` from
+    The ledger the annuity is paid on.  Seeded at ``t_start()`` from
     :func:`status_init` — an in-claim model point opens with its whole cohort here, at its
     grade, with the deferral already served — and rolled forward as
 

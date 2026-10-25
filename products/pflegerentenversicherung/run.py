@@ -37,9 +37,9 @@ print("EPV benefits {:,.6f}   EPV premium units {:,.6f}   EPV admin {:,.6f}   "
           proj.epv_benefits(), proj.epv_prem_units(), proj.epv_admin(),
           proj.epv_claim_expense()))
 print("frame: t = {} to {} (proj_len = {}, {} monthly rows), attained ages {} to {}".format(
-    proj.duration_mth_init(), proj.proj_len() - 1, proj.proj_len(),
-    proj.proj_len() - proj.duration_mth_init(),
-    proj.age(proj.duration_mth_init()), proj.age(proj.proj_len() - 1)))
+    proj.t_start(), proj.proj_len() - 1, proj.proj_len(),
+    proj.proj_len() - proj.t_start(),
+    proj.age(proj.t_start()), proj.age(proj.proj_len() - 1)))
 print()
 
 df = proj.result_cf()

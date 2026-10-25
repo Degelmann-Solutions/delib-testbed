@@ -57,3 +57,8 @@ def policy_term():
 def prem_term():
     """The premium payment term in whole years, from the model point."""
     return int(model_point()["prem_term"])                           # noqa: F821
+
+
+def prem_term_y():
+    """The premium payment term in whole years, from the model point's ``prem_term_y``."""
+    return int(model_point()["prem_term_y"])                         # noqa: F821

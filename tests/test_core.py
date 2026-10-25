@@ -196,6 +196,8 @@ CORE_CELLS = {
                         "risikolebensversicherung": "derived"},
         "prem_term": {"kapitallebensversicherung": "derived",
                       "risikolebensversicherung": "override"},
+        "prem_term_y": {"fondsgebundene_rentenversicherung": "derived",
+                        "indexpolice": "derived"},
     },
 }
 

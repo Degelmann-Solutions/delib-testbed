@@ -435,15 +435,6 @@ def prem_mode_months():
     return v
 
 
-def prem_term_y():
-    """Premium-paying term in years; 0 on a single premium.
-
-    It caps both the premium stream and the acquisition window: a two-year premium term
-    spreads the acquisition charge over 24 months, not 60.
-    """
-    return int(model_point()["prem_term_y"])
-
-
 def dynamik_rate():
     """*Beitragsdynamik*: the contractual annual premium increase; 0 when off.
 

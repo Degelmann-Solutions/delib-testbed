@@ -306,11 +306,6 @@ def prem_freq():
     return v
 
 
-def prem_term_y():
-    """*Beitragszahlungsdauer* in policy years; 1 on a single premium."""
-    return int(model_point()["prem_term_y"])
-
-
 def av_pp_init():
     """The *Deckungskapital* per policy at ``t_start()``; 0 for new business."""
     return float(model_point()["av_pp_init"])

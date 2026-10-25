@@ -35,7 +35,7 @@ decl_rate_file            decl_rate_table()             decl_rate_table.csv
 rentenfaktor_file         rentenfaktor_table()          rentenfaktor_table.csv
 charge_file               charge_table()                charge_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
-freq_load_file            freq_load_table()             freq_load_table.csv
+freq_loading_file         freq_loading_table()          freq_load_table.csv
 param_file                param_table()                 param_table.csv
 ========================  ============================  ==========================
 
@@ -166,18 +166,6 @@ def lapse_table():
         input_dir() / lapse_file, index_col="duration")              # noqa: F821
 
 
-def freq_load_table():
-    """The *Ratenzahlungszuschlag* by payment frequency, from *freq_load_table.csv*.
-
-    ``freq_load`` is the multiplier on the annual gross premium and ``n_instalments`` the
-    number of instalments a year, carried for documentation: the annual grid charges the
-    loaded annual amount at the start of the year and does not model the instalments
-    themselves.  Levels are **[std]**; no German carrier's loading was established.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_load_file, index_col="prem_freq")         # noqa: F821
-
-
 # ---------------------------------------------------------------------------
 # References
 
@@ -193,7 +181,7 @@ charge_file = "charge_table.csv"
 
 lapse_file = "lapse_table.csv"
 
-freq_load_file = "freq_load_table.csv"
+freq_loading_file = "freq_load_table.csv"
 
 param_file = "param_table.csv"
 

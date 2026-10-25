@@ -37,7 +37,7 @@ lapse_file                 lapse_table()                   lapse_table.csv
 zulage_file                zulage_schedule()               zulage_schedule.csv
 income_file                income_schedule()               income_schedule.csv
 surplus_file               surplus_scenario()              surplus_scenario.csv
-freq_loading_file          freq_loading()                  freq_loading.csv
+freq_loading_file          freq_loading_table()            freq_loading.csv
 =========================  ==============================  ==========================
 
 **Every file but ``model_point_table.csv`` carries a per-row ``provenance`` column**,
@@ -190,18 +190,6 @@ def surplus_scenario():
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / surplus_file, index_col=["scenario_id", "t"])  # noqa: F821
-
-
-def freq_loading():
-    """The *Ratenzuschlag* multiplier by payment frequency, from *freq_loading.csv*.
-
-    A **charge** and never a credit: the saver pays ``eigenbeitrag_pp x load`` while only
-    ``eigenbeitrag_pp`` reaches the *Sparbeitrag* base and the *Beitragsgarantie*, so the
-    loading enlarges the premium income and nothing else.  Crediting it to the account is
-    a listed modeling pitfall.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
 
 
 # ---------------------------------------------------------------------------

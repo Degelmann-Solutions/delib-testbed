@@ -193,17 +193,6 @@ def nvg_schedule():
         index_col=["nvg_id", "policy_year"])
 
 
-def freq_loading_table():
-    """The *Ratenzahlungszuschlag* and instalment count by *Zahlweise*.
-
-    Read from *freq_loading_table.csv*: the multiplier ``prem_freq_load`` applied to the
-    billed amount, and ``instalments``, the number of payments a year, which is carried
-    for reporting and enters no cash flow on an annual grid.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
-
-
 # ---------------------------------------------------------------------------
 # References
 

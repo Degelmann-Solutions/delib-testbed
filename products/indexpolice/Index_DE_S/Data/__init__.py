@@ -37,7 +37,7 @@ surplus_rate_file      surplus_rate_table()        surplus_rate_table.csv
 election_file          election_table()            election_table.csv
 mort_file              mort_table()                mort_table.csv
 lapse_file             lapse_table()               lapse_table.csv
-freq_load_file         freq_load_table()           freq_load_table.csv
+freq_loading_file      freq_loading_table()        freq_load_table.csv
 =====================  ==========================  ==========================
 
 .. rubric:: Every table but the model point table is a [std] construction
@@ -196,18 +196,6 @@ def lapse_table():
         input_dir() / lapse_file, index_col="t")                     # noqa: F821
 
 
-def freq_load_table():
-    """The *Ratenzahlungszuschlag* multipliers by payment frequency.
-
-    Read from *freq_load_table.csv*, indexed by ``prem_freq``: the surcharge for paying
-    other than annually, as a multiplier on the annual-mode premium.  It multiplies the
-    premium **collected** and does not enter the *Beitragssumme*, so it changes neither
-    the acquisition charge nor the *Mindesttodesfallschutz* floor.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_load_file, index_col="prem_freq")         # noqa: F821
-
-
 # ---------------------------------------------------------------------------
 # References
 
@@ -225,6 +213,6 @@ mort_file = "mort_table.csv"
 
 lapse_file = "lapse_table.csv"
 
-freq_load_file = "freq_load_table.csv"
+freq_loading_file = "freq_load_table.csv"
 
 pd = ("Module", "pandas")

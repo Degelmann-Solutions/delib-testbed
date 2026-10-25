@@ -64,3 +64,9 @@ def rentenfaktor_table():
     return pd.read_csv(                                              # noqa: F821
         input_dir() / rentenfaktor_file,                             # noqa: F821
         index_col=["rf_scenario_id", "age"])
+
+
+def freq_loading_table():
+    """The *Ratenzahlungszuschlag* by ``prem_freq``, from ``freq_loading_file``."""
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821

@@ -344,7 +344,7 @@ is checked out.
 | `election_file` | `election_table()` | `election_table.csv` |
 | `mort_file` | `mort_table()` | `mort_table.csv` |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` |
-| `freq_load_file` | `freq_load_table()` | `freq_load_table.csv` |
+| `freq_loading_file` | `freq_loading_table()` | `freq_load_table.csv` |
 
 **The trade-off:** the model is not portable on its own. Copy `Index_DE_S/` without the CSVs
 and it will read fine, then fail on first evaluation. What you gain is that a diff of the

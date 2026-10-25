@@ -132,7 +132,7 @@ decl_rate_file            data.decl_rate_table()             decl_rate_table.csv
 rentenfaktor_file         data.rentenfaktor_table()          rentenfaktor_table.csv
 charge_file               data.charge_table()                charge_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
-freq_load_file            data.freq_load_table()             freq_load_table.csv
+freq_loading_file         data.freq_loading_table()          freq_load_table.csv
 param_file                data.param_table()                 param_table.csv
 ========================  =================================  ==========================
 
@@ -641,7 +641,7 @@ def freq_load():
     makes the *Versicherungsperiode* genuinely monthly and two model points differ in nothing
     else, which is what justifies the instalment stream.
     """
-    return float(data.freq_load_table().at[                          # noqa: F821
+    return float(data.freq_loading_table().at[                       # noqa: F821
         model_point()["prem_freq"], "freq_load"])
 
 

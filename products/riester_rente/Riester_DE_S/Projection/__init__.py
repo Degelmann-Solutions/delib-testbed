@@ -91,7 +91,7 @@ lapse_file                 data.lapse_table()                     lapse_table.cs
 zulage_file                data.zulage_schedule()                 zulage_schedule.csv
 income_file                data.income_schedule()                 income_schedule.csv
 surplus_file               data.surplus_scenario()                surplus_scenario.csv
-freq_loading_file          data.freq_loading()                    freq_loading.csv
+freq_loading_file          data.freq_loading_table()              freq_loading.csv
 =========================  =====================================  ==========================
 
 .. rubric:: Naming
@@ -509,7 +509,7 @@ def prem_freq_load():
     enlarges :func:`premiums` and leaves :func:`prem_to_av_pp`, :func:`guar_pp` and every
     benefit untouched.
     """
-    return float(data.freq_loading().at[prem_freq(), "load"])        # noqa: F821
+    return float(data.freq_loading_table().at[prem_freq(), "load"])  # noqa: F821
 
 
 def bfs_year():

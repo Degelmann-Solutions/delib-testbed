@@ -93,7 +93,7 @@ surplus_rate_file      data.surplus_rate_table()          surplus_rate_table.csv
 election_file          data.election_table()              election_table.csv
 mort_file              data.mort_table()                  mort_table.csv
 lapse_file             data.lapse_table()                 lapse_table.csv
-freq_load_file         data.freq_load_table()             freq_load_table.csv
+freq_loading_file      data.freq_loading_table()          freq_load_table.csv
 =====================  =================================  ==========================
 
 .. rubric:: Naming
@@ -577,7 +577,7 @@ def freq_load():
     convention, no carrier tariff having been established.  It multiplies the premium
     **collected** and nothing else; see :func:`prem_sum`.
     """
-    return float(data.freq_load_table().loc[                         # noqa: F821
+    return float(data.freq_loading_table().loc[                      # noqa: F821
         prem_freq(), "freq_load"])
 
 

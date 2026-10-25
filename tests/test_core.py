@@ -172,6 +172,12 @@ CORE_CELLS = {
         "rentenfaktor_table": {"basisrente": "derived",
                                "fondsgebundene_rentenversicherung": "override",
                                "klassische_rentenversicherung": "derived"},
+        "freq_loading_table": {"berufsunfaehigkeit": "override",
+                               "indexpolice": "derived",
+                               "kapitallebensversicherung": "derived",
+                               "klassische_rentenversicherung": "derived",
+                               "riester_rente": "derived",
+                               "risikolebensversicherung": "derived"},
     },
     "Projection": {
         "model_point": dict.fromkeys(MODELS, "derived"),

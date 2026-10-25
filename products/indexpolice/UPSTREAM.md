@@ -48,7 +48,8 @@ Phase 3 changes these files and adds these symlinks to take shared cells from th
 | Path | Change |
 |---|---|
 | `Index_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection` |
-| `Index_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it; `mort_table` moved to the core and inherited from it; `lapse_table` overrides the core with a reason (index column) |
-| `Index_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it |
+| `Index_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it; `mort_table` moved to the core and inherited from it; `lapse_table` overrides the core with a reason (index column); Reference `freq_load_file` renamed `freq_loading_file`; cell `freq_load_table` renamed `freq_loading_table`; `freq_loading_table` moved to the core and inherited from it |
+| `Index_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; Reference `freq_load_file` renamed `freq_loading_file`; reads `data.freq_loading_table()`, was `data.freq_load_table()` |
+| `model.md` | Reference `freq_load_file` named `freq_loading_file`; cell `freq_load_table` named `freq_loading_table` |
 | `Index_DE_S/CoreData` | added: symlink to the core space folder `core/Core/Data` |
 | `Index_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |

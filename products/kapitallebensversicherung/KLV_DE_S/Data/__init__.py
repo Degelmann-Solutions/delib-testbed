@@ -152,18 +152,6 @@ def cost_table():
         input_dir() / cost_file, index_col="cost_id")                # noqa: F821
 
 
-def freq_loading_table():
-    """The *Ratenzahlungszuschlag* by payment frequency, from *freq_loading_table.csv*.
-
-    ``instalments`` is the number of payments a year and ``prem_freq_load`` the multiplier
-    on the annual *Bruttobeitrag*.  The loading applies only to an **unechte**
-    unterjährige Zahlweise — an instalment of an annual *Versicherungsperiode* — and is
-    inert where the sub-annual period is genuine.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
-
-
 def deckrv_table():
     """The two DeckRV cohort ceilings by issue year, from *deckrv_table.csv*.
 

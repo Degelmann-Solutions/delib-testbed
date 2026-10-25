@@ -495,19 +495,6 @@ def proj_len():
     return n
 
 
-def duration_mth(t):
-    """Complete months elapsed since *Vertragsbeginn* at the start of month ``t``.
-
-    The frame's index is itself the duration, because ``t`` is counted from
-    *Vertragsbeginn* on a 0-based grid — so this cells is ``t``.  It is published because
-    the notes name the quantity, because an in-force point's frame opens at
-    ``duration_mth_init()`` rather than at 0 and the identity is then worth being able to
-    read off, and because a reader coming from a model whose index is a policy year should
-    find the unit stated rather than inferred.
-    """
-    return t
-
-
 def duration(t):
     """Completed policy years at the start of month ``t``: ``t // 12``; 0 for t = 0..11.
 

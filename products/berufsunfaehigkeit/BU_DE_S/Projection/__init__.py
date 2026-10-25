@@ -581,6 +581,10 @@ def duration_mth(t):
     ``duration_mth_init() + t``.  Defined for negative ``t`` as well, because
     :func:`bu_rente_pp` reads it there to recover the insured *BU-Rente* at the onset of a
     claim that began before the valuation date.
+
+    Override reason: ``t = 0`` is the valuation month for an in-force point, not the month
+    of issue, so the completed months add ``duration_mth_init()``,
+    products/berufsunfaehigkeit/technical-notes.md:56
     """
     return duration_mth_init() + t
 

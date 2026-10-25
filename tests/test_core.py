@@ -227,6 +227,15 @@ CORE_CELLS = {
                     "sofortrente": "override"},
         "proj_year": {"basisrente": "derived",
                       "riester_rente": "derived"},
+        "duration_mth": {"basisrente": "override",
+                         "berufsunfaehigkeit": "override",
+                         "indexpolice": "derived",
+                         "kapitallebensversicherung": "derived",
+                         "klassische_rentenversicherung": "derived",
+                         "pflegerentenversicherung": "derived",
+                         "riester_rente": "override",
+                         "risikolebensversicherung": "derived",
+                         "sofortrente": "derived"},
     },
 }
 

@@ -92,3 +92,8 @@ def t_start():
 def proj_year(t):
     """The 0-based projection year month t falls in, ``t // 12``."""
     return t // 12
+
+
+def duration_mth(t):
+    """The completed policy months at the start of month t: ``t``, counted from issue."""
+    return t

@@ -667,6 +667,10 @@ def duration_mth(t):
     ``12 x duration_init() + t``.  It is what distinguishes two model points at the same
     projection month, and ``duration(t) = duration_mth(t) // 12`` states in code that the
     contract duration is the contract month divided down.
+
+    Override reason: ``t`` counts months from the valuation date, not from issue, so the
+    completed contract months add ``duration_init()`` years,
+    products/riester_rente/technical-notes.md:35
     """
     return 12 * duration_init() + t
 

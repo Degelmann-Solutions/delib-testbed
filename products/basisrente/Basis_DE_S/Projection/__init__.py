@@ -519,6 +519,9 @@ def duration_mth(t):
     completed twelve policy months, an in-force point opening at ``duration_init = 17`` has
     completed 216 — and because ``duration(t) = duration_mth(t) // 12`` states in code that
     the policy duration is the policy month divided down.
+
+    Override reason: ``t`` counts months from the valuation date, not from issue, so the
+    completed policy months add ``duration_init()`` years, products/basisrente/model.md:54
     """
     return 12 * duration_init() + t
 

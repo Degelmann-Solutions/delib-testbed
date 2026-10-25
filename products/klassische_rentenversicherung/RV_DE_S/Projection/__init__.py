@@ -487,17 +487,6 @@ def proj_len():
     return 12 * proj_len_y()
 
 
-def duration_mth(t):
-    """The number of **complete policy months** elapsed at the start of month t: ``t`` itself.
-
-    Published rather than inlined because it is the name the rest of the library uses for the
-    elapsed-month count, and because a model whose frame starts partway through a contract
-    must say once, in one place, that ``t`` is counted from **inception** and not from the
-    frame's own start.
-    """
-    return t
-
-
 def duration(t):
     """k(t): the **0-based policy year** month t falls in, ``duration_mth(t) // 12``.
 

@@ -513,16 +513,6 @@ def proj_len():
     return 12 * (omega_age() - issue_age())
 
 
-def duration_mth(t):
-    """Complete months elapsed since issue at the start of month ``t``, which is ``t``.
-
-    Published as its own cells because it is the quantity the *Wartezeit* is measured in,
-    and because ``t`` is an index while this is a duration: on a model point opening at
-    ``duration_mth_init() = 240`` the frame's first row is already 240 months old.
-    """
-    return t
-
-
 def policy_year(t):
     """y(t): the *Versicherungsjahr*, ``t // 12 + 1``, 1-based.
 

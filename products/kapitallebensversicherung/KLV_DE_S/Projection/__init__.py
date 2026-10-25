@@ -605,18 +605,6 @@ def proj_len():
     return 12 * proj_len_y()
 
 
-def duration_mth(t):
-    """Completed policy months at the start of month t; equal to ``t``.
-
-    ``t`` is 0-based and counted from **issue** on every model point, the in-force one
-    included - its frame opens at ``t = t_start()`` rather than re-basing the clock - so the
-    identity is trivial and the cells exists to name the unit.  It is what the premium
-    instalment cycle is counted in, and the vocabulary ``Sofort_DE_S``, ``BU_DE_S``,
-    ``Pflege_DE_S`` and ``RLV_DE_S`` already use.
-    """
-    return t
-
-
 def duration(t):
     """k: the completed policy **years** at the start of month t, ``duration_mth(t) // 12``.
 

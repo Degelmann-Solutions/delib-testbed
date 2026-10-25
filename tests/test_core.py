@@ -227,6 +227,7 @@ CORE_CELLS = {
                     "indexpolice": "derived",
                     "kapitallebensversicherung": "derived",
                     "klassische_rentenversicherung": "derived",
+                    "pflegerentenversicherung": "override",
                     "risikolebensversicherung": "derived",
                     "sofortrente": "override"},
         "proj_year": {"basisrente": "derived",

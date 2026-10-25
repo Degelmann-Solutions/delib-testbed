@@ -13,10 +13,10 @@ projecting model point 1::
 
 ``t`` counts **policy months**, 0-based: ``t = 0`` is the month of issue and
 ``age(t) = issue_age + t // 12``, so the attained age steps at the policy anniversary.
-The frame **starts** at ``duration_mth_init()`` — ``0`` for new business, the elapsed
-duration for an in-force model point — and runs to ``proj_len() - 1``, where
+The frame **starts** at ``t_start() = duration_mth_init()`` — ``0`` for new business,
+the elapsed duration for an in-force model point — and runs to ``proj_len() - 1``, where
 ``proj_len() = 12 * (omega_age() - issue_age())`` is the **number of projected months**,
-the exclusive end of ``range(duration_mth_init(), proj_len())``, and depends on the entry
+the exclusive end of ``range(t_start(), proj_len())``, and depends on the entry
 age and the terminal age alone. There is no maturity, no survival benefit and no tail state:
 the contract runs for life, and the closure is carried by the decrements.
 
@@ -64,7 +64,7 @@ Notes symbol                Cells                           Meaning
 ==========================  ==============================  ==========================
 (none)                      model_point()                   The selected model point row
 n = 12(omega - entry)       proj_len()                      Number of projected months
-d0                          duration_mth_init()             Month the frame opens at
+d0                          t_start()                       Month the frame opens at
 t                           duration_mth(t)                 Months since issue
 y(t) = t // 12 + 1          policy_year(t)                  Versicherungsjahr
 x(t)                        age(t)                          Attained age in month t
@@ -493,11 +493,20 @@ def rechnungszins():
     return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
 
 
+def t_start():
+    """The month the frame opens at, ``duration_mth_init()``; 0 for new business.
+
+    Override reason: the model point carries the elapsed duration in months, so the frame
+    opens at ``duration_mth_init()``, products/pflegerentenversicherung/technical-notes.md:43
+    """
+    return duration_mth_init()
+
+
 def proj_len():
     """n: the **number of projected months**, ``12 (omega_age - issue_age)``.
 
     The **exclusive end** of the frame, counted from ``t = 0``: the frame is
-    ``range(duration_mth_init(), proj_len())``, the last projected index is
+    ``range(t_start(), proj_len())``, the last projected index is
     ``proj_len() - 1`` and ``result_cf().index[-1] == proj_len() - 1`` whether the frame
     is 0-based or opens partway through, which is the library's reading and is asserted
     for every model point.  On the anchor cell — entry age 45, ``omega_age`` 110 — it is
@@ -832,7 +841,7 @@ def pols_act(t):
     inflow**; the alternatives give different answers and this ordering is the one the
     notes' processing order states.
     """
-    if t <= duration_mth_init():
+    if t <= t_start():
         return pols_if_init() if status_init() == "aktiv" else 0.0
     survivors = pols_act(t - 1) * p_act_stay(t - 1) + pols_reactiv(t - 1)
     return survivors * (1.0 - lapse_rate_mth(t - 1))
@@ -868,7 +877,7 @@ def pols_karenz(t, g, z):
     k = karenz_months()
     if k <= 0 or z < 1 or z > k:
         return 0.0
-    if t <= duration_mth_init():
+    if t <= t_start():
         return 0.0
     if z == 1:
         return pols_entry(t - 1, g)
@@ -945,7 +954,7 @@ def pols_pg(t, g):
     deterioration term absent.  Every one of those moves is **internal** to the in-force
     population, which is why :func:`check_pols_roll_fwd` sees only deaths and lapses.
     """
-    if t <= duration_mth_init():
+    if t <= t_start():
         return pols_if_init() if status_init() == "pg%d" % g else 0.0
     total = pols_pg(t - 1, g) * p_pg_stay(t - 1, g) + pols_grad(t - 1, g)
     if g > 1:
@@ -973,7 +982,7 @@ def esc_pg(t, g):
     head count would silently drop the escalation on every model point that carries one,
     and no total in the frame would look wrong.
     """
-    if t <= duration_mth_init():
+    if t <= t_start():
         return pols_pg(t, g)
     factor = (1.0 + leistungsdynamik()) ** (1.0 / 12.0)
     carried = esc_pg(t - 1, g) * p_pg_stay(t - 1, g)
@@ -1111,14 +1120,14 @@ def pols_dead_cum(t):
     One of the two absorbing counts that, with the three live ledgers, partition the
     initial cohort at every ``t``; see :func:`check_states`.
     """
-    if t <= duration_mth_init():
+    if t <= t_start():
         return 0.0
     return pols_dead_cum(t - 1) + pols_death(t - 1)
 
 
 def pols_lapse_cum(t):
     """Cumulative surrenders before the start of month ``t``."""
-    if t <= duration_mth_init():
+    if t <= t_start():
         return 0.0
     return pols_lapse_cum(t - 1) + pols_lapse(t - 1)
 
@@ -1830,7 +1839,7 @@ def check_net_cf():
     tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
     scale = max(pols_if_init() * max(rente_mth(), 1.0), 1.0)
     return all(abs(check_net_cf_resid(t)) <= tol * scale
-               for t in range(duration_mth_init(), proj_len()))
+               for t in range(t_start(), proj_len()))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1855,7 +1864,7 @@ def check_pols_roll_fwd():
     tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_pols_roll_fwd_resid(t)) <= tol * scale
-               for t in range(duration_mth_init(), proj_len()))
+               for t in range(t_start(), proj_len()))
 
 
 def check_states_resid(t):
@@ -1886,7 +1895,7 @@ def check_states():
     tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_states_resid(t)) <= tol * scale
-               for t in range(duration_mth_init(), proj_len()))
+               for t in range(t_start(), proj_len()))
 
 
 def check_waiver_resid(t):
@@ -1912,7 +1921,7 @@ def check_waiver():
     tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_waiver_resid(t)) <= tol * scale
-               for t in range(duration_mth_init(), proj_len()))
+               for t in range(t_start(), proj_len()))
 
 
 def check_esc_ledger_resid(t):
@@ -1939,7 +1948,7 @@ def check_esc_ledger():
     tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_esc_ledger_resid(t)) <= tol * scale
-               for t in range(duration_mth_init(), proj_len()))
+               for t in range(t_start(), proj_len()))
 
 
 def check_prem_equiv_resid(t):
@@ -2023,7 +2032,7 @@ def check_prem_equiv():
 def result_cf():
     """Result table of cash flows, indexed by policy month ``t``.
 
-    Contiguous from :func:`duration_mth_init` to ``proj_len() - 1``.  ``pols_if`` is the
+    Contiguous from :func:`t_start` to ``proj_len() - 1``.  ``pols_if`` is the
     **start**-of-month count, which is the weight applied to every cash flow on the same
     row, and its first value equals ``pols_if_init()`` exactly.  ``pols_act``,
     ``pols_care`` and ``pols_prem`` split it three ways for a reader following the
@@ -2036,7 +2045,7 @@ def result_cf():
     ``premiums`` less the three ``claims`` columns, ``expenses`` and ``claim_expenses``;
     ``liability_cf`` is its negative.
     """
-    ts = list(range(duration_mth_init(), proj_len()))
+    ts = list(range(t_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2066,7 +2075,7 @@ def result_states():
     ``check_*``; ``mort_rate_care_pg5`` is published in preference to all five grades'
     because the grade-5 rate is the one that carries the product's central biometric fact.
     """
-    ts = list(range(duration_mth_init(), proj_len()))
+    ts = list(range(t_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_pg1": [pols_pg(t, 1) for t in ts],

@@ -122,3 +122,8 @@ def age_y(k):
 def age(t):
     """The attained age in month t, ``age_y(duration(t))``, stepping on the anniversary."""
     return age_y(duration(t))                                        # noqa: F821
+
+
+def proj_len_y():
+    """The number of projected policy years, the policy term."""
+    return policy_term()                                             # noqa: F821

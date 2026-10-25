@@ -558,6 +558,9 @@ def proj_len_y():
     *Beitragsgarantie* accumulator and the conversion are all annual.  ``k = 0 ...
     proj_len_y() - 1`` indexes exactly the rows the annual-step model this replaced
     projected, which is what makes the two comparable row by row.
+
+    Override reason: the annuity is lifelong, so the projection runs from the valuation date to
+    ``omega_age``, products/riester_rente/technical-notes.md:69
     """
     return omega_age - age(0) + 1                                    # noqa: F821
 

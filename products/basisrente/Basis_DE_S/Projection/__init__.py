@@ -435,6 +435,9 @@ def proj_len_y():
 
     This is the annual-step model's own ``proj_len()``, and ``k = 0 ... proj_len_y() - 1``
     indexes exactly the rows that model projected.
+
+    Override reason: the annuity is lifelong, so the projection runs from the valuation
+    date to the end of the mortality table, products/basisrente/technical-notes.md:80
     """
     return omega_age() - age(0) + 1
 

@@ -405,6 +405,9 @@ def proj_len_y():
     capital falls due.  There is no policy year ``n``: the whole surviving cohort has
     matured, while ``av_pp(n)`` and ``guar_cap_pp(n)`` are defined, being the time-``n``
     per-policy amounts the maturity benefit is struck on.
+
+    Override reason: the model projects the accumulation phase only, to *Rentenbeginn*,
+    products/indexpolice/technical-notes.md:42
     """
     return ann_start_age() - issue_age()
 

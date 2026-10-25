@@ -471,6 +471,9 @@ def proj_len_y():
     survive further rather than a fixed number of years — truncating one at, say, 40 years
     silently drops the tail the *Rentenfaktor* was priced for.  **71** on the anchor cell,
     whose last policy year ends at attained age 121.
+
+    Override reason: a life annuity has no term, so the projection ends at ``omega_age``,
+    products/klassische_rentenversicherung/technical-notes.md:81
     """
     return omega_age() - issue_age()
 

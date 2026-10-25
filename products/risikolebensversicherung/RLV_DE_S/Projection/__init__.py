@@ -573,18 +573,6 @@ def pols_if_init():
     return 1.0
 
 
-def proj_len_y():
-    """n: the **number of policy years**, equal to ``policy_term``.
-
-    The contract states its own horizon in whole years — the *Versicherungsdauer* — so
-    this cells keeps it in years, and everything annual is written against it: the
-    first-order equivalence sums over ``range(proj_len_y())``, and :func:`lapse_rate`
-    compares ``duration(t)`` with ``proj_len_y() - 1`` to find the final policy year.
-    :func:`proj_len` is twelve times this and is the frame.
-    """
-    return policy_term()
-
-
 def proj_len():
     """The **number of projected policy months**, ``12 x proj_len_y()``.
 

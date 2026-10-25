@@ -579,17 +579,6 @@ def bfz_year():
 
 # --- the projection frame --------------------------------------------------
 
-def proj_len_y():
-    """n: the **number of policy years counted from year 0**, equal to :func:`policy_term`.
-
-    The unit every **annual** construction in this model is written against: the equivalence,
-    the three reserves, the § 169 value, the *Überschussdeklaration* and the paid-up purchase
-    all run over policy years and are indexed by ``k = 0 ... n``.  :func:`proj_len` is twelve
-    times this and is the frame.
-    """
-    return policy_term()
-
-
 def proj_len():
     """The **number of projected policy months**, ``12 x proj_len_y()``.
 

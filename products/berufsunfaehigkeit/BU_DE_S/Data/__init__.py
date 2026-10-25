@@ -32,7 +32,7 @@ Reference                 Cells                         File
 model_point_file          model_point_table()           model_point_table.csv
 inception_file            inception_table()             inception_table.csv
 claim_duration_file       claim_duration_table()        claim_duration_table.csv
-mortality_file            mortality_table()             mortality_table.csv
+mort_file                 mort_table()                  mortality_table.csv
 occupation_file           occupation_table()            occupation_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
 freq_loading_file         freq_loading_table()          freq_loading_table.csv
@@ -127,7 +127,7 @@ def claim_duration_table():
         input_dir() / claim_duration_file, index_col="dur_year")     # noqa: F821
 
 
-def mortality_table():
+def mort_table():
     """The two annual mortality rates by attained age, ages 18-70.
 
     Read from *mortality_table.csv*: ``mort_rate_actv`` for lives in the *aktiv* and
@@ -136,9 +136,14 @@ def mortality_table():
     ``mort_rate_actv(30) = 0.000350``, with the disabled rate at 4.00x the active one;
     DAV 2008 T and DAV 1997 TI are not shipped.  **Using one rate for both states is a
     numbered pitfall**, which is why the file carries two columns rather than one.
+
+    Override reason: the table carries an active and a disabled rate (``mort_rate_actv``,
+    ``mort_rate_dis``) keyed by ``age`` alone,
+    products/berufsunfaehigkeit/technical-notes.md, section (c) Behavioural / experience
+    assumptions (the modeller's view)
     """
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / mortality_file, index_col="age")               # noqa: F821
+        input_dir() / mort_file, index_col="age")                    # noqa: F821
 
 
 def occupation_table():
@@ -182,7 +187,7 @@ inception_file = "inception_table.csv"
 
 claim_duration_file = "claim_duration_table.csv"
 
-mortality_file = "mortality_table.csv"
+mort_file = "mortality_table.csv"
 
 occupation_file = "occupation_table.csv"
 

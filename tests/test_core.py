@@ -154,6 +154,7 @@ CORE_CELLS = {
         "param_table": {"klassische_rentenversicherung": "derived",
                         "pflegerentenversicherung": "derived"},
         "mort_table": {"basisrente": "override",
+                       "berufsunfaehigkeit": "override",
                        "fondsgebundene_rentenversicherung": "override",
                        "indexpolice": "derived",
                        "kapitallebensversicherung": "derived",

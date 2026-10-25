@@ -43,7 +43,7 @@ Reference                 Cells                              File
 model_point_file          data.model_point_table()           model_point_table.csv
 inception_file            data.inception_table()             inception_table.csv
 claim_duration_file       data.claim_duration_table()        claim_duration_table.csv
-mortality_file            data.mortality_table()             mortality_table.csv
+mort_file                 data.mort_table()                  mortality_table.csv
 occupation_file           data.occupation_table()            occupation_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
@@ -705,7 +705,7 @@ def mort_rate_at_age(x):
     table's range 18-70.  It applies to the *aktiv* ledger **and to the § 174 run-off**,
     whose lives have recovered and are no longer impaired lives.
     """
-    tbl = data.mortality_table()                                     # noqa: F821
+    tbl = data.mort_table()                                          # noqa: F821
     return float(tbl.loc[min(max(x, int(tbl.index.min())),
                              int(tbl.index.max())), "mort_rate_actv"])
 
@@ -720,7 +720,7 @@ def mort_rate_dis_at_age(x):
     for both states is a numbered pitfall**, which is why the two live in separate
     columns.
     """
-    tbl = data.mortality_table()                                     # noqa: F821
+    tbl = data.mort_table()                                          # noqa: F821
     return float(tbl.loc[min(max(x, int(tbl.index.min())),
                              int(tbl.index.max())), "mort_rate_dis"])
 

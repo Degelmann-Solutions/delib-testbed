@@ -495,17 +495,6 @@ def proj_len():
     return n
 
 
-def policy_year(t):
-    """y(t) = ``t // 12 + 1``: the contractual, 1-based policy year containing month ``t``.
-
-    1 for ``t = 0 ... 11``, 2 for ``t = 12 ... 23``, and so on.  It is **derived from**
-    ``t`` and never indexed **by**: no cells in this model takes a policy year as its
-    argument.  Every formula that needs the elapsed count — the *Überschussrente*
-    exponent, the inflation index, the attained age — uses :func:`duration` instead.
-    """
-    return duration(t) + 1
-
-
 def age(t, life=1):
     """Attained age of a life at month ``t``: ``issue_age(life) + t // 12``.
 

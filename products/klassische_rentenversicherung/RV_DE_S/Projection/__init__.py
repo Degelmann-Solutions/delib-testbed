@@ -498,14 +498,6 @@ def is_anniv(t):
     return t % 12 == 11
 
 
-def policy_year(t):
-    """The **contractual, 1-based** policy year of month t: ``duration(t) + 1``.
-
-    The label the input files are keyed on, and derived rather than indexed by.
-    """
-    return duration(t) + 1
-
-
 def age_y(k):
     """x(k): the attained age at the start of policy year k, ``issue_age + k``."""
     return issue_age() + k

@@ -245,6 +245,15 @@ CORE_CELLS = {
                      "sofortrente": "derived"},
         "duration_y": {"basisrente": "derived",
                        "riester_rente": "derived"},
+        "policy_year": {"basisrente": "derived",
+                        "berufsunfaehigkeit": "override",
+                        "fondsgebundene_rentenversicherung": "derived",
+                        "indexpolice": "derived",
+                        "kapitallebensversicherung": "derived",
+                        "klassische_rentenversicherung": "derived",
+                        "pflegerentenversicherung": "derived",
+                        "risikolebensversicherung": "derived",
+                        "sofortrente": "derived"},
     },
 }
 

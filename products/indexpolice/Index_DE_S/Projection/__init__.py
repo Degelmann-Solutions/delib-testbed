@@ -430,15 +430,6 @@ def is_anniv(t):
     return t % 12 == 11
 
 
-def policy_year(t):
-    """The **contractual, 1-based** policy year of month t: ``duration(t) + 1``.
-
-    Derived and never indexed by; the input tables that are keyed by duration are keyed on
-    the 0-based ``duration(t)`` instead, which is what they were already keyed on.
-    """
-    return duration(t) + 1
-
-
 def index_month(t):
     """``m(t)``: which month of its *Indexjahr* month t is, **1-based**: ``t % 12 + 1``.
 

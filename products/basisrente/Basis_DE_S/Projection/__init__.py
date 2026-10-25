@@ -502,16 +502,6 @@ def duration_mth(t):
     return 12 * duration_init() + t
 
 
-def policy_year(t):
-    """The contractual **1-based** policy year label of month t, ``duration(t) + 1``.
-
-    The label the AVB and *behaviour_table.csv* use: the first year of the contract is
-    policy year 1 and ``duration`` is 0 through the whole of it.  Published so that a
-    reader never has to decide which of the two a table's ``dur`` column means.
-    """
-    return duration(t) + 1
-
-
 def cal_year_y(k):
     """y(k): calendar year at the start of projection year k.
 

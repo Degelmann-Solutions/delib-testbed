@@ -513,15 +513,6 @@ def proj_len():
     return 12 * (omega_age() - issue_age())
 
 
-def policy_year(t):
-    """y(t): the *Versicherungsjahr*, ``t // 12 + 1``, 1-based.
-
-    The key into *lapse_table.csv* and *surrender_table.csv*, both of which are tabulated
-    to year 40 with year 40's value applying to every later year.
-    """
-    return t // 12 + 1
-
-
 def age(t):
     """x(t): the attained age, ``issue_age() + t // 12``.
 

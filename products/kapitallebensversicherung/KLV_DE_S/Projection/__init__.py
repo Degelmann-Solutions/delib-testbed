@@ -636,18 +636,6 @@ def age_y(k):
     return issue_age() + k
 
 
-def policy_year(t):
-    """y(t): the **contractual, 1-based** policy year containing month t, ``duration(t) + 1``.
-
-    Derived, never indexed by: ``t`` is the model's clock and this is the label the contract
-    and the input tables use.  It is the key into the ``policy_year`` column of
-    *lapse_table.csv* (:func:`lapse_rate`, :func:`storno_rate`) and of
-    *surplus_rate_table.csv* (:func:`decl_rate`, :func:`term_rate`, :func:`ans_rate`), which
-    are 1-based schedules and are left that way rather than being re-keyed to the frame.
-    """
-    return duration(t) + 1
-
-
 def policy_year_y(k):
     """The contractual, 1-based label of **policy year** k: ``k + 1``.
 

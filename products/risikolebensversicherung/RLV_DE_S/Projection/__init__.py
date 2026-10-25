@@ -597,17 +597,6 @@ def proj_len():
     return 12 * proj_len_y()
 
 
-def policy_year(t):
-    """y: the contractual **1-based** policy year containing month t; 1 for ``t = 0..11``.
-
-    The label ``duration(t) + 1``, derived from the 0-based ``t`` and never indexed by.
-    It exists because three shipped inputs are keyed on a contractual policy year —
-    *benefit_schedule.csv*, *nvg_schedule.csv* and *lapse_table.csv* — and those lookups
-    map through this cells rather than pass ``t`` raw.
-    """
-    return duration(t) + 1
-
-
 def age(t):
     """x(t): the attained age of the first life, ``issue_age + duration(t)``.
 

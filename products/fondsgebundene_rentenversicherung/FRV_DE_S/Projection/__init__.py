@@ -622,17 +622,6 @@ def proj_len():
     return 12 * (annuity_age() - issue_age())
 
 
-def policy_year(t):
-    """The policy year containing month t, ``t // 12 + 1``.
-
-    The **contractual** label, and 1-based by contract: policy year 1 is ``t = 0 ... 11``.
-    It is derived from ``t`` and never indexed by, and it is the key into the annual tables
-    — ``lapse_table.csv`` and ``fund_scenario_table.csv`` — whose own ``policy_year``
-    column is that same 1-based label.
-    """
-    return t // 12 + 1
-
-
 def age(t):
     """Attained age in month t, ``issue_age() + policy_year(t) - 1 = issue_age() + t // 12``.
 

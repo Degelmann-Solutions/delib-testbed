@@ -594,6 +594,10 @@ def policy_year(t):
 
     ``duration_mth(t) // 12 + 1``, floored at 1 so that a negative ``t`` reaching back
     before inception reads as policy year 1 rather than as a year 0 the tariff never had.
+
+    Override reason: a disability cohort is paid the insured amount of its onset month
+    ``t - z``, which can precede inception, so the policy year is floored at 1,
+    products/berufsunfaehigkeit/model.md:203
     """
     return max(1, duration_mth(t) // 12 + 1)
 

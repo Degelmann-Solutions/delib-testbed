@@ -124,16 +124,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def input_dir():
-    """The directory holding the input CSVs: the model folder's parent.
-
-    Inputs are *external* files, not data stored inside the model, so the model folder is
-    pure formulas.  The path is resolved at run time from where the model was read,
-    following ``annuallife.TradLife_A``.
-    """
-    return _model.path.parent                                        # noqa: F821
-
-
 def model_point_table():
     """The model point table, read from *model_point_table.csv*.
 

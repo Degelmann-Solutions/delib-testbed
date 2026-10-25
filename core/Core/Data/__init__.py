@@ -18,3 +18,14 @@ _bases = []
 _allow_none = None
 
 _spaces = []
+
+# ---------------------------------------------------------------------------
+# Cells
+
+def input_dir():
+    """The directory holding the product's input CSVs: its model folder's parent.
+
+    Resolved at run time from where the product's model was read, so a core cell reads
+    the product's own input files.
+    """
+    return _model.path.parent                                        # noqa: F821

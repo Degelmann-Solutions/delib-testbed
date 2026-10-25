@@ -144,7 +144,9 @@ def test_data_and_projection_have_the_core_spaces_as_bases(product, product_mode
 # (test_every_override_of_a_core_cell_has_a_reason). A product not named did not have the
 # cell before; it inherits the core cell unused, so it must not define it either.
 CORE_CELLS = {
-    "Data": {},
+    "Data": {
+        "input_dir": dict.fromkeys(MODELS, "derived"),
+    },
     "Projection": {
         "model_point": dict.fromkeys(MODELS, "derived"),
     },

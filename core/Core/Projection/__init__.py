@@ -67,3 +67,8 @@ def prem_term_y():
 def issue_year():
     """The calendar year of issue, from the model point's ``issue_year`` column."""
     return int(model_point()["issue_year"])                          # noqa: F821
+
+
+def duration_init():
+    """The completed policy years at the valuation date, from the model point."""
+    return int(model_point()["duration_init"])                       # noqa: F821

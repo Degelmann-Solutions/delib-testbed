@@ -69,7 +69,7 @@ is, how each index path was built and which rows a replacement must preserve.
 `proj_len() = 12 × proj_len_y()` is the frame's **exclusive** end, with
 `proj_len_y() = ann_start_age − issue_age` the number of policy years. The anchor publishes
 **324 rows, `t` = 0 to 323**, twenty-seven policy years; an in-force point opens at
-`t_start() = 12 × dur_init`, so model point 8 (`dur_init = 8`) runs `t = 96 … 323`, 228
+`t_start() = 12 × duration_init`, so model point 8 (`duration_init = 8`) runs `t = 96 … 323`, 228
 rows, and still reports `proj_len_y() = 27`.
 
 **Almost nothing on this product is monthly, and the argument of a cells says so.** Cells
@@ -121,7 +121,7 @@ year and is read through `duration(t)`; `index_return_table.csv` keeps one row p
 year and twelve return columns `m01 … m12`, which `index_month(t)` now selects directly;
 `election_table.csv` and `surplus_rate_table.csv` are keyed on the same 0-based policy year;
 `mort_table.csv` is keyed on attained age, reached through `age(t)`. On the model point
-table, `dur_init` is an elapsed count of policy **years** and is `k_start()`, with
+table, `duration_init` is an elapsed count of policy **years** and is `k_start()`, with
 `t_start()` twelve times it.
 
 ## The capital is in the *Sicherungsvermögen*, not an *Anlagestock*
@@ -368,7 +368,7 @@ row. Their contractual reading is `policy year = k + 1`: the lapse table's
 election path holds `w = 1` through `k = 14`, and the two constructed *Indexjahre* of
 `eqidx_vol17` are the rows `k = 8` (Example A) and `k = 9` (Example B).
 `mort_table.csv` is keyed on `(sex, age)` and `freq_load_table.csv` on `prem_freq`, neither
-of them time axes. In `model_point_table.csv` nothing shifts: `dur_init` is an elapsed count
+of them time axes. In `model_point_table.csv` nothing shifts: `duration_init` is an elapsed count
 of completed policy years and is 0-based by nature — it *is* `t_start()` — while
 `prem_term_y` is a term length, `issue_age` and `ann_start_age` are ages, and none of them
 is a point on the frame's axis.

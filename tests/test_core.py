@@ -206,6 +206,12 @@ CORE_CELLS = {
                        "kapitallebensversicherung": "derived",
                        "klassische_rentenversicherung": "derived",
                        "sofortrente": "derived"},
+        "duration_init": {"basisrente": "derived",
+                          "indexpolice": "derived",
+                          "kapitallebensversicherung": "derived",
+                          "klassische_rentenversicherung": "derived",
+                          "riester_rente": "derived",
+                          "risikolebensversicherung": "derived"},
     },
 }
 

@@ -5,7 +5,7 @@
 
 The frame is 0-based and counts policy **months**: ``t = 0`` is the first policy month, so
 a new-business point runs ``t = 0 .. proj_len() - 1`` and the in-force point 8 opens at
-``t = 12 x duration_y = 144``.  Both views are printed — the first twelve months of the
+``t = 12 x duration_init = 144``.  Both views are printed — the first twelve months of the
 monthly frame, then the whole run summed into policy years by ``result_cf_annual()``.
 
 Output is ASCII-only so it prints on a Windows console under any code page.
@@ -33,7 +33,7 @@ print("premium form = {}   Zahlweise = {} ({} instalments, load {:.3f})   "
           proj.prem_freq_load(), proj.surplus_form()))
 print("rating factor = {:.2f}   NVG schedule = {}   duration = {} y   "
       "frame t = {} .. {} months ({} policy years)".format(
-          proj.rating_factor(), proj.nvg_schedule_id(), proj.duration_y(),
+          proj.rating_factor(), proj.nvg_schedule_id(), proj.duration_init(),
           proj.proj_start(), proj.proj_len() - 1, proj.proj_len_y()))
 print()
 print("Bruttobeitrag  G  = {:,.4f} EUR   Nettopraemie Gn = {:,.4f} EUR".format(

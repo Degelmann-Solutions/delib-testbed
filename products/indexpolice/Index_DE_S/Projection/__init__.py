@@ -16,9 +16,9 @@ projecting model point 1::
 ``t`` counts **policy months from issue**, 0-based. ``proj_len() = 12 x proj_len_y()`` is
 the **exclusive end** of the frame, with ``proj_len_y() = ann_start_age - issue_age`` the
 number of policy years, so ``result_cf().index[-1] == proj_len() - 1`` and the frame of an
-in-force point at ``dur_init = 8`` has 228 rows while still reporting ``proj_len() = 324``.
+in-force point at ``duration_init = 8`` has 228 rows while still reporting ``proj_len() = 324``.
 A **new-business** point starts at ``t = 0``; an **in-force** point starts at
-``t = t_start() = 12 x dur_init``, because ``t`` is counted from the policy's own inception
+``t = t_start() = 12 x duration_init``, because ``t`` is counted from the policy's own inception
 and not from the valuation date.
 
 **Almost nothing on this product is monthly, and the argument of a cells says which clock
@@ -112,8 +112,8 @@ Notes symbol               Cells                           Meaning
 n = ann_start - entry      proj_len_y()                    Number of projected policy
                                                            years; last one is n - 1
 12 n                       proj_len()                      Exclusive end, in months
-t0 = 12 dur_init           t_start()                       First projected month
-k0 = dur_init              k_start()                       First projected policy year
+t0 = 12 duration_init      t_start()                       First projected month
+k0 = duration_init         k_start()                       First projected policy year
 (none)                     duration_mth(t)                 Elapsed policy months, = t
 k(t)                       duration(t)                     0-based policy year of month t
 t + 1 (contractual)        policy_year(t)                  1-based policy year label
@@ -260,19 +260,6 @@ def policy_id():
     return model_point()["policy_id"]
 
 
-def dur_init():
-    """Completed policy years at the valuation date; 0 for new business.
-
-    The frame starts at ``t_start() = dur_init()``, because ``t`` is the policy's own
-    elapsed duration and both are 0-based counts of completed years.  An in-force point
-    brings its state with it — ``av_pp_init``,
-    ``guar_locked_init``, ``prem_paid_init`` — rather than having it re-derived, which is
-    what makes the in-force cells independent evidence about the recursion rather than a
-    replay of it.
-    """
-    return int(model_point()["dur_init"])
-
-
 def pols_if_init():
     """Policies in force at ``t_start()``: 1.0, a single-policy model point.
 
@@ -412,7 +399,7 @@ def surr_charge_on():
 # --- the frame ---------------------------------------------------------------
 
 def k_start():
-    """``k0``: the first projected **policy year**, ``dur_init()`` — the elapsed years.
+    """``k0``: the first projected **policy year**, ``duration_init()`` — the elapsed years.
 
     New business starts at 0; an in-force point starts partway through its own term, at
     the count of policy years it has already completed.  Every annual construction in this
@@ -420,13 +407,13 @@ def k_start():
     *Höchststandsicherung* ledger, the death benefit and the surrender value — is defined
     from here.
     """
-    return dur_init()
+    return duration_init()
 
 
 def t_start():
     """``t0``: the frame's first **month**, ``12 x k_start()``.
 
-    ``dur_init`` is an elapsed count of policy **years**, so the conversion is a
+    ``duration_init`` is an elapsed count of policy **years**, so the conversion is a
     multiplication and no model point column changed.  The frame's *start* is a product fact
     and is not fixed per model, which is why the conventions suite asserts contiguity and
     the last index rather than the first.
@@ -450,7 +437,7 @@ def proj_len():
 
     The library's reading of ``proj_len()`` and lifelib's own: ``result_cf()`` covers
     ``t = t_start() ... proj_len() - 1``, so ``result_cf().index[-1] == proj_len() - 1``.
-    It is **not** the row count of an in-force point — one at ``dur_init = 8`` publishes
+    It is **not** the row count of an in-force point — one at ``duration_init = 8`` publishes
     228 rows and still reports 324.
     """
     return 12 * proj_len_y()
@@ -1531,7 +1518,7 @@ def exp_acq_pp(t):
     :func:`prem_charge_acq_pp` over five years, and setting the expense equal to the charge
     is what makes the strain visible in ``net_cf`` rather than assumed away.
     """
-    if t != t_start() or dur_init() != 0:
+    if t != t_start() or duration_init() != 0:
         return 0.0
     return acq_expense_rate * prem_sum()                             # noqa: F821
 

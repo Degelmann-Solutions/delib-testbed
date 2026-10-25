@@ -83,7 +83,7 @@ def runs(tmp_path_factory):
     """
     tmp_path = tmp_path_factory.mktemp("runner")
     false_check = scratch_copy(tmp_path, "false_check")
-    edit_point(false_check, 1, duration_y="25")
+    edit_point(false_check, 1, duration_init="25")
     raises = scratch_copy(tmp_path, "raises")
     edit_point(raises, 2, benefit_schedule_id="nosuch")
     edit_point(raises, 13, benefit_schedule_id="nosuch")

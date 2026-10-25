@@ -329,19 +329,6 @@ _spaces = []
 # === the model point
 
 
-def duration_init():
-    """Completed contract years at the valuation date; 0 for a point projected from issue.
-
-    It drives three things and each of them matters.  ``duration(t) = duration_init() +
-    t`` selects the *Stornoabzug* band and the acquisition-charge window, so an in-force
-    point picks up the charge only for the contract years it has left; the expense
-    inflation factor runs on contract duration rather than projection year; and the
-    acquisition expense and initial commission fall only where ``duration_init() == 0``,
-    because on an in-force point they are in the past.
-    """
-    return int(model_point()["duration_init"])
-
-
 def pols_if_init():
     """The number of policies the model point represents at the start of period ``t = 0``.
 

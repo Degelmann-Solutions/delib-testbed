@@ -17,7 +17,7 @@ policy month, month ``t`` runs from time ``t`` to time ``t + 1``, ``pols_if(t)``
 count at time ``t``, and ``proj_len() = 12 x policy_term`` is the **number** of projected
 months — 300 on the anchor cell — and so the frame's **exclusive end**, the loop being
 lifelib's ``for t in range(proj_len())``. A new-business model point opens at ``t = 0``;
-an **in-force** model point opens at ``t = proj_start() = 12 x duration_y``, so that
+an **in-force** model point opens at ``t = proj_start() = 12 x duration_init``, so that
 everything keyed to duration reads off one clock and needs no second one. There is nothing
 after ``proj_len() - 1``: the survivors' cover simply expires, nothing is payable, and
 ``pols_if(proj_len())`` is exactly zero.
@@ -87,7 +87,7 @@ Notes symbol               Cells                           Meaning
 (none)                     model_point()                   The selected model point row
 n = policy_term            proj_len_y()                    Number of policy years
 12 n                       proj_len()                      Number of projected months
-t0 = 12 duration_y         proj_start()                    First projected month index
+t0 = 12 duration_init      proj_start()                    First projected month index
 (none)                     duration_mth(t)                 Completed policy months, = t
 (none)                     duration(t)                     Completed policy years, t // 12
 y = duration(t) + 1        policy_year(t)                  Contractual 1-based policy year
@@ -550,20 +550,6 @@ def mort_table_id():
     return model_point()["mort_table_id"]
 
 
-def duration_y():
-    """Completed policy years at the valuation date; 0 for new business.
-
-    **The only thing that moves where the frame starts.**  It is an **elapsed count and so
-    already 0-based**: the projection opens at ``t = duration_y``, so an in-force point
-    reads the same lapse table, the same § 161 window and the same *Zillmerung* run-off off
-    the same clock as a new-business one, with no re-based issue age and no second duration
-    variable to keep in step.  It is also the acquisition-cost switch: on an in-force point
-    the acquisition cost and the initial commission are **sunk** and are not incurred at
-    all, which is why the switch tests ``duration_y = 0`` and not merely ``t = 0``.
-    """
-    return int(model_point()["duration_y"])
-
-
 def issue_date():
     """The issue date, for reporting only; the model runs on integer durations."""
     return model_point()["issue_date"]
@@ -588,15 +574,15 @@ def pols_if_init():
 
 
 def proj_start():
-    """t0: the first projected **month**, ``12 x duration_y``.
+    """t0: the first projected **month**, ``12 x duration_init``.
 
     0 for a new-business point and 144 for the in-force model point 8, whose twelve
     completed policy years are now twelve completed *years* of months.  ``result_cf()``
-    runs from here to ``proj_len() - 1`` inclusive and contiguously.  ``duration_y`` is an
+    runs from here to ``proj_len() - 1`` inclusive and contiguously.  ``duration_init`` is an
     elapsed count and already 0-based, so the conversion is a multiplication and not an
     offset.
     """
-    return 12 * duration_y()
+    return 12 * duration_init()
 
 
 def proj_len_y():
@@ -616,7 +602,7 @@ def proj_len():
 
     300 on the anchor cell.  It is the frame's **exclusive end**: ``result_cf()`` runs
     over ``range(proj_start(), proj_len())``, so the last index is ``proj_len() - 1`` and
-    the frame has ``12 (policy_term - duration_y)`` rows.  Cover ends at the end of the
+    the frame has ``12 (policy_term - duration_init)`` rows.  Cover ends at the end of the
     last month ``t = proj_len() - 1`` with nothing payable, and ``pols_if(proj_len())`` is
     exactly zero.
     """
@@ -906,7 +892,7 @@ def benefit_paid_pp(t):
     statement as ``t < 36``.  The comparison is left in years because that is the unit
     the statute and the *Bedingungen* use.
 
-    On an in-force point with ``duration_y >= 3`` and no increments the switch is inert at
+    On an in-force point with ``duration_init >= 3`` and no increments the switch is inert at
     every projected ``t``, which is model point 8.  ``suicide_share = 0.03`` is **[std]**
     with an argued range of 0.01 to 0.05: no German cause-of-death share was retrieved.
     It carries three times the weight of the French one-year factor simply because the
@@ -1699,7 +1685,7 @@ def expenses(t):
     """Total expense outgo in month t, **excluding** commission.
 
     Acquisition cost net of the initial commission in month ``t = 0`` and only where
-    ``duration_y = 0`` — a single amount at issue, not an annualised loading and not a
+    ``duration_init = 0`` — a single amount at issue, not an annualised loading and not a
     twelfth of one; maintenance and collection on the opening in-force; and the claim
     expense on the month's deaths, 250 € each **[std]**.
 
@@ -1709,7 +1695,7 @@ def expenses(t):
     libraries' columns look alike and do not mean the same thing, so the identity is
     written down in :func:`check_net_cf` rather than left to a reader's assumption.
     """
-    acq = (acq_cost_pp() - comm_init_pp()) if (t == 0 and duration_y() == 0) else 0.0
+    acq = (acq_cost_pp() - comm_init_pp()) if (t == 0 and duration_init() == 0) else 0.0
     return (acq + maint_pp(t) * pols_if(t)
             + claim_expense * pols_death(t))                        # noqa: F821
 
@@ -1718,7 +1704,7 @@ def commissions(t):
     """Commission outgo in month t.
 
     The initial *Abschlussprovision* at issue — in month ``t = 0`` and only where
-    ``duration_y = 0``, because on an in-force point it is sunk — plus the
+    ``duration_init = 0``, because on an in-force point it is sunk — plus the
     *Bestandspflegeprovision* at 1,0 % of each *Zahlbeitrag* instalment from
     ``duration(t) >= 1``, which is policy year 2.  Both **[std]**.
 
@@ -1727,7 +1713,7 @@ def commissions(t):
     instalments too.  On an annual-mode point that reproduces the annual model's
     commission exactly, both the rate and the collection sitting on the anniversary.
     """
-    init = comm_init_pp() if (t == 0 and duration_y() == 0) else 0.0
+    init = comm_init_pp() if (t == 0 and duration_init() == 0) else 0.0
     renew = (comm_rate_renew * prem_inst_pp(t) * pols_if(t)          # noqa: F821
              if duration(t) >= 1 else 0.0)
     return init + renew
@@ -1967,7 +1953,7 @@ def result_cf():
     statute and by contract and are published rather than dropped.  ``liability_cf`` is
     ``net_cf`` outgo-positive.
 
-    The frame runs ``t = 12 duration_y ... proj_len() - 1`` contiguously and stops there:
+    The frame runs ``t = 12 duration_init ... proj_len() - 1`` contiguously and stops there:
     cover expires at the end of the last month with nothing payable and no survivors left
     in force.
     """

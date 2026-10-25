@@ -504,7 +504,7 @@ def k_start():
     — the premium, the charges, both accounts, the § 169 floor, the surrender value and the
     death benefit — is defined from here.
     """
-    return int(model_point()["duration_init"])
+    return duration_init()
 
 
 def duration_mth(t):

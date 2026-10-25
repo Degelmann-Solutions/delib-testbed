@@ -491,7 +491,7 @@ def age_y(k):
     was established, and here mortality drives the annuity's duration rather than any
     benefit amount, so a half-year offset is second order.
     """
-    return issue_age() + int(model_point()["duration_init"]) + k
+    return issue_age() + duration_init() + k
 
 
 def age(t):
@@ -515,7 +515,7 @@ def duration_y(k):
 
     The ``dur`` index of *behaviour_table.csv* is the **policy year**, ``duration_y(k) + 1``.
     """
-    return int(model_point()["duration_init"]) + k
+    return duration_init() + k
 
 
 def duration(t):
@@ -537,7 +537,7 @@ def duration_mth(t):
     completed 216 — and because ``duration(t) = duration_mth(t) // 12`` states in code that
     the policy duration is the policy month divided down.
     """
-    return 12 * int(model_point()["duration_init"]) + t
+    return 12 * duration_init() + t
 
 
 def policy_year(t):
@@ -559,7 +559,7 @@ def cal_year_y(k):
     points that reach the same attained age in different calendar years see different
     rates, and treating the basis as a period table is the fifteenth pitfall.
     """
-    return issue_year() + int(model_point()["duration_init"]) + k
+    return issue_year() + duration_init() + k
 
 
 def cal_year(t):
@@ -672,7 +672,7 @@ def prem_base_pp(k):
     applies phi and stops at *Rentenbeginn*.
     """
     if model_point()["prem_form"] == "single":
-        if k == 0 and int(model_point()["duration_init"]) == 0:
+        if k == 0 and duration_init() == 0:
             return float(model_point()["prem_base_pp"])
         return 0.0
     return (float(model_point()["prem_base_pp"])
@@ -1640,7 +1640,7 @@ def expenses(t):
     row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
     infl = (1.0 + float(row["expense_infl"])) ** proj_year(t)
     out = 0.0
-    if t == 0 and int(model_point()["duration_init"]) == 0:
+    if t == 0 and duration_init() == 0:
         out += float(row["acq_expense_pp"]) * pols_if_init()
     if t < ret_t():
         out += float(row["maint_expense_pp"]) / 12.0 * infl * pols_if(t)
@@ -1673,7 +1673,7 @@ def commissions(t):
         return 0.0
     row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
     out = 0.0
-    if t == 0 and int(model_point()["duration_init"]) == 0:
+    if t == 0 and duration_init() == 0:
         out += float(row["comm_init_rate"]) * beitragssumme_pp() * pols_if_init()
     if t >= 1:
         out += float(row["comm_renew_rate"]) * (premiums(t) + zuzahlungen(t))

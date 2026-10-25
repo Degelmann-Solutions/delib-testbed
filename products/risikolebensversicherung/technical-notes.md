@@ -62,15 +62,15 @@ the library's retired-names register.
   policy years. **The first month is `t = 0`** and **the contractual policy year is
   `policy_year(t) = duration(t) + 1`** — the label the three schedule CSVs are keyed on, derived and
   never indexed by. A new-business model point opens at `t = 0`; **an in-force model point opens at
-  `t = 12 · duration_y`**, `duration_y` being completed policy years and therefore already a 0-based
+  `t = 12 · duration_init`**, `duration_init` being completed policy years and therefore already a 0-based
   elapsed count, so that everything keyed to duration — the § 161 three-year window, the lapse
-  table, the *Zillmerung* run-off — reads off one clock and needs no second. That is why `duration_y`
+  table, the *Zillmerung* run-off — reads off one clock and needs no second. That is why `duration_init`
   is a model-point column rather than a re-based issue age.
 - **`proj_len()` is the number of projected policy months**, `12 · policy_term`, and it is the
   frame's **exclusive end**; `proj_len_y() = policy_term` is the *Versicherungsdauer* in whole years
   and is what every annual construction is written against. `result_cf()` is indexed by `t` from
-  `12 · duration_y` to `proj_len() − 1` inclusive, contiguously, so the frame is
-  `range(12·duration_y, proj_len())` and has `12·(policy_term − duration_y)` rows. This is lifelib's
+  `12 · duration_init` to `proj_len() − 1` inclusive, contiguously, so the frame is
+  `range(12·duration_init, proj_len())` and has `12·(policy_term − duration_init)` rows. This is lifelib's
   own convention, which delib adopts and asserts in `tests/test_model_conventions_de.py`.
   `result_cf_annual()` sums that frame into policy years and is the view the worked example below is
   stated on.
@@ -172,7 +172,7 @@ following `TradLife_A`; their values and tags are the assumption tables below.
 | `smoker2` | enum {N, R, -} | Smoker status of the second life; `-` where `lives = 1` | 10 |
 | `rating_factor` | float | *Risikozuschlag*: a multiplier on the **mortality basis**, both orders. 1.00 standard | 11 |
 | `mort_table_id` | str | Key into `mort_table.csv`; one table shipped, `dav2008t_proxy` | all |
-| `duration_y` | int | Completed policy years at the valuation date; `0` for new business | 8 |
+| `duration_init` | int | Completed policy years at the valuation date; `0` for new business | 8 |
 | `issue_date` | date | Reporting only; the model runs on integer durations | none |
 
 Three of these are worth a sentence each. **`sex` is carried and must not be priced on**: art. 5(2)
@@ -183,7 +183,7 @@ policy's own sex** [R11] [REG-R8] — so the unisex cross-subsidy appears in the
 than in the price. **`rating_factor` scales the mortality basis, not the price**: an impaired life
 pays more *and* is expected to claim more, so the *Zahl/Brutto* ratio is nearly invariant to it; the
 alternative reading, in which the loading is pure price and falls through to surplus, is pitfall 17.
-**`duration_y` is the only thing that moves where the frame starts**, and it is what makes the § 161
+**`duration_init` is the only thing that moves where the frame starts**, and it is what makes the § 161
 window, the lapse table and the acquisition-cost switch all read off one clock.
 
 ### Model points shipped
@@ -201,7 +201,7 @@ anchor cell.**
 | 5 | 33 F N, 400 000 € `annuitaet_fallend_3pct`, 30/30 y, `vierteljaehrlich` | *Darlehensabsicherung* schedule; the 3 % loading |
 | 6 | 45 M N, 200 000 € `konstant`, 20/**12** y, `halbjaehrlich` | *Abgekürzte Beitragszahlungsdauer*; the largest *Deckungskapital*; the 2 % loading |
 | 7 | 50 M N, 100 000 € `konstant`, 10/**1** y, `einmal`, `jaehrlich` | The second premium form; the equivalence at its boundary |
-| 8 | 30 F N, 150 000 € `konstant`, 30/30 y, `duration_y = 12` | **In force.** The frame opens at `t = 144`; past the § 161 window and the elevated lapse durations |
+| 8 | 30 F N, 150 000 € `konstant`, 30/30 y, `duration_init = 12` | **In force.** The frame opens at `t = 144`; past the § 161 window and the elevated lapse durations |
 | 9 | 32 M N, 200 000 € `konstant`, 28/28 y, `nvg_zwei_erhoehungen` | *Nachversicherungsgarantie*; the § 161 clock restarting per increment |
 | 10 | 38 M N + 36 F N, 300 000 € `konstant`, 22/22 y, `monatlich`, `lives = 2` | *Verbundene Leben*; the first-death rate |
 | 11 | 42 M R, 250 000 € `konstant`, 18/18 y, `rating_factor = 1.75` | *Risikozuschlag* on an impaired smoker |
@@ -220,7 +220,7 @@ anchor cell.**
 | `duration_mth(t)`, `duration(t)`, `policy_year(t)` | completed months (`= t`), completed years (`= t // 12`), the contractual 1-based label | derived |
 | `age(t)` | Attained age of the first life = `issue_age + duration(t)`; steps on the **anniversary** | anniversary |
 | `age2(t)` | Attained age of the second life = `issue_age2 + duration(t)`; unused where `lives = 1` | anniversary |
-| `pols_if(t)` | In-force count at the **start** of month `t`; `pols_if(12·duration_y) = pols_if_init() = 1` | monthly recursion |
+| `pols_if(t)` | In-force count at the **start** of month `t`; `pols_if(12·duration_init) = pols_if_init() = 1` | monthly recursion |
 | `benefit_pp(t)` | *Versicherungssumme* in force = `sum_assured × benefit_factor(t) × sum_uplift(t)`; flat across a policy year | schedule lookup |
 | `benefit_paid_pp(t)` | The benefit actually payable on a death in month `t`, after the § 161 switch | anniversary |
 | `mort_rate(t)` | **Second-order annual** death rate of the policy year: own sex, smoker, rated, first-death where `lives = 2` | lookup |
@@ -431,7 +431,7 @@ rather than buried.
 
 | Symbol | Meaning |
 |---|---|
-| `t` | **month** index, **0-based**: `t = t0 … 12n − 1`, with `t0 = 12·duration_y` and `n = proj_len_y() = policy_term`, `proj_len() = 12n` |
+| `t` | **month** index, **0-based**: `t = t0 … 12n − 1`, with `t0 = 12·duration_init` and `n = proj_len_y() = policy_term`, `proj_len() = 12n` |
 | `y` | **policy year** index, 0-based: `y = duration(t) = t // 12`. The contractual policy year is `y + 1` |
 | `x(t)`, `x₂(t)` | attained ages, `issue_age + duration(t)` and `issue_age2 + duration(t)`; both step on the anniversary |
 | `k` | `prem_term`, the *Beitragszahlungsdauer* in years |
@@ -558,7 +558,7 @@ policy year `y_j` carries **its own** three-year window, `y_j ≤ duration(t) < 
 
 so `suicide_factor(t) = benefit_paid_pp(t) / benefit_pp(t)` is a **weighted average** across
 tranches, strictly between `1 − suicide_share` and `1` in a policy year when one tranche is inside
-its window and another is not. On an in-force model point with `duration_y ≥ 3` and no increments,
+its window and another is not. On an in-force model point with `duration_init ≥ 3` and no increments,
 `σ ≡ 1` at every projected `t`. The switch **never** touches lapses or the expiry, both of which pay
 nothing in any event.
 
@@ -600,9 +600,9 @@ its total does not.
     comm_pp  = c₀·k·G                                                 of which commission
     maint(t) = γ · B(t) · (1 + π)^duration(t) / 12  +  a · P_inst(t)
 
-    expenses(t)    = (acq_pp − comm_pp)·1{t = 0 and duration_y = 0}
+    expenses(t)    = (acq_pp − comm_pp)·1{t = 0 and duration_init = 0}
                      + maint(t)·l(t) + ec·pols_death(t)
-    commissions(t) = comm_pp·1{t = 0 and duration_y = 0}
+    commissions(t) = comm_pp·1{t = 0 and duration_init = 0}
                      + c_r·P_inst(t)·l(t)·1{duration(t) ≥ 1}
 
     prem_due(t)            = 1{ duration_mth(t) mod (12/r) = 0 }
@@ -621,7 +621,7 @@ its total does not.
 tariff amortises it through the equivalence; the cash flow incurs it at issue, which is the economic
 reason an early lapse hurts on a product with no surrender value to forfeit (mechanic 10). On an
 **in-force** model point it is sunk and is not incurred at all — which is why the switch tests
-`duration_y = 0` and not merely `t = 0`.
+`duration_init = 0` and not merely `t = 0`.
 
 **The two halves of `maint` move differently on the monthly grid, and both moves are the point.**
 The sum-related administration charge is an annual amount and accrues a twelfth a month, so a policy
@@ -673,7 +673,7 @@ reach its cash flows.
 
 ### What `result_cf()` publishes
 
-Indexed by the 0-based **month** `t`, contiguous from `12·duration_y` to `proj_len() − 1`, in this
+Indexed by the 0-based **month** `t`, contiguous from `12·duration_init` to `proj_len() − 1`, in this
 order:
 
     pols_if, prem_gross, premiums, prem_rebate,
@@ -738,7 +738,7 @@ run every month.
    else all three instalments are zero. Take `premiums(t) = P_inst(t)·l(t)`.
 5. **Beginning of month — expenses on the opening in-force.** Collection `a·P_inst(t)·l(t)` and a
    twelfth of the sum-related admin, `γ·B(t)·(1+π)^duration(t)/12·l(t)`; at `t = 0` **and only where
-   `duration_y = 0`**, the acquisition cost and the initial commission; for `duration(t) ≥ 1`, the
+   `duration_init = 0`**, the acquisition cost and the initial commission; for `duration(t) ≥ 1`, the
    renewal commission on the instalment collected.
 6. Apply the § 161 switch tranche by tranche to get `benefit_paid_pp(t)`.
 7. **End of month — death.** `pols_death(t) = l(t)·q₂ᵐ(t)`;
@@ -913,7 +913,7 @@ evidence for any of them** (research gap 13).
 `instalments = 1`), `benefit_schedule_id = konstant` (`benefit_factor = 1.0` at every `t`),
 `nvg_schedule_id = keine` (`sum_uplift = 1.0` at every `t`),
 `surplus_form = beitragsverrechnung`, `lives = 1`, `issue_age2 = 0`, `smoker2 = -`,
-`rating_factor = 1.00`, `mort_table_id = dav2008t_proxy`, `duration_y = 0`,
+`rating_factor = 1.00`, `mort_table_id = dav2008t_proxy`, `duration_init = 0`,
 `issue_date = 2026-01-01`. Hence `t0 = 0`, `proj_len_y() = 25` and `proj_len() = 300` so the frame
 is `t = 0 … 299` **months**, cover to attained age 60, and the annual table below — the monthly
 frame summed into policy years by `result_cf_annual()` — is the **entire** projection.

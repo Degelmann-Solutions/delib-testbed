@@ -72,7 +72,7 @@ and its inputs must travel together.
 **Projection basis.** Monthly steps. The time index ``t`` is **0-based** and counts policy
 **months** from issue: ``proj_len() = 12 x policy_term`` is the number of projected months
 and the frame's exclusive end, a new-business point opens at ``t = 0`` and an in-force
-point at ``t = 12 x duration_y``, so the frame is ``t = 12 duration_y … proj_len() - 1``.
+point at ``t = 12 x duration_init``, so the frame is ``t = 12 duration_init … proj_len() - 1``.
 The **product is annual and stays annual**: ``duration(t) = t // 12`` and
 ``policy_year(t) = duration(t) + 1`` are derived and never indexed by, and everything the
 contract puts on the anniversary stays there — ``age(t) = issue_age + duration(t)``, the

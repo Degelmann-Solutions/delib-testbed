@@ -410,18 +410,6 @@ def policy_id():
     return model_point()["policy_id"]
 
 
-def duration_init():
-    """The completed policy years at the valuation date; 0 for new business.
-
-    An **elapsed count**, so it is 0-based by nature and is already on the frame's scale: it
-    fixes where the frame opens - ``t_start() = duration_init()`` - and it is what suppresses
-    the acquisition expense and the initial commission on an in-force point, which incurred
-    both long ago.  Model point 10 carries 14, and its frame therefore opens at ``t = 14``,
-    the fifteenth policy year.
-    """
-    return int(model_point()["duration_init"])
-
-
 def pols_if_init():
     """The number of policies represented at ``t_start()``: 1.0, a single-policy model point.
 

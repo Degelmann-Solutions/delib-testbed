@@ -575,7 +575,7 @@ def calendar_year_y(k):
     policy-year grid and a calendar-year grid coincide only for contracts written on
     1 January, and reconciling the two is a valuation-date question this model does not pose.
     """
-    return int(model_point()["issue_year"]) + k
+    return issue_year() + k
 
 
 def calendar_year(t):

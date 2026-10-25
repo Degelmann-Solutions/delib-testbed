@@ -202,6 +202,10 @@ CORE_CELLS = {
         "prem_term_y": {"fondsgebundene_rentenversicherung": "derived",
                         "indexpolice": "derived",
                         "klassische_rentenversicherung": "derived"},
+        "issue_year": {"basisrente": "derived",
+                       "kapitallebensversicherung": "derived",
+                       "klassische_rentenversicherung": "derived",
+                       "sofortrente": "derived"},
     },
 }
 

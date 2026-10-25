@@ -553,13 +553,13 @@ def policy_year(t):
 def cal_year_y(k):
     """y(k): calendar year at the start of projection year k.
 
-    ``conclusion_year + duration_init + k``.  Carried because the mortality basis is
+    ``issue_year + duration_init + k``.  Carried because the mortality basis is
     **generational**: DAV 2004 R is a *Generationentafel* with the improvement inside the
     table, so :func:`mort_rate_at_age` needs a calendar year as well as an age.  Two model
     points that reach the same attained age in different calendar years see different
     rates, and treating the basis as a period table is the fifteenth pitfall.
     """
-    return int(model_point()["conclusion_year"]) + int(model_point()["duration_init"]) + k
+    return issue_year() + int(model_point()["duration_init"]) + k
 
 
 def cal_year(t):

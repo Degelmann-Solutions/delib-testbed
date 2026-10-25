@@ -52,7 +52,7 @@ prose, where they are the name of the thing.
   `duration_y(k) = duration_init + k` completed policy years, so the **policy year** — the
   contractual, 1-based label — is `policy_year(t) = duration(t) + 1`; attained age is
   `age_y(k) = issue_age + duration_init + k` and steps on the **anniversary**; calendar year is
-  `cal_year_y(k) = conclusion_year + duration_init + k` and steps with it. `duration_mth(t) =
+  `cal_year_y(k) = issue_year + duration_init + k` and steps with it. `duration_mth(t) =
   12 duration_init + t` is the completed policy months and `is_anniv(t)` — `t % 12 == 11` — the last
   month of a projection year. A new-business model point has `duration_init = 0`, so `k = 0` is its
   first policy year; an in-force point opens at whatever duration it has already run, and **the frame
@@ -156,7 +156,7 @@ tagged in *Assumption inputs* below: `mort_be_factor`, `elig_surv_prob`, `mort_b
 | `policy_id` | str | The carrier's own reference, carried for reporting | all |
 | `sex` | enum {M, F} | Reporting only. **Must not enter pricing**: unisex is mandatory for contracts concluded from 21 December 2012 [REG-R34] | 1–13 |
 | `issue_age` | int | Age last birthday at conclusion (*Eintrittsalter*) | all |
-| `conclusion_year` | int | Calendar year the contract was concluded. Fixes the age-floor cohort (60 before 2012, 62 after) [R1] [R8], the guarantee vintage [REG-R15] and the generational mortality cohort [R17] | 6, 7, 8 (pre-2012 / pre-2015 / pre-2010) |
+| `issue_year` | int | Calendar year the contract was concluded. Fixes the age-floor cohort (60 before 2012, 62 after) [R1] [R8], the guarantee vintage [REG-R15] and the generational mortality cohort [R17] | 6, 7, 8 (pre-2012 / pre-2015 / pre-2010) |
 | `duration_init` | int | Completed policy years at the valuation date; 0 = new business | 6, 7, 8 |
 | `ret_age` | int | Attained age at *Rentenbeginn* | 6 (60, the pre-2012 floor), 12 (70) |
 | `pols_if_init` | float | Policies the model point represents | all |
@@ -834,7 +834,7 @@ a test.
 15. **Using a period table where the basis is generational.** DAV 2004 R is a *Generationentafel* and
     the improvement lives inside it [R17] [REG-R49]. Assert
     `mort_rate_at_age(x, y2) < mort_rate_at_age(x, y1)` for `y2 > y1` at every age, and that two model
-    points at the same attained age but different `conclusion_year` — 6 and 9 both reach age 60 — see
+    points at the same attained age but different `issue_year` — 6 and 9 both reach age 60 — see
     different `mort_rate`. Assert too that `mort_rate_mth` is the **geometric** twelfth, so that
     `(1 − mort_rate_mth(t))^12 = 1 − mort_rate(t)` to 1e-14 and the annual layer is reproduced
     exactly; `mort_rate(t) / 12` closes neither.
@@ -898,7 +898,7 @@ any of them, and the research file records the absence as gap 3.
 
 **Configuration.** Model point 1, the anchor cell, exactly as shipped in `model_point_table.csv`:
 `point_id = 1`; `policy_id = DE-BAS-0001`; `sex = M` (reporting only; pricing is unisex [REG-R34]);
-`issue_age = 45`; `conclusion_year = 2026`; `duration_init = 0`; `ret_age = 67`;
+`issue_age = 45`; `issue_year = 2026`; `duration_init = 0`; `ret_age = 67`;
 `pols_if_init = 1.0`; `prem_form = regular`; `prem_base_pp = 6,000.00 €` p.a.; `prem_mode = annual`,
 so `prem_freq_load = 1.000`; `prem_dyn_rate = 0.02`; `zuzahlung_pp = 4,000.00 €` p.a.;
 `zuzahlung_end_dur = 22`; `paidup_at_init = 0`; `av_pp_init = 0.00 €`; `ann_pp_init = 0.00 €`;

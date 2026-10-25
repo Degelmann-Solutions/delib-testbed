@@ -410,17 +410,6 @@ def policy_id():
     return model_point()["policy_id"]
 
 
-def issue_year():
-    """The calendar year of conclusion: the contract's **cohort identity**.
-
-    It fixes the two DeckRV ceilings through :func:`hrz_max` and :func:`zillmer_max`, both of
-    which stay with the contract for its whole term, and it fixes the income-tax cohort.  A
-    4,00 % guarantee on a 2026 issue year is not a stress, it is a data error - which is why
-    :func:`check_rechnungszins_cap` is a model invariant rather than a build script.
-    """
-    return int(model_point()["issue_year"])
-
-
 def duration_init():
     """The completed policy years at the valuation date; 0 for new business.
 

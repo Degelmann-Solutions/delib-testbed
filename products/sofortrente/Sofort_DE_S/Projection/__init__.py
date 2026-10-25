@@ -69,7 +69,7 @@ SP_net           net_single_prem()                     SP (1 - alpha)
 alpha            expense_load_alpha                    Acquisition loading in the tariff
 beta             expense_load_beta                     Loading on the annuity value
 i                tariff_int_rate()                     Tariff Rechnungszins
-(cap)            max_tariff_int_rate()                 Hoechstrechnungszins at entry_year
+(cap)            max_tariff_int_rate()                 Hoechstrechnungszins at issue_year
 m                payment_freq()                        Instalments per year
 p = 12/m         pay_period_mths()                     Months between instalments
 D                defer_mths()                          Aufschubzeit in months
@@ -308,18 +308,6 @@ def sex(life=1):
     return v
 
 
-def entry_year():
-    """The calendar year of *Vertragsbeginn*.
-
-    It is not a cash flow driver — every step in this product falls on a policy
-    anniversary, not on 31 December — but it does two things.  It is the calendar anchor of
-    the cohort exponent through :func:`calendar_year`, and it selects the contract's own
-    *Höchstrechnungszins* vintage, which stays with the contract for life; see
-    :func:`max_tariff_int_rate`.
-    """
-    return int(model_point()["entry_year"])
-
-
 def defer_mths():
     """D: the *Aufschubzeit* in months, 0 for a pure *Sofortrente*.
 
@@ -555,20 +543,20 @@ def age(t, life=1):
 
     Age last birthday at inception, incrementing at each 12-month multiple of it.  A real
     implementation on dates carries a fractional offset of up to a year; the shipped model
-    points satisfy ``entry_year == birth_year + issue_age``, which is a **[std]**
+    points satisfy ``issue_year == birth_year + issue_age``, which is a **[std]**
     internal-consistency convention rather than a contract fact.
     """
     return issue_age(life) + t // 12
 
 
 def calendar_year(t):
-    """The calendar year month ``t`` falls in: ``entry_year() + t // 12``.
+    """The calendar year month ``t`` falls in: ``issue_year() + t // 12``.
 
     Reporting, and the cross-check on the cohort exponent — the year a life attains
     ``age(t, life)`` is ``birth_year(life) + age(t, life)``, which equals this only when
     the model point's own consistency convention holds.
     """
-    return entry_year() + t // 12
+    return issue_year() + t // 12
 
 
 def mort_rate_at_age(x, table_sex, basis):
@@ -889,7 +877,7 @@ def refund_pv():
 
 
 def max_tariff_int_rate():
-    """The statutory *Höchstrechnungszins* in force at ``entry_year()``.
+    """The statutory *Höchstrechnungszins* in force at ``issue_year()``.
 
     Read from *hoechstrechnungszins_table.csv* by the contract's own vintage, because a
     German in-force book is a stack of cohorts and the cap that applied at conclusion stays
@@ -899,11 +887,11 @@ def max_tariff_int_rate():
     1 January of the split year.
     """
     tab = data.hoechstrechnungszins_table()                          # noqa: F821
-    y = entry_year()
+    y = issue_year()
     for year_from in tab.index:
         if int(year_from) <= y <= int(tab.loc[year_from, "year_to"]):
             return float(tab.loc[year_from, "max_rate"])
-    raise ValueError("no Hoechstrechnungszins band covers entry_year")
+    raise ValueError("no Hoechstrechnungszins band covers issue_year")
 
 
 def surplus_init_pct():

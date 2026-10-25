@@ -55,7 +55,7 @@ repeated in prose.
 - **The model carries duration, not the calendar.** Every step in this product falls on a **policy
   anniversary**: the *Überschussrente* increase [S15], the expense inflation index, the attained-age
   step. Nothing happens on 31 December, so — unlike `frlib`'s `Rente_FR_S`, where revalorisation is
-  a calendar event — no cells needs the civil month. `entry_year` is carried all the same, for two
+  a calendar event — no cells needs the civil month. `issue_year` is carried all the same, for two
   reasons that are not cash flows: it is the **cohort key** of the generational mortality surface,
   and it selects the **contract's own *Höchstrechnungszins* vintage** [REG-R14] [REG-R15].
 - **Timing conventions [std].** The *Einmalbeitrag* arrives at the **start of month 0**. Instalments
@@ -70,7 +70,7 @@ repeated in prose.
   at inception, incrementing at each 12-month multiple of it. The **birth year is a separate model
   point attribute and is never derived from the projection year**, because the mortality surface is
   generational and the cohort is its key [REG-R49]. The shipped model points satisfy
-  `entry_year == birth_year(1) + issue_age(1)`, which is a **[std]** internal-consistency
+  `issue_year == birth_year(1) + issue_age(1)`, which is a **[std]** internal-consistency
   convention, not a contract fact; a real book will carry a fractional offset of up to a year.
 - **Unisex pricing.** The tariff annuity factor is computed on a **unisex blend** of the sex-distinct
   proxy tables, at a **[std]** portfolio male share; the model point's own `sex` drives only the
@@ -96,7 +96,7 @@ repeated in prose.
 | `policy_id` | str | Reference, reporting only | all |
 | `single_prem` | EUR | The *Einmalbeitrag*, `SP` | all |
 | `issue_age` | int | Annuitant's age last birthday at *Vertragsbeginn* | all |
-| `entry_year` | int | Calendar year of *Vertragsbeginn*; the *Höchstrechnungszins* vintage | 10, 13 |
+| `issue_year` | int | Calendar year of *Vertragsbeginn*; the *Höchstrechnungszins* vintage | 10, 13 |
 | `birth_year` | int | Annuitant's *Geburtsjahr* — the generational table key | all |
 | `sex` | enum {M, F} | **Decrement only**; the tariff is unisex [REG-R34] | 11, 12 (F) |
 | `defer_years` | int | *Aufschubzeit*, 0 for a pure *Sofortrente* | 6 |
@@ -164,7 +164,7 @@ the in-force annuity is a round figure of the right order for a 2012 tariff at 1
 | `age(t, life)` | Attained age = `issue_age(life) + t // 12` | monthly |
 | `duration(t)` | Completed policy years = `t // 12`; 0 through the first policy year | monthly |
 | `policy_year(t)` | Contractual, 1-based policy year = `t // 12 + 1` | monthly |
-| `calendar_year(t)` | `entry_year() + t // 12`; reporting and the cohort cross-check | monthly |
+| `calendar_year(t)` | `issue_year() + t // 12`; reporting and the cohort cross-check | monthly |
 | `mort_rate(t, life)` | **Annual** second-order rate at `age(t, life)` for that life's cohort and sex | monthly |
 | `mort_rate_mth(t, life)` | `1 − (1 − mort_rate)^(1/12)` **[std]** | monthly |
 | `mort_rate_tariff(t, life)` | **Annual** first-order rate on the **unisex** blend, used only for pricing | monthly |
@@ -524,7 +524,7 @@ not priced into the guarantee (pitfall 1's neighbour), so `annuity_pp_derived()`
 `surplus_form` and `check_equivalence()` closes on every derived point regardless of it.
 
 `check_tariff_int_rate()` asserts `tariff_int_rate() ≤ max_tariff_int_rate() + roll_fwd_tol`, the cap
-being read from `hoechstrechnungszins_table.csv` at `entry_year()` [REG-R14] [REG-R15]. The cap binds
+being read from `hoechstrechnungszins_table.csv` at `issue_year()` [REG-R14] [REG-R15]. The cap binds
 the *reserving* rate and, through § 138 Abs. 1 VAG, the rate a new tariff may be priced at [REG-R8];
 a carrier may price below it and one is observed doing so [S6], which is why the check is an
 inequality.
@@ -652,7 +652,7 @@ product's own roll-forward and pricing identities.
 | `check_guarantee_certain` | `payment_factor(t) == 1.0` at every payment month with `t < guar_end_mth()`, whatever `δ` — the instalment is certain inside the *Rentengarantiezeit* [R23] |
 | `check_equivalence` | `net_single_prem() == annuity_pp_derived()·ä·(1 + β) + refund_pv()` to `roll_fwd_tol` scaled by `net_single_prem()` — the identity is an equality between euro amounts of the order of 10⁵ and the refund solve converges on `R` rather than on the residual. Returns `True` where `annuity_pp_init() > 0`, the annuity having been struck on a basis this model does not reproduce; the notes say so rather than letting it pass silently |
 | `check_death_option_xor` | `refund_form() == "none"` **or** (`guar_years() == 0` **and** `surv_pct() == 0`) — the **[std]** exclusivity of research gap 10, asserted rather than assumed |
-| `check_tariff_int_rate` | `tariff_int_rate() ≤ max_tariff_int_rate() + roll_fwd_tol`, the cap read at `entry_year()` [REG-R14] [REG-R15]. An inequality, not an equality: a carrier may price below the cap and one is observed doing so [S6] |
+| `check_tariff_int_rate` | `tariff_int_rate() ≤ max_tariff_int_rate() + roll_fwd_tol`, the cap read at `issue_year()` [REG-R14] [REG-R15]. An inequality, not an equality: a carrier may price below the cap and one is observed doing so [S6] |
 
 ### Monthly processing order
 
@@ -802,7 +802,7 @@ Behaviour enters the **basis**, not the projection, as selection effects **[std]
 
 **Configuration.** Model point 1, the anchor cell, is the representative design of `product-spec.md`
 with every attribute stated: `policy_id = SOF-000001`; `single_prem = 100,000.00 €`;
-`issue_age = 65`; `entry_year = 2025`; `birth_year = 1960`; `sex = M`; `defer_years = 0`, so
+`issue_age = 65`; `issue_year = 2025`; `birth_year = 1960`; `sex = M`; `defer_years = 0`, so
 `defer_mths() = 0` and `first_pay_mth() = 0`; `guar_years = 10`, so `guar_end_mth() = 120` and the
 first 120 monthly instalments are certain; `refund_form = none`; `surv_pct = 0.00`, with `surv_age`,
 `surv_birth_year` and `surv_sex` unused and carried as zeros; `payment_freq = 12` and

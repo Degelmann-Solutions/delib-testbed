@@ -18,7 +18,7 @@ mp = proj.model_point()
 
 print("model point {}: {} - Einmalbeitrag {:,.2f} EUR, {}{} born {}, entry {}".format(
     point_id, proj.policy_id(), proj.single_prem(), proj.sex(1), proj.issue_age(1),
-    proj.birth_year(1), proj.entry_year()))
+    proj.birth_year(1), proj.issue_year()))
 print("options: Aufschubzeit {} mth, Rentengarantiezeit {} y, refund {}, "
       "Hinterbliebenenrente {:.0%}".format(
           proj.defer_mths(), proj.guar_years(), proj.refund_form(), proj.surv_pct()))
@@ -27,7 +27,7 @@ print("payment: {} per year, {}, first instalment at t = {}, guarantee ends at t
     proj.guar_end_mth()))
 print("tariff:  i = {:.4f} (cap {:.4f} for {}), alpha = {:.3f}, beta = {:.3f}, "
       "surplus = {}".format(
-          proj.tariff_int_rate(), proj.max_tariff_int_rate(), proj.entry_year(),
+          proj.tariff_int_rate(), proj.max_tariff_int_rate(), proj.issue_year(),
           proj.expense_load_alpha, proj.expense_load_beta, proj.surplus_form()))
 print("frame:   t = {} ... {} ({} monthly rows, proj_len = {} exclusive)".format(
     proj.t_start(), proj.proj_len() - 1, proj.proj_len() - proj.t_start(),

@@ -22,7 +22,7 @@ proj = model.Projection[point_id]
 mp = proj.model_point()
 print("model point {}: {} - {}{} concluded {}, duration {} at valuation".format(
     point_id, mp["policy_id"], proj.model_point()["sex"], proj.age(0),
-    mp["conclusion_year"], proj.duration(0)))
+    mp["issue_year"], proj.duration(0)))
 print("Aufschubphase to Rentenbeginn at age {} (k = {}, t = {}), projection to age {} "
       "(k = {}, t = {})".format(
           mp["ret_age"], proj.ret_y(), proj.ret_t(), proj.omega_age(),

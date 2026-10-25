@@ -244,7 +244,7 @@ first row with a new-business point's.
 
 ## Inputs are external files
 
-The nine input CSVs live **in this directory**, beside `run.py`, and `Pflege_DE_S/` holds nothing
+The eight input CSVs live **in this directory**, beside `run.py`, and `Pflege_DE_S/` holds nothing
 but formulas — `__init__.py`, `_system.json`, `Data/__init__.py` and `Projection/__init__.py`, no
 `_data/`, no IOSpec, no embedded values. This follows lifelib's `annuallife/TradLife_A`, which
 keeps its inputs beside the model; it is the opposite of `basiclife/BasicTerm_S`, which stores its
@@ -271,8 +271,7 @@ place: point `Data.mort_table_file` at another same-schema file and the projecti
 | `care_file` | `care_table()` | `care_table.csv` | The whole in-care basis in five rows: `entry_share` 0.20 / 0.38 / 0.24 / 0.13 / 0.05, `det_rate` 0.28 / 0.24 / 0.20 / 0.16 / 0.00, `rec_rate` 0.10 / 0.06 / 0.04 / 0.02 / 0.01 and `mort_mult` 1.5 / 2.5 / 3.5 / 6.0 / 9.0 on the **force**. All **[std]**. `entry_share` is deliberately **not** the stock distribution of about 9 / 44 / 27 / 14 / 6 % [R18]: entrants skew lower than the stock because deterioration moves people up over a spell |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual lapse from the **active** state by policy year 1–40, year 40's rate applying thereafter: 6,0 / 5,0 / 4,0 / 3,5 / 3,0 % then 2,5 / 2,0 / 1,5 %. **[std]**, and **no lapse rate for a German *Pflegerente* at any duration was established**; the shape is argued from the *Zillmerung*, and the 14-day *Widerruf* sits inside year 1 [REG-R23] |
 | `surrender_file` | `surrender_table()` | `surrender_table.csv` | The guaranteed *Rückkaufswert* as a fraction of premiums paid to date, by *Versicherungsjahr* `y(t) = t // 12 + 1`, 1–40. **[std]** shape encoding two cited facts and no cited level — the 25 ‰ *Zillmerung* allowance, which is why years 1 and 2 are zero [REG-R16], and the § 169 Abs. 3 VVG five-year cost spread, which is why it turns positive in year 3 [REG-R28] |
-| `expense_file` | `expense_table()` | `expense_table.csv` | `acq_permille` 25,000 ‰ of *Beitragssumme*, `admin_prem_pct` 3,0 %, `admin_mth_pp` 2,00 € a month, `claim_expense_pp` 1,50 € per annuity payment, `expense_infl` 1,5 % a year. All levels **[std]**; only the 25 ‰ ceiling the first sits exactly at is cited |
-| `basis_file` | `basis_table()` | `basis_table.csv` | `rechnungszins` 1,00 %, `omega_age` 110, `unisex_mix_male` 0.50, `rec_age_ref` 75, `rec_age_decay` 0.10, `inc_cap` 0.50, `beitragssumme_cap_age` 85, `roll_fwd_tol` 1e−10 and the five first-order margins `inc_margin` 1.25, `det_margin` 1.15, `rec_margin` 0.80, `care_mort_margin` 0.85, `act_mort_margin` 0.90. **Only the *Rechnungszins* is cited** [REG-R14] [REG-R15]; everything else is **[std]** |
+| `param_file` | `param_table()` | `param_table.csv` | The scalar parameters by `item`, with a `unit` column for the expense rows. `rechnungszins` 1,00 %, `omega_age` 110, `unisex_mix_male` 0.50, `rec_age_ref` 75, `rec_age_decay` 0.10, `inc_cap` 0.50, `beitragssumme_cap_age` 85, `roll_fwd_tol` 1e−10 and the five first-order margins `inc_margin` 1.25, `det_margin` 1.15, `rec_margin` 0.80, `care_mort_margin` 0.85, `act_mort_margin` 0.90; **of these only the *Rechnungszins* is cited** [REG-R14] [REG-R15]. Then `acq_permille` 25,000 ‰ of *Beitragssumme*, `admin_prem_pct` 3,0 %, `admin_mth_pp` 2,00 € a month, `claim_expense_pp` 1,50 € per annuity payment, `expense_infl` 1,5 % a year, all **[std]** but the 25 ‰ ceiling the first sits exactly at. Everything not cited is **[std]**. Upstream these were two files, `basis_table.csv` and `expense_table.csv`; phase 3 merged them so that the loader is the common core's |
 
 Every file but the model point table carries a **`provenance` column**, one tag per row — delib's
 second ruling, and it is machine-checked.
@@ -286,7 +285,7 @@ probabilities out of each state summing, with the stay probability, to one.
 ## The published identities
 
 Six `check_*()` cells, each a no-argument `bool` over all `t` with a per-`t` residual
-`check_*_resid(t)`, all scaled by `roll_fwd_tol` from `basis_table.csv`.
+`check_*_resid(t)`, all scaled by `roll_fwd_tol` from `param_table.csv`.
 
 **`check_net_cf` — delib ruling 1, in one line:**
 `net_cf(t) = premiums(t) − claims(t,"ANNUITY") − claims(t,"LAPSE") − claims(t,"DEATH") − expenses(t) − claim_expenses(t)`.

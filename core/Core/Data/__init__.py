@@ -35,3 +35,13 @@ def model_point_table():
     """The model point table, read from the product's ``model_point_file``, by ``point_id``."""
     return pd.read_csv(                                              # noqa: F821
         input_dir() / model_point_file, index_col="point_id")        # noqa: F821
+
+
+def param_table():
+    """The product's scalar parameters by ``item``, read from its ``param_file``.
+
+    Columns ``value`` and ``provenance``, and an optional ``unit``.  The values are read
+    with pandas' default float parsing, which round-trips the decimal literals.
+    """
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / param_file, index_col="item")                  # noqa: F821

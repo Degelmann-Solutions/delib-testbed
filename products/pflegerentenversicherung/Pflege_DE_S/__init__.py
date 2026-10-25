@@ -44,7 +44,7 @@ ledgers rather than from the closed form.
 **Spaces.** The model contains two:
 
 :mod:`~.Pflege_DE_S.Data`
-    Reads the nine input CSVs and holds their filename References. It takes no
+    Reads the eight input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.Pflege_DE_S.Projection`

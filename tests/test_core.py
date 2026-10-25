@@ -11,10 +11,14 @@
 """
 from __future__ import annotations
 
+import hashlib
+import io
 import re
+import subprocess
 from pathlib import Path
 
 import modelx as mx
+import pandas as pd
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -147,6 +151,8 @@ CORE_CELLS = {
     "Data": {
         "input_dir": dict.fromkeys(MODELS, "derived"),
         "model_point_table": dict.fromkeys(MODELS, "derived"),
+        "param_table": {"klassische_rentenversicherung": "derived",
+                        "pflegerentenversicherung": "derived"},
     },
     "Projection": {
         "model_point": dict.fromkeys(MODELS, "derived"),
@@ -238,3 +244,36 @@ def test_rlv_takes_model_point_from_the_core(product_models):
     assert cell._is_derived()
     assert cell.formula is model.CoreProjection.model_point.formula
     assert model.Projection[1].model_point()["policy_id"] == "RLV-000001"
+
+
+# The last commit before the Pflege merge; its basis_table.csv and expense_table.csv are
+# upstream's bytes (checked against the hashes in UPSTREAM.md).
+PRE_MERGE_REVISION = "34938cec06fa412fe0af0c3a484f7e1551c87c89"
+
+
+def upstream_table(product: str, name: str, **read_csv) -> pd.DataFrame:
+    """A file phase 3 removed, read from git at ``PRE_MERGE_REVISION``, hash-checked."""
+    data = subprocess.run(
+        ["git", "show", f"{PRE_MERGE_REVISION}:products/{product}/{name}"],
+        cwd=ROOT, check=True, capture_output=True).stdout
+    upstream = (PRODUCTS_DIR / product / "UPSTREAM.md").read_text(encoding="utf-8")
+    assert f"| `{name}` | `{hashlib.sha256(data).hexdigest()}` |" in upstream, name
+    return pd.read_csv(io.BytesIO(data), **read_csv)
+
+
+def test_pflege_param_table_holds_the_two_merged_tables(product_models):
+    product = "pflegerentenversicherung"
+    model = product_models(product)
+    assert model.Data.param_table._is_derived()
+    merged = model.Data.param_table()
+    basis = upstream_table(product, "basis_table.csv", index_col="param")
+    expense = upstream_table(product, "expense_table.csv", index_col="item")
+    assert list(merged.columns) == ["value", "unit", "provenance"]
+    assert list(merged.index) == list(basis.index) + list(expense.index)
+    for item in basis.index:
+        assert merged.at[item, "value"] == basis.at[item, "value"], item
+        assert pd.isna(merged.at[item, "unit"]), item
+        assert merged.at[item, "provenance"] == basis.at[item, "provenance"], item
+    for item in expense.index:
+        for column in ("value", "unit", "provenance"):
+            assert merged.at[item, column] == expense.at[item, column], (item, column)

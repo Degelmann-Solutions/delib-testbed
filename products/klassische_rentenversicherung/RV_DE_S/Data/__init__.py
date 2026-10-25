@@ -200,19 +200,6 @@ def freq_load_table():
         input_dir() / freq_load_file, index_col="prem_freq")         # noqa: F821
 
 
-def param_table():
-    """The scalar assumptions by ``item``, from *param_table.csv*.
-
-    Every scalar that is neither a charge nor a rate table: the four expense levels and
-    their inflation, ``mort_be_factor`` and ``mort_base_year``, ``omega_age``,
-    ``val_reserve_rate``, the three *Überschussrente* parameters and ``roll_fwd_tol``.
-    They live in a file rather than in ``Projection`` References so that each one carries
-    its own provenance tag, which a Reference cannot.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / param_file, index_col="item")                  # noqa: F821
-
-
 # ---------------------------------------------------------------------------
 # References
 

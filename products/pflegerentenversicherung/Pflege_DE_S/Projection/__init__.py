@@ -47,8 +47,7 @@ incidence_file             data.incidence_table()               incidence_table.
 care_file                  data.care_table()                    care_table.csv
 lapse_file                 data.lapse_table()                   lapse_table.csv
 surrender_file             data.surrender_table()               surrender_table.csv
-expense_file               data.expense_table()                 expense_table.csv
-basis_file                 data.basis_table()                   basis_table.csv
+param_file                 data.param_table()                   param_table.csv
 =========================  ===================================  =========================
 
 .. rubric:: Naming
@@ -511,7 +510,7 @@ def pols_if_init():
 
 
 def omega_age():
-    """The terminal age, 110, from *basis_table.csv*.
+    """The terminal age, 110, from *param_table.csv*.
 
     A **[std]** modelling choice rather than a table fact — the DAV tables run higher —
     and it costs nothing material: an active female life aged 45 survives to 110 with
@@ -520,11 +519,11 @@ def omega_age():
     account for the whole cohort and :func:`check_states` closes exactly instead of leaving
     a truncation residue.
     """
-    return int(data.basis_table().at["omega_age", "value"])          # noqa: F821
+    return int(data.param_table().at["omega_age", "value"])          # noqa: F821
 
 
 def rechnungszins():
-    """i: the technical interest rate, 1,00 % a year, from *basis_table.csv*.
+    """i: the technical interest rate, 1,00 % a year, from *param_table.csv*.
 
     The *Höchstrechnungszins* of the DeckRV for new business from 1 January 2025, which
     attaches to the cohort at issue and is then locked for the life of the contract.
@@ -533,7 +532,7 @@ def rechnungszins():
     single most leveraged pricing assumption here, because a *Pflegerente*'s benefits fall
     on average some thirty-five years after issue.
     """
-    return float(data.basis_table().at["rechnungszins", "value"])    # noqa: F821
+    return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
 
 
 def proj_len():
@@ -770,8 +769,8 @@ def rec_rate(t, g):
     paying its *Beitrag* again.
     """
     base = float(data.care_table().at[g, "rec_rate"])                # noqa: F821
-    ref = float(data.basis_table().at["rec_age_ref", "value"])       # noqa: F821
-    decay = float(data.basis_table().at["rec_age_decay", "value"])   # noqa: F821
+    ref = float(data.param_table().at["rec_age_ref", "value"])       # noqa: F821
+    decay = float(data.param_table().at["rec_age_decay", "value"])   # noqa: F821
     return base * math.exp(-decay * max(0.0, age(t) - ref))          # noqa: F821
 
 
@@ -1337,7 +1336,7 @@ def beitragssumme():
     m = prem_mode_months()
     if m == 0:
         return premium_mth_pp()
-    cap = int(data.basis_table().at[                                 # noqa: F821
+    cap = int(data.param_table().at[                                 # noqa: F821
         "beitragssumme_cap_age", "value"])
     years = max(0, min(prem_end_age(), cap) - age_at_entry())
     return premium_mth_pp() * 12.0 * years
@@ -1356,7 +1355,7 @@ def acq_expense_pp():
     date.  That is correct, and it is worth knowing before comparing an in-force point's
     first row with a new-business point's.
     """
-    permille = float(data.expense_table().at[                        # noqa: F821
+    permille = float(data.param_table().at[                          # noqa: F821
         "acq_permille", "value"])
     return permille / 1000.0 * beitragssumme()
 
@@ -1369,7 +1368,7 @@ def expense_infl_factor(t):
     sixty-five years it is a factor of about 2.6, which is enough for the per-policy line to
     decide the viability of a small contract on its own.
     """
-    infl = float(data.expense_table().at["expense_infl", "value"])   # noqa: F821
+    infl = float(data.param_table().at["expense_infl", "value"])     # noqa: F821
     return (1.0 + infl) ** (t / 12.0)
 
 
@@ -1382,9 +1381,9 @@ def expenses(t):
     lives.  Claims-handling cost is **not** here — it is a per-event cost and is published
     as its own column, :func:`claim_expenses`.
     """
-    admin_pp = float(data.expense_table().at[                        # noqa: F821
+    admin_pp = float(data.param_table().at[                          # noqa: F821
         "admin_mth_pp", "value"])
-    admin_pct = float(data.expense_table().at[                       # noqa: F821
+    admin_pct = float(data.param_table().at[                         # noqa: F821
         "admin_prem_pct", "value"])
     total = admin_pp * expense_infl_factor(t) * pols_if(t)
     total += admin_pct * premiums(t)
@@ -1405,7 +1404,7 @@ def claim_expenses(t):
     by the insurer, so the *Nachprüfung* is a documentation exercise rather than the
     adversarial re-assessment that drives a *Berufsunfähigkeitsrente*'s claims cost.
     """
-    per_payment = float(data.expense_table().at[                     # noqa: F821
+    per_payment = float(data.param_table().at[                       # noqa: F821
         "claim_expense_pp", "value"])
     total = 0.0
     for g in range(1, 6):
@@ -1472,8 +1471,8 @@ def tar_mort_rate(t):
     """
     if age(t) >= omega_age() - 1:
         return 1.0
-    mix = float(data.basis_table().at["unisex_mix_male", "value"])   # noqa: F821
-    margin = float(data.basis_table().at[                            # noqa: F821
+    mix = float(data.param_table().at["unisex_mix_male", "value"])   # noqa: F821
+    margin = float(data.param_table().at[                            # noqa: F821
         "act_mort_margin", "value"])
     q_m = float(data.mort_table().at[("M", age(t)), "mort_rate"])    # noqa: F821
     q_f = float(data.mort_table().at[("F", age(t)), "mort_rate"])    # noqa: F821
@@ -1493,8 +1492,8 @@ def tar_mort_rate_care(t, g):
     """
     if age(t) >= omega_age() - 1:
         return 1.0
-    mix = float(data.basis_table().at["unisex_mix_male", "value"])   # noqa: F821
-    margin = float(data.basis_table().at[                            # noqa: F821
+    mix = float(data.param_table().at["unisex_mix_male", "value"])   # noqa: F821
+    margin = float(data.param_table().at[                            # noqa: F821
         "care_mort_margin", "value"])
     mult = float(data.care_table().at[g, "mort_mult"])               # noqa: F821
     q_m = float(data.mort_table().at[("M", age(t)), "mort_rate"])    # noqa: F821
@@ -1514,9 +1513,9 @@ def tar_inc_rate(t):
     that.  The cap binds only at the very oldest ages, where the exponential proxy would
     otherwise exceed the survival it is applied to.
     """
-    mix = float(data.basis_table().at["unisex_mix_male", "value"])   # noqa: F821
-    margin = float(data.basis_table().at["inc_margin", "value"])     # noqa: F821
-    cap = float(data.basis_table().at["inc_cap", "value"])           # noqa: F821
+    mix = float(data.param_table().at["unisex_mix_male", "value"])   # noqa: F821
+    margin = float(data.param_table().at["inc_margin", "value"])     # noqa: F821
+    cap = float(data.param_table().at["inc_cap", "value"])           # noqa: F821
     i_m = float(data.incidence_table().at[                           # noqa: F821
         ("M", age(t)), "inc_rate"])
     i_f = float(data.incidence_table().at[                           # noqa: F821
@@ -1530,7 +1529,7 @@ def tar_det_rate(t, g):
     ``det_margin = 1.15`` moves lives faster into the higher-paying grades, which is
     prudence on a schedule whose top steps pay most.
     """
-    return min(1.0 - 1e-12, float(data.basis_table().at[             # noqa: F821
+    return min(1.0 - 1e-12, float(data.param_table().at[             # noqa: F821
         "det_margin", "value"]) * det_rate(g))
 
 
@@ -1540,7 +1539,7 @@ def tar_rec_rate(t, g):
     ``rec_margin = 0.80`` produces **fewer** recoveries and so longer spells in payment,
     which is the prudent direction for a benefit that stops on recovery.
     """
-    return float(data.basis_table().at[                              # noqa: F821
+    return float(data.param_table().at[                              # noqa: F821
         "rec_margin", "value"]) * rec_rate(t, g)
 
 
@@ -1765,7 +1764,7 @@ def epv_prem_units():
 
 def epv_admin():
     """G: the expected present value of the per-policy administration cost, first order."""
-    admin_pp = float(data.expense_table().at[                        # noqa: F821
+    admin_pp = float(data.param_table().at[                          # noqa: F821
         "admin_mth_pp", "value"])
     total = 0.0
     for t in range(proj_len()):
@@ -1775,7 +1774,7 @@ def epv_admin():
 
 def epv_claim_expense():
     """C: the expected present value of the per-annuity-payment claims cost, first order."""
-    per_payment = float(data.expense_table().at[                     # noqa: F821
+    per_payment = float(data.param_table().at[                       # noqa: F821
         "claim_expense_pp", "value"])
     total = 0.0
     for t in range(proj_len()):
@@ -1830,15 +1829,15 @@ def premium_mth_pp():
     """
     if premium_mth() > 0.0:
         return premium_mth()
-    permille = float(data.expense_table().at[                        # noqa: F821
+    permille = float(data.param_table().at[                          # noqa: F821
         "acq_permille", "value"]) / 1000.0
-    admin_pct = float(data.expense_table().at[                       # noqa: F821
+    admin_pct = float(data.param_table().at[                         # noqa: F821
         "admin_prem_pct", "value"])
     m = prem_mode_months()
     if m == 0:
         a1 = permille
     else:
-        cap = int(data.basis_table().at[                             # noqa: F821
+        cap = int(data.param_table().at[                             # noqa: F821
             "beitragssumme_cap_age", "value"])
         years = max(0, min(prem_end_age(), cap) - age_at_entry())
         a1 = permille * 12.0 * years
@@ -1896,7 +1895,7 @@ def check_net_cf():
     No argument, one bool over all ``t``, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    tol = float(data.basis_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
     scale = max(pols_if_init() * max(rente_mth(), 1.0), 1.0)
     return all(abs(check_net_cf_resid(t)) <= tol * scale
                for t in range(duration_mth_init(), proj_len()))
@@ -1921,7 +1920,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    tol = float(data.basis_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_pols_roll_fwd_resid(t)) <= tol * scale
                for t in range(duration_mth_init(), proj_len()))
@@ -1952,7 +1951,7 @@ def check_states_resid(t):
 
 def check_states():
     """True when the ledgers and the absorbed counts partition the cohort at every month."""
-    tol = float(data.basis_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_states_resid(t)) <= tol * scale
                for t in range(duration_mth_init(), proj_len()))
@@ -1978,7 +1977,7 @@ def check_waiver_resid(t):
 
 def check_waiver():
     """True when the waiver splits the in-term population in every projected month."""
-    tol = float(data.basis_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_waiver_resid(t)) <= tol * scale
                for t in range(duration_mth_init(), proj_len()))
@@ -2005,7 +2004,7 @@ def check_esc_ledger_resid(t):
 
 def check_esc_ledger():
     """True when the escalation ledger dominates the head count in every projected month."""
-    tol = float(data.basis_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_esc_ledger_resid(t)) <= tol * scale
                for t in range(duration_mth_init(), proj_len()))
@@ -2036,13 +2035,13 @@ def check_prem_equiv_resid(t):
     p0 = premium_mth_pp() / rating_factor()
     m = prem_mode_months()
     mult = m if m > 0 else 1
-    admin_pct = float(data.expense_table().at[                       # noqa: F821
+    admin_pct = float(data.param_table().at[                         # noqa: F821
         "admin_prem_pct", "value"])
-    admin_pp = float(data.expense_table().at[                        # noqa: F821
+    admin_pp = float(data.param_table().at[                          # noqa: F821
         "admin_mth_pp", "value"])
-    per_payment = float(data.expense_table().at[                     # noqa: F821
+    per_payment = float(data.param_table().at[                       # noqa: F821
         "claim_expense_pp", "value"])
-    permille = float(data.expense_table().at[                        # noqa: F821
+    permille = float(data.param_table().at[                          # noqa: F821
         "acq_permille", "value"]) / 1000.0
 
     prem_leg = p0 * mult * tar_pols_prem(t) if premium_due(t) else 0.0
@@ -2065,7 +2064,7 @@ def check_prem_equiv_resid(t):
         if m == 0:
             exp_leg += p0 * permille
         else:
-            cap = int(data.basis_table().at[                         # noqa: F821
+            cap = int(data.param_table().at[                         # noqa: F821
                 "beitragssumme_cap_age", "value"])
             years = max(0, min(prem_end_age(), cap) - age_at_entry())
             exp_leg += p0 * permille * 12.0 * years
@@ -2081,7 +2080,7 @@ def check_prem_equiv():
     difference of two large discounted values and an absolute tolerance on it would be a
     statement about the contract's size rather than about the equivalence.
     """
-    tol = float(data.basis_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
     if premium_mth() > 0.0:
         return True
     scale = max(premium_mth_pp() / rating_factor() * epv_prem_units(), 1.0)

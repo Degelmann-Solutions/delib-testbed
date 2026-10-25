@@ -44,12 +44,18 @@ Each file was byte-identical to upstream at the import; the hashes are upstream'
 
 ## Changed in phase 3
 
-Phase 3 changes these files and adds these symlinks to take shared cells from the common core (`docs/core.md`); it adds no regular file. A changed file keeps upstream's hash in the table above; `tests/test_provenance.py` skips its hash check. The symlinks are not copied files and have no hash.
+Phase 3 changes these files and adds these symlinks to take shared cells from the common core (`docs/core.md`). It adds one regular file, `param_table.csv`, merged from the two files it removes (`docs/core.md`, section on changed files). A changed or removed file keeps upstream's hash in the table above; `tests/test_provenance.py` skips its hash check. The added file and the symlinks are not copied files and have no hash.
 
 | Path | Change |
 |---|---|
-| `Pflege_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection` |
-| `Pflege_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it |
-| `Pflege_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it |
+| `Pflege_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection`; docstring: eight input CSVs |
+| `Pflege_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it; `basis_table` and `expense_table` replaced by `param_table`, inherited from the core; References `basis_file` and `expense_file` replaced by `param_file`; docstring updated |
+| `Pflege_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; `data.basis_table()` and `data.expense_table()` read as `data.param_table()`; header table and docstrings name `param_table.csv` |
+| `model.md` | `basis_table.csv` and `expense_table.csv` named as `param_table.csv` |
+| `technical-notes.md` | `basis_table.csv` and `expense_table.csv` named as `param_table.csv` |
+| `sources.md` | `basis_table.csv` and `expense_table.csv` named as `param_table.csv` |
+| `param_table.csv` | added: merged from `basis_table.csv` (column `param` renamed `item`, empty `unit`) and `expense_table.csv`, same values |
+| `basis_table.csv` | removed: merged into `param_table.csv` |
+| `expense_table.csv` | removed: merged into `param_table.csv` |
 | `Pflege_DE_S/CoreData` | added: symlink to the core space folder `core/Core/Data` |
 | `Pflege_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |

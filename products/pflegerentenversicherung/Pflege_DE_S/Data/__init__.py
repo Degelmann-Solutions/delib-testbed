@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The nine input CSVs are read here, **once per model**, and referenced from
+The eight input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Pflege_DE_S.Projection` as ``data``. :mod:`~.Pflege_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its
 own cells cache; if the readers lived there, every model point would re-read every file.
@@ -37,8 +37,7 @@ incidence_file             incidence_table()               incidence_table.csv
 care_file                  care_table()                    care_table.csv
 lapse_file                 lapse_table()                   lapse_table.csv
 surrender_file             surrender_table()               surrender_table.csv
-expense_file               expense_table()                 expense_table.csv
-basis_file                 basis_table()                   basis_table.csv
+param_file                 param_table()                   param_table.csv
 =========================  ==============================  =========================
 
 Every file but ``model_point_table.csv`` carries a final ``provenance`` column, one tag
@@ -79,11 +78,21 @@ table in place of these changes the basis with no formula change.
 The remaining tables are standardizations of a different kind: ``lapse_table.csv`` and
 ``surrender_table.csv`` encode a shape argued from the *Zillmerung* and the § 169 VVG
 five-year spread rather than from data — no lapse rate and no *Rückkaufswert* for a German
-*Pflegerente* at any duration was established — and ``expense_table.csv`` carries five
-placeholder levels whose only cited element is the 25 ‰ ceiling the acquisition charge is
-set exactly at. ``basis_table.csv`` holds the *Rechnungszins*, the terminal age, the
-unisex mix, the recovery-damping shape, the *Beitragssumme* convention, the check
-tolerance and the five first-order prudence margins; only the *Rechnungszins* is cited.
+*Pflegerente* at any duration was established — and ``param_table.csv`` holds the scalar
+parameters by ``item``. Its first thirteen rows are the bases and conventions: the
+*Rechnungszins*, the terminal age ``omega_age``, the unisex mix ``unisex_mix_male``, the
+recovery-damping shape ``rec_age_ref`` / ``rec_age_decay``, the ``inc_cap`` shape device,
+the *Beitragssumme* convention ``beitragssumme_cap_age``, the check tolerance
+``roll_fwd_tol`` and the five first-order prudence margins ``inc_margin``, ``det_margin``,
+``rec_margin``, ``care_mort_margin`` and ``act_mort_margin``; only the *Rechnungszins* is
+cited. The last five rows are the expense assumptions with their ``unit``:
+``acq_permille`` (‰ of *Beitragssumme*, charged once at ``t = 0``), ``admin_prem_pct``
+(fraction of each *Beitrag* collected), ``admin_mth_pp`` (EUR per policy in force per month
+at ``t = 0`` prices), ``claim_expense_pp`` (EUR per annuity payment made) and
+``expense_infl`` (annual); they are placeholder levels whose only cited element is the
+25 ‰ ceiling the acquisition charge is set exactly at. The two groups were the files
+``basis_table.csv`` and ``expense_table.csv`` upstream; phase 3 merged them so that the
+loader ``param_table()`` is the common core's.
 """
 
 from modelx.serialize.jsonvalues import *
@@ -185,33 +194,6 @@ def surrender_table():
         input_dir() / surrender_file, index_col="policy_year")       # noqa: F821
 
 
-def expense_table():
-    """The five expense assumptions and their units, from *expense_table.csv*.
-
-    ``acq_permille`` (‰ of *Beitragssumme*, charged once at ``t = 0``),
-    ``admin_prem_pct`` (fraction of each *Beitrag* collected), ``admin_mth_pp`` (EUR per
-    policy in force per month at ``t = 0`` prices), ``claim_expense_pp`` (EUR per annuity
-    payment made) and ``expense_infl`` (annual).  All five levels are **[std]**; only the
-    25 ‰ ceiling the first is set exactly at is cited.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / expense_file, index_col="item")                # noqa: F821
-
-
-def basis_table():
-    """The scalar bases and conventions, from *basis_table.csv*.
-
-    The *Rechnungszins*; the terminal age ``omega_age``; the unisex pricing mix; the
-    ``rec_age_ref`` / ``rec_age_decay`` recovery damping; the ``inc_cap`` shape device; the
-    ``beitragssumme_cap_age`` convention the *Zillmerung* base is struck on; the
-    ``roll_fwd_tol`` every ``check_*`` identity uses; and the five first-order prudence
-    margins ``inc_margin``, ``det_margin``, ``rec_margin``, ``care_mort_margin`` and
-    ``act_mort_margin``.  Only the *Rechnungszins* is cited; everything else is **[std]**.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / basis_file, index_col="param")                 # noqa: F821
-
-
 # ---------------------------------------------------------------------------
 # References
 
@@ -229,8 +211,6 @@ lapse_file = "lapse_table.csv"
 
 surrender_file = "surrender_table.csv"
 
-expense_file = "expense_table.csv"
-
-basis_file = "basis_table.csv"
+param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

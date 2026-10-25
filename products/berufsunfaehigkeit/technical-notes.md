@@ -55,7 +55,7 @@ German ones, and each now carries a document that was read.
   retail monthly premium [S1]. `t` is the **policy month**, `t = 0, 1, …, proj_len() − 1`,
   **0-based**: `t = 0` is the first projected month — the month of inception for a new-business
   point, the valuation month for an in-force one — and the contractual, 1-based *policy year* is
-  derived from it, `policy_year(t) = duration_mth(t) // 12 + 1`, never indexed by.
+  derived from it, `policy_year(t) = duration_mth(t) // 12 + 1`, never indexed by. A claim cohort's onset month `t − z` may precede inception; there `policy_year` is floored at 1 and `age` at zero elapsed months.
 - **Projection horizon.** `proj_len() = 12 × (cover_end_age − issue_age) − duration_mth_init`,
   the **number of projected months** and so the **exclusive end** of the frame: `result_cf()` is
   indexed `t = 0 … proj_len() − 1` and `result_cf().index[-1] == proj_len() − 1`. On the anchor

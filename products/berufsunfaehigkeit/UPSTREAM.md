@@ -52,6 +52,6 @@ Phase 3 changes these files and adds these symlinks to take shared cells from th
 | `model.md` | `entry_age` named `issue_age`; Reference `mortality_file` named `mort_file`, cell `mortality_table` named `mort_table`; `duration_init_months` named `duration_mth_init` |
 | `model_point_table.csv` | column `entry_age` renamed `issue_age`; column `duration_init_months` renamed `duration_mth_init` |
 | `run.py` | calls `issue_age()`, was `entry_age()` |
-| `technical-notes.md` | `entry_age` named `issue_age`; `duration_init_months` named `duration_mth_init` |
+| `technical-notes.md` | `entry_age` named `issue_age`; `duration_init_months` named `duration_mth_init`; states the floors of `policy_year` and `age` before inception |
 | `BU_DE_S/CoreData` | added: symlink to the core space folder `core/Core/Data` |
 | `BU_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |

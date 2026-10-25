@@ -601,7 +601,7 @@ def policy_year(t):
 
     Override reason: a disability cohort is paid the insured amount of its onset month
     ``t - z``, which can precede inception, so the policy year is floored at 1,
-    products/berufsunfaehigkeit/model.md:203
+    products/berufsunfaehigkeit/technical-notes.md:58
     """
     return max(1, duration_mth(t) // 12 + 1)
 
@@ -615,7 +615,7 @@ def age(t):
 
     Override reason: a disability cohort is paid the insured amount of its onset month
     ``t - z``, which can precede inception, so the elapsed months are floored at 0,
-    products/berufsunfaehigkeit/model.md:203
+    products/berufsunfaehigkeit/technical-notes.md:58
     """
     return issue_age() + max(0, duration_mth(t)) // 12
 

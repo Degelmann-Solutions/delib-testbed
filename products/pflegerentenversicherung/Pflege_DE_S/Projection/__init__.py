@@ -520,7 +520,7 @@ def proj_len():
     779.
 
     Override reason: the horizon is fixed by the entry age and the terminal age in months, with no
-    policy term, products/pflegerentenversicherung/technical-notes.md:52
+    policy term, products/pflegerentenversicherung/technical-notes.md:54
     """
     return 12 * (omega_age() - issue_age())
 

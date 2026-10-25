@@ -410,20 +410,6 @@ def policy_id():
     return model_point()["policy_id"]
 
 
-def smoker():
-    """The insured's smoker status, N or S.
-
-    Carried because the *Gesundheitsprüfung* asks, and because it is what a *Risikozuschlag*
-    would be struck on.  It feeds :func:`rating_factor` through the model point rather than
-    through a formula: DAV 2008 T R / NR exist for smoker-differentiated pricing but are not
-    public, and no German insurer publishes a loading scale.
-    """
-    v = model_point()["smoker"]
-    if v not in ("N", "S"):
-        raise ValueError("invalid smoker")
-    return v
-
-
 def issue_year():
     """The calendar year of conclusion: the contract's **cohort identity**.
 

@@ -39,3 +39,11 @@ def sex():
     if v not in ("M", "F"):
         raise ValueError("invalid sex")
     return v
+
+
+def smoker():
+    """The smoker status of the insured life, ``N`` or ``S``, from the model point."""
+    v = model_point()["smoker"]                                      # noqa: F821
+    if v not in ("N", "S"):
+        raise ValueError("invalid smoker")
+    return v

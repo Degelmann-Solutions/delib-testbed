@@ -403,6 +403,10 @@ def smoker():
     without a *Gesundheitsprüfung***, which is why simplified-issue German death covers
     are aggregate-rated.  It enters both mortality bases, so a smoker pays more *and* is
     expected to claim more.
+
+    Override reason: the product codes a smoker as ``R`` (*Raucher*), as its
+    ``mort_table.csv`` does, products/risikolebensversicherung/technical-notes.md, section
+    Model point attributes
     """
     v = model_point()["smoker"]
     if v not in ("N", "R"):

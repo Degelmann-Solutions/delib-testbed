@@ -190,6 +190,8 @@ CORE_CELLS = {
                 "riester_rente": "derived",
                 "risikolebensversicherung": "derived",
                 "sofortrente": "override"},
+        "smoker": {"kapitallebensversicherung": "derived",
+                   "risikolebensversicherung": "override"},
     },
 }
 

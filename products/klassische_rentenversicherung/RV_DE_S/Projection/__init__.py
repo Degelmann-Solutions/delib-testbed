@@ -658,7 +658,7 @@ def prem_pp_sched(k):
     this cells and not :func:`prem_pp`.
     """
     mp = model_point()
-    if k < 0 or k >= int(mp["aufschub_y"]) or k >= int(mp["prem_term_y"]):
+    if k < 0 or k >= int(mp["aufschub_y"]) or k >= prem_term_y():
         return 0.0
     if mp["premium_form"] == "einmal":
         return float(mp["premium_single_pp"]) if k == 0 else 0.0
@@ -685,7 +685,7 @@ def beitragssumme_pp():
     *Beitragsfreistellung* does not shrink it.
     """
     mp = model_point()
-    last = min(int(mp["prem_term_y"]), int(mp["aufschub_y"]))
+    last = min(prem_term_y(), int(mp["aufschub_y"]))
     return sum(prem_pp_sched(u) for u in range(last))
 
 

@@ -352,7 +352,7 @@ suite counts the reads and asserts the file set.
 | Reference | Cells | File |
 |---|---|---|
 | `model_point_file` | `model_point_table()` | `model_point_table.csv` |
-| `mort_table_file` | `mort_table()` | `mort_table.csv` |
+| `mort_file` | `mort_table()` | `mort_table.csv` |
 | `surplus_file` | `surplus_table()` | `surplus_table.csv` |
 | `rentenfaktor_file` | `rentenfaktor_table()` | `rentenfaktor_table.csv` |
 | `charge_file` | `charge_table()` | `charge_table.csv` |

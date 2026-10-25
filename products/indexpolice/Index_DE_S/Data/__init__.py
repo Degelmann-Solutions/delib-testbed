@@ -178,17 +178,6 @@ def election_table():
         input_dir() / election_file, index_col=["elect_id", "t"])    # noqa: F821
 
 
-def mort_table():
-    """The annual death rates by sex and attained age, from *mort_table.csv*.
-
-    A **[std]** Gompertz-form proxy anchored at ``qx(M, 40) = 0.001200``, not a DAV table;
-    see the Space docstring for what it is, what it is not, and what a replacement must
-    preserve.  Sex selects the best-estimate row only and is never a rating factor.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col=["sex", "age"])           # noqa: F821
-
-
 def lapse_table():
     """The base surrender rates by year, read from *lapse_table.csv*.
 

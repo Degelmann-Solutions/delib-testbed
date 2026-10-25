@@ -45,3 +45,9 @@ def param_table():
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / param_file, index_col="item")                  # noqa: F821
+
+
+def mort_table():
+    """The annual death rates by ``sex`` and attained ``age``, read from ``mort_file``."""
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / mort_file, index_col=["sex", "age"])           # noqa: F821

@@ -31,7 +31,7 @@ and a reader Cells:
 Reference                     Cells                           File
 ============================  ==============================  ================================
 model_point_file              model_point_table()             model_point_table.csv
-mort_table_file               mort_table()                    mort_table.csv
+mort_file                     mort_table()                    mort_table.csv
 improvement_file              improvement_table()             improvement_table.csv
 surplus_scale_file            surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
@@ -123,9 +123,13 @@ def mort_table():
 
     A **[std]** proxy, not DAV 2004 R; see the Space docstring for what it is, what its
     anchor is and what a replacement must preserve.
+
+    Override reason: the table carries a first- and a second-order basis, keyed by
+    ``basis``, ``sex`` and ``age``, products/sofortrente/technical-notes.md, section Input
+    files
     """
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
+        input_dir() / mort_file,                                     # noqa: F821
         index_col=["basis", "sex", "age"])
 
 
@@ -177,7 +181,7 @@ def hoechstrechnungszins_table():
 
 model_point_file = "model_point_table.csv"
 
-mort_table_file = "mort_table.csv"
+mort_file = "mort_table.csv"
 
 improvement_file = "improvement_table.csv"
 

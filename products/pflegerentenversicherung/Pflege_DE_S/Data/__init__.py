@@ -32,7 +32,7 @@ Reference                  Cells                           File
 =========================  ==============================  =========================
 model_point_file           model_point_table()             model_point_table.csv
 benefit_scale_file         benefit_scale_table()           benefit_scale_table.csv
-mort_table_file            mort_table()                    mort_table.csv
+mort_file                  mort_table()                    mort_table.csv
 incidence_file             incidence_table()               incidence_table.csv
 care_file                  care_table()                    care_table.csv
 lapse_file                 lapse_table()                   lapse_table.csv
@@ -125,18 +125,6 @@ def benefit_scale_table():
         index_col=["staffel_id", "pflegegrad"])
 
 
-def mort_table():
-    """Annual **active-life** mortality by sex and attained age, from *mort_table.csv*.
-
-    A **[std]** Gompertz proxy over ages 18 to 108 with the limiting-age rate of 1.0 at
-    age 109, not a fitted or standard table; see the Space docstring for the four anchor
-    rates a replacement must preserve.  In-care mortality is not tabulated: it is this
-    rate's force multiplied by ``mort_mult`` from *care_table.csv*.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col=["sex", "age"])     # noqa: F821
-
-
 def incidence_table():
     """Annual incidence into **any** *Pflegegrad* by sex and age, from *incidence_table.csv*.
 
@@ -201,7 +189,7 @@ model_point_file = "model_point_table.csv"
 
 benefit_scale_file = "benefit_scale_table.csv"
 
-mort_table_file = "mort_table.csv"
+mort_file = "mort_table.csv"
 
 incidence_file = "incidence_table.csv"
 

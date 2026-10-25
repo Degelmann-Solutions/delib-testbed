@@ -32,7 +32,7 @@ and a reader Cells:
 Reference                  Cells                           File
 =========================  ==============================  ==========================
 model_point_file           model_point_table()             model_point_table.csv
-mort_table_file            mort_table()                    mort_table.csv
+mort_file                  mort_table()                    mort_table.csv
 surplus_file               surplus_table()                 surplus_table.csv
 rentenfaktor_file          rentenfaktor_table()            rentenfaktor_table.csv
 charge_file                charge_table()                  charge_table.csv
@@ -132,9 +132,13 @@ def mort_table():
     calendar year ``mort_base_year`` and ``trend`` the annual improvement that makes the
     basis generational.  A **[std]** proxy anchored at ``qx(67) = 0.014000``, not DAV
     2004 R; see the Space docstring for what a replacement must preserve.
+
+    Override reason: the table is the unisex first-order basis with a generational ``trend``
+    column, keyed by ``age`` alone, products/basisrente/technical-notes.md, section External
+    input files
     """
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file, index_col="age")              # noqa: F821
+        input_dir() / mort_file, index_col="age")                    # noqa: F821
 
 
 def surplus_table():
@@ -210,7 +214,7 @@ def option_table():
 
 model_point_file = "model_point_table.csv"
 
-mort_table_file = "mort_table.csv"
+mort_file = "mort_table.csv"
 
 surplus_file = "surplus_table.csv"
 

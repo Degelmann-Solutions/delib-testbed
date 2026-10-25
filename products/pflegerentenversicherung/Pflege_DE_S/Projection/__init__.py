@@ -42,7 +42,7 @@ Reference                  Cells                                File
 =========================  ===================================  =========================
 model_point_file           data.model_point_table()             model_point_table.csv
 benefit_scale_file         data.benefit_scale_table()           benefit_scale_table.csv
-mort_table_file            data.mort_table()                    mort_table.csv
+mort_file                  data.mort_table()                    mort_table.csv
 incidence_file             data.incidence_table()               incidence_table.csv
 care_file                  data.care_table()                    care_table.csv
 lapse_file                 data.lapse_table()                   lapse_table.csv

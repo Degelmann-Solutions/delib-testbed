@@ -80,7 +80,7 @@ reached here through the ``data`` Reference:
 Reference                 Cells                              File
 ========================  =================================  ==========================
 model_point_file          data.model_point_table()           model_point_table.csv
-mort_table_file           data.mort_table()                  mort_table.csv
+mort_file                 data.mort_table()                  mort_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 surplus_rate_file         data.surplus_rate_table()          surplus_rate_table.csv
 cost_file                 data.cost_table()                  cost_table.csv

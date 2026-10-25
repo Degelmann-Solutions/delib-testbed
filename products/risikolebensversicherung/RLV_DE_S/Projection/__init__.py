@@ -66,7 +66,7 @@ Each table has a filename Reference and a reader Cells, both on
 Reference                 Cells                              File
 ========================  =================================  ==========================
 model_point_file          data.model_point_table()           model_point_table.csv
-mort_table_file           data.mort_table()                  mort_table.csv
+mort_file                 data.mort_table()                  mort_table.csv
 benefit_schedule_file     data.benefit_schedule()            benefit_schedule.csv
 nvg_schedule_file         data.nvg_schedule()                nvg_schedule.csv
 lapse_file                data.lapse_table()                 lapse_table.csv

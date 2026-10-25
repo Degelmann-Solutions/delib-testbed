@@ -114,18 +114,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table():
-    """The generational mortality proxy by ``(sex, age)``, from *mort_table.csv*.
-
-    Two columns: ``q_base``, the first-order annual death rate in the 2005 base year, and
-    ``improve``, the annual mortality improvement rate applied from that base year.  A
-    **[std]** proxy, not DAV 2004 R; see the Space docstring for what it is, what it is
-    anchored on and what a replacement must preserve.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col=["sex", "age"])           # noqa: F821
-
-
 def decl_rate_table():
     """The declared *laufende Verzinsung* by ``(scenario_id, calendar_year)``.
 

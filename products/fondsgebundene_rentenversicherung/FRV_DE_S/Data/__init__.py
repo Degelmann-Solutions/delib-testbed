@@ -115,6 +115,10 @@ def mort_table():
     basis of the *Risikobeitrag* the tariff charges — **not** of the projection's own
     decrement, which is this table scaled by ``mort_be_factor``, and **not** of the
     *Rentenfaktor*, which rests on an annuity table.
+
+    Override reason: the table is the unisex first-order basis of the *Risikobeitrag*, keyed
+    by ``age`` alone, products/fondsgebundene_rentenversicherung/technical-notes.md, section
+    (c) Behavioral / experience assumptions
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / mort_file, index_col="age")                    # noqa: F821

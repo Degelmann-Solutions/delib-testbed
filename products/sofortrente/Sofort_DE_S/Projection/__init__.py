@@ -37,7 +37,7 @@ Each table has a filename Reference and a reader Cells, both on
 Reference                     Cells                                File
 ============================  ===================================  ================================
 model_point_file              data.model_point_table()             model_point_table.csv
-mort_table_file               data.mort_table()                    mort_table.csv
+mort_file                     data.mort_table()                    mort_table.csv
 improvement_file              data.improvement_table()             improvement_table.csv
 surplus_scale_file            data.surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     data.hoechstrechnungszins_table()    hoechstrechnungszins_table.csv

@@ -30,7 +30,7 @@ and a reader Cells:
 Reference                 Cells                         File
 ========================  ============================  ==========================
 model_point_file          model_point_table()           model_point_table.csv
-mort_table_file           mort_table()                  mort_table.csv
+mort_file                 mort_table()                  mort_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
 surplus_rate_file         surplus_rate_table()          surplus_rate_table.csv
 cost_file                 cost_table()                  cost_table.csv
@@ -124,18 +124,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table():
-    """The first-order annual death rates by sex and attained age, from *mort_table.csv*.
-
-    A **[std]** Makeham-form proxy standing in for DAV 2008 T, which is not public and is
-    not redistributed here.  See the Space docstring for the anchor that fixes it and for
-    what a replacement must preserve.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
-        index_col=["sex", "age"])
-
-
 def lapse_table():
     """The surrender rate and the *Stornoabzug* by policy year, from *lapse_table.csv*.
 
@@ -206,7 +194,7 @@ def deckrv_table():
 
 model_point_file = "model_point_table.csv"
 
-mort_table_file = "mort_table.csv"
+mort_file = "mort_table.csv"
 
 lapse_file = "lapse_table.csv"
 

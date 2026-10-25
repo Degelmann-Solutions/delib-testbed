@@ -31,7 +31,7 @@ and a reader Cells:
 Reference                 Cells                         File
 ========================  ============================  ==========================
 model_point_file          model_point_table()           model_point_table.csv
-mort_table_file           mort_table()                  mort_table.csv
+mort_file                 mort_table()                  mort_table.csv
 benefit_schedule_file     benefit_schedule()            benefit_schedule.csv
 nvg_schedule_file         nvg_schedule()                nvg_schedule.csv
 lapse_file                lapse_table()                 lapse_table.csv
@@ -155,9 +155,13 @@ def mort_table():
     The first-order tariff rate is built from it in ``Projection.mort_rate_tar`` by taking
     the unisex blend and applying the *Sicherheitszuschlag*, so there is exactly one
     unsourced mortality level in the model rather than two stacked on each other.
+
+    Override reason: the table carries a table id and the smoker split, keyed by
+    ``table_id``, ``sex``, ``smoker`` and ``age``,
+    products/risikolebensversicherung/technical-notes.md, section External inputs
     """
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_table_file,                               # noqa: F821
+        input_dir() / mort_file,                                     # noqa: F821
         index_col=["table_id", "sex", "smoker", "age"])
 
 
@@ -218,7 +222,7 @@ def freq_loading_table():
 
 model_point_file = "model_point_table.csv"
 
-mort_table_file = "mort_table.csv"
+mort_file = "mort_table.csv"
 
 benefit_schedule_file = "benefit_schedule.csv"
 

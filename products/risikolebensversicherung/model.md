@@ -325,7 +325,7 @@ projected. The conventions suite counts the reads and asserts the *set* against
 | Reference | Cells | File |
 |---|---|---|
 | `model_point_file` | `model_point_table()` | `model_point_table.csv` |
-| `mort_table_file` | `mort_table()` | `mort_table.csv` |
+| `mort_file` | `mort_table()` | `mort_table.csv` |
 | `benefit_schedule_file` | `benefit_schedule()` | `benefit_schedule.csv` |
 | `nvg_schedule_file` | `nvg_schedule()` | `nvg_schedule.csv` |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` |
@@ -333,7 +333,7 @@ projected. The conventions suite counts the reads and asserts the *set* against
 
 **The trade-off:** the model is not portable on its own — copy `RLV_DE_S/` without the
 CSVs and it reads fine, then fails on first evaluation. What you gain is that a diff shows
-logic changes only, and an input can be swapped in place: point `Data.mort_table_file` at
+logic changes only, and an input can be swapped in place: point `Data.mort_file` at
 another same-schema file and the projection follows, with no formula change. Tests cover
 both halves of that bargain. **Every file but the model point table carries a per-row
 `provenance` column** — this library's second ruling, machine-checked, in the same `[S#]` /

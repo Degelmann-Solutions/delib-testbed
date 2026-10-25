@@ -487,17 +487,6 @@ def proj_len():
     return 12 * proj_len_y()
 
 
-def duration(t):
-    """k(t): the **0-based policy year** month t falls in, ``duration_mth(t) // 12``.
-
-    The bridge between the two clocks.  Every annual construction in this model — the
-    premium, the *Deckungskapital*, the *Ansammlungsguthaben*, the § 169 Abs. 3 account, the
-    declared rate, the surrender value and the death benefit — takes this ``k``, and every
-    monthly one takes ``t``.
-    """
-    return duration_mth(t) // 12
-
-
 def is_anniv(t):
     """Whether month t is the **last** month of its policy year: ``t % 12 == 11``.
 

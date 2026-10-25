@@ -420,17 +420,6 @@ def proj_len():
     return 12 * proj_len_y()
 
 
-def duration(t):
-    """``k(t)``: the **0-based policy year** month t falls in, ``duration_mth(t) // 12``.
-
-    The bridge between the two clocks.  Everything annual on this product — the premium,
-    the account, the whole *Indexjahr*, the ledger, the guarantee, the death benefit and
-    the surrender value — takes this ``k``; the in force, the decrements, the claims and
-    the expenses take ``t``.
-    """
-    return duration_mth(t) // 12
-
-
 def is_anniv(t):
     """Whether month t is the **last** month of its policy year: ``t % 12 == 11``.
 

@@ -605,18 +605,6 @@ def proj_len():
     return 12 * proj_len_y()
 
 
-def duration(t):
-    """k: the completed policy **years** at the start of month t, ``duration_mth(t) // 12``.
-
-    0-based, as lifelib's ``duration`` is: it is 0 through the whole first policy year.  It is
-    the **bridge between the two clocks** — every annual cells in this model takes a policy
-    year ``k``, and this is what a month resolves to.  It is what every duration-keyed
-    schedule is indexed on: the § 169 Abs. 3 five-year spreading in :func:`res_min_pp`, the
-    *Stornoabzug* band, the *Beitragszahlungsdauer*, the § 161 window.
-    """
-    return duration_mth(t) // 12
-
-
 def is_anniv(t):
     """Whether month t is the **last month of a policy year**, ``t % 12 == 11``.
 

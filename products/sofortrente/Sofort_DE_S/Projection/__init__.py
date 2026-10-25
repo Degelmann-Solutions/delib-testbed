@@ -495,17 +495,6 @@ def proj_len():
     return n
 
 
-def duration(t):
-    """Completed policy years at the start of month ``t``: ``t // 12``; 0 for t = 0..11.
-
-    The step that matters in this product.  The *Überschussrente* increase, the expense
-    inflation index and the attained-age step all fall on the **policy anniversary**;
-    nothing happens on 31 December, so no cells needs the civil month.  This is the
-    0-based elapsed count; the 1-based contractual label is :func:`policy_year`.
-    """
-    return t // 12
-
-
 def policy_year(t):
     """y(t) = ``t // 12 + 1``: the contractual, 1-based policy year containing month ``t``.
 

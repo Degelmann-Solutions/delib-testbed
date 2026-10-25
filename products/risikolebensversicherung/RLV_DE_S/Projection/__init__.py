@@ -597,17 +597,6 @@ def proj_len():
     return 12 * proj_len_y()
 
 
-def duration(t):
-    """Completed policy **years** at the start of month t: ``duration_mth(t) // 12``.
-
-    0-based, as ``duration`` is throughout lifelib: 0 through the whole of the first
-    policy year.  Every contractual schedule on this product is annual, so this is what
-    the attained age, the *Versicherungssumme* schedule, the lapse table, the § 161
-    window, the *Beitragszahlungsdauer* and the commission year are keyed on.
-    """
-    return duration_mth(t) // 12
-
-
 def policy_year(t):
     """y: the contractual **1-based** policy year containing month t; 1 for ``t = 0..11``.
 

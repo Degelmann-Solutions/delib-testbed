@@ -501,16 +501,6 @@ def duration_y(k):
     return duration_init() + k
 
 
-def duration(t):
-    """d(t): **completed** policy years at the start of projection month t.
-
-    ``duration_y(proj_year(t))``.  It steps on the anniversary, so the twelve months of a
-    projection year share one policy duration and therefore one row of
-    *behaviour_table.csv*.
-    """
-    return duration_y(proj_year(t))
-
-
 def duration_mth(t):
     """**Completed policy months** at the start of projection month t.
 

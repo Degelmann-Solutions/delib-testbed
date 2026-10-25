@@ -97,3 +97,8 @@ def proj_year(t):
 def duration_mth(t):
     """The completed policy months at the start of month t: ``t``, counted from issue."""
     return t
+
+
+def duration(t):
+    """The completed policy years at the start of month t, ``duration_mth(t) // 12``."""
+    return duration_mth(t) // 12                                     # noqa: F821

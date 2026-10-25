@@ -236,6 +236,13 @@ CORE_CELLS = {
                          "riester_rente": "override",
                          "risikolebensversicherung": "derived",
                          "sofortrente": "derived"},
+        "duration": {"basisrente": "derived",
+                     "indexpolice": "derived",
+                     "kapitallebensversicherung": "derived",
+                     "klassische_rentenversicherung": "derived",
+                     "riester_rente": "derived",
+                     "risikolebensversicherung": "derived",
+                     "sofortrente": "derived"},
     },
 }
 

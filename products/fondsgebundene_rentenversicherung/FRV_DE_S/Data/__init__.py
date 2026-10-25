@@ -107,17 +107,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*.
-
-    Thirteen policies indexed by ``point_id``; model point 1 is the worked example's
-    anchor cell.  This is the library's one **provenance-exempt** input, because a model
-    point is a configuration rather than an assumption.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
-
 def mort_table():
     """The first-order annual death rates by attained age, from *mort_table.csv*.
 

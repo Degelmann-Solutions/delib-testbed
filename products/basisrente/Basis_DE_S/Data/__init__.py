@@ -125,17 +125,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*.
-
-    Indexed by ``point_id``.  The single input file exempt from delib's provenance rule:
-    a model point is a configuration — one policy's own terms — rather than an
-    assumption.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
-
 def mort_table():
     """The first-order annual death rates and improvement trends by age.
 

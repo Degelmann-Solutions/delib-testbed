@@ -146,6 +146,7 @@ def test_data_and_projection_have_the_core_spaces_as_bases(product, product_mode
 CORE_CELLS = {
     "Data": {
         "input_dir": dict.fromkeys(MODELS, "derived"),
+        "model_point_table": dict.fromkeys(MODELS, "derived"),
     },
     "Projection": {
         "model_point": dict.fromkeys(MODELS, "derived"),

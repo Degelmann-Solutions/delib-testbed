@@ -123,18 +123,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*.
-
-    Thirteen single-policy model points, indexed by ``point_id``, each carrying the
-    twenty-two contract attributes the projection reads.  The one input file exempt from
-    the library's ``provenance`` rule, a model point being a configuration rather than an
-    assumption.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
-
 def index_return_table():
     """The twelve monthly index returns of each *Indexjahr*, from *index_return_table.csv*.
 

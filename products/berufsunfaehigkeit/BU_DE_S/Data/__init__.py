@@ -102,20 +102,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*.
-
-    Thirteen policies indexed by ``point_id``, each carrying the twenty contractual
-    attributes the projection reads.  The one input file with **no** ``provenance``
-    column, and the only exemption from delib's second ruling: a model point is a
-    *configuration* — one policy's own terms — rather than an assumption, so tagging it
-    row by row would repeat the same provenance once per policy while saying nothing
-    about any assumption.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
-
 def inception_table():
     """The annual *Invalidisierungswahrscheinlichkeit* by attained age, ages 18-66.
 

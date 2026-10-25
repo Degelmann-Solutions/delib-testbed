@@ -124,17 +124,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*.
-
-    Fourteen single-policy configurations indexed by ``point_id``.  The only input file
-    without a ``provenance`` column: a model point is a *configuration* — one policy's own
-    terms — rather than an assumption, and that exemption is the only one in the library.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
-
 def mort_table():
     """The first-order annual death rates by sex and attained age, from *mort_table.csv*.
 

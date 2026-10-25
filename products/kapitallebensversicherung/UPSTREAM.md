@@ -47,7 +47,7 @@ Phase 3 changes these files and adds these symlinks to take shared cells from th
 | Path | Change |
 |---|---|
 | `KLV_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection` |
-| `KLV_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it |
+| `KLV_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it |
 | `KLV_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it |
 | `KLV_DE_S/CoreData` | added: symlink to the core space folder `core/Core/Data` |
 | `KLV_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |

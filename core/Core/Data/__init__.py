@@ -29,3 +29,9 @@ def input_dir():
     the product's own input files.
     """
     return _model.path.parent                                        # noqa: F821
+
+
+def model_point_table():
+    """The model point table, read from the product's ``model_point_file``, by ``point_id``."""
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / model_point_file, index_col="point_id")        # noqa: F821

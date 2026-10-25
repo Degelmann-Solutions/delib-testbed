@@ -114,23 +114,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*, indexed by ``point_id``.
-
-    Fourteen policies, thirty columns.  The one input file exempt from the ``provenance``
-    rule: a model point is a *configuration* — one policy's own terms — rather than an
-    assumption.  Point 1 is the anchor cell of the technical notes' worked example.
-
-    The two in-force points, 6 and 14, carry opening balances (``av_pp_init``,
-    ``av_sur_pp_init``, ``prem_cum_pp_init``, ``alpha_amort_pp_init``) that are the
-    balances this model's own recursion produces for the same contract run from inception,
-    so an in-force cell is the continuation of a projectable contract rather than a
-    free-standing guess.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
-
 def mort_table():
     """The generational mortality proxy by ``(sex, age)``, from *mort_table.csv*.
 

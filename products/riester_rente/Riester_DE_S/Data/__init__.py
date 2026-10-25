@@ -98,20 +98,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def model_point_table():
-    """The model point table, read from *model_point_table.csv*.
-
-    Indexed by ``point_id``, one row per policy, twenty-six columns.  This is the one
-    input file with **no** ``provenance`` column, and the only exemption in the library: a
-    model point is a *configuration* — one policy's own terms — rather than an assumption,
-    so a per-row tag would repeat the same provenance once per policy while saying nothing
-    about any assumption.  Where a column is an assumption in disguise (``rechnungszins``,
-    the opening balances) the technical notes carry the tag.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / model_point_file, index_col="point_id")        # noqa: F821
-
-
 def mort_table_accum():
     """Accumulation-phase death rates by attained age, from *mort_table_accum.csv*.
 

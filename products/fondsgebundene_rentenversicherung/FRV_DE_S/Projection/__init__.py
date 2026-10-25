@@ -15,7 +15,7 @@ projecting model point 1::
 ``t = 0`` is the inception month, so ``t = 60`` means the same thing on every model point —
 the first month after the acquisition-charge instalment ends. The frame runs
 ``t = proj_start() ... proj_len() - 1`` with ``proj_start() = duration_init_m`` — 0 for new
-business, 96 for the in-force cell — and ``proj_len() = 12 x (annuity_age - entry_age)``,
+business, 96 for the in-force cell — and ``proj_len() = 12 x (annuity_age - issue_age)``,
 which is the **number** of policy months from inception and so the frame's **exclusive
 end**. There is nothing after ``t = proj_len() - 1``: the end of that month is
 *Rentenbeginn*, the units are cancelled, the *Fondsguthaben* is converted at the
@@ -380,16 +380,6 @@ def sex():
     return v
 
 
-def entry_age():
-    """Age last birthday at inception.
-
-    The age basis steps at each policy anniversary, so ``age(t) = entry_age() +
-    policy_year(t) - 1 = entry_age() + t // 12`` and the attained age in the last projected
-    month, ``t = proj_len() - 1``, is ``annuity_age() - 1``.
-    """
-    return int(model_point()["entry_age"])
-
-
 def duration_init_m():
     """Policy months already elapsed at the valuation date; 0 for new business.
 
@@ -656,14 +646,14 @@ def proj_start():
 
 def proj_len():
     """The **number** of projected policy months from inception,
-    ``12 x (annuity_age() - entry_age())``.
+    ``12 x (annuity_age() - issue_age())``.
 
     The library's reading of ``proj_len()``: a period **count**, so it is the frame's
     **exclusive** end.  ``result_cf()`` covers ``t = proj_start() ... proj_len() - 1`` and
     ``result_cf().index[-1] == proj_len() - 1`` on every model point.  The end of month
     ``proj_len() - 1`` is *Rentenbeginn*; there is no ``t = proj_len()`` row.
     """
-    return 12 * (annuity_age() - entry_age())
+    return 12 * (annuity_age() - issue_age())
 
 
 def policy_year(t):
@@ -678,14 +668,14 @@ def policy_year(t):
 
 
 def age(t):
-    """Attained age in month t, ``entry_age() + policy_year(t) - 1 = entry_age() + t // 12``.
+    """Attained age in month t, ``issue_age() + policy_year(t) - 1 = issue_age() + t // 12``.
 
     At ``t = proj_len() - 1`` this is ``annuity_age() - 1``, because the annuity begins at
     the **end** of that month.  Reading the *Rentenfaktor* off this cells instead of off
     :func:`annuity_age` is a listed pitfall and would fetch 24.45 in place of 25.00 on the
     anchor cell.
     """
-    return entry_age() + policy_year(t) - 1
+    return issue_age() + policy_year(t) - 1
 
 
 # ----------------------------------------  the charge scale
@@ -1340,7 +1330,7 @@ def lapse_tax_step(t):
     the contract has run at least **twelve years** and payment falls after completion of
     the **62nd year of life**.  Surrenders are suppressed as the threshold approaches and
     spike once both limbs are met, so the multiplier applies for the twelve months of the
-    policy year ``max(13, 62 - entry_age() + 1)``.
+    policy year ``max(13, 62 - issue_age() + 1)``.
 
     **Keying the spike on duration alone is wrong**, and is a listed pitfall: the anchor
     cell passes duration 12 at age 48, fourteen years before the tax benefit exists, so
@@ -1348,7 +1338,7 @@ def lapse_tax_step(t):
     7.5 %.  On model point 12 the step never fires, because the projection ends at
     ``t = 143`` and the step year begins at ``t = 144``.
     """
-    step_year = max(13, 62 - entry_age() + 1)
+    step_year = max(13, 62 - issue_age() + 1)
     return 2.5 if policy_year(t) == step_year else 1.0
 
 

@@ -181,6 +181,7 @@ CORE_CELLS = {
     },
     "Projection": {
         "model_point": dict.fromkeys(MODELS, "derived"),
+        "issue_age": {**dict.fromkeys(MODELS, "derived"), "sofortrente": "override"},
     },
 }
 
@@ -302,3 +303,17 @@ def test_pflege_param_table_holds_the_two_merged_tables(product_models):
     for item in expense.index:
         for column in ("value", "unit", "provenance"):
             assert merged.at[item, column] == expense.at[item, column], (item, column)
+
+
+def test_sofort_issue_age_reads_the_second_life_from_surv_age(product_models):
+    model = product_models("sofortrente")
+    projection = model.Projection
+    assert projection.issue_age._is_defined()
+    points = model.Data.model_point_table()
+    joint = points.index[points["surv_pct"] > 0]
+    assert len(joint), "no joint-life model point"
+    for point_id in joint:
+        item = projection[point_id]
+        assert item.issue_age() == int(points.at[point_id, "issue_age"])
+        assert item.issue_age(1) == int(points.at[point_id, "issue_age"])
+        assert item.issue_age(2) == int(points.at[point_id, "surv_age"])

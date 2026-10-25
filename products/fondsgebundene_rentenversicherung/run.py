@@ -22,7 +22,7 @@ proj = model.Projection[point_id]
 mp = proj.model_point()
 
 print("model point {}: {} - {}{} -> Rentenbeginn at {}, t = {} .. {}".format(
-    point_id, mp["policy_id"], proj.sex(), proj.entry_age(),
+    point_id, mp["policy_id"], proj.sex(), proj.issue_age(),
     proj.annuity_age(), proj.proj_start(), proj.proj_len() - 1))
 print("premium: {} {:,.2f} EUR every {} month(s) for {} years   "
       "Beitragssumme {:,.2f} EUR".format(

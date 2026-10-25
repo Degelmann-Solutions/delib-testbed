@@ -26,3 +26,8 @@ _spaces = []
 def model_point():
     """The selected model point as a Series."""
     return data.model_point_table().loc[point_id]                    # noqa: F821
+
+
+def issue_age():
+    """The age at issue of the selected model point, from its ``issue_age`` column."""
+    return int(model_point()["issue_age"])                           # noqa: F821

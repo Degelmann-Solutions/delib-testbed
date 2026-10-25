@@ -57,7 +57,7 @@ what a replacement must preserve.
 `t` is the **0-based** policy month counted from the contract's own inception: `t = 0` is
 the inception month, period `t` runs from time `t` to time `t + 1`, and `t = 60` means the
 same thing on every model point — the first month after the acquisition-charge instalment
-ends. `proj_len() = 12 × (annuity_age − entry_age)` is the **number** of policy months and
+ends. `proj_len() = 12 × (annuity_age − issue_age)` is the **number** of policy months and
 so the frame's **exclusive** end, so `result_cf()` covers `range(proj_start(), proj_len())`
 — the last row is `t = proj_len() − 1`, which is 359 on the anchor cell, and
 `len(result_cf())` is `proj_len() − proj_start()`. That is lifelib's own convention
@@ -71,7 +71,7 @@ through a frame whose origin is still inception. `pols_if(proj_start()) == pols_
 exactly, and `pols_if(proj_len()) = 0`, one past the last row.
 
 The **contractual policy year is the 1-based label** `policy_year(t) = t // 12 + 1`, derived
-from `t` and never indexed by, and `age(t) = entry_age + policy_year(t) − 1 = entry_age +
+from `t` and never indexed by, and `age(t) = issue_age + policy_year(t) − 1 = issue_age +
 t // 12`. Because a 0-based frame has no `t = −1`, the opening *Anteilspreis* is its own cells,
 `unit_price_open(t)` — `unit_price_init` at `t = proj_start()` and `unit_price(t − 1)` after it
 — which is what `av_pp` and `units_bought_pp` read; the ledgers `cum_prem_pp` and
@@ -85,7 +85,7 @@ t // 12`. Because a 0-based frame has no `t = −1`, the opening *Anteilspreis* 
 | `model_point_table.csv` | `pup_month` | **Shifted −1**: a point on the frame's time axis. Model point 7 goes *beitragsfrei* at `t = 120` (was 121). `0` stays the "never" **sentinel**, not the inception month |
 | `model_point_table.csv` | `topup_month` | **Shifted −1**: model point 9 tops up at `t = 120` (was 121). `0` stays the "none" sentinel |
 | `model_point_table.csv` | `wd_month` | **Shifted −1**: model point 9 withdraws at `t = 240` (was 241). `0` stays the "none" sentinel |
-| `model_point_table.csv` | `entry_age`, `annuity_age`, `prem_term_y`, `prem_mode_months` | **Unchanged.** Ages, a term in years and a frequency in months — none is a point on the frame |
+| `model_point_table.csv` | `issue_age`, `annuity_age`, `prem_term_y`, `prem_mode_months` | **Unchanged.** Ages, a term in years and a frequency in months — none is a point on the frame |
 | `lapse_table.csv` | `policy_year` | **Unchanged.** The contractual 1-based label; `lapse_rate_base(t)` maps through `policy_year(t) = t // 12 + 1` |
 | `fund_scenario_table.csv` | `policy_year` | **Unchanged**, for the same reason |
 | `charge_table.csv` | `alpha_spread_months` | **Unchanged.** A count of months, not an index |
@@ -465,7 +465,7 @@ Every entry is **[std]**, and the rationale is what makes it honest.
 | `mort_be_factor` | 0.75, flat | Crude, and said to be. It buys a *Risikoergebnis* that is exactly 25 % of the *Risikobeitrag* [REG-R47] |
 | Monthly conversions | mortality `/12`; lapse and return geometric | Charge and decrement must share a split; the lapse and return annual rates are the observables to reproduce |
 | Lapse table, the 40 % cap and the zero final month | 6 / 3 / 2 / 3 % by duration band; `lapse_cap = 40 %`; `lapse_rate_mth(n − 1) = 0` | **No German unit-linked *Stornoquote* exists in this corpus**; the front-loading is inferred from the exit terms [R1] [R2]. The cap stops a dynamic module producing an absurd rate; the zero final month is because a surrender and an annuitisation are then one event |
-| Tax-threshold lapse step | ×2.5 for twelve months from `max(13, 62 − entry_age + 1)` | The 12/62 rule is statutory — EStG § 20 Abs. 1 Nr. 6 Satz 2, which names the 60th year of life, raised to the **62nd** by § 52 Abs. 28 *"für Vertragsabschlüsse nach dem 31. Dezember 2011"*, and applying on surrender as well as at maturity [R20] [REG-R45]. It is the strongest single driver of German surrender behaviour; keying it on duration alone fires fourteen years early on the anchor. The ×2.5 magnitude is **[std]** |
+| Tax-threshold lapse step | ×2.5 for twelve months from `max(13, 62 − issue_age + 1)` | The 12/62 rule is statutory — EStG § 20 Abs. 1 Nr. 6 Satz 2, which names the 60th year of life, raised to the **62nd** by § 52 Abs. 28 *"für Vertragsabschlüsse nach dem 31. Dezember 2011"*, and applying on surrender as well as at maturity [R20] [REG-R45]. It is the strongest single driver of German surrender behaviour; keying it on duration alone fires fourteen years early on the anchor. The ×2.5 magnitude is **[std]** |
 | Fund paths and TER | 5.00 % gross, 0.45 % TER on `base`; `etf`, `zero`, `stress` | Round, clearly-labelled assumptions. **Not forecasts, not PRIIPs scenarios** [R8] [R9] [REG-R32] |
 | *Kickback* credited back, and the *Ausgabeaufschlag* | 0.00 % p.a.; fully waived | A passive fund pays no trail. **The two questions this once sidestepped are answered**: insurers do receive rebates out of the fund's *Verwaltungsvergütung* and must test them for *Fehlanreize* and consider passing them back [R10] [R15], and the market pays a weighted mean just over **0,30 % p.a. of the fund**, up to over **1,20 %**, on about a third of new business [R11] — so 0 % models the cheap end of a real flow. Only the PRIIPs treatment of a credited rebate is still open [R7] [R8]. **The *Ausgabeaufschlag* waiver is confirmed**: *"Ausgabeaufschläge und Depotkosten fallen nicht an"*, and units are bought at the *Rücknahmepreis* [S2] |
 | Guaranteed *Rentenfaktor* | 25,00 € per 10 000 € at 67, from `10 000/(12 T_eff)` | **Derived arithmetic, not a market observation** — and now measurable against one. The 0 % *Rechnungszins* on DAV 2004 R is confirmed for a fondsgebundene tariff [S2] [S10] [R16]. **The level is not**: at this model's own anchor cell the observed guaranteed factor is **22,91 €** against the shipped 25,00 €, and the observed factor *falls with the deferment* — 25,22 / 24,12 / 22,91 / 21,83 € at 12 / 20 / 30 / 40 years to age 67 — where the shipped table is flat in it [S15]. **Not changed in this pass**: the table, the worked example and the golden tests move together |

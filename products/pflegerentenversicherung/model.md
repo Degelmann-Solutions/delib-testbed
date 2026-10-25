@@ -49,7 +49,7 @@ them and the four annual rates beside it. `model.Projection.doc` holds the full 
 `model.Data.doc` says what a replacement for each shipped table must preserve.
 
 The grid is **monthly** and `t` is **0-based**: `t = 0` is the month of issue and
-`age(t) = age_at_entry + t // 12`, so the attained age steps at the policy anniversary. The frame
+`age(t) = issue_age + t // 12`, so the attained age steps at the policy anniversary. The frame
 **starts** at `duration_mth_init()` — `0` for new business, the elapsed duration for an in-force
 point — and runs to `proj_len() - 1`, where `proj_len()` is the **number of projected months**, the
 frame's **exclusive end** counted from `t = 0`: `12 × (110 − 45) = 780` on the anchor cell, so
@@ -234,7 +234,7 @@ band rather than against a citation.
 the § 4 DeckRV *Höchstzillmersatz* of 25 ‰ so the ceiling binds visibly [REG-R16] [REG-R20]. A
 lifelong-premium contract has no finite *Beitragssumme* without a convention, and
 `beitragssumme_cap_age = 85` **[std]** is that convention —
-`P × 12 × (min(prem_end_age, 85) − age_at_entry)`, and the *Einmalbeitrag* itself where there is
+`P × 12 × (min(prem_end_age, 85) − issue_age)`, and the *Einmalbeitrag* itself where there is
 one. On the anchor cell that is 30 815,24 € and a charge of 770,38 €, all of it at `t = 0`.
 Charging the per-mille on an *annual* premium instead understates it by a factor of the paying term
 — here forty-fold — and is a listed pitfall. Because the charge falls at `t = 0` only, an

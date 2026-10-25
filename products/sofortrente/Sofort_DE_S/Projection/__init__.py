@@ -248,16 +248,19 @@ def single_prem():
     return float(model_point()["single_prem"])
 
 
-def entry_age(life=1):
+def issue_age(life=1):
     """Age last birthday at *Vertragsbeginn*: the annuitant's, or the second life's.
 
     ``life = 1`` is the annuitant and ``life = 2`` the *mitversicherte Person* of a
     *Hinterbliebenenrente*.  Where ``surv_pct() == 0`` the second life's columns are
     carried as zeros and are never read, because every cells that would read them returns
     early.
+
+    Override reason: a joint-life contract has two lives; ``life=2`` reads the survivor's
+    ``surv_age``, products/sofortrente/technical-notes.md, section Model point attributes
     """
     if life == 1:
-        return int(model_point()["entry_age"])
+        return int(model_point()["issue_age"])
     if life == 2:
         return int(model_point()["surv_age"])
     raise ValueError("invalid life")
@@ -474,13 +477,13 @@ def t_start():
 
 
 def horizon_mths(life=1):
-    """``12 (omega_age - entry_age(life))``: the month at which that life's survival ends.
+    """``12 (omega_age - issue_age(life))``: the month at which that life's survival ends.
 
     With ``q = 1`` at attained age 120 in every series and ``omega_age = 121``, the
     survival path reaches zero inside this horizon and stays there, so the tail months
     carry no cash flow.
     """
-    return 12 * (omega_age - entry_age(life))                        # noqa: F821
+    return 12 * (omega_age - issue_age(life))                        # noqa: F821
 
 
 def proj_len():
@@ -545,14 +548,14 @@ def policy_year(t):
 
 
 def age(t, life=1):
-    """Attained age of a life at month ``t``: ``entry_age(life) + t // 12``.
+    """Attained age of a life at month ``t``: ``issue_age(life) + t // 12``.
 
     Age last birthday at inception, incrementing at each 12-month multiple of it.  A real
     implementation on dates carries a fractional offset of up to a year; the shipped model
-    points satisfy ``entry_year == birth_year + entry_age``, which is a **[std]**
+    points satisfy ``entry_year == birth_year + issue_age``, which is a **[std]**
     internal-consistency convention rather than a contract fact.
     """
-    return entry_age(life) + t // 12
+    return issue_age(life) + t // 12
 
 
 def calendar_year(t):

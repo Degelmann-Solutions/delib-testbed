@@ -60,14 +60,14 @@ shipped index path so that the mechanics are asserted against them cell by cell.
 - **The frame is 0-based and `t` counts policy months from issue.** `duration(t) = t // 12` is the
   **0-based policy year** `k`, and every annual construction in this file takes it; the contractual
   **policy year is the 1-based label `k + 1`** and is derived, never indexed by. The attained age
-  steps on the **anniversary**, `age(t) = entry_age + duration(t)`, and `is_anniv(t)` is
+  steps on the **anniversary**, `age(t) = issue_age + duration(t)`, and `is_anniv(t)` is
   `t % 12 == 11`, the month the annual machinery acts in. A **new-business** point starts at `t = 0`;
   an **in-force** point starts at `t_start() = 12 × dur_init`, `dur_init` being a 0-based count of
   completed policy **years**, so the conversion is a multiplication and no model point column
   changed; `k_start() = dur_init` is the same instant on the annual clock. `result_cf()` is indexed
   `t_start() … proj_len() − 1`, contiguous, and its first `pols_if` value is `pols_if_init()`.
 - **`proj_len()` is the exclusive end of the frame in months**, `proj_len() = 12 × proj_len_y()` with
-  `proj_len_y() = ann_start_age − entry_age` the number of policy years, so
+  `proj_len_y() = ann_start_age − issue_age` the number of policy years, so
   `result_cf().index[-1] == proj_len() − 1` — the library's reading of `proj_len()` and lifelib's own
   `for t in range(proj_len())`, asserted in the conventions suite. It is **not** the row count of an
   in-force point: one at `dur_init = 8` publishes `324 − 96 = 228` rows and still reports
@@ -165,10 +165,10 @@ from its base value, so that no column is carried without being tested.
 | `point_id` | int | key; **model point 1 is the worked example's anchor cell** | all |
 | `policy_id` | str | label, `DE-IDX-nnnn`; reporting only | all |
 | `sex` | enum {M, F} | selects the best-estimate mortality row; **never a rating factor** [REG-R34] | 3, 5, 7, 10, 12 |
-| `entry_age` | int | age last birthday at inception; `age(t) = entry_age + t` | 3–13 |
+| `issue_age` | int | age last birthday at inception; `age(t) = issue_age + t` | 3–13 |
 | `dur_init` | int | completed policy years at the valuation date; 0 = new business; the frame starts at `t_start() = 12 × dur_init`, `dur_init` already being a 0-based elapsed count of policy **years** | 8, 13 |
 | `pols_if_init` | float | policies represented at `t_start()` | — (1.0 everywhere) |
-| `ann_start_age` | int | attained age at *Rentenbeginn*; `proj_len() = ann_start_age − entry_age` | 6 |
+| `ann_start_age` | int | attained age at *Rentenbeginn*; `proj_len() = ann_start_age − issue_age` | 6 |
 | `prem_form` | enum {level, single} | *laufender Beitrag* or *Einmalbeitrag* | 7 |
 | `prem_gross_pp` | EUR | the **annual-mode** premium (the *Jahresbeitrag*), or the single premium | 5, 6, 7, 8, 12, 13 |
 | `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | payment frequency; drives `freq_load()` | 4, 5, 6 |
@@ -215,7 +215,7 @@ points, four *Rechnungszins* cohorts and four *Garantieniveaus*.
 | `proj_len_y()`, `proj_len()` | the number of projected policy years; `12 ×` that, the frame's exclusive end in months | once per model point |
 | `k_start()`, `t_start()` | the first projected policy year, `dur_init`; the first projected month, `12 × dur_init` | once per model point |
 | `duration(t)`, `policy_year(t)`, `is_anniv(t)`, `index_month(t)` | the bridge between the clocks: the 0-based policy year of month `t`, its 1-based label, whether `t` is the year's last month, and which month of the *Indexjahr* it is | derived |
-| `age(t)` | attained age in month `t` = `entry_age + duration(t)`; **steps on the anniversary** | annual step |
+| `age(t)` | attained age in month `t` = `issue_age + duration(t)`; **steps on the anniversary** | annual step |
 | `pols_if(t)` | policies in force at time `t`, the **start of month** `t`; `pols_if(t_start()) = pols_if_init()` | monthly recursion |
 | `pols_if_at(t, timing)` | the within-month points of the same count: `"BEF_DECR"`, `"AFT_DEATH"`, `"AFT_LAPSE"` | within month `t` |
 | `pols_surv_year_end(k)` | the survivors of all twelve months of policy year `k` — the population the *Indexjahr* credit is given to | once a policy year |
@@ -413,9 +413,9 @@ oversight.
 | Symbol | Cells | Meaning |
 |---|---|---|
 | `t` | — | the 0-based **month** index, `t = t₀ … 12n−1`; `t₀ = t_start() = 12·dur_init` |
-| `k` | `duration(t)` | the 0-based **policy year**, `t // 12`; `k₀ = k_start() = dur_init`, `n = proj_len_y() = ann_start_age − entry_age`; the contractual policy year is `k + 1`. Every annual construction below takes `k` |
+| `k` | `duration(t)` | the 0-based **policy year**, `t // 12`; `k₀ = k_start() = dur_init`, `n = proj_len_y() = ann_start_age − issue_age`; the contractual policy year is `k + 1`. Every annual construction below takes `k` |
 | `m(t)` | `index_month(t)` | which month of its *Indexjahr* `t` is, 1-based: `t % 12 + 1` |
-| `x(t)` | `age(t)` | attained age in month `t` = `entry_age + duration(t)`, stepping on the anniversary |
+| `x(t)` | `age(t)` | attained age in month `t` = `issue_age + duration(t)`, stepping on the anniversary |
 | `l(t)` | `pols_if(t)` | policies in force at time `t`, the start of **month** `t`; `l(t₀) = pols_if_init()` |
 | `φ` | `freq_load()` | the *Ratenzahlungszuschlag* multiplier |
 | `P_b(k)`, `P(k)` | `prem_base_pp(k)`, `prem_gross_pp(k)` | the annual-mode premium due in policy year `k`; the amount actually collected, `P_b(k)·φ`, in the first month of that year |
@@ -671,7 +671,7 @@ every month `t` of that year, and is steps M1 to M4.**
 
 The annual block, for `k = k₀ … n−1`:
 
-A1. **Open the year.** `A(k)`, `x(k) = entry_age + k`; the population is `l(12k)`. If `k ≥ n`, stop.
+A1. **Open the year.** `A(k)`, `x(k) = issue_age + k`; the population is `l(12k)`. If `k ≥ n`, stop.
 A2. **Strike the participating base**, `G(k) = A(k)` — before this year's premium. This is what the
     *Indexjahr* is measured on, and it is the reason a new-business point credits nothing at `k = 0`
     however well the index does.
@@ -868,7 +868,7 @@ them, and none for this product specifically.
 ## Worked example
 
 **Configuration.** Model point 1, the anchor cell, in full: `point_id = 1`;
-`policy_id = "DE-IDX-0001"`; `sex = M`; `entry_age = 40`; `dur_init = 0`, so `t_start() = 0` and the
+`policy_id = "DE-IDX-0001"`; `sex = M`; `issue_age = 40`; `dur_init = 0`, so `t_start() = 0` and the
 table below is the **entire** projection; `pols_if_init = 1.0`; `ann_start_age = 67`, hence
 `proj_len_y() = 67 − 40 = 27` policy years and `proj_len() = 324` months, `t = 0 … 323`;
 `prem_form = level`; `prem_gross_pp = 2 400,00 €` (the annual-mode

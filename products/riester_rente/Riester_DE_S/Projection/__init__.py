@@ -343,16 +343,6 @@ def sex():
     return v
 
 
-def issue_age():
-    """The attained age at which the contract was concluded, age last birthday.
-
-    With :func:`duration_init` it fixes ``age(0) = issue_age() + duration_init()``, the
-    attained age at the valuation date.  It does not otherwise enter the projection: no
-    rate in this model is struck at issue.
-    """
-    return int(model_point()["issue_age"])
-
-
 def duration_init():
     """Completed contract years at the valuation date; 0 for a point projected from issue.
 

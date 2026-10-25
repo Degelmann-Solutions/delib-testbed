@@ -48,7 +48,9 @@ Phase 3 changes these files and adds these symlinks to take shared cells from th
 |---|---|
 | `Basis_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection` |
 | `Basis_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it; Reference `mort_table_file` renamed `mort_file`; `mort_table` overrides the core with a reason (index columns); `rentenfaktor_table` moved to the core and inherited from it |
-| `Basis_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; Reference `mort_table_file` renamed `mort_file` in the header table |
-| `model.md` | Reference `mort_table_file` named `mort_file` |
+| `Basis_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; Reference `mort_table_file` renamed `mort_file` in the header table; `entry_age` renamed `issue_age`; inline reads of the issue age call `issue_age()`, inherited from the core |
+| `model.md` | Reference `mort_table_file` named `mort_file`; `entry_age` named `issue_age` |
+| `model_point_table.csv` | column `entry_age` renamed `issue_age` |
+| `technical-notes.md` | `entry_age` named `issue_age` |
 | `Basis_DE_S/CoreData` | added: symlink to the core space folder `core/Core/Data` |
 | `Basis_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |

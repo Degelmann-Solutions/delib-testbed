@@ -486,12 +486,12 @@ def is_anniv(t):
 def age_y(k):
     """x(k): attained age in projection year k.
 
-    ``entry_age + duration_init + k``.  Age last birthday at conclusion
+    ``issue_age + duration_init + k``.  Age last birthday at conclusion
     (*Eintrittsalter*), stepping on the policy anniversary **[std]**: no German convention
     was established, and here mortality drives the annuity's duration rather than any
     benefit amount, so a half-year offset is second order.
     """
-    return int(model_point()["entry_age"]) + int(model_point()["duration_init"]) + k
+    return issue_age() + int(model_point()["duration_init"]) + k
 
 
 def age(t):
@@ -623,7 +623,7 @@ def beitragssumme_pp():
     **including** the *Beitragsdynamik* and **excluding** *Zuzahlungen* and the
     *Ratenzahlungszuschlag*::
 
-        S = sum_{u=0}^{m-1} prem_base_pp x (1 + prem_dyn_rate)^u,   m = ret_age - entry_age
+        S = sum_{u=0}^{m-1} prem_base_pp x (1 + prem_dyn_rate)^u,   m = ret_age - issue_age
 
     and simply ``prem_base_pp`` for a single premium.  Excluding *Zuzahlungen* is the
     conservative reading of a question no retrieved source settles, and it matters twice:
@@ -639,7 +639,7 @@ def beitragssumme_pp():
     base = float(model_point()["prem_base_pp"])
     if model_point()["prem_form"] == "single":
         return base
-    m = int(model_point()["ret_age"]) - int(model_point()["entry_age"])
+    m = int(model_point()["ret_age"]) - issue_age()
     return sum(base * (1.0 + dyn) ** u for u in range(max(m, 0)))
 
 

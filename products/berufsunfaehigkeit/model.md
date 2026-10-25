@@ -141,7 +141,7 @@ the one the product's own consumer literature warns about [S13] [S16].
 The `*_first` cells are a **second projection**, not a variant of the first: the same
 four-ledger chain on *Rechnungsgrundlagen erster Ordnung* — inception × 1,30, reactivation
 × 0,70, disabled-lives mortality × 0,80, active-lives mortality × 0,80, **no lapse** — run
-over the contract's **original** term from `entry_age` and indexed by `s` rather than `t`.
+over the contract's **original** term from `issue_age` and indexed by `s` rather than `t`.
 Prudence for a disability product means a claim that starts more often, ends less often and
 lasts longer; it also means fewer premium-paying lives lost, because here an active death and
 a lapse both *release* a liability and a prudent basis does not anticipate a favourable event.

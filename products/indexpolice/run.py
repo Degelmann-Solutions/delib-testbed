@@ -23,7 +23,7 @@ df = proj.result_cf()
 
 print("model point {}: {} - {}{} -> Rentenbeginn at {}, {} policy years "
       "(t = {} .. {} months)".format(
-          point_id, proj.policy_id(), proj.sex(), proj.entry_age(),
+          point_id, proj.policy_id(), proj.sex(), proj.issue_age(),
           proj.ann_start_age(), proj.proj_len_y() - proj.k_start(),
           proj.t_start(), proj.proj_len() - 1))
 print("premium form = {}   {:,.2f} EUR a year x {} years {} -> collected "

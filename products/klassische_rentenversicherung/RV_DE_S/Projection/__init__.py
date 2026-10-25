@@ -472,7 +472,7 @@ def proj_len_y():
     silently drops the tail the *Rentenfaktor* was priced for.  **71** on the anchor cell,
     whose last policy year ends at attained age 121.
     """
-    return omega_age() - int(model_point()["issue_age"])
+    return omega_age() - issue_age()
 
 
 def proj_len():
@@ -550,7 +550,7 @@ def policy_year(t):
 
 def age_y(k):
     """x(k): the attained age at the start of policy year k, ``issue_age + k``."""
-    return int(model_point()["issue_age"]) + k
+    return issue_age() + k
 
 
 def age(t):
@@ -1673,7 +1673,7 @@ def annuity_rate_curr():
     """
     mp = model_point()
     return float(data.rentenfaktor_table().at[                       # noqa: F821
-        (mp["rf_scenario_id"], int(mp["issue_age"]) + int(mp["aufschub_y"])),
+        (mp["rf_scenario_id"], issue_age() + int(mp["aufschub_y"])),
         "annuity_rate_curr"])
 
 

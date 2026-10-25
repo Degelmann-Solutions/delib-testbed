@@ -394,18 +394,6 @@ def policy_id():
     return model_point()["policy_id"]
 
 
-def issue_age():
-    """The *Eintrittsalter* of the first *versicherte Person*.
-
-    The age basis is *Alter am Jahrestag* — the attained age at the policy anniversary,
-    which is also this model's projection step, so ``age(t) = issue_age + t``
-    exactly.  Germany has no counterpart to the French *différence de millésime*, where
-    the rating age steps on 1 January irrespective of birth month; on a real-date
-    implementation the offset here is at most a few months **[std]**.
-    """
-    return int(model_point()["issue_age"])
-
-
 def sex():
     """The first life's sex, M or F.  **Decrement only — it must never enter pricing.**
 

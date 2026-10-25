@@ -48,14 +48,16 @@ Phase 3 changes these files and adds these symlinks to take shared cells from th
 
 | Path | Change |
 |---|---|
-| `Pflege_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection`; docstring: eight input CSVs |
+| `Pflege_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection`; docstring: eight input CSVs; docstring names `issue_age`, was `age_at_entry` |
 | `Pflege_DE_S/Data/__init__.py` | `_bases` names `.CoreData`; `input_dir` moved to the core and inherited from it; `model_point_table` moved to the core and inherited from it; `basis_table` and `expense_table` replaced by `param_table`, inherited from the core; References `basis_file` and `expense_file` replaced by `param_file`; docstring updated; Reference `mort_table_file` renamed `mort_file`; `mort_table` moved to the core and inherited from it; `lapse_table` moved to the core and inherited from it |
-| `Pflege_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; `data.basis_table()` and `data.expense_table()` read as `data.param_table()`; header table and docstrings name `param_table.csv`; Reference `mort_table_file` renamed `mort_file` in the header table |
-| `model.md` | `basis_table.csv` and `expense_table.csv` named as `param_table.csv`; Reference `mort_table_file` named `mort_file` |
-| `technical-notes.md` | `basis_table.csv` and `expense_table.csv` named as `param_table.csv` |
+| `Pflege_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it; `data.basis_table()` and `data.expense_table()` read as `data.param_table()`; header table and docstrings name `param_table.csv`; Reference `mort_table_file` renamed `mort_file` in the header table; `age_at_entry` renamed `issue_age`; `issue_age` moved to the core and inherited from it |
+| `model.md` | `basis_table.csv` and `expense_table.csv` named as `param_table.csv`; Reference `mort_table_file` named `mort_file`; `age_at_entry` named `issue_age` |
+| `technical-notes.md` | `basis_table.csv` and `expense_table.csv` named as `param_table.csv`; `age_at_entry` named `issue_age` |
 | `sources.md` | `basis_table.csv` and `expense_table.csv` named as `param_table.csv` |
 | `param_table.csv` | added: merged from `basis_table.csv` (column `param` renamed `item`, empty `unit`) and `expense_table.csv`, same values |
 | `basis_table.csv` | removed: merged into `param_table.csv` |
 | `expense_table.csv` | removed: merged into `param_table.csv` |
+| `model_point_table.csv` | column `age_at_entry` renamed `issue_age` |
+| `run.py` | calls `issue_age()`, was `age_at_entry()` |
 | `Pflege_DE_S/CoreData` | added: symlink to the core space folder `core/Core/Data` |
 | `Pflege_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |

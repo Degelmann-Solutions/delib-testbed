@@ -56,7 +56,7 @@ German ones, and each now carries a document that was read.
   **0-based**: `t = 0` is the first projected month — the month of inception for a new-business
   point, the valuation month for an in-force one — and the contractual, 1-based *policy year* is
   derived from it, `policy_year(t) = duration_mth(t) // 12 + 1`, never indexed by.
-- **Projection horizon.** `proj_len() = 12 × (cover_end_age − entry_age) − duration_init_months`,
+- **Projection horizon.** `proj_len() = 12 × (cover_end_age − issue_age) − duration_init_months`,
   the **number of projected months** and so the **exclusive end** of the frame: `result_cf()` is
   indexed `t = 0 … proj_len() − 1` and `result_cf().index[-1] == proj_len() − 1`. On the anchor
   cell that is `12 × (67 − 30) = 444` monthly rows, the last of them `t = 443`. Cover ceases at
@@ -68,7 +68,7 @@ German ones, and each now carries a document that was read.
   month, in advance [S1]; all state transitions and the claim-assessment cost at the **end** of the
   month; the *Wiedereingliederungshilfe* at the end of the month in which the run-off completes.
 - **Age basis.** *Eintrittsalter*, age last birthday, advancing at the policy anniversary:
-  `age(t) = entry_age + duration_mth(t) // 12` **[std]** (product spec, footnote 5).
+  `age(t) = issue_age + duration_mth(t) // 12` **[std]** (product spec, footnote 5).
 - **Claim duration.** `z` is **months since the onset of the BU**, `z ≥ 1`; a life whose BU incepts
   at end of month `t` is in duration cohort `z = 1` at the start of month `t + 1`, which is when its
   first *BU-Rente* is due if `karenz_months = 0`. The *Karenzzeit* clock and the *Leistungsdynamik*
@@ -99,7 +99,7 @@ German ones, and each now carries a document that was read.
 |---|---|---|---|
 | `point_id` | int | Index of `model_point_table.csv`; `Projection.parameters == ("point_id",)` | all |
 | `status` | enum {`aktiv`, `leistung`} | State at `t = 0` | 7 (`leistung`) |
-| `entry_age` | int | *Eintrittsalter*, age last birthday at inception | all; 25 – 50 across the table |
+| `issue_age` | int | *Eintrittsalter*, age last birthday at inception | all; 25 – 50 across the table |
 | `sex` | enum {M, F} | Decrement and reporting only — **never prices** [REG-R34] | 1 / 2 (the unisex twin) |
 | `berufsgruppe` | str | Key into `occupation_table.csv`; BG1 … BG5 | 1 / 3 (BG1 vs BG4), 5, 8, 9, 11 |
 | `bu_rente_mth` | EUR/month | The agreed *BU-Rente* at inception | all; 1 000 – 2 500 |
@@ -363,7 +363,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 |---|---|
 | `t` | policy month, 0-based, `t = 0 … n − 1`, `n = proj_len()` (the number of projected months) |
 | `u(t)` | `duration_mth(t) = duration_init_months + t`, elapsed policy months at the start of `t` |
-| `x(t)` | `age(t) = entry_age + u(t) // 12` |
+| `x(t)` | `age(t) = issue_age + u(t) // 12` |
 | `y(t)` | `policy_year(t) = u(t) // 12 + 1` |
 | `z` | claim duration in months since onset, `z ≥ 1` |
 | `k` | run-off slot, `k = 1, 2, 3` |
@@ -712,7 +712,7 @@ for any of them, and the two that would matter most are the two no source suppli
 
 ## Worked example
 
-**Configuration.** Model point 1, the anchor cell, in full: `status = aktiv`, `entry_age = 30`,
+**Configuration.** Model point 1, the anchor cell, in full: `status = aktiv`, `issue_age = 30`,
 `sex = F`, `berufsgruppe = BG1` (*Bürotätigkeit*, `occ_factor` 1,00), `bu_rente_mth = 1 500,00 €`,
 `cover_end_age = 67`, `benefit_end_age = 67`, `karenz_months = 0`, `leistungsdyn_rate = 0,02`,
 `premium_form = level`, `beitragsdyn_rate = 0,00`, `prem_mode = monthly` (`prem_mode_months = 1`,
@@ -901,7 +901,7 @@ figures. It has to be, because `freq_load` scales the *Bruttobeitrag* and the
 *Beitragsverrechnung* together and `beitragsverrechnung` is constant — and a model that carried
 only one of the two premium streams would have no way to show it.
 
-**The *Beitragsdynamik* variant.** Model point 4 is the second premium form: `entry_age = 25`,
+**The *Beitragsdynamik* variant.** Model point 4 is the second premium form: `issue_age = 25`,
 `berufsgruppe = BG2` (`occ_factor` 1,40), `bu_rente_mth = 1 200,00 €`, `premium_form = dynamik`
 with `beitragsdyn_rate = 0,03`, and **annual** payment (`prem_mode_months = 12`,
 `freq_load = 1,00`). Everything else is the anchor's. Hence `proj_len() = 12 × (67 − 25) = 504`,

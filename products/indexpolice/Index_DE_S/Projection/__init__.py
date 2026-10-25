@@ -14,7 +14,7 @@ projecting model point 1::
 .. rubric:: Two clocks: a monthly frame over an annual *Indexjahr*
 
 ``t`` counts **policy months from issue**, 0-based. ``proj_len() = 12 x proj_len_y()`` is
-the **exclusive end** of the frame, with ``proj_len_y() = ann_start_age - entry_age`` the
+the **exclusive end** of the frame, with ``proj_len_y() = ann_start_age - issue_age`` the
 number of policy years, so ``result_cf().index[-1] == proj_len() - 1`` and the frame of an
 in-force point at ``dur_init = 8`` has 228 rows while still reporting ``proj_len() = 324``.
 A **new-business** point starts at ``t = 0``; an **in-force** point starts at
@@ -275,11 +275,6 @@ def sex():
     return v
 
 
-def entry_age():
-    """*Eintrittsalter*: age last birthday at inception, the origin of ``age(t)``."""
-    return int(model_point()["entry_age"])
-
-
 def dur_init():
     """Completed policy years at the valuation date; 0 for new business.
 
@@ -460,14 +455,14 @@ def t_start():
 
 
 def proj_len_y():
-    """``n``: the **number of projected policy years**, ``ann_start_age() - entry_age()``.
+    """``n``: the **number of projected policy years**, ``ann_start_age() - issue_age()``.
 
     Policy year ``n - 1`` is the last and ends at *Rentenbeginn*, at time ``n``, when the
     capital falls due.  There is no policy year ``n``: the whole surviving cohort has
     matured, while ``av_pp(n)`` and ``guar_cap_pp(n)`` are defined, being the time-``n``
     per-policy amounts the maturity benefit is struck on.
     """
-    return ann_start_age() - entry_age()
+    return ann_start_age() - issue_age()
 
 
 def proj_len():
@@ -535,8 +530,8 @@ def index_month(t):
 
 
 def age_y(k):
-    """``x(k)``: the attained age in policy year k, ``entry_age() + k``."""
-    return entry_age() + k
+    """``x(k)``: the attained age in policy year k, ``issue_age() + k``."""
+    return issue_age() + k
 
 
 def age(t):

@@ -451,16 +451,6 @@ def issue_year():
     return int(model_point()["issue_year"])
 
 
-def issue_age():
-    """The age last birthday at issue, stepping at the policy anniversary **[std]**.
-
-    No located German endowment wording states an age basis, so the convention is a
-    standardization.  On this annual grid an implementation on real dates carries a
-    fractional offset of at most one year.
-    """
-    return int(model_point()["issue_age"])
-
-
 def duration_init():
     """The completed policy years at the valuation date; 0 for new business.
 

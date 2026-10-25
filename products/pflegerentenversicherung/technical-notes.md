@@ -39,7 +39,7 @@ German terms of art keep their German form in prose.
   monthly instalment, and the *Pflegegrad* can change in any month, so the monthly grid is the
   contract's own rather than a refinement of an annual one. The `_S` suffix follows lifelib.
 - **What `t` counts, and the frame.** `t` is the **policy month index, 0-based**: `t = 0` is the
-  month of issue, and `t` counts complete months elapsed since issue. `age(t) = age_at_entry + t //
+  month of issue, and `t` counts complete months elapsed since issue. `age(t) = issue_age + t //
   12`, so the attained age steps at the policy anniversary. The frame **starts** at
   `t = duration_mth_init()`, which is `0` for new business and the elapsed duration for an in-force
   model point, and **ends** at `proj_len() - 1`, so the frame is
@@ -49,7 +49,7 @@ German terms of art keep their German form in prose.
 - **`proj_len()` is the number of projected periods**, the **exclusive end** of the frame counted
   from `t = 0` — the library-wide reading, and lifelib's own `range(proj_len())`. Here
 
-      proj_len() = 12 * (omega_age() - age_at_entry())
+      proj_len() = 12 * (omega_age() - issue_age())
 
   which depends only on the entry age and the terminal age, **not** on `duration_mth_init()`. The
   anchor cell (entry age 45, `omega_age = 110`) therefore has `proj_len() = 780` and runs to
@@ -97,7 +97,7 @@ German terms of art keep their German form in prose.
 | `point_id` | int | Index; `Projection` is parameterized by it | all |
 | `policy_id` | str | Human-readable identifier, `PFL-0000NN` | all |
 | `sex` | enum {M, F} | The **projection** basis. Pricing is unisex [REG-R34], so this must not reach `premium_mth_pp()` | 1 (F) vs 2 (M), identical otherwise |
-| `age_at_entry` | int | Age last birthday at issue; drives `proj_len()` and every rate lookup | 14 (18, the youngest permitted), 13 (65, the oldest) |
+| `issue_age` | int | Age last birthday at issue; drives `proj_len()` and every rate lookup | 14 (18, the youngest permitted), 13 (65, the oldest) |
 | `duration_mth_init` | int | Complete months elapsed at the projection start; `0` for new business. The frame opens at this `t` | 11 (240), 12 (336) |
 | `status` | enum {aktiv, pg1…pg5} | State at the projection start | 12 (`pg3`, in claim) |
 | `rente_mth` | float | The *vereinbarte Pflegerente* at *Pflegegrad* 5, EUR per month — the scaling constant of the whole benefit | 13 (1 500), 14 (500) |
@@ -194,8 +194,8 @@ Forward moves are deterioration, backward moves are *Herabstufung* and, out of P
 
 | Variable | Description | Updated |
 |---|---|---|
-| `proj_len` | Number of projected months, `12 * (omega_age - age_at_entry)`; the frame's exclusive end | once per point |
-| `duration_mth(t)`, `policy_year(t)`, `age(t)` | Months since issue (equal to `t`), the *Versicherungsjahr* `t // 12 + 1`, and the attained age `age_at_entry + t // 12` | monthly |
+| `proj_len` | Number of projected months, `12 * (omega_age - issue_age)`; the frame's exclusive end | once per point |
+| `duration_mth(t)`, `policy_year(t)`, `age(t)` | Months since issue (equal to `t`), the *Versicherungsjahr* `t // 12 + 1`, and the attained age `issue_age + t // 12` | monthly |
 | `pols_act(t)`, `pols_karenz(t, g, z)` | Lives active at the start of month `t`; lives in *Pflegegrad* `g` whose *Karenzzeit* clock stands at `z`, `1 ≤ z ≤ karenz_months`, the ledger being empty when `karenz_months = 0` | monthly recursion |
 | `pols_pg(t, g)` | Lives in *Pflegegrad* `g` at the start of month `t` whose *Karenzzeit* has been served — the ledger the annuity is paid on | monthly recursion |
 | `esc_pg(t, g)` | The **escalation-weighted** counterpart of `pols_pg(t, g)`: the sum over those lives of `(1 + leistungsdynamik)^(months since the annuity began / 12)`. Equal to `pols_pg` exactly when the dynamic is off | monthly recursion |
@@ -399,7 +399,7 @@ throughout.
 | `expense_infl` | 0.015 | annual | Placeholder; over a 65-year projection it is a factor of about 2.6 on the per-policy line |
 
 The *Beitragssumme* the acquisition charge is struck on is
-`premium_mth_pp() * 12 * (min(prem_end_age, beitragssumme_cap_age) - age_at_entry)` with
+`premium_mth_pp() * 12 * (min(prem_end_age, beitragssumme_cap_age) - issue_age)` with
 `beitragssumme_cap_age = 85` **[std]**, and for the single-premium form the *Einmalbeitrag* itself. A
 lifelong-premium contract has no finite *Beitragssumme* without a convention; the cap is that
 convention, and it is a parameter, not a citation.
@@ -439,7 +439,7 @@ a 50 / 50 mix while writing 60 / 40" is model risk 7 [REG-R34].
 
 | Symbol | Meaning |
 |---|---|
-| `t`, `x(t)`, `y(t)`, `g` | policy month, 0-based, `t = d0 … n − 1` with `d0 = duration_mth_init` and `n = proj_len` the number of projected months; attained age `age_at_entry + t // 12`; policy year `t // 12 + 1`; *Pflegegrad* `1 … 5` |
+| `t`, `x(t)`, `y(t)`, `g` | policy month, 0-based, `t = d0 … n − 1` with `d0 = duration_mth_init` and `n = proj_len` the number of projected months; attained age `issue_age + t // 12`; policy year `t // 12 + 1`; *Pflegegrad* `1 … 5` |
 | `π_g` | `benefit_pct(g)`, the *Leistungsstaffel* percentage |
 | `R` | `rente_mth`, the *vereinbarte Pflegerente* at *Pflegegrad* 5 |
 | `P` | `premium_mth_pp()`, the level monthly gross *Beitrag* per policy |
@@ -618,7 +618,7 @@ over `t = 0 … n − 1` on the tariff ledgers:
     G  = Σ_t v**t * γ * expense_infl_factor(t) * tar_pols_if(t)     EPV of per-policy admin
     C  = Σ_t v**t * c * expense_infl_factor(t) * Σ_{g:π_g>0} tar_pols_pg(t, g)
     D1 = Σ_t v**t * (premium-months elapsed at t) * tar_pols_death(t)    (0 unless BRG)
-    a1 = α * 12 * (min(prem_end_age, beitragssumme_cap_age) - age_at_entry)
+    a1 = α * 12 * (min(prem_end_age, beitragssumme_cap_age) - issue_age)
 
 Everything on the benefit side that scales with `P` — the *Beitragsrückgewähr* and the *Zillmerung*
 allowance — is linear in `P`, so `P * U = A + P * D1 + P * a1 + β * P * U + G + C` solves in closed
@@ -688,7 +688,7 @@ on every model point.
 Inside month `t`, in this order. Nothing here is optional: several of the pitfalls below are simply
 this list executed in a different sequence.
 
-1. **Set the clocks.** `x(t) = age_at_entry + t // 12`; `y(t) = t // 12 + 1`. At
+1. **Set the clocks.** `x(t) = issue_age + t // 12`; `y(t) = t // 12 + 1`. At
    `t = duration_mth_init()` seed the ledgers from `status` and `pols_if_init()` instead of rolling
    them in — an active point seeds `pols_act`, a point in claim seeds `pols_pg(·, g)` at its grade
    with the *Karenz* already served.
@@ -788,7 +788,7 @@ The specific ways an implementation of *this* product looks right and is wrong. 
     `x(t) ≥ prem_end_age` (point 4).
 13. **Charging the *Zillmerung* on the wrong base.** The 25 ‰ ceiling is a per-mille of the
     *Beitragssumme*, not of the annual premium [REG-R16]. Assert
-    `acq_expense_pp() == 0.025 × premium_mth_pp() × 12 × (min(prem_end_age, 85) - age_at_entry)`,
+    `acq_expense_pp() == 0.025 × premium_mth_pp() × 12 × (min(prem_end_age, 85) - issue_age)`,
     charged at `t = 0` only, so an in-force point never incurs it.
 14. **Striking the equivalence premium on the projection basis.** Assert `check_prem_equiv()` is
     `True`, that `premium_mth_pp()` is invariant to every value in `lapse_table.csv`, and that
@@ -849,7 +849,7 @@ for any of them exists in this corpus** (research gap 20).
 ## Worked example
 
 **Configuration.** Model point 1, the anchor cell, in full: `point_id = 1`;
-`policy_id = "PFL-000001"`; `sex = F`; `age_at_entry = 45`; `duration_mth_init = 0`;
+`policy_id = "PFL-000001"`; `sex = F`; `issue_age = 45`; `duration_mth_init = 0`;
 `status = aktiv`; `rente_mth = 1,000.00` EUR per month, the *vereinbarte Pflegerente* at
 *Pflegegrad* 5; `staffel_id = delib_std`, so the *Leistungsstaffel* is
 0 / 30 / 50 / 75 / 100 % across grades 1 to 5; `prem_end_age = 110`, equal to `omega_age`, so the

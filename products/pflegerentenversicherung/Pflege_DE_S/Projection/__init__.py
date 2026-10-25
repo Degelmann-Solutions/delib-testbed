@@ -12,10 +12,10 @@ projecting model point 1::
     >>> Projection.point_id = 5            # or switch the default
 
 ``t`` counts **policy months**, 0-based: ``t = 0`` is the month of issue and
-``age(t) = age_at_entry + t // 12``, so the attained age steps at the policy anniversary.
+``age(t) = issue_age + t // 12``, so the attained age steps at the policy anniversary.
 The frame **starts** at ``duration_mth_init()`` — ``0`` for new business, the elapsed
 duration for an in-force model point — and runs to ``proj_len() - 1``, where
-``proj_len() = 12 * (omega_age() - age_at_entry())`` is the **number of projected months**,
+``proj_len() = 12 * (omega_age() - issue_age())`` is the **number of projected months**,
 the exclusive end of ``range(duration_mth_init(), proj_len())``, and depends on the entry
 age and the terminal age alone. There is no maturity, no survival benefit and no tail state:
 the contract runs for life, and the closure is carried by the decrements.
@@ -298,18 +298,6 @@ def sex():
     return v
 
 
-def age_at_entry():
-    """The age last birthday at issue.
-
-    It drives :func:`proj_len`, every rate lookup through :func:`age`, and the
-    *Beitragssumme* the *Zillmerung* allowance is struck on.  The observed German entry
-    band is of the order of 18 to 65, and purchase clusters much later than the band
-    permits — predominantly between 45 and 60, when the buyer has seen a parent go into
-    care.  Model points 13 and 14 sit at the two ends.
-    """
-    return int(model_point()["age_at_entry"])
-
-
 def duration_mth_init():
     """Complete months elapsed at the projection start; ``0`` for new business.
 
@@ -536,7 +524,7 @@ def rechnungszins():
 
 
 def proj_len():
-    """n: the **number of projected months**, ``12 (omega_age - age_at_entry)``.
+    """n: the **number of projected months**, ``12 (omega_age - issue_age)``.
 
     The **exclusive end** of the frame, counted from ``t = 0``: the frame is
     ``range(duration_mth_init(), proj_len())``, the last projected index is
@@ -552,7 +540,7 @@ def proj_len():
     index is the point's own — ``proj_len()`` varies with the entry age — not the anchor's
     779.
     """
-    return 12 * (omega_age() - age_at_entry())
+    return 12 * (omega_age() - issue_age())
 
 
 def duration_mth(t):
@@ -575,13 +563,13 @@ def policy_year(t):
 
 
 def age(t):
-    """x(t): the attained age, ``age_at_entry() + t // 12``.
+    """x(t): the attained age, ``issue_age() + t // 12``.
 
     The age steps at the **policy anniversary** rather than on a birthday, which is the
     convention this monthly grid imposes; an implementation on real dates carries a
     fractional offset of at most one year **[std]**.
     """
-    return age_at_entry() + t // 12
+    return issue_age() + t // 12
 
 
 def benefit_pct(g):
@@ -1242,7 +1230,7 @@ def cum_prem_max_pp(t):
     m = prem_mode_months()
     if m == 0:
         return premium_mth_pp() if t >= 0 else 0.0
-    last = min(t, 12 * (prem_end_age() - age_at_entry()) - 1)
+    last = min(t, 12 * (prem_end_age() - issue_age()) - 1)
     if last < 0:
         return 0.0
     return premium_mth_pp() * m * (last // m + 1)
@@ -1325,7 +1313,7 @@ def claims(t, kind=None):
 def beitragssumme():
     """The *Beitragssumme* the *Zillmerung* allowance is struck on.
 
-    ``premium_mth_pp() x 12 x (min(prem_end_age(), beitragssumme_cap_age) - age_at_entry())``
+    ``premium_mth_pp() x 12 x (min(prem_end_age(), beitragssumme_cap_age) - issue_age())``
     and, for the *Einmalbeitrag*, the *Einmalbeitrag* itself.
 
     A lifelong-premium contract has no finite *Beitragssumme* without a convention, and
@@ -1338,7 +1326,7 @@ def beitragssumme():
         return premium_mth_pp()
     cap = int(data.param_table().at[                                 # noqa: F821
         "beitragssumme_cap_age", "value"])
-    years = max(0, min(prem_end_age(), cap) - age_at_entry())
+    years = max(0, min(prem_end_age(), cap) - issue_age())
     return premium_mth_pp() * 12.0 * years
 
 
@@ -1839,7 +1827,7 @@ def premium_mth_pp():
     else:
         cap = int(data.param_table().at[                             # noqa: F821
             "beitragssumme_cap_age", "value"])
-        years = max(0, min(prem_end_age(), cap) - age_at_entry())
+        years = max(0, min(prem_end_age(), cap) - issue_age())
         a1 = permille * 12.0 * years
     d1 = 0.0
     if beitragsrueckgewaehr():
@@ -1860,7 +1848,7 @@ def prem_units_at(t):
     m = prem_mode_months()
     if m == 0:
         return 1.0 if t >= 0 else 0.0
-    last = min(t, 12 * (prem_end_age() - age_at_entry()) - 1)
+    last = min(t, 12 * (prem_end_age() - issue_age()) - 1)
     if last < 0:
         return 0.0
     return float(m * (last // m + 1))
@@ -2066,7 +2054,7 @@ def check_prem_equiv_resid(t):
         else:
             cap = int(data.param_table().at[                         # noqa: F821
                 "beitragssumme_cap_age", "value"])
-            years = max(0, min(prem_end_age(), cap) - age_at_entry())
+            years = max(0, min(prem_end_age(), cap) - issue_age())
             exp_leg += p0 * permille * 12.0 * years
 
     return disc_factor(t) * (prem_leg - ben_leg - exp_leg)

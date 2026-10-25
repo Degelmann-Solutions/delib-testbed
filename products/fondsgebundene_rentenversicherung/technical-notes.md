@@ -57,7 +57,7 @@ charge rate and not one *Rentenfaktor* was established at any carrier.
   levied monthly by unit cancellation, and the *Abschluss- und Vertriebskosten* instalment runs
   for exactly **60 months** [R1] [REG-R28]. An annual grid cannot place the month-60 cliff.
 - **Projection horizon.** The ***Aufschubzeit* only.** `proj_len() = 12 × (annuity_age −
-  entry_age)` is the **number of policy months** from inception and so the frame's **exclusive
+  issue_age)` is the **number of policy months** from inception and so the frame's **exclusive
   end**; the last projected month is `t = proj_len() − 1`, the month in which *Rentenbeginn*
   falls. At the end of it the units are cancelled, the *Fondsguthaben* is converted at the
   *Rentenfaktor* and the contract leaves this model. The payout phase — the *Überschussrente*, the
@@ -86,7 +86,7 @@ charge rate and not one *Rentenfaktor* was established at any carrier.
   half-month discretization is **[std]** and is the same one `UC_FR_S` makes for the French
   *garantie plancher*.
 - **Age basis.** Age last birthday at inception, stepping at each policy anniversary:
-  `policy_year(t) = t // 12 + 1`, `age(t) = entry_age + policy_year(t) − 1 = entry_age + t // 12`.
+  `policy_year(t) = t // 12 + 1`, `age(t) = issue_age + policy_year(t) − 1 = issue_age + t // 12`.
   **At `t = proj_len() − 1` the attained age is `annuity_age − 1`**, because the annuity begins at
   the **end** of that month. The *Rentenfaktor* is read at `annuity_age`, not at
   `age(proj_len() − 1)`, and getting that wrong is a listed pitfall.
@@ -115,7 +115,7 @@ that exercise the attribute non-trivially, so a reader can find the row that tes
 | `point_id` | int | index; **model point 1 is the worked example's anchor cell** | all |
 | `policy_id` | str | label, e.g. `DE-FRV-0001` | all |
 | `sex` | enum {M, F} | **reporting only.** German tariffs are unisex for contracts from 21 December 2012 [REG-R34], so this must not enter pricing | 1, 4, 9 |
-| `entry_age` | int (ALB) | age at inception | all |
+| `issue_age` | int (ALB) | age at inception | all |
 | `duration_init_m` | int | policy months already elapsed at the valuation date; 0 for new business. An **elapsed count**, already 0-based, so it is `proj_start()` itself | 6 |
 | `pols_if_init` | float | policies the model point represents | all |
 | `annuity_age` | int | age at *Rentenbeginn*; fixes `proj_len()` and the *Rentenfaktor* row | 13 (70), all others 67 |
@@ -164,7 +164,7 @@ twelve-year deferment on the stress path, which is the acquisition-spread bounda
 | Variable | Description | Updated |
 |---|---|---|
 | `proj_start()` | first projected month, `duration_init_m` (0-based) | once |
-| `proj_len()` | projected months from inception, `12 × (annuity_age − entry_age)`; the frame's **exclusive** end, so the last month is `proj_len() − 1` | once |
+| `proj_len()` | projected months from inception, `12 × (annuity_age − issue_age)`; the frame's **exclusive** end, so the last month is `proj_len() − 1` | once |
 | `beitragssumme()` | sum of premiums **payable** over the premium term at the initial level — the acquisition-charge base [R12] [REG-R16] | once |
 | `unit_price(t)` | *Anteilspreis* at the **end** of month `t`, `= unit_price_open(t) × (1 + i(t))` | monthly |
 | `unit_price_open(t)` | *Anteilspreis* at the **start** of month `t`; `unit_price_init` at `t = proj_start()` and `unit_price(t − 1)` after it. A cells of its own because a 0-based frame has no `t = −1` to read | monthly |
@@ -337,7 +337,7 @@ approaches and spike when both limbs are met [R20] [REG-R45].
     lapse_rate_mth(t)  = 1 − (1 − lapse_rate(t))^(1/12)
     lapse_rate_mth(proj_len() − 1) = 0                                             [std]
 
-with `lapse_cap = 40 %` **[std]**. The step year is `max(13, 62 − entry_age + 1)` in policy years
+with `lapse_cap = 40 %` **[std]**. The step year is `max(13, 62 − issue_age + 1)` in policy years
 — on the anchor cell that is policy year **26**, `t = 300 … 311`, where the base 3.0 % becomes
 7.5 % and the monthly rate 0.253505 % becomes 0.647574 %. **Keying the spike on duration alone is
 wrong** and is a listed pitfall: the anchor cell passes duration 12 at age 48, fourteen years
@@ -413,8 +413,8 @@ with a PRIIPs performance scenario**.
 | Symbol | Cells | Meaning |
 |---|---|---|
 | `t` | — | **0-based** policy month index from inception, `t = 0` at inception; `t = t₀ … n − 1` |
-| `t₀`, `n` | `proj_start()`, `proj_len()` | `duration_init_m`; `12 × (annuity_age − entry_age)`, the month **count** and so the frame's exclusive end |
-| `y(t)`, `x(t)` | `policy_year(t)`, `age(t)` | `t // 12 + 1` (the contractual 1-based label); `entry_age + y(t) − 1` |
+| `t₀`, `n` | `proj_start()`, `proj_len()` | `duration_init_m`; `12 × (annuity_age − issue_age)`, the month **count** and so the frame's exclusive end |
+| `y(t)`, `x(t)` | `policy_year(t)`, `age(t)` | `t // 12 + 1` (the contractual 1-based label); `issue_age + y(t) − 1` |
 | `p(t)`, `p_open(t)` | `unit_price(t)`, `unit_price_open(t)` | *Anteilspreis* at the **end** and at the **start** of month `t`; `p_open(t₀) = unit_price_init`, `p_open(t) = p(t−1)` for `t > t₀` |
 | `i(t)` | `fund_return_net_mth(t)` | monthly return net of the fund's TER |
 | `u(t)` | `units_pp(t)` | units per policy at the **start** of month `t` |
@@ -829,7 +829,7 @@ any of them, and the research file's gaps register records that as gaps 18 and 1
 
 **Configuration.** Model point 1, the anchor cell of `model_point_table.csv`:
 `policy_id = DE-FRV-0001`; `sex = M` (reporting only — the tariff is unisex [REG-R34]);
-`entry_age = 37`; `duration_init_m = 0`, so `proj_start() = 0`; `pols_if_init = 1.0`;
+`issue_age = 37`; `duration_init_m = 0`, so `proj_start() = 0`; `pols_if_init = 1.0`;
 `annuity_age = 67`, so `proj_len() = 12 × (67 − 37) = 360` months and the frame is
 `t = 0 … 359`;
 `prem_form = laufend`; `prem_pp = 200.00 EUR`; `prem_mode_months = 1`; `prem_term_y = 30`;

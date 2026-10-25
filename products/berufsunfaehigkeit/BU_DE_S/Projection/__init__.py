@@ -162,7 +162,7 @@ and is three months behind :func:`pols_recovery`.
 The ``*_first`` cells are a **second projection**, not a variant of the first. They run
 the same four-ledger chain on *Rechnungsgrundlagen erster Ordnung* — inception x 1.30,
 reactivation x 0.70, disabled-lives mortality x 0.80, active-lives mortality x 0.80,
-**no lapse** — over the contract's **original** term from ``entry_age``, indexed by
+**no lapse** — over the contract's **original** term from ``issue_age``, indexed by
 ``s`` rather than ``t``. They exist only to fix :func:`prem_gross_level_pp` and never
 touch a published cash flow. Running them from inception rather than from the valuation
 date is what gives an in-force model point the *Bruttobeitrag* its contract was actually
@@ -317,17 +317,6 @@ def status():
     if v not in ("aktiv", "leistung"):
         raise ValueError("invalid status")
     return v
-
-
-def entry_age():
-    """The *Eintrittsalter*: age last birthday at inception.
-
-    Age last birthday advancing at the **policy anniversary** rather than the birthday
-    **[std]** — the model carries no dates, so :func:`age` steps every twelfth month from
-    here.  An implementation on real dates carries a fractional offset of at most one
-    year.
-    """
-    return int(model_point()["entry_age"])
 
 
 def sex():
@@ -588,7 +577,7 @@ def pols_if_init():
 def proj_len():
     """n: the **number of projected months**, so the frame runs ``t = 0 ... proj_len() - 1``.
 
-    ``12 x (cover_end_age() - entry_age()) - duration_init_months()``.  Cover ceases
+    ``12 x (cover_end_age() - issue_age()) - duration_init_months()``.  Cover ceases
     at attained age ``cover_end_age()``, so the last projected month is the last month of
     attained age ``cover_end_age() - 1``, index ``proj_len() - 1``.  On the anchor cell
     that is ``12 x (67 - 30) = 444`` monthly rows, the last of them ``t = 443``.
@@ -597,13 +586,13 @@ def proj_len():
     the row count rather than the last index — and ``result_cf().index[-1] ==
     proj_len() - 1`` is asserted for every model point.
     """
-    return 12 * (cover_end_age() - entry_age()) - duration_init_months()
+    return 12 * (cover_end_age() - issue_age()) - duration_init_months()
 
 
 def first_len():
     """The **number of months** in the **first-order pricing run**, from inception.
 
-    ``12 x (cover_end_age() - entry_age())``, which is ``proj_len() +
+    ``12 x (cover_end_age() - issue_age())``, which is ``proj_len() +
     duration_init_months()``, so the run is ``s = 0 ... first_len() - 1``.
     :func:`pols_actv_first` admits ``s == first_len()`` as well, the month past the end,
     exactly as the roll-forward checks read ``t == proj_len()`` on the main frame.  The
@@ -611,7 +600,7 @@ def first_len():
     has already run, because the *Bruttobeitrag* was struck at inception and does not
     change afterwards.
     """
-    return 12 * (cover_end_age() - entry_age())
+    return 12 * (cover_end_age() - issue_age())
 
 
 def duration_mth(t):
@@ -636,20 +625,20 @@ def policy_year(t):
 def age(t):
     """x(t): the attained age at month t, age last birthday.
 
-    ``entry_age() + duration_mth(t) // 12``, so it steps at the **policy anniversary**
+    ``issue_age() + duration_mth(t) // 12``, so it steps at the **policy anniversary**
     rather than at a birthday the model does not carry **[std]**.  Every rate lookup in
     the model is keyed by this age.
     """
-    return entry_age() + max(0, duration_mth(t)) // 12
+    return issue_age() + max(0, duration_mth(t)) // 12
 
 
 def age_first(s):
     """The attained age at month s of the **first-order pricing run**.
 
-    ``entry_age() + s // 12``: the shadow ledgers run from inception, so their age clock
+    ``issue_age() + s // 12``: the shadow ledgers run from inception, so their age clock
     ignores ``duration_init_months()``.
     """
-    return entry_age() + max(0, s) // 12
+    return issue_age() + max(0, s) // 12
 
 
 def policy_year_first(s):
@@ -1062,13 +1051,13 @@ def rente_pay_pp(t, z):
 def beitragssumme_unit():
     """BS_unit: the *Beitragssumme* per 1 EUR p.a. of *Bruttobeitrag*.
 
-    ``sum over y = 1 .. (cover_end_age() - entry_age()) of (1 + g_B)^(y - 1)`` — 37 on the
+    ``sum over y = 1 .. (cover_end_age() - issue_age()) of (1 + g_B)^(y - 1)`` — 37 on the
     anchor cell, where the *Beitragsdynamik* is off.  It is the base of the acquisition
     charge, which § 4 DeckRV caps at 25 per mille (2.5 %) of it, and it is the whole
     original term rather than the remaining one: the charge was incurred at inception.
     """
     g = 1.0 + beitragsdyn_rate()
-    return sum(g ** (y - 1) for y in range(1, cover_end_age() - entry_age() + 1))
+    return sum(g ** (y - 1) for y in range(1, cover_end_age() - issue_age() + 1))
 
 
 def prem_gross_level_pp():

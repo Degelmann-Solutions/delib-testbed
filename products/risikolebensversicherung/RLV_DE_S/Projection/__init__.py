@@ -423,11 +423,6 @@ def sum_assured():
     return float(model_point()["sum_assured"])
 
 
-def policy_term():
-    """The *Versicherungsdauer* in whole years; equals :func:`proj_len`."""
-    return int(model_point()["policy_term"])
-
-
 def prem_term():
     """k: the *Beitragszahlungsdauer* in whole years, at most :func:`policy_term`.
 

@@ -192,6 +192,8 @@ CORE_CELLS = {
                 "sofortrente": "override"},
         "smoker": {"kapitallebensversicherung": "derived",
                    "risikolebensversicherung": "override"},
+        "policy_term": {"kapitallebensversicherung": "derived",
+                        "risikolebensversicherung": "derived"},
     },
 }
 

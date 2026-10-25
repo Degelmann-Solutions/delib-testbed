@@ -47,3 +47,8 @@ def smoker():
     if v not in ("N", "S"):
         raise ValueError("invalid smoker")
     return v
+
+
+def policy_term():
+    """The policy term in years, from the model point."""
+    return int(model_point()["policy_term"])                         # noqa: F821

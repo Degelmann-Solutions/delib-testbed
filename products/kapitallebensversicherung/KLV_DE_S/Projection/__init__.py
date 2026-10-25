@@ -443,15 +443,6 @@ def pols_if_init():
     return float(model_point()["pols_if_init"])
 
 
-def policy_term():
-    """n: the *Versicherungsdauer* in years.  Equals :func:`proj_len`.
-
-    The *Ablauf* falls at the end of the last policy year, index ``n - 1`` on the frame, and
-    the *Erlebensfallleistung* is paid there to the survivors of that year's mortality.
-    """
-    return int(model_point()["policy_term"])
-
-
 def prem_term():
     """m: the *Beitragszahlungsdauer* in years, at most :func:`policy_term`.
 

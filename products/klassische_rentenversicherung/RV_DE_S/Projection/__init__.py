@@ -1139,7 +1139,7 @@ def mort_rate_at_age(x):
     Deutsche Aktuarvereinigung, is not public and is not redistributed here.
     """
     return float(data.mort_table().at[                               # noqa: F821
-        (model_point()["sex"], int(x)), "q_base"])
+        (sex(), int(x)), "q_base"])
 
 
 def improve_rate(x):
@@ -1150,7 +1150,7 @@ def improve_rate(x):
     construction uses, documented as one rather than presented as a replication.
     """
     return float(data.mort_table().at[                               # noqa: F821
-        (model_point()["sex"], int(x)), "improve"])
+        (sex(), int(x)), "improve"])
 
 
 def mort_rate_guar(t):

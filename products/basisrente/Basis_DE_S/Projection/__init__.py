@@ -486,6 +486,9 @@ def age(t):
     The age **steps on the anniversary** and not monthly, which is what lets one
     generational mortality surface serve every month of a *Versicherungsjahr* and is why
     the twelve months of a year share one annual death rate.
+
+    Override reason: ``t`` counts months from the valuation date, so the age is read at the
+    projection year, not at the policy year, products/basisrente/model.md:54
     """
     return age_y(proj_year(t))
 

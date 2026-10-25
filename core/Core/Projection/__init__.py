@@ -117,3 +117,8 @@ def policy_year(t):
 def age_y(k):
     """The attained age at the start of policy year k, ``issue_age() + k``."""
     return issue_age() + k                                           # noqa: F821
+
+
+def age(t):
+    """The attained age in month t, ``age_y(duration(t))``, stepping on the anniversary."""
+    return age_y(duration(t))                                        # noqa: F821

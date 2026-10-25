@@ -617,16 +617,6 @@ def is_anniv(t):
     return t % 12 == 11
 
 
-def age(t):
-    """x(t): the attained age in the policy year containing month t.
-
-    ``age_y(duration(t))``.  The age steps on the **policy anniversary** — at ``t = 12, 24,
-    ...`` — and not monthly: the age basis is the attained age at the anniversary and the
-    finer grid does not make it finer.
-    """
-    return age_y(duration(t))
-
-
 def policy_year_y(k):
     """The contractual, 1-based label of **policy year** k: ``k + 1``.
 

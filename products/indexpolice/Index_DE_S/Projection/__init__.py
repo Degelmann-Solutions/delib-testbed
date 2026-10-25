@@ -442,16 +442,6 @@ def index_month(t):
     return duration_mth(t) % 12 + 1
 
 
-def age(t):
-    """``x(t)``: the attained age in month t, ``age_y(duration(t))``.
-
-    Age last birthday **stepping on the policy anniversary**, the basis the delib registry
-    fixes for the whole library: the monthly grid does not refine it, and a model that
-    stepped the age monthly would read a mortality rate the table does not publish.
-    """
-    return age_y(duration(t))
-
-
 # --- the premium and its charges ---------------------------------------------
 
 def prem_sum():

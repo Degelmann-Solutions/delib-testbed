@@ -622,17 +622,6 @@ def proj_len():
     return 12 * (annuity_age() - issue_age())
 
 
-def age(t):
-    """Attained age in month t, ``issue_age() + policy_year(t) - 1 = issue_age() + t // 12``.
-
-    At ``t = proj_len() - 1`` this is ``annuity_age() - 1``, because the annuity begins at
-    the **end** of that month.  Reading the *Rentenfaktor* off this cells instead of off
-    :func:`annuity_age` is a listed pitfall and would fetch 24.45 in place of 25.00 on the
-    anchor cell.
-    """
-    return issue_age() + policy_year(t) - 1
-
-
 # ----------------------------------------  the charge scale
 
 def charge_row():

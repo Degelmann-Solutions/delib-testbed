@@ -498,16 +498,6 @@ def is_anniv(t):
     return t % 12 == 11
 
 
-def age(t):
-    """x(t): the attained age in month t, ``age_y(duration(t))``.
-
-    Age last birthday at issue **stepping on the policy anniversary**, which is the age basis
-    the tariff is written on: the monthly grid does not refine it, and a model that stepped
-    the age monthly would read a mortality rate the table does not publish.
-    """
-    return age_y(duration(t))
-
-
 def calendar_year_y(k):
     """tau(k): the calendar year of policy year k, ``issue_year + k``.
 

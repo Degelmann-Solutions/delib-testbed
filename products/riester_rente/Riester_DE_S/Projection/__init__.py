@@ -636,6 +636,9 @@ def age(t):
 
     The age **steps on the anniversary** and not monthly, so the twelve months of a
     projection year share one annual death rate and one generational annuity rate.
+
+    Override reason: ``t`` counts months from the valuation date, so the age is read at the
+    projection year, not at the policy year, products/riester_rente/technical-notes.md:35
     """
     return age_y(proj_year(t))
 

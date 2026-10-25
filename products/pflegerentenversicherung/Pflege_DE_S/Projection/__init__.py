@@ -513,16 +513,6 @@ def proj_len():
     return 12 * (omega_age() - issue_age())
 
 
-def age(t):
-    """x(t): the attained age, ``issue_age() + t // 12``.
-
-    The age steps at the **policy anniversary** rather than on a birthday, which is the
-    convention this monthly grid imposes; an implementation on real dates carries a
-    fractional offset of at most one year **[std]**.
-    """
-    return issue_age() + t // 12
-
-
 def benefit_pct(g):
     """pi_g: the *Leistungsstaffel* percentage at *Pflegegrad* ``g``.
 

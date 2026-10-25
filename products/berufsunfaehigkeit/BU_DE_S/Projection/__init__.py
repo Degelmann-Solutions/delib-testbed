@@ -608,6 +608,10 @@ def age(t):
     ``issue_age() + duration_mth(t) // 12``, so it steps at the **policy anniversary**
     rather than at a birthday the model does not carry **[std]**.  Every rate lookup in
     the model is keyed by this age.
+
+    Override reason: a disability cohort is paid the insured amount of its onset month
+    ``t - z``, which can precede inception, so the elapsed months are floored at 0,
+    products/berufsunfaehigkeit/model.md:203
     """
     return issue_age() + max(0, duration_mth(t)) // 12
 

@@ -8,6 +8,8 @@
 - Every product has the core spaces as bases, and every cell unified into the core
   (``CORE_CELLS``) is defined in the core and, in each product that has it, either derived
   from the core or overridden (with the reason the override test requires).
+- The time axis: RLV's derived ``age`` and ``policy_year`` follow the inception clock, BU's
+  overrides floor them before inception, Sofort's ``age`` reads the second life.
 """
 from __future__ import annotations
 
@@ -259,6 +261,16 @@ CORE_CELLS = {
                   "kapitallebensversicherung": "derived",
                   "klassische_rentenversicherung": "derived",
                   "riester_rente": "override"},
+        "age": {"basisrente": "override",
+                "berufsunfaehigkeit": "override",
+                "fondsgebundene_rentenversicherung": "derived",
+                "indexpolice": "derived",
+                "kapitallebensversicherung": "derived",
+                "klassische_rentenversicherung": "derived",
+                "pflegerentenversicherung": "derived",
+                "riester_rente": "override",
+                "risikolebensversicherung": "derived",
+                "sofortrente": "override"},
     },
 }
 
@@ -394,3 +406,45 @@ def test_sofort_issue_age_reads_the_second_life_from_surv_age(product_models):
         assert item.issue_age() == int(points.at[point_id, "issue_age"])
         assert item.issue_age(1) == int(points.at[point_id, "issue_age"])
         assert item.issue_age(2) == int(points.at[point_id, "surv_age"])
+
+
+def test_rlv_age_and_policy_year_follow_the_inception_clock(product_models):
+    model = product_models("risikolebensversicherung")
+    projection = model.Projection
+    assert projection.age._is_derived()
+    assert projection.policy_year._is_derived()
+    points = model.Data.model_point_table()
+    in_force = points.index[points["duration_init"] > 0]
+    assert len(in_force), "no in-force model point"
+    for point_id in (points.index[0], in_force[0]):
+        item = projection[point_id]
+        for t in range(item.t_start(), item.proj_len()):
+            assert item.age(t) == item.issue_age() + t // 12, (point_id, t)
+            assert item.policy_year(t) == t // 12 + 1, (point_id, t)
+
+
+def test_bu_policy_year_and_age_are_floored_before_inception(product_models):
+    model = product_models("berufsunfaehigkeit")
+    projection = model.Projection
+    assert projection.policy_year._is_defined()
+    assert projection.age._is_defined()
+    points = model.Data.model_point_table()
+    new = points.index[points["duration_mth_init"] == 0]
+    assert len(new), "no new-business model point"
+    item = projection[new[0]]
+    assert item.policy_year(-30) == 1
+    assert item.age(-30) == item.issue_age()
+
+
+def test_sofort_age_reads_the_second_life_from_surv_age(product_models):
+    model = product_models("sofortrente")
+    projection = model.Projection
+    assert projection.age._is_defined()
+    points = model.Data.model_point_table()
+    joint = points.index[points["surv_pct"] > 0]
+    assert len(joint), "no joint-life model point"
+    for point_id in joint:
+        item = projection[point_id]
+        assert item.age(0) == int(points.at[point_id, "issue_age"])
+        assert item.age(0, 2) == int(points.at[point_id, "surv_age"])
+        assert item.age(24, 2) == int(points.at[point_id, "surv_age"]) + 2

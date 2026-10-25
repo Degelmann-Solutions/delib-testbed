@@ -502,6 +502,9 @@ def age(t, life=1):
     implementation on dates carries a fractional offset of up to a year; the shipped model
     points satisfy ``issue_year == birth_year + issue_age``, which is a **[std]**
     internal-consistency convention rather than a contract fact.
+
+    Override reason: a joint-life contract has two lives; ``life=2`` is the second life's
+    attained age, products/sofortrente/technical-notes.md:406
     """
     return issue_age(life) + t // 12
 

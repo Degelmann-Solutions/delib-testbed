@@ -597,17 +597,6 @@ def proj_len():
     return 12 * proj_len_y()
 
 
-def age(t):
-    """x(t): the attained age of the first life, ``issue_age + duration(t)``.
-
-    The age steps on the **policy anniversary** — at ``t = 12, 24, ...`` — and not
-    monthly: the age basis is *Alter am Jahrestag* and the finer grid does not make it
-    finer.  Every rate read at this age is therefore flat across a policy year's twelve
-    months.
-    """
-    return issue_age() + duration(t)
-
-
 def age2(t):
     """x2(t): the attained age of the second life, ``issue_age2 + duration(t)``.
 

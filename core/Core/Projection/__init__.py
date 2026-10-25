@@ -31,3 +31,11 @@ def model_point():
 def issue_age():
     """The age at issue of the selected model point, from its ``issue_age`` column."""
     return int(model_point()["issue_age"])                           # noqa: F821
+
+
+def sex():
+    """The sex of the insured life, ``M`` or ``F``, from the model point."""
+    v = model_point()["sex"]                                         # noqa: F821
+    if v not in ("M", "F"):
+        raise ValueError("invalid sex")
+    return v

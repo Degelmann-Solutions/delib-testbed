@@ -280,24 +280,6 @@ def policy_id():
     return str(model_point()["policy_id"])
 
 
-def sex():
-    """The insured's sex, M or F.  **A projection input that must not reach the price.**
-
-    Sex may not enter the premium of a contract concluded from 21 December 2012, so
-    :func:`premium_mth_pp` blends the two bases at ``unisex_mix_male`` and never reads this
-    cells, while :func:`mort_rate` and :func:`inc_rate` read nothing else.  The tension is
-    sharper on this product than on any other in the library: women have materially higher
-    incidence and materially longer care durations, so the unisex premium embeds a
-    cross-subsidy whose size depends on the sex mix actually written — and that mix is
-    endogenous to the price.  Model points 1 and 2 are the same contract on the two sexes:
-    equal ``premium_mth_pp()``, unequal projected annuity.
-    """
-    v = str(model_point()["sex"])
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
-
-
 def duration_mth_init():
     """Complete months elapsed at the projection start; ``0`` for new business.
 

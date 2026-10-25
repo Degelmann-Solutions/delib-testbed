@@ -394,26 +394,6 @@ def policy_id():
     return model_point()["policy_id"]
 
 
-def sex():
-    """The first life's sex, M or F.  **Decrement only — it must never enter pricing.**
-
-    Art. 5(2) of the Gender Directive was struck down by *Test-Achats* with effect for
-    contracts concluded from 21 December 2012, so no German premium written since may
-    differ by sex.  :func:`mort_rate_tar` therefore reads the **blend** of the two tables
-    and never this cells, while :func:`mort_rate` reads it and nothing else does.
-
-    The tension worth knowing is that DAV 2008 T is itself sex-distinct, so every German
-    unisex term tariff is a blend at a mixing ratio the carrier chooses from its own
-    expected new-business mix — proprietary, unpublished and periodically re-estimated.
-    ``sex_mix_male`` is the model's **[std]** 50/50 stand-in for it, and it is one of the
-    largest single sources of unexplained rate spread between German carriers.
-    """
-    v = model_point()["sex"]
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
-
-
 def smoker():
     """The first life's *Raucher* / *Nichtraucher* status, R or N.
 

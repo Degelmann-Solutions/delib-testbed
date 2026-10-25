@@ -365,21 +365,6 @@ def policy_id():
     return model_point()["policy_id"]
 
 
-def sex():
-    """The insured's sex, M or F.  **Reporting only — it must not enter pricing.**
-
-    German life tariffs are unisex for contracts written from 21 December 2012, so
-    neither :func:`mort_rate_tariff_at_age` nor :func:`rentenfaktor_guar` reads this
-    cells: both are indexed by age alone.  It is carried because a *Standmitteilung*
-    reports it and because a reserving basis may still be sex-specific even where the
-    tariff may not be.
-    """
-    v = model_point()["sex"]
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
-
-
 def duration_init_m():
     """Policy months already elapsed at the valuation date; 0 for new business.
 

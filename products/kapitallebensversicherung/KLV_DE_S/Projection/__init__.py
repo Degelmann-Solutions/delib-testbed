@@ -410,22 +410,6 @@ def policy_id():
     return model_point()["policy_id"]
 
 
-def sex():
-    """The insured's sex, M or F.  **Decrement lookup only - never a pricing input.**
-
-    § 20 Abs. 2 Satz 1 AGG was repealed and German new business has been unisex since
-    21 December 2012, so :func:`prem_gross_pp` must be identical for two model points
-    differing only here.  The first-order table is nevertheless sex-specific, because that
-    is the raw material a unisex tariff blends; the blend itself is **[std]** and this model
-    prices every point on its own ``sex`` row only through the *decrements*, which is what
-    model points 1 and 7 exist to make visible.
-    """
-    v = model_point()["sex"]
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
-
-
 def smoker():
     """The insured's smoker status, N or S.
 

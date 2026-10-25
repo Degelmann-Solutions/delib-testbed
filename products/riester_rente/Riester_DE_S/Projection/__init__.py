@@ -329,20 +329,6 @@ _spaces = []
 # === the model point
 
 
-def sex():
-    """The saver's sex, M or F.  **Reporting only — it must not enter any rate.**
-
-    Riester tariffs have been **unisex** since a 2006 vintage, six years before the
-    general unisex rule, so neither the contribution, the decrements nor the
-    *Rentenfaktor* may read this cells.  It is carried because the administration records
-    it and because its *absence* from every formula is the assertion worth making.
-    """
-    v = model_point()["sex"]
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
-
-
 def duration_init():
     """Completed contract years at the valuation date; 0 for a point projected from issue.
 

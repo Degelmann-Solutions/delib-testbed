@@ -319,22 +319,6 @@ def status():
     return v
 
 
-def sex():
-    """The insured's sex, M or F.  **Reporting only — it must not price.**
-
-    Sex-differentiated premiums and benefits have been unlawful in Germany for contracts
-    written from 21 December 2012, and the shipped decrement tables are unisex, so
-    nothing in this model reads this cells.  The tension worth knowing is that the
-    underlying *Invalidisierungswahrscheinlichkeiten* do differ by sex, so a unisex BU
-    tariff embeds a mix assumption the insurer bears the risk of.  Model points 1 and 2
-    differ in this attribute alone, and their frames are identical.
-    """
-    v = model_point()["sex"]
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
-
-
 def berufsgruppe():
     """The occupational rating class, BG1 - BG5; the key into *occupation_table.csv*."""
     return model_point()["berufsgruppe"]

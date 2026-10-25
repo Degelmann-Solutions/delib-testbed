@@ -260,21 +260,6 @@ def policy_id():
     return model_point()["policy_id"]
 
 
-def sex():
-    """``"M"`` or ``"F"``: the row of the best-estimate mortality table to read.
-
-    **Never a rating factor.** Sex may not enter a premium, a charge or a benefit in a
-    contract written after 21 December 2012, and none of them depends on it here; it
-    selects a decrement only.  Because the death benefit of this product is the account
-    value with a floor rather than a sum at risk, mortality is a **timing** assumption and
-    the choice moves the result very little.
-    """
-    v = model_point()["sex"]
-    if v not in ("M", "F"):
-        raise ValueError("invalid sex")
-    return v
-
-
 def dur_init():
     """Completed policy years at the valuation date; 0 for new business.
 

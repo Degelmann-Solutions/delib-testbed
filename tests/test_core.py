@@ -182,6 +182,14 @@ CORE_CELLS = {
     "Projection": {
         "model_point": dict.fromkeys(MODELS, "derived"),
         "issue_age": {**dict.fromkeys(MODELS, "derived"), "sofortrente": "override"},
+        "sex": {"berufsunfaehigkeit": "derived",
+                "fondsgebundene_rentenversicherung": "derived",
+                "indexpolice": "derived",
+                "kapitallebensversicherung": "derived",
+                "pflegerentenversicherung": "derived",
+                "riester_rente": "derived",
+                "risikolebensversicherung": "derived",
+                "sofortrente": "override"},
     },
 }
 

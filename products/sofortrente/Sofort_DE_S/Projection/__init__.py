@@ -293,6 +293,9 @@ def sex(life=1):
     assumed one shows up as a *Risikoergebnis* — which is precisely why a unisex annuity is
     a better deal for women than for men and why the female share of a voluntary annuitant
     portfolio sits above the population share.
+
+    Override reason: a joint-life contract has two lives; ``life=2`` reads the survivor's
+    ``surv_sex``, products/sofortrente/technical-notes.md, section Model point attributes
     """
     if life == 1:
         v = str(model_point()["sex"])

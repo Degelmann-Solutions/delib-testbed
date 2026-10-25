@@ -473,6 +473,9 @@ def age_y(k):
     (*Eintrittsalter*), stepping on the policy anniversary **[std]**: no German convention
     was established, and here mortality drives the annuity's duration rather than any
     benefit amount, so a half-year offset is second order.
+
+    Override reason: ``k`` is the projection year from the valuation date, not the policy
+    year, so the age adds ``duration_init()``, products/basisrente/model.md:58
     """
     return issue_age() + duration_init() + k
 

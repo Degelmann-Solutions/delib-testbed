@@ -624,6 +624,9 @@ def age_y(k):
 
     ``issue_age() + duration_init() + k``, so ``age_y(0)`` is the attained age at the
     valuation date.  Every rate in the model is indexed by this and never by sex.
+
+    Override reason: ``k`` is the projection year from the valuation date, not the policy
+    year, so the age adds ``duration_init()``, products/riester_rente/technical-notes.md:37
     """
     return issue_age() + duration_init() + k
 

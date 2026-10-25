@@ -254,6 +254,11 @@ CORE_CELLS = {
                         "pflegerentenversicherung": "derived",
                         "risikolebensversicherung": "derived",
                         "sofortrente": "derived"},
+        "age_y": {"basisrente": "override",
+                  "indexpolice": "derived",
+                  "kapitallebensversicherung": "derived",
+                  "klassische_rentenversicherung": "derived",
+                  "riester_rente": "override"},
     },
 }
 

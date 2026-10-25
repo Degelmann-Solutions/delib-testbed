@@ -442,11 +442,6 @@ def index_month(t):
     return duration_mth(t) % 12 + 1
 
 
-def age_y(k):
-    """``x(k)``: the attained age in policy year k, ``issue_age() + k``."""
-    return issue_age() + k
-
-
 def age(t):
     """``x(t)``: the attained age in month t, ``age_y(duration(t))``.
 

@@ -627,15 +627,6 @@ def age(t):
     return age_y(duration(t))
 
 
-def age_y(k):
-    """x(k): the attained age at the start of **policy year** k, ``issue_age() + k``.
-
-    The annual face of :func:`age`, and the one every pricing and reserving cells reads:
-    those all take a policy year, so they must not go through a month to reach an age.
-    """
-    return issue_age() + k
-
-
 def policy_year_y(k):
     """The contractual, 1-based label of **policy year** k: ``k + 1``.
 

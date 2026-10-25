@@ -498,11 +498,6 @@ def is_anniv(t):
     return t % 12 == 11
 
 
-def age_y(k):
-    """x(k): the attained age at the start of policy year k, ``issue_age + k``."""
-    return issue_age() + k
-
-
 def age(t):
     """x(t): the attained age in month t, ``age_y(duration(t))``.
 

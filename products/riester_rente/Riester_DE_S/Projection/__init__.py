@@ -595,22 +595,6 @@ def t_conv():
     return 12 * k_conv()
 
 
-def proj_year(t):
-    """k(t): the 0-based **projection year** month t falls in, ``t // 12``.
-
-    The bridge between the model's two clocks.  ``t`` counts projection **months** from the
-    valuation date and is the argument of the in force, the three decrements, the claims,
-    the expenses, the commission and the *Rente* instalments; ``k`` counts projection
-    **years** and is the argument of everything the contract and the AltZertG state per
-    year — the *Eigenbeitrag*, the Zulage and its lag, the two charges, the declared rate,
-    both account balances, the *Beitragsgarantie* accumulator and the conversion.
-
-    ``k`` is the annual-step model's own ``t``: ``result_cf_annual().loc[k]`` is that
-    model's row ``k``.
-    """
-    return t // 12
-
-
 def is_anniv(t):
     """True in the **last** month of a projection year, ``t % 12 == 11``.
 

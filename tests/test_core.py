@@ -225,6 +225,8 @@ CORE_CELLS = {
                     "klassische_rentenversicherung": "derived",
                     "risikolebensversicherung": "derived",
                     "sofortrente": "override"},
+        "proj_year": {"basisrente": "derived",
+                      "riester_rente": "derived"},
     },
 }
 

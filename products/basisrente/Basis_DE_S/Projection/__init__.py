@@ -454,23 +454,6 @@ def proj_len():
     return 12 * proj_len_y()
 
 
-def proj_year(t):
-    """k(t): the 0-based **projection year** month t falls in, ``t // 12``.
-
-    The bridge between the model's two clocks.  ``t`` counts projection **months** from the
-    valuation date and is the argument of the in force, the decrements, the claims, the
-    expenses and the annuity instalments; ``k`` counts projection **years** and is the
-    argument of everything the contract states per *Versicherungsjahr* — the premium, the
-    *Zuzahlung*, the four account charges, the declared rate, the *Deckungskapital* and the
-    *Überschussrente*.  A cells' argument therefore says which clock it is on, and this is
-    the only place the two meet.
-
-    ``k`` is the annual-step model's own ``t``, which is what makes the two comparable row
-    by row: ``result_cf_annual().loc[k]`` is that model's row ``k``.
-    """
-    return t // 12
-
-
 def is_anniv(t):
     """True in the **last** month of a projection year, ``t % 12 == 11``.
 

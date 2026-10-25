@@ -87,3 +87,8 @@ def k_start():
 def t_start():
     """The first projected month, ``12 x k_start()``; ``t`` counts months from issue."""
     return 12 * k_start()                                            # noqa: F821
+
+
+def proj_year(t):
+    """The 0-based projection year month t falls in, ``t // 12``."""
+    return t // 12

@@ -280,18 +280,6 @@ def policy_id():
     return str(model_point()["policy_id"])
 
 
-def duration_mth_init():
-    """Complete months elapsed at the projection start; ``0`` for new business.
-
-    The frame **opens** at this ``t``, which is a product fact rather than a house
-    convention: an in-force model point opens at the duration the policy has already run.
-    It does **not** change :func:`proj_len`, which is fixed by the entry age and the
-    terminal age alone, so a point opening at ``t = 240`` simply publishes a shorter frame
-    ending at the same index.  Reading it as a shift of the horizon is a listed pitfall.
-    """
-    return int(model_point()["duration_mth_init"])
-
-
 def status_init():
     """The state at the projection start: ``aktiv`` or ``pg1`` … ``pg5``.
 

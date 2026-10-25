@@ -437,17 +437,6 @@ def annuity_pp_init():
     return float(model_point()["annuity_pp_init"])
 
 
-def duration_mth_init():
-    """Months already elapsed at the valuation date; the frame's first ``t``.
-
-    0 for a new-business point.  An in-force point opens at the duration it has already
-    run, so its frame contains no ``t = 0`` and therefore neither the *Einmalbeitrag* nor
-    the acquisition expense — both of which happened before the valuation date and belong
-    to a period this projection does not cover.
-    """
-    return int(model_point()["duration_mth_init"])
-
-
 def pols_if_init():
     """The number of policies the model point represents; 1.0 on every shipped point.
 

@@ -212,6 +212,10 @@ CORE_CELLS = {
                           "klassische_rentenversicherung": "derived",
                           "riester_rente": "derived",
                           "risikolebensversicherung": "derived"},
+        "duration_mth_init": {"berufsunfaehigkeit": "derived",
+                              "fondsgebundene_rentenversicherung": "derived",
+                              "pflegerentenversicherung": "derived",
+                              "sofortrente": "derived"},
     },
 }
 

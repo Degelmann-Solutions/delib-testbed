@@ -14,7 +14,7 @@ projecting model point 1::
 ``t`` counts **policy months from the contract's own inception** and is **0-based**:
 ``t = 0`` is the inception month, so ``t = 60`` means the same thing on every model point —
 the first month after the acquisition-charge instalment ends. The frame runs
-``t = proj_start() ... proj_len() - 1`` with ``proj_start() = duration_init_m`` — 0 for new
+``t = proj_start() ... proj_len() - 1`` with ``proj_start() = duration_mth_init`` — 0 for new
 business, 96 for the in-force cell — and ``proj_len() = 12 x (annuity_age - issue_age)``,
 which is the **number** of policy months from inception and so the frame's **exclusive
 end**. There is nothing after ``t = proj_len() - 1``: the end of that month is
@@ -68,7 +68,7 @@ notes use compact actuarial symbols. The mapping is:
 Notes symbol               Cells                            Meaning
 =========================  ===============================  =========================
 (none)                     model_point()                    The selected model point row
-t0                         proj_start()                     duration_init_m (0-based)
+t0                         proj_start()                     duration_mth_init (0-based)
 n                          proj_len()                       Policy months from inception;
                                                             the frame's exclusive end
 y(t)                       policy_year(t)                   t // 12 + 1 (1-based label)
@@ -365,19 +365,6 @@ def policy_id():
     return model_point()["policy_id"]
 
 
-def duration_init_m():
-    """Policy months already elapsed at the valuation date; 0 for new business.
-
-    An **elapsed count**, so it is 0-based by nature and ``proj_start() ==
-    duration_init_m()`` exactly.  It fixes :func:`proj_start`, and through it everything
-    that keys off the policy month counted from inception — the acquisition window above
-    all.  Model point 6 opens at duration 96, past the window, and is the cell that shows
-    what that costs an insurer: nothing, because the charge and the commission it funded
-    are both behind it.
-    """
-    return int(model_point()["duration_init_m"])
-
-
 def pols_if_init():
     """Policies in force at the projection's opening: the weight the model point carries.
 
@@ -609,7 +596,7 @@ def kapitalwahl():
 # ----------------------------------------  the frame
 
 def proj_start():
-    """The first projected policy month, ``duration_init_m()`` — 0-based.
+    """The first projected policy month, ``duration_mth_init()`` — 0-based.
 
     0 for new business, 96 for the in-force cell: ``t`` counts policy months from the
     contract's own inception with ``t = 0`` the inception month, so the elapsed-month count
@@ -617,7 +604,7 @@ def proj_start():
     rather than the valuation date, a single :func:`charge_acq_pp` rule serves the
     new-business and the in-force cell without a duration offset.
     """
-    return duration_init_m()
+    return duration_mth_init()
 
 
 def proj_len():

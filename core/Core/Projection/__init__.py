@@ -72,3 +72,8 @@ def issue_year():
 def duration_init():
     """The completed policy years at the valuation date, from the model point."""
     return int(model_point()["duration_init"])                       # noqa: F821
+
+
+def duration_mth_init():
+    """The completed policy months at the valuation date, from the model point."""
+    return int(model_point()["duration_mth_init"])                   # noqa: F821

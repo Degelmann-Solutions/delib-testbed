@@ -1,8 +1,8 @@
-# Performance: reference measurement of phase 2a, and the phase-2b, phase-2c and phase-2d measurements next to it
+# Performance: reference measurement of phase 2a, the phase-2b, phase-2c and phase-2d measurements next to it, and the phase-3 per-cell profile
 
 The marginal time per contract of every product, measured with `tools/measure_marginal.py` on the unchanged phase-1 runner. Later phase-2 changes are measured with the same tool against this table.
 
-The 2a reference was measured at `10c2ad8`, before the runner had per-contract cleanup. Since phase 2b the runner cleans up by default, since phase 2c it runs on the exported model by default, and since phase 2d it can run the points in worker processes and the tool measures at several worker counts with K = 32 by default; reproducing the 2a table with the current tool needs `--factor 2 --engine modelx --no-cleanup`, the 2b table `--factor 2 --engine modelx`, the 2c table `--factor 2 --workers 1`. The phase-2b, phase-2c and phase-2d measurements follow in their own sections below.
+The 2a reference was measured at `10c2ad8`, before the runner had per-contract cleanup. Since phase 2b the runner cleans up by default, since phase 2c it runs on the exported model by default, and since phase 2d it can run the points in worker processes and the tool measures at several worker counts with K = 32 by default; reproducing the 2a table with the current tool needs `--factor 2 --engine modelx --no-cleanup`, the 2b table `--factor 2 --engine modelx`, the 2c table `--factor 2 --workers 1`. The phase-2b, phase-2c and phase-2d measurements and the phase-3 per-cell profile follow in their own sections below.
 
 **Timings depend on the machine.** They compare changes on one machine; they are not a property of the model.
 
@@ -310,3 +310,267 @@ Assumptions: M = 500 mutants, P = 10,000 contracts, each product on its own, slo
 With process parallelism at the best worker count, three products fit the 10 h night by the forecast: `risikolebensversicherung` (4.3 h), `riester_rente` (5.1 h) and, just, `sofortrente` (9.9 h, 10.0 h with the fixed cost per mutant). Six miss it by a factor of 1.1 (`indexpolice`) to 2.2 (`klassische_rentenversicherung`), and `pflegerentenversicherung` by a factor of 12.7. Against 2c at W = 1 (factor 4 to 15, `pflegerentenversicherung` 81) this is the gain of the workers; it is smaller than the "perfect scaling over 24 CPUs" of the 2c forecast (gap at W = 24 of 0.2 to 0.6, `pflegerentenversicherung` 3.4), because the measured speed-up at W = 24 is about 7×, not 24×.
 
 This is as fast as the runner gets at runner level (export engine, per-contract cleanup, process parallelism), which is phase 2's exit criterion in the README. The remaining gap is documented here and is not a condition of phase 2; closing it needs changes to the model (phase 3) or trace pruning, more cores, or fewer mutants or contracts per night.
+
+# Phase 3: per-cell profile
+
+Where the per-point time of every product goes, cell by cell: the map epic-night-run's optimisations start from. Read-only: no model, runner, tool or test changed; the profiling script is the command below and is not part of the repo. The profile is of the phase-2 state: the branch's base `73c7c75` (merge of PR #6), before the common core of PR #7.
+
+- Date: 2026-10-25
+- Commit: `73c7c751318b89bf631bcb5c5a7b70595bb5ae94`, clean tree
+- Machine: the same as for 2a to 2d (12th Gen Intel Core i7-12800HX, 24 logical CPUs, 62.8 GiB RAM, Linux 6.6 under WSL2; Python 3.12.13, modelx 0.33.0, pandas 3.1.0, numpy 2.5.4)
+- Command: the script below, run from the repository root; exit 0, `ok` for all ten products, wall time about 45 s
+
+```sh
+uv run python - <<'EOF'
+import importlib, sys, time
+from collections import defaultdict
+sys.path.insert(0, "tools")
+import run_baseline as rb
+
+def run(product, profile):
+    """One run_product at W = 1; returns n, ok, loop seconds, exclusive ns and calls."""
+    excl, calls, stack, mark = defaultdict(int), defaultdict(int), [], {}
+    real_import = importlib.import_module
+
+    def timed(key, f):
+        def g(self, *a):
+            stack.append(0); t0 = time.perf_counter_ns()
+            try:
+                return f(self, *a)
+            finally:
+                el = time.perf_counter_ns() - t0; child = stack.pop()
+                excl[key] += el - child; calls[key] += 1
+                if stack: stack[-1] += el
+        return g
+
+    def hook(name, *a, **k):
+        mod = real_import(name, *a, **k)
+        if name.startswith("_delib_export_"):
+            if profile:
+                classes = real_import(name + "._mx_classes")
+                for cname, cls in list(vars(classes).items()):
+                    if cname.startswith("_c_") and isinstance(cls, type):
+                        for attr, f in list(vars(cls).items()):
+                            if attr.startswith("_f_") and callable(f):
+                                setattr(cls, attr, timed((cname[3:], attr[3:]), f))
+            mark["t0"] = time.perf_counter()
+        return mod
+
+    importlib.import_module = hook
+    try:
+        n, _checks, _sha, failures, lines, _d = rb.run_product(rb.resolve_product(product), keep_lines=True)
+    finally:
+        importlib.import_module = real_import
+    loop = time.perf_counter() - mark.get("t0", 0.0)
+    expected = (rb.BASELINE_DIR / product / rb.CSV_NAME).read_bytes()
+    ok = not failures and ("\n".join(lines) + "\n").encode("ascii") == expected
+    return n, ok, loop, excl, calls
+
+names = rb.product_names()
+order = ["pflegerentenversicherung"] + sorted(p for p in names if p != "pflegerentenversicherung")
+bad = []
+for p in order:
+    n, ok0, loop0, _, _ = run(p, profile=False)
+    n, ok, loop, excl, calls = run(p, profile=True)
+    if not (ok and ok0):
+        print(f"{p}: FAILED"); bad.append(p); continue
+    point = {k: v for k, v in excl.items() if k[0] != "Data"}
+    data = {k: v for k, v in excl.items() if k[0] == "Data"}
+    tot = sum(point.values())
+    print(f"\n{p}: ok  n={n}  spaces={sorted({k[0] for k in excl})}")
+    print(f"  point loop ms/point: unprofiled {loop0 / n * 1e3:.1f}, profiled {loop / n * 1e3:.1f}"
+          f"  | per-point cells: {tot / n / 1e6:.1f} ms/point, {sum(calls[k] for k in point) / n:.0f} calls/point"
+          f"  | Data cells, once per run: {sum(data.values()) / 1e6:.1f} ms")
+    cum, cap = 0, 15 if p == "pflegerentenversicherung" else 10
+    for i, (k, v) in enumerate(sorted(point.items(), key=lambda kv: -kv[1])):
+        if i == cap or cum >= 0.8 * tot:
+            break
+        cum += v
+        print(f"  {k[0]}.{k[1]:<32} {v / n / 1e6:7.2f} ms/pt {v / tot:6.1%}  cum {cum / tot:6.1%}  {calls[k] / n:6.0f} calls/pt")
+print("\nFAILED: " + ", ".join(bad) if bad else "\nall ok")
+sys.exit(1 if bad else 0)
+EOF
+```
+
+## Method
+
+For each product, `pflegerentenversicherung` first and then alphabetically, the script calls the runner's `run_product` twice at W = 1 on the export engine with cleanup: once unprofiled, once profiled. For the profiled run it wraps `importlib.import_module`; when the runner imports the exported package (`_delib_export_…`), every formula method `_f_<cell>` of every space class in `_mx_classes` is replaced by a timer. Item spaces `Projection[i]` are instances of the same class, so this covers every point.
+
+- **What is timed:** each evaluation of a cell's formula, that is each cache miss. The cache lookup of a hit is not a call; it costs the calling cell, inside whose formula it happens. `calls/pt` counts formula evaluations over all argument values of the cell, per point.
+- **Exclusive time:** a cell's own time minus the time of the cells it calls (a stack of child times, `perf_counter_ns`). Nested cells are not counted twice, and pandas/numpy time is attributed to the cell that calls pandas or numpy, which cProfile's per-function `tottime` would not do. Checks are cells too and run per point; they are reported like other cells.
+- **Per point and Data apart:** cells of `Projection` (the only per-point space in all ten products) make up the per-point time, which is what `t_marginal` measures; their exclusive time summed over the run is divided by n. Cells of `Data` run once per run, mostly on the first point, and are given as one total per run.
+- **Point loop:** wall time from the import of the exported package to the end of `run_product` (all points with their checks, hashing, CSV lines, cleanup), divided by n; `read_model` and the export are not in it. It is not `t_marginal`: n is 13 or 14 and nothing is replicated. The per-point cell time is 92 to 99 % of the profiled point loop; the rest is the runner's hashing, CSV lines and cleanup.
+- **Verified:** both runs of every product must have no failures and their CSV lines must equal `baseline/<product>/result_cf.csv` byte for byte, else the script prints `FAILED` for the product and exits 1.
+
+**Overhead caveat.** The timer adds about 0.3 to 0.8 µs per formula evaluation: the profiled point loop is 12 to 49 % slower than the unprofiled one (summary table), most where cells are many and cheap (`riester_rente`, `risikolebensversicherung`). Part of this overhead lands in the exclusive time of the calling cells, so cells with many cheap callees are overstated somewhat; the shares of the big lookup cells are not changed in substance. Garbage-collection pauses are attributed to whichever cell triggers them: in an earlier trial run of `berufsunfaehigkeit` about 6 ms per point moved between `pv_rente_first` and `mort_rate_dis_first_mth_year`. The overhead and the unprofiled ms/pt rest on a single unprofiled and a single profiled run per product, back to back, so they carry run-to-run noise of the same order as the overhead itself and are indicative only; in one rerun on a loaded machine the unprofiled loop of two products was slower than the profiled one. Several full runs of the command gave the same top cells per product, only adjacent cells of nearly equal share swapping places, and cells near the 80 % cut-off can change places (in one rerun the 13th row of `pflegerentenversicherung` was `p_pg_death`, 1.3 %, instead of `expenses`, 1.4 %); the tables below are from the first run.
+
+## Summary
+
+| Product | n | point loop ms/pt, unprofiled | point loop ms/pt, profiled | overhead | per-point cells ms/pt | calls/pt | Data ms/run | top cell | share | rows to 80 % |
+|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|
+| pflegerentenversicherung | 14 | 554.7 | 618.7 | +12 % | 614.8 | 100,834 | 7.2 | `tar_mort_rate_care` | 31.1 % | 13 |
+| basisrente | 13 | 69.9 | 89.7 | +28 % | 86.5 | 26,460 | 5.5 | `expenses` | 21.3 % | 10 |
+| berufsunfaehigkeit | 13 | 57.4 | 64.7 | +13 % | 62.4 | 25,720 | 5.8 | `dis_cohorts_first` | 12.9 % | > 10 (72.0 %) |
+| fondsgebundene_rentenversicherung | 13 | 59.6 | 69.4 | +16 % | 67.1 | 24,953 | 3.5 | `fund_return_gross_ann` | 35.4 % | 6 |
+| indexpolice | 13 | 51.9 | 58.7 | +13 % | 57.3 | 8,990 | 6.1 | `index_return` | 39.0 % | 4 |
+| kapitallebensversicherung | 14 | 62.0 | 70.8 | +14 % | 69.5 | 13,036 | 5.7 | `mort_rate_base` | 29.2 % | > 10 (77.2 %) |
+| klassische_rentenversicherung | 14 | 101.7 | 121.7 | +20 % | 118.6 | 31,191 | 6.8 | `check_decrement_closure_resid` | 41.3 % | > 10 (75.3 %) |
+| riester_rente | 13 | 25.1 | 37.5 | +49 % | 34.6 | 22,964 | 6.4 | `check_net_cf_resid` | 33.8 % | > 10 (76.1 %) |
+| risikolebensversicherung | 14 | 18.1 | 24.1 | +33 % | 22.8 | 12,800 | 4.6 | `benefit_factor` | 23.5 % | > 10 (75.5 %) |
+| sofortrente | 14 | 48.7 | 59.5 | +22 % | 57.4 | 23,203 | 4.4 | `mort_rate_at_age` | 40.4 % | 7 |
+
+The unprofiled point loop per point, a single run per product and indicative only, is in the same order as `t_marginal(1)` of phase 2d (for example 555 against 653 ms for `pflegerentenversicherung`, 18.1 against 18.6 ms for `risikolebensversicherung`), as it should be; it is a different measurement (see Method). Data cells take 3.5 to 7.2 ms per run, against a point loop of 0.25 to 8 s: they do not matter for `t_marginal`.
+
+## Top cells per product
+
+Cells in descending exclusive time per point until they cover at least 80 % of the per-point cell time, at most 10 rows (15 for `pflegerentenversicherung`). All cells are in `Projection`. Share and cumulative share are of the per-point cell time.
+
+**pflegerentenversicherung** (n = 14; 614.8 ms per point in cells)
+
+| Cell | ms/pt | share | cum | calls/pt |
+|---|---:|---:|---:|---:|
+| `tar_mort_rate_care` | 191.22 | 31.1 % | 31.1 % | 2,962 |
+| `rec_rate` | 68.29 | 11.1 % | 42.2 % | 3,493 |
+| `mort_force_care` | 38.02 | 6.2 % | 48.4 % | 3,553 |
+| `tar_mort_rate` | 37.30 | 6.1 % | 54.5 % | 592 |
+| `tar_inc_rate` | 35.75 | 5.8 % | 60.3 % | 581 |
+| `tar_det_rate` | 24.07 | 3.9 % | 64.2 % | 2,919 |
+| `mort_rate` | 22.16 | 3.6 % | 67.8 % | 711 |
+| `tar_rec_rate` | 20.96 | 3.4 % | 71.2 % | 2,919 |
+| `check_prem_equiv_resid` | 15.74 | 2.6 % | 73.8 % | 593 |
+| `inc_rate` | 15.24 | 2.5 % | 76.2 % | 696 |
+| `tar_p_pg` | 11.67 | 1.9 % | 78.1 % | 2,962 |
+| `p_pg_better` | 9.42 | 1.5 % | 79.7 % | 3,553 |
+| `expenses` | 8.55 | 1.4 % | 81.1 % | 711 |
+
+Ten rows reach 76.2 %, thirteen 81.1 %. The point is dominated by the care-grade rates: about 100,000 formula evaluations per point, of which the ones with a grade argument `g` (care grades 1 to 5) run about five times per month. `tar_mort_rate_care` alone is 65 µs per evaluation: five scalar `DataFrame.at` lookups (two into the `(sex, age)` MultiIndex of `mort_table`, the others into `basis_table` and `care_table`), evaluated for every month `t` and grade `g`, although the `mort_table` values depend only on `age(t)`, which changes once a year. The nine rate cells in the table (all but `check_prem_equiv_resid`, `tar_p_pg`, `p_pg_better` and `expenses`), each a few scalar table lookups and a little arithmetic, are 73.7 % of the point.
+
+**basisrente** (n = 13; 86.5 ms per point in cells)
+
+| Cell | ms/pt | share | cum | calls/pt |
+|---|---:|---:|---:|---:|
+| `expenses` | 18.38 | 21.3 % | 21.3 % | 877 |
+| `commissions` | 13.21 | 15.3 % | 36.5 % | 877 |
+| `check_net_cf_resid` | 13.12 | 15.2 % | 51.7 % | 877 |
+| `ann_bonus_rate` | 7.51 | 8.7 % | 60.4 % | 54 |
+| `result_cf` | 4.94 | 5.7 % | 66.1 % | 1 |
+| `claims` | 3.20 | 3.7 % | 69.8 % | 3,508 |
+| `decl_rate` | 3.20 | 3.7 % | 73.5 % | 18 |
+| `bf_rate` | 3.08 | 3.6 % | 77.1 % | 18 |
+| `check_no_capital_resid` | 1.50 | 1.7 % | 78.8 % | 877 |
+| `mort_rate_at_age` | 1.37 | 1.6 % | 80.4 % | 72 |
+
+**berufsunfaehigkeit** (n = 13; 62.4 ms per point in cells)
+
+| Cell | ms/pt | share | cum | calls/pt |
+|---|---:|---:|---:|---:|
+| `dis_cohorts_first` | 8.06 | 12.9 % | 12.9 % | 352 |
+| `dis_cohorts` | 7.48 | 12.0 % | 24.9 % | 339 |
+| `mort_rate_dis_first_mth_year` | 7.37 | 11.8 % | 36.7 % | 351 |
+| `lapse_rate` | 6.58 | 10.5 % | 47.2 % | 338 |
+| `dis_exits_first` | 4.95 | 7.9 % | 55.2 % | 351 |
+| `dis_exits` | 4.72 | 7.6 % | 62.7 % | 338 |
+| `result_cf` | 2.12 | 3.4 % | 66.1 % | 1 |
+| `claims` | 1.69 | 2.7 % | 68.8 % | 1,353 |
+| `pv_rente_first` | 1.17 | 1.9 % | 70.7 % | 1 |
+| `pv_claim_cost_first` | 0.84 | 1.3 % | 72.0 % | 1 |
+
+**fondsgebundene_rentenversicherung** (n = 13; 67.1 ms per point in cells)
+
+| Cell | ms/pt | share | cum | calls/pt |
+|---|---:|---:|---:|---:|
+| `fund_return_gross_ann` | 23.78 | 35.4 % | 35.4 % | 339 |
+| `fund_ter_ann` | 22.33 | 33.3 % | 68.7 % | 339 |
+| `result_cf` | 2.87 | 4.3 % | 73.0 % | 1 |
+| `lapse_rate_base` | 2.77 | 4.1 % | 77.1 % | 338 |
+| `av_pp_at` | 1.66 | 2.5 % | 79.6 % | 1,355 |
+| `fund_return_net_ann` | 0.73 | 1.1 % | 80.7 % | 339 |
+
+**indexpolice** (n = 13; 57.3 ms per point in cells)
+
+| Cell | ms/pt | share | cum | calls/pt |
+|---|---:|---:|---:|---:|
+| `index_return` | 22.32 | 39.0 % | 39.0 % | 279 |
+| `mort_rate` | 19.39 | 33.9 % | 72.9 % | 279 |
+| `lapse_rate_base` | 3.70 | 6.5 % | 79.3 % | 267 |
+| `elect_index` | 1.73 | 3.0 % | 82.3 % | 23 |
+
+**kapitallebensversicherung** (n = 14; 69.5 ms per point in cells)
+
+| Cell | ms/pt | share | cum | calls/pt |
+|---|---:|---:|---:|---:|
+| `mort_rate_base` | 20.29 | 29.2 % | 29.2 % | 277 |
+| `check_decrement_closure_resid` | 4.52 | 6.5 % | 35.7 % | 277 |
+| `lapse_rate` | 4.36 | 6.3 % | 42.0 % | 276 |
+| `expenses_pp` | 4.17 | 6.0 % | 48.0 % | 277 |
+| `check_net_cf_resid` | 3.73 | 5.4 % | 53.4 % | 277 |
+| `commissions` | 3.64 | 5.2 % | 58.6 % | 277 |
+| `inflation_factor` | 3.36 | 4.8 % | 63.4 % | 23 |
+| `decl_rate` | 3.25 | 4.7 % | 68.1 % | 23 |
+| `mort_rate_at_age` | 3.20 | 4.6 % | 72.7 % | 24 |
+| `ans_rate` | 3.09 | 4.5 % | 77.2 % | 23 |
+
+**klassische_rentenversicherung** (n = 14; 118.6 ms per point in cells)
+
+| Cell | ms/pt | share | cum | calls/pt |
+|---|---:|---:|---:|---:|
+| `check_decrement_closure_resid` | 48.97 | 41.3 % | 41.3 % | 863 |
+| `check_net_cf_resid` | 12.02 | 10.1 % | 51.4 % | 863 |
+| `mort_rate_guar` | 9.46 | 8.0 % | 59.4 % | 863 |
+| `mort_rate_at_age` | 5.10 | 4.3 % | 63.7 % | 72 |
+| `result_cf` | 3.74 | 3.2 % | 66.8 % | 1 |
+| `lapse_rate` | 3.10 | 2.6 % | 69.4 % | 863 |
+| `claims` | 1.91 | 1.6 % | 71.1 % | 3,453 |
+| `charge_prem_pp` | 1.75 | 1.5 % | 72.5 % | 72 |
+| `surr_charge_pp` | 1.66 | 1.4 % | 73.9 % | 72 |
+| `check_net_cf` | 1.64 | 1.4 % | 75.3 % | 1 |
+
+**riester_rente** (n = 13; 34.6 ms per point in cells)
+
+| Cell | ms/pt | share | cum | calls/pt |
+|---|---:|---:|---:|---:|
+| `check_net_cf_resid` | 11.69 | 33.8 % | 33.8 % | 727 |
+| `result_cf` | 4.32 | 12.5 % | 46.3 % | 1 |
+| `mort_rate_at_age` | 3.26 | 9.4 % | 55.7 % | 16 |
+| `claims` | 1.47 | 4.3 % | 59.9 % | 4,364 |
+| `lapse_rate` | 1.26 | 3.7 % | 63.6 % | 195 |
+| `transfer_rate` | 1.12 | 3.2 % | 66.8 % | 195 |
+| `mort_rate` | 0.93 | 2.7 % | 69.5 % | 727 |
+| `pols_if_at` | 0.93 | 2.7 % | 72.2 % | 727 |
+| `zulage_entitlement_pp` | 0.78 | 2.3 % | 74.4 % | 16 |
+| `check_net_cf` | 0.57 | 1.7 % | 76.1 % | 1 |
+
+**risikolebensversicherung** (n = 14; 22.8 ms per point in cells)
+
+| Cell | ms/pt | share | cum | calls/pt |
+|---|---:|---:|---:|---:|
+| `benefit_factor` | 5.37 | 23.5 % | 23.5 % | 267 |
+| `check_net_cf_resid` | 3.47 | 15.2 % | 38.7 % | 267 |
+| `lapse_rate_base` | 1.82 | 8.0 % | 46.7 % | 255 |
+| `lapse_cum` | 1.67 | 7.3 % | 54.0 % | 267 |
+| `result_cf` | 1.47 | 6.5 % | 60.5 % | 1 |
+| `mort_rate_at_age` | 1.35 | 5.9 % | 66.4 % | 46 |
+| `benefit_paid_pp` | 0.62 | 2.7 % | 69.1 % | 267 |
+| `claims` | 0.57 | 2.5 % | 71.6 % | 1,066 |
+| `pols_if_at` | 0.45 | 2.0 % | 73.5 % | 533 |
+| `sum_uplift_y` | 0.45 | 2.0 % | 75.5 % | 23 |
+
+**sofortrente** (n = 14; 57.4 ms per point in cells)
+
+| Cell | ms/pt | share | cum | calls/pt |
+|---|---:|---:|---:|---:|
+| `mort_rate_at_age` | 23.20 | 40.4 % | 40.4 % | 213 |
+| `improve_rate_at_age` | 13.33 | 23.2 % | 63.6 % | 104 |
+| `annuity_payments` | 4.36 | 7.6 % | 71.2 % | 1,921 |
+| `result_cf` | 2.38 | 4.1 % | 75.3 % | 1 |
+| `claims` | 1.19 | 2.1 % | 77.4 % | 1,921 |
+| `annuity_factor` | 0.87 | 1.5 % | 78.9 % | 1 |
+| `pols_if` | 0.85 | 1.5 % | 80.4 % | 640 |
+
+## Observations
+
+- **Scalar table lookups dominate.** In seven of the ten products the top cells read one value from an input table per month or per age with `DataFrame.at` or `.loc`, often on a MultiIndex, at about 10 to 130 µs per evaluation, against about 1 µs or less for a cell of plain arithmetic: `pflegerentenversicherung` (the care-grade rates, 73.7 %), `fondsgebundene_rentenversicherung` (`fund_return_gross_ann` and `fund_ter_ann` on `(scenario, policy year)`, 68.7 %), `indexpolice` (`index_return` and `mort_rate`, 72.9 %), `sofortrente` (`mort_rate_at_age` and `improve_rate_at_age`, 63.6 %, which also take the min and max of the age level of the index on every evaluation), `kapitallebensversicherung` (`mort_rate_base`, 29.2 %), `risikolebensversicherung` (`benefit_factor`, 23.5 %), `basisrente` (`expenses` and `commissions`, which select the tariff's row of `charge_table` on every month, 36.5 %) and the lapse-rate cells of several products. The values looked up depend on few inputs (sex, age, policy year, scenario, grade), so precomputing them once per run or per point as arrays or dicts is the obvious lever; it stays byte-identical only if the same floats come out.
+- **Checks are a large part of the point.** The `check_*_resid` cells run every point and are part of `t_marginal`. `check_net_cf_resid`, which takes the row `result_cf().loc[t]` as a Series for every month, is 33.8 % of `riester_rente`, 15.2 % of `basisrente` and `risikolebensversicherung`, 10.1 % of `klassische_rentenversicherung` and 5.4 % of `kapitallebensversicherung`. `check_decrement_closure_resid` of `klassische_rentenversicherung` sums the exits over all months up to `t` for every `t`, quadratic in the projection length: 41.3 % of the product's point; the same cell in `kapitallebensversicherung` has the same form at 6.5 %.
+- **Python loops elsewhere.** `berufsunfaehigkeit` is the one product without a dominant lookup: its disability cohorts (`dis_cohorts*`, `dis_exits*`, `mort_rate_dis_first_mth_year`) are list and tuple loops in Python, together 52 % of the point, spread over many cells (10 rows reach 72.0 %).
+- **`result_cf` itself** (building the DataFrame from per-month lists) is 2 to 7 % of most products and 12.5 % of `riester_rente`, the cheapest point.
+- **Shared across products, candidates for the core:** `mort_rate_at_age` is in the top cells of six products (`basisrente`, `kapitallebensversicherung`, `klassische_rentenversicherung`, `riester_rente`, `risikolebensversicherung`, `sofortrente`), `check_net_cf_resid` of five, a `lapse_rate` or `lapse_rate_base` of seven, `result_cf` of seven, `claims` of six, `decl_rate` of two (`basisrente`, `kapitallebensversicherung`), `check_decrement_closure_resid` of two. The same name is not the same formula: `mort_rate_at_age` is an `.at` on `(sex, age)` in `klassische_rentenversicherung`, on `(table, sex, smoker, age)` in `risikolebensversicherung`, a clamped `.loc` on `(basis, sex, age)` in `sofortrente` and a row `.loc` with a trend factor in `basisrente`. A fast table lookup and a cheaper net-cash-flow check built once in the core would reach most products; `pflegerentenversicherung`, which is 91.6 of the 171 ms of the W = 24 forecast sum, needs its own care-grade rates made cheap first.

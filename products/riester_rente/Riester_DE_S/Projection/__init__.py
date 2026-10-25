@@ -315,7 +315,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = lambda point_id: None
 
-_bases = []
+_bases = [
+    ".CoreProjection"
+]
 
 _allow_none = None
 
@@ -325,11 +327,6 @@ _spaces = []
 # Cells
 #
 # === the model point
-
-
-def model_point():
-    """The selected model point as a Series, indexed by ``point_id``."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def sex():

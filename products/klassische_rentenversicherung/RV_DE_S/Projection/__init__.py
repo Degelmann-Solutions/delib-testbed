@@ -441,7 +441,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = lambda point_id: None
 
-_bases = []
+_bases = [
+    ".CoreProjection"
+]
 
 _allow_none = None
 
@@ -451,15 +453,6 @@ _spaces = []
 # Cells
 #
 # The model point and the frame
-
-
-def model_point():
-    """The selected model point as a Series, from *model_point_table.csv*.
-
-    Thirty columns; the projection reads them through this one cells so that a model point
-    is fetched once per ItemSpace.  Point 1 is the technical notes' worked-example anchor.
-    """
-    return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
 def omega_age():

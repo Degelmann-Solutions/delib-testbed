@@ -392,7 +392,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = lambda point_id: None
 
-_bases = []
+_bases = [
+    ".CoreProjection"
+]
 
 _allow_none = None
 
@@ -400,11 +402,6 @@ _spaces = []
 
 # ---------------------------------------------------------------------------
 # Cells
-
-def model_point():
-    """The selected model point as a Series, from *model_point_table.csv*."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
-
 
 def pols_if_init():
     """The number of policies the model point represents at the valuation date.

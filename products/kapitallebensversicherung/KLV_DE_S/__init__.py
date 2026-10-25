@@ -141,6 +141,8 @@ _name = "KLV_DE_S"
 _allow_none = False
 
 _spaces = [
+    "CoreData",
+    "CoreProjection",
     "Data",
     "Projection"
 ]

@@ -293,7 +293,9 @@ from modelx.serialize.jsonvalues import *
 
 _formula = lambda point_id: None
 
-_bases = []
+_bases = [
+    ".CoreProjection"
+]
 
 _allow_none = None
 
@@ -301,11 +303,6 @@ _spaces = []
 
 # ---------------------------------------------------------------------------
 # Cells
-
-def model_point():
-    """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
-
 
 def status():
     """The state at ``t = 0``: ``aktiv`` or ``leistung``.

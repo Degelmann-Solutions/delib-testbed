@@ -1,6 +1,6 @@
 # Upstream provenance: `FRV_DE_S` (lifelib `delib`)
 
-This folder is the fondsgebundene_rentenversicherung product of lifelib's `delib` library, copied whole and byte for byte at a pinned commit. Nothing is edited, added or removed; line endings are upstream's (LF).
+This folder is the fondsgebundene_rentenversicherung product of lifelib's `delib` library, copied whole and byte for byte at a pinned commit. At the import nothing was edited, added or removed; line endings are upstream's (LF). Later changes are listed under `## Changed in phase 3`.
 
 This file describes the import. Byte identity with upstream holds for the commit of the import; a later commit that changes a file listed here says so, and the hashes below stay those of upstream.
 
@@ -18,7 +18,7 @@ The Markdown files and some tables cite insurers and rating agencies as sources.
 
 ## Files copied verbatim
 
-Each file is byte-identical to upstream at the pinned commit. `tests/test_provenance.py` checks these SHA-256 values and that the folder holds no other file than these and this one.
+Each file was byte-identical to upstream at the import; the hashes are upstream's. `tests/test_provenance.py` checks these SHA-256 values, except for the files listed under `## Changed in phase 3`, and that the folder holds no other file than these and this one, besides the symlinks listed there.
 
 | File | SHA-256 |
 |---|---|
@@ -38,3 +38,15 @@ Each file is byte-identical to upstream at the pinned commit. `tests/test_proven
 | `run.py` | `3f8035807e6106ebf9a8d45ca6c1a42b043a8186d043d55136798488e4bb7193` |
 | `sources.md` | `a6cb5f3f099581f3dd06d05ce1379de7e7fe6bef84d95797a3470a7899ffb555` |
 | `technical-notes.md` | `0d20e330b9fcbd23a7bbb0bf07a3410a6700335221dc8ceb8266fa71c4e66667` |
+
+## Changed in phase 3
+
+Phase 3 changes these files and adds these symlinks to take shared cells from the common core (`docs/core.md`); it adds no regular file. A changed file keeps upstream's hash in the table above; `tests/test_provenance.py` skips its hash check. The symlinks are not copied files and have no hash.
+
+| Path | Change |
+|---|---|
+| `FRV_DE_S/__init__.py` | `_spaces` lists `CoreData` and `CoreProjection` before `Data` and `Projection` |
+| `FRV_DE_S/Data/__init__.py` | `_bases` names `.CoreData` |
+| `FRV_DE_S/Projection/__init__.py` | `_bases` names `.CoreProjection`; `model_point` moved to the core and inherited from it |
+| `FRV_DE_S/CoreData` | added: symlink to the core space folder `core/Core/Data` |
+| `FRV_DE_S/CoreProjection` | added: symlink to the core space folder `core/Core/Projection` |

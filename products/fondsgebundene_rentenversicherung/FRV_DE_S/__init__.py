@@ -121,6 +121,8 @@ _name = "FRV_DE_S"
 _allow_none = False
 
 _spaces = [
+    "CoreData",
+    "CoreProjection",
     "Data",
     "Projection"
 ]

@@ -5,6 +5,9 @@
 - A product cell that redefines a cell of a core base carries an ``Override reason:`` line
   in its docstring.
 - RLV takes ``model_point`` from the core, and the traced modelx model shows it.
+- Every product has the core spaces as bases, and every cell unified into the core
+  (``CORE_CELLS``) is defined in the core and, in each product that has it, either derived
+  from the core or overridden (with the reason the override test requires).
 """
 from __future__ import annotations
 
@@ -102,19 +105,81 @@ def products_with_core() -> list[str]:
                          for p in (PRODUCTS_DIR / product / model).iterdir()))
 
 
-def test_at_least_one_product_has_a_core_base():
-    assert "risikolebensversicherung" in products_with_core()
+def test_every_product_has_a_core_base():
+    assert products_with_core() == sorted(MODELS)
+
+
+@pytest.fixture(scope="module")
+def product_models():
+    """Every product's modelx model, read once for this module and closed afterwards."""
+    models = {}
+
+    def read(product):
+        if product not in models:
+            models[product] = mx.read_model(PRODUCTS_DIR / product / MODELS[product])
+        return models[product]
+
+    yield read
+    for model in models.values():
+        model.close()
 
 
 @pytest.mark.parametrize("product", products_with_core())
-def test_every_override_of_a_core_cell_has_a_reason(product):
-    model = mx.read_model(PRODUCTS_DIR / product / MODELS[product])
+def test_every_override_of_a_core_cell_has_a_reason(product, product_models):
+    model = product_models(product)
+    assert any(core_bases(space) for space in model.spaces.values()), product
+    violations = override_violations(model)
+    assert not violations, f"{product}: overrides without 'Override reason:': {violations}"
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_data_and_projection_have_the_core_spaces_as_bases(product, product_models):
+    model = product_models(product)
+    assert model.Data.bases == [model.CoreData]
+    assert model.Projection.bases == [model.CoreProjection]
+
+
+# Cells unified into the core: space -> cell -> {product: "derived" or "override"}. The core
+# defines each cell once; a product derives it or overrides it, an override with its reason
+# (test_every_override_of_a_core_cell_has_a_reason). A product not named did not have the
+# cell before; it inherits the core cell unused, so it must not define it either.
+CORE_CELLS = {
+    "Data": {},
+    "Projection": {
+        "model_point": dict.fromkeys(MODELS, "derived"),
+    },
+}
+
+
+def core_cell_cases():
+    return [(space, cell, product, kind)
+            for space, cells in CORE_CELLS.items()
+            for cell, products in cells.items()
+            for product, kind in ((p, products.get(p, "absent")) for p in sorted(MODELS))]
+
+
+def test_every_unified_cell_is_defined_in_the_core():
+    model = mx.read_model(CORE_MODEL)
     try:
-        assert any(core_bases(space) for space in model.spaces.values()), product
-        violations = override_violations(model)
+        for space, cells in CORE_CELLS.items():
+            for cell in cells:
+                assert model.spaces[space].cells[cell]._is_defined(), f"{space}.{cell}"
     finally:
         model.close()
-    assert not violations, f"{product}: overrides without 'Override reason:': {violations}"
+
+
+@pytest.mark.parametrize("space, cell, product, kind", core_cell_cases())
+def test_a_unified_cell_is_derived_or_overridden(space, cell, product, kind, product_models):
+    model = product_models(product)
+    product_cell = model.spaces[space].cells[cell]
+    core_cell = model.spaces["Core" + space].cells[cell]
+    if kind in ("derived", "absent"):
+        assert product_cell._is_derived(), f"{product}: {space}.{cell} is not derived"
+        assert product_cell.formula is core_cell.formula
+    else:
+        assert product_cell._is_defined(), f"{product}: {space}.{cell} is not overridden"
+        assert OVERRIDE_REASON_RE.search(product_cell.doc or "")
+
 
 
 def _core_cell():
@@ -162,14 +227,11 @@ def test_override_test_catches_a_missing_reason():
         model.close()
 
 
-def test_rlv_takes_model_point_from_the_core():
-    model = mx.read_model(PRODUCTS_DIR / "risikolebensversicherung" / "RLV_DE_S")
-    try:
-        assert model.Projection.bases == [model.CoreProjection]
-        assert model.Data.bases == [model.CoreData]
-        cell = model.Projection.model_point
-        assert cell._is_derived()
-        assert cell.formula is model.CoreProjection.model_point.formula
-        assert model.Projection[1].model_point()["policy_id"] == "RLV-000001"
-    finally:
-        model.close()
+def test_rlv_takes_model_point_from_the_core(product_models):
+    model = product_models("risikolebensversicherung")
+    assert model.Projection.bases == [model.CoreProjection]
+    assert model.Data.bases == [model.CoreData]
+    cell = model.Projection.model_point
+    assert cell._is_derived()
+    assert cell.formula is model.CoreProjection.model_point.formula
+    assert model.Projection[1].model_point()["policy_id"] == "RLV-000001"

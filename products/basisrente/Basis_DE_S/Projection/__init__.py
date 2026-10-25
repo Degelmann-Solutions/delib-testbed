@@ -442,21 +442,6 @@ def proj_len_y():
     return omega_age() - age(0) + 1
 
 
-def proj_len():
-    """The **number of projected months**, ``12 x proj_len_y()``.
-
-    The **exclusive end** of the frame: :func:`result_cf` is 0-based and runs
-    ``t = 0 ... proj_len() - 1``, so ``len(result_cf()) == proj_len()``, which is this
-    library's reading of ``proj_len()`` and is asserted by the conventions suite.  924 on
-    the anchor cell.
-
-    The last month is the last month of the terminal year, where :func:`mort_rate` is 1:
-    the last survivor dies at ``t = proj_len() - 1``, ``pols_if(proj_len()) = 0`` exactly
-    and there is no tail state of any kind.
-    """
-    return 12 * proj_len_y()
-
-
 def is_anniv(t):
     """True in the **last** month of a projection year, ``t % 12 == 11``.
 

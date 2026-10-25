@@ -579,21 +579,6 @@ def bfz_year():
 
 # --- the projection frame --------------------------------------------------
 
-def proj_len():
-    """The **number of projected policy months**, ``12 x proj_len_y()``.
-
-    300 on the anchor cell.  The **exclusive** end of the frame, which is 0-based:
-    ``result_cf()`` covers ``t = t_start() ... proj_len() - 1``, so
-    ``result_cf().index[-1] == proj_len() - 1`` on every model point and
-    ``len(result_cf()) == proj_len() - t_start()``.  This is lifelib's own
-    ``for t in range(proj_len())``.  The *Ablauf* falls at the end of the last month, where
-    the survivors take the *Erlebensfallleistung*.  **There is no ``t = proj_len()`` row**;
-    ``pols_if(proj_len())`` is defined because the closure identities need it, and it weights
-    no cash flow.
-    """
-    return 12 * proj_len_y()
-
-
 def is_anniv(t):
     """Whether month t is the **last month of a policy year**, ``t % 12 == 11``.
 

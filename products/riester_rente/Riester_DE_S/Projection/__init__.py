@@ -565,19 +565,6 @@ def proj_len_y():
     return omega_age - age(0) + 1                                    # noqa: F821
 
 
-def proj_len():
-    """The **number of projected months**, ``12 x proj_len_y()``.
-
-    The frame is ``range(proj_len())``, 0-based, so the last projected index is
-    ``proj_len() - 1`` and ``result_cf()`` has exactly ``proj_len()`` rows.  The projection
-    runs to the end of the mortality table so that the lifelong annuity is projected to
-    exhaustion and the decrement closure identity is exact: in the last projected year the
-    attained age is ``omega_age`` and ``mort_rate`` is 1, and :func:`mort_rate_mth` places
-    that certainty in the year's **last month**.
-    """
-    return 12 * proj_len_y()
-
-
 def k_conv():
     """T: the conversion **year**, ``rentenbeginn_age - age(0)``.
 

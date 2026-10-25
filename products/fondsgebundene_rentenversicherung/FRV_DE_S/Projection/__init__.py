@@ -618,6 +618,9 @@ def proj_len():
     **exclusive** end.  ``result_cf()`` covers ``t = t_start() ... proj_len() - 1`` and
     ``result_cf().index[-1] == proj_len() - 1`` on every model point.  The end of month
     ``proj_len() - 1`` is *Rentenbeginn*; there is no ``t = proj_len()`` row.
+
+    Override reason: the model projects the *Aufschubzeit* only, in months to ``annuity_age()``,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:59
     """
     return 12 * (annuity_age() - issue_age())
 

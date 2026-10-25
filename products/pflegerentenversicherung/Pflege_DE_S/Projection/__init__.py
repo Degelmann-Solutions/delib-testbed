@@ -509,6 +509,9 @@ def proj_len():
     ``duration_mth_init`` shortens the frame at the front, never at the back.  That last
     index is the point's own — ``proj_len()`` varies with the entry age — not the anchor's
     779.
+
+    Override reason: the horizon is fixed by the entry age and the terminal age in months, with no
+    policy term, products/pflegerentenversicherung/technical-notes.md:52
     """
     return 12 * (omega_age() - issue_age())
 

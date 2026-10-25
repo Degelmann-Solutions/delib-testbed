@@ -488,6 +488,9 @@ def proj_len():
     years — and stopping on the guarantee alone truncates the life annuity.  On the anchor
     cell ``horizon_mths(1) = 12 x (121 - 65) = 672``, the guarantee ends at month 120, and
     ``proj_len() = 672``: 672 monthly rows, ``t = 0 ... 671``.
+
+    Override reason: the horizon is the longest of the annuitant's survival, the guarantee
+    period and the second life's survival, products/sofortrente/technical-notes.md:437
     """
     n = max(horizon_mths(1), guar_end_mth())
     if surv_pct() > 0.0:

@@ -478,18 +478,6 @@ def proj_len_y():
     return omega_age() - issue_age()
 
 
-def proj_len():
-    """The **exclusive** end of the frame, counted in policy **months**: ``12 x proj_len_y()``.
-
-    The library-wide reading of ``proj_len()``, asserted in
-    ``tests/test_model_conventions_de.py``: ``result_cf()`` covers
-    ``t = t_start() ... proj_len() - 1`` and ``result_cf().index[-1] == proj_len() - 1``.
-    This is lifelib's own ``for t in range(proj_len())``.  852 on the anchor cell, whose last
-    row is ``t = 851``.
-    """
-    return 12 * proj_len_y()
-
-
 def is_anniv(t):
     """Whether month t is the **last** month of its policy year: ``t % 12 == 11``.
 

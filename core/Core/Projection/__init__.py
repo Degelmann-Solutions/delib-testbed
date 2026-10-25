@@ -127,3 +127,8 @@ def age(t):
 def proj_len_y():
     """The number of projected policy years, the policy term."""
     return policy_term()                                             # noqa: F821
+
+
+def proj_len():
+    """The number of projected months, ``12 x proj_len_y()``; the frame's exclusive end."""
+    return 12 * proj_len_y()                                         # noqa: F821

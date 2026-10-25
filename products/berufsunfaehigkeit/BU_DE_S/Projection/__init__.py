@@ -557,6 +557,10 @@ def proj_len():
     This is the library's reading of ``proj_len()`` — the **exclusive end** of the frame,
     the row count rather than the last index — and ``result_cf().index[-1] ==
     proj_len() - 1`` is asserted for every model point.
+
+    Override reason: cover ceases at ``cover_end_age()`` and ``t`` counts months from the valuation
+    month, so the horizon is in months net of the elapsed duration,
+    products/berufsunfaehigkeit/technical-notes.md:59
     """
     return 12 * (cover_end_age() - issue_age()) - duration_mth_init()
 

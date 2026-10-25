@@ -277,6 +277,16 @@ CORE_CELLS = {
                        "klassische_rentenversicherung": "override",
                        "riester_rente": "override",
                        "risikolebensversicherung": "derived"},
+        "proj_len": {"basisrente": "derived",
+                     "berufsunfaehigkeit": "override",
+                     "fondsgebundene_rentenversicherung": "override",
+                     "indexpolice": "derived",
+                     "kapitallebensversicherung": "derived",
+                     "klassische_rentenversicherung": "derived",
+                     "pflegerentenversicherung": "override",
+                     "riester_rente": "derived",
+                     "risikolebensversicherung": "derived",
+                     "sofortrente": "override"},
     },
 }
 

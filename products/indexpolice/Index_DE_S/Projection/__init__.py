@@ -412,17 +412,6 @@ def proj_len_y():
     return ann_start_age() - issue_age()
 
 
-def proj_len():
-    """The **exclusive end** of the frame, counted in policy **months**: ``12 x proj_len_y()``.
-
-    The library's reading of ``proj_len()`` and lifelib's own: ``result_cf()`` covers
-    ``t = t_start() ... proj_len() - 1``, so ``result_cf().index[-1] == proj_len() - 1``.
-    It is **not** the row count of an in-force point — one at ``duration_init = 8`` publishes
-    228 rows and still reports 324.
-    """
-    return 12 * proj_len_y()
-
-
 def is_anniv(t):
     """Whether month t is the **last** month of its policy year: ``t % 12 == 11``.
 

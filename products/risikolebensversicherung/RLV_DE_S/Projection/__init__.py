@@ -573,18 +573,6 @@ def pols_if_init():
     return 1.0
 
 
-def proj_len():
-    """The **number of projected policy months**, ``12 x proj_len_y()``.
-
-    300 on the anchor cell.  It is the frame's **exclusive end**: ``result_cf()`` runs
-    over ``range(t_start(), proj_len())``, so the last index is ``proj_len() - 1`` and
-    the frame has ``12 (policy_term - duration_init)`` rows.  Cover ends at the end of the
-    last month ``t = proj_len() - 1`` with nothing payable, and ``pols_if(proj_len())`` is
-    exactly zero.
-    """
-    return 12 * proj_len_y()
-
-
 def age2(t):
     """x2(t): the attained age of the second life, ``issue_age2 + duration(t)``.
 

@@ -324,8 +324,14 @@ def prem_end_age():
     return int(model_point()["prem_end_age"])
 
 
-def prem_mode():
-    """The instalment frequency: monthly, quarterly, half_yearly, annual or single."""
+def prem_freq():
+    """The instalment frequency: monthly, quarterly, half_yearly, annual or single.
+
+    Read from the model point's ``prem_mode`` column.
+
+    Override reason: the product has no frequency loading table and its frequencies include
+    ``single``, the *Einmalbeitrag*, products/pflegerentenversicherung/technical-notes.md:106
+    """
     v = str(model_point()["prem_mode"])
     if v not in ("monthly", "quarterly", "half_yearly", "annual", "single"):
         raise ValueError("invalid prem_mode")
@@ -346,7 +352,7 @@ def prem_mode_months():
     real German tariff.
     """
     return {"monthly": 1, "quarterly": 3, "half_yearly": 6,
-            "annual": 12, "single": 0}[prem_mode()]
+            "annual": 12, "single": 0}[prem_freq()]
 
 
 def premium_mth():

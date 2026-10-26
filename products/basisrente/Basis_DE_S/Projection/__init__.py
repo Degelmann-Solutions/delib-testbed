@@ -504,6 +504,18 @@ def beitragssumme_pp():
     return sum(base * (1.0 + dyn) ** u for u in range(max(m, 0)))
 
 
+def prem_freq():
+    """The payment frequency, from the model point's ``prem_mode`` column.
+
+    ``annual``, ``half_yearly``, ``quarterly`` or ``monthly``; the key into
+    *option_table.csv* under ``option_id = "prem_mode"``.
+
+    Override reason: the product has no frequency loading table; the frequency keys the
+    option table, products/basisrente/technical-notes.md:167
+    """
+    return model_point()["prem_mode"]
+
+
 def prem_freq_load():
     """phi: the *Ratenzahlungszuschlag* for the model point's payment frequency.
 
@@ -517,7 +529,7 @@ def prem_freq_load():
     if model_point()["prem_form"] == "single":
         return 1.0
     return float(data.option_table().loc[                            # noqa: F821
-        ("prem_mode", model_point()["prem_mode"]), "factor"])
+        ("prem_mode", prem_freq()), "factor"])
 
 
 def prem_base_pp(k):

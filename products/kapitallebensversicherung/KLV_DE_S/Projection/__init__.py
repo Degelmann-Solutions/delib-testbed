@@ -428,18 +428,6 @@ def death_ratio():
     return float(model_point()["death_ratio"])
 
 
-def prem_freq():
-    """The payment frequency, a key into *freq_loading_table.csv*.
-
-    ``annual``, ``half_yearly``, ``quarterly`` or ``monthly``.  The frequency buys a
-    *Ratenzahlungszuschlag* only where :func:`unterjaehrig_form` is ``unecht``.
-    """
-    v = model_point()["prem_freq"]
-    if v not in data.freq_loading_table().index:                     # noqa: F821
-        raise ValueError("no frequency loading for prem_freq " + str(v))
-    return v
-
-
 def unterjaehrig_form():
     """Whether a sub-annual premium is ``echt`` or ``unecht``.
 

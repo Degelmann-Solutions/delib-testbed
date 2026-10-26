@@ -425,19 +425,6 @@ def premium_form():
     return v
 
 
-def prem_freq():
-    """The *Zahlweise*: ``jaehrlich``, ``halbjaehrlich``, ``vierteljaehrlich`` or ``monatlich``.
-
-    On an annual grid the frequency reaches the cash flows through the
-    *Ratenzahlungszuschlag* alone; the within-year timing of the instalments is not
-    modelled.  What is worth recording is the consequence the annual grid **cannot**
-    represent: § 168 VVG makes the *Versicherungsperiode* follow the *Zahlweise*, so a
-    monthly-paying contract is terminable monthly and its exits are not concentrated at
-    policy anniversaries.  This model books them at anniversaries and says so.
-    """
-    return model_point()["prem_freq"]
-
-
 def benefit_schedule_id():
     """The key into *benefit_schedule.csv* naming this policy's *Versicherungssumme* shape."""
     return model_point()["benefit_schedule_id"]

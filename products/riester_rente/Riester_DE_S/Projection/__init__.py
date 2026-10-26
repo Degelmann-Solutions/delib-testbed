@@ -438,14 +438,6 @@ def zulage_init_pp():
     return float(model_point()["zulage_init_pp"])
 
 
-def prem_freq():
-    """The payment frequency: annual, half_yearly, quarterly or monthly."""
-    v = model_point()["prem_freq"]
-    if v not in ("annual", "half_yearly", "quarterly", "monthly"):
-        raise ValueError("invalid prem_freq")
-    return v
-
-
 def prem_freq_load():
     """phi: the *Ratenzuschlag* multiplier for this policy's payment frequency.
 

@@ -272,17 +272,6 @@ def prem_form():
     return v
 
 
-def prem_freq():
-    """The payment frequency: annual, half_yearly, quarterly or monthly.
-
-    It selects the *Ratenzahlungszuschlag* in :func:`freq_load` and does nothing else.
-    """
-    v = model_point()["prem_freq"]
-    if v not in ("annual", "half_yearly", "quarterly", "monthly"):
-        raise ValueError("invalid prem_freq")
-    return v
-
-
 def av_pp_init():
     """The *Deckungskapital* per policy at ``t_start()``; 0 for new business."""
     return float(model_point()["av_pp_init"])

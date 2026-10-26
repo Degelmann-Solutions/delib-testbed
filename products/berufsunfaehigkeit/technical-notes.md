@@ -109,7 +109,7 @@ German ones, and each now carries a document that was read.
 | `leistungsdyn_rate` | float p.a. | *Leistungsdynamik*, escalation of the *BU-Rente* **in payment**, on each anniversary of onset | all at 0,02; 12 at 0,00 |
 | `premium_form` | enum {`level`, `dynamik`} | Level *Bruttobeitrag*, or *Beitragsdynamik* | 4 (`dynamik`) |
 | `beitragsdyn_rate` | float p.a. | Effective *Beitragsdynamik*, net of declined increases; 0 on the `level` form | 4 (0,03) |
-| `prem_mode` | enum {`monthly`,`quarterly`,`half_yearly`,`annual`} | Payment frequency; keys `freq_loading_table.csv` | 1 (monthly), 4 (annual), 5 (quarterly), 6 (half-yearly) |
+| `prem_freq` | enum {`monthly`,`quarterly`,`half_yearly`,`annual`} | Payment frequency; keys `freq_loading_table.csv` | 1 (monthly), 4 (annual), 5 (quarterly), 6 (half-yearly) |
 | `gross_prem_ann` | EUR p.a. | *Bruttobeitrag* override; **0 = derive by equivalence** | 13 (2 400,00) |
 | `beitragsverrechnung` | float | *Zahlbeitrag* / *Bruttobeitrag* | all at 0,70; 13 at 0,55 |
 | `rating_factor` | float | *Risikozuschlag* — a multiplier on the *Bruttobeitrag* **only** | 11 (1,50) |
@@ -352,7 +352,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | `mortality_table.csv` | `age` (18 – 70) | `mort_rate_actv`, `mort_rate_dis`, `provenance` |
 | `occupation_table.csv` | `berufsgruppe` (BG1 – BG5) | `occ_factor`, `label`, `provenance` |
 | `lapse_table.csv` | `policy_year` (1 – 6, the last being ultimate) | `lapse_rate`, `provenance` |
-| `freq_loading_table.csv` | `prem_mode` | `prem_mode_months`, `freq_load`, `provenance` |
+| `freq_loading_table.csv` | `prem_freq` | `prem_mode_months`, `freq_load`, `provenance` |
 
 ---
 
@@ -716,7 +716,7 @@ for any of them, and the two that would matter most are the two no source suppli
 **Configuration.** Model point 1, the anchor cell, in full: `status = aktiv`, `issue_age = 30`,
 `sex = F`, `berufsgruppe = BG1` (*Bürotätigkeit*, `occ_factor` 1,00), `bu_rente_mth = 1 500,00 €`,
 `cover_end_age = 67`, `benefit_end_age = 67`, `karenz_months = 0`, `leistungsdyn_rate = 0,02`,
-`premium_form = level`, `beitragsdyn_rate = 0,00`, `prem_mode = monthly` (`prem_mode_months = 1`,
+`premium_form = level`, `beitragsdyn_rate = 0,00`, `prem_freq = monthly` (`prem_mode_months = 1`,
 `freq_load = 1,05`), `gross_prem_ann = 0` so the *Bruttobeitrag* is **derived by equivalence**,
 `beitragsverrechnung = 0,70`, `rating_factor = 1,00`, `au_klausel = false`, `au_uplift = 1,00`,
 `wiedereingliederung_months = 6`, `duration_mth_init = 0`, `claim_duration_init = 0`. Hence

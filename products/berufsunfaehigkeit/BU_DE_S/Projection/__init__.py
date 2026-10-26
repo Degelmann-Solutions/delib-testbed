@@ -412,18 +412,6 @@ def beitragsdyn_rate():
     return float(model_point()["beitragsdyn_rate"])
 
 
-def prem_mode():
-    """The payment frequency: ``annual``, ``half_yearly``, ``quarterly`` or ``monthly``.
-
-    The key into *freq_loading_table.csv*, which supplies both the months between
-    instalments and the *Ratenzahlungszuschlag*.
-    """
-    v = model_point()["prem_mode"]
-    if v not in ("annual", "half_yearly", "quarterly", "monthly"):
-        raise ValueError("invalid prem_mode")
-    return v
-
-
 def prem_mode_months():
     """M: the number of months between premium instalments — 12, 6, 3 or 1.
 
@@ -433,7 +421,7 @@ def prem_mode_months():
     rather than smoothing it is the whole reason this model runs on a monthly grid.
     """
     return int(data.freq_loading_table().loc[                        # noqa: F821
-        prem_mode(), "prem_mode_months"])
+        prem_freq(), "prem_mode_months"])
 
 
 def freq_load():
@@ -445,7 +433,7 @@ def freq_load():
     is invisible in the *Brutto* / *Zahl* split.
     """
     return float(data.freq_loading_table().loc[                      # noqa: F821
-        prem_mode(), "freq_load"])
+        prem_freq(), "freq_load"])
 
 
 def gross_prem_ann():

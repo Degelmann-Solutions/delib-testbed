@@ -522,7 +522,7 @@ def freq_load():
     else, which is what justifies the instalment stream.
     """
     return float(data.freq_loading_table().at[                       # noqa: F821
-        model_point()["prem_freq"], "freq_load"])
+        prem_freq(), "freq_load"])
 
 
 def prem_pp_sched(k):

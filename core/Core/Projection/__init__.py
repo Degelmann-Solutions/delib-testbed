@@ -53,6 +53,17 @@ def karenz_months():
     return int(model_point()["karenz_months"])                       # noqa: F821
 
 
+def prem_freq():
+    """The payment frequency, a key into the product's *freq_loading_table.csv*.
+
+    Raises ``ValueError`` for a frequency the table has no row for.
+    """
+    v = model_point()["prem_freq"]                                   # noqa: F821
+    if v not in data.freq_loading_table().index:                     # noqa: F821
+        raise ValueError("no frequency loading for prem_freq " + str(v))
+    return v
+
+
 def issue_age():
     """The age at issue of the selected model point, from its ``issue_age`` column."""
     return int(model_point()["issue_age"])                           # noqa: F821

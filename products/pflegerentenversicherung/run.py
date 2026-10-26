@@ -22,7 +22,7 @@ print("Leistungsstaffel  PG1 {:.0%}  PG2 {:.0%}  PG3 {:.0%}  PG4 {:.0%}  PG5 {:.
     *[proj.benefit_pct(g) for g in range(1, 6)]))
 print("premium: mode = {} (m = {}), to age {}, model point value {:,.2f}, "
       "Risikozuschlag {:.2f}".format(
-          proj.prem_mode(), proj.prem_mode_months(), proj.prem_end_age(),
+          proj.prem_freq(), proj.prem_mode_months(), proj.prem_end_age(),
           proj.premium_mth(), proj.rating_factor()))
 print("options: Wartezeit {} m, Karenzzeit {} m, Leistungsdynamik {:.2%}, "
       "Beitragsrueckgewaehr {}, Stornoabzug {:.2%}".format(

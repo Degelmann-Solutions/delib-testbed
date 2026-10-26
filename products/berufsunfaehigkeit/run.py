@@ -21,7 +21,7 @@ print("model point {}: {} - {}{} {} ({}) - BU-Rente {:,.2f} EUR/month, "
           proj.cover_end_age(), proj.benefit_end_age()))
 print("premium form = {}   mode = {} (M = {}, freq_load {:.2f})   "
       "Karenzzeit = {} m   Beitragsverrechnung = {:.2f}   Risikozuschlag = {:.2f}".format(
-          proj.premium_form(), proj.prem_mode(), proj.prem_mode_months(),
+          proj.premium_form(), proj.prem_freq(), proj.prem_mode_months(),
           proj.freq_load(), proj.karenz_months(), proj.beitragsverrechnung(),
           proj.rating_factor()))
 print("Bruttobeitrag {:,.4f} EUR p.a.   instalment {:,.4f} EUR   "

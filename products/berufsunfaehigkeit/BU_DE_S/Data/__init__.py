@@ -159,23 +159,6 @@ def occupation_table():
         input_dir() / occupation_file, index_col="berufsgruppe")     # noqa: F821
 
 
-def freq_loading_table():
-    """The payment frequency table, from *freq_loading_table.csv*.
-
-    ``prem_mode_months`` is the number of months between instalments — 12, 6, 3, 1 — and
-    ``freq_load`` the *Ratenzahlungszuschlag* on the tariff premium, 1.00 / 1.02 / 1.03 /
-    1.05.  The loading scales the *Bruttobeitrag* and the *Beitragsverrechnung* together,
-    so the quoted *Zahlbeitrag* ratio is untouched by it.  **[std]**: the ladder is the
-    recalled German market convention and no retrieved document confirms it.
-
-    Override reason: the table keys the payment frequency as ``prem_mode`` and carries its
-    length in months, products/berufsunfaehigkeit/technical-notes.md, section (c)
-    Behavioural / experience assumptions (the modeller's view)
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_mode")      # noqa: F821
-
-
 # ---------------------------------------------------------------------------
 # References
 

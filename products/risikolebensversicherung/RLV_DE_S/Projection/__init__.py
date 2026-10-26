@@ -967,25 +967,6 @@ def rechnungszins():
     return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
 
 
-def disc_factor(y):
-    """v^y: the *Rechnungszins* discount factor to the start of **policy year** y, 0-based.
-
-    ``rechnungszins`` is the *Höchstrechnungszins* for new business from 1 January 2025,
-    **1,00 %**, raised from 0,25 % and the first increase since 1994.  It appears **only**
-    in the premium equivalence and in the first-order *Deckungskapital*.  **Nothing in
-    this library discounts a published cash flow**, and on this product the rate barely
-    matters in any event — the reserve is small and short-lived, which is a genuine
-    difference from every other delib model.
-
-    The argument is a **policy year and not a month**.  The first-order equivalence is an
-    annual construction — a *Höchstrechnungszins* is an annual rate and the *Bruttobeitrag*
-    it strikes is an annual amount — so it stays one on the monthly grid.  Re-striking it
-    month by month would move ``G`` and with it every figure the notes publish, while
-    changing nothing about the contract.
-    """
-    return (1.0 + rechnungszins()) ** -y                             # noqa: F821
-
-
 def pols_tariff(y):
     """p1(y): tariff survivorship entering **policy year** y — **mortality only**.
 

@@ -160,3 +160,8 @@ def disc_factor_mth(t):
     ``disc_factor(y)`` there bit for bit.
     """
     return (1.0 + rechnungszins()) ** (-t / 12.0)                    # noqa: F821
+
+
+def disc_factor(y):
+    """v^y: the *Rechnungszins* discount factor to the start of policy year y, ``(1 + i)^(-y)``."""
+    return (1.0 + rechnungszins()) ** -y                             # noqa: F821

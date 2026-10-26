@@ -113,7 +113,7 @@ y(t) = k + 1        policy_year(t)                         Contractual 1-based p
 SE                  sum_assured()                          Guaranteed Erlebensfallleistung
 SD                  sum_death()                            Guaranteed Todesfallleistung
 i1                  rechnungszins()                        First-order interest rate
-v1^k                disc_factor_1st(k)                     First-order discount factor
+v1^k                disc_factor(k)                         First-order discount factor
 kpx                 tpx_1st(k)                             First-order survival from issue
 q1(x)               mort_rate_at_age(x)                    First-order tariff rate at age
                                                            x - the unisex blend, which
@@ -668,16 +668,6 @@ def mort_rate_mth(t):
     return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
 
 
-def disc_factor_1st(k):
-    """v1^k: the first-order discount factor over k years, at :func:`rechnungszins`.
-
-    Used **only** by the pricing and reserving formulas.  The published cash flows are
-    undiscounted; discounting a liability is a valuation layer's job and this library does not
-    do it.
-    """
-    return (1.0 + rechnungszins()) ** (-k)
-
-
 def tpx_1st(k):
     """kpx: first-order survival from the issue age to ``issue_age() + k``.
 
@@ -799,7 +789,7 @@ def pv_death_1st():
     n = policy_term()
     x0 = issue_age()
     return sum_death() * sum(
-        disc_factor_1st(k + 1) * tpx_1st(k) * rating_factor()
+        disc_factor(k + 1) * tpx_1st(k) * rating_factor()
         * mort_rate_at_age(x0 + k) for k in range(n))
 
 
@@ -809,7 +799,7 @@ def pv_maturity_1st():
     ``SE * v1^n * npx``.  No *Risikozuschlag*: an extra-mortality loading may not make the
     survival benefit cheaper, so it stays out of both the discount and the survivorship.
     """
-    return sum_assured() * disc_factor_1st(policy_term()) * tpx_1st(policy_term())
+    return sum_assured() * disc_factor(policy_term()) * tpx_1st(policy_term())
 
 
 def pv_benefit_1st():
@@ -828,7 +818,7 @@ def ann_due_prem_1st():
     ``sum over k = 0 .. m-1 of v1^k * kpx``.  Exactly 1.0 on an *Einmalbeitrag*, which is why
     the single-premium branch needs no special case anywhere.
     """
-    return sum(disc_factor_1st(k) * tpx_1st(k) for k in range(prem_term()))
+    return sum(disc_factor(k) * tpx_1st(k) for k in range(prem_term()))
 
 
 def ann_due_term_1st():
@@ -838,7 +828,7 @@ def ann_due_term_1st():
     loading, which runs for the whole term rather than for the premium-paying period - the
     asymmetry that makes an *abgekürzte Beitragszahlungsdauer* dearer per premium.
     """
-    return sum(disc_factor_1st(k) * tpx_1st(k) for k in range(policy_term()))
+    return sum(disc_factor(k) * tpx_1st(k) for k in range(policy_term()))
 
 
 def prem_gross_pp():
@@ -929,9 +919,9 @@ def pv_benefit_fut(k):
     p = 1.0
     for j in range(rem):
         q = mort_rate_at_age(x + j)
-        death += disc_factor_1st(j + 1) * p * rating_factor() * q
+        death += disc_factor(j + 1) * p * rating_factor() * q
         p *= (1.0 - q)
-    return sum_death() * death + sum_assured() * disc_factor_1st(rem) * p
+    return sum_death() * death + sum_assured() * disc_factor(rem) * p
 
 
 def ann_due_prem_fut(k):
@@ -949,7 +939,7 @@ def ann_due_prem_fut(k):
     s = 0.0
     p = 1.0
     for j in range(rem):
-        s += disc_factor_1st(j) * p
+        s += disc_factor(j) * p
         p *= (1.0 - mort_rate_at_age(x + j))
     return s
 

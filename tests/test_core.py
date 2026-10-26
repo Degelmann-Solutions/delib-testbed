@@ -310,6 +310,8 @@ CORE_CELLS = {
                           "sofortrente": "derived"},
         "disc_factor_mth": {"berufsunfaehigkeit": "derived",
                             "pflegerentenversicherung": "derived"},
+        "disc_factor": {"kapitallebensversicherung": "derived",
+                        "risikolebensversicherung": "derived"},
     },
 }
 

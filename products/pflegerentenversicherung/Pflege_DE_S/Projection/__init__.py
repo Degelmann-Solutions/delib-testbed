@@ -74,6 +74,8 @@ pi_g                        benefit_pct(g)                  Leistungsstaffel per
 P                           premium_mth_pp()                Level monthly gross Beitrag
 (none)                      prem_net_level_pp()             Net level premium, A / U
 m                           prem_mode_months()              1, 3, 6, 12, or 0 for single
+(table)                     mort_rate_at_age(x)             Active table rate at age x
+(table)                     mort_rate_base(t)               Its value at age(t)
 q_A(x)                      mort_rate(t)                    Active annual death rate
 (none)                      mort_rate_mth(t)                The same rate, monthly
 mu_A(t)                     mort_force(t)                   Active force of mortality
@@ -509,9 +511,19 @@ def mort_rate(t):
     system.
 
     This is the rate of an **active** life.  In-care mortality is a multiple of its force
-    and is :func:`mort_rate_care`.
+    and is :func:`mort_rate_care`.  The table rate of the year is the core's
+    ``mort_rate_base(t)``, :func:`mort_rate_at_age` at ``age(t)``.
     """
-    return float(data.mort_table().at[(sex(), age(t)), "mort_rate"])  # noqa: F821
+    return mort_rate_base(t)
+
+
+def mort_rate_at_age(x):
+    """q_A(x): the table's annual **active-life** death rate at attained age x, by sex.
+
+    A lookup into *mort_table.csv* at ``(sex(), x)``; the core's ``mort_rate_base(t)`` reads
+    it at ``age(t)``.
+    """
+    return float(data.mort_table().at[(sex(), x), "mort_rate"])      # noqa: F821
 
 
 def mort_rate_mth(t):

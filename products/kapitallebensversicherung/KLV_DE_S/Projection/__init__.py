@@ -119,6 +119,7 @@ kpx                 pols_tariff(k)                         First-order survival 
 q1(x)               mort_rate_tariff_at_age(x)             First-order tariff rate at age
                                                            x - the unisex blend, which
                                                            prices and reserves
+(table)             mort_rate_at_age(x)                    Sex-specific table rate at age x
 (table)             mort_rate_base(t)                      Sex-specific annual table rate
 q(t)                mort_rate(t)                           Best-estimate annual mortality
 qm(t)               mort_rate_mth(t)                       The same, applied in month t
@@ -554,13 +555,13 @@ def mort_rate_tariff_at_age(x):
                         float(tbl.loc[("F", int(x)), "mort_rate_1st"]))
 
 
-def mort_rate_base(t):
-    """The **sex-specific annual** first-order table rate of month t's policy year.
+def mort_rate_at_age(x):
+    """The **sex-specific annual** first-order table rate at attained age x.
 
-    A lookup into *mort_table.csv* on this policy's own ``sex`` row at :func:`age`, and the
-    parent of the best-estimate decrement: ``mort_rate(t) = mort_rate_base(t) *
-    mort_be_factor``.  Flat across a policy year's twelve months, the attained age stepping
-    on the anniversary.
+    A lookup into *mort_table.csv* on this policy's own ``sex`` row, and through the core's
+    ``mort_rate_base(t) = mort_rate_at_age(age(t))`` the parent of the best-estimate
+    decrement: ``mort_rate(t) = mort_rate_base(t) * mort_be_factor``.  Flat across a policy
+    year's twelve months, the attained age stepping on the anniversary.
 
     It is **not** the rate the contract is priced or reserved on - that is
     :func:`mort_rate_tariff_at_age`, the unisex blend - and the two are deliberately different
@@ -569,7 +570,7 @@ def mort_rate_base(t):
     ``prem_gross_pp()`` is identical for two model points differing only in it.
     """
     return float(data.mort_table().loc[                              # noqa: F821
-        (sex(), int(age(t))), "mort_rate_1st"])
+        (sex(), int(x)), "mort_rate_1st"])
 
 
 def mort_be_factor():

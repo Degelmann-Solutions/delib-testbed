@@ -809,6 +809,9 @@ def mort_rate_base(t):
     a single visible factor.  Both are annual rates of the projection year the month falls
     in: the age and the calendar year step on the anniversary, so the twelve months of a
     year share one table rate.
+
+    Override reason: the first-order table is generational, read at the attained age and the
+    calendar year, products/basisrente/technical-notes.md:923
     """
     return mort_rate_at_age(age(t), calendar_year(t))
 

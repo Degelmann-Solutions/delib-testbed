@@ -191,6 +191,7 @@ i                           rechnungszins()                 Rechnungszins
 d(k)                        decl_rate(k)                    Declared laufende Verzinsung
 b(k)                        bonus_rate(k)                   max(0, d(k) - i)
 q*(t)                       mort_rate_guar(t)               First-order mortality, annual
+(base)                      mort_rate_base(t)               mort_rate_guar(t), the base of q
 q(t)                        mort_rate(t)                    Best-estimate mortality, annual
 q^m(t)                      mort_rate_mth(t)                The monthly rate applied
 (table)                     mort_rate_at_age(x)             Base-year table rate at age x
@@ -1041,6 +1042,15 @@ def mort_rate_guar(t):
     base_year = int(data.param_table().at["mort_base_year", "value"])  # noqa: F821
     return min(1.0, mort_rate_at_age(x)
                * (1.0 - improve_rate(x)) ** (calendar_year(t) - base_year))
+
+
+def mort_rate_base(t):
+    """The first-order rate the best estimate is loaded on, :func:`mort_rate_guar`.
+
+    Override reason: the best estimate is the trend-projected first-order (guaranteed)
+    table loaded by the factor, products/klassische_rentenversicherung/technical-notes.md:341
+    """
+    return mort_rate_guar(t)
 
 
 def mort_rate(t):

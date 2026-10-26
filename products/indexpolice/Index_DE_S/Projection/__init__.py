@@ -126,6 +126,8 @@ l(t)(1-q), l(t+1)          pols_if_at(t, timing)           BEF_DECR / AFT_DEATH 
                                                            AFT_LAPSE
 (year end)                 pols_surv_year_end(k)           Survivors the Indexjahr credit
                                                            is given to
+(table)                    mort_rate_at_age(x)             Table death rate at age x
+(table)                    mort_rate_base(t)               Its value at age(t)
 q_d(t)                     mort_rate(t)                    Annual death rate
 q^m_d(t)                   mort_rate_mth(t)                The monthly rate applied
 w_l(t)                     lapse_rate(t)                   Annual surrender rate applied
@@ -1081,9 +1083,19 @@ def mort_rate(t):
     at risk, so the rate decides when capital leaves and hardly at all how much.
 
     The **annual** rate, flat across a policy year because the attained age steps on the
-    anniversary; :func:`mort_rate_mth` is what the monthly recursion applies.
+    anniversary; :func:`mort_rate_mth` is what the monthly recursion applies.  The table rate
+    of the year is the core's ``mort_rate_base(t)``, :func:`mort_rate_at_age` at ``age(t)``.
     """
-    return float(data.mort_table().loc[(sex(), age(t)), "qx"])       # noqa: F821
+    return mort_rate_base(t)
+
+
+def mort_rate_at_age(x):
+    """``q_d(x)``: the table's **annual** death rate at attained age x, for the model point's sex.
+
+    A lookup into *mort_table.csv* at ``(sex(), x)``; the core's ``mort_rate_base(t)`` reads
+    it at ``age(t)``.
+    """
+    return float(data.mort_table().loc[(sex(), x), "qx"])            # noqa: F821
 
 
 def mort_rate_mth(t):

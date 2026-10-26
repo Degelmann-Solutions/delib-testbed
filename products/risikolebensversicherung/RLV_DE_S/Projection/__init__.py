@@ -547,6 +547,10 @@ def mort_rate_base(t):
     inflates the cross term and is a listed pitfall.  The independence assumption
     understates the true first-death rate for a couple sharing a household, a vehicle and
     a lifestyle, and no German figure bounds the understatement.
+
+    Override reason: the table rate is read on sex and smoker status, and for two lives
+    combined to the first-death rate before loading,
+    products/risikolebensversicherung/model.md:494
     """
     q_a = mort_rate_at_age(sex(), smoker(), age(t))
     if lives() == 1:

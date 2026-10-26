@@ -662,7 +662,8 @@ def mort_rate(t):
 
     The basis **switches at ``t_conv()``**, and the two adjustments run in opposite
     directions because the direction of prudence forks by product.  In accumulation the
-    rate is ``mort_rate_at_age(x(t)) x mort_be_factor`` with the factor at 0.80: a
+    rate is ``mort_rate_base(t) x mort_be_factor``, the core's ``mort_rate_at_age(x(t))``,
+    with the factor at 0.80: a
     first-order *death* table assumes mortality higher than expected, so the best estimate
     sits below it.  In payout it is ``annuity_mort_rate(x(t), tau(t)) x
     annuity_mort_be_factor`` with the factor at 1.15: a first-order *annuity* table assumes
@@ -676,7 +677,7 @@ def mort_rate(t):
     if age(t) >= omega_age() - 1:
         return 1.0
     if is_accum(t):
-        return min(1.0, mort_rate_at_age(age(t)) * mort_be_factor())
+        return min(1.0, mort_rate_base(t) * mort_be_factor())
     return min(1.0, annuity_mort_rate(age(t), calendar_year(t))
                * annuity_mort_be_factor)                             # noqa: F821
 

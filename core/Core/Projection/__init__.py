@@ -279,6 +279,16 @@ def mort_be_factor():
     return 1.0
 
 
+def mort_rate_base(t):
+    """The annual table death rate in month t before the best-estimate factor.
+
+    ``mort_rate_at_age(age(t))``: reads the product's ``mort_rate_at_age``, its table rate at
+    an attained age; a product without one inherits this cell unused.  Flat across a policy
+    year, the attained age stepping on the anniversary.
+    """
+    return mort_rate_at_age(age(t))                                  # noqa: F821
+
+
 def rechnungszins():
     """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
 

@@ -497,6 +497,15 @@ CORE_CELLS = {
                            "klassische_rentenversicherung": "override",
                            "riester_rente": "override",
                            "risikolebensversicherung": "derived"},
+        "mort_rate_base": {"basisrente": "override",
+                           "berufsunfaehigkeit": "derived",
+                           "fondsgebundene_rentenversicherung": "override",
+                           "indexpolice": "derived",
+                           "kapitallebensversicherung": "derived",
+                           "klassische_rentenversicherung": "override",
+                           "pflegerentenversicherung": "derived",
+                           "riester_rente": "derived",
+                           "risikolebensversicherung": "override"},
     },
 }
 

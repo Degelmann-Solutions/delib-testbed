@@ -127,7 +127,7 @@ alpha, beta, gamma  alpha_rate(), beta_rate(),             Zillmersatz; premium 
 phi                 prem_freq_load()                       Ratenzahlungszuschlag
 (none)              instalments()                          Payments a year
 (pricing)           pv_death_1st(), pv_maturity_1st(),     The equivalence's parts
-                    pv_benefit_1st(), ann_due_prem_1st(),
+                    pv_benefit_1st(), tariff_annuity(),
                     ann_due_term_1st()
 B                   prem_gross_pp()                        Annual Bruttobeitrag before phi
 BS                  beitragssumme()                        Beitragssumme = B x m
@@ -217,7 +217,7 @@ no fund to earn on, and worth saying because it looks like a bug.
 issue and stays negative for several years. :func:`res_min_pp` is the § 169 Abs. 3 VVG floor,
 the same net reserve with the acquisition cost amortised **straight-line over the first five
 contract years** rather than over the whole premium term. Because
-``ann_due_prem_fut(k) / ann_due_prem_1st()`` falls roughly linearly over ``m`` years while
+``ann_due_prem_fut(k) / tariff_annuity()`` falls roughly linearly over ``m`` years while
 ``max(0, 1 - k/5)`` reaches zero after five, the floor **normally binds** on a long
 *gezillmert* contract, with equality only at durations 0 and ``m``. :func:`res_guar_pp` is
 their maximum, floored at zero, struck at the **end** of policy year ``k`` because that is
@@ -799,15 +799,6 @@ def pv_benefit_1st():
     return pv_death_1st() + pv_maturity_1st()
 
 
-def ann_due_prem_1st():
-    """The first-order annuity-due factor over the *Beitragszahlungsdauer*, per policy.
-
-    ``sum over k = 0 .. m-1 of v1^k * kpx``.  Exactly 1.0 on an *Einmalbeitrag*, which is why
-    the single-premium branch needs no special case anywhere.
-    """
-    return sum(disc_factor(k) * pols_tariff(k) for k in range(prem_term()))
-
-
 def ann_due_term_1st():
     """The first-order annuity-due factor over the *Versicherungsdauer*, per policy.
 
@@ -835,7 +826,7 @@ def prem_gross_pp():
     differing only in :func:`sex`.
     """
     return ((pv_benefit_1st() + gamma_rate() * sum_assured() * ann_due_term_1st())
-            / ((1.0 - beta_rate()) * ann_due_prem_1st()
+            / ((1.0 - beta_rate()) * tariff_annuity()
                - alpha_rate() * prem_term()))
 
 
@@ -862,24 +853,24 @@ def alpha_cost():
 
 
 def prem_net_level_pp():
-    """P^n: the net level premium, ``pv_benefit_1st() / ann_due_prem_1st()``.
+    """P^n: the net level premium, ``pv_benefit_1st() / tariff_annuity()``.
 
     The pure benefit premium with no loading of any kind.  It is a **pricing quantity that
     never becomes a cash flow**: what is collected is :func:`prem_paid_pp`.  It is the premium
     the net reserve :func:`res_net_pp` is struck on.
     """
-    return pv_benefit_1st() / ann_due_prem_1st()
+    return pv_benefit_1st() / tariff_annuity()
 
 
 def prem_zill_pp():
-    """P^Z: the Zillmer premium, ``prem_net_level_pp() + alpha_cost() / ann_due_prem_1st()``.
+    """P^Z: the Zillmer premium, ``prem_net_level_pp() + alpha_cost() / tariff_annuity()``.
 
     The net premium plus the level annual charge that amortises the zillmered acquisition cost
     over the *Beitragszahlungsdauer*.  It is the premium the Zillmer reserve rolls forward on,
     which is why :func:`check_res_roll_fwd` reads it and not :func:`prem_charged_pp`: one is a
     first-order reserving quantity and the other is a cash flow.
     """
-    return prem_net_level_pp() + alpha_cost() / ann_due_prem_1st()
+    return prem_net_level_pp() + alpha_cost() / tariff_annuity()
 
 
 # --- the Deckungskapital ---------------------------------------------------
@@ -949,7 +940,7 @@ def res_net_pp(k):
 def res_zill_pp(k):
     """V^Z: the *gezillmerte Deckungskapital* at the start of policy year k, per policy.
 
-    ``res_net_pp(k) - alpha_cost() * ann_due_prem_fut(k) / ann_due_prem_1st()``: the net
+    ``res_net_pp(k) - alpha_cost() * ann_due_prem_fut(k) / tariff_annuity()``: the net
     reserve less the part of the acquisition cost the future premiums have yet to repay.
 
     **It is exactly ``-alpha_cost()`` at ``k = 0``**, which on the anchor cell is
@@ -962,7 +953,7 @@ def res_zill_pp(k):
     ``zillmer_on = 0`` it coincides with :func:`res_net_pp`.
     """
     return (res_net_pp(k)
-            - alpha_cost() * ann_due_prem_fut(k) / ann_due_prem_1st())
+            - alpha_cost() * ann_due_prem_fut(k) / tariff_annuity())
 
 
 def res_min_pp(k):
@@ -2178,7 +2169,7 @@ def check_equivalence_resid(t):
     the acquisition cost is in the premium whether or not the contract is zillmered, which is
     why a *gezillmerte* and a non-*gezillmerte* edition of one tariff cost the same.
     """
-    return (prem_gross_pp() * (1.0 - beta_rate()) * ann_due_prem_1st()
+    return (prem_gross_pp() * (1.0 - beta_rate()) * tariff_annuity()
             - alpha_rate() * beitragssumme()
             - pv_benefit_1st()
             - gamma_rate() * sum_assured() * ann_due_term_1st())

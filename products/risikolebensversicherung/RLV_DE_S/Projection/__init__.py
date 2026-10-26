@@ -971,17 +971,6 @@ def rechnungszins():
     return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
 
 
-def tariff_annuity():
-    """ae: the premium annuity-due over the paying term, ``sum v^y p1(y)``.
-
-    ``y = 0 .. prem_term() - 1``, the *Beitragszahlungsdauer* being stated in whole years.
-    Equal to 1 where ``prem_term = 1``, which is why the ``einmal`` form falls out of the
-    same equivalence rather than needing its own.
-    """
-    return sum(disc_factor(y) * pols_tariff(y)
-               for y in range(prem_term()))
-
-
 def tariff_claims_pv():
     """A: the actuarial present value of the death benefits, on first-order bases.
 

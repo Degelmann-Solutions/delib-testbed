@@ -186,3 +186,13 @@ def pols_tariff(y):
     if y <= 0:
         return 1.0
     return pols_tariff(y - 1) * (1.0 - mort_rate_tariff(12 * (y - 1)))  # noqa: F821
+
+
+def tariff_annuity():
+    """ae: the premium annuity-due over the paying term, ``sum v^y p1(y)``, ``y < prem_term()``.
+
+    Equal to 1 where ``prem_term() = 1``, so a single premium falls out of the same
+    equivalence.
+    """
+    return sum(disc_factor(y) * pols_tariff(y)                       # noqa: F821
+               for y in range(prem_term()))                          # noqa: F821

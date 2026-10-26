@@ -439,17 +439,17 @@ pols_tariff(k)    = Π_{j=0}^{k-1} ( 1 − q₁(x_0 + j) ),  pols_tariff(0) = 1
 pv_death_1st      = SD · Σ_{k=0}^{n-1} v₁^(k+1) · pols_tariff(k) · q₁(x_0 + k)
 pv_maturity_1st   = SE · v₁^n · pols_tariff(n)
 pv_benefit_1st    = pv_death_1st + pv_maturity_1st
-ann_due_prem_1st  = Σ_{k=0}^{m-1} v₁^k · pols_tariff(k)
+tariff_annuity    = Σ_{k=0}^{m-1} v₁^k · pols_tariff(k)
 ann_due_term_1st  = Σ_{k=0}^{n-1} v₁^k · pols_tariff(k)
 ```
 
 The *Bruttobeitrag* is struck by equivalence, which is linear in `B` because `BS = B · m`:
 
 ```
-B · ann_due_prem_1st = pv_benefit_1st + α · B · m
-                       + β · B · ann_due_prem_1st + γ · SE · ann_due_term_1st
+B · tariff_annuity = pv_benefit_1st + α · B · m
+                     + β · B · tariff_annuity + γ · SE · ann_due_term_1st
 
-⇒  prem_gross_pp = ( pv_benefit_1st + γ · SE · ann_due_term_1st ) / ( (1 − β) · ann_due_prem_1st − α · m )
+⇒  prem_gross_pp = ( pv_benefit_1st + γ · SE · ann_due_term_1st ) / ( (1 − β) · tariff_annuity − α · m )
 ```
 
 `check_equivalence()` asserts that identity closes. **Note that the acquisition cost `α · BS` is in
@@ -465,11 +465,11 @@ Then the two reserving premiums, and the zillmered cost:
 ```
 beitragssumme     = prem_gross_pp · m
 alpha_cost        = zillmer_on · alpha_rate · beitragssumme
-prem_net_level_pp = pv_benefit_1st / ann_due_prem_1st
-prem_zill_pp      = prem_net_level_pp + alpha_cost / ann_due_prem_1st
+prem_net_level_pp = pv_benefit_1st / tariff_annuity
+prem_zill_pp      = prem_net_level_pp + alpha_cost / tariff_annuity
 ```
 
-**Single premium.** `prem_term = 1` gives `ann_due_prem_1st = 1` and `BS = B`, so the 25 ‰
+**Single premium.** `prem_term = 1` gives `tariff_annuity = 1` and `BS = B`, so the 25 ‰
 *Zillmersatz* buys almost nothing and the § 169 floor is slack from the first anniversary. That is
 the correct answer, not a degenerate case.
 
@@ -483,7 +483,7 @@ pv_benefit_fut(t)    = SD · Σ_{j=0}^{n-k-1} v₁^(j+1) · jp(x(t)) · q₁(x(t
 ann_due_prem_fut(t)  = Σ_{j=0}^{max(0, m-k)-1} v₁^j · jp(x(t))
 
 res_net_pp(t)   = pv_benefit_fut(t) − prem_net_level_pp · ann_due_prem_fut(t)
-res_zill_pp(t)  = res_net_pp(t) − alpha_cost · ann_due_prem_fut(t) / ann_due_prem_1st
+res_zill_pp(t)  = res_net_pp(t) − alpha_cost · ann_due_prem_fut(t) / tariff_annuity
 res_min_pp(t)   = res_net_pp(t) − alpha_cost · max(0, 1 − t / 5)
 res_pp(t)       = res_zill_pp(t)                       while premium-paying
                 = bfz_si_pp · pu_single_prem(t)        once paid-up
@@ -498,7 +498,7 @@ the reserve is positive from the first anniversary (−1 252,53 € opening, +57
 anchor cell). Under the pre-2015 40 ‰ ceiling [R7] [REG-R16], or on a long term with a short
 *Beitragszahlungsdauer*, it is negative for longer. **`res_min_pp` is that floor**, on the
 straight-line reading of the five-year spreading. And **the floor normally binds**:
-`ann_due_prem_fut(t)/ann_due_prem_1st` falls roughly linearly over `m` years while `max(0, 1 − k/5)`
+`ann_due_prem_fut(t)/tariff_annuity` falls roughly linearly over `m` years while `max(0, 1 − k/5)`
 reaches zero after five, so `res_min_pp(t) ≥ res_zill_pp(t)` at every duration on a long *gezillmert*
 contract, with equality only at durations 0 and `m`. **A model publishing only the Zillmer reserve as
 the surrender value understates it at essentially every duration; one publishing only the floor loses
@@ -685,7 +685,7 @@ on every model point.
 | `check_surplus_roll_fwd()` | The active surplus vehicle's ledger closes, per **policy year**: `av_sur_pp(k+1) == av_sur_pp(k)·(1 + a(k)) + C(k)` under `ansammlung`, the bonus-purchase identity under `bonus`, and `prem_offset_pp(k) == min(prem_charged_pp(k), C(k−1))` under `beitragsverrechnung`, with `C(k−1)` read as zero at `k = k_start` |
 | `check_surr_floor()` | § 169 Abs. 3, per **policy year**: `res_guar_pp(k) ≥ res_zill_pp(k+1)`, `≥ res_min_pp(k+1)` and `≥ 0`, and the *Rückkaufswert* at that year's anniversary `surr_value_pp(12k + 11) ≥ 0` |
 | `check_surr_nonneg()` | The *Rückkaufswert* is non-negative in **every month**. Added with the monthly grid, which quotes one in the eleven months of each policy year the annual grid never priced — months paid on the **last** anniversary's § 169 value, which is a different and smaller number |
-| `check_equivalence()` | The first-order pricing equivalence closes: `B·(1 − β)·ann_due_prem_1st − α·BS == pv_benefit_1st + γ·SE·ann_due_term_1st` |
+| `check_equivalence()` | The first-order pricing equivalence closes: `B·(1 − β)·tariff_annuity − α·BS == pv_benefit_1st + γ·SE·ann_due_term_1st` |
 | `check_rechnungszins_cap()`, `check_zillmer_cap()` | The two DeckRV cohort ceilings: `rechnungszins ≤ hoechstrechnungszins(issue_year)` under § 2 [REG-R14] [REG-R15], and `alpha_rate ≤ hoechstzillmersatz(issue_year)` with `alpha_cost ≤ hoechstzillmersatz · beitragssumme` under § 4 [R7] [REG-R16] |
 
 The last two are parameter invariants rather than roll-forward identities, and they live here rather
@@ -981,7 +981,7 @@ All amounts in euros; `pols_if` to six decimals, cash flows and balances to the 
 **The derived tariff.** The equivalence gives a *Bruttobeitrag* of **2 004,04 €** a year, a
 *Beitragssumme* of **50 101,05 €**, `alpha_cost` **1 252,53 €**, `prem_net_level_pp`
 **1 811,15 €** and `prem_zill_pp` **1 868,92 €**, on `pv_death_1st` = 3 611,698493 €,
-`pv_maturity_1st` = 35 655,282574 € and `ann_due_prem_1st` = `ann_due_term_1st` = 21,680698 —
+`pv_maturity_1st` = 35 655,282574 € and `tariff_annuity` = `ann_due_term_1st` = 21,680698 —
 the two annuities coinciding because the *Beitragszahlungsdauer* is the whole
 *Versicherungsdauer*.
 
@@ -1153,7 +1153,7 @@ policy year 12, 1 353,591433 − 78,012539 − 0 − 876,440599 − 40,954555 �
 Model point 2 is the anchor cell with `prem_term` changed from 25 to 1 and nothing else, so it
 isolates the second premium form. The single premium is **43 273,05 €**; the *Beitragssumme* is
 that same amount, so the 25 ‰ *Zillmersatz* buys only 1 081,83 € of zillmered cost against
-1 252,53 € on the level-premium form, and `ann_due_prem_1st` collapses to exactly 1.
+1 252,53 € on the level-premium form, and `tariff_annuity` collapses to exactly 1.
 
 | policy year | pols_if | premiums | claims_death | claims_maturity | claims_lapse | expenses | commissions | net_cf |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|

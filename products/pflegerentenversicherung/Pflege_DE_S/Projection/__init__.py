@@ -142,7 +142,7 @@ v**t                        disc_factor_mth(t)              (1 + i)^(-t/12)
 (first order)               tar_pols_prem(t)                Tariff premium-paying units
 (first order)               tar_pols_death(t)               Tariff deaths
 A                           epv_benefits()                  EPV of the Pflegerente
-U                           epv_prem_units()                EPV of premium, in units of P
+U                           tariff_annuity()                EPV of premium, in units of P
 G                           epv_admin()                     EPV of per-policy admin
 C                           epv_claim_expense()             EPV of claims cost
 ==========================  ==============================  ==========================
@@ -1680,12 +1680,16 @@ def epv_benefits():
     return total
 
 
-def epv_prem_units():
+def tariff_annuity():
     """U: the expected present value of the premium stream **in units of P**.
 
     ``sum_{t : premium_due(t)} v**t m tar_pols_prem(t)``.  Dividing the benefit and expense
     values by this is what strikes the level premium, so it is the annuity factor of the
     equivalence and the quantity a reader recomputes to check the premium by hand.
+
+    Override reason: the premium is monthly, so the annuity sums the premium months on the
+    multi-state tariff ledger ``tar_pols_prem`` in units of the monthly premium, not an
+    annual annuity-due, products/pflegerentenversicherung/technical-notes.md:617
     """
     m = prem_mode_months()
     mult = m if m > 0 else 1
@@ -1722,14 +1726,14 @@ def epv_claim_expense():
 
 
 def prem_net_level_pp():
-    """The **net** level premium: ``epv_benefits() / epv_prem_units()``.
+    """The **net** level premium: ``epv_benefits() / tariff_annuity()``.
 
     Benefits only — no expense loading, no *Zillmerung*, no *Risikozuschlag*.  Published
     beside :func:`premium_mth_pp` because the gap between the two is the whole of the
     expense loading, and a reader who wants to know what the biometrics alone cost reads it
     here.
     """
-    return epv_benefits() / epv_prem_units()
+    return epv_benefits() / tariff_annuity()
 
 
 def premium_mth_pp():
@@ -1741,7 +1745,7 @@ def premium_mth_pp():
 
         P U = A + P D1 + P a1 + beta P U + G + C
 
-    where ``A`` is :func:`epv_benefits`, ``U`` :func:`epv_prem_units`, ``G``
+    where ``A`` is :func:`epv_benefits`, ``U`` :func:`tariff_annuity`, ``G``
     :func:`epv_admin`, ``C`` :func:`epv_claim_expense`, ``beta`` the premium-related
     administration percentage, ``a1`` the *Zillmerung* allowance in units of ``P`` and
     ``D1`` the *Beitragsrückgewähr* value in units of ``P``.  Everything that scales with
@@ -1780,7 +1784,7 @@ def premium_mth_pp():
         for t in range(proj_len()):
             d1 += disc_factor_mth(t) * prem_units_at(t) * tar_pols_death(t)
     numerator = epv_benefits() + epv_admin() + epv_claim_expense()
-    denominator = epv_prem_units() * (1.0 - admin_pct) - d1 - a1
+    denominator = tariff_annuity() * (1.0 - admin_pct) - d1 - a1
     return rating_factor() * numerator / denominator
 
 
@@ -2017,7 +2021,7 @@ def check_prem_equiv():
     tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
     if premium_mth() > 0.0:
         return True
-    scale = max(premium_mth_pp() / rating_factor() * epv_prem_units(), 1.0)
+    scale = max(premium_mth_pp() / rating_factor() * tariff_annuity(), 1.0)
     total = sum(check_prem_equiv_resid(t) for t in range(proj_len()))
     return abs(total) <= tol * scale
 

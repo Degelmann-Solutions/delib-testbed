@@ -163,7 +163,7 @@ defined at anniversaries and the monthly frame does not interpolate it.
 Schluss der laufenden Versicherungsperiode* and not at the cancellation date [R2], and it
 takes the maximum because the *Mindestrückkaufswert* is a floor on the **value**. On a
 long *gezillmert* contract the floor **normally binds**: `ann_due_prem_fut(k) /
-ann_due_prem_1st()` falls roughly linearly over `m` years while `max(0, 1 − k/5)` reaches
+tariff_annuity()` falls roughly linearly over `m` years while `max(0, 1 − k/5)` reaches
 zero after five, so the two coincide only at durations 0 and `m`. `res_guar_pp(11)` — the
 value struck at the end of the twelfth policy year, so the reserves read at `k` = 12 — is the
 floor's 22 413,46 € against a Zillmer reserve of 21 722,40 €: 691,06 € the customer would lose to

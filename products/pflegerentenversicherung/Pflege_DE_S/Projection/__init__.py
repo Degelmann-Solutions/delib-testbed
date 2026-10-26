@@ -126,7 +126,7 @@ c x annuity payments        claim_expenses(t)               Per-annuity-payment 
 net_cf(t)                   net_cf(t)                       Net cash flow, income positive
 -net_cf(t)                  liability_cf(t)                 The same stream, outgo positive
 i                           rechnungszins()                 Technical rate, pricing only
-v**t                        disc_factor(t)                  (1 + i)^(-t/12)
+v**t                        disc_factor_mth(t)              (1 + i)^(-t/12)
 (first order)               tar_mort_rate(t)                Blended, margined active q
 (first order)               tar_mort_rate_care(t, g)        Blended, margined in-care q
 (first order)               tar_inc_rate(t)                 Blended, margined incidence
@@ -1385,16 +1385,6 @@ def liability_cf(t):
     return -net_cf(t)
 
 
-def disc_factor(t):
-    """v**t: ``(1 + rechnungszins())**(-t/12)``, the monthly discount factor.
-
-    **Used only by the pricing engine.**  The projection publishes undiscounted cash flows
-    and this cells never touches them; it exists so that the equivalence the *Beitrag* is
-    struck by is visible in the model rather than only in the notes.
-    """
-    return (1.0 + rechnungszins()) ** (-t / 12.0)
-
-
 def tar_mort_rate(t):
     """The first-order active-life death rate: blended across the sexes, margined.
 
@@ -1686,7 +1676,7 @@ def epv_benefits():
             if pct > 0.0:
                 row += pct * tar_esc_pg(t, g)
         if row:
-            total += disc_factor(t) * rente_mth() * row
+            total += disc_factor_mth(t) * rente_mth() * row
     return total
 
 
@@ -1702,7 +1692,7 @@ def epv_prem_units():
     total = 0.0
     for t in range(proj_len()):
         if premium_due(t):
-            total += disc_factor(t) * mult * tar_pols_prem(t)
+            total += disc_factor_mth(t) * mult * tar_pols_prem(t)
     return total
 
 
@@ -1712,7 +1702,7 @@ def epv_admin():
         "admin_mth_pp", "value"])
     total = 0.0
     for t in range(proj_len()):
-        total += disc_factor(t) * admin_pp * expense_infl_factor(t) * tar_pols_if(t)
+        total += disc_factor_mth(t) * admin_pp * expense_infl_factor(t) * tar_pols_if(t)
     return total
 
 
@@ -1727,7 +1717,7 @@ def epv_claim_expense():
             if waiver_flag(g):
                 row += tar_pols_pg(t, g)
         if row:
-            total += disc_factor(t) * per_payment * expense_infl_factor(t) * row
+            total += disc_factor_mth(t) * per_payment * expense_infl_factor(t) * row
     return total
 
 
@@ -1788,7 +1778,7 @@ def premium_mth_pp():
     d1 = 0.0
     if beitragsrueckgewaehr():
         for t in range(proj_len()):
-            d1 += disc_factor(t) * prem_units_at(t) * tar_pols_death(t)
+            d1 += disc_factor_mth(t) * prem_units_at(t) * tar_pols_death(t)
     numerator = epv_benefits() + epv_admin() + epv_claim_expense()
     denominator = epv_prem_units() * (1.0 - admin_pct) - d1 - a1
     return rating_factor() * numerator / denominator
@@ -2013,7 +2003,7 @@ def check_prem_equiv_resid(t):
             years = max(0, min(prem_end_age(), cap) - issue_age())
             exp_leg += p0 * permille * 12.0 * years
 
-    return disc_factor(t) * (prem_leg - ben_leg - exp_leg)
+    return disc_factor_mth(t) * (prem_leg - ben_leg - exp_leg)
 
 
 def check_prem_equiv():

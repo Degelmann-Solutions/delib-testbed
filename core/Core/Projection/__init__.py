@@ -151,3 +151,12 @@ def rechnungszins():
     carries a stack of guarantee vintages and the rate is a model-point attribute.
     """
     return float(model_point()["rechnungszins"])                     # noqa: F821
+
+
+def disc_factor_mth(t):
+    """v^(t/12): the *Rechnungszins* discount factor to month t, ``(1 + i)^(-t/12)``.
+
+    On a year start ``t = 12y`` the exponent is exactly ``-y``, so it equals
+    ``disc_factor(y)`` there bit for bit.
+    """
+    return (1.0 + rechnungszins()) ** (-t / 12.0)                    # noqa: F821

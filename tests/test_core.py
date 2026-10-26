@@ -308,6 +308,8 @@ CORE_CELLS = {
                           "riester_rente": "derived",
                           "risikolebensversicherung": "override",
                           "sofortrente": "derived"},
+        "disc_factor_mth": {"berufsunfaehigkeit": "derived",
+                            "pflegerentenversicherung": "derived"},
     },
 }
 

@@ -106,7 +106,7 @@ q^i_m(t, z)                mort_rate_dis_mth(t, z)         The same, monthly
 w(y)                       lapse_rate(t)                   Annual Stornoquote
 w_m(t)                     lapse_rate_mth(t)               The same, monthly
 lambda_i .. lambda_a       inc_load_first ..               The four first-order loads
-v^t                        disc_first(t)                   Rechnungszins discount factor
+v^t                        disc_factor_mth(t)              Rechnungszins discount factor
 l_a(t)                     pols_actv(t)                    Aktiv, start of month t
 l_d(t, z)                  pols_dis_dur(t, z)              Leistungspflichtig at duration z
 (sum over z)               pols_dis(t)                     The whole disabled ledger
@@ -172,7 +172,7 @@ same.
 .. rubric:: The premium is derived, not read
 
 No German BU rate card exists in this library's source corpus, so the *Bruttobeitrag* is
-an **output of a stated first-order basis**. With ``d(s) = disc_first(s)``, the
+an **output of a stated first-order basis**. With ``d(s) = disc_factor_mth(s)``, the
 equivalence is
 
     P x PV_prem = PV_rente + PV_wgh + PV_cost + PV_admin
@@ -973,18 +973,6 @@ def rechnungszins():
     return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
 
 
-def disc_first(s):
-    """v^s: the *Rechnungszins* discount factor at month s, ``(1 + rechnungszins)^(-s/12)``.
-
-    Used **only** inside the equivalence that fixes :func:`prem_gross_level_pp`, and never
-    to discount a published cash flow: this library projects gross liability cash flows
-    **undiscounted**, and the valuation layers that discount them are cited rather than
-    reproduced.  The rate is the *Hoechstrechnungszins* for contracts written from
-    1 January 2025, and both the figure and its effective date are ``[unverified]``.
-    """
-    return (1.0 + rechnungszins()) ** (-s / 12.0)                    # noqa: F821
-
-
 # --- benefit and premium amounts ---
 
 def dyn_factor(t):
@@ -1304,13 +1292,13 @@ def pols_if_first(s):
 def pv_prem_unit_first():
     """PV_prem: the present value of 1 EUR p.a. of *Bruttobeitrag*, first-order basis.
 
-    ``sum over s of disc_first(s) x dyn_factor_first(s) x pols_prem_first(s) / 12``:
+    ``sum over s of disc_factor_mth(s) x dyn_factor_first(s) x pols_prem_first(s) / 12``:
     a twelfth of the annual premium in **every** month of the pricing run, weighted by the
     premium-paying population.  The *Ratenzahlungszuschlag* is deliberately **not** in it,
     which is what makes ``freq_load`` a genuine loading on the tariff premium rather than
     a re-expression of it.
     """
-    return sum(disc_first(s) * dyn_factor_first(s) * pols_prem_first(s) / 12.0
+    return sum(disc_factor_mth(s) * dyn_factor_first(s) * pols_prem_first(s) / 12.0
                for s in range(0, first_len()))
 
 
@@ -1319,7 +1307,7 @@ def pv_rente_first():
 
     The disabled cohorts past the *Karenzzeit* plus **all three run-off slots**, each
     already carried as a population times its own *BU-Rente*, discounted at
-    :func:`disc_first` and zero from the *Leistungsendalter*.  Dropping the run-off from
+    :func:`disc_factor_mth` and zero from the *Leistungsendalter*.  Dropping the run-off from
     this sum understates the premium by the whole of the § 174 tail.
     """
     total = 0.0
@@ -1327,7 +1315,7 @@ def pv_rente_first():
         if age_first(s) >= benefit_end_age():
             continue
         val = dis_cohorts_first(s)[1]
-        total += disc_first(s) * (sum(val[karenz_months():])
+        total += disc_factor_mth(s) * (sum(val[karenz_months():])
                                   + sum(runoff_cohorts_first(s)[1]))
     return total
 
@@ -1341,7 +1329,7 @@ def pv_wiedereingl_first():
     """
     if wiedereingliederung_months() == 0:
         return 0.0
-    return sum(disc_first(s) * wiedereingliederung_months()
+    return sum(disc_factor_mth(s) * wiedereingliederung_months()
                * runoff_val_first(s, runoff_months)                  # noqa: F821
                * (1.0 - mort_rate_first_mth(s))
                for s in range(0, first_len()))
@@ -1358,11 +1346,11 @@ def pv_claim_cost_first():
     """
     total = 0.0
     for s in range(0, first_len()):
-        total += disc_first(s) * claim_assess_cost * pols_inception_first(s)  # noqa: F821
+        total += disc_factor_mth(s) * claim_assess_cost * pols_inception_first(s)  # noqa: F821
         if age_first(s) < benefit_end_age():
             pols = dis_cohorts_first(s)[0]
             paying = sum(pols[karenz_months():]) + pols_runoff_first(s)
-            total += disc_first(s) * claim_maint_cost_mth * paying   # noqa: F821
+            total += disc_factor_mth(s) * claim_maint_cost_mth * paying   # noqa: F821
     return total
 
 
@@ -1374,7 +1362,7 @@ def pv_admin_first():
     administration loading is not here — it is proportional to the premium, so it stays on
     the left-hand side of the equivalence and reduces the denominator instead.
     """
-    return sum(disc_first(s) * admin_flat_ann / 12.0 * pols_if_first(s)  # noqa: F821
+    return sum(disc_factor_mth(s) * admin_flat_ann / 12.0 * pols_if_first(s)  # noqa: F821
                for s in range(0, first_len()))
 
 

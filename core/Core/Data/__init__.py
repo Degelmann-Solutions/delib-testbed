@@ -69,11 +69,16 @@ def lapse_table():
         input_dir() / lapse_file, index_col=lapse_table_index())     # noqa: F821
 
 
+def rentenfaktor_table_index():
+    """The index columns of the *Rentenfaktor* table: ``rf_scenario_id`` and ``age``."""
+    return ["rf_scenario_id", "age"]
+
+
 def rentenfaktor_table():
-    """The *Rentenfaktor* by ``rf_scenario_id`` and ``age``, from ``rentenfaktor_file``."""
+    """The *Rentenfaktor*, from ``rentenfaktor_file`` by ``rentenfaktor_table_index()``."""
     return pd.read_csv(                                              # noqa: F821
         input_dir() / rentenfaktor_file,                             # noqa: F821
-        index_col=["rf_scenario_id", "age"])
+        index_col=rentenfaktor_table_index())
 
 
 def freq_loading_table():

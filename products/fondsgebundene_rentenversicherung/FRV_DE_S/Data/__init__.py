@@ -154,22 +154,19 @@ def fund_scenario_table():
         index_col=["scenario_id", "policy_year"])
 
 
-def rentenfaktor_table():
-    """The guaranteed and current *Rentenfaktoren* by factor id and age at *Rentenbeginn*.
+def rentenfaktor_table_index():
+    """The index columns of *rentenfaktor_table.csv*: ``factor_id`` and ``annuity_age``.
 
-    Read from *rentenfaktor_table.csv*: euro of monthly annuity per 10 000 € of
-    *Fondsguthaben*.  **[std]** and derived rather than observed — see the Space
+    The table holds the guaranteed and current *Rentenfaktoren*, euro of monthly annuity per
+    10 000 € of *Fondsguthaben*.  **[std]** and derived rather than observed — see the Space
     docstring for the derivation and for what the underlying DAV 2004 R basis requires of
     a replacement.  The table is indexed by the **age at *Rentenbeginn***, not by the
     attained age in the last projected month, which is one lower.
 
     Override reason: the table carries a guaranteed and a current factor per ``factor_id``
-    and ``annuity_age``, products/fondsgebundene_rentenversicherung/technical-notes.md,
-    section *Rentenbeginn*
+    and ``annuity_age``, products/fondsgebundene_rentenversicherung/model.md:364
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / rentenfaktor_file,                             # noqa: F821
-        index_col=["factor_id", "annuity_age"])
+    return ["factor_id", "annuity_age"]
 
 
 # ---------------------------------------------------------------------------

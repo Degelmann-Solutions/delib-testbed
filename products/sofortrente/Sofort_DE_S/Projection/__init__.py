@@ -41,6 +41,7 @@ mort_file                     data.mort_table()                    mort_table.cs
 improvement_file              data.improvement_table()             improvement_table.csv
 surplus_scale_file            data.surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     data.hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
+param_file                    data.param_table()                   param_table.csv
 ============================  ===================================  ================================
 
 .. rubric:: Naming
@@ -58,7 +59,7 @@ Notes symbol     Cells                                 Meaning
 (none)           model_point()                         The selected model point row
 t0               t_start()                             First projected month index
 n                proj_len()                            Exclusive end of the frame, t < n
-(none)           horizon_mths(life)                    12 (omega_age - entry age)
+(none)           horizon_mths(life)                    12 (omega_age() - entry age)
 (none)           duration_mth(t)                       Months elapsed since inception
 (none)           duration(t)                           Completed policy years, t // 12
 (none)           policy_year(t)                        Contractual policy year, t // 12 + 1
@@ -446,11 +447,11 @@ def t_start():
 def horizon_mths(life=1):
     """``12 (omega_age - issue_age(life))``: the month at which that life's survival ends.
 
-    With ``q = 1`` at attained age 120 in every series and ``omega_age = 121``, the
+    With ``q = 1`` at attained age 120 in every series and ``omega_age() = 121``, the
     survival path reaches zero inside this horizon and stays there, so the tail months
     carry no cash flow.
     """
-    return 12 * (omega_age - issue_age(life))                        # noqa: F821
+    return 12 * (omega_age() - issue_age(life))
 
 
 def proj_len():
@@ -474,7 +475,7 @@ def proj_len():
     ``proj_len() = 672``: 672 monthly rows, ``t = 0 ... 671``.
 
     Override reason: the horizon is the longest of the annuitant's survival, the guarantee
-    period and the second life's survival, products/sofortrente/technical-notes.md:437
+    period and the second life's survival, products/sofortrente/technical-notes.md:438
     """
     n = max(horizon_mths(1), guar_end_mth())
     if surv_pct() > 0.0:
@@ -491,7 +492,7 @@ def age(t, life=1):
     internal-consistency convention rather than a contract fact.
 
     Override reason: a joint-life contract has two lives; ``life=2`` is the second life's
-    attained age, products/sofortrente/technical-notes.md:406
+    attained age, products/sofortrente/technical-notes.md:407
     """
     return issue_age(life) + t // 12
 
@@ -1493,7 +1494,6 @@ mix_male = 0.45
 
 mort_base_year = 2025
 
-omega_age = 121
 
 roll_fwd_tol = 1e-08
 

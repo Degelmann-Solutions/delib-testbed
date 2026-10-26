@@ -113,10 +113,11 @@ symbols instead. The mapping is:
 Notes symbol               Cells                           Meaning
 =========================  ==============================  ==========================
 (none)                     model_point()                   The selected model point row
-n = omega - x(0) + 1       proj_len_y()                    Number of projected years
+n = omega - x(0)           proj_len_y()                    Number of projected years
 12 n                       proj_len()                      Number of projected months
 k = t // 12                proj_year(t)                    Projection year of month t
 (none)                     is_anniv(t)                     Last month of a projection year
+omega                      omega_age()                     Limiting age, table end + 1
 (none)                     prem_due(t)                     Month the contribution falls due
 T                          k_conv()                        The conversion year
 12 T                       t_conv()                        The conversion month
@@ -542,7 +543,7 @@ def scenario_id():
 
 
 def proj_len_y():
-    """n: the **number of projected years**, ``omega_age - age(0) + 1``.
+    """n: the **number of projected years**, ``omega_age() - age(0)``.
 
     The annual coordinate of the projection, and the one the contract is written in: the
     contribution, the Zulage, the two charges, the declared rate, both account balances, the
@@ -551,9 +552,9 @@ def proj_len_y():
     projected, which is what makes the two comparable row by row.
 
     Override reason: the annuity is lifelong, so the projection runs from the valuation date to
-    ``omega_age``, products/riester_rente/technical-notes.md:69
+    ``omega_age()``, products/riester_rente/technical-notes.md:69
     """
-    return omega_age - age(0) + 1                                    # noqa: F821
+    return omega_age() - age(0)
 
 
 def k_conv():
@@ -654,14 +655,26 @@ def is_payout(t):
     return t >= t_conv()
 
 
+def omega_age():
+    """omega: the limiting age, one above the last ``age`` in *mort_table_accum.csv*.
+
+    111: both shipped tables end at attained age 110 **[std]** with ``q = 1`` there, so the
+    lifelong *Leibrente* is projected to exhaustion and the decrement closure is exact.
+
+    Override reason: the limiting age is read off the mortality table, one above its last
+    age 110, where ``q = 1``, products/riester_rente/technical-notes.md:60
+    """
+    return int(data.mort_table().index.max()) + 1                    # noqa: F821
+
+
 def mort_rate_at_age(x):
     """The accumulation-phase table death rate at attained age x.
 
     A **[std]** proxy for DAV 2008 T, read from *mort_table_accum.csv* and carrying no
-    improvement dimension.  Forced to 1 at ``omega_age`` so the closure identity is exact
-    there whatever the table says.
+    improvement dimension.  Forced to 1 at ``omega_age() - 1`` so the closure identity is
+    exact there whatever the table says.
     """
-    if x >= omega_age:                                               # noqa: F821
+    if x >= omega_age() - 1:
         return 1.0
     return float(data.mort_table().at[x, "qx"])                      # noqa: F821
 
@@ -674,9 +687,9 @@ def annuity_mort_rate(x, tau):
     arguments, and that is the property a replacement may not drop: a twenty-year-deferred
     annuitisation happens on the mortality of its own conversion year, and a period-table
     proxy understates it by a margin that dwarfs every other assumption here.  Strictly
-    decreasing in ``tau`` below ``omega_age``, where it is forced to 1.
+    decreasing in ``tau`` below ``omega_age() - 1``, where it is forced to 1.
     """
-    if x >= omega_age:                                               # noqa: F821
+    if x >= omega_age() - 1:
         return 1.0
     tab = data.annuity_mort_table()                                  # noqa: F821
     qb = float(tab.at[x, "qx_base"])
@@ -713,7 +726,7 @@ def mort_rate(t):
     :func:`mort_rate_mth` is what the recursion applies.  The age and the calendar year step
     on the anniversary, so the twelve months of a projection year share one annual rate.
     """
-    if age(t) >= omega_age:                                          # noqa: F821
+    if age(t) >= omega_age() - 1:
         return 1.0
     if is_accum(t):
         return min(1.0, mort_rate_at_age(age(t)) * mort_be_factor())
@@ -1422,7 +1435,7 @@ def ann_factor():
     v = 1.0 / (1.0 + annuity_rechnungszins)                          # noqa: F821
     x0, tau0 = age_y(k_conv()), calendar_year_y(k_conv())
     total, kp, k = 0.0, 1.0, 0
-    while kp > 0.0 and x0 + k <= omega_age:                          # noqa: F821
+    while kp > 0.0 and x0 + k < omega_age():
         total += v ** k * kp
         kp *= 1.0 - annuity_mort_rate(x0 + k, tau0 + k)
         k += 1
@@ -1949,7 +1962,7 @@ def check_pols_roll_fwd():
     The second is built by
     direct summation over the exit cells with no reference to the recursion that produced
     ``pols_if``, so it catches a wrong starting cohort and an exit counted in two places,
-    which the telescoping first condition cannot.  ``mort_rate`` is 1 at ``omega_age``, so
+    which the telescoping first condition cannot.  ``mort_rate`` is 1 at ``omega_age() - 1``, so
     the survivor term is exactly zero and the identity is exact rather than approximate.
     """
     n = proj_len()
@@ -2159,7 +2172,6 @@ point_id = 1
 
 valuation_year = 2027
 
-omega_age = 110
 
 grundzulage = 175.0
 

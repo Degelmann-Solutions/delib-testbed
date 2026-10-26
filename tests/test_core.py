@@ -157,10 +157,15 @@ CORE_CELLS = {
     "Data": {
         "input_dir": dict.fromkeys(MODELS, "derived"),
         "model_point_table": dict.fromkeys(MODELS, "derived"),
-        "param_table": {"berufsunfaehigkeit": "derived",
+        "param_table": {"basisrente": "derived",
+                        "berufsunfaehigkeit": "derived",
+                        "fondsgebundene_rentenversicherung": "derived",
+                        "kapitallebensversicherung": "derived",
                         "klassische_rentenversicherung": "derived",
                         "pflegerentenversicherung": "derived",
-                        "risikolebensversicherung": "derived"},
+                        "riester_rente": "derived",
+                        "risikolebensversicherung": "derived",
+                        "sofortrente": "derived"},
         "mort_table": {"basisrente": "override",
                        "berufsunfaehigkeit": "override",
                        "fondsgebundene_rentenversicherung": "override",
@@ -295,6 +300,11 @@ CORE_CELLS = {
                 "riester_rente": "derived",
                 "risikolebensversicherung": "derived",
                 "sofortrente": "override"},
+        "omega_age": {"basisrente": "override",
+                      "klassische_rentenversicherung": "derived",
+                      "pflegerentenversicherung": "derived",
+                      "riester_rente": "override",
+                      "sofortrente": "derived"},
         "proj_len_y": {"basisrente": "override",
                        "indexpolice": "override",
                        "kapitallebensversicherung": "derived",
@@ -430,6 +440,47 @@ def test_override_test_catches_a_missing_reason():
         assert override_violations(model) == ["Projection.cell"]
         projection.cells["cell"].formula = _override_with_reason
         assert override_violations(model) == []
+    finally:
+        model.close()
+
+
+def _probe_omega_age():
+    """The core's version."""
+    return 121
+
+
+def _probe_use():
+    """Reads omega_age by its bare name, as a product cell does."""
+    return omega_age()                                               # noqa: F821
+
+
+def test_a_module_reference_cannot_shadow_a_core_cell(tmp_path):
+    """A product module's ``omega_age = 110`` beside a core cell ``omega_age`` is no Reference.
+
+    modelx reads the assignment as an input value of the derived cell in the static space;
+    an item space computes the core formula, so the value is silently ignored there.  Hence
+    a parameter that was a Reference becomes a ``param_table.csv`` row, not a Reference of
+    the core cell's name.
+    """
+    model = mx.new_model("ShadowProbe")
+    core = model.new_space("CoreProjection", formula=lambda point_id: None)
+    core.new_cells("omega_age", formula=_probe_omega_age)
+    core.new_cells("use", formula=_probe_use)
+    model.new_space("Projection", bases=core, formula=lambda point_id: None)
+    path = tmp_path / "ShadowProbe"
+    mx.write_model(model, path)
+    model.close()
+    source = path / "Projection" / "__init__.py"
+    source.write_text(source.read_text(encoding="utf-8")
+                      + "\n# " + "-" * 75 + "\n# References\n\nomega_age = 110\n",
+                      encoding="utf-8")
+    model = mx.read_model(path)
+    try:
+        projection = model.Projection
+        assert "omega_age" not in projection.refs
+        assert projection.omega_age._is_derived()
+        assert projection[1].use() == 121
+        assert projection[1].omega_age() == 121
     finally:
         model.close()
 

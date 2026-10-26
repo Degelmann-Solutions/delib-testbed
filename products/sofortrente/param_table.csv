@@ -1,0 +1,2 @@
+item,value,provenance
+omega_age,121,"[std] limiting age; the proxy mortality table closes with q = 1 at attained age 120, so the survival path reaches zero inside the horizon"

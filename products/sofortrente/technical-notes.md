@@ -352,7 +352,7 @@ three-class split, and confusing them is pitfall 12's neighbour.
 | `expense_infl` — expense inflation | **1,5 %** p.a., stepping at the policy anniversary | **[std]** (c1) |
 | `mix_male` ρ_M | **0.45** | **[std]** |
 | `mort_base_year` | **2025** | **[std]** |
-| `omega_age` ω | **121** | **[std]** |
+| `omega_age` ω | **121**, a row of `param_table.csv` | **[std]** |
 | `roll_fwd_tol` | **1e-8**, the tolerance every `check_*` closes to | **[std]** |
 | `solve_tol`, `solve_max_iter` | **1e-10**, **200** — the bisection controls for the refund solve | **[std]** |
 
@@ -368,7 +368,7 @@ without the other silently changes the modelled profit rather than the modelled 
 ### Input files
 
 Inputs are **external CSVs in the model folder's parent**, read once per model by an unparameterized
-`Data` Space — the `annuallife/TradLife_A` layout. Five files, and every one of them is read:
+`Data` Space — the `annuallife/TradLife_A` layout. Six files, and every one of them is read:
 
 | File | Index columns | Value columns | Read by |
 |---|---|---|---|
@@ -377,6 +377,7 @@ Inputs are **external CSVs in the model folder's parent**, read once per model b
 | `improvement_table.csv` | `basis`, `age` | `improve_rate` | `Data.improvement_table()` |
 | `surplus_scale_table.csv` | `surplus_form` | `surplus_init_pct`, `surplus_growth` | `Data.surplus_scale_table()` |
 | `hoechstrechnungszins_table.csv` | `year_from` | `year_to`, `max_rate` | `Data.hoechstrechnungszins_table()` |
+| `param_table.csv` | `item` | `value` | `Data.param_table()`, the core's loader |
 
 `basis` takes `FIRST` or `SECOND`, `sex` takes `M` or `F` — the unisex blend is a model construction,
 not a table row, so the CSV never carries a rate no real table would. Every file **except**

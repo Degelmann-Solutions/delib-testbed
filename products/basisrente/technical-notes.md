@@ -78,14 +78,14 @@ prose, where they are the name of the thing.
   point 12), and a policy that dies in the third month of a year bears three twelfths of that year's
   maintenance expense rather than all of it (−35,45 € on the anchor).
 - **Projection horizon.** The annuity is lifelong, so the projection runs to the end of the mortality
-  table: `proj_len_y() = omega_age() − age(0) + 1`, where `omega_age()` is the last age in
+  table: `proj_len_y() = omega_age() − age(0)`, where `omega_age()` is the limiting age, one above the last age in
   `mort_table.csv`, where `qx = 1.0`. **The terminal age is absorbing**: `mort_rate(t) = 1.0`
-  wherever `age(t) ≥ omega_age()`, whatever `mort_be_factor` says, and `mort_rate_mth` puts that
+  wherever `age(t) ≥ omega_age() − 1`, whatever `mort_be_factor` says, and `mort_rate_mth` puts that
   certainty in the terminal year's **last** month, so `pols_if(proj_len()) = 0` exactly and the
   decrement closure identity holds to the last euro. Without that rule the
   generational trend would carry the table's own terminal rate below 1 and leave a residue in force
-  after the end of the table. `omega_age = 121` **[std]**, the terminal age German annuity tables
-  are conventionally carried to. For the anchor cell `proj_len_y() = 121 − 45 + 1 = 77` and
+  after the end of the table. The last age 121 **[std]** (`omega_age() = 122`) is the terminal age German annuity tables
+  are conventionally carried to. For the anchor cell `proj_len_y() = 122 − 45 = 77` and
   `proj_len() = 924`.
 - **`proj_len()` is the number of projected periods**, the **exclusive end** of the frame:
   `len(result_cf()) == proj_len()` and `result_cf().index[-1] == proj_len() − 1`. This is the
@@ -220,7 +220,7 @@ age-floor cohorts, four guarantee vintages and four boundary cases.
 
 | Variable | Description | Updated |
 |---|---|---|
-| `proj_len_y` | Number of projected **years**, `omega_age() − age(0) + 1` | once per model point |
+| `proj_len_y` | Number of projected **years**, `omega_age() − age(0)` | once per model point |
 | `proj_len` | Number of projected **months**, `12 × proj_len_y()`; the frame's exclusive end | once per model point |
 | `ret_y`, `ret_t` | The projection **year** in which *Rentenbeginn* falls, `ret_age − age(0)`, and the **month** of the first instalment, `12 × ret_y()`; **< 0 for a point that opens in payment** | once per model point |
 | `age_y(k)`, `duration_y(k)`, `calendar_year_y(k)` | Attained age, completed policy years and calendar year in projection year `k`; `age(t)`, `duration(t)` and `calendar_year(t)` read the same quantities from a month | annual, stepping on the anniversary |
@@ -525,7 +525,7 @@ transfer between the two ledgers, not an exit [R14], and `check_pols_roll_fwd()`
 Σ_{t=0..12n−1} pols_death(t) + l(12n) = pols_if_init          with l(12n) = 0
 ```
 
-because `mort_rate_at_age(omega_age, ·) = 1` and the certainty falls in the terminal year's last
+because `mort_rate_at_age(omega_age − 1, ·) = 1` and the certainty falls in the terminal year's last
 month.
 
 ### The conversion at Rentenbeginn
@@ -908,8 +908,8 @@ so `prem_freq_load = 1.000`; `prem_dyn_rate = 0.02`; `zuzahlung_pp = 4,000.00 �
 `surv_annuity_rate = 0.00`, so the survivor rider is **off** and `claims_death(t) = 0` at every `t`;
 `buz_prem_share = 0.00`; `tariff_id = de_basis_std`; `beh_table_id = base`;
 `surplus_scenario_id = base`; `rf_scenario_id = base`. Hence `age(0) = 45`,
-`ret_y() = 67 − 45 = 22` and `ret_t() = 264`, `omega_age() = 121`,
-`proj_len_y() = 121 − 45 + 1 = 77` and `proj_len() = 924`: twenty-two
+`ret_y() = 67 − 45 = 22` and `ret_t() = 264`, `omega_age() = 122`,
+`proj_len_y() = 122 − 45 = 77` and `proj_len() = 924`: twenty-two
 years of *Aufschubphase* at attained ages 45 to 66, then fifty-five years of *Rentenphase* at attained
 ages 67 to 121. The annual table below therefore shows **selected rows** of
 `result_cf_annual()` — every year of the first five, the years in which a lever changes, the
@@ -1252,7 +1252,7 @@ each is now written into the notes at its source rather than only here.
 3. **The acquisition expense is a fund-level amount**, `acq_expense_pp × pols_if_init × 1{…}`,
    matching the initial commission beside it. Nothing moves on the shipped points, all of which
    carry `pols_if_init = 1.0`.
-4. **`omega_age_max` is not a Reference.** `omega_age()` is read off the last row of
+4. **`omega_age_max` is not a Reference.** `omega_age()` is one above the last row of
    `mort_table.csv` and needs no separate cap, so the name is dropped from the scalar list.
 5. **`zuz_take_up(k)` is published as a cells**, alongside `bf_rate(t)`: pitfall 7 turns on it, and
    hiding it inside `zuz_pp` would have made it untestable.

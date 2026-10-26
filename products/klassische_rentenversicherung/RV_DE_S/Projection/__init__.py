@@ -455,15 +455,6 @@ _spaces = []
 # The model point and the frame
 
 
-def omega_age():
-    """The terminal age of the shipped mortality proxy, from *param_table.csv*.
-
-    121 **[std]**.  ``mort_rate`` is 1 at ``omega_age - 1``, so the projection ends with no
-    survivors and :func:`check_decrement_closure` closes on ``pols_if_init()`` exactly.
-    """
-    return int(data.param_table().at["omega_age", "value"])          # noqa: F821
-
-
 def proj_len_y():
     """N: the **number** of projected policy years, ``omega_age() - issue_age``.
 

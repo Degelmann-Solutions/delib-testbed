@@ -56,8 +56,8 @@ German terms of art keep their German form in prose.
 - **`proj_len()` is the number of projected periods**, the exclusive end of the frame, per the
   library ruling asserted in `tests/test_model_conventions_de.py`:
   `result_cf().index[-1] == proj_len() − 1` and `len(result_cf()) == proj_len()`.
-  `proj_len_y() = omega_age − age(0) + 1`, with `age(0) = issue_age + duration_init` and
-  `omega_age = 110` **[std]**. The frame is contiguous `0 … proj_len() − 1` on every model point,
+  `proj_len_y() = omega_age() − age(0)`, with `age(0) = issue_age + duration_init` and
+  `omega_age() = 111`, the limiting age one above the last age 110 of the mortality tables, where `q = 1` **[std]**. The frame is contiguous `0 … proj_len() − 1` on every model point,
   including a point that commutes at *Rentenbeginn* and therefore carries zeros to the end — a
   uniform frame is what lets two model points be read side by side, and truncating a commuted point
   is a numbered pitfall.
@@ -237,7 +237,7 @@ contract carries, an at-issue point beside the in-force ones, and four boundary 
 
 | Variable | Description | Updated |
 |---|---|---|
-| `proj_len_y()` | Number of projected **years**, `omega_age − age(0) + 1` | once per model point |
+| `proj_len_y()` | Number of projected **years**, `omega_age() − age(0)` | once per model point |
 | `proj_len()` | Number of projected **months**, `12 × proj_len_y()`; the frame is `0 … proj_len() − 1` | once per model point |
 | `proj_year(t)`, `is_anniv(t)`, `prem_due(t)` | The projection year of month `t`, `t // 12`; its last month; and the month the year's contribution falls due | within year |
 | `k_conv()`, `t_conv()` | The conversion **year**, `rentenbeginn_age − age(0)`, and the conversion **month**, `12 · k_conv()` | once |
@@ -623,7 +623,7 @@ ones, `q_mth = 1 − (1 − q)^(1/12)` and likewise for `w` and `θ`:
                          = l(t)          otherwise
 
 with `q(t) = mort_rate_at_age(x(t)) · mort_be_factor` in accumulation and
-`annuity_mort_rate(x(t), τ(t)) · annuity_mort_be_factor` in payout, and `q(t) = 1` at `x = omega_age`
+`annuity_mort_rate(x(t), τ(t)) · annuity_mort_be_factor` in payout, and `q(t) = 1` at `x = omega_age() − 1`
 so the closure identity closes exactly — the certainty falling in the terminal year's **last month**.
 Twelve geometric twelfths compound back to each annual rate exactly, so `l(12k)` is the annual-step
 model's `l(k)` to the last bit; `q(t)/12` would close nothing.
@@ -952,8 +952,8 @@ now known to sit inside a statutory ceiling of **150,00 €** [R1] and to be the
 provider actually charges [S9] (gap 8 closed). Expenses **[std]**: maintenance 30,00 € per in-force policy per year inflating at **2,0 %**,
 annuity administration 24,00 € per annuitant per year, claim expense 80,00 € per death, surrender or
 transfer; no acquisition expense and no initial commission, because `duration_init = 3` puts them in
-the past. Renewal commission **1,5 %** of the contributions credited **[std]**. `omega_age = 110`
-**[std]**, with `q = 1` at that age so the decrements close exactly.
+the past. Renewal commission **1,5 %** of the contributions credited **[std]**. last age 110
+**[std]** (`omega_age() = 111`), with `q = 1` at that age so the decrements close exactly.
 
 All amounts in euros; `pols_if` and `pols_annuity_pay` to six decimals, cash flows to the cent.
 Totals are summed at **full precision and then rounded**, not summed from rounded cells.
@@ -1161,7 +1161,7 @@ of 1,48 € at `k = 0`, and is the usual way this identity fails.
 *Closure: the decrements sum to one.* Over the whole 732-month projection, expected deaths
 in accumulation are **0,04110900**, deaths in payout **0,76758768**, surrenders **0,07648390**
 and transfers out **0,11481942**. They sum to **1,00000000** exactly, and `pols_if(732) = 0`
-because `mort_rate` is forced to 1 at `omega_age = 110` and `mort_rate_mth` places that certainty
+because `mort_rate` is forced to 1 at age 110, `omega_age() − 1`, and `mort_rate_mth` places that certainty
 in the terminal year's last month. Nothing is left in force and no exit is
 counted twice. Note what the split says about the product: **23,24 % of the cohort leaves before
 *Rentenbeginn*, and of those, 49,4 % leave by *Anbieterwechsel* against 32,9 % by *Kündigung*

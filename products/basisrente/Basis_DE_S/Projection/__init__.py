@@ -18,7 +18,7 @@ two clocks and a cells' argument names the one it is on.
 
 ``t`` counts **projection months from the valuation date**, 0-based: ``t = 0`` is the
 first projected month and ``t = proj_len() - 1`` the last, with
-``proj_len() = 12 x proj_len_y()`` and ``proj_len_y() = omega_age() - age(0) + 1``. It is
+``proj_len() = 12 x proj_len_y()`` and ``proj_len_y() = omega_age() - age(0)``. It is
 the argument of the in force, the decrements, the claims, the expenses, the commission and
 the *Rente* instalments — everything that happens **on a date**.
 
@@ -98,7 +98,7 @@ The mapping is:
 Notes symbol               Cells                           Meaning
 =========================  ==============================  ==============================
 (none)                     model_point()                   The selected model point row
-n = omega - x(0) + 1       proj_len_y()                    Number of projected years
+n = omega - x(0)           proj_len_y()                    Number of projected years
 12 n                       proj_len()                      Number of projected months
 k = t // 12                proj_year(t)                    Projection year of month t
 (none)                     is_anniv(t)                     Last month of a projection year
@@ -112,7 +112,7 @@ d(t)                       duration(t)                     The same, read from a
 d(k) + 1                   policy_year_y(k)                The same, in projection year k
 y(k)                       calendar_year_y(k)              Calendar year in year k
 y(t)                       calendar_year(t)                The same, read from a month
-omega                      omega_age()                     Terminal age of the table
+omega                      omega_age()                     Limiting age, table end + 1
 T                          ret_y()                         Projection year of Rentenbeginn
 12 T                       ret_t()                         Month of the first instalment
 (none)                     gtd_end_t()                     Last month of the Rentengarantiezeit
@@ -417,18 +417,22 @@ def pols_if_init():
 
 
 def omega_age():
-    """The terminal age of the mortality table: the last ``age`` in *mort_table.csv*.
+    """omega: the limiting age, one above the last ``age`` in *mort_table.csv*.
 
-    121 on the shipped **[std]** table, the age German annuity tables are conventionally
-    carried to.  The projection runs to it because the annuity is lifelong, and
-    :func:`mort_rate` returns 1.0 there, so the last survivor dies in the last month of the
-    terminal year, at ``t = proj_len() - 1``, and there is no tail state of any kind.
+    122 on the shipped **[std]** table, whose last age, 121, is the age German annuity tables
+    are conventionally carried to.  The projection runs to it because the annuity is
+    lifelong, and :func:`mort_rate` returns 1.0 from ``omega_age() - 1``, so the last
+    survivor dies in the last month of the terminal year, at ``t = proj_len() - 1``, and
+    there is no tail state of any kind.
+
+    Override reason: the limiting age is read off the mortality table, one above its last
+    age, where ``qx = 1.0``, products/basisrente/technical-notes.md:81
     """
-    return int(data.mort_table().index.max())                        # noqa: F821
+    return int(data.mort_table().index.max()) + 1                    # noqa: F821
 
 
 def proj_len_y():
-    """n: the **number of projected years**, ``omega_age() - age(0) + 1``.
+    """n: the **number of projected years**, ``omega_age() - age(0)``.
 
     The annual coordinate of the projection, and the one the contract is written in: the
     declared rate, the *Beitragsdynamik*, the *Zillmerung* window, the *Zuzahlung* end
@@ -442,7 +446,7 @@ def proj_len_y():
     Override reason: the annuity is lifelong, so the projection runs from the valuation
     date to the end of the mortality table, products/basisrente/technical-notes.md:80
     """
-    return omega_age() - age(0) + 1
+    return omega_age() - age(0)
 
 
 def clock_offset_mth():
@@ -844,7 +848,7 @@ def mort_rate(t):
     one into a monthly roll-forward projects twelve years of mortality in one year.
 
     **The terminal age is absorbing**: ``mort_rate(t) = 1.0`` where
-    ``age(t) >= omega_age()``, whatever ``mort_be_factor`` says, so the last survivor dies
+    ``age(t) >= omega_age() - 1``, whatever ``mort_be_factor`` says, so the last survivor dies
     in the **last month** of the terminal year, ``pols_if(proj_len()) = 0`` exactly and the
     decrement closure identity holds to the last euro.  Without it the generational trend
     would carry the table's own terminal rate below 1 and leave a residue in force after
@@ -854,7 +858,7 @@ def mort_rate(t):
     interest credit and the premium are annual and fall at the two ends of the year, so a
     dying policy has been credited its year's interest and has paid its year's premium.
     """
-    if age(t) >= omega_age():
+    if age(t) >= omega_age() - 1:
         return 1.0
     return min(1.0, mort_be_factor() * mort_rate_base(t))
 

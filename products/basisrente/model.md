@@ -309,7 +309,7 @@ same attained age in different calendar years see different rates — model poin
 reach age 60, in 2029 and 2036, at 0.00467744 and 0.00420787. Treating the basis as a period
 table is the notes' fifteenth pitfall.
 
-`mort_rate(t)` is **1.0 wherever `age(t) ≥ omega_age()`**, whatever `mort_be_factor` says.
+`mort_rate(t)` is **1.0 wherever `age(t) ≥ omega_age() − 1`**, whatever `mort_be_factor` says.
 Without that rule the generational trend carries the shipped table's own terminal rate below 1
 in every calendar year after the base year — 0.19920354 at age 120 in 2101 — and would leave a
 residue in force after the end of the table; with it, `pols_if(proj_len()) = 0` exactly, the
@@ -520,7 +520,7 @@ proprietary or unreachable. Nothing here is a market observation.
 | Standardization | Value | Rationale |
 |---|---|---|
 | Mortality table | `qx = min(1, 0.014000 × 1.085^(age − 67))`, ages 20–121 | DAV 2004 R is the DAV's property and is cited, never shipped [R17]. Anchored at `qx(67) = 0.014000` so the worked example reproduces exactly |
-| Improvement trend, and the terminal age | 1,5 % p.a. flat across ages from `mort_base_year = 2005`; `omega_age = 121`, absorbing | The trend keeps the basis generational, which is what a replacement must preserve; DAV 2004 R's own trends are age-dependent, so this is a simplification and a stated model risk. 121 is the age German annuity tables are conventionally carried to, and the absorbing rule is what makes the decrements sum to one |
+| Improvement trend, and the terminal age | 1,5 % p.a. flat across ages from `mort_base_year = 2005`; last age 121 (`omega_age() = 122`), absorbing | The trend keeps the basis generational, which is what a replacement must preserve; DAV 2004 R's own trends are age-dependent, so this is a simplification and a stated model risk. 121 is the age German annuity tables are conventionally carried to, and the absorbing rule is what makes the decrements sum to one |
 | Best-estimate factor | `mort_be_factor = 0.85` | A round step from the shipped first-order table to a best estimate; the single largest unanchored number in the payout phase |
 | Declared *laufende Verzinsung* | 2,60 % (t 1–10), 2,40 % (11–20), 2,20 % after | A scenario set above the 1,00 % *Höchstrechnungszins* by a plausible surplus margin and graded down, so the guarantee does not bind on the anchor. **No Basisrente declared rate exists anywhere in the corpus** |
 | *Schlussüberschussanteil* and *Überschussrente* | 4,0 % of the fund at *Rentenbeginn*; `ann_bonus_rate = 1,0 %` p.a. compounding | The single-date allocation is a contract fact [R15] and the 4,0 % has nothing behind it. The uplift makes a *teildynamische Rente*: *volldynamisch* would consume the whole first-order margin and *konstant* none, and 1,0 % is deliberately in between |

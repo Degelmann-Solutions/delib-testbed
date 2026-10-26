@@ -141,6 +141,15 @@ def age(t):
     return issue_age() + duration(t)                                 # noqa: F821
 
 
+def omega_age():
+    """omega: the limiting age, from the product's *param_table.csv*.
+
+    The first age nobody reaches: the death rate is 1 at ``omega_age() - 1``, so a
+    projection run to it ends with no survivors.
+    """
+    return int(data.param_table().at["omega_age", "value"])          # noqa: F821
+
+
 def proj_len_y():
     """The number of projected policy years, the policy term."""
     return policy_term()                                             # noqa: F821

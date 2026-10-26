@@ -467,19 +467,6 @@ def pols_if_init():
     return float(model_point()["pols_if_init"])
 
 
-def omega_age():
-    """The terminal age, 110, from *param_table.csv*.
-
-    A **[std]** modelling choice rather than a table fact — the DAV tables run higher —
-    and it costs nothing material: an active female life aged 45 survives to 110 with
-    probability of the order of 1e-4 on the shipped basis.  What it buys is a **closed**
-    system: :func:`mort_rate` is forced to 1.0 at ``omega_age() - 1``, so the decrements
-    account for the whole cohort and :func:`check_states` closes exactly instead of leaving
-    a truncation residue.
-    """
-    return int(data.param_table().at["omega_age", "value"])          # noqa: F821
-
-
 def rechnungszins():
     """i: the technical interest rate, 1,00 % a year, from *param_table.csv*.
 

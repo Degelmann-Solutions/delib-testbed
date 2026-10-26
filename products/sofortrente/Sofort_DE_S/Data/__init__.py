@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The five input CSVs are read here, **once per model**, and referenced from
+The six input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Sofort_DE_S.Projection` as ``data``. :mod:`~.Sofort_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its
 own cells cache; if the readers lived there, every model point would re-read every file.
@@ -35,6 +35,7 @@ mort_file                     mort_table()                    mort_table.csv
 improvement_file              improvement_table()             improvement_table.csv
 surplus_scale_file            surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
+param_file                    param_table()                   param_table.csv
 ============================  ==============================  ================================
 
 Every file but ``model_point_table.csv`` carries a final ``provenance`` column, one tag
@@ -188,5 +189,7 @@ improvement_file = "improvement_table.csv"
 surplus_scale_file = "surplus_scale_table.csv"
 
 hoechstrechnungszins_file = "hoechstrechnungszins_table.csv"
+
+param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

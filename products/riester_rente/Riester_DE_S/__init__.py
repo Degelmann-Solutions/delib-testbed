@@ -68,7 +68,7 @@ only, and the model and its inputs must travel together.
 model runs on **two clocks** and the argument of a cells says which. ``t`` counts projection
 **months** from the 1 January 2027 valuation date and is **0-based**, running
 ``0 ... proj_len() - 1`` with ``proj_len() = 12 x proj_len_y()`` and
-``proj_len_y() = omega_age - age(0) + 1``; ``k = proj_year(t) = t // 12`` is the projection
+``proj_len_y() = omega_age() - age(0)``; ``k = proj_year(t) = t // 12`` is the projection
 **year**, and the contractual contract year is ``duration_y(k) + 1 = duration_init() + k
 + 1``, which is ``k + 1`` only on a point projected from its own inception
 (``duration_init() == 0``).

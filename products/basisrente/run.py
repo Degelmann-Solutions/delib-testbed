@@ -25,7 +25,7 @@ print("model point {}: {} - {}{} concluded {}, duration {} at valuation".format(
     mp["issue_year"], proj.duration(0)))
 print("Aufschubphase to Rentenbeginn at age {} (k = {}, t = {}), projection to age {} "
       "(k = {}, t = {})".format(
-          mp["ret_age"], proj.ret_y(), proj.ret_t(), proj.omega_age(),
+          mp["ret_age"], proj.ret_y(), proj.ret_t(), proj.omega_age() - 1,
           proj.proj_len_y() - 1, proj.proj_len() - 1))
 print("premium form = {} {}   Beitrag {:,.2f} EUR p.a. x freq load {:.3f}   "
       "Dynamik {:.1%}".format(

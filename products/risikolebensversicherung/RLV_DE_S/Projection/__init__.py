@@ -787,20 +787,6 @@ def suicide_factor(t):
 # Lapse
 
 
-def lapse_rate_base(t):
-    """The table lapse rate for period t, from *lapse_table.csv*.
-
-    6 % in policy year 1, 4 % in policy years 2 and 3, 3 % thereafter, all **[std]**.  The
-    file is keyed on the contractual **1-based** ``policy_year``, so the lookup maps
-    through :func:`policy_year` — months ``t = 0 ... 11`` read the file's policy year 1.
-    An **annual** rate, and one the table publishes for the final policy year too;
-    :func:`lapse_rate` is where the zero goes and :func:`lapse_rate_mth` is where the
-    spreading happens.
-    """
-    return float(data.lapse_table().at[                              # noqa: F821
-        policy_year(t), "lapse_rate"])
-
-
 def shock_lapse_factor(t):
     """M_shock(t): the premium-shock lapse multiplier; 1.0 in the base run.
 

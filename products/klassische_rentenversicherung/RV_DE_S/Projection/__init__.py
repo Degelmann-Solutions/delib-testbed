@@ -1109,8 +1109,7 @@ def lapse_rate(t):
     pup = int(mp["pup_year"])
     if pup > 0 and duration(t) == pup - 2 and pup_cashout():
         return 1.0
-    tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.at[min(policy_year(t), int(tbl.index.max())), "lapse_rate"])
+    return lapse_rate_base(t)
 
 
 def lapse_rate_mth(t):

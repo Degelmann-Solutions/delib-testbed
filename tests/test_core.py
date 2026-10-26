@@ -526,6 +526,14 @@ CORE_CELLS = {
                           "riester_rente": "derived",
                           "risikolebensversicherung": "derived",
                           "sofortrente": "override"},
+        "lapse_rate_base": {"berufsunfaehigkeit": "derived",
+                            "fondsgebundene_rentenversicherung": "derived",
+                            "indexpolice": "override",
+                            "kapitallebensversicherung": "derived",
+                            "klassische_rentenversicherung": "derived",
+                            "pflegerentenversicherung": "derived",
+                            "riester_rente": "derived",
+                            "risikolebensversicherung": "derived"},
     },
 }
 

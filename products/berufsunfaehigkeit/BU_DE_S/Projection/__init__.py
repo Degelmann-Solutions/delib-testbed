@@ -808,9 +808,7 @@ def lapse_rate(t):
     applies to :func:`pols_actv` only — a life in claim pays no premium and so cannot
     lapse for non-payment.
     """
-    tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.loc[min(policy_year(t),
-                             int(tbl.index.max())), "lapse_rate"])
+    return lapse_rate_base(t)
 
 
 def lapse_rate_mth(t):

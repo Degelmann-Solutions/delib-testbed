@@ -681,8 +681,7 @@ def lapse_rate(t):
     """
     if age(t) >= prem_end_age():
         return 0.0
-    return float(data.lapse_table().at[                              # noqa: F821
-        min(policy_year(t), 40), "lapse_rate"])
+    return lapse_rate_base(t)
 
 
 def lapse_rate_mth(t):

@@ -1094,6 +1094,9 @@ def lapse_rate_base(t):
     withholding — the strongest single driver of German surrender behaviour, and the reason
     a rate flat in duration is a numbered pitfall.  The mean over the anchor's 27 years is
     about 2.6 %, inside the market-wide GDV band; no index-specific rate exists at all.
+
+    Override reason: the table is keyed on the 0-based policy year, read through
+    ``duration(t)`` without a cap, products/indexpolice/technical-notes.md:348
     """
     return float(data.lapse_table().loc[duration(t), "lapse_rate"])  # noqa: F821
 

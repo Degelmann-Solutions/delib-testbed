@@ -1238,18 +1238,6 @@ def mort_rate_mth(t):
     return mort_rate(t) / 12.0
 
 
-def lapse_rate_base(t):
-    """The table annual lapse rate for the policy year containing month t.
-
-    **[std]** throughout — no German unit-linked *Stornoquote* was established anywhere.
-    6 % in years 1 to 5, 3 % in 6 to 10, 2 % in 11 and 12, 3 % from 13.  The
-    front-loading is a structural inference: the acquisition charge is being taken, the
-    value is furthest below the premiums paid, and § 168 VVG makes the exit
-    near-frictionless.
-    """
-    return float(data.lapse_table().loc[policy_year(t), "lapse_rate"])   # noqa: F821
-
-
 def lapse_tax_step(t):
     """The tax-threshold multiplier on the lapse rate in month t: 2.5, or 1.0.
 

@@ -699,8 +699,7 @@ def lapse_rate(t):
     """
     if not is_accum(t):
         return 0.0
-    return float(data.lapse_table().at[policy_year(t),                # noqa: F821
-                                       "lapse_rate"])
+    return lapse_rate_base(t)
 
 
 def lapse_rate_mth(t):

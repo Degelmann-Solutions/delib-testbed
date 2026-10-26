@@ -313,6 +313,17 @@ def mort_rate_mth(t):
     return 1.0 - (1.0 - q) ** (1.0 / 12.0)
 
 
+def lapse_rate_base(t):
+    """The table **annual** lapse rate of the policy year containing month t.
+
+    Read from the product's *lapse_table.csv* at ``policy_year(t)``, holding the table's
+    last row for later policy years, so the twelve months of a year share one rate.
+    """
+    tbl = data.lapse_table()                                         # noqa: F821
+    return float(tbl.at[min(policy_year(t), int(tbl.index.max())),  # noqa: F821
+                        "lapse_rate"])
+
+
 def rechnungszins():
     """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
 

@@ -1347,9 +1347,7 @@ def lapse_rate(t):
         return 0.0
     if bfz_fails() and duration(t) == bfz_year() - 1:
         return 1.0
-    tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())),
-                         "lapse_rate"])
+    return lapse_rate_base(t)
 
 
 def bfz_fails():

@@ -1100,13 +1100,22 @@ def test_the_end_of_month_count_is_the_next_start_of_month_count(product, produc
     projection = model.Projection
     assert projection.pols_if_at._is_derived()
     item = projection[model.Data.model_point_table().index[0]]
-    # BU's frame opens at t = 0, the valuation month; it has no t_start.
+    # BU's frame opens at t = 0, the valuation month: its pols_if guards on t < 0 and does
+    # not use the t_start() it inherits from the core.
     start = 0 if product == "berufsunfaehigkeit" else item.t_start()
     for t in range(start, item.proj_len()):
         assert item.pols_if_at(t, "BEF_DECR") == item.pols_if(t), t
         assert item.pols_if_at(t, "AFT_DECR") == item.pols_if(t + 1), t
-    with pytest.raises(Exception, match="invalid timing"):
+    with pytest.raises(Exception, match="invalid timing") as raised:
         item.pols_if_at(start, "END")
+    # modelx re-raises a formula's error as a FormulaError without chaining it, and names
+    # the original type in its message.
+    chain, error = [], raised.value
+    while error is not None and error not in chain:
+        chain.append(error)
+        error = error.__cause__ or error.__context__
+    assert (any(isinstance(e, ValueError) for e in chain)
+            or "ValueError: invalid timing" in str(raised.value)), raised.value
 
 
 def test_klv_lapses_are_taken_from_the_survivors_of_the_deaths(product_models):

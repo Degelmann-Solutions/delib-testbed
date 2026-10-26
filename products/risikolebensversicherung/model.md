@@ -88,7 +88,7 @@ values are unchanged by the monthly frame: the readers map through `policy_year(
 `prem_term` are counts of years; no column there is a point on the frame's time axis, so no
 model-point value moves either. `mort_table.csv` is keyed on attained age, which is not a
 time index, and its rates stay **annual**. **No CSV value changed** in the move to the
-monthly grid, and none changed in the earlier move to the 0-based frame.
+monthly grid, and none changed in the earlier move to the 0-based frame. Phase 3 appended the model-point column `pols_if_init`, the policy count a point stands for and the opening value of `pols_if`, 1.0 on every point.
 
 The model and both its Spaces carry
 docstrings: `model.Projection.doc` holds the full mapping between the notes' actuarial

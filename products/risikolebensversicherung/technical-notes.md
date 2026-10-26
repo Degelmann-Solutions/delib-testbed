@@ -926,7 +926,7 @@ frame summed into policy years by `result_cf_annual()` — is the **entire** pro
 `mort_be_factor = 1.00` **[std]**. *Tariff mortality*: the unisex 50/50 blend
 `0.00030 × 1.095^(x − 30)` **[std]** loaded by `1 + m` with `sicherheitszuschlag_m = 1.25`
 **[std]**, and `sex_mix_male = 0.50` **[std]** [R13] [REG-R34]. *Interest*:
-`rechnungszins = 1,00 %` — the DeckRV ***Höchstzinssatz***, a **ceiling the model adopts as the
+`rechnungszins = 1,00 %`, one rate for every model point, a tariff parameter in `param_table.csv` and not a per-contract model-point column — the DeckRV ***Höchstzinssatz***, a **ceiling the model adopts as the
 rate**; a retrieved carrier prices its term tariff at 0,25 % instead **[R10] [REG-R14] [REG-R15]
 [S3]** — used only in the premium equivalence and the first-order reserve and **never** to discount
 a published cash flow. *Loadings*: `zillmer_rate = 0.025` of the *Beitragssumme* at the

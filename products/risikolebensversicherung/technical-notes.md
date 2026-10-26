@@ -227,7 +227,7 @@ anchor cell.**
 | `benefit_paid_pp(t)` | The benefit actually payable on a death in month `t`, after the § 161 switch | anniversary |
 | `mort_rate(t)` | **Second-order annual** death rate of the policy year: own sex, smoker, rated, first-death where `lives = 2` | lookup |
 | `mort_rate_mth(t)` | The monthly rate applied, `1 − (1 − mort_rate(t))^(1/12)` **[std]** | monthly |
-| `mort_rate_tariff(t)` | **First-order annual** tariff rate: unisex 50/50 blend, `× (1 + m) × rating_factor` | lookup |
+| `mort_rate_tariff(t)` | **First-order annual** tariff rate: unisex 50/50 blend, `× (1 + m) × rating_factor`; for `lives = 2` the two lives' blends combined by the first-death rule `q_a + q_b − q_a·q_b` before the loading | lookup |
 | `lapse_rate(t)` | **Annual** lapse rate of the policy year; **0** through the whole final policy year | lookup |
 | `lapse_rate_mth(t)` | The monthly rate applied after the death decrement, `1 − (1 − lapse_rate(t))^(1/12)` **[std]** | monthly |
 | `suicide_factor(t)` | § 161 benefit switch, `< 1` inside three years of issue and of each increment | anniversary |

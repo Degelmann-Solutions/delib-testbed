@@ -173,7 +173,7 @@ P_sched(k)                  prem_pp_sched(k)                The premium as writt
 (none)                      prem_due(t)                     Whether P falls due in month t
 phi                         prem_freq_load()                Ratenzahlungszuschlag
 (sum of P_sched)            beitragssumme()                 Zillmer base
-alpha_total                 alpha_total_pp()                Total acquisition charge
+alpha_total                 zillmer_amount()                Total acquisition charge
 alpha(k)                    charge_acq_pp(k)                Zillmered acquisition charge
 alpha~(k)                   charge_acq_spread_pp(k)         Evenly spread acquisition charge
 beta(k)                     charge_prem_pp(k)               Premium charge
@@ -551,24 +551,25 @@ def beitragssumme():
     return sum(prem_pp_sched(u) for u in range(last))
 
 
-def alpha_total_pp():
-    """The total acquisition charge: ``alpha_rate x beitragssumme()``.
+def alpha_rate():
+    """The *Zillmersatz* of the model point's charge set, from *charge_table.csv*.
 
-    The *Höchstzillmersatz* is 25 ‰ of the *Beitragssumme* for contracts concluded from
-    1 January 2015 and 40 ‰ before, the rate at conclusion applying for the whole term; the
-    model uses the cap itself **[std]**, which is what makes the year-one *Sparbeitrag* small
-    and the § 169 Abs. 3 floor bite.  1 275,00 € on the anchor cell.
+    :func:`zillmer_amount`, the total acquisition charge, is ``alpha_rate x
+    beitragssumme()``.  The *Höchstzillmersatz* is 25 ‰ of the *Beitragssumme* for
+    contracts concluded from 1 January 2015 and 40 ‰ before, the rate at conclusion
+    applying for the whole term; the model uses the cap itself **[std]**, which is what
+    makes the year-one *Sparbeitrag* small and the § 169 Abs. 3 floor bite.  1 275,00 € on
+    the anchor cell.
     """
-    return (float(data.charge_table().at[                            # noqa: F821
+    return float(data.charge_table().at[                             # noqa: F821
         (model_point()["charge_id"], "alpha_rate"), "value"])
-        * beitragssumme())
 
 
 def alpha_cum_pp(k):
     """The acquisition charge already amortised at the **start** of period k.
 
     ``alpha_amort_pp_init`` at the frame's start, then a running total of
-    :func:`charge_acq_pp`.  It never exceeds :func:`alpha_total_pp`, which is what the
+    :func:`charge_acq_pp`.  It never exceeds :func:`zillmer_amount`, which is what the
     ``max(0, .)`` in :func:`charge_acq_pp` guarantees.
     """
     if k <= k_start():
@@ -618,25 +619,25 @@ def premiums(t):
 def charge_acq_pp(k):
     """alpha(k): the **zillmered** acquisition charge taken in period k.
 
-    ``min(P(k), max(0, alpha_total_pp() - alpha_cum_pp(k)))`` — as much of the outstanding
+    ``min(P(k), max(0, zillmer_amount() - alpha_cum_pp(k)))`` — as much of the outstanding
     acquisition charge as the year's premium can meet, and no more.  On the anchor cell the
     whole 1 275,00 € comes out of the first year's premium (``k = 0``) and nothing
     thereafter, which is what *Zillmerung* means and why that year's *Sparbeitrag* is thin.
     """
-    return min(prem_pp(k), max(0.0, alpha_total_pp() - alpha_cum_pp(k)))
+    return min(prem_pp(k), max(0.0, zillmer_amount() - alpha_cum_pp(k)))
 
 
 def charge_acq_spread_pp(k):
     """alpha~(k): the same charge spread **evenly over the first five contract years**.
 
-    ``alpha_total_pp() / alpha_spread_years`` for ``k = 0 .. 4``, zero after.  This is the
+    ``zillmer_amount() / alpha_spread_years`` for ``k = 0 .. 4``, zero after.  This is the
     § 169 Abs. 3 VVG treatment, and it enters no account of its own: it drives
     :func:`spread_diff_pp`, the difference between the tariff *Deckungskapital* and the
     statutory surrender floor.  255,00 € on the anchor cell.
     """
     years = int(data.charge_table().at[                              # noqa: F821
         (model_point()["charge_id"], "alpha_spread_years"), "value"])
-    return alpha_total_pp() / years if 0 <= k < years else 0.0
+    return zillmer_amount() / years if 0 <= k < years else 0.0
 
 
 def charge_prem_pp(k):

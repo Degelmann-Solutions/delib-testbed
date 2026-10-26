@@ -133,7 +133,7 @@ phi                 prem_freq_load()                       Ratenzahlungszuschlag
                     tariff_term_annuity()
 B                   prem_gross_pp()                        Annual Bruttobeitrag before phi
 BS                  beitragssumme()                        Beitragssumme = B x m
-A                   alpha_cost()                           Zillmered acquisition cost
+A                   zillmer_amount()                       Zillmered acquisition cost
 P^n                 prem_net_level_pp()                    Net level premium
 P^Z                 prem_zill_pp()                         Zillmer premium
 (prospective)       pv_benefit_fut(k),                     The reserve's parts
@@ -215,7 +215,7 @@ no fund to earn on, and worth saying because it looks like a bug.
 
 .. rubric:: Three reserves, and the one the customer gets
 
-:func:`res_zill_pp` is the *gezillmerte Deckungskapital*: it is exactly ``-alpha_cost()`` at
+:func:`res_zill_pp` is the *gezillmerte Deckungskapital*: it is exactly ``-zillmer_amount()`` at
 issue and stays negative for several years. :func:`res_min_pp` is the § 169 Abs. 3 VVG floor,
 the same net reserve with the acquisition cost amortised **straight-line over the first five
 contract years** rather than over the whole premium term. Because
@@ -227,13 +227,13 @@ what "zum Schluss der laufenden Versicherungsperiode" requires — so it reads t
 ``k + 1``. What a surrender in a *non*-anniversary month is paid is
 :func:`res_guar_close_pp`, the value struck at the **last** anniversary.
 
-With ``zillmer_on = 0`` (model point 13) ``alpha_cost()`` is zero, all three coincide and the
+With ``zillmer_on = 0`` (model point 13) ``zillmer_amount()`` is zero, all three coincide and the
 floor is slack — a useful invariance test. With ``prem_term = 1`` (model point 2) the 25 ‰
 *Zillmersatz* buys almost nothing and the floor is slack from the first anniversary. Both are
 the correct answer rather than a degenerate case.
 
 Note that the acquisition cost is in the **premium** whether or not the contract is
-zillmered: ``zillmer_on`` enters :func:`alpha_cost`, which is a *reserving* quantity, and not
+zillmered: ``zillmer_on`` enters :func:`zillmer_amount`, which is a *reserving* quantity, and not
 the pricing equation, which always charges ``alpha_rate() * beitragssumme()``. That is why one
 insurer can publish a *gezillmerte* and a non-*gezillmerte* edition of the same tariff at the
 same price.
@@ -353,7 +353,7 @@ of 2,5 % of the *Beitragssumme* plus the 300 € acquisition expense - then annu
 the order of a thousand euros that decay as the cohort lapses, and a single very large
 negative year at the *Ablauf* when the *Erlebensfallleistung* and the whole accumulated
 *Überschussguthaben* fall due together. The new-business strain of a *gezillmert* German
-endowment sits in the **reserve**, which opens at ``-alpha_cost()``, and not in the cash flow.
+endowment sits in the **reserve**, which opens at ``-zillmer_amount()``, and not in the cash flow.
 
 .. rubric:: What the monthly grid changes, and what it does not
 
@@ -449,8 +449,11 @@ def zillmer_on():
 
     A **per-tariff design choice a German insurer makes and publishes** - one carrier
     maintains a *gezillmerte* and a non-*gezillmerte* edition of the same tariff - and not an
-    invariant of German practice.  It enters :func:`alpha_cost` and therefore the *reserve*;
+    invariant of German practice.  It enters :func:`zillmer_amount` and therefore the *reserve*;
     it does **not** enter the pricing equation, so the two editions cost the same.
+
+    Override reason: the *Zillmerung* is a per-tariff choice read from the model point,
+    products/kapitallebensversicherung/technical-notes.md:144
     """
     return int(model_point()["zillmer_on"])
 
@@ -665,7 +668,7 @@ def alpha_rate():
     25 ‰, sitting **at** the § 4 DeckRV ceiling for a contract written from 2015 - the ceiling
     is cited, the level is **[std]**, and no German carrier's actual acquisition cost is
     public.  It is charged in the premium whether or not the contract is zillmered; only
-    :func:`alpha_cost` carries ``zillmer_on``.
+    :func:`zillmer_amount` carries ``zillmer_on``.
     """
     return float(data.charge_table().loc[cost_id(), "alpha_rate"])   # noqa: F821
 
@@ -761,27 +764,15 @@ def prem_gross_pp():
                - alpha_rate() * prem_term()))
 
 
-def alpha_cost():
-    """A: the zillmered acquisition cost written into the reserve, in euros.
-
-    ``zillmer_on() * alpha_rate() * beitragssumme()``.  **Zero on a non-gezillmert tariff**,
-    where the three reserve constructions then coincide - but the cost is charged in the
-    premium either way, because ``zillmer_on`` decides where it sits in the *reserve* and not
-    whether it is charged.  It is capped by :func:`zillmer_max` times the *Beitragssumme*;
-    :func:`check_zillmer_cap` asserts it.
-    """
-    return zillmer_on() * alpha_rate() * beitragssumme()
-
-
 def prem_zill_pp():
-    """P^Z: the Zillmer premium, ``prem_net_level_pp() + alpha_cost() / tariff_annuity()``.
+    """P^Z: the Zillmer premium, ``prem_net_level_pp() + zillmer_amount() / tariff_annuity()``.
 
     The net premium plus the level annual charge that amortises the zillmered acquisition cost
     over the *Beitragszahlungsdauer*.  It is the premium the Zillmer reserve rolls forward on,
     which is why :func:`check_res_roll_fwd` reads it and not :func:`prem_charged_pp`: one is a
     first-order reserving quantity and the other is a cash flow.
     """
-    return prem_net_level_pp() + alpha_cost() / tariff_annuity()
+    return prem_net_level_pp() + zillmer_amount() / tariff_annuity()
 
 
 # --- the Deckungskapital ---------------------------------------------------
@@ -851,10 +842,10 @@ def res_net_pp(k):
 def res_zill_pp(k):
     """V^Z: the *gezillmerte Deckungskapital* at the start of policy year k, per policy.
 
-    ``res_net_pp(k) - alpha_cost() * ann_due_prem_fut(k) / tariff_annuity()``: the net
+    ``res_net_pp(k) - zillmer_amount() * ann_due_prem_fut(k) / tariff_annuity()``: the net
     reserve less the part of the acquisition cost the future premiums have yet to repay.
 
-    **It is exactly ``-alpha_cost()`` at ``k = 0``**, which on the anchor cell is
+    **It is exactly ``-zillmer_amount()`` at ``k = 0``**, which on the anchor cell is
     -1 252,53 €.  That is not a defect: it is the arithmetic of *Zillmerung*, and it is the
     reason § 169 Abs. 3 VVG needs a floor at all.  **How long it stays negative is a parameter
     question.**  At the post-2015 25 ‰ ceiling over a twenty-five-year *Beitragszahlungsdauer*
@@ -864,13 +855,13 @@ def res_zill_pp(k):
     ``zillmer_on = 0`` it coincides with :func:`res_net_pp`.
     """
     return (res_net_pp(k)
-            - alpha_cost() * ann_due_prem_fut(k) / tariff_annuity())
+            - zillmer_amount() * ann_due_prem_fut(k) / tariff_annuity())
 
 
 def res_min_pp(k):
     """V^min: the § 169 Abs. 3 VVG floor reserve at the start of policy year k, per policy.
 
-    ``res_net_pp(k) - alpha_cost() * max(0, 1 - k/5)`` for the 0-based **policy year** ``k``:
+    ``res_net_pp(k) - zillmer_amount() * max(0, 1 - k/5)`` for the 0-based **policy year** ``k``:
     the same net reserve with the *angesetzte Abschluss- und Vertriebskosten* spread **evenly over the
     first five contract years** rather than over the whole premium term.  The straight-line
     reading is **[std]**; the alternative - a five-year *Zillmerung* - gives a slightly lower
@@ -880,7 +871,7 @@ def res_min_pp(k):
     :func:`res_zill_pp` only at durations 0 and ``m``.  A model publishing only the Zillmer
     reserve as the surrender value understates it at essentially every duration.
     """
-    return res_net_pp(k) - alpha_cost() * max(0.0, 1.0 - k / 5.0)
+    return res_net_pp(k) - zillmer_amount() * max(0.0, 1.0 - k / 5.0)
 
 
 def is_paid_up(k):
@@ -2076,7 +2067,7 @@ def check_equivalence_resid(t):
     ``t`` - the equivalence is struck once, at issue - and it carries the argument only so
     that every ``check_*`` in this library has the same shape.
 
-    Note that it charges ``alpha_rate() * beitragssumme()`` and **not** :func:`alpha_cost`:
+    Note that it charges ``alpha_rate() * beitragssumme()`` and **not** :func:`zillmer_amount`:
     the acquisition cost is in the premium whether or not the contract is zillmered, which is
     why a *gezillmerte* and a non-*gezillmerte* edition of one tariff cost the same.
     """
@@ -2123,7 +2114,7 @@ def check_zillmer_cap_resid(t):
     """The § 4 DeckRV ceiling residual; zero unless the *Zillmersatz* exceeds the cohort's cap.
 
     ``min(0, zillmer_max() - alpha_rate()) + min(0, zillmer_max() * beitragssumme()
-    - alpha_cost())``, the same value at every ``t``: the rate against the ceiling and the
+    - zillmer_amount())``, the same value at every ``t``: the rate against the ceiling and the
     zillmered amount against the ceiling applied to the *Beitragssumme*.
 
     It is asserted **separately** from :func:`check_surr_floor` on purpose.  § 4 DeckRV caps
@@ -2133,7 +2124,7 @@ def check_zillmer_cap_resid(t):
     research corpus does exactly that.
     """
     return (min(0.0, zillmer_max() - alpha_rate())
-            + min(0.0, zillmer_max() * beitragssumme() - alpha_cost()))
+            + min(0.0, zillmer_max() * beitragssumme() - zillmer_amount()))
 
 
 def check_zillmer_cap():
@@ -2223,7 +2214,7 @@ def result_surplus():
     is a statement a reader has to know which columns to skip.
 
     Read the first rows of this frame beside the first rows of :func:`result_cf_annual` and
-    the product is visible in two numbers.  ``res_pp`` opens at ``-alpha_cost()`` - the whole
+    the product is visible in two numbers.  ``res_pp`` opens at ``-zillmer_amount()`` - the whole
     of the *Zillmerung*, unrecovered - while ``surplus_credit_pp`` is struck on the year's
     *closing* reserve and is therefore small but positive from the first year.  The gap
     between the two columns in the early durations is the entire economics of a German

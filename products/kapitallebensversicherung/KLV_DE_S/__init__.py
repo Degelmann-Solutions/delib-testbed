@@ -33,7 +33,7 @@ is not.
 
 **There are three reserves and the product needs all three.** ``res_zill_pp`` is the
 *gezillmerte Deckungskapital* the insurer holds, negative at issue and equal to
-``-alpha_cost`` there; ``res_min_pp`` is the § 169 Abs. 3 VVG floor obtained by spreading
+``-zillmer_amount`` there; ``res_min_pp`` is the § 169 Abs. 3 VVG floor obtained by spreading
 the acquisition cost evenly over the first five contract years, and on a long *gezillmert*
 contract it **normally binds**; ``res_guar_pp`` is their maximum and is what the customer
 actually gets. Publishing only the first understates the surrender value at essentially

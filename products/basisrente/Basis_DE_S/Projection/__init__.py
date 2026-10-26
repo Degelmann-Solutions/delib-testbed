@@ -124,7 +124,7 @@ P(k)                       prem_pp(k)                      Beitrag charged per p
 Z(k)                       zuz_pp(k)                       Zuzahlung per paying policy
 (take-up)                  zuz_take_up(k)                  Zuzahlung utilisation rate
 (none)                     prem_total_pp(k)                Total contribution incl. BUZ
-zill_rate x S              alpha_total_pp()                Zillmerised acquisition charge
+zill_rate x S              zillmer_amount()                Zillmerised acquisition charge
 alpha(k)                   alpha_amort_pp(k)               Its annual instalment
 alpha_z(k)                 alpha_zuz_pp(k)                 Acquisition charge on a Zuzahlung
 u(k)                       unit_cost_pp(k)                 Stueckkosten, inflating
@@ -636,9 +636,10 @@ def prem_total_pp(k):
     return (prem_pp(k) + zuz_pp(k)) / (1.0 - float(model_point()["buz_prem_share"]))
 
 
-def alpha_total_pp():
-    """The zillmerised acquisition charge written into the account, per policy.
+def alpha_rate():
+    """The *Zillmersatz* ``zill_rate`` of the tariff, from *charge_table.csv*.
 
+    :func:`zillmer_amount`, the zillmerised acquisition charge written into the account, is
     ``zill_rate x beitragssumme()``.  The *Höchstzillmersatz* caps it at **25 ‰ of the
     *Beitragssumme*** for business written from 1 January 2015, reduced from 40 ‰ by the
     LVRG; the shipped tariffs carry the two rates and the in-force pre-2015 model points
@@ -649,14 +650,14 @@ def alpha_total_pp():
     plus the initial commission, and the German design is precisely that what the insurer
     pays out is sized to what it may write into the reserve.
     """
-    return (float(data.charge_table().loc[                           # noqa: F821
-        model_point()["tariff_id"], "zill_rate"]) * beitragssumme())
+    return float(data.charge_table().loc[                            # noqa: F821
+        model_point()["tariff_id"], "zill_rate"])
 
 
 def alpha_amort_pp(k):
     """alpha(k): the *Zillmerung* instalment struck against the account in year k.
 
-    ``alpha_total_pp() / zill_spread_y`` in equal instalments over the contract's first
+    ``zillmer_amount() / zill_spread_y`` in equal instalments over the contract's first
     ``zill_spread_y = 5`` years of *Aufschubphase* — **of the contract**, not of the
     projection — and zero thereafter.  An in-force model point past duration 5 therefore
     sees none of it at any ``k``: model point 6, at ``duration_init = 17``, sees zero
@@ -678,7 +679,7 @@ def alpha_amort_pp(k):
         return 0.0
     if duration_y(k) >= zill_spread_y:                                 # noqa: F821
         return 0.0
-    return alpha_total_pp() / zill_spread_y                          # noqa: F821
+    return zillmer_amount() / zill_spread_y                          # noqa: F821
 
 
 def alpha_zuz_pp(k):

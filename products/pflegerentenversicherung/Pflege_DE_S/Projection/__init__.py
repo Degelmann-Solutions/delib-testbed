@@ -118,7 +118,7 @@ premiums(t)                 premiums(t)                     Beitrag income
 (none)                      brg_pp(t)                       Beitragsrueckgewaehr per policy
 claims_annuity, _lapse,     claims(t, kind)                 Benefit outgo by kind
 _death
-alpha x Beitragssumme       acq_expense_pp()                Acquisition charge at t = 0
+alpha x Beitragssumme       zillmer_amount()                Acquisition charge at t = 0
 (none)                      beitragssumme()                 The Zillmerung base
 (1 + f)^(t/12)              expense_infl_factor(t)          Expense inflation factor
 expenses(t)                 expenses(t)                     Acquisition + administration
@@ -1236,13 +1236,14 @@ def beitragssumme_years():
     return max(0, min(prem_end_age(), cap) - issue_age())
 
 
-def acq_expense_pp():
-    """The acquisition and distribution charge per policy, incurred once at ``t = 0``.
+def alpha_rate():
+    """The acquisition per-mille as a rate, ``acq_permille / 1000``.
 
-    ``acq_permille / 1000 x beitragssumme()``, with the per-mille set **exactly at** the
-    § 4 DeckRV *Höchstzillmersatz* so the ceiling binds visibly.  The base is the
-    *Beitragssumme*, **not** the annual premium — charging the per-mille on an annual
-    premium understates it by a factor of the paying term and is a listed pitfall.
+    :func:`zillmer_amount`, the acquisition and distribution charge per policy, incurred
+    once at ``t = 0``, is ``acq_permille / 1000 x beitragssumme()``, with the per-mille set
+    **exactly at** the § 4 DeckRV *Höchstzillmersatz* so the ceiling binds visibly.  The
+    base is the *Beitragssumme*, **not** the annual premium — charging the per-mille on an
+    annual premium understates it by a factor of the paying term and is a listed pitfall.
 
     Because it falls at ``t = 0`` only, an in-force model point never incurs it: its frame
     opens at ``duration_mth_init() > 0`` and the cost was incurred before the valuation
@@ -1251,7 +1252,7 @@ def acq_expense_pp():
     """
     permille = float(data.param_table().at[                          # noqa: F821
         "acq_permille", "value"])
-    return permille / 1000.0 * beitragssumme()
+    return permille / 1000.0
 
 
 def expense_infl_factor(t):
@@ -1282,7 +1283,7 @@ def expenses(t):
     total = admin_pp * expense_infl_factor(t) * pols_if(t)
     total += admin_pct * premiums(t)
     if t == 0:
-        total += acq_expense_pp()
+        total += zillmer_amount()
     return total
 
 

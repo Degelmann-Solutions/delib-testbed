@@ -437,8 +437,8 @@ equal instalments over the first premium-paying years of the **contract**, not o
 so an in-force point that is past duration 5 sees none of it:
 
 ```
-alpha_total_pp = zill_rate × S
-α(k)           = alpha_total_pp / zill_spread_y     if d(k) < zill_spread_y and premiums are due
+zillmer_amount = zill_rate × S
+α(k)           = zillmer_amount / zill_spread_y     if d(k) < zill_spread_y and premiums are due
                = 0                                  otherwise
 α_z(k)         = alpha_zuz_rate × Z(k)
 u(k)           = unit_cost_pp × (1 + expense_infl)^k
@@ -1168,7 +1168,7 @@ row itself closes,
 which is `check_net_cf()` — delib's first ruling — evaluated over all 924 months at once
 rather than one month at a time. A last arithmetic coincidence that is not a coincidence:
 `commissions(0) = 0.025 x S = 4,094.8475308191` is **the same number** as
-`alpha_total_pp() = 0.025 x S`, because the initial commission rate and the *Höchstzillmersatz* are
+`zillmer_amount() = 0.025 x S`, because the initial commission rate and the *Höchstzillmersatz* are
 both 2,5 %. That is the German design rather than an accident — what the insurer pays out at
 inception is sized to what it may write into the reserve — and it is why moving `comm_init_rate`
 without moving `zill_rate` opens a hole in the first year that nothing closes.

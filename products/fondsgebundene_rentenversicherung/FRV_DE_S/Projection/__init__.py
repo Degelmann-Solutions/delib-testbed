@@ -205,7 +205,7 @@ an effective annual rate, while a German tariff's charge rates are nominal.
 
 .. rubric:: The acquisition charge, its window, and the in-force cell
 
-``charge_acq_total() = alpha_rate x beitragssumme()`` — 2.50 % of the sum of premiums
+``zillmer_amount() = alpha_rate x beitragssumme()`` — 2.50 % of the sum of premiums
 **payable**, which is the *Höchstzillmersatz* — spread in equal instalments over
 ``acq_window_months() = min(alpha_spread_months, 12 x prem_term_y)`` months at the
 policy's own premium frequency. On the anchor cell that is 1 800,00 € over 60 monthly
@@ -260,7 +260,7 @@ is why the surrender value is positive from the first month. A *Stornoabzug* is
 permissible only if agreed, quantified and appropriate, and **never for unamortised
 acquisition costs**: ``stornoabzug_pp(t)`` is therefore a flat rate on the
 *Fondsguthaben* and is deliberately **not** a function of
-``charge_acq_total() - cum_charge_acq_pp(t)``. Only ``std_high`` carries a non-zero rate,
+``zillmer_amount() - cum_charge_acq_pp(t)``. Only ``std_high`` carries a non-zero rate,
 and only model point 5 uses it.
 
 .. rubric:: The last month, and the age at Rentenbeginn
@@ -376,7 +376,7 @@ def prem_form():
     The two differ in more than the number of instalments.  A *Einmalbeitrag* has no
     *Beitragssumme* to zillmer against and no five-year spreading to obey, so its
     acquisition charge is the *Zuzahlungskosten* rate levied once on receipt, which is
-    what :func:`charge_acq_total` returns for it.
+    what :func:`zillmer_amount` returns for it.
     """
     v = model_point()["prem_form"]
     if v not in ("laufend", "einmal"):
@@ -744,7 +744,7 @@ def beitragssumme_prem():
 
     Override reason: the premium is paid in instalments of ``prem_pp_base()`` every
     ``prem_mode_months()`` months, or once as an *Einmalbeitrag*,
-    products/fondsgebundene_rentenversicherung/technical-notes.md:168
+    products/fondsgebundene_rentenversicherung/technical-notes.md:443
     """
     if prem_form() == "einmal":
         return prem_pp_base()
@@ -755,7 +755,7 @@ def beitragssumme_years():
     """The premium years of the *Beitragssumme*: ``prem_term_y()``, 1 for an *Einmalbeitrag*.
 
     Override reason: the premium term is ``prem_term_y()`` years, and an *Einmalbeitrag* is
-    counted once, products/fondsgebundene_rentenversicherung/technical-notes.md:168
+    counted once, products/fondsgebundene_rentenversicherung/technical-notes.md:443
     """
     if prem_form() == "einmal":
         return 1
@@ -779,7 +779,7 @@ def acq_instalments():
 
     60 on the anchor cell, 20 quarterly, 10 half-yearly, 5 annual, 24 on the two-year
     premium term, and 1 on a single premium.  The count matters because the instalment is
-    ``charge_acq_total() / acq_instalments()``, so spreading a shortened window over sixty
+    ``zillmer_amount() / acq_instalments()``, so spreading a shortened window over sixty
     months would understate every instalment and leave the ledger short at the end.
     """
     if prem_form() == "einmal":
@@ -787,13 +787,17 @@ def acq_instalments():
     return acq_window_months() // prem_mode_months()
 
 
-def charge_acq_total():
+def zillmer_amount():
     """The whole *Abschluss- und Vertriebskosten* charge, before any *Zuzahlungskosten*.
 
     ``alpha_rate() x beitragssumme()`` on a recurring-premium contract — 2.50 % of
     72 000,00 = **1 800,00 EUR** on the anchor cell — and
     ``zuzahlung_charge_rate() x prem_pp_base()`` on a single-premium one, where there is
     no *Beitragssumme* to zillmer against and no five-year spread to obey.
+
+    Override reason: a single premium is charged at the *Zuzahlungskosten* rate, not
+    zillmered against a *Beitragssumme*,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:448
     """
     if prem_form() == "einmal":
         return zuzahlung_charge_rate() * prem_pp_base()
@@ -803,7 +807,7 @@ def charge_acq_total():
 def charge_acq_pp(t):
     """The acquisition charge withheld from month t's premium, per policy.
 
-    One instalment of ``charge_acq_total() / acq_instalments()`` on each premium date
+    One instalment of ``zillmer_amount() / acq_instalments()`` on each premium date
     inside the window, nothing after it, plus the *Zuzahlungskosten* on any *Zuzahlung*
     falling in the month.  On the anchor cell that is **30,00 EUR for t = 0 ... 59 and
     0,00 from t = 60** — 15 % of each of the first sixty premiums, then a cliff.  That
@@ -816,9 +820,9 @@ def charge_acq_pp(t):
     reg = 0.0
     if prem_form() == "einmal":
         if t == t_start():
-            reg = charge_acq_total()
+            reg = zillmer_amount()
     elif t < acq_window_months() and prem_pp(t) > 0.0:
-        reg = charge_acq_total() / acq_instalments()
+        reg = zillmer_amount() / acq_instalments()
     return reg + zuzahlung_charge_rate() * topup_pp(t)
 
 
@@ -1940,7 +1944,7 @@ def check_acq_charge_resid(t):
             hi = min(hi, pup_month() - 1)
         elapsed = 0 if hi < t_start() else (
             (hi - t_start()) // prem_mode_months() + 1)
-    instalment = (charge_acq_total() / acq_instalments()
+    instalment = (zillmer_amount() / acq_instalments()
                   if acq_instalments() else 0.0)
     topups = (topup_amount()
               if 0 < topup_month() <= t and topup_month() >= t_start()
@@ -1952,7 +1956,7 @@ def check_acq_charge_resid(t):
 def check_acq_charge():
     """True when the acquisition-charge ledger matches its counted expectation everywhere."""
     return all(abs(check_acq_charge_resid(t))
-               <= val_tol * max(1.0, charge_acq_total())             # noqa: F821
+               <= val_tol * max(1.0, zillmer_amount())             # noqa: F821
                for t in range(t_start(), proj_len()))
 
 

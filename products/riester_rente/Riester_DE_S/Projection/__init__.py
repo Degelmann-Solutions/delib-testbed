@@ -1026,10 +1026,20 @@ def contrib_total_pp(k):
                else 0.0))
 
 
+def alpha_rate():
+    """The acquisition charge rate on the *Beitragssumme*, ``acq_charge_rate``.
+
+    So the core's :func:`zillmer_amount` is the whole acquisition charge,
+    ``acq_charge_rate x beitragssumme()``, which :func:`acq_charge_pp` spreads.
+    """
+    return acq_charge_rate                                           # noqa: F821
+
+
 def acq_charge_pp(k):
     """K_a(k): the acquisition charge deducted in period k, per policy.
 
-    ``acq_charge_rate x beitragssumme() / acq_charge_years`` in contract years 1 to 5 and
+    ``zillmer_amount() / acq_charge_years``, ``acq_charge_rate x beitragssumme()`` spread
+    over its years, in contract years 1 to 5 and
     zero afterwards.  The AltZertG requires acquisition and distribution costs to be spread
     over **at least five years**, which is a materially tighter constraint on *Zillmerung*
     than anything the VVG imposes on a Schicht-3 contract.  The charge runs for its five
@@ -1039,7 +1049,7 @@ def acq_charge_pp(k):
     """
     if k > k_conv() or duration_y(k) >= acq_charge_years:              # noqa: F821
         return 0.0
-    return acq_charge_rate * beitragssumme() / acq_charge_years      # noqa: F821
+    return zillmer_amount() / acq_charge_years                       # noqa: F821
 
 
 def admin_charge_pp(k):

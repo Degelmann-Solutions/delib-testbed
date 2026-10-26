@@ -30,7 +30,7 @@ print("premium: {} {:,.2f} EUR every {} month(s) for {} years   "
           proj.prem_term_y(), proj.beitragssumme()))
 print("charges: {}  acq {:,.2f} EUR over {} instalments of {:,.2f}  "
       "beta {:.2%}  gamma {:.2%} p.a.  Stueckkosten {:,.2f}/month".format(
-          proj.charge_id(), proj.charge_acq_total(), proj.acq_instalments(),
+          proj.charge_id(), proj.zillmer_amount(), proj.acq_instalments(),
           proj.charge_acq_pp(proj.t_start()), proj.beta_rate(),
           proj.gamma_rate_ann(), proj.policy_fee_mth()))
 print("fund: scenario {}  gross {:.2%} p.a.  TER {:.2%} p.a.  "

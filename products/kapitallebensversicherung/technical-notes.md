@@ -254,7 +254,7 @@ distributing the wedge between them.
    permissive rather than strict in exactly the two years where the model cannot know which half of the
    year a contract was written in. Years after 2026 carry 1,00 %, held flat **[std]** [R15].
 2. § 169 Abs. 3 VVG's "gleichmäßige Verteilung … auf die ersten fünf Vertragsjahre" [R2] is implemented
-   as a **straight-line** amortisation of `alpha_cost` in five equal instalments; the alternative
+   as a **straight-line** amortisation of `zillmer_amount` in five equal instalments; the alternative
    reading — a five-year *Zillmerung* — gives a slightly lower floor at durations 1 to 4 and the same
    value from duration 5, and is pitfall 5.
 
@@ -416,7 +416,7 @@ optional modules are under *Policyholder behaviour modelling*.
 | `wᵐ(t)` | `lapse_rate_mth(t)` | the monthly rate applied, `= 1 − (1 − w(t))^(1/12)` **[std]** |
 | `l(t)` | `pols_if(t)` | policies in force at the **start** of month `t` |
 | `α`, `β`, `γ`, `φ` | `alpha_rate`, `beta_rate`, `gamma_rate`, `prem_freq_load` | *Zillmersatz*; premium loading; sum-insured loading; *Ratenzahlungszuschlag*, 1.000 where `unterjaehrig_form = echt` |
-| `B`, `BS`, `A` | `prem_gross_pp`, `beitragssumme`, `alpha_cost` | annual *Bruttobeitrag* before `φ`; *Beitragssumme* `= B × m`; zillmered acquisition cost `= zillmer_on × α × BS` |
+| `B`, `BS`, `A` | `prem_gross_pp`, `beitragssumme`, `zillmer_amount` | annual *Bruttobeitrag* before `φ`; *Beitragssumme* `= B × m`; zillmered acquisition cost `= zillmer_on × α × BS` |
 | `P^n`, `P^Z` | `prem_net_level_pp`, `prem_zill_pp` | net level premium; Zillmer premium |
 | `V(k)`, `V^n`, `V^Z`, `V^min` | `res_pp(k)`, `res_net_pp`, `res_zill_pp`, `res_min_pp` | *Deckungskapital* at the start of **policy year** `k`, and its three constructions |
 | `G(k)` | `res_guar_pp(k)` | the § 169 guaranteed value at the **end** of policy year `k` |
@@ -456,7 +456,7 @@ B · tariff_annuity = tariff_benefit_pv + α · B · m
 
 `check_equivalence()` asserts that identity closes. **Note that the acquisition cost `α · BS` is in
 the premium whether or not the contract is zillmered**: *Zillmerung* decides where the cost sits in the
-**reserve**, not whether it is charged (`zillmer_on` enters `alpha_cost`, not the pricing equation).
+**reserve**, not whether it is charged (`zillmer_on` enters `zillmer_amount`, not the pricing equation).
 That is why `zillmer_on` moves the reserve profile and the surrender values without moving
 `prem_gross_pp` at all. The risk element carries the *Risikozuschlag*: `rating_factor` multiplies `q₁` in the
 **death** leg of `tariff_death_pv` only, never the survival leg, never the benefit, and never a
@@ -466,9 +466,9 @@ Then the two reserving premiums, and the zillmered cost:
 
 ```
 beitragssumme     = prem_gross_pp · m
-alpha_cost        = zillmer_on · alpha_rate · beitragssumme
+zillmer_amount        = zillmer_on · alpha_rate · beitragssumme
 prem_net_level_pp = tariff_benefit_pv / tariff_annuity
-prem_zill_pp      = prem_net_level_pp + alpha_cost / tariff_annuity
+prem_zill_pp      = prem_net_level_pp + zillmer_amount / tariff_annuity
 ```
 
 **Single premium.** `prem_term = 1` gives `tariff_annuity = 1` and `BS = B`, so the 25 ‰
@@ -485,13 +485,13 @@ pv_benefit_fut(t)    = SD · Σ_{j=0}^{n-k-1} v₁^(j+1) · jp(x(t)) · q₁(x(t
 ann_due_prem_fut(t)  = Σ_{j=0}^{max(0, m-k)-1} v₁^j · jp(x(t))
 
 res_net_pp(t)   = pv_benefit_fut(t) − prem_net_level_pp · ann_due_prem_fut(t)
-res_zill_pp(t)  = res_net_pp(t) − alpha_cost · ann_due_prem_fut(t) / tariff_annuity
-res_min_pp(t)   = res_net_pp(t) − alpha_cost · max(0, 1 − t / 5)
+res_zill_pp(t)  = res_net_pp(t) − zillmer_amount · ann_due_prem_fut(t) / tariff_annuity
+res_min_pp(t)   = res_net_pp(t) − zillmer_amount · max(0, 1 − t / 5)
 res_pp(t)       = res_zill_pp(t)                       while premium-paying
                 = bfz_si_pp · pu_single_prem(t)        once paid-up
 ```
 
-Three facts about those three lines. **`res_zill_pp(0) = −alpha_cost`** exactly: the *gezillmerte
+Three facts about those three lines. **`res_zill_pp(0) = −zillmer_amount`** exactly: the *gezillmerte
 Deckungskapital* is **negative at issue**, which is the arithmetic of [R28] and the reason § 169
 Abs. 3 needs a floor at all. **How long it stays negative is a parameter question, not a structural
 one**, and on the shipped basis the answer is under a year: 25 ‰ of a twenty-five-year
@@ -688,7 +688,7 @@ on every model point.
 | `check_surr_floor()` | § 169 Abs. 3, per **policy year**: `res_guar_pp(k) ≥ res_zill_pp(k+1)`, `≥ res_min_pp(k+1)` and `≥ 0`, and the *Rückkaufswert* at that year's anniversary `surr_value_pp(12k + 11) ≥ 0` |
 | `check_surr_nonneg()` | The *Rückkaufswert* is non-negative in **every month**. Added with the monthly grid, which quotes one in the eleven months of each policy year the annual grid never priced — months paid on the **last** anniversary's § 169 value, which is a different and smaller number |
 | `check_equivalence()` | The first-order pricing equivalence closes: `B·(1 − β)·tariff_annuity − α·BS == tariff_benefit_pv + γ·SE·tariff_term_annuity` |
-| `check_rechnungszins_cap()`, `check_zillmer_cap()` | The two DeckRV cohort ceilings: `rechnungszins ≤ hoechstrechnungszins(issue_year)` under § 2 [REG-R14] [REG-R15], and `alpha_rate ≤ hoechstzillmersatz(issue_year)` with `alpha_cost ≤ hoechstzillmersatz · beitragssumme` under § 4 [R7] [REG-R16] |
+| `check_rechnungszins_cap()`, `check_zillmer_cap()` | The two DeckRV cohort ceilings: `rechnungszins ≤ hoechstrechnungszins(issue_year)` under § 2 [REG-R14] [REG-R15], and `alpha_rate ≤ hoechstzillmersatz(issue_year)` with `zillmer_amount ≤ hoechstzillmersatz · beitragssumme` under § 4 [R7] [REG-R16] |
 
 The last two are parameter invariants rather than roll-forward identities, and they live here rather
 than in a build script because a German model point's cohort **is** an assumption: a 4,00 % guarantee
@@ -981,7 +981,7 @@ All amounts in euros; `pols_if` to six decimals, cash flows and balances to the 
 **at full precision and then rounded**, not summed from the rounded cells.
 
 **The derived tariff.** The equivalence gives a *Bruttobeitrag* of **2 004,04 €** a year, a
-*Beitragssumme* of **50 101,05 €**, `alpha_cost` **1 252,53 €**, `prem_net_level_pp`
+*Beitragssumme* of **50 101,05 €**, `zillmer_amount` **1 252,53 €**, `prem_net_level_pp`
 **1 811,15 €** and `prem_zill_pp` **1 868,92 €**, on `tariff_death_pv` = 3 611,698493 €,
 `tariff_maturity_pv` = 35 655,282574 € and `tariff_annuity` = `tariff_term_annuity` = 21,680698 —
 the two annuities coinciding because the *Beitragszahlungsdauer* is the whole
@@ -1086,7 +1086,7 @@ year `t` receives.
 | 23 | 45,313.89 | 47,636.03 | 809.81 | 10,540.47 | 2,038.44 | 58,136.33 |
 | 24 | 47,636.03 | 50,000.00 | 850.00 | 11,634.87 | 2,228.98 | 61,549.01 |
 
-Two rows carry the product. At `t` = 0 the reserve is **−1 252,53 €** — exactly `−alpha_cost`,
+Two rows carry the product. At `t` = 0 the reserve is **−1 252,53 €** — exactly `−zillmer_amount`,
 the whole *Zillmerung* unrecovered — while the *closing* reserve the surplus is declared on is
 already **570,75 €**, so the credit is a small positive 9,70 € rather than the negative amount
 an un-floored base would have produced from the opening figure. At `t` = 24 the closing reserve

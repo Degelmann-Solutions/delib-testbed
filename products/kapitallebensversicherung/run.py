@@ -34,7 +34,7 @@ print("frequency {} {} x {}, phi = {:.3f}   surplus_use = {}   scenario = {}   "
           proj.bfz_year()))
 print("Bruttobeitrag {:,.4f} EUR p.a.   Beitragssumme {:,.2f}   alpha_cost "
       "{:,.2f}   P^n {:,.4f}   P^Z {:,.4f}".format(
-          proj.prem_gross_pp(), proj.beitragssumme(), proj.alpha_cost(),
+          proj.prem_gross_pp(), proj.beitragssumme(), proj.zillmer_amount(),
           proj.prem_net_level_pp(), proj.prem_zill_pp()))
 print("frame t = {} .. {} months ({} policy years; policy_year = t // 12 + 1)   "
       "pols_if_init {:.6f}".format(

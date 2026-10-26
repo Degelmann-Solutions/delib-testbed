@@ -155,7 +155,7 @@ defined at anniversaries and the monthly frame does not interpolate it.
 | Cells | What it is | On the anchor cell at `k` = 0 |
 |---|---|---|
 | `res_net_pp(k)` | The net prospective reserve, no acquisition cost at all | 0,00 € — the equivalence principle stated as a reserve |
-| `res_zill_pp(k)` | The *gezillmerte Deckungskapital* the insurer holds | **−1 252,53 €**, exactly `-alpha_cost()` |
+| `res_zill_pp(k)` | The *gezillmerte Deckungskapital* the insurer holds | **−1 252,53 €**, exactly `-zillmer_amount()` |
 | `res_min_pp(k)` | The § 169 Abs. 3 VVG floor: the same net reserve with the acquisition cost spread **evenly over the first five contract years** [R2] | −1 252,53 €, equal at duration 0 |
 | `res_guar_pp(k)` | `max(res_zill_pp(k+1), res_min_pp(k+1), 0)` — the § 169 value at the **end** of year `k` | 776,70 €, the floor already binding |
 
@@ -173,7 +173,7 @@ Model point 13 (`zillmer_on = 0`) makes all three coincide at every duration and
 slack, which is the invariance test; model point 2 (`prem_term = 1`) reverses the ordering
 from the first anniversary, a single premium leaving almost nothing to amortise. Both are
 the right answer rather than degenerate cases. Note that the acquisition cost is charged
-in the **premium** either way: `zillmer_on` enters `alpha_cost`, a *reserving* quantity,
+in the **premium** either way: `zillmer_on` enters `zillmer_amount`, a *reserving* quantity,
 and not the pricing equation. `zillmer_on = 0` is a **[std]** switch, not an observed
 market option: § 4 DeckRV sets a ceiling rather than a mandate [R7], and every carrier
 wording read here applies the *Verrechnungsverfahren* [S7] [S9] [S18].

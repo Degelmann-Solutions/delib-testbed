@@ -326,6 +326,20 @@ def beitragssumme():
     return beitragssumme_prem() * beitragssumme_years()              # noqa: F821
 
 
+def zillmer_on():
+    """1 where the acquisition cost is zillmered into the reserve; 1, the default."""
+    return 1
+
+
+def zillmer_amount():
+    """The zillmered acquisition charge, ``zillmer_on() x alpha_rate() x beitragssumme()``.
+
+    Reads the product's ``alpha_rate``, its *Zillmersatz* on the *Beitragssumme*; a product
+    without one inherits this cell unused.  Capped by the § 4 DeckRV *Höchstzillmersatz*.
+    """
+    return zillmer_on() * alpha_rate() * beitragssumme()             # noqa: F821
+
+
 def disc_factor_mth(t):
     """v^(t/12): the *Rechnungszins* discount factor to month t, ``(1 + i)^(-t/12)``.
 

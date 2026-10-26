@@ -184,7 +184,7 @@ why `charge_acq(120)` is non-zero on model point 9.
 
 ## The acquisition charge, its window, and the in-force cell
 
-`charge_acq_total() = alpha_rate × beitragssumme()` — **2,50 % of the sum of premiums
+`zillmer_amount() = alpha_rate × beitragssumme()` — **2,50 % of the sum of premiums
 payable, the *Höchstzillmersatz* itself** [R12] [REG-R16] — spread in equal instalments over
 `acq_window_months() = min(alpha_spread_months, 12 × prem_term_y)` months at the policy's own
 premium frequency [R1] [REG-R28]. The composite takes the cap rather than a guessed interior
@@ -262,7 +262,7 @@ the ten delib products. The protection sits earlier, in the sixty-month spreadin
 why the surrender value is positive from the first month. A *Stornoabzug* is permissible only if *vereinbart*, *beziffert* and *angemessen*, and
 **never for unamortised acquisition costs** [R1] [REG-R36]. `stornoabzug_pp(t)` is therefore
 a flat rate on the *Fondsguthaben* and deliberately **not** a function of
-`charge_acq_total() − cum_charge_acq_pp(t)`: that prohibition is what stops an insurer
+`zillmer_amount() − cum_charge_acq_pp(t)`: that prohibition is what stops an insurer
 recovering through the deduction what the five-year spreading denies it. Only `std_high`
 carries a rate and only model point 5 uses it.
 
@@ -443,7 +443,7 @@ care:
 |---|---|---|
 | `qᴵ(t)`, `q(t)` | `mort_rate_tariff` / `mort_rate`, and their `_mth` forms | Two rates: the first-order table prices the *Risikobeitrag*, the second-order one produces the claims, and their difference is the *Risikoergebnis*. `mort_rate` is the projection's own decrement, per the library's shared vocabulary |
 | `w(t)` | `lapse_rate_base` / `lapse_tax_step` / `lapse_dyn_add` / `lapse_rate` / `lapse_rate_mth` | The library requires an annual `lapse_rate` beside the monthly one; the table rate, the tax multiplier and the dynamic addition are separate cells so each is testable alone |
-| `α(t)` | `charge_acq_pp` / `cum_charge_acq_pp` / `charge_acq_total` | The instalment, the ledger and the total the ledger must reach — `check_acq_charge` needs all three |
+| `α(t)` | `charge_acq_pp` / `cum_charge_acq_pp` / `zillmer_amount` | The instalment, the ledger and the total the ledger must reach — `check_acq_charge` needs all three |
 | `D(t)` | `db_floor_pp` / `db_pp` | The guaranteed floor and what a death actually pays; keeping them apart makes `death_strain` exactly the net amount at risk |
 | (expense / commission) | `expense_acq_pp` / `comm_acq_pp`, `expenses` / `commissions` | Two lines, not one. `expenses` is the insurer's own outgo **excluding** commission and `commissions` is the *Abschluss-* and *Bestandsprovision*, which is what those two names mean on every delib model that has a commission to publish |
 

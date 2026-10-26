@@ -196,7 +196,7 @@ instalments sum to `zill_rate × beitragssumme()` exactly. The window is a windo
 sees `alpha_amort_pp(k) = 0` in every year; on a single-premium contract the five instalments
 still run and the debit outlives the one premium that paid for it. One arithmetic coincidence
 in the worked example is not a coincidence: `commissions(0) = 0.025 × S = 4 094,85 €` is the
-same number as `alpha_total_pp()`, because the initial commission rate and the
+same number as `zillmer_amount()`, because the initial commission rate and the
 *Höchstzillmersatz* are both 2,5 %. That is the German design — what the insurer pays out at
 inception is sized to what it may write into the reserve — and it is why moving
 `comm_init_rate` without moving `zill_rate` opens a first-year hole that nothing closes.

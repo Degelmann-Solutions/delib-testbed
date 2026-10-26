@@ -757,7 +757,7 @@ one becomes a test.
 12. **Building the *Stornoabzug* out of unamortised acquisition costs.** § 169 Abs. 5 VVG makes
     exactly that deduction ineffective and puts the burden of proof on the insurer [R1] [REG-R28]
     [REG-R36]. Assert `stornoabzug(t) = σ × pols_lapse(t) × av_pp_at(t, "BEF_DECR")` and that it
-    is **not** a function of `charge_acq_total() − cum_charge_acq_pp(t)`.
+    is **not** a function of `zillmer_amount() − cum_charge_acq_pp(t)`.
 13. **Booking the whole *Fondsguthaben* as an insurer outgo.** `net_cf` is the non-unit stream;
     the fund is the policyholder's money passing through. Assert `check_benefit_funding()` and
     `check_net_cf()`, and that no account-value benefit appears inside `net_cf`.

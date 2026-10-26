@@ -460,7 +460,7 @@ flow in `result_cf()` is EUR for the model point as a whole.
     premiums(t) = P(duration(t)) × l(t)    where prem_due(t), else 0
 
     beitragssumme    = Σ_{u=0..min(prem_term_y, n)−1} P_sched(u)
-    alpha_total_pp   = alpha_rate × beitragssumme
+    zillmer_amount   = alpha_rate × beitragssumme
 
 `P_sched` is the premium schedule **as written at inception**, ignoring any later
 *Beitragsfreistellung*: § 4 DeckRV takes the *Zillmersatz* on the sum of all premiums payable under
@@ -469,8 +469,8 @@ frequency loading is inside `P`, so it is inside the *Beitragssumme* too.
 
 ### The premium decomposition
 
-    α(k)  = min( P(k), max(0, alpha_total_pp − alpha_cum_pp(k)) )        zillmered
-    α̃(k)  = alpha_total_pp / alpha_spread_years   for k < 5, else 0      § 169 Abs. 3 [REG-R28]
+    α(k)  = min( P(k), max(0, zillmer_amount − alpha_cum_pp(k)) )        zillmered
+    α̃(k)  = zillmer_amount / alpha_spread_years   for k < 5, else 0      § 169 Abs. 3 [REG-R28]
     β(k)  = beta_rate × P(k)
     γ(k)  = (paid_up(k) ? gamma_pup_rate : gamma_rate) × V(k)
     Ď(k)  = prem_cum_pp(k) + P(k)                     if death_benefit_form = prem_refund
@@ -889,8 +889,8 @@ becomes a test in `tests/test_klassische_rentenversicherung_de.py`.
     identical `charge_*` except through `mort_rate_guar`, and identical `annuity_rate_appl()`.
 17. **Amortising the acquisition charge against a shrunken *Beitragssumme*.** The § 4 DeckRV base is
     the sum of all premiums payable under the contract as written [REG-R16], not the premiums a later
-    *Beitragsfreistellung* leaves behind. Assert `alpha_total_pp` on point 7 is unchanged by
-    `pup_year`, and that `alpha_cum_pp` never exceeds `alpha_total_pp`.
+    *Beitragsfreistellung* leaves behind. Assert `zillmer_amount` on point 7 is unchanged by
+    `pup_year`, and that `alpha_cum_pp` never exceeds `zillmer_amount`.
 18. **Truncating the payout phase.** A life annuity has no term; `proj_len() = omega_age −
     issue_age`. Assert `result_cf().index[-1] == proj_len() − 1`, that `pols_if(proj_len()) = 0` —
     one past the last row — and that the decrement closure sums to `pols_if_init()` exactly. A 40-year horizon on the anchor cell
@@ -953,7 +953,7 @@ survivor-weighted annuity runs from `t = 324` to `t = 851`.
 
 **Assumptions, each tagged.** *Contractual and cited:* the *Rechnungszins* `i = 1,00 % p.a.`
 [REG-R15]; the *Höchstzillmersatz* `alpha_rate = 25 ‰` of the *Beitragssumme* [REG-R16], giving
-`beitragssumme = 17 × 3 000,00 = 51 000,00 €` and `alpha_total_pp = 1 275,00 €`, zillmered — taken
+`beitragssumme = 17 × 3 000,00 = 51 000,00 €` and `zillmer_amount = 1 275,00 €`, zillmered — taken
 in full from the first year's premium and nil thereafter; the § 169 Abs. 3 five-year spread,
 `alpha_spread_years = 5`, giving `α̃(k) = 255,00 €` for `k = 0 … 4` [REG-R28]; the § 165
 *Mindestversicherungsleistung* test, not triggered on this cell [R2]; the death benefit
@@ -1181,7 +1181,7 @@ attained age 67, with `death_benefit_form = deckungskapital` and `kapitalwahl_ra
 | **Total** | — | — | — | **50,000.00** | **1,128.88** | **21,374.96** | **46,844.86** | **1,908.71** | **−21,257.42** |
 
 Totals again at full precision then rounded; the rounded-cell `net_cf` is −21 257,45 €. Three things
-read off it. The *Beitragssumme* is the single premium, so `alpha_total_pp` is 1 250,00 € and the
+read off it. The *Beitragssumme* is the single premium, so `zillmer_amount` is 1 250,00 € and the
 first year's *Sparbeitrag* is 46 750,00 € — 93,5 % of the premium against the anchor's 53,4 %, which is
 the whole economic difference between the two forms. The net amount at risk is **identically zero**
 in every policy year, the benefit being the *Deckungskapital* itself, so the *Risikobeitrag* disappears from

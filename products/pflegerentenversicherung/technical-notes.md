@@ -589,8 +589,8 @@ relative to the market-standard form — is stated rather than hidden, and pitfa
 ### Expenses and net cash flow
 
     expense_infl_factor(t) = (1 + f) ** (t / 12)
-    acq_expense_pp()       = α * beitragssumme()
-    expenses(t)            = acq_expense_pp() * 1{t = 0}
+    zillmer_amount()       = α * beitragssumme()
+    expenses(t)            = zillmer_amount() * 1{t = 0}
                            + γ * expense_infl_factor(t) * pols_if(t)
                            + β * premiums(t)
     claim_expenses(t)      = c * expense_infl_factor(t) * Σ_{g : π_g > 0} ℓ_g(t)
@@ -699,7 +699,7 @@ this list executed in a different sequence.
    otherwise zero. Accumulate `cum_prem_max_pp(t)`.
 4. **Pay the *Pflegerente*, in advance**, on the **escalation** ledger:
    `claims(t, "ANNUITY") = R × Σ_g π_g × esc_pg(t, g)`. The *Karenz* ledger receives nothing.
-5. **Charge start-of-month expenses.** `acq_expense_pp()` at `t = 0` only; per-policy administration
+5. **Charge start-of-month expenses.** `zillmer_amount()` at `t = 0` only; per-policy administration
    on `pols_if(t)`, inflated; premium-related administration on the premium just collected; and
    `claim_expenses(t)` on the annuity payments just made.
 6. **Look up the month's forces at `x(t)`.** `μ_A`, and `ι` — **zero while `t < wartezeit_months`**;
@@ -789,7 +789,7 @@ The specific ways an implementation of *this* product looks right and is wrong. 
     `x(t) ≥ prem_end_age` (point 4).
 13. **Charging the *Zillmerung* on the wrong base.** The 25 ‰ ceiling is a per-mille of the
     *Beitragssumme*, not of the annual premium [REG-R16]. Assert
-    `acq_expense_pp() == 0.025 × premium_mth_pp() × 12 × (min(prem_end_age, 85) - issue_age)`,
+    `zillmer_amount() == 0.025 × premium_mth_pp() × 12 × (min(prem_end_age, 85) - issue_age)`,
     charged at `t = 0` only, so an in-force point never incurs it.
 14. **Striking the equivalence premium on the projection basis.** Assert `check_prem_equiv()` is
     `True`, that `premium_mth_pp()` is invariant to every value in `lapse_table.csv`, and that

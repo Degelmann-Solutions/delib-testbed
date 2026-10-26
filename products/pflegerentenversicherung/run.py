@@ -31,7 +31,7 @@ print("options: Wartezeit {} m, Karenzzeit {} m, Leistungsdynamik {:.2%}, "
 print("Beitrag {:,.6f} EUR/month   net level premium {:,.6f} EUR/month   "
       "Beitragssumme {:,.2f} EUR   acquisition charge {:,.2f} EUR".format(
           proj.premium_mth_pp(), proj.prem_net_level_pp(), proj.beitragssumme(),
-          proj.acq_expense_pp()))
+          proj.zillmer_amount()))
 print("EPV benefits {:,.6f}   EPV premium units {:,.6f}   EPV admin {:,.6f}   "
       "EPV claim expense {:,.6f}".format(
           proj.tariff_benefit_pv(), proj.tariff_annuity(), proj.epv_admin(),

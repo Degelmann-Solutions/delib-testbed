@@ -147,25 +147,6 @@ def charge_table():
         input_dir() / charge_file, index_col=["charge_id", "item"])   # noqa: F821
 
 
-def lapse_table():
-    """The annual surrender rates by policy duration, from *lapse_table.csv*.
-
-    Durations 1 to 40, the **contractual policy year** and so 1-based: the projection's
-    0-based ``t`` reads the table at ``t + 1``, and a projection running longer holds the
-    last row.  Every level is
-    **[std]**.  The one shaped feature is the **duration-12 step**, at the twelve-year
-    threshold § 20 Abs. 1 Nr. 6 EStG puts on the halving of the taxable gain: German
-    Schicht-3 surrenders are suppressed approaching duration 12 and spike at it.  Surrender
-    is zero from the *Rentenbeginn*, which is imposed in
-    :func:`~.RV_DE_S.Projection.lapse_rate` rather than carried in the table.
-
-    Override reason: the table keys the 1-based contractual policy year as ``duration``,
-    products/klassische_rentenversicherung/technical-notes.md, section Assumption inputs
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="duration")              # noqa: F821
-
-
 # ---------------------------------------------------------------------------
 # References
 

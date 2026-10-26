@@ -122,7 +122,7 @@ reaches it through a `data` Reference and holds no `*_file` Reference and no `in
 | `model_point_table.csv` | `point_id` | the twenty-six attributes tabulated below |
 | `mort_table_accum.csv` | `age` (16–110) | `qx`, `provenance` |
 | `annuity_mort_table.csv` | `age` (55–110) | `qx_base`, `improvement`, `provenance` |
-| `lapse_table.csv` | `duration` (1–60) | `lapse_rate`, `transfer_rate`, `provenance` |
+| `lapse_table.csv` | `policy_year` (1–60) | `lapse_rate`, `transfer_rate`, `provenance` |
 | `zulage_schedule.csv` | `zulage_id`, `t` | `unmittelbar`, `n_kinder_pre2008`, `n_kinder_post2008`, `bonus`, `provenance` |
 | `income_schedule.csv` | `income_id`, `t` | `income`, `provenance` |
 | `surplus_scenario.csv` | `scenario_id`, `t` | `decl_rate`, `provenance` |

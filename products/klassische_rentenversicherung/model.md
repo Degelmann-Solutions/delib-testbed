@@ -104,7 +104,7 @@ convention, and the § 165 cash-out, which is a dated contractual act. Spreading
 would empty the cohort eleven months early.
 
 **Time-like inputs.** No CSV value changed, in this conversion or in the earlier move to a 0-based
-frame. `lapse_table.csv`'s `duration` is the **contractual policy year**, 1-based, and the model reads
+frame. `lapse_table.csv`'s `policy_year` is the **contractual policy year**, 1-based, and the model reads
 it through `policy_year(t) = duration(t) + 1` — the § 20 EStG twelve-year step stays at duration 12,
 which the model reads across months 132 to 143. `decl_rate_table.csv`'s `calendar_year` and the `age`
 keys of `mort_table.csv` and `rentenfaktor_table.csv` are absolute and unaffected. On the model point
@@ -391,7 +391,7 @@ repository is checked out.
 | `decl_rate_file` | `decl_rate_table()` | `decl_rate_table.csv` | The declared *laufende Verzinsung* by scenario and calendar year, 2005–2060, clamped at both ends. `base` level at 2,55 %, `low` at 1,50 % **[std]** |
 | `rentenfaktor_file` | `rentenfaktor_table()` | `rentenfaktor_table.csv` | The *aktueller Rentenfaktor* by scenario and attained age at *Rentenbeginn*, rising 2,5 % per year of age. `base` / `low` / `high` anchored at age 67 on 32,00 € / 25,50 € / 35,00 € **[std]** — no market level was established for any carrier in any year (gap 3) |
 | `charge_file` | `charge_table()` | `charge_table.csv` | Two charge sets, `zillmer_25` and `zillmer_40`, eight items each, keyed per item so every number carries its own provenance |
-| `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual surrender by contractual policy year (`duration` 1–40, read through `policy_year(t)`), last row held. Levels **[std]**; the one shaped feature is the **duration-12 step** at the § 20 Abs. 1 Nr. 6 EStG twelve-year threshold [R6] [REG-R45] |
+| `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual surrender by contractual policy year (`policy_year` 1–40, read through `policy_year(t)`), last row held. Levels **[std]**; the one shaped feature is the **duration-12 step** at the § 20 Abs. 1 Nr. 6 EStG twelve-year threshold [R6] [REG-R45] |
 | `freq_loading_file` | `freq_loading_table()` | `freq_load_table.csv` | The *Ratenzahlungszuschlag*: 1,000 / 1,020 / 1,030 / 1,050 **[std]**, and `n_instalments` for documentation — the premium is collected annually in advance whatever the elected frequency, for the reasons under *The Ratenzahlungszuschlag* above |
 | `param_file` | `param_table()` | `param_table.csv` | Every scalar that is neither a charge nor a rate table — the four expense levels and their inflation, `mort_be_factor`, `mort_base_year`, `omega_age`, `val_reserve_rate`, the three *Überschussrente* parameters and `roll_fwd_tol`. They live in a file rather than in References so that each carries its own provenance tag, which a Reference cannot |
 

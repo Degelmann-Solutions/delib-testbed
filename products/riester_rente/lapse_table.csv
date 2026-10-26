@@ -1,4 +1,4 @@
-duration,lapse_rate,transfer_rate,provenance
+policy_year,lapse_rate,transfer_rate,provenance
 1,0.0080,0.0120,[std] no German Riester persistency data; durations 1-5; transfer set above surrender because Anbieterwechsel is foerderunschaedlich [R1]
 2,0.0080,0.0120,[std] no German Riester persistency data; durations 1-5; transfer set above surrender because Anbieterwechsel is foerderunschaedlich [R1]
 3,0.0080,0.0120,[std] no German Riester persistency data; durations 1-5; transfer set above surrender because Anbieterwechsel is foerderunschaedlich [R1]

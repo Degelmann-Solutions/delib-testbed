@@ -126,28 +126,6 @@ def annuity_mort_table():
         input_dir() / annuity_mort_file, index_col="age")            # noqa: F821
 
 
-def lapse_table():
-    """Surrender and transfer-out rates by contract duration, from *lapse_table.csv*.
-
-    The ``duration`` key is the **contract year**, 1-based and contractual: row ``k`` is
-    contract year ``k``, and the projection reaches it through
-    ``duration(t) + 1 = duration_init() + t + 1`` rather than through the 0-based ``t``
-    — ``duration(t)`` is itself the 0-based count of completed contract years.
-
-    Two rates, not one.  ``lapse_rate`` is a *Kündigung*, which repays every Zulage and
-    every § 10a relief and taxes the accumulated growth; ``transfer_rate`` is an
-    *Anbieterwechsel* under the statutory *Wechselrecht*, which carries none of those
-    consequences.  The second is set **above** the first at every duration for that
-    reason, and a model of this book carrying only a lapse rate has mis-specified it.
-
-    Override reason: the table keys the 1-based contract year as ``duration`` and carries a
-    ``transfer_rate`` beside the lapse rate, products/riester_rente/technical-notes.md,
-    section Model inputs
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="duration")              # noqa: F821
-
-
 def zulage_schedule():
     """The Zulage entitlement drivers by schedule id and projection period ``t``.
 

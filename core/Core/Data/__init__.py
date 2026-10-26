@@ -58,10 +58,15 @@ def mort_table():
         input_dir() / mort_file, index_col=mort_table_index())       # noqa: F821
 
 
+def lapse_table_index():
+    """The index column of the lapse table: the **1-based** ``policy_year``."""
+    return "policy_year"
+
+
 def lapse_table():
-    """The annual lapse rates by **1-based** ``policy_year``, read from ``lapse_file``."""
+    """The annual lapse rates, read from ``lapse_file`` by ``lapse_table_index()``."""
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
+        input_dir() / lapse_file, index_col=lapse_table_index())     # noqa: F821
 
 
 def rentenfaktor_table():

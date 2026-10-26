@@ -221,7 +221,7 @@ table carries a per-row `provenance` column, this library's second ruling.
 | `decl_rate_table.csv` | `scenario_id`, `calendar_year` | `decl_rate`, `provenance` |
 | `rentenfaktor_table.csv` | `rf_scenario_id`, `age` | `annuity_rate_curr`, `provenance` |
 | `charge_table.csv` | `charge_id`, `item` | `value`, `provenance` |
-| `lapse_table.csv` | `duration` | `lapse_rate`, `provenance` |
+| `lapse_table.csv` | `policy_year` | `lapse_rate`, `provenance` |
 | `freq_load_table.csv` | `prem_freq` | `freq_load`, `n_instalments` (**recorded, not applied**), `provenance` |
 | `param_table.csv` | `item` | `value`, `provenance` |
 
@@ -348,7 +348,7 @@ prices a death benefit, so that benefit is systematically **under**-charged rela
 death-business basis such as DAV 2008 T [REG-R48], and the *Beitragsrückgewähr* design exists partly
 because it makes the mismatch immaterial — the benefit is the premiums, not a sum insured.
 
-**Lapse (*Storno*).** `lapse_table.csv`, keyed by the **contractual policy year** (`duration`,
+**Lapse (*Storno*).** `lapse_table.csv`, keyed by the **contractual policy year** (`policy_year`,
 1-based, so the lookup goes through `policy_year(t) = duration(t) + 1` and the twelve months of a
 policy year all read the same row), and **zero from *Rentenbeginn***:
 

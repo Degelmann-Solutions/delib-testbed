@@ -178,22 +178,20 @@ def election_table():
         input_dir() / election_file, index_col=["elect_id", "t"])    # noqa: F821
 
 
-def lapse_table():
-    """The base surrender rates by year, read from *lapse_table.csv*.
+def lapse_table_index():
+    """The index column of *lapse_table.csv*: the model's 0-based ``t``.
 
-    Indexed by the model's 0-based ``t``, so its first row is ``t = 0``, the first policy
-    year.  These are the rates **before** the terminal-year override: in the final period
-    the projection applies zero, because the end of that period is *Rentenbeginn* and the
+    So the table's first row is ``t = 0``, the first policy year.  The rates are the base
+    surrender rates **before** the terminal-year override: in the final period the
+    projection applies zero, because the end of that period is *Rentenbeginn* and the
     survivors leave as maturities rather than as surrenders.  The step at ``t = 11``
     (policy year 12) is the § 20 Abs. 1 Nr. 6 EStG tax threshold and is the shape's whole
     point; the levels are **[std]**.
 
     Override reason: the table is keyed by the model's 0-based ``t``, not by the 1-based
-    policy year, products/indexpolice/technical-notes.md, section Model inputs — the
-    external CSVs
+    policy year, products/indexpolice/technical-notes.md:348
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="t")                     # noqa: F821
+    return "t"
 
 
 # ---------------------------------------------------------------------------

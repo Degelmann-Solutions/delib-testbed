@@ -1191,18 +1191,6 @@ def pols_if_at(t, timing):
     raise ValueError("invalid timing")
 
 
-def pols_death(t):
-    """l(t) q2m(t): expected deaths in month t, claimed at the end of the month.
-
-    On the **monthly** death rate, so a claim now falls in the month it happens rather
-    than at the anniversary.  The claimant has already paid whatever instalment fell due
-    in advance at the start of that month; that is this model's reading of "premium
-    payment ceases at death" **[std]**, and multiplying :func:`premiums` by ``(1 - q2m)``
-    on top of it applies the rule twice.
-    """
-    return pols_if(t) * mort_rate_mth(t)
-
-
 def pols_lapse(t):
     """Lapses at the end of period t, taken from the survivors of the death decrement.
 

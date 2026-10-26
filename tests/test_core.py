@@ -559,6 +559,15 @@ CORE_CELLS = {
                            "riester_rente": "derived",
                            "risikolebensversicherung": "derived"},
         "pols_if_init": dict.fromkeys(MODELS, "derived"),
+        "pols_death": {"basisrente": "override",
+                       "berufsunfaehigkeit": "override",
+                       "fondsgebundene_rentenversicherung": "derived",
+                       "indexpolice": "derived",
+                       "kapitallebensversicherung": "derived",
+                       "klassische_rentenversicherung": "derived",
+                       "pflegerentenversicherung": "override",
+                       "riester_rente": "override",
+                       "risikolebensversicherung": "derived"},
     },
 }
 

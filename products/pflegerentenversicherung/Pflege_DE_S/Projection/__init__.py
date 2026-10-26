@@ -1005,6 +1005,9 @@ def pols_death(t):
     because the mortality multiple is.  Aggregating the care ledgers into one average death
     rate is the arithmetic form of forgetting that the highest-paying state is also the
     shortest-lived.
+
+    Override reason: the deaths come from every state, the active state and each *Pflegegrad*
+    at its own rate, products/pflegerentenversicherung/technical-notes.md:207
     """
     total = pols_act(t) * p_act_death(t)
     for g in range(1, 6):

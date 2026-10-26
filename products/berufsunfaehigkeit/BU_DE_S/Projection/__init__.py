@@ -1519,6 +1519,9 @@ def pols_death(t):
     a claim, so there is no ``claims_death`` column for a reader arriving from a term-life
     model to find.  With :func:`pols_lapse` it is one of the only two exits from the
     model.
+
+    Override reason: the deaths are the sum of the three ledgers' deaths, active, disabled
+    and run-off, each at its own rate, products/berufsunfaehigkeit/technical-notes.md:496
     """
     return pols_death_actv(t) + pols_death_dis(t) + pols_death_runoff(t)
 

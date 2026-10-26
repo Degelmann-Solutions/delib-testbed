@@ -1338,18 +1338,6 @@ def pols_if_at(t, timing):
     raise ValueError("invalid timing")
 
 
-def pols_death(t):
-    """l(t) q^m(t): expected deaths in **month** t, at the end of it.
-
-    On the **second-order** basis, at the monthly rate.  The claimant has already paid the
-    year's premium, which fell due in advance at the start of the *Versicherungsperiode*, so
-    :func:`premiums` is not further multiplied by a survival factor.  Deaths continue through
-    the payout phase and move :func:`pols_if`, but pay nothing: ``db_pp`` is zero after the
-    *Rentenbeginn*.
-    """
-    return pols_if(t) * mort_rate_mth(t)
-
-
 def pols_lapse(t):
     """Surrenders at the end of period t, taken from the survivors of the year's deaths.
 

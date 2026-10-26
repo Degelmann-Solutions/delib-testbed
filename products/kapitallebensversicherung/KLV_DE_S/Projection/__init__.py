@@ -1431,17 +1431,6 @@ def pols_if_at(t, timing):
     raise ValueError("invalid timing")
 
 
-def pols_death(t):
-    """l(t) qm(t): expected deaths in month t, claimed at the **end** of the month.
-
-    On the **best-estimate monthly** mortality, not the first-order one, so a claim now falls
-    in the month it happens rather than at the anniversary.  The decedent has already paid
-    whatever instalment fell due in advance at the start of that month - which is what
-    "premiums cease on death" means on a grid with premiums in advance.
-    """
-    return pols_if(t) * mort_rate_mth(t)
-
-
 def pols_lapse(t):
     """Expected surrenders at the end of month t, from the survivors of that month's mortality.
 

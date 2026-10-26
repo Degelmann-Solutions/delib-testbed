@@ -996,6 +996,9 @@ def pols_death(t):
     *Rentenphase* the annuity simply stops with that month's instalment, and each death
     contributes ``elig_surv_prob`` of a *Rentengarantiezeit* continuation where one is
     running.
+
+    Override reason: the deaths are summed over the two cohorts, paying and paid-up, whose
+    deaths release different reserves, products/basisrente/technical-notes.md:507
     """
     return pols_death_paying(t) + pols_death_paidup(t)
 

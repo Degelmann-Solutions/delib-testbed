@@ -1346,15 +1346,6 @@ def pols_if_at(t, timing):
         raise ValueError("invalid timing")
 
 
-def pols_death(t):
-    """Expected deaths in month t, on the **best-estimate** basis.
-
-    ``pols_if(t) x mort_rate_mth(t)``.  The tariff's first-order rate prices the charge;
-    this rate produces the claims.  Their difference is the *Risikoergebnis*.
-    """
-    return pols_if(t) * mort_rate_mth(t)
-
-
 def pols_lapse(t):
     """Expected surrenders in month t, on the survivors of the month's deaths.
 

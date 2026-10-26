@@ -1171,11 +1171,6 @@ def pols_if_at(t, timing):
     raise ValueError("invalid timing")
 
 
-def pols_death(t):
-    """``l(t) q^m_d(t)``: expected deaths in **month** t, claimed at the end of it."""
-    return pols_if(t) * mort_rate_mth(t)
-
-
 def pols_lapse(t):
     """Expected surrenders in **month** t, taken from the survivors of the month's deaths.
 

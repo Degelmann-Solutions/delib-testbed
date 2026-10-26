@@ -616,7 +616,7 @@ ones, `q_mth = 1 − (1 − q)^(1/12)` and likewise for `w` and `θ`:
 
     Payout (t ≥ 12T):
       pols_death(t)    = l(t) · q_mth(t) ;  pols_lapse(t) = pols_transfer(t) = 0
-      l(t + 1)         = l(t) − pols_death(t)          and 0 at t = 12T if commuted
+      l(t + 1)         = l(t) − pols_death(t)          and 0 at t = 12T if commuted, where pols_death(12T) = 0: the Abfindung takes the whole cohort
 
     pols_conv()          = l(12T)
     pols_annuity_pay(t)  = pols_conv()   if 0 ≤ t − 12T < 12 · rentengarantie_years

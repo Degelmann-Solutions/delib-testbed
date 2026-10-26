@@ -369,6 +369,15 @@ def lapse_rate_mth(t):
     return 1.0 - (1.0 - w) ** (1.0 / 12.0)
 
 
+def pols_death(t):
+    """l(t) q^m(t): the expected deaths in month t, ``pols_if(t) x mort_rate_mth(t)``.
+
+    Taken first, at the end of the month, on the best-estimate monthly rate; the deceased
+    have paid what fell due in advance at the start of the month.
+    """
+    return pols_if(t) * mort_rate_mth(t)                             # noqa: F821
+
+
 def rechnungszins():
     """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
 

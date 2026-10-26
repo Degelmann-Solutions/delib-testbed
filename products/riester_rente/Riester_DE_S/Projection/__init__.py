@@ -770,6 +770,10 @@ def pols_death(t):
     and pays nothing except through the *Rentengarantiezeit*, which pays the **survivors'
     beneficiaries** rather than the estate.  Zero in the conversion month of a commuted
     contract, where the whole population leaves through the *Abfindung* instead.
+
+    Override reason: zero outside the frame and in the conversion month of a commuted
+    contract, where the *Kleinbetragsrenten-Abfindung* takes the whole cohort,
+    products/riester_rente/technical-notes.md:619
     """
     if t < 0 or t >= proj_len():
         return 0.0

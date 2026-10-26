@@ -451,18 +451,6 @@ def k_start():
     return 0
 
 
-def is_anniv(t):
-    """True in the **last** month of a projection year, ``t % 12 == 11``.
-
-    The frame opens at a policy anniversary — an in-force model point has completed
-    ``duration_init`` whole policy years at the valuation date — so a projection year is a
-    *Versicherungsjahr* and its last month is the month before the next anniversary.  It is
-    where everything contractually annual falls: the year's *Beitragsfreistellung*, the
-    interest credit, and the certainty that the terminal year kills the last survivor.
-    """
-    return t % 12 == 11
-
-
 def age_y(k):
     """x(k): attained age in projection year k.
 

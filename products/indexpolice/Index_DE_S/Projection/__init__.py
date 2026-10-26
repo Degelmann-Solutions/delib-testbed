@@ -401,16 +401,6 @@ def proj_len_y():
     return ann_start_age() - issue_age()
 
 
-def is_anniv(t):
-    """Whether month t is the **last** month of its policy year: ``t % 12 == 11``.
-
-    The month the annual machinery acts in: the *Indexjahr* closes, the *Indexgutschrift*
-    is struck and locked in, the safe-arm credit is made and the account rolls to its next
-    opening balance.
-    """
-    return t % 12 == 11
-
-
 def index_month(t):
     """``m(t)``: which month of its *Indexjahr* month t is, **1-based**: ``t % 12 + 1``.
 

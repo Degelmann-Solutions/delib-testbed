@@ -144,6 +144,17 @@ def calendar_year(t):
     return calendar_year_y(duration(t))                              # noqa: F821
 
 
+def is_anniv(t):
+    """Whether month t is the **last** month of its policy year: ``t % 12 == 11``.
+
+    The month the annual machinery acts in, the month before the next anniversary.  A
+    decrement that is a certainty rather than a rate (an annual rate of 1) cannot be spread
+    geometrically over twelve months without emptying the cohort eleven months early, so the
+    monthly rates place it here.
+    """
+    return t % 12 == 11
+
+
 def rechnungszins():
     """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
 

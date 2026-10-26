@@ -327,6 +327,11 @@ CORE_CELLS = {
         "prem_net_level_pp": {"kapitallebensversicherung": "derived",
                               "pflegerentenversicherung": "derived",
                               "risikolebensversicherung": "derived"},
+        "is_anniv": {"basisrente": "derived",
+                     "indexpolice": "derived",
+                     "kapitallebensversicherung": "derived",
+                     "klassische_rentenversicherung": "derived",
+                     "riester_rente": "derived"},
     },
 }
 

@@ -581,16 +581,6 @@ def t_conv():
     return 12 * k_conv()
 
 
-def is_anniv(t):
-    """True in the **last** month of a projection year, ``t % 12 == 11``.
-
-    Where everything contractually annual falls: the interest credit, the roll-forward of
-    both accounts and of the guarantee accumulator, and the certainty that the terminal year
-    kills the last survivor.
-    """
-    return t % 12 == 11
-
-
 def prem_due(t):
     """True in the month the year's contribution and Zulage fall due, ``t % 12 == 0``.
 

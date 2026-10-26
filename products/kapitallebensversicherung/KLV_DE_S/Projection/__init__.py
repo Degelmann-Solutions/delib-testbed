@@ -568,18 +568,6 @@ def bfz_year():
 
 # --- the projection frame --------------------------------------------------
 
-def is_anniv(t):
-    """Whether month t is the **last month of a policy year**, ``t % 12 == 11``.
-
-    The policy anniversary falls at the end of it, and that is the instant the contract's
-    annual machinery acts: the *Überschussdeklaration* is credited, the *Deckungskapital*
-    rolls forward by Fackler, the § 169 value is struck, the *Beitragsfreistellung* election
-    takes effect and the *Ablauf* falls.  A claim in any **other** month is paid the balances
-    that were standing at the last anniversary; see :func:`av_sur_close_pp`.
-    """
-    return t % 12 == 11
-
-
 def policy_year_y(k):
     """The contractual, 1-based label of **policy year** k: ``k + 1``.
 

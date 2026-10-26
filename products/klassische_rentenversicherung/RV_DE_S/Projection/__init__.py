@@ -478,17 +478,6 @@ def proj_len_y():
     return omega_age() - issue_age()
 
 
-def is_anniv(t):
-    """Whether month t is the **last** month of its policy year: ``t % 12 == 11``.
-
-    The month the annual machinery acts in.  Two decrements are certainties rather than
-    rates — the § 165 cash-out and the terminal ``q = 1`` of the mortality proxy — and a
-    certainty cannot be spread geometrically over twelve months without emptying the cohort
-    eleven months early, so both are placed here instead.
-    """
-    return t % 12 == 11
-
-
 def pols_if_init():
     """The number of policies the model point represents; ``pols_if`` at the frame's start."""
     return float(model_point()["pols_if_init"])

@@ -607,7 +607,16 @@ def alpha_rate():
     the whole charge stack with any corroboration.  The composite takes the cap rather
     than a guessed interior point, on the ground that a reference implementation should
     demonstrate the binding constraint.  Zero on the *Nettotarif*.
+
+    On a single-premium contract it is :func:`zuzahlung_charge_rate`: there is no
+    *Beitragssumme* to zillmer against and no five-year spread to obey, so the core's
+    ``zillmer_amount() = alpha_rate() x beitragssumme()`` is ``zuzahlung_charge_rate() x
+    prem_pp_base()`` there (``beitragssumme()`` is the *Einmalbeitrag* counted once), and
+    ``alpha_rate() x beitragssumme()``, 2.50 % of 72 000,00 = **1 800,00 EUR** on the
+    anchor cell, on a recurring-premium one.
     """
+    if prem_form() == "einmal":
+        return zuzahlung_charge_rate()
     return float(charge_row()["alpha_rate"])
 
 
@@ -785,23 +794,6 @@ def acq_instalments():
     if prem_form() == "einmal":
         return 1
     return acq_window_months() // prem_mode_months()
-
-
-def zillmer_amount():
-    """The whole *Abschluss- und Vertriebskosten* charge, before any *Zuzahlungskosten*.
-
-    ``alpha_rate() x beitragssumme()`` on a recurring-premium contract — 2.50 % of
-    72 000,00 = **1 800,00 EUR** on the anchor cell — and
-    ``zuzahlung_charge_rate() x prem_pp_base()`` on a single-premium one, where there is
-    no *Beitragssumme* to zillmer against and no five-year spread to obey.
-
-    Override reason: a single premium is charged at the *Zuzahlungskosten* rate, not
-    zillmered against a *Beitragssumme*,
-    products/fondsgebundene_rentenversicherung/technical-notes.md:448
-    """
-    if prem_form() == "einmal":
-        return zuzahlung_charge_rate() * prem_pp_base()
-    return alpha_rate() * beitragssumme()
 
 
 def charge_acq_pp(t):

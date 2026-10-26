@@ -335,7 +335,7 @@ def zillmer_amount():
     """The zillmered acquisition charge, ``zillmer_on() x alpha_rate() x beitragssumme()``.
 
     Reads the product's ``alpha_rate``, its *Zillmersatz* on the *Beitragssumme*; a product
-    without one inherits this cell unused.  Capped by the § 4 DeckRV *Höchstzillmersatz*.
+    without one inherits this cell unused.
     """
     return zillmer_on() * alpha_rate() * beitragssumme()             # noqa: F821
 

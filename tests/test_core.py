@@ -438,7 +438,7 @@ CORE_CELLS = {
                        "pflegerentenversicherung": "derived",
                        "riester_rente": "derived"},
         "zillmer_amount": {"basisrente": "derived",
-                           "fondsgebundene_rentenversicherung": "override",
+                           "fondsgebundene_rentenversicherung": "derived",
                            "kapitallebensversicherung": "derived",
                            "klassische_rentenversicherung": "derived",
                            "pflegerentenversicherung": "derived",

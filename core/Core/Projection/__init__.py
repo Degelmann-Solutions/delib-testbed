@@ -196,3 +196,13 @@ def tariff_annuity():
     """
     return sum(disc_factor(y) * pols_tariff(y)                       # noqa: F821
                for y in range(prem_term()))                          # noqa: F821
+
+
+def prem_net_level_pp():
+    """The net level premium, ``tariff_benefit_pv() / tariff_annuity()``, before loadings.
+
+    Reads the product's ``tariff_benefit_pv``, the present value of its benefits on the
+    tariff basis; a product without one inherits this cell unused.  A pricing quantity,
+    never a cash flow.
+    """
+    return tariff_benefit_pv() / tariff_annuity()                    # noqa: F821

@@ -929,7 +929,7 @@ per payment falling on a paying population of the order of 1e-5 for the first tw
 
 **Check 1 — the equivalence premium, from the four actuarial values.** The premium is not read off a
 rate card; it is the solution of the first-order equivalence, and the values that determine it are
-published as cells: `epv_benefits() = A = 17,789.761930`, `tariff_annuity() = U = 313.500018`,
+published as cells: `tariff_benefit_pv() = A = 17,789.761930`, `tariff_annuity() = U = 313.500018`,
 `epv_admin() = G = 892.884210`, `epv_claim_expense() = C = 69.389246`, with `β = admin_prem_pct =
 0.030` and the *Zillmerung* allowance `a1 = 0.025 × 12 × (85 − 45) = 12.000000` in units of `P`:
 

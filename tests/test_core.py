@@ -10,6 +10,9 @@
   from the core or overridden (with the reason the override test requires).
 - The time axis: RLV's derived ``age`` and ``policy_year`` follow the inception clock, BU's
   overrides floor them before inception, Sofort's ``age`` reads the second life.
+- The tariff basis: KLV reads its rate from the model point, RLV from ``param_table.csv``;
+  the monthly discount factor equals the annual one on a year start; the tariff
+  survivorship is 1 at issue; the net level premium is the benefit value over the annuity.
 """
 from __future__ import annotations
 
@@ -321,6 +324,9 @@ CORE_CELLS = {
         "tariff_annuity": {"kapitallebensversicherung": "derived",
                            "pflegerentenversicherung": "override",
                            "risikolebensversicherung": "derived"},
+        "prem_net_level_pp": {"kapitallebensversicherung": "derived",
+                              "pflegerentenversicherung": "derived",
+                              "risikolebensversicherung": "derived"},
     },
 }
 
@@ -498,3 +504,54 @@ def test_sofort_age_reads_the_second_life_from_surv_age(product_models):
         assert item.age(0) == int(points.at[point_id, "issue_age"])
         assert item.age(0, 2) == int(points.at[point_id, "surv_age"])
         assert item.age(24, 2) == int(points.at[point_id, "surv_age"]) + 2
+
+
+def test_klv_in_force_point_reads_its_own_rechnungszins(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.rechnungszins._is_derived()
+    points = model.Data.model_point_table()
+    in_force = points.index[points["duration_init"] > 0]
+    assert len(in_force), "no in-force model point"
+    for point_id in in_force:
+        assert (projection[point_id].rechnungszins()
+                == float(points.at[point_id, "rechnungszins"])), point_id
+
+
+def test_rlv_rechnungszins_is_the_book_rate_from_param_table(product_models):
+    model = product_models("risikolebensversicherung")
+    projection = model.Projection
+    assert projection.rechnungszins._is_defined()
+    assert model.Data.param_table.formula is model.CoreData.param_table.formula
+    assert model.Data.param_table().at["rechnungszins", "value"] == 0.01
+    assert projection[1].rechnungszins() == 0.01
+
+
+def test_pflege_monthly_discount_equals_the_annual_one_on_a_year_start(product_models):
+    projection = product_models("pflegerentenversicherung").Projection
+    assert projection.disc_factor_mth._is_derived()
+    assert projection.disc_factor._is_derived()
+    item = projection[1]
+    for y in range(4):
+        assert item.disc_factor_mth(12 * y) == item.disc_factor(y), y
+
+
+def test_rlv_tariff_survivorship_is_one_at_issue_on_an_in_force_point(product_models):
+    model = product_models("risikolebensversicherung")
+    points = model.Data.model_point_table()
+    in_force = points.index[points["duration_init"] > 0]
+    assert len(in_force), "no in-force model point"
+    item = model.Projection[in_force[0]]
+    assert item.t_start() > 0
+    assert item.pols_tariff(0) == 1.0
+
+
+@pytest.mark.parametrize("product", ["kapitallebensversicherung", "risikolebensversicherung"])
+def test_net_level_premium_divides_benefit_pv_by_tariff_annuity(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.prem_net_level_pp._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        assert (item.prem_net_level_pp()
+                == item.tariff_benefit_pv() / item.tariff_annuity()), point_id

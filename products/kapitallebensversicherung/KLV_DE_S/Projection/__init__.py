@@ -127,8 +127,8 @@ alpha, beta, gamma  alpha_rate(), beta_rate(),             Zillmersatz; premium 
 phi                 prem_freq_load()                       Ratenzahlungszuschlag
 (none)              instalments()                          Payments a year
 (pricing)           pv_death_1st(), pv_maturity_1st(),     The equivalence's parts
-                    pv_benefit_1st(), tariff_annuity(),
-                    ann_due_term_1st()
+                    tariff_benefit_pv(),
+                    tariff_annuity(), ann_due_term_1st()
 B                   prem_gross_pp()                        Annual Bruttobeitrag before phi
 BS                  beitragssumme()                        Beitragssumme = B x m
 A                   alpha_cost()                           Zillmered acquisition cost
@@ -789,7 +789,7 @@ def pv_maturity_1st():
     return sum_assured() * disc_factor(policy_term()) * pols_tariff(policy_term())
 
 
-def pv_benefit_1st():
+def tariff_benefit_pv():
     """The first-order present value at issue of both guaranteed benefits, per policy.
 
     On the *gemischte Versicherung* proper, where ``death_ratio = 1``, this is very nearly the
@@ -815,9 +815,9 @@ def prem_gross_pp():
     Struck by the first-order equivalence principle, which is linear in ``B`` because the
     *Beitragssumme* is ``B * m``::
 
-        B (1 - beta) a_m - alpha B m = pv_benefit_1st + gamma SE a_n
+        B (1 - beta) a_m - alpha B m = tariff_benefit_pv + gamma SE a_n
 
-    so ``B = (pv_benefit_1st + gamma SE a_n) / ((1 - beta) a_m - alpha m)``.
+    so ``B = (tariff_benefit_pv + gamma SE a_n) / ((1 - beta) a_m - alpha m)``.
     :func:`check_equivalence` asserts that the identity closes.
 
     The *Bruttobeitrag* is **not** a model point column: no German endowment premium rate
@@ -825,7 +825,7 @@ def prem_gross_pp():
     reported, and it rises with :func:`rating_factor` while being identical for two points
     differing only in :func:`sex`.
     """
-    return ((pv_benefit_1st() + gamma_rate() * sum_assured() * ann_due_term_1st())
+    return ((tariff_benefit_pv() + gamma_rate() * sum_assured() * ann_due_term_1st())
             / ((1.0 - beta_rate()) * tariff_annuity()
                - alpha_rate() * prem_term()))
 
@@ -850,16 +850,6 @@ def alpha_cost():
     :func:`check_zillmer_cap` asserts it.
     """
     return zillmer_on() * alpha_rate() * beitragssumme()
-
-
-def prem_net_level_pp():
-    """P^n: the net level premium, ``pv_benefit_1st() / tariff_annuity()``.
-
-    The pure benefit premium with no loading of any kind.  It is a **pricing quantity that
-    never becomes a cash flow**: what is collected is :func:`prem_paid_pp`.  It is the premium
-    the net reserve :func:`res_net_pp` is struck on.
-    """
-    return pv_benefit_1st() / tariff_annuity()
 
 
 def prem_zill_pp():
@@ -2161,7 +2151,7 @@ def check_surr_nonneg():
 def check_equivalence_resid(t):
     """The first-order pricing equivalence residual; the same value at every month t.
 
-    ``B (1 - beta) a_m - alpha BS - pv_benefit_1st - gamma SE a_n``.  It does not depend on
+    ``B (1 - beta) a_m - alpha BS - tariff_benefit_pv - gamma SE a_n``.  It does not depend on
     ``t`` - the equivalence is struck once, at issue - and it carries the argument only so
     that every ``check_*`` in this library has the same shape.
 
@@ -2171,7 +2161,7 @@ def check_equivalence_resid(t):
     """
     return (prem_gross_pp() * (1.0 - beta_rate()) * tariff_annuity()
             - alpha_rate() * beitragssumme()
-            - pv_benefit_1st()
+            - tariff_benefit_pv()
             - gamma_rate() * sum_assured() * ann_due_term_1st())
 
 

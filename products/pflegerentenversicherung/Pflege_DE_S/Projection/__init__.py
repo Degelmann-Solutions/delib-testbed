@@ -141,7 +141,7 @@ v**t                        disc_factor_mth(t)              (1 + i)^(-t/12)
 (first order)               tar_pols_if(t)                  Tariff in force
 (first order)               tar_pols_prem(t)                Tariff premium-paying units
 (first order)               tar_pols_death(t)               Tariff deaths
-A                           epv_benefits()                  EPV of the Pflegerente
+A                           tariff_benefit_pv()             EPV of the Pflegerente
 U                           tariff_annuity()                EPV of premium, in units of P
 G                           epv_admin()                     EPV of per-policy admin
 C                           epv_claim_expense()             EPV of claims cost
@@ -1661,7 +1661,7 @@ def tar_pols_death(t):
     return total
 
 
-def epv_benefits():
+def tariff_benefit_pv():
     """A: the expected present value of the *Pflegerente* on the first-order basis.
 
     ``sum_t v**t R sum_g pi_g tar_esc_pg(t, g)``, discounted at the *Rechnungszins*.  On
@@ -1725,17 +1725,6 @@ def epv_claim_expense():
     return total
 
 
-def prem_net_level_pp():
-    """The **net** level premium: ``epv_benefits() / tariff_annuity()``.
-
-    Benefits only — no expense loading, no *Zillmerung*, no *Risikozuschlag*.  Published
-    beside :func:`premium_mth_pp` because the gap between the two is the whole of the
-    expense loading, and a reader who wants to know what the biometrics alone cost reads it
-    here.
-    """
-    return epv_benefits() / tariff_annuity()
-
-
 def premium_mth_pp():
     """P: the level monthly gross *Beitrag* per policy.
 
@@ -1745,7 +1734,7 @@ def premium_mth_pp():
 
         P U = A + P D1 + P a1 + beta P U + G + C
 
-    where ``A`` is :func:`epv_benefits`, ``U`` :func:`tariff_annuity`, ``G``
+    where ``A`` is :func:`tariff_benefit_pv`, ``U`` :func:`tariff_annuity`, ``G``
     :func:`epv_admin`, ``C`` :func:`epv_claim_expense`, ``beta`` the premium-related
     administration percentage, ``a1`` the *Zillmerung* allowance in units of ``P`` and
     ``D1`` the *Beitragsrückgewähr* value in units of ``P``.  Everything that scales with
@@ -1783,7 +1772,7 @@ def premium_mth_pp():
     if beitragsrueckgewaehr():
         for t in range(proj_len()):
             d1 += disc_factor_mth(t) * prem_units_at(t) * tar_pols_death(t)
-    numerator = epv_benefits() + epv_admin() + epv_claim_expense()
+    numerator = tariff_benefit_pv() + epv_admin() + epv_claim_expense()
     denominator = tariff_annuity() * (1.0 - admin_pct) - d1 - a1
     return rating_factor() * numerator / denominator
 

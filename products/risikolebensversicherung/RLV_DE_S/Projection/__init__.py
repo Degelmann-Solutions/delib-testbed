@@ -116,7 +116,7 @@ M_shock(t)                 shock_lapse_factor(t)           Premium-shock multipl
 v^y                        disc_factor(y)                  Rechnungszins discount
 p1(y)                      pols_tariff(y)                  Tariff survivorship, no lapse
 ae                         tariff_annuity()                Premium annuity-due
-A                          tariff_claims_pv()              APV of death benefits
+A                          tariff_benefit_pv()             APV of death benefits
 Gamma                      tariff_sum_pv()                 Sum-exposure annuity
 G                          prem_gross_level_pp()           Bruttobeitrag, before phi
 Gn                         prem_net_level_pp()             Actuarial Nettopraemie
@@ -971,7 +971,7 @@ def rechnungszins():
     return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
 
 
-def tariff_claims_pv():
+def tariff_benefit_pv():
     """A: the actuarial present value of the death benefits, on first-order bases.
 
     ``sum v^(y+1) p1(y) q1(y) B(y)`` over the whole cover period, ``y = 0 .. n - 1``,
@@ -1032,21 +1032,7 @@ def prem_gross_level_pp():
     denom = (1.0 - beta_tariff) * tariff_annuity() - zillmer_rate * prem_term()  # noqa: F821
     if denom <= 0.0:
         raise ValueError("degenerate premium equivalence: loadings exceed the annuity")
-    return (tariff_claims_pv() + gamma_rate * tariff_sum_pv()) / denom  # noqa: F821
-
-
-def prem_net_level_pp():
-    """Gn: the actuarial *Nettoprämie* ``A / ae`` — a pricing quantity, never a cash flow.
-
-    The risk premium on the first-order basis before expense loadings, and the premium the
-    reserve recursion in :func:`res_pp_at` is struck on.  **It is not the consumer's
-    *Nettobeitrag***, which is the *Zahlbeitrag* and is :func:`prem_paid_pp`, and on this
-    calibration it sits **above** it: ``Gn = 1 084.80`` against a billed 733.01, because
-    ``Gn`` carries the whole *Sicherheitszuschlag* and 90 % of that is handed back as
-    *Beitragsverrechnung*.  Confusing the two is the classic implementation error on this
-    product, and it never appears in :func:`result_cf`.
-    """
-    return tariff_claims_pv() / tariff_annuity()
+    return (tariff_benefit_pv() + gamma_rate * tariff_sum_pv()) / denom  # noqa: F821
 
 
 def beitragsverrechnung_rate():
@@ -1076,7 +1062,7 @@ def beitragsverrechnung_rate():
         return 0.0
     m = sicherheitszuschlag_m                                        # noqa: F821
     raw = (decl_scale * surplus_share * (m / (1.0 + m))              # noqa: F821
-           * tariff_claims_pv()
+           * tariff_benefit_pv()
            / (prem_gross_level_pp() * tariff_annuity()))
     return min(v_max, raw)                                           # noqa: F821
 

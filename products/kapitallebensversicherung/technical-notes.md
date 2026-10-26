@@ -438,7 +438,7 @@ own `sex` and `rechnungszins`:
 pols_tariff(k)    = Π_{j=0}^{k-1} ( 1 − q₁(x_0 + j) ),  pols_tariff(0) = 1
 pv_death_1st      = SD · Σ_{k=0}^{n-1} v₁^(k+1) · pols_tariff(k) · q₁(x_0 + k)
 pv_maturity_1st   = SE · v₁^n · pols_tariff(n)
-pv_benefit_1st    = pv_death_1st + pv_maturity_1st
+tariff_benefit_pv = pv_death_1st + pv_maturity_1st
 tariff_annuity    = Σ_{k=0}^{m-1} v₁^k · pols_tariff(k)
 ann_due_term_1st  = Σ_{k=0}^{n-1} v₁^k · pols_tariff(k)
 ```
@@ -446,10 +446,10 @@ ann_due_term_1st  = Σ_{k=0}^{n-1} v₁^k · pols_tariff(k)
 The *Bruttobeitrag* is struck by equivalence, which is linear in `B` because `BS = B · m`:
 
 ```
-B · tariff_annuity = pv_benefit_1st + α · B · m
+B · tariff_annuity = tariff_benefit_pv + α · B · m
                      + β · B · tariff_annuity + γ · SE · ann_due_term_1st
 
-⇒  prem_gross_pp = ( pv_benefit_1st + γ · SE · ann_due_term_1st ) / ( (1 − β) · tariff_annuity − α · m )
+⇒  prem_gross_pp = ( tariff_benefit_pv + γ · SE · ann_due_term_1st ) / ( (1 − β) · tariff_annuity − α · m )
 ```
 
 `check_equivalence()` asserts that identity closes. **Note that the acquisition cost `α · BS` is in
@@ -465,7 +465,7 @@ Then the two reserving premiums, and the zillmered cost:
 ```
 beitragssumme     = prem_gross_pp · m
 alpha_cost        = zillmer_on · alpha_rate · beitragssumme
-prem_net_level_pp = pv_benefit_1st / tariff_annuity
+prem_net_level_pp = tariff_benefit_pv / tariff_annuity
 prem_zill_pp      = prem_net_level_pp + alpha_cost / tariff_annuity
 ```
 
@@ -685,7 +685,7 @@ on every model point.
 | `check_surplus_roll_fwd()` | The active surplus vehicle's ledger closes, per **policy year**: `av_sur_pp(k+1) == av_sur_pp(k)·(1 + a(k)) + C(k)` under `ansammlung`, the bonus-purchase identity under `bonus`, and `prem_offset_pp(k) == min(prem_charged_pp(k), C(k−1))` under `beitragsverrechnung`, with `C(k−1)` read as zero at `k = k_start` |
 | `check_surr_floor()` | § 169 Abs. 3, per **policy year**: `res_guar_pp(k) ≥ res_zill_pp(k+1)`, `≥ res_min_pp(k+1)` and `≥ 0`, and the *Rückkaufswert* at that year's anniversary `surr_value_pp(12k + 11) ≥ 0` |
 | `check_surr_nonneg()` | The *Rückkaufswert* is non-negative in **every month**. Added with the monthly grid, which quotes one in the eleven months of each policy year the annual grid never priced — months paid on the **last** anniversary's § 169 value, which is a different and smaller number |
-| `check_equivalence()` | The first-order pricing equivalence closes: `B·(1 − β)·tariff_annuity − α·BS == pv_benefit_1st + γ·SE·ann_due_term_1st` |
+| `check_equivalence()` | The first-order pricing equivalence closes: `B·(1 − β)·tariff_annuity − α·BS == tariff_benefit_pv + γ·SE·ann_due_term_1st` |
 | `check_rechnungszins_cap()`, `check_zillmer_cap()` | The two DeckRV cohort ceilings: `rechnungszins ≤ hoechstrechnungszins(issue_year)` under § 2 [REG-R14] [REG-R15], and `alpha_rate ≤ hoechstzillmersatz(issue_year)` with `alpha_cost ≤ hoechstzillmersatz · beitragssumme` under § 4 [R7] [REG-R16] |
 
 The last two are parameter invariants rather than roll-forward identities, and they live here rather
@@ -1096,8 +1096,8 @@ Each rebuilds a cell of the tables above a **different way**, in arithmetic a re
 on a calculator. None of them re-runs the model's own path to the number.
 
 **1. The *Bruttobeitrag*, from the equivalence.** The premium is not an input; it is the
-solution of `B (1 − β) ä_m − α B m = pv_benefit_1st + γ SE ä_n`. Numerator:
-`pv_benefit_1st` = 3 611,698493 + 35 655,282574 = **39 266,981067**, plus
+solution of `B (1 − β) ä_m − α B m = tariff_benefit_pv + γ SE ä_n`. Numerator:
+`tariff_benefit_pv` = 3 611,698493 + 35 655,282574 = **39 266,981067**, plus
 `γ SE ä_n` = 0,0015 × 50 000 × 21,680698 = **1 626,052368**, giving **40 893,033435**.
 Denominator: 0,97 × 21,680698 = 21,030277, less 0,025 × 25 = 0,625, giving **20,405277**.
 Then 40 893,033435 ÷ 20,405277 = **2 004,0420 €**, the table's *Bruttobeitrag*. The two

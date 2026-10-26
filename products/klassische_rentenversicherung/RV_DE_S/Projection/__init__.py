@@ -1116,25 +1116,6 @@ def lapse_rate(t):
     return lapse_rate_base(t)
 
 
-def lapse_rate_mth(t):
-    """w^m(t): the **monthly** surrender rate, ``1 - (1 - w(t))^(1/12)``.
-
-    A geometric twelfth, for the same reason as :func:`mort_rate_mth`: twelve of it compound
-    back to the year's rate, so every anniversary count is the annual-step model's.
-
-    **The § 165 cash-out is the exception**, and for the same reason the terminal ``q = 1`` is.
-    An annual rate of 1 there is not an experience rate but a dated contractual act: § 165 VVG
-    has the contract cashed out at the end of the *Versicherungsperiode* in which the election
-    would have fallen.  Spreading that certainty geometrically would empty the cohort in the
-    year's first month, eleven months before the election; it is placed in the anniversary
-    month instead.
-    """
-    w = lapse_rate(t)
-    if w >= 1.0:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - w) ** (1.0 / 12.0)
-
-
 # ----------------------------------------
 # Benefits, values and the Beitragsfreistellung election
 

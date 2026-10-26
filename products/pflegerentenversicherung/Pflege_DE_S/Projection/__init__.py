@@ -679,17 +679,6 @@ def lapse_factor(t):
     return 1.0
 
 
-def lapse_rate_mth(t):
-    """w(t): the monthly lapse probability, ``1 - (1 - lapse_rate(t))**(1/12)``.
-
-    Applied to the survivors of the insured decrements and of the reactivation inflow, so
-    that a life cannot both die and lapse in the same month.  Nothing in care lapses: a
-    claimant with a waived premium has no premium to default on and a live annuity to
-    forfeit.
-    """
-    return 1.0 - (1.0 - lapse_rate(t)) ** (1.0 / 12.0)
-
-
 def p_act_stay(t):
     """The probability that an active life is still active at the end of month ``t``.
 

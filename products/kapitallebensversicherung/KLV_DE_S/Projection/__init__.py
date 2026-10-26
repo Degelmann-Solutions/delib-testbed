@@ -1367,26 +1367,6 @@ def bfz_fails():
     return bfz_year() > 0 and not is_paid_up(bfz_year())
 
 
-def lapse_rate_mth(t):
-    """wm(t): the surrender rate applied at the **end** of month t, after the mortality one.
-
-    ``1 - (1 - w(t))^(1/12)`` on the policy year's annual rate **[std]**, derived
-    geometrically and not by dividing by twelve, so that twelve months of it compound back to
-    exactly that rate.
-
-    **One month is excepted, and it is a statutory event rather than a rate.** Where a
-    *Beitragsfreistellung* election fails the *Mindestversicherungsleistung* test, § 165 VVG
-    turns it into a surrender — and the election falls at the **end** of the election policy
-    year, not spread across it.  So the whole cohort leaves in that year's last month and
-    nowhere else, which is what ``1.0 if is_anniv(t) else 0.0`` says.  Spreading an annual
-    rate of 1.0 geometrically would put the entire cohort out in the year's **first** month,
-    eleven months before the election it models.
-    """
-    if bfz_fails() and duration(t) == bfz_year() - 1:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - lapse_rate(t)) ** (1.0 / 12.0)
-
-
 def storno_rate(k):
     """sigma(k): the *Stornoabzug* rate on a surrender at the end of policy year k.
 

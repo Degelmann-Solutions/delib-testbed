@@ -546,6 +546,14 @@ CORE_CELLS = {
                        "pflegerentenversicherung": "derived",
                        "riester_rente": "derived",
                        "risikolebensversicherung": "derived"},
+        "lapse_rate_mth": {"berufsunfaehigkeit": "derived",
+                           "fondsgebundene_rentenversicherung": "override",
+                           "indexpolice": "derived",
+                           "kapitallebensversicherung": "derived",
+                           "klassische_rentenversicherung": "derived",
+                           "pflegerentenversicherung": "derived",
+                           "riester_rente": "derived",
+                           "risikolebensversicherung": "derived"},
     },
 }
 
@@ -990,3 +998,16 @@ def test_rlv_lapse_rate_is_the_table_rate_times_the_shock_factor(product_models)
         for t in range(item.t_start(), 12 * (item.proj_len_y() - 1)):
             assert (item.lapse_rate(t)
                     == item.lapse_rate_base(t) * item.shock_lapse_factor(t)), (point_id, t)
+
+
+def test_klv_failed_beitragsfreistellung_lapses_in_the_anniversary_month(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.lapse_rate_mth._is_derived()
+    failing = [p for p in model.Data.model_point_table().index if projection[p].bfz_fails()]
+    assert failing, "no model point with a failed Beitragsfreistellung"
+    item = projection[failing[0]]
+    start = 12 * (item.bfz_year() - 1)
+    assert all(item.lapse_rate(start + m) == 1.0 for m in range(12))
+    assert [item.lapse_rate_mth(start + m) for m in range(12)] == [0.0] * 11 + [1.0]
+    assert item.is_anniv(start + 11)

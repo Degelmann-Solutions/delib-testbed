@@ -798,15 +798,6 @@ def recov_rate_mth_year():
     return tuple(1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates())
 
 
-def lapse_rate_mth(t):
-    """w_m(t): the monthly lapse rate, ``1 - (1 - lapse_rate(t))^(1/12)`` **[std]**.
-
-    Strictly below the annual rate wherever the annual rate is positive, which is the
-    library's convention for the pair.
-    """
-    return 1.0 - (1.0 - lapse_rate(t)) ** (1.0 / 12.0)
-
-
 # --- the first-order (pricing) rates ---
 
 def inc_rate_first(s):

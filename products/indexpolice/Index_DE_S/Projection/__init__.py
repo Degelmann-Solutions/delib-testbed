@@ -1116,19 +1116,6 @@ def lapse_factor(t):
     return 1.0
 
 
-def lapse_rate_mth(t):
-    """``w^m_l(t)``: the **monthly** surrender rate, ``1 - (1 - w_l(t))^(1/12)``.
-
-    A geometric twelfth, for the same reason as :func:`mort_rate_mth`: twelve of it compound
-    back to the year's rate, so every anniversary count is the annual-step model's and every
-    *Indexgutschrift* is struck on the same population it was.
-    """
-    w = lapse_rate(t)
-    if w >= 1.0:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - w) ** (1.0 / 12.0)
-
-
 def pols_if(t):
     """``l(t)``: policies in force at time t, the **start** of period t.
 

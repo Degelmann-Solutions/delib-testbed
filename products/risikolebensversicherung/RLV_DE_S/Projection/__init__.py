@@ -832,24 +832,6 @@ def lapse_factor(t):
     return shock_lapse_factor(t)
 
 
-def lapse_rate_mth(t):
-    """wm(t): the lapse rate applied at the **end** of month t, after the death decrement.
-
-    ``1 - (1 - w(t))^(1/12)`` on the policy year's annual rate **[std]**, derived
-    geometrically and not by dividing by twelve, so that twelve months of it compound back
-    to exactly that rate.  No month is excepted: the one rate this product puts on a
-    boundary — the zero of the final policy year — is a rate for a whole year rather than
-    for a month of it, so it converts to a monthly zero for each of that year's twelve
-    months and needs no special case here.
-
-    § 168 VVG makes the *Versicherungsperiode* follow the *Zahlweise*, so a
-    monthly-paying contract is terminable monthly and its exits are genuinely **not**
-    concentrated at anniversaries.  The annual grid this model ran on booked them there
-    and said so as an approximation; the monthly grid removes it.
-    """
-    return 1.0 - (1.0 - lapse_rate(t)) ** (1.0 / 12.0)
-
-
 def lapse_cum(t):
     """w_cum(t): the cumulative lapse proportion entering period t.
 

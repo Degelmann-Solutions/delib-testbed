@@ -346,6 +346,19 @@ def lapse_rate(t):
     return lapse_rate_base(t) * f                                    # noqa: F821
 
 
+def lapse_rate_mth(t):
+    """The **monthly** lapse rate applied in month t, the geometric twelfth of ``lapse_rate(t)``.
+
+    ``1 - (1 - w)^(1/12)``, as :func:`mort_rate_mth`: twelve months compound back to the
+    annual rate, and an annual rate of 1, a dated contractual act rather than a rate, falls
+    whole in the anniversary month, 1 where ``is_anniv(t)`` and 0 before it.
+    """
+    w = lapse_rate(t)                                                # noqa: F821
+    if w >= 1.0:
+        return 1.0 if is_anniv(t) else 0.0                           # noqa: F821
+    return 1.0 - (1.0 - w) ** (1.0 / 12.0)
+
+
 def rechnungszins():
     """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
 

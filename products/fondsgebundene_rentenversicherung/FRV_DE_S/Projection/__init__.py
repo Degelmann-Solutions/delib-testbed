@@ -1302,6 +1302,10 @@ def lapse_rate_mth(t):
     same *Fondsguthaben*, and the whole surviving cohort is booked as
     :func:`pols_maturity`.  No cash flow moves either way; the convention decides the
     split between the lapse total and the maturity count.
+
+    Override reason: the rate is zero in the last projected month, whose end is
+    *Rentenbeginn*, so the surviving cohort is booked as a maturity,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:338
     """
     if t >= proj_len() - 1:
         return 0.0

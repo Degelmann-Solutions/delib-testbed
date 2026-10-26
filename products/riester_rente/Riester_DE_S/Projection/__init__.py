@@ -698,21 +698,6 @@ def lapse_factor(t):
     return 1.0
 
 
-def lapse_rate_mth(t):
-    """The **monthly** surrender rate applied in month t, the geometric twelfth of ``w(t)``.
-
-    ``1 - (1 - lapse_rate(t))^(1/12)``, so twelve months compound back to the band's annual
-    rate exactly and a *Kündigung* is now **dated**: a saver who surrenders in the fourth
-    month of a contract year does so in month four of the frame, not at the year end.
-    """
-    w = lapse_rate(t)
-    if w <= 0.0:
-        return 0.0
-    if w >= 1.0:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - w) ** (1.0 / 12.0)
-
-
 def transfer_rate(t):
     """theta(t): the **annual** *Anbieterwechsel* rate of the year, from *lapse_table.csv*.
 

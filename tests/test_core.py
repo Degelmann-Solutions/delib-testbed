@@ -274,6 +274,7 @@ CORE_CELLS = {
                         "kapitallebensversicherung": "derived",
                         "klassische_rentenversicherung": "derived",
                         "pflegerentenversicherung": "derived",
+                        "riester_rente": "derived",
                         "risikolebensversicherung": "derived",
                         "sofortrente": "derived"},
         "age_y": {"basisrente": "derived",

@@ -127,7 +127,7 @@ d(t)                       duration(t)                     The same, read from a
 (none)                     duration_mth(t)                 Contract months done
 12 d(0)                    clock_offset_mth()              Contract months done at t = 0
 (none)                     issue_year()                    Year of issue, 2027 - d(0)
-(none)                     contract_year(t)                Contractual 1-based label
+(none)                     policy_year(t)                  Contractual 1-based label
 tau(k)                     calendar_year_y(k)              Calendar year of year k
 tau(t)                     calendar_year(t)                The same, read from a month
 (phase)                    is_accum(t), is_payout(t)       Accumulation / payout flag
@@ -618,15 +618,6 @@ def issue_year():
     return valuation_year - duration_init()                          # noqa: F821
 
 
-def contract_year(t):
-    """The contractual **1-based** contract year label of month t, ``duration(t) + 1``.
-
-    The key of *lapse_table.csv*, published so that a reader never has to decide which of
-    the two a table's index means.
-    """
-    return duration(t) + 1
-
-
 def is_accum_y(k):
     """True while the contract is accumulating in projection year k: ``k < k_conv()``.
 
@@ -750,7 +741,7 @@ def mort_rate_mth(t):
 def lapse_rate(t):
     """w(t): the **annual** surrender rate of the year month t falls in, by duration.
 
-    Read from *lapse_table.csv* at ``contract_year(t)``, so the twelve months of a
+    Read from *lapse_table.csv* at ``policy_year(t)``, so the twelve months of a
     projection year share one band.  Zero from ``t_conv()``: a contract in payment cannot be
     surrendered.  The level is deliberately small — a *Kündigung* is *schädliche Verwendung*,
     repaying every Zulage and every § 10a relief and taxing the accumulated growth, against a
@@ -760,7 +751,7 @@ def lapse_rate(t):
     """
     if not is_accum(t):
         return 0.0
-    return float(data.lapse_table().at[contract_year(t),              # noqa: F821
+    return float(data.lapse_table().at[policy_year(t),                # noqa: F821
                                        "lapse_rate"])
 
 
@@ -789,7 +780,7 @@ def transfer_rate(t):
     """
     if not is_accum(t):
         return 0.0
-    return float(data.lapse_table().at[contract_year(t),              # noqa: F821
+    return float(data.lapse_table().at[policy_year(t),                # noqa: F821
                                        "transfer_rate"])
 
 

@@ -145,7 +145,7 @@ and `param_table`.
 `mort_rate`, `claims`, `expenses`, `net_cf`, `result_cf`** — plus, in the same lifelib spelling:
 `pols_if_init`, `pols_if_at`, `pols_death`, `pols_lapse`, `pols_transfer`, `pols_conv`,
 `pols_annuity_pay`; `mort_rate_at_age`, `annuity_mort_rate`, `lapse_rate`, `transfer_rate`;
-`duration`, `duration_y`, `duration_mth`, `contract_year`, `calendar_year`, `calendar_year_y`,
+`duration`, `duration_y`, `duration_mth`, `policy_year`, `calendar_year`, `calendar_year_y`,
 `proj_len_y`, `proj_year`, `is_anniv`, `prem_due`, `k_conv`, `t_conv`, `is_accum`, `is_accum_y`,
 `is_payout`, `is_payout_y`; `mort_rate_mth`, `lapse_rate_mth`, `transfer_rate_mth`; `income_ref`,
 `zulage_entitlement_pp`, `zulage_granted_pp`, `zulage_pp`, `zulage_cum_pp`,

@@ -53,7 +53,7 @@ Phase 3 changes these files and adds these symlinks to take shared cells from th
 | `model.md` | Reference `freq_load_file` named `freq_loading_file`; cell `freq_load_table` named `freq_loading_table`; `int_rate_guar` named `rechnungszins`; `duration` of `lapse_table.csv` named `policy_year`; `freq_load` named `prem_freq_load` |
 | `model_point_table.csv` | column `int_rate_guar` renamed `rechnungszins`; column `decl_scenario_id` renamed `scenario_id` |
 | `run.py` | calls `rechnungszins()`, was `int_rate_guar()`; calls `prem_freq_load()`, was `freq_load()`; calls `beitragssumme()`, was `beitragssumme_pp()`; calls `zillmer_amount()`, was `alpha_total_pp()` |
-| `technical-notes.md` | `int_rate_guar` named `rechnungszins`; `duration` of `lapse_table.csv` named `policy_year`; `decl_scenario_id` named `scenario_id`; `freq_load` named `prem_freq_load`; `beitragssumme_pp` named `beitragssumme`; `alpha_total_pp` named `zillmer_amount` |
+| `technical-notes.md` | `int_rate_guar` named `rechnungszins`; `duration` of `lapse_table.csv` named `policy_year`; `decl_scenario_id` named `scenario_id`; `freq_load` named `prem_freq_load`; `beitragssumme_pp` named `beitragssumme`; `alpha_total_pp` named `zillmer_amount`; the § 165 minimum-benefit row states there is no surrender from *Rentenbeginn* |
 | `sources.md` | `int_rate_guar` named `rechnungszins`; `alpha_total_pp` named `zillmer_amount` |
 | `lapse_table.csv` | column `duration` renamed `policy_year` |
 | `freq_load_table.csv` | column `freq_load` renamed `prem_freq_load` |

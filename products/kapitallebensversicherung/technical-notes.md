@@ -534,7 +534,7 @@ Three rules ride on those four lines:
 - **`term_surr_share = 0` in the base run [std]** — the accrued *Schlussüberschussanteil* is paid at the
   *Ablauf* and on death, not on surrender (`product-spec.md`, footnote 12); the parameter is exposed.
 - **The *Mindestversicherungsleistung* test**: if `bfz_si_pp < bfz_min_si` (**2,500 EUR [std]**) the
-  election is **not** a *Beitragsfreistellung* — § 165 VVG obliges the insurer to pay the § 169 value
+  election is **not** a *Beitragsfreistellung* (lapse rate 1 in that year; 0 through the final policy year, whose end is the *Ablauf*) — § 165 VVG obliges the insurer to pay the § 169 value
   instead, so the model converts the point to a **surrender at the end of year `e = bfz_year − 1`**
   and the projection terminates there [R3] (pitfall 8). Model point 12 exercises that branch.
 

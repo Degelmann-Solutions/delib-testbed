@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import io
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -218,8 +219,10 @@ CORE_CELLS = {
                 "riester_rente": "derived",
                 "risikolebensversicherung": "derived",
                 "sofortrente": "override"},
+        "smoker_codes": {"kapitallebensversicherung": "derived",
+                         "risikolebensversicherung": "override"},
         "smoker": {"kapitallebensversicherung": "derived",
-                   "risikolebensversicherung": "override"},
+                   "risikolebensversicherung": "derived"},
         "policy_term": {"kapitallebensversicherung": "derived",
                         "risikolebensversicherung": "derived"},
         "prem_term": {"kapitallebensversicherung": "derived",
@@ -649,6 +652,35 @@ def test_sofort_age_reads_the_second_life_from_surv_age(product_models):
         assert item.age(0) == int(points.at[point_id, "issue_age"])
         assert item.age(0, 2) == int(points.at[point_id, "surv_age"])
         assert item.age(24, 2) == int(points.at[point_id, "surv_age"]) + 2
+
+
+def product_copy(tmp_path, product: str) -> Path:
+    """A scratch copy of a product folder; ``copytree`` follows the core symlinks."""
+    folder = tmp_path / product
+    shutil.copytree(PRODUCTS_DIR / product, folder)
+    return folder
+
+
+def test_rlv_smoker_reads_its_codes_and_rejects_others(tmp_path, product_models):
+    model = product_models("risikolebensversicherung")
+    projection = model.Projection
+    assert projection.smoker._is_derived()
+    assert projection.smoker_codes._is_defined()
+    points = model.Data.model_point_table()
+    smokers = points.index[points["smoker"] == "R"]
+    assert len(smokers), "no smoker model point"
+    assert projection[smokers[0]].smoker() == "R"
+
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    table = folder / "model_point_table.csv"
+    points.loc[smokers[0], "smoker"] = "S"
+    points.to_csv(table)
+    copy = mx.read_model(folder / MODELS["risikolebensversicherung"], name="SmokerProbe")
+    try:
+        with pytest.raises(Exception, match="invalid smoker"):
+            copy.Projection[smokers[0]].smoker()
+    finally:
+        copy.close()
 
 
 def test_klv_in_force_point_reads_its_own_rechnungszins(product_models):

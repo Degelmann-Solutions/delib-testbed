@@ -41,10 +41,18 @@ def sex():
     return v
 
 
+def smoker_codes():
+    """The model point's codes for a non-smoker and a smoker: ``N`` and ``S``."""
+    return ("N", "S")
+
+
 def smoker():
-    """The smoker status of the insured life, ``N`` or ``S``, from the model point."""
+    """The smoker status of the insured life, one of ``smoker_codes()``, from the model point.
+
+    Raises ``ValueError`` for a code outside them.
+    """
     v = model_point()["smoker"]                                      # noqa: F821
-    if v not in ("N", "S"):
+    if v not in smoker_codes():                                      # noqa: F821
         raise ValueError("invalid smoker")
     return v
 

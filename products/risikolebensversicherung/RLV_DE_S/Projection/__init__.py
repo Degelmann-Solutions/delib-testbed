@@ -395,8 +395,8 @@ def policy_id():
     return model_point()["policy_id"]
 
 
-def smoker():
-    """The first life's *Raucher* / *Nichtraucher* status, R or N.
+def smoker_codes():
+    """The codes of the *Nichtraucher* / *Raucher* status, N and R.
 
     The largest rating split after age, and unlike ``sex`` it is a lawful one: the DAV
     *Richtlinie* states that DAV 2008 T R and DAV 2008 T NR are in principle suitable for
@@ -406,13 +406,9 @@ def smoker():
     expected to claim more.
 
     Override reason: the product codes a smoker as ``R`` (*Raucher*), as its
-    ``mort_table.csv`` does, products/risikolebensversicherung/technical-notes.md, section
-    Model point attributes
+    ``mort_table.csv`` does, products/risikolebensversicherung/technical-notes.md:163
     """
-    v = model_point()["smoker"]
-    if v not in ("N", "R"):
-        raise ValueError("invalid smoker")
-    return v
+    return ("N", "R")
 
 
 def sum_assured():
@@ -522,7 +518,7 @@ def issue_age2():
 def smoker2():
     """The second life's smoker status, R or N; ``-`` where ``lives = 1``."""
     v = model_point()["smoker2"]
-    if v not in ("N", "R", "-"):
+    if v not in smoker_codes() + ("-",):
         raise ValueError("invalid smoker2")
     if lives() == 2 and v == "-":
         raise ValueError("lives = 2 requires a smoker2 of N or R")

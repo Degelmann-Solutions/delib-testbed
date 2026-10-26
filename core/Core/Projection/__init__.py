@@ -279,6 +279,86 @@ def mort_be_factor():
     return 1.0
 
 
+def mort_rate_base(t):
+    """The annual table death rate in month t before the best-estimate factor.
+
+    ``mort_rate_at_age(age(t))``: reads the product's ``mort_rate_at_age``, its table rate at
+    an attained age; a product without one inherits this cell unused.  Flat across a policy
+    year, the attained age stepping on the anniversary.
+    """
+    return mort_rate_at_age(age(t))                                  # noqa: F821
+
+
+def mort_rate(t):
+    """q(t): the best-estimate **annual** death rate of the policy year containing month t.
+
+    ``min(1, mort_rate_base(t) x mort_be_factor())``: the table rate stepped to the best
+    estimate, capped at 1.  The annual rate, flat across a policy year; ``mort_rate_mth``
+    is the monthly rate the recursion applies.
+    """
+    return min(1.0, mort_rate_base(t) * mort_be_factor())            # noqa: F821
+
+
+def mort_rate_mth(t):
+    """The **monthly** death rate applied in month t, the geometric twelfth of ``mort_rate(t)``.
+
+    ``1 - (1 - q)^(1/12)``, so the twelve months of a policy year compound back to the
+    annual rate exactly.  A rate of 1 is a certainty, not a rate: it is not twelfth-rooted
+    but placed in the anniversary month, 1 where ``is_anniv(t)`` and 0 in the eleven months
+    before it.
+    """
+    q = mort_rate(t)                                                 # noqa: F821
+    if q >= 1.0:
+        return 1.0 if is_anniv(t) else 0.0                           # noqa: F821
+    return 1.0 - (1.0 - q) ** (1.0 / 12.0)
+
+
+def lapse_rate_base(t):
+    """The table **annual** lapse rate of the policy year containing month t.
+
+    Read from the product's *lapse_table.csv* at ``policy_year(t)``, holding the table's
+    last row for later policy years, so the twelve months of a year share one rate.
+    """
+    tbl = data.lapse_table()                                         # noqa: F821
+    return float(tbl.at[min(policy_year(t), int(tbl.index.max())),  # noqa: F821
+                        "lapse_rate"])
+
+
+def lapse_factor(t):
+    """The factor on the table lapse rate in month t; 1, neutral.
+
+    A product that closes the lapse in part of the frame (0 there) or loads it overrides
+    it; where it is 0 the table is not read.
+    """
+    return 1.0
+
+
+def lapse_rate(t):
+    """w(t): the **annual** lapse rate of the policy year containing month t.
+
+    ``lapse_rate_base(t) x lapse_factor(t)``, and 0 without reading the table where the
+    factor is 0.  The annual rate; ``lapse_rate_mth`` is the monthly rate the recursion
+    applies.
+    """
+    f = lapse_factor(t)                                              # noqa: F821
+    if f == 0.0:
+        return 0.0
+    return lapse_rate_base(t) * f                                    # noqa: F821
+
+
+def lapse_rate_mth(t):
+    """The **monthly** lapse rate applied in month t, the geometric twelfth of ``lapse_rate(t)``.
+
+    ``1 - (1 - w)^(1/12)``, as :func:`mort_rate_mth`: twelve months compound back to the
+    annual rate, and an annual rate of 1, a dated contractual act rather than a rate, falls
+    whole in the anniversary month, 1 where ``is_anniv(t)`` and 0 before it.
+    """
+    w = lapse_rate(t)                                                # noqa: F821
+    if w >= 1.0:
+        return 1.0 if is_anniv(t) else 0.0                           # noqa: F821
+    return 1.0 - (1.0 - w) ** (1.0 / 12.0)
+
+
 def rechnungszins():
     """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
 

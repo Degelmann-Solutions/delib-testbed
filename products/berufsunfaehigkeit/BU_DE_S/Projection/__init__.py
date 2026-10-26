@@ -722,20 +722,6 @@ def inc_rate_mth(t):
     return 1.0 - (1.0 - inc_rate(t)) ** (1.0 / 12.0)
 
 
-def mort_rate(t):
-    """q^a(x(t)): the **annual** active-lives mortality rate at month t.
-
-    The library's convention is that ``mort_rate`` is annual and :func:`mort_rate_mth`
-    monthly.  It applies to the *aktiv* ledger and to the § 174 run-off.
-    """
-    return mort_rate_at_age(age(t))
-
-
-def mort_rate_mth(t):
-    """q^a_m(t): the monthly active-lives mortality rate, ``1 - (1 - mort_rate(t))^(1/12)``."""
-    return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
-
-
 def mort_dis_sel_factor(z):
     """s(z): the disabled-mortality select factor at claim duration z.
 
@@ -810,30 +796,6 @@ def recov_rate_mth_year():
     disabled-ledger recursions read this; :func:`recov_rate_mth` is the addressable view.
     """
     return tuple(1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates())
-
-
-def lapse_rate(t):
-    """w(y(t)): the **annual** *Stornoquote* in the policy year containing month t.
-
-    4.0 % in the first two policy years falling to a 2.0 % ultimate from the sixth
-    **[std]**, capped at the table's last row.  Low by the standards of every other delib
-    product, and that is a product fact: once health has changed the cover cannot be
-    replaced, so an insured with a claimable impairment cannot rationally lapse.  Lapse
-    applies to :func:`pols_actv` only — a life in claim pays no premium and so cannot
-    lapse for non-payment.
-    """
-    tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.loc[min(policy_year(t),
-                             int(tbl.index.max())), "lapse_rate"])
-
-
-def lapse_rate_mth(t):
-    """w_m(t): the monthly lapse rate, ``1 - (1 - lapse_rate(t))^(1/12)`` **[std]**.
-
-    Strictly below the annual rate wherever the annual rate is positive, which is the
-    library's convention for the pair.
-    """
-    return 1.0 - (1.0 - lapse_rate(t)) ** (1.0 / 12.0)
 
 
 # --- the first-order (pricing) rates ---

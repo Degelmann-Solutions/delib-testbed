@@ -114,6 +114,7 @@ wm(t)                      lapse_rate_mth(t)               The same, applied in 
 (table)                    lapse_rate_base(t)              Table lapse rate
 w_cum(t)                   lapse_cum(t)                    Cumulative lapse proportion
 M_shock(t)                 shock_lapse_factor(t)           Premium-shock multiplier
+(gate)                     lapse_factor(t)                 0 in the final year, else M
 (none)                     sel_lapse_factor(t)             Loading on persisters
 v^y                        disc_factor(y)                  Rechnungszins discount
 p1(y)                      pols_tariff(y)                  Tariff survivorship, no lapse
@@ -547,6 +548,10 @@ def mort_rate_base(t):
     inflates the cross term and is a listed pitfall.  The independence assumption
     understates the true first-death rate for a couple sharing a household, a vehicle and
     a lifestyle, and no German figure bounds the understatement.
+
+    Override reason: the table rate is read on sex and smoker status, and for two lives
+    combined to the first-death rate before loading,
+    products/risikolebensversicherung/model.md:494
     """
     q_a = mort_rate_at_age(sex(), smoker(), age(t))
     if lives() == 1:
@@ -609,27 +614,12 @@ def mort_rate(t):
     technical notes tabulate — and is flat across that year's twelve months, the attained
     age stepping on the anniversary.  What the projection applies is
     :func:`mort_rate_mth`.
+
+    Override reason: the second-order rate carries the *Risikozuschlag* and the
+    selective-lapse loading, products/risikolebensversicherung/model.md:495
     """
     return (mort_be_factor() * rating_factor()
             * mort_rate_base(t) * sel_lapse_factor(t))
-
-
-def mort_rate_mth(t):
-    """q2m(t): the **monthly** death rate applied at the end of month t **[std]**.
-
-    ``1 - (1 - q2(t))^(1/12)``, the constant-force conversion of the policy year's annual
-    rate — derived geometrically and **not** by dividing by twelve, so that twelve months
-    of it compound back to exactly ``q2(t)``, which is the factor the annual-step model
-    applied at the anniversary.  Dividing by twelve instead leaves a second-order gap that
-    accumulates over a twenty-five-year term; the geometric form leaves none, and that is
-    what makes ``pols_if(12k)`` here reproduce the annual model's ``pols_if(k)``.
-
-    No German instrument states a conversion convention for any decrement, so the choice
-    is a standardization; what is not optional is that it reproduce the annual factor.
-    Unlike ``frlib.TD_FR_S``, this product has a **single** insured decrement, so there is
-    no dependent-rate split to make: the conversion is applied to the one rate.
-    """
-    return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
 
 
 def mort_load_tariff(t):
@@ -798,20 +788,6 @@ def suicide_factor(t):
 # Lapse
 
 
-def lapse_rate_base(t):
-    """The table lapse rate for period t, from *lapse_table.csv*.
-
-    6 % in policy year 1, 4 % in policy years 2 and 3, 3 % thereafter, all **[std]**.  The
-    file is keyed on the contractual **1-based** ``policy_year``, so the lookup maps
-    through :func:`policy_year` — months ``t = 0 ... 11`` read the file's policy year 1.
-    An **annual** rate, and one the table publishes for the final policy year too;
-    :func:`lapse_rate` is where the zero goes and :func:`lapse_rate_mth` is where the
-    spreading happens.
-    """
-    return float(data.lapse_table().at[                              # noqa: F821
-        policy_year(t), "lapse_rate"])
-
-
 def shock_lapse_factor(t):
     """M_shock(t): the premium-shock lapse multiplier; 1.0 in the base run.
 
@@ -841,45 +817,29 @@ def shock_lapse_factor(t):
         0.0, prem_paid_pp(t) / prev - 1.0)
 
 
-def lapse_rate(t):
-    """w(t): the lapse rate applied at the end of period t.
+def lapse_factor(t):
+    """The factor on the table lapse rate: 0 through the final policy year, else the shock.
 
-    The table rate times the premium-shock multiplier, and **exactly 0 through the whole
-    of the final policy year**, ``duration(t) >= proj_len_y() - 1`` — months 288 to 299 on
-    the anchor cell.  The end of that year is the moment cover expires, so a lapse and an
-    expiry are then the same event paying the same nothing, and the whole surviving cohort
-    is booked through :func:`pols_maturity` instead.  The zero covers the **year** and not
-    merely its last month, because that is what the annual-step model this replaced said
-    of it: zeroing only month 299 would leave eleven months of 3 % lapse inside the final
-    year and move the expiring cohort away from the notes' own figure.
+    ``duration(t) >= proj_len_y() - 1`` closes the lapse, where cover expires; elsewhere it
+    is :func:`shock_lapse_factor`, 1.0 in the base run.
 
-    No cash flow moves either way — the convention only decides how the closure identity
-    divides between lapses and expiries — but it is load-bearing for that identity, and
-    putting it here rather than in the table keeps the assumption and the convention
-    readable apart.  This is the **annual** rate; :func:`lapse_rate_mth` is what is
-    applied.
+    The end of the final year is the moment cover expires, so a lapse and an expiry are then
+    the same event paying the same nothing, and the whole surviving cohort is booked through
+    :func:`pols_maturity` instead.  The zero covers the **year** and not merely its last
+    month, because that is what the annual-step model this replaced said of it: zeroing only
+    the last month would leave eleven months of 3 % lapse inside the final year and move the
+    expiring cohort away from the notes' own figure.  No cash flow moves either way — the
+    convention only decides how the closure identity divides between lapses and expiries —
+    but it is load-bearing for that identity, and putting it here rather than in the table
+    keeps the assumption and the convention readable apart.
+
+    Override reason: the lapse is zero through the whole final policy year, where cover
+    expires, and loaded by the premium-shock multiplier elsewhere,
+    products/risikolebensversicherung/technical-notes.md:752
     """
     if duration(t) >= proj_len_y() - 1:
         return 0.0
-    return lapse_rate_base(t) * shock_lapse_factor(t)
-
-
-def lapse_rate_mth(t):
-    """wm(t): the lapse rate applied at the **end** of month t, after the death decrement.
-
-    ``1 - (1 - w(t))^(1/12)`` on the policy year's annual rate **[std]**, derived
-    geometrically and not by dividing by twelve, so that twelve months of it compound back
-    to exactly that rate.  No month is excepted: the one rate this product puts on a
-    boundary — the zero of the final policy year — is a rate for a whole year rather than
-    for a month of it, so it converts to a monthly zero for each of that year's twelve
-    months and needs no special case here.
-
-    § 168 VVG makes the *Versicherungsperiode* follow the *Zahlweise*, so a
-    monthly-paying contract is terminable monthly and its exits are genuinely **not**
-    concentrated at anniversaries.  The annual grid this model ran on booked them there
-    and said so as an approximation; the monthly grid removes it.
-    """
-    return 1.0 - (1.0 - lapse_rate(t)) ** (1.0 / 12.0)
+    return shock_lapse_factor(t)
 
 
 def lapse_cum(t):

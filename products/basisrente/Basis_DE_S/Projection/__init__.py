@@ -809,6 +809,9 @@ def mort_rate_base(t):
     a single visible factor.  Both are annual rates of the projection year the month falls
     in: the age and the calendar year step on the anniversary, so the twelve months of a
     year share one table rate.
+
+    Override reason: the first-order table is generational, read at the attained age and the
+    calendar year, products/basisrente/technical-notes.md:923
     """
     return mort_rate_at_age(age(t), calendar_year(t))
 
@@ -843,29 +846,14 @@ def mort_rate(t):
     Deaths fall at the end of the **month**, after that month's annuity instalment; the
     interest credit and the premium are annual and fall at the two ends of the year, so a
     dying policy has been credited its year's interest and has paid its year's premium.
+
+    Override reason: the terminal age is absorbing, the rate is 1 from ``omega_age() - 1``
+    whatever the factor, where the generational trend would carry the table's own terminal
+    rate below 1, products/basisrente/technical-notes.md:82
     """
     if age(t) >= omega_age() - 1:
         return 1.0
     return min(1.0, mort_be_factor() * mort_rate_base(t))
-
-
-def mort_rate_mth(t):
-    """The **monthly** death rate applied in projection month t.
-
-    ``1 - (1 - mort_rate(t))^(1/12)``: the geometric twelfth of the year's annual rate, so
-    the twelve months of a projection year compound back to it **exactly** and
-    ``pols_if(12k)`` is the annual-step model's ``pols_if(k)`` to the last bit.  Dividing
-    the annual rate by twelve instead would leave a residue that grows with the rate and is
-    largest exactly where this product's cash flows are — in the tail of a lifelong annuity.
-
-    A rate of **1 is a certainty and is not twelfth-rooted**: at the terminal age the whole
-    cohort dies, and it dies in the last month of the year rather than a little in each, so
-    the annuity is paid for the whole terminal year and ``pols_if(proj_len()) = 0``.
-    """
-    q = mort_rate(t)
-    if q >= 1.0:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - q) ** (1.0 / 12.0)
 
 
 def bf_rate(t):

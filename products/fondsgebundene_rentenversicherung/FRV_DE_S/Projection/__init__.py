@@ -104,6 +104,7 @@ K(t)                       nar_pp(t)                        Riskiertes Kapital
 (none)                     db_pp(t)                         What a death claim actually pays
 q_I(t)                     mort_rate_tariff_mth(t)          First-order monthly death rate
 q(t)                       mort_rate_mth(t)                 Second-order monthly death rate
+(base)                     mort_rate_base(t)                mort_rate_tariff(t), base of q
 f                          mort_be_factor                   0.75; q(t) = f q_I(t)
 (table)                    lapse_rate_base(t)               Table lapse rate
 (tax)                      lapse_tax_step(t)                x 2.5 in the threshold year
@@ -1195,16 +1196,20 @@ def mort_be_factor():
     return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
 
 
-def mort_rate_at_age(x):
-    """The **second-order** annual death rate at attained age x, the projection's decrement.
+def mort_rate_base(t):
+    """The first-order tariff rate in month t, the table the best estimate is loaded on.
 
-    ``mort_be_factor x mort_rate_tariff_at_age(x)`` with a flat ``mort_be_factor = 0.75``.
-    Flat is crude and is stated as such; what it buys is that the *Risikoergebnis* is
-    exactly 25 % of the *Risikobeitrag* collected, which a reader can verify with a
-    calculator.  What a replacement basis must preserve is the **direction**: a first-order
-    death table carries its margin **above** best estimate.
+    ``mort_rate_tariff(t)``, the core's ``mort_rate_tariff_at_age(age(t))`` at the neutral
+    load.  The best estimate is a flat ``mort_be_factor = 0.75`` on it.  Flat is crude and is
+    stated as such; what it buys is that the *Risikoergebnis* is exactly 25 % of the
+    *Risikobeitrag* collected, which a reader can verify with a calculator.  What a
+    replacement basis must preserve is the **direction**: a first-order death table carries
+    its margin **above** best estimate.
+
+    Override reason: the best estimate is a flat factor on the tariff's own first-order
+    death table, products/fondsgebundene_rentenversicherung/technical-notes.md:299
     """
-    return mort_be_factor() * mort_rate_tariff_at_age(x)
+    return mort_rate_tariff(t)
 
 
 def mort_rate_tariff_mth(t):
@@ -1219,34 +1224,18 @@ def mort_rate_tariff_mth(t):
     return mort_rate_tariff(t) / 12.0
 
 
-def mort_rate(t):
-    """The best-estimate **annual** death rate in month t, at ``age(t)``.
-
-    0.00060 in policy year 1 of the anchor cell: 0.75 x 0.00080.
-    """
-    return mort_rate_at_age(age(t))
-
-
 def mort_rate_mth(t):
     """The best-estimate **monthly** death rate, ``mort_rate(t) / 12``.
 
     The projection's decrement, and 0.00005 in policy year 1 of the anchor cell.  Split
     the same way as the tariff rate, for the reason given in
     :func:`mort_rate_tariff_mth`.
+
+    Override reason: the split is linear, as the tariff's *Risikobeitrag* is ``q/12`` times
+    the *riskiertes Kapital* and charge and decrement rest on the same split,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:308
     """
     return mort_rate(t) / 12.0
-
-
-def lapse_rate_base(t):
-    """The table annual lapse rate for the policy year containing month t.
-
-    **[std]** throughout — no German unit-linked *Stornoquote* was established anywhere.
-    6 % in years 1 to 5, 3 % in 6 to 10, 2 % in 11 and 12, 3 % from 13.  The
-    front-loading is a structural inference: the acquisition charge is being taken, the
-    value is furthest below the premiums paid, and § 168 VVG makes the exit
-    near-frictionless.
-    """
-    return float(data.lapse_table().loc[policy_year(t), "lapse_rate"])   # noqa: F821
 
 
 def lapse_tax_step(t):
@@ -1293,6 +1282,9 @@ def lapse_rate(t):
     ``min(lapse_cap, lapse_rate_base(t) x lapse_tax_step(t) + lapse_dyn_add(t))`` with a
     **[std]** cap of 40 %.  Annual by the library's convention; the monthly rate the
     projection actually uses is :func:`lapse_rate_mth`.
+
+    Override reason: the table rate is stepped at the tax threshold, raised by the dynamic
+    lapse and capped at 40 %, products/fondsgebundene_rentenversicherung/technical-notes.md:336
     """
     return min(lapse_cap,                                            # noqa: F821
                lapse_rate_base(t) * lapse_tax_step(t) + lapse_dyn_add(t))
@@ -1310,6 +1302,10 @@ def lapse_rate_mth(t):
     same *Fondsguthaben*, and the whole surviving cohort is booked as
     :func:`pols_maturity`.  No cash flow moves either way; the convention decides the
     split between the lapse total and the maturity count.
+
+    Override reason: the rate is zero in the last projected month, whose end is
+    *Rentenbeginn*, so the surviving cohort is booked as a maturity,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:338
     """
     if t >= proj_len() - 1:
         return 0.0

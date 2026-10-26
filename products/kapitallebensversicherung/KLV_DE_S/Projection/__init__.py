@@ -119,6 +119,7 @@ kpx                 pols_tariff(k)                         First-order survival 
 q1(x)               mort_rate_tariff_at_age(x)             First-order tariff rate at age
                                                            x - the unisex blend, which
                                                            prices and reserves
+(table)             mort_rate_at_age(x)                    Sex-specific table rate at age x
 (table)             mort_rate_base(t)                      Sex-specific annual table rate
 q(t)                mort_rate(t)                           Best-estimate annual mortality
 qm(t)               mort_rate_mth(t)                       The same, applied in month t
@@ -554,13 +555,13 @@ def mort_rate_tariff_at_age(x):
                         float(tbl.loc[("F", int(x)), "mort_rate_1st"]))
 
 
-def mort_rate_base(t):
-    """The **sex-specific annual** first-order table rate of month t's policy year.
+def mort_rate_at_age(x):
+    """The **sex-specific annual** first-order table rate at attained age x.
 
-    A lookup into *mort_table.csv* on this policy's own ``sex`` row at :func:`age`, and the
-    parent of the best-estimate decrement: ``mort_rate(t) = mort_rate_base(t) *
-    mort_be_factor``.  Flat across a policy year's twelve months, the attained age stepping
-    on the anniversary.
+    A lookup into *mort_table.csv* on this policy's own ``sex`` row, and through the core's
+    ``mort_rate_base(t) = mort_rate_at_age(age(t))`` the parent of the best-estimate
+    decrement: ``mort_rate(t) = mort_rate_base(t) * mort_be_factor``.  Flat across a policy
+    year's twelve months, the attained age stepping on the anniversary.
 
     It is **not** the rate the contract is priced or reserved on - that is
     :func:`mort_rate_tariff_at_age`, the unisex blend - and the two are deliberately different
@@ -569,7 +570,7 @@ def mort_rate_base(t):
     ``prem_gross_pp()`` is identical for two model points differing only in it.
     """
     return float(data.mort_table().loc[                              # noqa: F821
-        (sex(), int(age(t))), "mort_rate_1st"])
+        (sex(), int(x)), "mort_rate_1st"])
 
 
 def mort_be_factor():
@@ -580,37 +581,6 @@ def mort_be_factor():
     products/kapitallebensversicherung/model.md:513
     """
     return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
-
-
-def mort_rate(t):
-    """q(t): the **best-estimate annual** death rate of the policy year containing month t.
-
-    ``mort_rate_base(t) * mort_be_factor`` with ``mort_be_factor = 0.75`` **[std]**, so the
-    first-order table carries a 33 % safety loading.  **Annual**, as the library-wide
-    convention requires: this is the vector the technical notes tabulate, and
-    :func:`mort_rate_mth` is what the recursion applies.  Invariant to
-    :func:`rating_factor`, which is a *first-order* loading and has no business in a best
-    estimate.
-
-    It is the only place ``sex`` reaches a cash flow.
-    """
-    return min(1.0, mort_rate_base(t) * mort_be_factor())
-
-
-def mort_rate_mth(t):
-    """qm(t): the **monthly** best-estimate death rate applied at the end of month t **[std]**.
-
-    ``1 - (1 - q(t))^(1/12)``, the constant-force conversion of the policy year's annual
-    rate — derived geometrically and **not** by dividing by twelve, so that twelve months of
-    it compound back to exactly ``q(t)``, which is the factor the annual-step model this
-    replaced applied at the anniversary.  That is what makes the in-force at every policy
-    anniversary identical to the annual model's, and with it every annual quantity the
-    reserve and the *Überschussbeteiligung* are built on.
-
-    No German instrument states a conversion convention for any decrement, so the choice is a
-    standardization; what is not optional is that it reproduce the annual factor.
-    """
-    return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
 
 
 def hoechstrechnungszins():
@@ -1372,14 +1342,16 @@ def lapse_rate(t):
     This is the **annual** rate of the policy year containing month ``t``;
     :func:`lapse_rate_mth` is what the recursion applies, and it is where the election year's
     1.0 is placed on the anniversary rather than spread.
+
+    Override reason: § 165 VVG turns a *Beitragsfreistellung* election that fails the
+    minimum-sum test into a surrender, a rate of 1 in that year, and the final year's end is
+    the *Ablauf*, products/kapitallebensversicherung/technical-notes.md:537
     """
     if duration(t) >= proj_len_y() - 1:
         return 0.0
     if bfz_fails() and duration(t) == bfz_year() - 1:
         return 1.0
-    tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.loc[min(policy_year(t), int(tbl.index.max())),
-                         "lapse_rate"])
+    return lapse_rate_base(t)
 
 
 def bfz_fails():
@@ -1393,26 +1365,6 @@ def bfz_fails():
     policy year.  Model point 12 is the failing cell.
     """
     return bfz_year() > 0 and not is_paid_up(bfz_year())
-
-
-def lapse_rate_mth(t):
-    """wm(t): the surrender rate applied at the **end** of month t, after the mortality one.
-
-    ``1 - (1 - w(t))^(1/12)`` on the policy year's annual rate **[std]**, derived
-    geometrically and not by dividing by twelve, so that twelve months of it compound back to
-    exactly that rate.
-
-    **One month is excepted, and it is a statutory event rather than a rate.** Where a
-    *Beitragsfreistellung* election fails the *Mindestversicherungsleistung* test, § 165 VVG
-    turns it into a surrender — and the election falls at the **end** of the election policy
-    year, not spread across it.  So the whole cohort leaves in that year's last month and
-    nowhere else, which is what ``1.0 if is_anniv(t) else 0.0`` says.  Spreading an annual
-    rate of 1.0 geometrically would put the entire cohort out in the year's **first** month,
-    eleven months before the election it models.
-    """
-    if bfz_fails() and duration(t) == bfz_year() - 1:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - lapse_rate(t)) ** (1.0 / 12.0)
 
 
 def storno_rate(k):

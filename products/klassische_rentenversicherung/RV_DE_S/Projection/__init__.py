@@ -191,6 +191,7 @@ i                           rechnungszins()                 Rechnungszins
 d(k)                        decl_rate(k)                    Declared laufende Verzinsung
 b(k)                        bonus_rate(k)                   max(0, d(k) - i)
 q*(t)                       mort_rate_guar(t)               First-order mortality, annual
+(base)                      mort_rate_base(t)               mort_rate_guar(t), the base of q
 q(t)                        mort_rate(t)                    Best-estimate mortality, annual
 q^m(t)                      mort_rate_mth(t)                The monthly rate applied
 (table)                     mort_rate_at_age(x)             Base-year table rate at age x
@@ -1043,40 +1044,13 @@ def mort_rate_guar(t):
                * (1.0 - improve_rate(x)) ** (calendar_year(t) - base_year))
 
 
-def mort_rate(t):
-    """q(t): the **best-estimate annual** death rate, ``mort_rate_guar(t) x mort_be_factor()``.
+def mort_rate_base(t):
+    """The first-order rate the best estimate is loaded on, :func:`mort_rate_guar`.
 
-    The second-order basis, which drives :func:`pols_death` and hence every decrement.  The
-    factor is above one because for an annuity prudence means assuming mortality *lower* than
-    expected, so the first-order table sits below best estimate.  Capped at 1, and equal to 1
-    at attained age ``omega_age() - 1``, which is what ends the projection with no survivors.
-
-    The **annual** rate, flat across a policy year; :func:`mort_rate_mth` is what the monthly
-    recursion applies.
+    Override reason: the best estimate is the trend-projected first-order (guaranteed)
+    table loaded by the factor, products/klassische_rentenversicherung/technical-notes.md:341
     """
-    return min(1.0, mort_rate_guar(t) * mort_be_factor())
-
-
-def mort_rate_mth(t):
-    """q^m(t): the **monthly** death rate, ``1 - (1 - q(t))^(1/12)``.
-
-    The rate the in-force recursion applies.  It is a **geometric** twelfth and never
-    ``q(t) / 12``: twelve of it compound back to the year's annual rate exactly, which is what
-    leaves ``pols_if`` at every anniversary equal to the annual-step model's and with it every
-    account balance, every reserve and every premium.  Dividing by twelve would undershoot the
-    annual rate and leave a cohort that never quite runs off.
-
-    **One exception, and it is a certainty rather than a rate.**  ``mort_rate`` is 1 at attained
-    age ``omega_age() - 1``, which is the mortality proxy's closure convention — nobody survives
-    the table's last year — and not an experience rate.  Twelfth-rooting it would kill the whole
-    cohort in the **first** month of that policy year and stop the annuity eleven months early;
-    the certainty is placed in the anniversary month instead, so the survivors are paid the
-    table's last full year of annuity and then die, which is what the table says.
-    """
-    q = mort_rate(t)
-    if q >= 1.0:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - q) ** (1.0 / 12.0)
+    return mort_rate_guar(t)
 
 
 def decl_rate(k):
@@ -1128,6 +1102,10 @@ def lapse_rate(t):
 
     This is the **annual** rate, flat across a policy year; :func:`lapse_rate_mth` is what the
     recursion applies.
+
+    Override reason: below the *Mindestversicherungsleistung* § 165 cashes the contract out
+    at the surrender value, a rate of 1 in that year, and there is no surrender from
+    *Rentenbeginn*, products/klassische_rentenversicherung/technical-notes.md:244
     """
     mp = model_point()
     if duration(t) >= int(mp["aufschub_y"]):
@@ -1135,27 +1113,7 @@ def lapse_rate(t):
     pup = int(mp["pup_year"])
     if pup > 0 and duration(t) == pup - 2 and pup_cashout():
         return 1.0
-    tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.at[min(policy_year(t), int(tbl.index.max())), "lapse_rate"])
-
-
-def lapse_rate_mth(t):
-    """w^m(t): the **monthly** surrender rate, ``1 - (1 - w(t))^(1/12)``.
-
-    A geometric twelfth, for the same reason as :func:`mort_rate_mth`: twelve of it compound
-    back to the year's rate, so every anniversary count is the annual-step model's.
-
-    **The § 165 cash-out is the exception**, and for the same reason the terminal ``q = 1`` is.
-    An annual rate of 1 there is not an experience rate but a dated contractual act: § 165 VVG
-    has the contract cashed out at the end of the *Versicherungsperiode* in which the election
-    would have fallen.  Spreading that certainty geometrically would empty the cohort in the
-    year's first month, eleven months before the election; it is placed in the anniversary
-    month instead.
-    """
-    w = lapse_rate(t)
-    if w >= 1.0:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - w) ** (1.0 / 12.0)
+    return lapse_rate_base(t)
 
 
 # ----------------------------------------

@@ -760,7 +760,7 @@ and it is stated here so that an implementation can be compared against it line 
    and retain `exit_charge_pp(t)`.
 10. **Payout, each month.** Pay `claims_annuity(t) = annuity_month_pp() · pols_annuity_pay(t)` in
     advance, charge a twelfth of `expense_annuity` on the same count, then apply annuitant mortality
-    at the end of the month: `l(t + 1) = l(t) · (1 − q_mth(t))`.
+    at the end of the month: `l(t + 1) = l(t) · (1 − q_mth(t))`; no surrender, a contract in payment cannot be surrendered.
 11. Assemble `expenses(t)`, `commissions(t)`, `net_cf(t)` and `liability_cf(t)`, in every month.
 
 At `t = proj_len() − 1` the projection ends: `q` is 1 in the terminal year and `q_mth` places that

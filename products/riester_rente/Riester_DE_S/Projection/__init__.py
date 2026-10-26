@@ -142,6 +142,7 @@ q_mth(t)                   mort_rate_mth(t)                Its geometric twelfth
 (table)                    mort_rate_at_age(x)             Accumulation table rate at x
 q(x, tau)                  annuity_mort_rate(x, tau)       Generational annuitant rate
 w(t)                       lapse_rate(t)                   ANNUAL surrender rate
+(gate)                     lapse_factor(t)                 0 from t_conv()
 w_mth(t)                   lapse_rate_mth(t)               Its geometric twelfth
 theta(t)                   transfer_rate(t)                ANNUAL Anbieterwechsel rate
 theta_mth(t)               transfer_rate_mth(t)            Its geometric twelfth
@@ -662,7 +663,8 @@ def mort_rate(t):
 
     The basis **switches at ``t_conv()``**, and the two adjustments run in opposite
     directions because the direction of prudence forks by product.  In accumulation the
-    rate is ``mort_rate_at_age(x(t)) x mort_be_factor`` with the factor at 0.80: a
+    rate is ``mort_rate_base(t) x mort_be_factor``, the core's ``mort_rate_at_age(x(t))``,
+    with the factor at 0.80: a
     first-order *death* table assumes mortality higher than expected, so the best estimate
     sits below it.  In payout it is ``annuity_mort_rate(x(t), tau(t)) x
     annuity_mort_be_factor`` with the factor at 1.15: a first-order *annuity* table assumes
@@ -672,63 +674,28 @@ def mort_rate(t):
     This is the library's two-speed convention: ``mort_rate`` is the **annual** rate and
     :func:`mort_rate_mth` is what the recursion applies.  The age and the calendar year step
     on the anniversary, so the twelve months of a projection year share one annual rate.
+
+    Override reason: the basis switches at ``t_conv()``, from the accumulation death table
+    to the generational annuitant table with its own factor,
+    products/riester_rente/technical-notes.md:625
     """
     if age(t) >= omega_age() - 1:
         return 1.0
     if is_accum(t):
-        return min(1.0, mort_rate_at_age(age(t)) * mort_be_factor())
+        return min(1.0, mort_rate_base(t) * mort_be_factor())
     return min(1.0, annuity_mort_rate(age(t), calendar_year(t))
                * annuity_mort_be_factor)                             # noqa: F821
 
 
-def mort_rate_mth(t):
-    """The **monthly** death rate applied in month t, ``1 - (1 - mort_rate(t))^(1/12)``.
+def lapse_factor(t):
+    """The factor on the table surrender rate: 0 from ``t_conv()``, else 1.
 
-    The geometric twelfth, so twelve months compound back to the year's annual rate exactly
-    and the survivorship at every anniversary is the annual-step model's to the last bit.
-    ``mort_rate(t) / 12`` would not close, and the residue it leaves grows with the rate —
-    largest exactly where this product's cash flows are, in the tail of a lifelong annuity.
-
-    A rate of **1 is a certainty and is not twelfth-rooted**: at the terminal age the whole
-    cohort dies in the year's last month, so the annuity is paid for the whole of that year
-    and ``pols_if(proj_len())`` is still zero.
-    """
-    q = mort_rate(t)
-    if q >= 1.0:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - q) ** (1.0 / 12.0)
-
-
-def lapse_rate(t):
-    """w(t): the **annual** surrender rate of the year month t falls in, by duration.
-
-    Read from *lapse_table.csv* at ``policy_year(t)``, so the twelve months of a
-    projection year share one band.  Zero from ``t_conv()``: a contract in payment cannot be
-    surrendered.  The level is deliberately small — a *Kündigung* is *schädliche Verwendung*,
-    repaying every Zulage and every § 10a relief and taxing the accumulated growth, against a
-    surrender value already below the contributions paid in the early years — so the German
-    market's description of a Riester contract as economically unsurrenderable is stated
-    numerically rather than only in prose.
+    Override reason: a contract in payment cannot be surrendered, so the rate is zero from
+    ``t_conv()``, products/riester_rente/technical-notes.md:763
     """
     if not is_accum(t):
         return 0.0
-    return float(data.lapse_table().at[policy_year(t),                # noqa: F821
-                                       "lapse_rate"])
-
-
-def lapse_rate_mth(t):
-    """The **monthly** surrender rate applied in month t, the geometric twelfth of ``w(t)``.
-
-    ``1 - (1 - lapse_rate(t))^(1/12)``, so twelve months compound back to the band's annual
-    rate exactly and a *Kündigung* is now **dated**: a saver who surrenders in the fourth
-    month of a contract year does so in month four of the frame, not at the year end.
-    """
-    w = lapse_rate(t)
-    if w <= 0.0:
-        return 0.0
-    if w >= 1.0:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - w) ** (1.0 / 12.0)
+    return 1.0
 
 
 def transfer_rate(t):

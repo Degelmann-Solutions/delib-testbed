@@ -74,6 +74,8 @@ pi_g                        benefit_pct(g)                  Leistungsstaffel per
 P                           premium_mth_pp()                Level monthly gross Beitrag
 (none)                      prem_net_level_pp()             Net level premium, A / U
 m                           prem_mode_months()              1, 3, 6, 12, or 0 for single
+(table)                     mort_rate_at_age(x)             Active table rate at age x
+(table)                     mort_rate_base(t)               Its value at age(t)
 q_A(x)                      mort_rate(t)                    Active annual death rate
 (none)                      mort_rate_mth(t)                The same rate, monthly
 mu_A(t)                     mort_force(t)                   Active force of mortality
@@ -88,6 +90,7 @@ delta_g(t)                  det_force(t, g)                 Force of deteriorati
 (table, damped)             rec_rate(t, g)                  Annual recovery rate
 rho_g(t)                    rec_force(t, g)                 Force of recovery
 (table)                     lapse_rate(t)                   Annual lapse, active state
+(gate)                      lapse_factor(t)                 0 after the premium term
 w(t)                        lapse_rate_mth(t)               Monthly lapse probability
 (allocation)                p_act_stay/death/care(t)        Active-state month transitions
 (allocation)                p_pg_stay/death/worse/better    Grade-g month transitions
@@ -500,18 +503,13 @@ def waiver_flag(g):
     return benefit_pct(g) > 0.0
 
 
-def mort_rate(t):
-    """q_A(x): the annual **active-life** death rate at the attained age, by sex.
+def mort_rate_at_age(x):
+    """q_A(x): the table's annual **active-life** death rate at attained age x, by sex.
 
-    Read from *mort_table.csv*, a **[std]** Gompertz proxy — not DAV 2008 T and not the
-    DAV 2008 P active-life table, neither of which is public or redistributed here.  It is
-    forced to 1.0 at ``omega_age() - 1``, the limiting-age convention that closes the
-    system.
-
-    This is the rate of an **active** life.  In-care mortality is a multiple of its force
-    and is :func:`mort_rate_care`.
+    A lookup into *mort_table.csv* at ``(sex(), x)``; the core's ``mort_rate_base(t)`` reads
+    it at ``age(t)``.
     """
-    return float(data.mort_table().at[(sex(), age(t)), "mort_rate"])  # noqa: F821
+    return float(data.mort_table().at[(sex(), x), "mort_rate"])      # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -525,6 +523,10 @@ def mort_rate_mth(t):
     the opposite of the intuition, which is why the pair is published.  The projection
     itself does not use it — it works in forces, through :func:`mort_force` — but the two
     agree by construction, ``1 - exp(-mort_force(t)/12)`` being this same number.
+
+    Override reason: a published diagnostic of the force-based monthly step, the plain
+    geometric twelfth at every age, the limiting one included, as the house convention asserts,
+    products/pflegerentenversicherung/technical-notes.md:762
     """
     return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
 
@@ -666,33 +668,15 @@ def rec_force(t, g):
     return -math.log(1.0 - min(q, 1.0 - 1e-12))                      # noqa: F821
 
 
-def lapse_rate(t):
-    """The **annual** lapse rate from the active state in policy year ``y(t)``.
+def lapse_factor(t):
+    """The factor on the table lapse rate: 0 once the premium term has ended, else 1.
 
-    Read from *lapse_table.csv*, tabulated to year 40 with year 40's rate applying to every
-    later year, and **zero once the premium term has ended**: a paid-up contract has no
-    premium-driven exit, and the model implements no *Beitragsfreistellung* election, so
-    every voluntary exit is a surrender.
-
-    Lapse here is *profitable* to the insurer — an early lapser paid for years and never
-    reached the risk period — which inverts the usual protection intuition and is why the
-    first-order pricing basis deliberately carries none.
+    Override reason: lapse is zero once the premium term has ended, a paid-up contract
+    having no premium-driven exit, products/pflegerentenversicherung/technical-notes.md:363
     """
     if age(t) >= prem_end_age():
         return 0.0
-    return float(data.lapse_table().at[                              # noqa: F821
-        min(policy_year(t), 40), "lapse_rate"])
-
-
-def lapse_rate_mth(t):
-    """w(t): the monthly lapse probability, ``1 - (1 - lapse_rate(t))**(1/12)``.
-
-    Applied to the survivors of the insured decrements and of the reactivation inflow, so
-    that a life cannot both die and lapse in the same month.  Nothing in care lapses: a
-    claimant with a waived premium has no premium to default on and a live annuity to
-    forfeit.
-    """
-    return 1.0 - (1.0 - lapse_rate(t)) ** (1.0 / 12.0)
+    return 1.0
 
 
 def p_act_stay(t):

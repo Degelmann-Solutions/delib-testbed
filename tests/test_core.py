@@ -14,6 +14,10 @@
 - The tariff basis: KLV, RLV, BU and Pflege read their rate from the model point;
   the monthly discount factor equals the annual one on a year start; the tariff
   survivorship is 1 at issue; the net level premium is the benefit value over the annuity.
+- The decrement rates: BU's derived death rate is its table rate at the neutral factor, KLV's
+  its table rate times 0.75; an annual certainty falls in the anniversary month (Basis and RV
+  deaths at the terminal age, KLV's failed *Beitragsfreistellung*); FRV splits mortality
+  linearly; Index and RLV close the lapse in the final policy year without reading the table.
 """
 from __future__ import annotations
 
@@ -497,6 +501,63 @@ CORE_CELLS = {
                            "klassische_rentenversicherung": "override",
                            "riester_rente": "override",
                            "risikolebensversicherung": "derived"},
+        "mort_rate_base": {"basisrente": "override",
+                           "berufsunfaehigkeit": "derived",
+                           "fondsgebundene_rentenversicherung": "override",
+                           "indexpolice": "derived",
+                           "kapitallebensversicherung": "derived",
+                           "klassische_rentenversicherung": "override",
+                           "pflegerentenversicherung": "derived",
+                           "riester_rente": "derived",
+                           "risikolebensversicherung": "override"},
+        "mort_rate": {"basisrente": "override",
+                      "berufsunfaehigkeit": "derived",
+                      "fondsgebundene_rentenversicherung": "derived",
+                      "indexpolice": "derived",
+                      "kapitallebensversicherung": "derived",
+                      "klassische_rentenversicherung": "derived",
+                      "pflegerentenversicherung": "derived",
+                      "riester_rente": "override",
+                      "risikolebensversicherung": "override",
+                      "sofortrente": "override"},
+        "mort_rate_mth": {"basisrente": "derived",
+                          "berufsunfaehigkeit": "derived",
+                          "fondsgebundene_rentenversicherung": "override",
+                          "indexpolice": "derived",
+                          "kapitallebensversicherung": "derived",
+                          "klassische_rentenversicherung": "derived",
+                          "pflegerentenversicherung": "override",
+                          "riester_rente": "derived",
+                          "risikolebensversicherung": "derived",
+                          "sofortrente": "override"},
+        "lapse_rate_base": {"berufsunfaehigkeit": "derived",
+                            "fondsgebundene_rentenversicherung": "derived",
+                            "indexpolice": "override",
+                            "kapitallebensversicherung": "derived",
+                            "klassische_rentenversicherung": "derived",
+                            "pflegerentenversicherung": "derived",
+                            "riester_rente": "derived",
+                            "risikolebensversicherung": "derived"},
+        "lapse_factor": {"indexpolice": "override",
+                         "pflegerentenversicherung": "override",
+                         "riester_rente": "override",
+                         "risikolebensversicherung": "override"},
+        "lapse_rate": {"berufsunfaehigkeit": "derived",
+                       "fondsgebundene_rentenversicherung": "override",
+                       "indexpolice": "derived",
+                       "kapitallebensversicherung": "override",
+                       "klassische_rentenversicherung": "override",
+                       "pflegerentenversicherung": "derived",
+                       "riester_rente": "derived",
+                       "risikolebensversicherung": "derived"},
+        "lapse_rate_mth": {"berufsunfaehigkeit": "derived",
+                           "fondsgebundene_rentenversicherung": "override",
+                           "indexpolice": "derived",
+                           "kapitallebensversicherung": "derived",
+                           "klassische_rentenversicherung": "derived",
+                           "pflegerentenversicherung": "derived",
+                           "riester_rente": "derived",
+                           "risikolebensversicherung": "derived"},
     },
 }
 
@@ -867,3 +928,109 @@ def test_annual_discount_factor_is_the_rechnungszins_power(product, product_mode
     assert projection.disc_factor._is_derived()
     item = projection[1]
     assert item.disc_factor(3) == (1.0 + item.rechnungszins()) ** -3
+
+
+def test_bu_mort_rate_is_its_table_rate_at_the_neutral_factor(product_models):
+    model = product_models("berufsunfaehigkeit")
+    projection = model.Projection
+    assert projection.mort_rate._is_derived()
+    assert projection.mort_be_factor._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        assert item.mort_be_factor() == 1.0
+        for t in range(item.proj_len()):
+            assert item.mort_rate(t) == item.mort_rate_at_age(item.age(t)), (point_id, t)
+
+
+def test_klv_mort_rate_steps_its_table_by_the_factor_from_param_table(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.mort_rate._is_derived()
+    assert projection.mort_be_factor._is_defined()
+    assert model.Data.param_table().at["mort_be_factor", "value"] == 0.75
+    item = projection[model.Data.model_point_table().index[0]]
+    assert item.mort_be_factor() == 0.75
+    for t in range(item.proj_len()):
+        assert item.mort_rate(t) == min(1.0, item.mort_rate_base(t) * 0.75), t
+
+
+@pytest.mark.parametrize("product", ["basisrente", "klassische_rentenversicherung"])
+def test_a_certain_death_falls_in_the_anniversary_month(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.mort_rate_mth._is_derived()
+    item = projection[model.Data.model_point_table().index[0]]
+    terminal = [t for t in range(item.proj_len()) if item.mort_rate(t) == 1.0]
+    assert terminal, "no month with mort_rate = 1"
+    start = terminal[0] - terminal[0] % 12
+    assert all(item.mort_rate(start + m) == 1.0 for m in range(12))
+    assert [item.mort_rate_mth(start + m) for m in range(12)] == [0.0] * 11 + [1.0]
+    assert item.is_anniv(start + 11)
+
+
+def test_frv_splits_mortality_linearly(product_models):
+    model = product_models("fondsgebundene_rentenversicherung")
+    projection = model.Projection
+    assert projection.mort_rate_mth._is_defined()
+    assert projection.mort_rate._is_derived()
+    item = projection[model.Data.model_point_table().index[0]]
+    for t in range(item.proj_len()):
+        assert item.mort_rate_mth(t) == item.mort_rate(t) / 12.0, t
+
+
+@pytest.mark.parametrize("product", ["indexpolice", "risikolebensversicherung"])
+def test_lapse_is_closed_in_the_final_policy_year_without_reading_the_table(
+        product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.lapse_rate._is_derived()
+    assert projection.lapse_factor._is_defined()
+    item = projection[model.Data.model_point_table().index[0]]
+    final = 12 * (item.proj_len_y() - 1)
+    for t in range(final, item.proj_len()):
+        assert item.lapse_rate(t) == 0.0, t
+        names = {node.obj.name for node in item.lapse_rate.precedents(t)}
+        assert names == {"lapse_factor"}, (t, names)
+    assert item.lapse_rate(final - 1) > 0.0
+
+
+def _rebate_cut_from_policy_year_4(t):
+    """The declaration cut to nothing from policy year 4: the bill rises to the guaranteed one."""
+    return 0.0 if duration(t) >= 3 else prem_rebate_level_pp(t)      # noqa: F821
+
+
+def test_rlv_lapse_rate_is_the_table_rate_times_the_shock_factor():
+    """With the premium-shock module on and the declaration cut in year 4, the shock fires."""
+    model = mx.read_model(PRODUCTS_DIR / "risikolebensversicherung"
+                          / MODELS["risikolebensversicherung"], name="ShockProbe")
+    try:
+        projection = model.Projection
+        assert projection.lapse_rate._is_derived()
+        projection.new_cells("prem_rebate_level_pp", formula=projection.prem_rebate_pp.formula)
+        projection.prem_rebate_pp.formula = _rebate_cut_from_policy_year_4
+        projection.shock_lapse_lambda = 2.0
+        item = projection[model.Data.model_point_table().index[0]]
+        final = 12 * (item.proj_len_y() - 1)
+        shocked = [t for t in range(item.t_start(), final) if item.shock_lapse_factor(t) > 1.0]
+        assert shocked, "the premium shock never fires"
+        for t in shocked:
+            assert (item.lapse_rate(t)
+                    == item.lapse_rate_base(t) * item.shock_lapse_factor(t)), t
+            assert item.lapse_rate(t) > item.lapse_rate_base(t), t
+        for t in range(final, item.proj_len()):
+            assert item.lapse_rate(t) == 0.0, t
+    finally:
+        model.close()
+
+
+def test_klv_failed_beitragsfreistellung_lapses_in_the_anniversary_month(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.lapse_rate_mth._is_derived()
+    failing = [p for p in model.Data.model_point_table().index if projection[p].bfz_fails()]
+    assert failing, "no model point with a failed Beitragsfreistellung"
+    item = projection[failing[0]]
+    start = 12 * (item.bfz_year() - 1)
+    assert all(item.lapse_rate(start + m) == 1.0 for m in range(12))
+    assert [item.lapse_rate_mth(start + m) for m in range(12)] == [0.0] * 11 + [1.0]
+    assert item.is_anniv(start + 11)

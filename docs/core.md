@@ -1,6 +1,6 @@
 # The common core of phase 3: layout and conventions
 
-Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis and the contract data and charges, and the conventions every core commit follows: commit trailers, the reason on a product override, and how a product's `UPSTREAM.md` names the files phase 3 changed. The tests that enforce the conventions are `tests/test_core.py` and `tests/test_provenance.py`.
+Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates and the contract data and charges, and the conventions every core commit follows: commit trailers, the reason on a product override, and how a product's `UPSTREAM.md` names the files phase 3 changed. The tests that enforce the conventions are `tests/test_core.py` and `tests/test_provenance.py`.
 
 ## Layout
 
@@ -74,9 +74,35 @@ Still in the products, because unifying them changes results or adds a quantity 
 - The annuity present values of Sofort, Riester and RV (`annuity_factor`, `ann_factor`, `annuity_due_factor`): one sum of discount factor times survivorship, differing in payment frequency, the Woolhouse deduction, the guarantee period and a second life.
 - Sofort's and RV's inline discounting with `v = 1 / (1 + i)` raised to month fractions, `disc_factor_mth` in another float order.
 - RLV's and BU's acquisition charges, `(z k) G` and `(a G) BS_u`: the zillmered amount in another float order than `zillmer_amount`.
-- First-order rates under their own names: RV's `mort_rate_guar(t)`, Pflege's `tar_mort_rate(t)` (its `tar_` family), Basis's `mort_rate_base(t)`. Renaming them to `mort_rate_tariff` is byte-identical and makes each a reasoned override of the core cell; it is left for a later entry.
+- First-order rates under their own names: RV's `mort_rate_guar(t)` and Pflege's `tar_mort_rate(t)` (its `tar_` family). Renaming them to `mort_rate_tariff` is byte-identical and makes each a reasoned override of the core cell; it is left for a later entry. Basis's first-order generational rate is now its override of the core's term `mort_rate_base(t)`, and RV's `mort_rate_base` returns `mort_rate_guar(t)` (see the decrement rates).
 
 Not suited to the core: the multi-state first-order engines of BU (`*_first` ledgers) and Pflege (`tar_*` ledgers) and Sofort's monthly two-life survivorship (`tariff_lives`), which are different procedures, not one procedure with different terms.
+
+## The decrement rates
+
+The core's `Projection` holds the second-order (best-estimate) decrement rates, each the annual rate of the policy year a month falls in beside the monthly rate the recursion applies, built from term cells with neutral defaults:
+
+- `mort_rate_base(t) = mort_rate_at_age(age(t))`, the annual table death rate before the best-estimate factor. `mort_rate_at_age(x)`, the product's table rate at an attained age, is the hook (BU, Riester with its ω guard, KLV, Index and Pflege at `(sex(), x)`). `mort_be_factor() = 1` is the step to the best estimate; Basis (0.85), FRV (0.75), KLV (0.75), RV (1.15) and Riester (0.80) override it from their `param_table.csv`, RLV derives it.
+- `mort_rate(t) = min(1, mort_rate_base(t) * mort_be_factor())` (BU, FRV, Index, KLV, Pflege, RV). IEEE `*` commutes, so FRV's `factor * q` gives the same bits, and `min(1, q) == q` for `q <= 1`.
+- `mort_rate_mth(t)`, the geometric twelfth `1 - (1 - q)^(1/12)` of `q = mort_rate(t)`, so twelve months compound back to the annual rate. An annual rate of 1 is a certainty, not a rate: it is placed in the anniversary month, 1 where `is_anniv(t)` and 0 in the eleven months before, so the cohort is paid its last year and dies at its end (Basis, Index, RV, Riester; BU, KLV and RLV had the plain twelfth, and their rate stays below 1 on every baseline point, so the branch never acts there).
+- `lapse_rate_base(t)`, the table annual lapse rate at `policy_year(t)`, holding the table's last row for later years (BU, FRV, KLV, Pflege, RV, Riester, RLV). `lapse_factor(t) = 1` is the factor on it, and `lapse_rate(t) = lapse_rate_base(t) * lapse_factor(t)`, 0 without reading the table where the factor is 0 (BU, Index, Pflege, Riester, RLV).
+- `lapse_rate_mth(t)`, the same shape on `lapse_rate(t)`: an annual rate of 1, a dated contractual act such as the § 165 VVG cash-out, falls whole in the anniversary month (BU, Index, KLV, Pflege, RV, Riester, RLV).
+
+The monthly split is a product choice, not a contract attribute, so a product that splits otherwise overrides the cell with its reason rather than setting a switch in its data (Moritz, 2026-10-26). The certainty branch reads `is_anniv(t)`, `t % 12 == 11`; BU's `t` counts from the valuation month, where that is not the anniversary, but BU's rates never reach 1.
+
+The overrides, each with its reason in the cell's docstring:
+
+- `mort_rate_base`: Basis, the generational first-order table at the attained age and the calendar year; RLV, the table on sex and smoker status, two lives combined to the first-death rate before loading; RV, `mort_rate_guar(t)`, the trend-projected first-order table the best estimate is loaded on; FRV, `mort_rate_tariff(t)`, the first-order tariff table its flat factor stands on. Sofort inherits it unused.
+- `mort_rate`: Basis, the absorbing terminal age (1 from `omega_age() - 1` whatever the factor, where the generational trend would carry the table's terminal rate below 1); Riester, the basis switch at `t_conv()` to the generational annuitant table and its own factor `annuity_mort_be_factor`; RLV, the *Risikozuschlag* and the selective-lapse loading; Sofort, the argument `life` on its generational surface.
+- `mort_rate_mth`: FRV, the linear split `q / 12`, coupled to the *Risikobeitrag* struck on `q/12` times the *riskiertes Kapital*; Pflege, a published diagnostic of its force-based monthly step, the plain twelfth also at the limiting age; Sofort, the argument `life`.
+- `lapse_rate_base`: Index, its table keyed on the 0-based policy year, read through `duration(t)`.
+- `lapse_factor`: Index, 0 through the final policy year, which ends at *Rentenbeginn*; RLV, 0 through the final policy year, where cover expires, else `shock_lapse_factor(t)`; Pflege, 0 once the premium term has ended; Riester, 0 from `t_conv()`, a contract in payment cannot be surrendered.
+- `lapse_rate`, each reading `lapse_rate_base(t)`: KLV, § 165 VVG turns a failed *Beitragsfreistellung* election into a surrender (rate 1 in that year) and the final year is 0, its end the *Ablauf*; RV, the § 165 cash-out (rate 1) and 0 from `aufschub_y`; FRV, the tax-threshold step, the additive dynamic lapse and the 40 % cap.
+- `lapse_rate_mth`: FRV, 0 in the last projected month, whose end is *Rentenbeginn*.
+
+KLV derives `lapse_rate_mth`. Its own branch put 1 in the anniversary month of a failed election year; the core's certainty branch does the same wherever `lapse_rate` is 1 there, which is every such year but the final policy year, where `lapse_rate` is 0 and the survivors mature. No shipped point elects in its final year.
+
+Still in the products: the first-order and tariff rates (`mort_rate_tariff*`, Pflege's `tar_*`, BU's `*_first`), BU's disabled-lives and in-claim rates (`mort_rate_dis*`), Pflege's forces and care rates (`mort_force`, `mort_rate_care`), Riester's payout basis (`annuity_mort_rate`) and transfer rate, Basis's *Beitragsfreistellung* rate, and the surrender values and charges.
 
 ## Contract data and charges
 

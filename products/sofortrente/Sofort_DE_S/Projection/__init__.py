@@ -560,6 +560,9 @@ def mort_rate(t, life=1):
 
     Returns 0 for the second life where no *Hinterbliebenenrente* is in force: the life
     does not exist, its model point columns are zeros, and nothing may read them.
+
+    Override reason: the rate is read for each life, the argument ``life``, on the
+    generational surface at its birth cohort, products/sofortrente/technical-notes.md:456
     """
     if life == 2 and surv_pct() == 0.0:
         return 0.0
@@ -572,6 +575,10 @@ def mort_rate_mth(t, life=1):
     A uniform force of mortality across the policy year, which is the convention that makes
     twelve monthly survivals compound back to the annual one exactly.  At the closing age,
     where ``q = 1``, it is 1 and the survival path steps to zero in that month.
+
+    Override reason: the rate is read for each life, the argument ``life``, and at the
+    closing age the survival path steps to zero in that month,
+    products/sofortrente/technical-notes.md:458
     """
     return 1.0 - (1.0 - mort_rate(t, life)) ** (1.0 / 12.0)
 

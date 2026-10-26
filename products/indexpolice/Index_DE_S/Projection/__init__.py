@@ -126,12 +126,15 @@ l(t)(1-q), l(t+1)          pols_if_at(t, timing)           BEF_DECR / AFT_DEATH 
                                                            AFT_LAPSE
 (year end)                 pols_surv_year_end(k)           Survivors the Indexjahr credit
                                                            is given to
+(table)                    mort_rate_at_age(x)             Table death rate at age x
+(table)                    mort_rate_base(t)               Its value at age(t)
 q_d(t)                     mort_rate(t)                    Annual death rate
 q^m_d(t)                   mort_rate_mth(t)                The monthly rate applied
 w_l(t)                     lapse_rate(t)                   Annual surrender rate applied
 w^m_l(t)                   lapse_rate_mth(t)               The monthly rate applied
 (table)                    lapse_rate_base(t)              The table rate before the
                                                            terminal-year override
+(gate)                     lapse_factor(t)                 0 in the final policy year
 phi                        prem_freq_load()                Ratenzahlungszuschlag
 P_b(k)                     prem_base_pp(k)                 Annual-mode premium due
 P(k)                       prem_gross_pp(k)                Premium actually collected
@@ -1072,33 +1075,13 @@ def guar_cap_pp(k):
 
 # --- decrements --------------------------------------------------------------
 
-def mort_rate(t):
-    """``q_d(t)``: the **annual** death rate at the attained age of month t.
+def mort_rate_at_age(x):
+    """``q_d(x)``: the table's **annual** death rate at attained age x, for the model point's sex.
 
-    A **[std]** Gompertz proxy anchored at ``qx(M, 40) = 0.001200``; DAV 2008 T and DAV
-    2004 R are proprietary and are cited by name rather than shipped.  Mortality here is a
-    **timing** assumption: the death benefit is the account value with a floor, not a sum
-    at risk, so the rate decides when capital leaves and hardly at all how much.
-
-    The **annual** rate, flat across a policy year because the attained age steps on the
-    anniversary; :func:`mort_rate_mth` is what the monthly recursion applies.
+    A lookup into *mort_table.csv* at ``(sex(), x)``; the core's ``mort_rate_base(t)`` reads
+    it at ``age(t)``.
     """
-    return float(data.mort_table().loc[(sex(), age(t)), "qx"])       # noqa: F821
-
-
-def mort_rate_mth(t):
-    """``q^m_d(t)``: the **monthly** death rate, ``1 - (1 - q_d(t))^(1/12)``.
-
-    A **geometric** twelfth and never ``q_d(t) / 12``: twelve of it compound back to the
-    year's rate exactly, which is what leaves ``pols_if`` at every anniversary equal to the
-    annual-step model's and with it the whole account, the *Höchststandsicherung* ledger and
-    every *Indexgutschrift*.  Dividing by twelve would undershoot and leave a cohort that
-    never quite runs off.
-    """
-    q = mort_rate(t)
-    if q >= 1.0:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - q) ** (1.0 / 12.0)
+    return float(data.mort_table().loc[(sex(), x), "qx"])            # noqa: F821
 
 
 def lapse_rate_base(t):
@@ -1112,16 +1095,18 @@ def lapse_rate_base(t):
     withholding — the strongest single driver of German surrender behaviour, and the reason
     a rate flat in duration is a numbered pitfall.  The mean over the anchor's 27 years is
     about 2.6 %, inside the market-wide GDV band; no index-specific rate exists at all.
+
+    Override reason: the table is keyed on the 0-based policy year, read through
+    ``duration(t)`` without a cap, products/indexpolice/technical-notes.md:348
     """
     return float(data.lapse_table().loc[duration(t), "lapse_rate"])  # noqa: F821
 
 
-def lapse_rate(t):
-    """``w_l(t)``: the surrender rate actually applied in period t.
+def lapse_factor(t):
+    """The factor on the table surrender rate: 0 through the whole final policy year, else 1.
 
-    :func:`lapse_rate_base` except **through the whole final policy year**,
-    ``duration(t) == proj_len_y() - 1``, where it is **0** **[std]**: that year ends at
-    *Rentenbeginn*, and the whole surviving cohort is booked as a maturity.
+    ``duration(t) == proj_len_y() - 1`` closes the lapse: that year ends at *Rentenbeginn*,
+    and the whole surviving cohort is booked as a maturity.
 
     Unlike a term product, where the two paid the same nothing, **here they pay different
     amounts** — a surrender carries the *Stornoabzug* and forfeits the running *Indexjahr*,
@@ -1131,23 +1116,13 @@ def lapse_rate(t):
     does **not** change it: a within-final-year surrender is now expressible, but no source
     establishes one, and the zero keeps the final-year cohort a single population with a
     single benefit.
+
+    Override reason: the surrender rate is zero through the whole final policy year, which
+    ends at *Rentenbeginn*, products/indexpolice/technical-notes.md:566
     """
     if duration(t) == proj_len_y() - 1:
         return 0.0
-    return lapse_rate_base(t)
-
-
-def lapse_rate_mth(t):
-    """``w^m_l(t)``: the **monthly** surrender rate, ``1 - (1 - w_l(t))^(1/12)``.
-
-    A geometric twelfth, for the same reason as :func:`mort_rate_mth`: twelve of it compound
-    back to the year's rate, so every anniversary count is the annual-step model's and every
-    *Indexgutschrift* is struck on the same population it was.
-    """
-    w = lapse_rate(t)
-    if w >= 1.0:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - w) ** (1.0 / 12.0)
+    return 1.0
 
 
 def pols_if(t):

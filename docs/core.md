@@ -32,13 +32,17 @@ _bases = [
 
 A checkout without symlink support (Windows without developer mode or `core.symlinks`) is not supported. Composing the core into the product at load time in `tools/` was probed as an alternative and not built (Moritz, 2026-10-25).
 
+## What enters the core
+
+A quantity enters the core when at least two products compute it by the same procedure, also with different parameters or with terms that differ. The core formula is then built from term cells with neutral defaults (0 or 1), and a product overrides only the terms it differs in, each with its reason; the rest of the formula still derives from the core. A switch in the core formula is a last resort, and a choice that depends on the contract belongs in the data (a model-point column or `param_table.csv`), not in the code. A procedure no other product shares stays in the product. A unification that changes results is a commit of its own, one quantity at a time (Moritz, 2026-10-26).
+
 ## The time axis
 
 The core's `Projection` holds the time axis on the inception clock, which most products use: `t` counts policy months from issue, `duration_mth(t) = t`, `duration(t) = duration_mth(t) // 12`, `policy_year(t) = duration(t) + 1`, `age(t) = age_y(duration(t))`, `calendar_year(t) = calendar_year_y(duration(t))`, and an in-force point opens its frame at `t_start() = 12 * k_start()` with `k_start() = duration_init()`. The in-force duration stays two model-point columns, `duration_init` in years and `duration_mth_init` in months. Basis, Riester and BU count `t` from the valuation date (a documented frame choice, `products/basisrente/model.md:54`), so they override only the cells where that clock shows: `duration_mth`, and in Basis and Riester also `k_start` (0, the frame opens at the valuation date), `age_y`, `age`, `calendar_year_y` and `calendar_year`; there `duration`, `duration_y`, `policy_year` and `proj_len` still derive from the core. The other overrides of the time axis are a product's own horizon (`proj_len_y` or `proj_len`), a frame start in months (`t_start` in FRV, Pflege and Sofort), BU's floors for a negative `t` (`policy_year`, `age`) and Sofort's second life (`age`); `CORE_CELLS` in `tests/test_core.py` lists them.
 
 ## The tariff basis
 
-The core's `Projection` holds the annual first-order equivalence that RLV and KLV share, and the parts of it that other products compute the same way:
+The core's `Projection` holds the annual first-order equivalence that RLV and KLV share, and the parts of it that other products compute by the same procedure:
 
 - `rechnungszins()` reads the model point's `rechnungszins` column. The rate used at conclusion applies for the whole term (§ 2 Abs. 2 DeckRV, `products/basisrente/sources.md:353`), so a book carries a stack of vintages and the rate is a contract attribute; KLV, Riester, Sofort, RV, Index and Basis derive it. RLV, BU and Pflege price the whole book at one rate, a tariff parameter in their `param_table.csv`, and override it.
 - `disc_factor(y) = (1 + rechnungszins()) ** -y`, the annual factor to the start of policy year `y` (RLV, KLV), and `disc_factor_mth(t) = (1 + rechnungszins()) ** (-t / 12)`, the monthly factor (BU, Pflege). At `t = 12 y` the exponent `-t / 12` is exactly `-y`, so the two agree on year starts bit for bit.
@@ -49,13 +53,15 @@ The core's `Projection` holds the annual first-order equivalence that RLV and KL
 
 Two core cells call a cell the product defines, its hook into the chain: `mort_rate_tariff` calls `mort_rate_tariff_at_age(x)`, the product's first-order rate at an attained age (FRV, KLV), and `prem_net_level_pp` calls `tariff_benefit_pv()`, the present value of the product's benefits on its tariff basis (RLV's death benefits, KLV's death and maturity benefits, Pflege's *Pflegerente*). A product without the hook inherits the core cell unused, as with every other core cell.
 
-What no two products compute the same way stays in the products:
+Still in the products, because unifying them changes results or adds a quantity (each a result-changing commit of its own, listed as open work):
 
-- The gross premium. RLV's `prem_gross_level_pp` carries a schedule-weighted `gamma` and a guard, KLV's `prem_gross_pp()` reads its loadings from `cost_table.csv`, BU's `prem_gross_level_pp` and Pflege's `premium_mth_pp` are monthly, rated and struck on multi-state first-order ledgers.
-- The reserves. RLV publishes a net diagnostic (`res_pp_at`, `res_zill_pp_at`), KLV a zillmered and paid-up reserve to maturity (`res_*`); BU and Pflege compute none (`products/berufsunfaehigkeit/technical-notes.md:974`, `products/pflegerentenversicherung/technical-notes.md:32`); RV and Riester carry accounts, not a prospective reserve.
-- The tariff survivorship of BU and Pflege (multi-state, monthly: BU's `*_first` ledgers, Pflege's `tar_*` ledgers) and of Sofort (monthly, two lives, `tariff_lives`), and Sofort's and Riester's annuity factors.
-- Sofort's and RV's annuity factors discount inline with `v = 1 / (1 + i)` raised to month fractions; that is `disc_factor_mth` in another float order, so routing them through the core would change the last bits of Sofort's results, a result-changing commit of its own.
-- First-order rates under their own names: RV's `mort_rate_guar(t)`, Pflege's `tar_mort_rate(t)` (its `tar_` family), Basis's `mort_rate_base(t)`. Renaming them to `mort_rate_tariff` would be byte-identical but makes each a reasoned override of the core cell; it is left for a later entry.
+- The gross premium. RLV, KLV, BU and Pflege solve the same first-order equivalence, `G = rho (A + cost PVs) / ((1 - beta) ae - alpha Beitragssumme - D)`, in different term orders and with different terms; it belongs in the core as a formula of term cells.
+- The reserves. RLV's net reserve (`res_pp_at`, `res_zill_pp_at`) and KLV's (`res_net_pp`, `res_zill_pp`) are the same prospective procedure with different terms (maturity benefit, sum-insured schedule); KLV's paid-up and minimum reserves stay in KLV. RV's `av_pp` and Riester's `dk_pp` are the *Deckungskapital* rolled forward retrospectively, so the core's reserve has to offer the retrospective method beside the prospective one. BU and Pflege compute no *Deckungsrückstellung* (`products/berufsunfaehigkeit/technical-notes.md:974`, `products/pflegerentenversicherung/technical-notes.md:32`); adding one is a new quantity.
+- The annuity present values of Sofort, Riester and RV (`annuity_factor`, `ann_factor`, `annuity_due_factor`): one sum of discount factor times survivorship, differing in payment frequency, the Woolhouse deduction, the guarantee period and a second life.
+- Sofort's and RV's inline discounting with `v = 1 / (1 + i)` raised to month fractions, `disc_factor_mth` in another float order.
+- First-order rates under their own names: RV's `mort_rate_guar(t)`, Pflege's `tar_mort_rate(t)` (its `tar_` family), Basis's `mort_rate_base(t)`. Renaming them to `mort_rate_tariff` is byte-identical and makes each a reasoned override of the core cell; it is left for a later entry.
+
+Not suited to the core: the multi-state first-order engines of BU (`*_first` ledgers) and Pflege (`tar_*` ledgers) and Sofort's monthly two-life survivorship (`tariff_lives`), which are different procedures, not one procedure with different terms.
 
 ## Commit trailers
 

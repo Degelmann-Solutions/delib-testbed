@@ -532,19 +532,17 @@ def scenario_id():
 # === the time axis and the two phases
 
 
-def proj_len_y():
-    """n: the **number of projected years**, ``omega_age() - age(0)``.
+def horizon_age():
+    """The attained age at which the projection ends: ``omega_age()``.
 
-    The annual coordinate of the projection, and the one the contract is written in: the
-    contribution, the Zulage, the two charges, the declared rate, both account balances, the
-    *Beitragsgarantie* accumulator and the conversion are all annual.  ``k = 0 ...
-    proj_len_y() - 1`` indexes exactly the rows the annual-step model this replaced
-    projected, which is what makes the two comparable row by row.
+    The lifelong annuity runs to the limiting age, so ``proj_len_y() = omega_age() -
+    age(0)``; ``k = 0 ... proj_len_y() - 1`` indexes exactly the rows the annual-step model
+    this replaced projected, which is what makes the two comparable row by row.
 
     Override reason: the annuity is lifelong, so the projection runs from the valuation date to
     ``omega_age()``, products/riester_rente/technical-notes.md:69
     """
-    return omega_age() - age(0)
+    return omega_age()
 
 
 def prem_due(t):

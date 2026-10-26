@@ -382,18 +382,19 @@ def surr_charge_on():
 
 # --- the frame ---------------------------------------------------------------
 
-def proj_len_y():
-    """``n``: the **number of projected policy years**, ``ret_age() - issue_age()``.
+def horizon_age():
+    """The attained age at which the projection ends: ``ret_age()``, *Rentenbeginn*.
 
-    Policy year ``n - 1`` is the last and ends at *Rentenbeginn*, at time ``n``, when the
-    capital falls due.  There is no policy year ``n``: the whole surviving cohort has
-    matured, while ``av_pp(n)`` and ``guar_cap_pp(n)`` are defined, being the time-``n``
-    per-policy amounts the maturity benefit is struck on.
+    So ``proj_len_y() = ret_age() - issue_age()``, n.  Policy year ``n - 1`` is the last and
+    ends at *Rentenbeginn*, at time ``n``, when the capital falls due.  There is no policy
+    year ``n``: the whole surviving cohort has matured, while ``av_pp(n)`` and
+    ``guar_cap_pp(n)`` are defined, being the time-``n`` per-policy amounts the maturity
+    benefit is struck on.
 
     Override reason: the model projects the accumulation phase only, to *Rentenbeginn*,
     products/indexpolice/technical-notes.md:42
     """
-    return ret_age() - issue_age()
+    return ret_age()
 
 
 def index_month(t):

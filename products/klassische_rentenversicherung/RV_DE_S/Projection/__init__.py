@@ -455,18 +455,19 @@ _spaces = []
 # The model point and the frame
 
 
-def proj_len_y():
-    """N: the **number** of projected policy years, ``omega_age() - issue_age``.
+def horizon_age():
+    """The attained age at which the projection ends: ``omega_age()``.
 
     A life annuity has no term, so the horizon is the age at which the annuitant cannot
     survive further rather than a fixed number of years — truncating one at, say, 40 years
-    silently drops the tail the *Rentenfaktor* was priced for.  **71** on the anchor cell,
-    whose last policy year ends at attained age 121.
+    silently drops the tail the *Rentenfaktor* was priced for.  ``proj_len_y() =
+    omega_age() - issue_age()`` is **71** on the anchor cell, whose last policy year ends
+    at attained age 121.
 
     Override reason: a life annuity has no term, so the projection ends at ``omega_age``,
     products/klassische_rentenversicherung/technical-notes.md:81
     """
-    return omega_age() - issue_age()
+    return omega_age()
 
 
 def pols_if_init():

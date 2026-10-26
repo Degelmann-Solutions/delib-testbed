@@ -492,27 +492,19 @@ def t_start():
     return duration_mth_init()
 
 
-def proj_len():
-    """n: the **number of projected months**, ``12 (omega_age - issue_age)``.
+def horizon_age():
+    """The attained age at which the projection ends: ``omega_age()``.
 
-    The **exclusive end** of the frame, counted from ``t = 0``: the frame is
-    ``range(t_start(), proj_len())``, the last projected index is
-    ``proj_len() - 1`` and ``result_cf().index[-1] == proj_len() - 1`` whether the frame
-    is 0-based or opens partway through, which is the library's reading and is asserted
-    for every model point.  On the anchor cell — entry age 45, ``omega_age`` 110 — it is
-    780, so the frame runs ``t = 0 … 779``, 780 monthly rows, attained ages 45 to 109.
-
-    It depends on the entry age and the terminal age alone, **not** on
-    :func:`duration_mth_init`: a point opening at ``duration_mth_init() = d0`` publishes
-    ``proj_len() - d0`` rows and still ends at its own ``proj_len() - 1``, because
-    ``duration_mth_init`` shortens the frame at the front, never at the back.  That last
-    index is the point's own — ``proj_len()`` varies with the entry age — not the anchor's
-    779.
+    So ``proj_len() = 12 (omega_age - issue_age)``, the **exclusive end** of the frame
+    counted from ``t = 0``.  On the anchor cell — entry age 45, ``omega_age`` 110 — it is
+    780, so the frame runs ``t = 0 … 779``, attained ages 45 to 109.  It does **not**
+    depend on :func:`duration_mth_init`: a point opening partway through shortens the
+    frame at the front (``t_start``), never at the back.
 
     Override reason: the horizon is fixed by the entry age and the terminal age in months, with no
     policy term, products/pflegerentenversicherung/technical-notes.md:54
     """
-    return 12 * (omega_age() - issue_age())
+    return omega_age()
 
 
 def benefit_pct(g):

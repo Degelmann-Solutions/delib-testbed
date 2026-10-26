@@ -601,19 +601,17 @@ def t_start():
     return duration_mth_init()
 
 
-def proj_len():
-    """The **number** of projected policy months from inception,
-    ``12 x (ret_age() - issue_age())``.
+def horizon_age():
+    """The attained age at which the projection ends: ``ret_age()``, *Rentenbeginn*.
 
-    The library's reading of ``proj_len()``: a period **count**, so it is the frame's
-    **exclusive** end.  ``result_cf()`` covers ``t = t_start() ... proj_len() - 1`` and
-    ``result_cf().index[-1] == proj_len() - 1`` on every model point.  The end of month
-    ``proj_len() - 1`` is *Rentenbeginn*; there is no ``t = proj_len()`` row.
+    So ``proj_len() = 12 x (ret_age() - issue_age())``, a period **count** and the frame's
+    **exclusive** end: ``result_cf()`` covers ``t = t_start() ... proj_len() - 1``.  The end
+    of month ``proj_len() - 1`` is *Rentenbeginn*; there is no ``t = proj_len()`` row.
 
     Override reason: the model projects the *Aufschubzeit* only, in months to ``ret_age()``,
     products/fondsgebundene_rentenversicherung/technical-notes.md:59
     """
-    return 12 * (ret_age() - issue_age())
+    return ret_age()
 
 
 # ----------------------------------------  the charge scale

@@ -549,23 +549,18 @@ def pols_if_init():
 
 # --- the time frame ---
 
-def proj_len():
-    """n: the **number of projected months**, so the frame runs ``t = 0 ... proj_len() - 1``.
+def horizon_age():
+    """The attained age at which the projection ends: ``cover_end_age()``, the *Endalter*.
 
-    ``12 x (cover_end_age() - issue_age()) - duration_mth_init()``.  Cover ceases
-    at attained age ``cover_end_age()``, so the last projected month is the last month of
-    attained age ``cover_end_age() - 1``, index ``proj_len() - 1``.  On the anchor cell
-    that is ``12 x (67 - 30) = 444`` monthly rows, the last of them ``t = 443``.
+    So the core's ``proj_len() = 12 x (cover_end_age() - issue_age()) -
+    duration_mth_init()``: cover ceases at attained age ``cover_end_age()``, so the last
+    projected month is the last month of attained age ``cover_end_age() - 1``, index
+    ``proj_len() - 1``.  On the anchor cell that is ``12 x (67 - 30) = 444`` monthly rows,
+    the last of them ``t = 443``.
 
-    This is the library's reading of ``proj_len()`` — the **exclusive end** of the frame,
-    the row count rather than the last index — and ``result_cf().index[-1] ==
-    proj_len() - 1`` is asserted for every model point.
-
-    Override reason: cover ceases at ``cover_end_age()`` and ``t`` counts months from the valuation
-    month, so the horizon is in months net of the elapsed duration,
-    products/berufsunfaehigkeit/technical-notes.md:59
+    Override reason: cover ceases at ``cover_end_age()``, products/berufsunfaehigkeit/technical-notes.md:59
     """
-    return 12 * (cover_end_age() - issue_age()) - duration_mth_init()
+    return cover_end_age()
 
 
 def first_len():

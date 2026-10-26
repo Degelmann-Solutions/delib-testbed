@@ -431,22 +431,18 @@ def omega_age():
     return int(data.mort_table().index.max()) + 1                    # noqa: F821
 
 
-def proj_len_y():
-    """n: the **number of projected years**, ``omega_age() - age(0)``.
+def horizon_age():
+    """The attained age at which the projection ends: ``omega_age()``.
 
-    The annual coordinate of the projection, and the one the contract is written in: the
-    declared rate, the *Beitragsdynamik*, the *Zillmerung* window, the *Zuzahlung* end
-    date, the *Beitragsfreistellung* and the *Überschussrente* are all annual terms.  77 on
-    the anchor cell — twenty-two years of *Aufschubphase* at attained ages 45 to 66 and
-    fifty-five years of *Rentenphase* at ages 67 to 121.
-
-    This is the annual-step model's own ``proj_len()``, and ``k = 0 ... proj_len_y() - 1``
-    indexes exactly the rows that model projected.
+    The annuity is lifelong, so ``proj_len_y() = omega_age() - age(0)``, 77 on the anchor
+    cell — twenty-two years of *Aufschubphase* at attained ages 45 to 66 and fifty-five
+    years of *Rentenphase* at ages 67 to 121.  ``k = 0 ... proj_len_y() - 1`` indexes
+    exactly the rows the annual-step model projected.
 
     Override reason: the annuity is lifelong, so the projection runs from the valuation
     date to the end of the mortality table, products/basisrente/technical-notes.md:80
     """
-    return omega_age() - age(0)
+    return omega_age()
 
 
 def clock_offset_mth():

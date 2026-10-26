@@ -168,14 +168,23 @@ def t_conv():
     return 12 * k_conv()                                             # noqa: F821
 
 
-def proj_len_y():
-    """The number of projected policy years, the policy term."""
-    return policy_term()                                             # noqa: F821
+def horizon_age():
+    """The attained age at which the projection ends, ``issue_age() + policy_term()``."""
+    return issue_age() + policy_term()                               # noqa: F821
 
 
 def proj_len():
-    """The number of projected months, ``12 x proj_len_y()``; the frame's exclusive end."""
-    return 12 * proj_len_y()                                         # noqa: F821
+    """The number of projected months, the frame's exclusive end.
+
+    ``12 x (horizon_age() - issue_age()) - clock_offset_mth()``: the months from issue to
+    the horizon, less those completed before ``t = 0``.
+    """
+    return 12 * (horizon_age() - issue_age()) - clock_offset_mth()   # noqa: F821
+
+
+def proj_len_y():
+    """The number of projected years, ``proj_len() // 12``."""
+    return proj_len() // 12                                          # noqa: F821
 
 
 def calendar_year_y(k):

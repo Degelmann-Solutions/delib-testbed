@@ -637,17 +637,6 @@ def zillmer_max():
     return float(tbl.loc[y, "hoechstzillmersatz"])
 
 
-def instalments():
-    """The number of premium instalments a year for this policy's :func:`prem_freq`.
-
-    1, 2, 4 or 12.  Reported rather than used: the projection runs on an annual grid and
-    collects the year's *Beitrag* in advance, so the instalment count enters only the
-    *Ratenzahlungszuschlag* it justifies.
-    """
-    return int(data.freq_loading_table().loc[                        # noqa: F821
-        prem_freq(), "instalments"])
-
-
 def prem_freq_load():
     """phi: the *Ratenzahlungszuschlag* multiplier on the annual *Bruttobeitrag*.
 

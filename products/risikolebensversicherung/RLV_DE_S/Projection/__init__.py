@@ -1007,21 +1007,6 @@ def beitragsverrechnung_rate():
 # What is billed
 
 
-def instalments():
-    """The number of premium instalments a year for this policy's *Zahlweise*.
-
-    1 / 2 / 4 / 12, read from the ``instalments`` column of *freq_loading_table.csv*,
-    which ships beside the *Ratenzahlungszuschlag* and names the cycle that surcharge
-    exists to price.  On the annual grid this model ran on, the column could not be used
-    for anything — the whole loaded annual premium was collected at the anniversary
-    whatever the *Zahlweise*, which made the surcharge a charge for a service the model
-    never rendered.  On the monthly grid it drives :func:`prem_cycle` and
-    :func:`prem_inst_pp`.
-    """
-    return int(data.freq_loading_table().at[                         # noqa: F821
-        prem_freq(), "instalments"])
-
-
 def prem_cycle():
     """Months between premium instalments: 12 annual, 6 half-yearly, 3 quarterly, 1 monthly.
 

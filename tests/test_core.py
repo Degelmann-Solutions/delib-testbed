@@ -244,6 +244,8 @@ CORE_CELLS = {
                            "klassische_rentenversicherung": "derived",
                            "riester_rente": "derived",
                            "risikolebensversicherung": "derived"},
+        "instalments": {"kapitallebensversicherung": "derived",
+                        "risikolebensversicherung": "derived"},
         "issue_age": {**dict.fromkeys(MODELS, "derived"), "sofortrente": "override"},
         "sex": {"berufsunfaehigkeit": "derived",
                 "fondsgebundene_rentenversicherung": "derived",

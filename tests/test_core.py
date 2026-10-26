@@ -14,6 +14,10 @@
 - The tariff basis: KLV, RLV, BU and Pflege read their rate from the model point;
   the monthly discount factor equals the annual one on a year start; the tariff
   survivorship is 1 at issue; the net level premium is the benefit value over the annuity.
+- The decrement rates: BU's derived death rate is its table rate at the neutral factor, KLV's
+  its table rate times 0.75; an annual certainty falls in the anniversary month (Basis and RV
+  deaths at the terminal age, KLV's failed *Beitragsfreistellung*); FRV splits mortality
+  linearly; Index and RLV close the lapse in the final policy year without reading the table.
 """
 from __future__ import annotations
 

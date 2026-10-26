@@ -67,6 +67,7 @@ n                          proj_len()                      Number of projected m
 (none)                     first_len()                     Months in the pricing run
 u(t)                       duration_mth(t)                 Elapsed policy months at t
 u(0)                       clock_offset_mth()              Elapsed policy months at t = 0
+(none)                     duration(t)                     Elapsed policy years, floored at 0
 y(t)                       policy_year(t)                  Policy year containing t
 x(t)                       age(t)                          Attained age, ALB
 (none)                     age_first(s)                    Attained age in the pricing run
@@ -596,31 +597,20 @@ def clock_offset_mth():
     return duration_mth_init()
 
 
-def policy_year(t):
-    """y(t): the policy year containing month t, 1-based.
+def duration(t):
+    """The completed policy years at the start of month t, ``max(0, duration_mth(t)) // 12``.
 
-    ``duration_mth(t) // 12 + 1``, floored at 1 so that a negative ``t`` reaching back
-    before inception reads as policy year 1 rather than as a year 0 the tariff never had.
-
-    Override reason: a disability cohort is paid the insured amount of its onset month
-    ``t - z``, which can precede inception, so the policy year is floored at 1,
-    products/berufsunfaehigkeit/technical-notes.md:58
-    """
-    return max(1, duration_mth(t) // 12 + 1)
-
-
-def age(t):
-    """x(t): the attained age at month t, age last birthday.
-
-    ``issue_age() + duration_mth(t) // 12``, so it steps at the **policy anniversary**
-    rather than at a birthday the model does not carry **[std]**.  Every rate lookup in
-    the model is keyed by this age.
+    Floored at zero elapsed months, so that a negative ``t`` reaching back before inception
+    reads as policy year 1, ``policy_year(t) = duration(t) + 1``, rather than as a year 0
+    the tariff never had, and as the issue age, ``age(t) = issue_age() + duration(t)``.
+    Both step at the **policy anniversary** rather than at a birthday the model does not
+    carry **[std]**; every rate lookup in the model is keyed by this age.
 
     Override reason: a disability cohort is paid the insured amount of its onset month
     ``t - z``, which can precede inception, so the elapsed months are floored at 0,
     products/berufsunfaehigkeit/technical-notes.md:58
     """
-    return issue_age() + max(0, duration_mth(t)) // 12
+    return max(0, duration_mth(t)) // 12
 
 
 def age_first(s):

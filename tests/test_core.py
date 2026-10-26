@@ -10,7 +10,7 @@
   from the core or overridden (with the reason the override test requires).
 - The time axis: Basis and Riester offset every clock cell by ``clock_offset_mth``, KLV
   counts from issue; RLV's derived ``age`` and ``policy_year`` follow the inception clock, BU's
-  overrides floor them before inception, Sofort's ``age`` reads the second life.
+  ``duration`` floors them before inception, Sofort's ``age`` reads the second life.
 - The tariff basis: KLV reads its rate from the model point, RLV from ``param_table.csv``;
   the monthly discount factor equals the annual one on a year start; the tariff
   survivorship is 1 at issue; the net level premium is the benefit value over the annuity.
@@ -258,6 +258,7 @@ CORE_CELLS = {
                          "risikolebensversicherung": "derived",
                          "sofortrente": "derived"},
         "duration": {"basisrente": "derived",
+                     "berufsunfaehigkeit": "override",
                      "indexpolice": "derived",
                      "kapitallebensversicherung": "derived",
                      "klassische_rentenversicherung": "derived",
@@ -267,7 +268,7 @@ CORE_CELLS = {
         "duration_y": {"basisrente": "derived",
                        "riester_rente": "derived"},
         "policy_year": {"basisrente": "derived",
-                        "berufsunfaehigkeit": "override",
+                        "berufsunfaehigkeit": "derived",
                         "fondsgebundene_rentenversicherung": "derived",
                         "indexpolice": "derived",
                         "kapitallebensversicherung": "derived",
@@ -281,7 +282,7 @@ CORE_CELLS = {
                   "klassische_rentenversicherung": "derived",
                   "riester_rente": "derived"},
         "age": {"basisrente": "derived",
-                "berufsunfaehigkeit": "override",
+                "berufsunfaehigkeit": "derived",
                 "fondsgebundene_rentenversicherung": "derived",
                 "indexpolice": "derived",
                 "kapitallebensversicherung": "derived",
@@ -537,15 +538,17 @@ def test_the_inception_clock_counts_from_issue(product_models):
             assert item.duration_y(k) == k, (point_id, k)
 
 
-def test_bu_policy_year_and_age_are_floored_before_inception(product_models):
+def test_bu_duration_is_floored_before_inception(product_models):
     model = product_models("berufsunfaehigkeit")
     projection = model.Projection
-    assert projection.policy_year._is_defined()
-    assert projection.age._is_defined()
+    assert projection.duration._is_defined()
+    assert projection.policy_year._is_derived()
+    assert projection.age._is_derived()
     points = model.Data.model_point_table()
     new = points.index[points["duration_mth_init"] == 0]
     assert len(new), "no new-business model point"
     item = projection[new[0]]
+    assert item.duration(-30) == 0
     assert item.policy_year(-30) == 1
     assert item.age(-30) == item.issue_age()
 

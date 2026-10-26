@@ -106,6 +106,8 @@ Q(t) tilde                 mort_rate_base(t)               Own-sex rate, first d
 q2(t)                      mort_rate(t)                    Second-order annual rate
 q2m(t)                     mort_rate_mth(t)                The same, applied in month t
 q1(t)                      mort_rate_tariff(t)             First-order tariff rate
+(1 + m) rf                 mort_load_tariff(t)             Loading of the tariff rate
+(unisex blend)             mort_rate_tariff_base(t)        Base of the tariff rate
 rf                         rating_factor()                 Risikozuschlag multiplier
 w(t)                       lapse_rate(t)                   Annual lapse rate of the year
 wm(t)                      lapse_rate_mth(t)               The same, applied in month t
@@ -673,16 +675,17 @@ def mort_rate_mth(t):
     return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
 
 
-def mort_rate_tariff(t):
-    """q1(t): the **first-order** tariff rate, ``(1 + m) x rf x`` the unisex blend.
+def mort_load_tariff(t):
+    """The loading of the first-order tariff rate, ``(1 + m) x rf``.
 
-    It prices the *Bruttobeitrag* and the first-order *Deckungskapital* and enters nothing
-    else.  The *Sicherheitszuschlag* ``m = 1.25`` is **[std]**: the DAV *Richtlinie*
-    regulates the **procedure** for setting the *Sicherheitszuschläge*, not the level,
-    which is not public, and the argued range is 1.0 to 1.5.  It is the single parameter
-    that sets the *Brutto* / *Zahlbeitrag* spread — and, because 90 % of the extra margin
-    is returned as *Beitragsverrechnung*, the parameter with the widest uncertainty has
-    the narrowest effect on the billed premium.
+    q1(t), :func:`mort_rate_tariff`, is this times the unisex blend, its base.  It prices
+    the *Bruttobeitrag* and the first-order *Deckungskapital* and enters nothing else.  The
+    *Sicherheitszuschlag* ``m = 1.25`` is **[std]**: the DAV *Richtlinie* regulates the
+    **procedure** for setting the *Sicherheitszuschläge*, not the level, which is not
+    public, and the argued range is 1.0 to 1.5.  It is the single parameter that sets the
+    *Brutto* / *Zahlbeitrag* spread — and, because 90 % of the extra margin is returned as
+    *Beitragsverrechnung*, the parameter with the widest uncertainty has the narrowest
+    effect on the billed premium.
 
     ``mort_rate_tariff(t) / mort_rate(t)`` is **not** ``1 + m``.  It is
     ``(1 + m) x (blend / own-sex rate)``, which on the shipped proxy is 1.6875 for a male
@@ -690,10 +693,19 @@ def mort_rate_tariff(t):
     listed pitfall.
 
     Override reason: the tariff rate is the unisex blend loaded by ``1 + m`` and the rating
-    factor, combined over two lives by the first-death rule, not one table read at the
-    attained age, products/risikolebensversicherung/technical-notes.md:230
+    factor, products/risikolebensversicherung/technical-notes.md:230
     """
-    return (1.0 + sicherheitszuschlag_m) * rating_factor() * mort_rate_blend(t)  # noqa: F821
+    return (1.0 + sicherheitszuschlag_m) * rating_factor()           # noqa: F821
+
+
+def mort_rate_tariff_base(t):
+    """The base of the first-order tariff rate: the unisex blend, :func:`mort_rate_blend`.
+
+    Override reason: the tariff rate is the unisex blend combined over two lives by the
+    first-death rule, not one table read at the attained age,
+    products/risikolebensversicherung/technical-notes.md:230
+    """
+    return mort_rate_blend(t)
 
 
 # ==========================================================================

@@ -254,13 +254,27 @@ def disc_factor(y):
     return (1.0 + rechnungszins()) ** -y                             # noqa: F821
 
 
-def mort_rate_tariff(t):
-    """The first-order (tariff) annual death rate in month t, at ``age(t)``.
+def mort_load_tariff(t):
+    """The loading on the first-order base rate in month t: 1, neutral."""
+    return 1.0
+
+
+def mort_rate_tariff_base(t):
+    """The first-order base rate in month t, ``mort_rate_tariff_at_age(age(t))``.
 
     Reads the product's ``mort_rate_tariff_at_age``, its first-order rate at an attained
     age; a product without one inherits this cell unused.
     """
     return mort_rate_tariff_at_age(age(t))                           # noqa: F821
+
+
+def mort_rate_tariff(t):
+    """The first-order (tariff) annual death rate in month t.
+
+    ``mort_load_tariff(t) x mort_rate_tariff_base(t)``: the base rate at ``age(t)`` times
+    its loading, 1 unless the product loads it.
+    """
+    return mort_load_tariff(t) * mort_rate_tariff_base(t)            # noqa: F821
 
 
 def pols_tariff(y):

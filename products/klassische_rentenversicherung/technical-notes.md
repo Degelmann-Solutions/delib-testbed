@@ -222,7 +222,7 @@ table carries a per-row `provenance` column, this library's second ruling.
 | `rentenfaktor_table.csv` | `rf_scenario_id`, `age` | `annuity_rate_curr`, `provenance` |
 | `charge_table.csv` | `charge_id`, `item` | `value`, `provenance` |
 | `lapse_table.csv` | `policy_year` | `lapse_rate`, `provenance` |
-| `freq_load_table.csv` | `prem_freq` | `freq_load`, `n_instalments` (**recorded, not applied**), `provenance` |
+| `freq_load_table.csv` | `prem_freq` | `prem_freq_load`, `n_instalments` (**recorded, not applied**), `provenance` |
 | `param_table.csv` | `item` | `value`, `provenance` |
 
 `param_table.csv` holds every scalar [std] assumption that is neither a charge nor a rate table:
@@ -454,7 +454,7 @@ flow in `result_cf()` is EUR for the model point as a whole.
     P(k) = 0                                                 if k ≥ n, or k ≥ prem_term_y,
                                                              or (pup_year > 0 and k ≥ pup_year − 1)
          = premium_single_pp                                 if premium_form = einmal and k = 0
-         = prem_gross_pp × freq_load × (1 + dynamik_rate)^k   if premium_form = laufend
+         = prem_gross_pp × prem_freq_load × (1 + dynamik_rate)^k   if premium_form = laufend
 
     prem_due(t) = ( t mod 12 == 0 )        the first month of each policy year, and no other
     premiums(t) = P(duration(t)) × l(t)    where prem_due(t), else 0
@@ -937,7 +937,7 @@ Every formula here is **[std]**; nothing in the corpus calibrates any of it (gap
 **Configuration.** Model point 1, `point_id = 1`, `policy_id = DE-RV-0001`: `sex = M`;
 `issue_age = 50`; `issue_year = 2026`; `duration_init = 0`, so the frame opens at `t = 0`;
 `pols_if_init = 1.0`; `premium_form = laufend`; `prem_gross_pp = 3 000,00 €`;
-`premium_single_pp = 0,00 €`; `prem_freq = annual`, hence `freq_load = 1,000`; `prem_term_y = 17`;
+`premium_single_pp = 0,00 €`; `prem_freq = annual`, hence `prem_freq_load = 1,000`; `prem_term_y = 17`;
 `aufschub_y = 17`, so the *Rentenbeginn* falls at the end of month `t = 203` — the end of the
 seventeenth policy year — at attained age 67;
 `rechnungszins = 1,00 %`, the 2026 vintage [REG-R15]; `charge_id = zillmer_25`;

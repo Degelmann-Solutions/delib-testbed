@@ -83,7 +83,7 @@ g_B                        beitragsdyn_rate()              Beitragsdynamik p.a.
 (1 + g_L)^((z-1)//12)      leistungsdyn_factor(z)          Leistungsdynamik factor at z
 theta                      beitragsverrechnung()           Zahlbeitrag / Bruttobeitrag
 rho                        rating_factor()                 Risikozuschlag on the premium
-phi                        freq_load()                     Ratenzahlungszuschlag
+phi                        prem_freq_load()                Ratenzahlungszuschlag
 M                          prem_mode_months()              Months between instalments
 kappa                      occ_factor()                    Occupational loading
 alpha                      accept_factor                   Anerkennungsquote factor
@@ -194,7 +194,7 @@ which is deliberate on both counts — German pricing does not anticipate lapse,
 lapse releases a liability and a prudent basis does not anticipate a favourable event.
 
 ``PV_prem`` is struck on ``P / 12`` in every month, so the *Ratenzahlungszuschlag*
-``freq_load`` is a genuine loading on top of the tariff premium rather than a
+``prem_freq_load`` is a genuine loading on top of the tariff premium rather than a
 re-expression of it. That is the market's own construction and it is why an annual payer
 and a monthly payer do not pay the same present value.
 
@@ -422,18 +422,6 @@ def prem_mode_months():
     """
     return int(data.freq_loading_table().loc[                        # noqa: F821
         prem_freq(), "prem_mode_months"])
-
-
-def freq_load():
-    """phi: the *Ratenzahlungszuschlag* on the tariff premium **[std]**.
-
-    1.00 annual, 1.02 half-yearly, 1.03 quarterly, 1.05 monthly.  It loads the
-    *Bruttobeitrag* and the *Beitragsverrechnung* **together**, so
-    :func:`beitragsverrechnung` stays exactly the ratio the tariff quotes and the loading
-    is invisible in the *Brutto* / *Zahl* split.
-    """
-    return float(data.freq_loading_table().loc[                      # noqa: F821
-        prem_freq(), "freq_load"])
 
 
 def gross_prem_ann():
@@ -1039,12 +1027,12 @@ def prem_due(t):
 def prem_gross_pp(t):
     """P_b(t): the *Bruttobeitrag* **instalment** due at the start of month t, per policy.
 
-    ``prem_due(t) x prem_gross_ann_pp(t) x freq_load() x prem_mode_months() / 12``, so it
+    ``prem_due(t) x prem_gross_ann_pp(t) x prem_freq_load() x prem_mode_months() / 12``, so it
     is zero in a month that is not a payment month and carries the whole period's premium
     in one that is.  The *Ratenzahlungszuschlag* scales it, which is why the annual
     *Bruttobeitrag* of a monthly payer buys a 5 % larger bill than the tariff amount.
     """
-    return (prem_due(t) * prem_gross_ann_pp(t) * freq_load()
+    return (prem_due(t) * prem_gross_ann_pp(t) * prem_freq_load()
             * prem_mode_months() / 12.0)
 
 
@@ -1239,7 +1227,7 @@ def pv_prem_unit_first():
     ``sum over s of disc_factor_mth(s) x dyn_factor_first(s) x pols_prem_first(s) / 12``:
     a twelfth of the annual premium in **every** month of the pricing run, weighted by the
     premium-paying population.  The *Ratenzahlungszuschlag* is deliberately **not** in it,
-    which is what makes ``freq_load`` a genuine loading on the tariff premium rather than
+    which is what makes ``prem_freq_load`` a genuine loading on the tariff premium rather than
     a re-expression of it.
     """
     return sum(disc_factor_mth(s) * dyn_factor_first(s) * pols_prem_first(s) / 12.0
@@ -1928,7 +1916,7 @@ def check_prem_split_resid(t):
     ``premiums(t) - surplus_credit(t) - prem_zahl_pp(t) x pols_prem(t)``.  The two premium
     columns must reconcile to the *Zahlbeitrag* actually billed, so that a reader can
     recover the cash collected from the frame without knowing the ratio.  It also fixes
-    the *Ratenzahlungszuschlag*'s place: ``freq_load`` scales the *Bruttobeitrag* and the
+    the *Ratenzahlungszuschlag*'s place: ``prem_freq_load`` scales the *Bruttobeitrag* and the
     *Beitragsverrechnung* together, so it cancels out of this identity and
     ``beitragsverrechnung`` stays exactly the ratio the tariff quotes.
     """

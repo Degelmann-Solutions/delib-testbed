@@ -338,7 +338,7 @@ source supplies.
 | `claim_maint_cost_mth` — *Leistungsbearbeitung*, maintenance | **12,00 € per month a claim is in payment** | **[std]** |
 | Expense inflation | **None.** A German *Verwaltungskostenzuschlag* is fixed in the tariff at conclusion | **[std]** |
 | Commission | Not a separate line — it sits inside `acq_rate`, which is the German taxonomy | **[std]** |
-| `freq_load` — *Ratenzahlungszuschlag* | annual **1,00**; half-yearly **1,02**; quarterly **1,03**; monthly **1,05** | German market convention `[unverified]`; **[std]** |
+| `prem_freq_load` — *Ratenzahlungszuschlag* | annual **1,00**; half-yearly **1,02**; quarterly **1,03**; monthly **1,05** | German market convention `[unverified]`; **[std]** |
 
 **Input files.** Seven CSVs sit beside `run.py`, read once per model by the unparameterized `Data`
 Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv` carries a
@@ -352,7 +352,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | `mortality_table.csv` | `age` (18 – 70) | `mort_rate_actv`, `mort_rate_dis`, `provenance` |
 | `occupation_table.csv` | `berufsgruppe` (BG1 – BG5) | `occ_factor`, `label`, `provenance` |
 | `lapse_table.csv` | `policy_year` (1 – 6, the last being ultimate) | `lapse_rate`, `provenance` |
-| `freq_loading_table.csv` | `prem_freq` | `prem_mode_months`, `freq_load`, `provenance` |
+| `freq_loading_table.csv` | `prem_freq` | `prem_mode_months`, `prem_freq_load`, `provenance` |
 
 ---
 
@@ -372,7 +372,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | `R(t)` | `bu_rente_pp(t)` — the **insured** monthly *BU-Rente*, `= R × (1 + g_B)^(y(t) − 1)` |
 | `R_p(t, z)` | `rente_pay_pp(t, z)` — the monthly *BU-Rente* **in payment** for cohort `z` |
 | `K` | `karenz_months`; `g_L` = `leistungsdyn_rate`; `g_B` = `beitragsdyn_rate` |
-| `θ` | `beitragsverrechnung`; `ρ` = `rating_factor`; `φ` = `freq_load`; `M` = `prem_mode_months` |
+| `θ` | `beitragsverrechnung`; `ρ` = `rating_factor`; `φ` = `prem_freq_load`; `M` = `prem_mode_months` |
 | `κ` | `occ_factor` for the model point's `berufsgruppe`; `α` = `accept_factor` = 0,80; `υ` = `au_uplift` |
 | `P` | `prem_gross_level_pp()`, the **level annual** *Bruttobeitrag* |
 | `P_b(t)` | `prem_gross_pp(t)` — the *Bruttobeitrag* instalment due at `t`; `P_z(t)` the *Zahlbeitrag* instalment |
@@ -717,7 +717,7 @@ for any of them, and the two that would matter most are the two no source suppli
 `sex = F`, `berufsgruppe = BG1` (*Bürotätigkeit*, `occ_factor` 1,00), `bu_rente_mth = 1 500,00 €`,
 `cover_end_age = 67`, `benefit_end_age = 67`, `karenz_months = 0`, `leistungsdyn_rate = 0,02`,
 `premium_form = level`, `beitragsdyn_rate = 0,00`, `prem_freq = monthly` (`prem_mode_months = 1`,
-`freq_load = 1,05`), `gross_prem_ann = 0` so the *Bruttobeitrag* is **derived by equivalence**,
+`prem_freq_load = 1,05`), `gross_prem_ann = 0` so the *Bruttobeitrag* is **derived by equivalence**,
 `beitragsverrechnung = 0,70`, `rating_factor = 1,00`, `au_klausel = false`, `au_uplift = 1,00`,
 `wiedereingliederung_months = 6`, `duration_mth_init = 0`, `claim_duration_init = 0`. Hence
 `pols_if_init() = 1,0`, `proj_len() = 12 × (67 − 30) = 444`, and the projection runs over
@@ -898,14 +898,14 @@ already lost mass. Over the whole projection 6,99 % of the cohort dies, 53,67 % 
 
 *The *Brutto* / *Zahl* ratio survives aggregation.* `Σ premiums / Σ (premiums − surplus_credit)
 = 24,771.0595905881 / 17,339.7417134117 = 1.428571428571429`, which is `1 / 0.70` to fifteen
-figures. It has to be, because `freq_load` scales the *Bruttobeitrag* and the
+figures. It has to be, because `prem_freq_load` scales the *Bruttobeitrag* and the
 *Beitragsverrechnung* together and `beitragsverrechnung` is constant — and a model that carried
 only one of the two premium streams would have no way to show it.
 
 **The *Beitragsdynamik* variant.** Model point 4 is the second premium form: `issue_age = 25`,
 `berufsgruppe = BG2` (`occ_factor` 1,40), `bu_rente_mth = 1 200,00 €`, `premium_form = dynamik`
 with `beitragsdyn_rate = 0,03`, and **annual** payment (`prem_mode_months = 12`,
-`freq_load = 1,00`). Everything else is the anchor's. Hence `proj_len() = 12 × (67 − 25) = 504`,
+`prem_freq_load = 1,00`). Everything else is the anchor's. Hence `proj_len() = 12 × (67 − 25) = 504`,
 so the frame is `t = 0 … 503`; `BS_unit = Σ_{y=1..42} 1,03^(y−1) = 82.0231964511`, and the
 equivalence gives
 `P = 1 162,07 €` — the *Bruttobeitrag* of the **first** year, not of the contract.

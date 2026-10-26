@@ -197,7 +197,7 @@ instead of being free.
 
 ## The *Ratenzahlungszuschlag* is the whole of what the *Zahlweise* does
 
-Instalments are **not** modelled, on the monthly grid as on the annual one: `freq_load()` charges the
+Instalments are **not** modelled, on the monthly grid as on the annual one: `prem_freq_load()` charges the
 loaded annual amount in the first month of the policy year, `prem_due(t)` is
 `duration_mth(t) % 12 == 0`, and `n_instalments` stays documentation — so a monthly payer here pays
 1,050 × the annual premium once a year, not twelve times.
@@ -522,7 +522,7 @@ Everything below is **[std]** — chosen where the sources vary, are proprietary
 | `val_reserve_rate` | 1,5 % of the accumulated value | The *hälftige* participation (§ 153 Abs. 3 Satz 2) and the *Rentenbeginn* crystallisation (§ 153 Abs. 4, annuities only) are statutory [R4] and applied by [S4] and [S15]; **no amount, ratio or reserve level is established anywhere** |
 | *Überschussrente* | `sur_ann_rate` 12 %, `sur_ann_growth` 1,5 %, `sur_ann_theta` 0,5 | The three payout systems and their *directions* are established [R19] [R20] [R24]; no level, rate or split is |
 | Expenses | 400,00 € acquisition, 45,00 € p.a. accumulation, 30,00 € p.a. payout, 120,00 € per settlement, 2,0 % inflation | No German carrier publishes an expense assumption (gap 14) |
-| `freq_load` | 1,000 / 1,020 / 1,030 / 1,050 | No carrier's *Ratenzahlungszuschlag* was established (gap 14) |
+| `prem_freq_load` | 1,000 / 1,020 / 1,030 / 1,050 | No carrier's *Ratenzahlungszuschlag* was established (gap 14) |
 | Surrender table | 6,0 % falling to 3,0 %, with a **6,0 % step at duration 12** | No German *Stornoquote* for this product was established (gap 20). The duration-12 shape is argued from the § 20 Abs. 1 Nr. 6 EStG threshold; every level is a placeholder |
 | Within-year order and charge incidence | premium, then charges, then interest; `γ` and `ρ` on start-of-year balances; charges from the premium first, then from the account | No document in the corpus fixes the sequence. Start-of-year incidence keeps the recursion acyclic; premium-first incidence is what makes a paid-up contract pay for itself |
 | § 169 Abs. 3 floor scope | the *Deckungskapital* **alone**, and no *Stornoabzug* on the paid-up route | Profit shares sit on top of the statutory minimum, the reading § 165 Abs. 2 supports; the alternative is named and not implemented. Abs. 5 is drafted for a payout on *Kündigung*, and on the paid-up route the contract continues |

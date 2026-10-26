@@ -525,6 +525,9 @@ def prem_freq_load():
     loading because it is a single payment, and not a single premium, which is why
     :func:`prem_freq_load` returns 1.0 for ``prem_form = "single"``.  Applying it twice, or
     to the *Zuzahlung*, is the eighth pitfall.
+
+    Override reason: the loading is a factor of *option_table.csv*, 1 on a single premium,
+    products/basisrente/technical-notes.md:388
     """
     if model_point()["prem_form"] == "single":
         return 1.0

@@ -132,7 +132,7 @@ w_l(t)                     lapse_rate(t)                   Annual surrender rate
 w^m_l(t)                   lapse_rate_mth(t)               The monthly rate applied
 (table)                    lapse_rate_base(t)              The table rate before the
                                                            terminal-year override
-phi                        freq_load()                     Ratenzahlungszuschlag
+phi                        prem_freq_load()                Ratenzahlungszuschlag
 P_b(k)                     prem_base_pp(k)                 Annual-mode premium due
 P(k)                       prem_gross_pp(k)                Premium actually collected
 (none)                     prem_due(t)                     Whether P falls due in month t
@@ -414,17 +414,6 @@ def prem_sum():
     return float(model_point()["prem_gross_pp"]) * prem_term_y()
 
 
-def freq_load():
-    """``phi``: the *Ratenzahlungszuschlag* multiplier for this policy's payment frequency.
-
-    1.000 annual, 1.020 half-yearly, 1.030 quarterly, 1.050 monthly **[std]** — the market
-    convention, no carrier tariff having been established.  It multiplies the premium
-    **collected** and nothing else; see :func:`prem_sum`.
-    """
-    return float(data.freq_loading_table().loc[                      # noqa: F821
-        prem_freq(), "freq_load"])
-
-
 def prem_base_pp(k):
     """``P_b(k)``: the annual-mode premium due in period k, per policy.
 
@@ -448,7 +437,7 @@ def prem_gross_pp(k):
     :func:`premiums` and out of which the contractual charges are taken; the amount that
     drives the *Beitragssumme* is :func:`prem_base_pp`.
     """
-    return prem_base_pp(k) * freq_load()
+    return prem_base_pp(k) * prem_freq_load()
 
 
 def prem_charge_acq_pp(k):
@@ -545,7 +534,7 @@ def prem_due(t):
     the year (§ 12 Abs. 1 VVG), and the *Indexjahr* the whole product turns on is struck on
     the balance standing at the anniversary: splitting the premium without splitting the
     *Indexjahr* would credit a policy with a year it did not pay for.  The
-    *Ratenzahlungszuschlag* :func:`freq_load` is what a sub-annual *Zahlweise* costs, and it
+    *Ratenzahlungszuschlag* :func:`prem_freq_load` is what a sub-annual *Zahlweise* costs, and it
     remains the whole of what the *Zahlweise* does here.
     """
     return duration_mth(t) % 12 == 0

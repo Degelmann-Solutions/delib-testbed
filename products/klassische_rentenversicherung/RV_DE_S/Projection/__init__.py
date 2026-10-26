@@ -171,7 +171,7 @@ a(t)                        pols_annuity(t)                 Count the instalment
 P(k)                        prem_pp(k)                      Gross premium in policy year k
 P_sched(k)                  prem_pp_sched(k)                The premium as written at issue
 (none)                      prem_due(t)                     Whether P falls due in month t
-phi                         freq_load()                     Ratenzahlungszuschlag
+phi                         prem_freq_load()                Ratenzahlungszuschlag
 (sum of P_sched)            beitragssumme_pp()              Zillmer base
 alpha_total                 alpha_total_pp()                Total acquisition charge
 alpha(k)                    charge_acq_pp(k)                Zillmered acquisition charge
@@ -504,27 +504,6 @@ def roll_fwd_tol():
 # The premium and the Beitragssumme
 
 
-def freq_load():
-    """phi: the *Ratenzahlungszuschlag* for the model point's *Zahlweise* **[std]**.
-
-    1,000 annual, 1,020 half-yearly, 1,030 quarterly, 1,050 monthly.
-
-    **The loading is what a sub-annual *Zahlweise* costs, and it is the whole of what this
-    model takes from the *Zahlweise*.**  The premium is charged once a policy year, at the
-    start of it, on a monthly grid exactly as on the annual one, because § 12 Abs. 1 VVG
-    makes the *Versicherungsperiode* the **year** for this tariff — and the *Deckungskapital*
-    the whole model turns on is defined at anniversaries and nowhere between them.  The
-    instalments themselves are therefore still not modelled and ``n_instalments`` in the
-    table remains documentation; what a finer grid would buy here is an unearned-premium
-    convention on mid-year exits that no source in this product's corpus establishes.
-    Compare ``KLV_DE_S``, whose *Zahlweise* **is** in the frame: there the ``echt`` reading
-    makes the *Versicherungsperiode* genuinely monthly and two model points differ in nothing
-    else, which is what justifies the instalment stream.
-    """
-    return float(data.freq_loading_table().at[                       # noqa: F821
-        prem_freq(), "freq_load"])
-
-
 def prem_pp_sched(k):
     """P_sched(k): the premium schedule **as written at inception**, per policy.
 
@@ -542,7 +521,7 @@ def prem_pp_sched(k):
         return 0.0
     if mp["premium_form"] == "einmal":
         return float(mp["premium_single_pp"]) if k == 0 else 0.0
-    return (float(mp["prem_gross_pp"]) * freq_load()
+    return (float(mp["prem_gross_pp"]) * prem_freq_load()
             * (1.0 + float(mp["dynamik_rate"])) ** k)
 
 
@@ -613,7 +592,7 @@ def prem_due(t):
     ``duration_mth(t) % 12 == 0`` — the first month of each policy year and no other.  The
     *Versicherungsperiode* of this tariff is the year (§ 12 Abs. 1 VVG) and the *Beitrag* is
     payable in advance for it, so a monthly grid moves **when the exposed count is measured**
-    and not when the money arrives.  See :func:`freq_load` for why the *Ratenzahlungszuschlag*
+    and not when the money arrives.  See :func:`prem_freq_load` for why the *Ratenzahlungszuschlag*
     is the whole of what the *Zahlweise* does here.
     """
     return duration_mth(t) % 12 == 0

@@ -126,7 +126,7 @@ reaches it through a `data` Reference and holds no `*_file` Reference and no `in
 | `zulage_schedule.csv` | `zulage_id`, `t` | `unmittelbar`, `n_kinder_pre2008`, `n_kinder_post2008`, `bonus`, `provenance` |
 | `income_schedule.csv` | `income_id`, `t` | `income`, `provenance` |
 | `surplus_scenario.csv` | `scenario_id`, `t` | `decl_rate`, `provenance` |
-| `freq_loading.csv` | `prem_freq` | `load`, `provenance` |
+| `freq_loading.csv` | `prem_freq` | `prem_freq_load`, `provenance` |
 | `param_table.csv` | `item` | `value` (`mort_be_factor`), `provenance` |
 
 **Every file except `model_point_table.csv` carries a per-row `provenance` column**, delib's second

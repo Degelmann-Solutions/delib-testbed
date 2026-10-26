@@ -1007,20 +1007,6 @@ def beitragsverrechnung_rate():
 # What is billed
 
 
-def prem_freq_load():
-    """phi: the *Ratenzahlungszuschlag* multiplier for this policy's *Zahlweise*.
-
-    1.000 annual, 1.02 half-yearly, 1.03 quarterly, 1.05 monthly — a German market
-    convention with no carrier attribution, carried as **[std]**.  Whether German carriers
-    strike it on the *Bruttobeitrag* or the *Zahlbeitrag* was not established; this model
-    loads the **billed** amount, which means it multiplies all three of the gross, the
-    rebate and the paid premium, so the split identity holds at every frequency.  Applying
-    it to each stream separately, or twice, is a listed pitfall.
-    """
-    return float(data.freq_loading_table().at[                       # noqa: F821
-        prem_freq(), "prem_freq_load"])
-
-
 def instalments():
     """The number of premium instalments a year for this policy's *Zahlweise*.
 

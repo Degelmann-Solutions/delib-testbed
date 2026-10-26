@@ -656,6 +656,9 @@ def prem_freq_load():
     ``echt``**, because a genuine sub-annual *Versicherungsperiode* is not an instalment of an
     annual one and carries no loading.  Model points 4 and 5 are the same monthly contract
     under the two readings.
+
+    Override reason: an ``echt`` sub-annual payment is a genuine *Versicherungsperiode* and
+    carries no loading, products/kapitallebensversicherung/technical-notes.md:142
     """
     if unterjaehrig_form() == "echt":
         return 1.0

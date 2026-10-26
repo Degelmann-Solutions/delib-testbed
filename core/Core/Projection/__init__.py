@@ -64,6 +64,12 @@ def prem_freq():
     return v
 
 
+def prem_freq_load():
+    """phi: the *Ratenzahlungszuschlag* for ``prem_freq()``, from *freq_loading_table.csv*."""
+    return float(data.freq_loading_table().at[                       # noqa: F821
+        prem_freq(), "prem_freq_load"])                              # noqa: F821
+
+
 def issue_age():
     """The age at issue of the selected model point, from its ``issue_age`` column."""
     return int(model_point()["issue_age"])                           # noqa: F821

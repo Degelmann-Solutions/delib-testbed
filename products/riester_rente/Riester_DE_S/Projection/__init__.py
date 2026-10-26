@@ -438,17 +438,6 @@ def zulage_init_pp():
     return float(model_point()["zulage_init_pp"])
 
 
-def prem_freq_load():
-    """phi: the *Ratenzuschlag* multiplier for this policy's payment frequency.
-
-    Read from *freq_loading.csv*.  A **charge**: the saver pays ``E(t) x phi`` and only
-    ``E(t)`` reaches the *Sparbeitrag* base and the *Beitragsgarantie*, so the loading
-    enlarges :func:`premiums` and leaves :func:`prem_to_av_pp`, :func:`guar_pp` and every
-    benefit untouched.
-    """
-    return float(data.freq_loading_table().at[prem_freq(), "load"])  # noqa: F821
-
-
 def bfs_year():
     """The period index ``t`` from which contributions stop (*Beitragsfreistellung*).
 

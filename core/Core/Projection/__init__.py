@@ -142,3 +142,67 @@ def calendar_year_y(k):
 def calendar_year(t):
     """The calendar year of month t, ``calendar_year_y(duration(t))``."""
     return calendar_year_y(duration(t))                              # noqa: F821
+
+
+def rechnungszins():
+    """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
+
+    The rate used at conclusion applies for the whole term (§ 2 Abs. 2 DeckRV), so a book
+    carries a stack of guarantee vintages and the rate is a model-point attribute.
+    """
+    return float(model_point()["rechnungszins"])                     # noqa: F821
+
+
+def disc_factor_mth(t):
+    """v^(t/12): the *Rechnungszins* discount factor to month t, ``(1 + i)^(-t/12)``.
+
+    On a year start ``t = 12y`` the exponent is exactly ``-y``, so it equals
+    ``disc_factor(y)`` there bit for bit.
+    """
+    return (1.0 + rechnungszins()) ** (-t / 12.0)                    # noqa: F821
+
+
+def disc_factor(y):
+    """v^y: the *Rechnungszins* discount factor to the start of policy year y, ``(1 + i)^(-y)``."""
+    return (1.0 + rechnungszins()) ** -y                             # noqa: F821
+
+
+def mort_rate_tariff(t):
+    """The first-order (tariff) annual death rate in month t, at ``age(t)``.
+
+    Reads the product's ``mort_rate_tariff_at_age``, its first-order rate at an attained
+    age; a product without one inherits this cell unused.
+    """
+    return mort_rate_tariff_at_age(age(t))                           # noqa: F821
+
+
+def pols_tariff(y):
+    """p1(y): the tariff survivorship entering policy year y, mortality only.
+
+    ``p1(0) = 1`` and ``p1(y) = p1(y - 1) x (1 - q1(12 (y - 1)))`` on the first-order
+    annual rate :func:`mort_rate_tariff`, read at the opening month of each policy year.
+    It always starts at issue, also on an in-force point: the tariff was struck then.
+    """
+    if y <= 0:
+        return 1.0
+    return pols_tariff(y - 1) * (1.0 - mort_rate_tariff(12 * (y - 1)))  # noqa: F821
+
+
+def tariff_annuity():
+    """ae: the premium annuity-due over the paying term, ``sum v^y p1(y)``, ``y < prem_term()``.
+
+    Equal to 1 where ``prem_term() = 1``, so a single premium falls out of the same
+    equivalence.
+    """
+    return sum(disc_factor(y) * pols_tariff(y)                       # noqa: F821
+               for y in range(prem_term()))                          # noqa: F821
+
+
+def prem_net_level_pp():
+    """The net level premium, ``tariff_benefit_pv() / tariff_annuity()``, before loadings.
+
+    Reads the product's ``tariff_benefit_pv``, the present value of its benefits on the
+    tariff basis; a product without one inherits this cell unused.  A pricing quantity,
+    never a cash flow.
+    """
+    return tariff_benefit_pv() / tariff_annuity()                    # noqa: F821

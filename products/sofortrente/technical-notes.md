@@ -108,7 +108,7 @@ repeated in prose.
 | `surv_sex` | enum {M, F} | Second life's sex, decrement only | 4, 5 |
 | `payment_freq` | int {12, 4, 2, 1} | Instalments per year, `m` | 7 (4), 8 (1), 11 (2) |
 | `payment_timing` | enum {advance, arrears} | *vorschüssig* / *nachschüssig* **[std]** | 9 |
-| `tariff_int_rate` | float | The tariff *Rechnungszins* `i`, at or below the vintage cap | 10, 13 |
+| `rechnungszins` | float | The tariff *Rechnungszins* `i`, at or below the vintage cap | 10, 13 |
 | `surplus_form` | enum {none, konstant, teildynamisch, volldynamisch} | *Überschussverwendung* | 5, 8, 11, 13 (konstant); 6, 12 (voll); 14 (none) |
 | `annuity_pp_init` | EUR | Guaranteed instalment carried on an in-force point; **0 = derive by equivalence** | 10 |
 | `duration_mth_init` | int | Months already elapsed at the valuation date; the frame's first `t` | 10 |
@@ -399,7 +399,7 @@ the tables above.
 | `D`, `G` | `defer_mths`, `guar_years` | deferment in months; guarantee period in years |
 | `SP`, `SP_net` | `single_prem`, `net_single_prem` | *Einmalbeitrag*; `SP(1 − α)` |
 | `α`, `β` | `expense_load_alpha`, `expense_load_beta` | acquisition and annuity-administration loadings |
-| `i`, `v` | `tariff_int_rate` | tariff *Rechnungszins*; `v = 1/(1 + i)` |
+| `i`, `v` | `rechnungszins` | tariff *Rechnungszins*; `v = 1/(1 + i)` |
 | `R` | `annuity_pp_derived`, `annuity_guar_pp(t)` | the *garantierte Rente* per instalment |
 | `U(t)`, `A(t)` | `annuity_surp_pp`, `annuity_pp` | *Überschussrente* instalment; total instalment `R + U(t)` |
 | `u₀`, `ψ` | `surplus_init_pct`, `surplus_growth` | opening surplus fraction; its annual growth |
@@ -523,7 +523,7 @@ options and the tariff interest rate, and on nothing that depends on the path. I
 not priced into the guarantee (pitfall 1's neighbour), so `annuity_pp_derived()` is invariant to
 `surplus_form` and `check_equivalence()` closes on every derived point regardless of it.
 
-`check_tariff_int_rate()` asserts `tariff_int_rate() ≤ max_tariff_int_rate() + roll_fwd_tol`, the cap
+`check_tariff_int_rate()` asserts `rechnungszins() ≤ max_tariff_int_rate() + roll_fwd_tol`, the cap
 being read from `hoechstrechnungszins_table.csv` at `issue_year()` [REG-R14] [REG-R15]. The cap binds
 the *reserving* rate and, through § 138 Abs. 1 VAG, the rate a new tariff may be priced at [REG-R8];
 a carrier may price below it and one is observed doing so [S6], which is why the check is an
@@ -652,13 +652,13 @@ product's own roll-forward and pricing identities.
 | `check_guarantee_certain` | `payment_factor(t) == 1.0` at every payment month with `t < guar_end_mth()`, whatever `δ` — the instalment is certain inside the *Rentengarantiezeit* [R23] |
 | `check_equivalence` | `net_single_prem() == annuity_pp_derived()·ä·(1 + β) + refund_pv()` to `roll_fwd_tol` scaled by `net_single_prem()` — the identity is an equality between euro amounts of the order of 10⁵ and the refund solve converges on `R` rather than on the residual. Returns `True` where `annuity_pp_init() > 0`, the annuity having been struck on a basis this model does not reproduce; the notes say so rather than letting it pass silently |
 | `check_death_option_xor` | `refund_form() == "none"` **or** (`guar_years() == 0` **and** `surv_pct() == 0`) — the **[std]** exclusivity of research gap 10, asserted rather than assumed |
-| `check_tariff_int_rate` | `tariff_int_rate() ≤ max_tariff_int_rate() + roll_fwd_tol`, the cap read at `issue_year()` [REG-R14] [REG-R15]. An inequality, not an equality: a carrier may price below the cap and one is observed doing so [S6] |
+| `check_tariff_int_rate` | `rechnungszins() ≤ max_tariff_int_rate() + roll_fwd_tol`, the cap read at `issue_year()` [REG-R14] [REG-R15]. An inequality, not an equality: a carrier may price below the cap and one is observed doing so [S6] |
 
 ### Monthly processing order
 
 For `t = t₀ … n − 1`, in this order:
 
-1. **Once, before the loop:** read the model point; check `tariff_int_rate()` against the vintage cap
+1. **Once, before the loop:** read the model point; check `rechnungszins()` against the vintage cap
    [REG-R15]; compute `first_pay_mth()`, `guar_end_mth()` and `pay_period_mths()`; build the tariff
    survival path `l̃` on the first-order unisex basis; compute `ä`; and strike `R` — directly where
    `annuity_pp_init() > 0`, by `SP_net / (ä (1 + β))` where no refund is elected, and by bisection on
@@ -746,7 +746,7 @@ becomes a test.
 16. **Discounting the published cash flows at the tariff *Rechnungszins*.** `i` reaches the projection
     **only** through `ä` and `refund_pv()`; the model publishes undiscounted flows and a best estimate
     discounts at the EIOPA curve [REG-R4]. Assert that `net_cf` for a given `annuity_pp_init` is
-    invariant to `tariff_int_rate`, which isolates the one legitimate channel.
+    invariant to `rechnungszins`, which isolates the one legitimate channel.
 17. **Inventing a lapse, a surrender value or a paid-up state.** There are none [R1] [R2] [R5]
     [REG-R28]. Assert that no `lapse_rate`, `lapse_rate_mth`, `av_pp_at`, `cv_pp` or surrender cells
     exists, and that the decrements close: `Σ_t lives_death(t, life) + lives_if(n, life) ==
@@ -807,7 +807,7 @@ with every attribute stated: `policy_id = SOF-000001`; `single_prem = 100,000.00
 first 120 monthly instalments are certain; `refund_form = none`; `surv_pct = 0.00`, with `surv_age`,
 `surv_birth_year` and `surv_sex` unused and carried as zeros; `payment_freq = 12` and
 `payment_timing = advance`, so an instalment falls at the start of every month from `t = 0`;
-`tariff_int_rate = 0.0100`, the *Höchstrechnungszins* in force for 2025 business [REG-R15];
+`rechnungszins = 0.0100`, the *Höchstrechnungszins* in force for 2025 business [REG-R15];
 `surplus_form = teildynamisch`; `annuity_pp_init = 0.00`, so the guaranteed annuity is **derived by
 equivalence**; `duration_mth_init = 0`, so the frame opens at `t = 0`; and `pols_if_init = 1.0`.
 Hence `horizon_mths(1) = 12 × (121 − 65) = 672`, `proj_len() = 672`, and the frame runs

@@ -146,11 +146,11 @@ Sex may not enter a German premium for contracts concluded from 21 December 2012
 carrier chooses from its own expected new-business mix — proprietary, unpublished, and one
 of the largest single sources of unexplained rate spread between German carriers.
 
-`mort_rate_tar` prices on a 50/50 blend **[std]** and `mort_rate` projects on the policy's
+`mort_rate_tariff` prices on a 50/50 blend **[std]** and `mort_rate` projects on the policy's
 own sex, so the cross-subsidy appears in the cash flows instead of in the price. Model
 points 1 and 2 differ **only** in `sex`: they pay the same premium to the last bit,
 `beitragsverrechnung_rate()` is identical, and their `claims_death` totals stand at
-9 899,20 € against 5 009,05 €. The ratio `mort_rate_tar / mort_rate` is **not** `1 + m`:
+9 899,20 € against 5 009,05 €. The ratio `mort_rate_tariff / mort_rate` is **not** `1 + m`:
 it is `2.25 × (unisex blend / own-sex rate)`, which on the shipped proxy is **1.6875 for a
 male and 3.375 for a female**, the blend being `0.75 × q̃(M)`. **What the model does not
 do** is price on `sex`, or carry a carrier-specific mixing ratio, none being public;
@@ -296,13 +296,14 @@ which is the one thing interleaving the two decrements monthly genuinely changes
 
 ## Inputs are external files
 
-The six input CSVs live **in this directory**, beside `run.py` — not inside the model
+The seven input CSVs live **in this directory**, beside `run.py` — not inside the model
 folder. `RLV_DE_S/` holds nothing but formulas:
 
 ```
 products/risikolebensversicherung/
   model_point_table.csv  mort_table.csv  benefit_schedule.csv     <- inputs live here
   nvg_schedule.csv       lapse_table.csv freq_loading_table.csv
+  param_table.csv
   run.py  model.md  product-spec.md  technical-notes.md  sources.md
   RLV_DE_S/                    <- formulas only
     __init__.py  _system.json  Data/__init__.py  Projection/__init__.py
@@ -330,6 +331,7 @@ projected. The conventions suite counts the reads and asserts the *set* against
 | `nvg_schedule_file` | `nvg_schedule()` | `nvg_schedule.csv` |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` |
 | `freq_loading_file` | `freq_loading_table()` | `freq_loading_table.csv` |
+| `param_file` | `param_table()` | `param_table.csv` |
 
 **The trade-off:** the model is not portable on its own — copy `RLV_DE_S/` without the
 CSVs and it reads fine, then fails on first evaluation. What you gain is that a diff shows
@@ -348,6 +350,7 @@ single exemption, a model point being a *configuration* rather than an assumptio
 | `nvg_schedule.csv` | Cumulative `sum_uplift`: `keine` ≡ 1.0, `nvg_zwei_erhoehungen` stepping to 1.2 at year 6 and 1.4 at year 12 | **[std]** — the schedule is a mechanics demonstration and take-up is exogenous. **Gap 7 is now closed**: [S3] § 13 gives a nine-item event list, a **twelve-month** exercise window, a per-event cap of **20 % of the original sum insured, at most 50 000 €**, at most **five** occasions in all, and an end above **age 50**. Two 20 % increments are inside those caps; that both are taken is a model assumption no document supports. **The CSV is unchanged** [S3] [S11] [S17] |
 | `lapse_table.csv` | **Annual** lapse by **1-based** `policy_year`, read at `policy_year(t)`, 6 / 4 / 4 / 3 %; spread to the month by `lapse_rate_mth` | **[std]**, argued from structure, not data: nothing is forfeited by lapsing, exit is frictionless because the *Versicherungsperiode* follows the *Zahlweise* [R8], and the need amortises. The GDV whole-market *Stornoquote* [R18] is **deliberately not used** (gap 13) |
 | `freq_loading_table.csv` | *Ratenzahlungszuschlag* and instalment count by *Zahlweise*: 1.000 / 1.02 / 1.03 / 1.05 | **[std]** — a German market convention with **no carrier attribution** (gap 21). Whether carriers strike it on the *Bruttobeitrag* or the *Zahlbeitrag* was not established; this model loads the **billed** amount |
+| `param_table.csv` | The scalar tariff parameters by `item`: `rechnungszins` 1,00 % | the DeckRV *Höchstzinssatz* adopted as the rate [R10] [REG-R14] [REG-R15]; added in phase 3, when the rate moved from a Reference on `Projection` into the table the common core reads |
 
 ## The published identities
 
@@ -439,7 +442,7 @@ the `Projection` Space docstring. Four cases needed care:
 | Notes | Cells | Why |
 |---|---|---|
 | `Gn`, `P(t)` | `prem_net_level_pp` / `prem_paid_pp` | The three "netto"s. `prem_net_level_pp` is the **actuarial** *Nettoprämie* `A/ä`, a pricing quantity that never becomes a cash flow; `prem_paid_pp` is the **consumer** *Zahlbeitrag*. The *Nettotarif* is a third, unrelated sense and is not modelled. The bare word *Nettobeitrag* is never a name here, and `prem_net_pp` is on the library's retired-names register |
-| `q₁(t)`, `q₂(t)` | `mort_rate_tar` / `mort_rate` | `q₁` **prices** and enters the premium and the reserve and nothing else; `q₂` **projects** and drives every decrement and claim. Their ratio is `2.25 × (blend / own-sex rate)`, not `1 + m` |
+| `q₁(t)`, `q₂(t)` | `mort_rate_tariff` / `mort_rate` | `q₁` **prices** and enters the premium and the reserve and nothing else; `q₂` **projects** and drives every decrement and claim. Their ratio is `2.25 × (blend / own-sex rate)`, not `1 + m` |
 | `B(t)` | `benefit_pp` / `benefit_paid_pp` | `benefit_pp` is the contractual *Versicherungssumme*; what a death claim actually pays differs inside a § 161 window, tranche by tranche, and `suicide_factor` is the ratio of the two |
 | `w(t)` vs `w_cum(t)` | `lapse_rate` / `lapse_cum` | `lapse_cum` is a proportion of the original cohort, not a running total of `lapse_rate`, and the loading it feeds moves *claims* |
 

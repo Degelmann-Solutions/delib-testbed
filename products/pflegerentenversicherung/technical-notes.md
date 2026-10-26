@@ -229,7 +229,7 @@ entering as data (product spec, footnote 21).
 | Premium form | Level monthly *Beitrag*, guaranteed for the life of the contract, adjustable only on the § 163 VVG route | [R11]; [REG-R27] |
 | Premium cessation | On death; on the start of an insured annuity; at `prem_end_age` | [S4] |
 | Equivalence principle | The gross premium is struck so that, on the first-order bases at the *Rechnungszins*, the expected present value of premiums equals that of benefits plus expenses | [REG-R8] [REG-R47] |
-| *Rechnungszins* | **1,00 %** p.a. — § 2 Abs. 1 DeckRV for new business from 1 January 2025; Abs. 2 keeps the rate used at conclusion for the contract's whole term | [R13]; [REG-R14] [REG-R15] |
+| *Rechnungszins* | **1,00 %** p.a. — § 2 Abs. 1 DeckRV for new business from 1 January 2025; Abs. 2 keeps the rate used at conclusion for the contract's whole term. The model prices every model point at this one rate, a tariff parameter in `param_table.csv`, not a per-contract model-point column | [R13]; [REG-R14] [REG-R15] |
 | *Höchstzillmersatz* | **25 ‰ of the *Summe aller Prämien***, § 4 Abs. 1 DeckRV, cut from 40 ‰ by the LVRG from 1 January 2015; the retrieved wording applies exactly this, at *"2,5 % der … zu zahlenden Beiträge"* | [R13]; [S4]; [REG-R16] [REG-R20] |
 | *Rückkaufswert* | The *Deckungskapital* on the premium bases, floored by the value that results from spreading acquisition and distribution costs evenly over the first **five** contract years | [REG-R28] |
 | *Stornoabzug* | Admissible only if agreed, quantified and appropriate (§ 169 Abs. 5 VVG); a deduction for unamortised acquisition costs is expressly ineffective. **The one retrieved *Pflegerenten* wording agrees 25 %**, rising to 50 % after a partial withdrawal — see the model-risk note at the end of this file | [R11] [REG-R28]; [S4] |
@@ -929,7 +929,7 @@ per payment falling on a paying population of the order of 1e-5 for the first tw
 
 **Check 1 — the equivalence premium, from the four actuarial values.** The premium is not read off a
 rate card; it is the solution of the first-order equivalence, and the values that determine it are
-published as cells: `epv_benefits() = A = 17,789.761930`, `epv_prem_units() = U = 313.500018`,
+published as cells: `tariff_benefit_pv() = A = 17,789.761930`, `tariff_annuity() = U = 313.500018`,
 `epv_admin() = G = 892.884210`, `epv_claim_expense() = C = 69.389246`, with `β = admin_prem_pct =
 0.030` and the *Zillmerung* allowance `a1 = 0.025 × 12 × (85 − 45) = 12.000000` in units of `P`:
 

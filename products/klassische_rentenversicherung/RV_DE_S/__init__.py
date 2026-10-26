@@ -26,7 +26,7 @@ endowment.
 
 **The declared rate contains the guarantee; it does not sit on top of it.** The *laufende
 Verzinsung* is the *Garantieverzinsung* plus the *laufende Zinsüberschussbeteiligung*, so
-``bonus_rate(k) = max(0, decl_rate(k) - int_rate_guar())`` and the two credits together
+``bonus_rate(k) = max(0, decl_rate(k) - rechnungszins())`` and the two credits together
 deliver the declared rate and never more. On the anchor cell that is 1,00 % guaranteed
 plus 1,55 % surplus against a 2,55 % declaration. On model point 6, a 2,75 % legacy
 vintage against the same declaration, ``bonus_rate`` is **zero in every policy year** while interest

@@ -348,19 +348,6 @@ def rentenbeginn_age():
     return int(model_point()["rentenbeginn_age"])
 
 
-def rechnungszins():
-    """i: the tariff's guaranteed rate of interest.
-
-    At or below the *Höchstrechnungszins* of the contract's vintage — 0,25 % for the
-    2024-vintage anchor, 0,90 % on the older model point 3.  It caps the *reserving* rate
-    rather than the rate a policy may guarantee, so a tariff may guarantee less; using the
-    cap of the vintage is the highest defensible value and therefore makes the
-    *Beitragsgarantie* cheapest.  It is a **model point** attribute rather than a library
-    constant because the *Zinszusatzreserve* on the older Riester vintages turns on it.
-    """
-    return float(model_point()["rechnungszins"])
-
-
 def beitragssumme():
     """The *Beitragssumme* fixed at conclusion, in euros.
 

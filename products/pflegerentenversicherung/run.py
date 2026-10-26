@@ -34,7 +34,7 @@ print("Beitrag {:,.6f} EUR/month   net level premium {:,.6f} EUR/month   "
           proj.acq_expense_pp()))
 print("EPV benefits {:,.6f}   EPV premium units {:,.6f}   EPV admin {:,.6f}   "
       "EPV claim expense {:,.6f}".format(
-          proj.epv_benefits(), proj.epv_prem_units(), proj.epv_admin(),
+          proj.tariff_benefit_pv(), proj.tariff_annuity(), proj.epv_admin(),
           proj.epv_claim_expense()))
 print("frame: t = {} to {} (proj_len = {}, {} monthly rows), attained ages {} to {}".format(
     proj.t_start(), proj.proj_len() - 1, proj.proj_len(),

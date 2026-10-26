@@ -68,7 +68,7 @@ SP               single_prem()                         The Einmalbeitrag
 SP_net           net_single_prem()                     SP (1 - alpha)
 alpha            expense_load_alpha                    Acquisition loading in the tariff
 beta             expense_load_beta                     Loading on the annuity value
-i                tariff_int_rate()                     Tariff Rechnungszins
+i                rechnungszins()                       Tariff Rechnungszins
 (cap)            max_tariff_int_rate()                 Hoechstrechnungszins at issue_year
 m                payment_freq()                        Instalments per year
 p = 12/m         pay_period_mths()                     Months between instalments
@@ -390,22 +390,6 @@ def payment_timing():
     return v
 
 
-def tariff_int_rate():
-    """i: the tariff *Rechnungszins* the guaranteed annuity is struck at.
-
-    At or **below** the statutory *Höchstrechnungszins* of the contract's vintage, never
-    automatically at it: one carrier's AVB in the corpus states its annuity factor is
-    calculated at "an underlying interest rate (currently 0 percent p.a.)" while the
-    statutory maximum was positive.  See :func:`check_tariff_int_rate`, which is therefore
-    an inequality.
-
-    This rate reaches the projection **only** through :func:`annuity_factor` and
-    :func:`refund_pv`.  The published cash flows are undiscounted; a best estimate
-    discounts them on the EIOPA curve, not on the tariff rate.
-    """
-    return float(model_point()["tariff_int_rate"])
-
-
 def surplus_form():
     """The *Überschussverwendung*: ``none``, ``konstant``, ``teildynamisch`` or ``volldynamisch``.
 
@@ -606,6 +590,9 @@ def mort_rate_tariff(t, life=1):
     the model point's own sex, because a German tariff written since 21 December 2012 may
     not differentiate.  Letting ``sex()`` in here reproduces an unlawful tariff and is a
     listed pitfall.
+
+    Override reason: the tariff rate is generational and unisex, read at each life's birth
+    cohort with the argument ``life`` for the second life, products/sofortrente/model.md:212
     """
     if life == 2 and surv_pct() == 0.0:
         return 0.0
@@ -733,7 +720,7 @@ def annuity_factor():
     rate, and on nothing that depends on the projected path.  In particular it does not
     depend on ``surplus_form``, so :func:`annuity_pp_derived` is invariant to it.
     """
-    v = 1.0 / (1.0 + tariff_int_rate())
+    v = 1.0 / (1.0 + rechnungszins())
     d = surv_pct()
     total = 0.0
     for k in range(0, proj_len()):
@@ -772,7 +759,7 @@ def annuity_pp_derived():
     r_max = net_single_prem() / (a * load)
     if refund_form() == "none":
         return r_max
-    v = 1.0 / (1.0 + tariff_int_rate())
+    v = 1.0 / (1.0 + rechnungszins())
     p = pay_period_mths()
     fp = first_pay_mth()
     sp = single_prem()
@@ -814,7 +801,7 @@ def refund_pv():
     """
     if refund_form() == "none":
         return 0.0
-    v = 1.0 / (1.0 + tariff_int_rate())
+    v = 1.0 / (1.0 + rechnungszins())
     p = pay_period_mths()
     fp = first_pay_mth()
     sp = single_prem()
@@ -1415,13 +1402,13 @@ def check_death_option_xor():
 def check_tariff_int_rate():
     """True when the tariff *Rechnungszins* is within the cap of the contract's own vintage.
 
-    ``tariff_int_rate() <= max_tariff_int_rate() + roll_fwd_tol``.  An **inequality**, not
+    ``rechnungszins() <= max_tariff_int_rate() + roll_fwd_tol``.  An **inequality**, not
     an equality: the *Höchstrechnungszins* binds the reserving rate and, through the VAG,
     the rate a new tariff may be priced at, but a carrier may price below it and one in the
     corpus is observed pricing a guaranteed annuity factor at 0 % while the statutory
     maximum was positive.
     """
-    return bool(tariff_int_rate()
+    return bool(rechnungszins()
                 <= max_tariff_int_rate() + roll_fwd_tol)             # noqa: F821
 
 

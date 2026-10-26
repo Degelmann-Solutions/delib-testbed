@@ -71,6 +71,7 @@ benefit_schedule_file     data.benefit_schedule()            benefit_schedule.cs
 nvg_schedule_file         data.nvg_schedule()                nvg_schedule.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
+param_file                data.param_table()                 param_table.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -105,7 +106,7 @@ Q(t) tilde                 mort_rate_base(t)               Own-sex rate, first d
 (unisex blend)             mort_rate_blend(t)              50/50 blend, first death
 q2(t)                      mort_rate(t)                    Second-order annual rate
 q2m(t)                     mort_rate_mth(t)                The same, applied in month t
-q1(t)                      mort_rate_tar(t)                First-order tariff rate
+q1(t)                      mort_rate_tariff(t)             First-order tariff rate
 rf                         rating_factor()                 Risikozuschlag multiplier
 w(t)                       lapse_rate(t)                   Annual lapse rate of the year
 wm(t)                      lapse_rate_mth(t)               The same, applied in month t
@@ -116,7 +117,7 @@ M_shock(t)                 shock_lapse_factor(t)           Premium-shock multipl
 v^y                        disc_factor(y)                  Rechnungszins discount
 p1(y)                      pols_tariff(y)                  Tariff survivorship, no lapse
 ae                         tariff_annuity()                Premium annuity-due
-A                          tariff_claims_pv()              APV of death benefits
+A                          tariff_benefit_pv()             APV of death benefits
 Gamma                      tariff_sum_pv()                 Sum-exposure annuity
 G                          prem_gross_level_pp()           Bruttobeitrag, before phi
 Gn                         prem_net_level_pp()             Actuarial Nettopraemie
@@ -171,7 +172,7 @@ actuarial net premium, because ``Gn`` is struck on the loaded first-order rate a
 that loading is handed straight back as *Beitragsverrechnung*. A test asserting
 ``Gn < P`` is asserting the absence of the product's central mechanic.
 
-**``q1`` prices and ``q2`` projects.** :func:`mort_rate_tar` is the first-order tariff
+**``q1`` prices and ``q2`` projects.** :func:`mort_rate_tariff` is the first-order tariff
 rate — the unisex 50/50 blend, loaded by ``(1 + sicherheitszuschlag_m)`` and by the
 *Risikozuschlag* — and it enters the premium and the reserve and **nothing else**.
 :func:`mort_rate` is the second-order rate on the policy's own sex and smoker status and
@@ -533,7 +534,7 @@ def rating_factor():
 
     A German impairment loading is normally expressed as a percentage of the risk premium
     rather than as a benefit exclusion, life *Leistungsausschlüsse* being used sparingly.
-    So it multiplies **both** orders — :func:`mort_rate` and :func:`mort_rate_tar` alike —
+    So it multiplies **both** orders — :func:`mort_rate` and :func:`mort_rate_tariff` alike —
     and an impaired life pays more *and* is expected to claim more.  The consequence worth
     testing is the invariance: ``prem_paid_pp(0)/prem_gross_pp(0)`` barely moves when the
     factor goes from 1.00 to 1.75, because the rebate scales with the loading it is struck
@@ -696,7 +697,7 @@ def mort_rate_mth(t):
     return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
 
 
-def mort_rate_tar(t):
+def mort_rate_tariff(t):
     """q1(t): the **first-order** tariff rate, ``(1 + m) x rf x`` the unisex blend.
 
     It prices the *Bruttobeitrag* and the first-order *Deckungskapital* and enters nothing
@@ -707,10 +708,14 @@ def mort_rate_tar(t):
     is returned as *Beitragsverrechnung*, the parameter with the widest uncertainty has
     the narrowest effect on the billed premium.
 
-    ``mort_rate_tar(t) / mort_rate(t)`` is **not** ``1 + m``.  It is
+    ``mort_rate_tariff(t) / mort_rate(t)`` is **not** ``1 + m``.  It is
     ``(1 + m) x (blend / own-sex rate)``, which on the shipped proxy is 1.6875 for a male
     and 3.375 for a female.  That is the unisex cross-subsidy, and expecting 2.25 for both is a
     listed pitfall.
+
+    Override reason: the tariff rate is the unisex blend loaded by ``1 + m`` and the rating
+    factor, combined over two lives by the first-death rule, not one table read at the
+    attained age, products/risikolebensversicherung/technical-notes.md:230
     """
     return (1.0 + sicherheitszuschlag_m) * rating_factor() * mort_rate_blend(t)  # noqa: F821
 
@@ -958,58 +963,16 @@ def lapse_cum(t):
 # Pricing: the Bruttobeitrag by first-order equivalence, struck once at issue
 
 
-def disc_factor(y):
-    """v^y: the *Rechnungszins* discount factor to the start of **policy year** y, 0-based.
+def rechnungszins():
+    """i: the *Rechnungszins*, 1,00 % a year, from *param_table.csv*.
 
-    ``rechnungszins`` is the *Höchstrechnungszins* for new business from 1 January 2025,
-    **1,00 %**, raised from 0,25 % and the first increase since 1994.  It appears **only**
-    in the premium equivalence and in the first-order *Deckungskapital*.  **Nothing in
-    this library discounts a published cash flow**, and on this product the rate barely
-    matters in any event — the reserve is small and short-lived, which is a genuine
-    difference from every other delib model.
-
-    The argument is a **policy year and not a month**.  The first-order equivalence is an
-    annual construction — a *Höchstrechnungszins* is an annual rate and the *Bruttobeitrag*
-    it strikes is an annual amount — so it stays one on the monthly grid.  Re-striking it
-    month by month would move ``G`` and with it every figure the notes publish, while
-    changing nothing about the contract.
+    Override reason: the whole book is priced at one rate, a tariff parameter in
+    *param_table.csv* rather than a model-point column, products/risikolebensversicherung/technical-notes.md:929
     """
-    return (1.0 + rechnungszins) ** -y                               # noqa: F821
+    return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
 
 
-def pols_tariff(y):
-    """p1(y): tariff survivorship entering **policy year** y — **mortality only**.
-
-    ``p1(0) = 1`` and ``p1(y+1) = p1(y)(1 - q1(y))`` on the first-order **annual** rate,
-    read at that policy year's opening month ``12 y``.  Lapse is **not** a German
-    first-order basis element: the bases are mortality, interest and expenses, and a
-    *Stornowahrscheinlichkeit* is a second-order quantity used for projection and
-    profit-testing, not for the tariff.  Striking the premium on this survivorship is also
-    what keeps the model acyclic — a pricing quantity cannot depend on a behavioural
-    assumption that depends on the path that depends on the premium.
-
-    A policy-year recursion and not a monthly one, for the same reason
-    :func:`disc_factor` is: it is the tariff basis of an annual equivalence.  It always
-    starts at issue, at ``y = 0``, even on an in-force model point whose projection opens
-    later: the tariff was struck when the contract was written.
-    """
-    if y <= 0:
-        return 1.0
-    return pols_tariff(y - 1) * (1.0 - mort_rate_tar(12 * (y - 1)))
-
-
-def tariff_annuity():
-    """ae: the premium annuity-due over the paying term, ``sum v^y p1(y)``.
-
-    ``y = 0 .. prem_term() - 1``, the *Beitragszahlungsdauer* being stated in whole years.
-    Equal to 1 where ``prem_term = 1``, which is why the ``einmal`` form falls out of the
-    same equivalence rather than needing its own.
-    """
-    return sum(disc_factor(y) * pols_tariff(y)
-               for y in range(prem_term()))
-
-
-def tariff_claims_pv():
+def tariff_benefit_pv():
     """A: the actuarial present value of the death benefits, on first-order bases.
 
     ``sum v^(y+1) p1(y) q1(y) B(y)`` over the whole cover period, ``y = 0 .. n - 1``,
@@ -1025,7 +988,7 @@ def tariff_claims_pv():
     states in its own *Versicherungsschein*.
     """
     return sum(disc_factor(y + 1) * pols_tariff(y)
-               * mort_rate_tar(12 * y) * benefit_pp(12 * y)
+               * mort_rate_tariff(12 * y) * benefit_pp(12 * y)
                for y in range(proj_len_y()))
 
 
@@ -1070,21 +1033,7 @@ def prem_gross_level_pp():
     denom = (1.0 - beta_tariff) * tariff_annuity() - zillmer_rate * prem_term()  # noqa: F821
     if denom <= 0.0:
         raise ValueError("degenerate premium equivalence: loadings exceed the annuity")
-    return (tariff_claims_pv() + gamma_rate * tariff_sum_pv()) / denom  # noqa: F821
-
-
-def prem_net_level_pp():
-    """Gn: the actuarial *Nettoprämie* ``A / ae`` — a pricing quantity, never a cash flow.
-
-    The risk premium on the first-order basis before expense loadings, and the premium the
-    reserve recursion in :func:`res_pp_at` is struck on.  **It is not the consumer's
-    *Nettobeitrag***, which is the *Zahlbeitrag* and is :func:`prem_paid_pp`, and on this
-    calibration it sits **above** it: ``Gn = 1 084.80`` against a billed 733.01, because
-    ``Gn`` carries the whole *Sicherheitszuschlag* and 90 % of that is handed back as
-    *Beitragsverrechnung*.  Confusing the two is the classic implementation error on this
-    product, and it never appears in :func:`result_cf`.
-    """
-    return tariff_claims_pv() / tariff_annuity()
+    return (tariff_benefit_pv() + gamma_rate * tariff_sum_pv()) / denom  # noqa: F821
 
 
 def beitragsverrechnung_rate():
@@ -1114,7 +1063,7 @@ def beitragsverrechnung_rate():
         return 0.0
     m = sicherheitszuschlag_m                                        # noqa: F821
     raw = (decl_scale * surplus_share * (m / (1.0 + m))              # noqa: F821
-           * tariff_claims_pv()
+           * tariff_benefit_pv()
            / (prem_gross_level_pp() * tariff_annuity()))
     return min(v_max, raw)                                           # noqa: F821
 
@@ -1308,7 +1257,7 @@ def res_pp_at(y, timing):
     p_y = pols_tariff(y)
     claims_pv = sum(
         disc_factor(u - y + 1) * (pols_tariff(u) / p_y)
-        * mort_rate_tar(12 * u) * benefit_pp(12 * u)
+        * mort_rate_tariff(12 * u) * benefit_pp(12 * u)
         for u in range(y, proj_len_y()))
     prem_pv = prem_net_level_pp() * sum(
         disc_factor(u - y) * (pols_tariff(u) / p_y)
@@ -1805,8 +1754,8 @@ def check_res_roll_fwd_resid(y):
     in-force one whose cash flows start later: the reserve is a tariff quantity and the
     tariff was struck at issue.
     """
-    lhs = (res_pp_at(y, "AFT_PREM")) * (1.0 + rechnungszins)         # noqa: F821
-    q1 = mort_rate_tar(12 * y)
+    lhs = (res_pp_at(y, "AFT_PREM")) * (1.0 + rechnungszins())       # noqa: F821
+    q1 = mort_rate_tariff(12 * y)
     rhs = (q1 * benefit_pp(12 * y)
            + (1.0 - q1) * res_pp_at(y + 1, "BEF_PREM"))
     return lhs - rhs
@@ -1945,7 +1894,7 @@ def result_pols():
             "pols_maturity": [pols_maturity(t) for t in ts],
             "mort_rate": [mort_rate(t) for t in ts],
             "mort_rate_mth": [mort_rate_mth(t) for t in ts],
-            "mort_rate_tar": [mort_rate_tar(t) for t in ts],
+            "mort_rate_tar": [mort_rate_tariff(t) for t in ts],
             "lapse_rate": [lapse_rate(t) for t in ts],
             "lapse_rate_mth": [lapse_rate_mth(t) for t in ts],
             "benefit_pp": [benefit_pp(t) for t in ts],
@@ -1968,8 +1917,6 @@ def result_pols():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-rechnungszins = 0.01
 
 sicherheitszuschlag_m = 1.25
 

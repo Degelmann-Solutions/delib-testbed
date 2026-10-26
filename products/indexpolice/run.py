@@ -37,7 +37,7 @@ print("payoff = {}   index = {}   Cap {:.2%} monthly   Quote {:.2%}   "
           proj.index_quote(proj.k_start()), proj.elect_id()))
 print("guarantee = {:.0%} of Beitragssumme at i_g = {:.2%}   "
       "Beitragsgarantie {:,.2f} EUR   Stornoabzug {}".format(
-          proj.guar_level(), proj.guar_rate(),
+          proj.guar_level(), proj.rechnungszins(),
           proj.guar_level() * proj.prem_sum(),
           "on" if proj.surr_charge_on() else "off"))
 print()

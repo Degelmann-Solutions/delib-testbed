@@ -177,7 +177,7 @@ from its base value, so that no column is carried without being tested.
 | `guar_locked_init` | EUR | the *Höchststandsicherung* ledger already accumulated — credits made before the valuation date | 8, 13 |
 | `prem_paid_init` | EUR | premiums already paid, on the annual-mode basis; the base of the *Beitragsgarantie* so far | 8, 13 |
 | `guar_level` | float | *Garantieniveau*: the *Beitragsgarantie* as a fraction of the *Beitragssumme* | 6, 9, 12 |
-| `guar_rate` | float | the contract's *Rechnungszins*; a **cohort** fact, not today's rate [REG-R15] | 8, 13 |
+| `rechnungszins` | float | the contract's *Rechnungszins*; a **cohort** fact, not today's rate [REG-R15] | 8, 13 |
 | `payoff_form` | enum {cap, quote} | Cap design or *Partizipationsquote* | 2, 3 |
 | `index_id` | str | key into `index_return_table.csv` **and** `index_param_table.csv` | 3, 9 |
 | `elect_id` | str | key into `election_table.csv`: the *Wahlrecht* path `w(t)` | 10, 11, 12 |
@@ -204,7 +204,7 @@ points, four *Rechnungszins* cohorts and four *Garantieniveaus*.
 | 10 | F 40 → 67, `elect_id = switch_at_15` — index arm to policy year 15 (`t ≤ 14`), safe arm thereafter |
 | 11 | M 40 → 67, `elect_id = always_safe` — the *sichere Verzinsung* comparator, which reduces the contract to a *klassische Rentenversicherung* |
 | 12 | F 30 → 67 (**37 years**, the longest), 1 800,00 € a year, 60 % guarantee, `elect_id = half_half` — a partial election |
-| 13 | **In-force, boundary.** M 45 → 67 at `duration_init = 4`, `prem_term_y = 12` so premiums stop after policy year 12 (`k = 11`), `guar_rate = 0,25 %` **equal to the reserve charge**, `death_min_rate = 0`, `surr_charge_on = 0` |
+| 13 | **In-force, boundary.** M 45 → 67 at `duration_init = 4`, `prem_term_y = 12` so premiums stop after policy year 12 (`k = 11`), `rechnungszins = 0,25 %` **equal to the reserve charge**, `death_min_rate = 0`, `surr_charge_on = 0` |
 
 ---
 
@@ -248,7 +248,7 @@ changed on the strength of what it established; `model.md` records each comparis
 
 | Input | Value / rule | Basis |
 |---|---|---|
-| Guaranteed rate `i_g` | `guar_rate`, a model-point column; **1,00 %** for a contract written in 2025–2026, 0,90 % for a 2017–2021 cohort, 0,25 % for 2022–2024 | [R7] [R18] [REG-R14] [REG-R15] |
+| Guaranteed rate `i_g` | `rechnungszins`, a model-point column; **1,00 %** for a contract written in 2025–2026, 0,90 % for a 2017–2021 cohort, 0,25 % for 2022–2024 | [R7] [R18] [REG-R14] [REG-R15] |
 | Payoff, Cap form | `max( Σ_{m=1..12} min(r(t,m), C(t)), 0 )` — capped above, **not floored below**, summed **not compounded**, the floor on the year | mechanic firm [S2] [S5]; levels **[std]** |
 | Payoff, *Quote* form | `max( q(t) × (Π_m (1 + r(t,m)) − 1), 0 )` | mechanic firm; level **[std]** |
 | Base of the participation | `G(t) = av_pp(k)`, the capital at the start of the *Indexjahr*, **before** that year's premium | **confirmed by clause** — [S2] Ziffer 3.3 Absatz 2 e), [S7] § 3 Ziffer 2; spec footnote 14 |
@@ -425,7 +425,7 @@ oversight.
 | `P⁺(k)` | `prem_to_av_pp(k)` | the premium credited to the account, `P(k) − α(k) − β·P(k)` |
 | `A(k)` | `av_pp(k)` | *Deckungskapital* per policy at time `k`, the start of policy year `k` |
 | `γ`, `F(k)` | `exp_av_rate`, `av_charge_pp(k)` | the reserve charge rate; the amount charged, `γ·(A(k) + P⁺(k))` |
-| `i_g`, `I(k)` | `guar_rate`, `guar_int_pp(k)` | the guaranteed rate; the guaranteed interest, `i_g·av_pp_at(k,"AFT_CHARGE")` |
+| `i_g`, `I(k)` | `rechnungszins`, `guar_int_pp(k)` | the guaranteed rate; the guaranteed interest, `i_g·av_pp_at(k,"AFT_CHARGE")` |
 | `G(k)` | `index_base_pp(k)` | the participating capital of the *Indexjahr* of policy year `k` = `A(k)` |
 | `b(k)`, `w(k)` | `surplus_rate(k)`, `elect_index(k)` | the declared surplus rate; the fraction of it directed to the index arm |
 | `r(k,m)`, `C(k)`, `q(k)` | `index_return(k, m)`, `index_cap(k)`, `index_quote(k)` | the month's index return; the monthly Cap; the *Partizipationsquote* |
@@ -788,7 +788,7 @@ take deliberately and is not made in a provenance pass.
    until `k = 12` (policy year 13), so the death benefit before then is larger than the account at any
    timing, which is what a floor is for.
 10. **Testing the lock-in as "the account never falls".** It is the **credits** that ratchet, not the
-    balance. On model point 13 (`guar_rate = 0,25 % = γ`) the account is flat or falling once premiums
+    balance. On model point 13 (`rechnungszins = 0,25 % = γ`) the account is flat or falling once premiums
     stop, while `guar_cap_pp` is still monotone. Assert `check_lock_in()` on every point **and** that
     `av_pp(k+1) < av_pp(k)` for at least one `t` on model point 13 — the invariant that would fail if
     the ratchet had been written on the wrong quantity.
@@ -876,7 +876,7 @@ table below is the **entire** projection; `pols_if_init = 1.0`; `ann_start_age =
 `freq_load() = 1,000` and the premium collected equals the premium due; `prem_term_y = 27`, premiums
 payable throughout, so `prem_sum() = 27 × 2 400,00 = 64 800,00 €`; `av_pp_init = 0,00 €`;
 `guar_locked_init = 0,00 €`; `prem_paid_init = 0,00 €`; `guar_level = 0,90`, a *Beitragsgarantie* of
-`0,90 × 64 800,00 = 58 320,00 €` at *Rentenbeginn* plus every locked-in credit; `guar_rate = 0,0100`,
+`0,90 × 64 800,00 = 58 320,00 €` at *Rentenbeginn* plus every locked-in credit; `rechnungszins = 0,0100`,
 the *Höchstrechnungszins* for 2025–2026 [R7] [R18] [REG-R15]; `payoff_form = "cap"`;
 `index_id = "eqidx_vol17"`, so the Cap is 3,00 % a month and the *Indexjahre* at `k = 8` and `k = 9`
 are the research file's Examples A and B; `elect_id = "always_index"`, so `w(k) = 1,00` in every one of

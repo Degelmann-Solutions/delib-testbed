@@ -46,7 +46,7 @@ first-order basis rather than read from a table.
 **Spaces.** The model contains two:
 
 :mod:`~.BU_DE_S.Data`
-    Reads the seven input CSVs and holds their filename References. It takes no
+    Reads the eight input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.BU_DE_S.Projection`

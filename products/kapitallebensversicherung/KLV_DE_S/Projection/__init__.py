@@ -113,9 +113,9 @@ y(t) = k + 1        policy_year(t)                         Contractual 1-based p
 SE                  sum_assured()                          Guaranteed Erlebensfallleistung
 SD                  sum_death()                            Guaranteed Todesfallleistung
 i1                  rechnungszins()                        First-order interest rate
-v1^k                disc_factor_1st(k)                     First-order discount factor
-kpx                 tpx_1st(k)                             First-order survival from issue
-q1(x)               mort_rate_at_age(x)                    First-order tariff rate at age
+v1^k                disc_factor(k)                         First-order discount factor
+kpx                 pols_tariff(k)                         First-order survival from issue
+q1(x)               mort_rate_tariff_at_age(x)             First-order tariff rate at age
                                                            x - the unisex blend, which
                                                            prices and reserves
 (table)             mort_rate_base(t)                      Sex-specific annual table rate
@@ -127,8 +127,8 @@ alpha, beta, gamma  alpha_rate(), beta_rate(),             Zillmersatz; premium 
 phi                 prem_freq_load()                       Ratenzahlungszuschlag
 (none)              instalments()                          Payments a year
 (pricing)           pv_death_1st(), pv_maturity_1st(),     The equivalence's parts
-                    pv_benefit_1st(), ann_due_prem_1st(),
-                    ann_due_term_1st()
+                    tariff_benefit_pv(),
+                    tariff_annuity(), ann_due_term_1st()
 B                   prem_gross_pp()                        Annual Bruttobeitrag before phi
 BS                  beitragssumme()                        Beitragssumme = B x m
 A                   alpha_cost()                           Zillmered acquisition cost
@@ -217,7 +217,7 @@ no fund to earn on, and worth saying because it looks like a bug.
 issue and stays negative for several years. :func:`res_min_pp` is the § 169 Abs. 3 VVG floor,
 the same net reserve with the acquisition cost amortised **straight-line over the first five
 contract years** rather than over the whole premium term. Because
-``ann_due_prem_fut(k) / ann_due_prem_1st()`` falls roughly linearly over ``m`` years while
+``ann_due_prem_fut(k) / tariff_annuity()`` falls roughly linearly over ``m`` years while
 ``max(0, 1 - k/5)`` reaches zero after five, the floor **normally binds** on a long
 *gezillmert* contract, with equality only at durations 0 and ``m``. :func:`res_guar_pp` is
 their maximum, floored at zero, struck at the **end** of policy year ``k`` because that is
@@ -289,7 +289,7 @@ band: it steps on the anniversary, not monthly.
 
 .. rubric:: The two mortality bases must not be crossed
 
-:func:`mort_rate_at_age` is the first-order **tariff** rate: it prices and it reserves, and
+:func:`mort_rate_tariff_at_age` is the first-order **tariff** rate: it prices and it reserves, and
 it is a fixed unisex blend of the two table rows, because German new business has been unisex
 since 21 December 2012. :func:`mort_rate_base` is this policy's own **sex-specific** table
 rate, and :func:`mort_rate` is ``mort_rate_base(t) * mort_be_factor`` with
@@ -469,17 +469,6 @@ def unterjaehrig_form():
     return v
 
 
-def rechnungszins():
-    """i1: the contract's own guaranteed technical rate, fixed at conclusion.
-
-    A **contract term, not a market rate**: it is set once, at conclusion, and carried for the
-    whole term, which is why a German in-force book is a stack of cohorts and why the in-force
-    model point carries 1,75 % while new business carries 1,00 %.  It must not exceed the
-    cohort's :func:`hrz_max`; :func:`check_rechnungszins_cap` asserts it.
-    """
-    return float(model_point()["rechnungszins"])
-
-
 def zillmer_on():
     """1 where the *Deckungskapital* is *gezillmert*, 0 where it is not.
 
@@ -601,12 +590,12 @@ def policy_year_y(k):
 
 # --- the bases -------------------------------------------------------------
 
-def mort_rate_at_age(x):
+def mort_rate_tariff_at_age(x):
     """q1(x): the **first-order tariff** death rate at attained age x - the unisex blend.
 
     ``unisex_share`` of the male table row plus the rest of the female one, at 0.5 / 0.5
     **[std]**.  This is the *Rechnungsgrundlage erster Ordnung* of the tariff, and **every
-    pricing and reserving formula in the model reads it**: :func:`tpx_1st`,
+    pricing and reserving formula in the model reads it**: :func:`pols_tariff`,
     :func:`pv_death_1st`, :func:`pv_benefit_fut`, :func:`ann_due_prem_fut` and the Fackler
     roll-forward in :func:`res_pp_at`.
 
@@ -639,7 +628,7 @@ def mort_rate_base(t):
     on the anniversary.
 
     It is **not** the rate the contract is priced or reserved on - that is
-    :func:`mort_rate_at_age`, the unisex blend - and the two are deliberately different
+    :func:`mort_rate_tariff_at_age`, the unisex blend - and the two are deliberately different
     quantities.  A German tariff may not price on sex; a best-estimate projection of a
     particular life must.  ``sex`` therefore reaches the **decrement** and nothing else, and
     ``prem_gross_pp()`` is identical for two model points differing only in it.
@@ -677,29 +666,6 @@ def mort_rate_mth(t):
     standardization; what is not optional is that it reproduce the annual factor.
     """
     return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
-
-
-def disc_factor_1st(k):
-    """v1^k: the first-order discount factor over k years, at :func:`rechnungszins`.
-
-    Used **only** by the pricing and reserving formulas.  The published cash flows are
-    undiscounted; discounting a liability is a valuation layer's job and this library does not
-    do it.
-    """
-    return (1.0 + rechnungszins()) ** (-k)
-
-
-def tpx_1st(k):
-    """kpx: first-order survival from the issue age to ``issue_age() + k``.
-
-    ``tpx_1st(0) = 1`` and ``tpx_1st(k) = tpx_1st(k-1) * (1 - q1(issue_age + k - 1))``, on the
-    **unrated** first-order table: :func:`rating_factor` loads the death *claim* rate, not the
-    survivorship, so a *Risikozuschlag* raises the price without shortening the life the
-    survival benefit is priced on.
-    """
-    if k <= 0:
-        return 1.0
-    return tpx_1st(k - 1) * (1.0 - mort_rate_at_age(issue_age() + k - 1))
 
 
 def hrz_max():
@@ -810,8 +776,8 @@ def pv_death_1st():
     n = policy_term()
     x0 = issue_age()
     return sum_death() * sum(
-        disc_factor_1st(k + 1) * tpx_1st(k) * rating_factor()
-        * mort_rate_at_age(x0 + k) for k in range(n))
+        disc_factor(k + 1) * pols_tariff(k) * rating_factor()
+        * mort_rate_tariff_at_age(x0 + k) for k in range(n))
 
 
 def pv_maturity_1st():
@@ -820,10 +786,10 @@ def pv_maturity_1st():
     ``SE * v1^n * npx``.  No *Risikozuschlag*: an extra-mortality loading may not make the
     survival benefit cheaper, so it stays out of both the discount and the survivorship.
     """
-    return sum_assured() * disc_factor_1st(policy_term()) * tpx_1st(policy_term())
+    return sum_assured() * disc_factor(policy_term()) * pols_tariff(policy_term())
 
 
-def pv_benefit_1st():
+def tariff_benefit_pv():
     """The first-order present value at issue of both guaranteed benefits, per policy.
 
     On the *gemischte Versicherung* proper, where ``death_ratio = 1``, this is very nearly the
@@ -833,15 +799,6 @@ def pv_benefit_1st():
     return pv_death_1st() + pv_maturity_1st()
 
 
-def ann_due_prem_1st():
-    """The first-order annuity-due factor over the *Beitragszahlungsdauer*, per policy.
-
-    ``sum over k = 0 .. m-1 of v1^k * kpx``.  Exactly 1.0 on an *Einmalbeitrag*, which is why
-    the single-premium branch needs no special case anywhere.
-    """
-    return sum(disc_factor_1st(k) * tpx_1st(k) for k in range(prem_term()))
-
-
 def ann_due_term_1st():
     """The first-order annuity-due factor over the *Versicherungsdauer*, per policy.
 
@@ -849,7 +806,7 @@ def ann_due_term_1st():
     loading, which runs for the whole term rather than for the premium-paying period - the
     asymmetry that makes an *abgekürzte Beitragszahlungsdauer* dearer per premium.
     """
-    return sum(disc_factor_1st(k) * tpx_1st(k) for k in range(policy_term()))
+    return sum(disc_factor(k) * pols_tariff(k) for k in range(policy_term()))
 
 
 def prem_gross_pp():
@@ -858,9 +815,9 @@ def prem_gross_pp():
     Struck by the first-order equivalence principle, which is linear in ``B`` because the
     *Beitragssumme* is ``B * m``::
 
-        B (1 - beta) a_m - alpha B m = pv_benefit_1st + gamma SE a_n
+        B (1 - beta) a_m - alpha B m = tariff_benefit_pv + gamma SE a_n
 
-    so ``B = (pv_benefit_1st + gamma SE a_n) / ((1 - beta) a_m - alpha m)``.
+    so ``B = (tariff_benefit_pv + gamma SE a_n) / ((1 - beta) a_m - alpha m)``.
     :func:`check_equivalence` asserts that the identity closes.
 
     The *Bruttobeitrag* is **not** a model point column: no German endowment premium rate
@@ -868,8 +825,8 @@ def prem_gross_pp():
     reported, and it rises with :func:`rating_factor` while being identical for two points
     differing only in :func:`sex`.
     """
-    return ((pv_benefit_1st() + gamma_rate() * sum_assured() * ann_due_term_1st())
-            / ((1.0 - beta_rate()) * ann_due_prem_1st()
+    return ((tariff_benefit_pv() + gamma_rate() * sum_assured() * ann_due_term_1st())
+            / ((1.0 - beta_rate()) * tariff_annuity()
                - alpha_rate() * prem_term()))
 
 
@@ -895,25 +852,15 @@ def alpha_cost():
     return zillmer_on() * alpha_rate() * beitragssumme()
 
 
-def prem_net_level_pp():
-    """P^n: the net level premium, ``pv_benefit_1st() / ann_due_prem_1st()``.
-
-    The pure benefit premium with no loading of any kind.  It is a **pricing quantity that
-    never becomes a cash flow**: what is collected is :func:`prem_paid_pp`.  It is the premium
-    the net reserve :func:`res_net_pp` is struck on.
-    """
-    return pv_benefit_1st() / ann_due_prem_1st()
-
-
 def prem_zill_pp():
-    """P^Z: the Zillmer premium, ``prem_net_level_pp() + alpha_cost() / ann_due_prem_1st()``.
+    """P^Z: the Zillmer premium, ``prem_net_level_pp() + alpha_cost() / tariff_annuity()``.
 
     The net premium plus the level annual charge that amortises the zillmered acquisition cost
     over the *Beitragszahlungsdauer*.  It is the premium the Zillmer reserve rolls forward on,
     which is why :func:`check_res_roll_fwd` reads it and not :func:`prem_charged_pp`: one is a
     first-order reserving quantity and the other is a cash flow.
     """
-    return prem_net_level_pp() + alpha_cost() / ann_due_prem_1st()
+    return prem_net_level_pp() + alpha_cost() / tariff_annuity()
 
 
 # --- the Deckungskapital ---------------------------------------------------
@@ -939,10 +886,10 @@ def pv_benefit_fut(k):
     death = 0.0
     p = 1.0
     for j in range(rem):
-        q = mort_rate_at_age(x + j)
-        death += disc_factor_1st(j + 1) * p * rating_factor() * q
+        q = mort_rate_tariff_at_age(x + j)
+        death += disc_factor(j + 1) * p * rating_factor() * q
         p *= (1.0 - q)
-    return sum_death() * death + sum_assured() * disc_factor_1st(rem) * p
+    return sum_death() * death + sum_assured() * disc_factor(rem) * p
 
 
 def ann_due_prem_fut(k):
@@ -960,8 +907,8 @@ def ann_due_prem_fut(k):
     s = 0.0
     p = 1.0
     for j in range(rem):
-        s += disc_factor_1st(j) * p
-        p *= (1.0 - mort_rate_at_age(x + j))
+        s += disc_factor(j) * p
+        p *= (1.0 - mort_rate_tariff_at_age(x + j))
     return s
 
 
@@ -983,7 +930,7 @@ def res_net_pp(k):
 def res_zill_pp(k):
     """V^Z: the *gezillmerte Deckungskapital* at the start of policy year k, per policy.
 
-    ``res_net_pp(k) - alpha_cost() * ann_due_prem_fut(k) / ann_due_prem_1st()``: the net
+    ``res_net_pp(k) - alpha_cost() * ann_due_prem_fut(k) / tariff_annuity()``: the net
     reserve less the part of the acquisition cost the future premiums have yet to repay.
 
     **It is exactly ``-alpha_cost()`` at ``k = 0``**, which on the anchor cell is
@@ -996,7 +943,7 @@ def res_zill_pp(k):
     ``zillmer_on = 0`` it coincides with :func:`res_net_pp`.
     """
     return (res_net_pp(k)
-            - alpha_cost() * ann_due_prem_fut(k) / ann_due_prem_1st())
+            - alpha_cost() * ann_due_prem_fut(k) / tariff_annuity())
 
 
 def res_min_pp(k):
@@ -1089,7 +1036,7 @@ def res_pp_at(k, timing):
                 if (k < prem_term() and not is_paid_up(k)) else 0.0)
         return res_pp(k) + prem + bfz_uplift_pp(k)
     if timing == "AFT_INT":
-        q = mort_rate_at_age(age_y(k))
+        q = mort_rate_tariff_at_age(age_y(k))
         si = bfz_si_pp() if is_paid_up(k) else sum_assured()
         return ((res_pp_at(k, "AFT_PREM") * (1.0 + rechnungszins())
                  - rating_factor() * q * si * death_ratio()) / (1.0 - q))
@@ -1150,7 +1097,7 @@ def bfz_uplift_pp(k):
     if bfz_year() <= 0 or k != bfz_year() - 1 or not is_paid_up(k + 1):
         return 0.0
     return ((res_guar_pp(k) - res_zill_pp(k + 1))
-            * (1.0 - mort_rate_at_age(age_y(k))) / (1.0 + rechnungszins()))
+            * (1.0 - mort_rate_tariff_at_age(age_y(k))) / (1.0 + rechnungszins()))
 
 
 def res_guar_pp(k):
@@ -2204,7 +2151,7 @@ def check_surr_nonneg():
 def check_equivalence_resid(t):
     """The first-order pricing equivalence residual; the same value at every month t.
 
-    ``B (1 - beta) a_m - alpha BS - pv_benefit_1st - gamma SE a_n``.  It does not depend on
+    ``B (1 - beta) a_m - alpha BS - tariff_benefit_pv - gamma SE a_n``.  It does not depend on
     ``t`` - the equivalence is struck once, at issue - and it carries the argument only so
     that every ``check_*`` in this library has the same shape.
 
@@ -2212,9 +2159,9 @@ def check_equivalence_resid(t):
     the acquisition cost is in the premium whether or not the contract is zillmered, which is
     why a *gezillmerte* and a non-*gezillmerte* edition of one tariff cost the same.
     """
-    return (prem_gross_pp() * (1.0 - beta_rate()) * ann_due_prem_1st()
+    return (prem_gross_pp() * (1.0 - beta_rate()) * tariff_annuity()
             - alpha_rate() * beitragssumme()
-            - pv_benefit_1st()
+            - tariff_benefit_pv()
             - gamma_rate() * sum_assured() * ann_due_term_1st())
 
 

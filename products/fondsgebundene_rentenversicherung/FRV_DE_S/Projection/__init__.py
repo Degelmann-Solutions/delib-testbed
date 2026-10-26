@@ -1219,15 +1219,6 @@ def mort_rate_at_age(x):
     return mort_be_factor * mort_rate_tariff_at_age(x)               # noqa: F821
 
 
-def mort_rate_tariff(t):
-    """The first-order annual death rate in month t, at ``age(t)``.
-
-    0.00080 in policy year 1 of the anchor cell, whose entry age is the proxy's anchor
-    age.
-    """
-    return mort_rate_tariff_at_age(age(t))
-
-
 def mort_rate_tariff_mth(t):
     """The first-order **monthly** death rate, ``mort_rate_tariff(t) / 12``.
 

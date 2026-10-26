@@ -339,7 +339,7 @@ source supplies.
 | Commission | Not a separate line — it sits inside `acq_rate`, which is the German taxonomy | **[std]** |
 | `freq_load` — *Ratenzahlungszuschlag* | annual **1,00**; half-yearly **1,02**; quarterly **1,03**; monthly **1,05** | German market convention `[unverified]`; **[std]** |
 
-**Input files.** Seven CSVs sit beside `run.py`, read once per model by the unparameterized `Data`
+**Input files.** Eight CSVs sit beside `run.py`, read once per model by the unparameterized `Data`
 Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv` carries a
 **`provenance` column**, one tag per row, as delib's second ruling requires.
 
@@ -352,6 +352,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | `occupation_table.csv` | `berufsgruppe` (BG1 – BG5) | `occ_factor`, `label`, `provenance` |
 | `lapse_table.csv` | `policy_year` (1 – 6, the last being ultimate) | `lapse_rate`, `provenance` |
 | `freq_loading_table.csv` | `prem_mode` | `prem_mode_months`, `freq_load`, `provenance` |
+| `param_table.csv` | `item` | `value` (`rechnungszins`), `provenance` |
 
 ---
 

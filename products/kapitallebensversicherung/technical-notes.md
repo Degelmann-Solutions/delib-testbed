@@ -297,7 +297,7 @@ mort_rate_1st(F, x) = 0.00016 + B · 1.10^(x − 3)     a three-year setback on 
 example reproduce; the `Data` docstring states it.
 
 **The table is read twice, for two different purposes, and they must not be confused.** The
-*tariff* rate `mort_rate_at_age(x)` — what prices and what reserves — is a **fixed unisex blend**
+*tariff* rate `mort_rate_tariff_at_age(x)` — what prices and what reserves — is a **fixed unisex blend**
 of the two rows, `½ · q₁(M, x) + ½ · q₁(F, x)` **[std]**, because German new business has been
 unisex since 21 December 2012 [REG-R34] and a tariff that priced on `sex` would be unlawful; the
 blend itself is a portfolio mix no insurer publishes. The *decrement* is the policy's own
@@ -406,7 +406,7 @@ optional modules are under *Policyholder behaviour modelling*.
 | `x(k)` | `age_y(k)`, `age(t)` | attained age at the start of policy year `k` = `issue_age + k`; `age(t) = age_y(duration(t))` |
 | `SE`, `SD` | `sum_assured`, `sum_death` | guaranteed survival sum; guaranteed death sum `= SE × death_ratio` |
 | `i₁`, `v₁` | `rechnungszins` | first-order interest rate; `v₁ = 1/(1 + i₁)` |
-| `q₁(x)` | `mort_rate_at_age(x)` | first-order **tariff** mortality at attained age `x`: the unisex blend, which prices and reserves |
+| `q₁(x)` | `mort_rate_tariff_at_age(x)` | first-order **tariff** mortality at attained age `x`: the unisex blend, which prices and reserves |
 | `q(t)` | `mort_rate(t)` | best-estimate **annual** mortality of month `t`'s policy year, `= mort_rate_base(t) × mort_be_factor` |
 | `qᵐ(t)` | `mort_rate_mth(t)` | the monthly rate applied, `= 1 − (1 − q(t))^(1/12)` **[std]** |
 | (table) | `mort_rate_base(t)` | this policy's own **sex-specific** first-order annual rate |
@@ -435,21 +435,21 @@ First-order survival from issue and the two annuities-due, computed by summation
 own `sex` and `rechnungszins`:
 
 ```
-tpx_1st(k)        = Π_{j=0}^{k-1} ( 1 − q₁(x_0 + j) ),  tpx_1st(0) = 1
-pv_death_1st      = SD · Σ_{k=0}^{n-1} v₁^(k+1) · tpx_1st(k) · q₁(x_0 + k)
-pv_maturity_1st   = SE · v₁^n · tpx_1st(n)
-pv_benefit_1st    = pv_death_1st + pv_maturity_1st
-ann_due_prem_1st  = Σ_{k=0}^{m-1} v₁^k · tpx_1st(k)
-ann_due_term_1st  = Σ_{k=0}^{n-1} v₁^k · tpx_1st(k)
+pols_tariff(k)    = Π_{j=0}^{k-1} ( 1 − q₁(x_0 + j) ),  pols_tariff(0) = 1
+pv_death_1st      = SD · Σ_{k=0}^{n-1} v₁^(k+1) · pols_tariff(k) · q₁(x_0 + k)
+pv_maturity_1st   = SE · v₁^n · pols_tariff(n)
+tariff_benefit_pv = pv_death_1st + pv_maturity_1st
+tariff_annuity    = Σ_{k=0}^{m-1} v₁^k · pols_tariff(k)
+ann_due_term_1st  = Σ_{k=0}^{n-1} v₁^k · pols_tariff(k)
 ```
 
 The *Bruttobeitrag* is struck by equivalence, which is linear in `B` because `BS = B · m`:
 
 ```
-B · ann_due_prem_1st = pv_benefit_1st + α · B · m
-                       + β · B · ann_due_prem_1st + γ · SE · ann_due_term_1st
+B · tariff_annuity = tariff_benefit_pv + α · B · m
+                     + β · B · tariff_annuity + γ · SE · ann_due_term_1st
 
-⇒  prem_gross_pp = ( pv_benefit_1st + γ · SE · ann_due_term_1st ) / ( (1 − β) · ann_due_prem_1st − α · m )
+⇒  prem_gross_pp = ( tariff_benefit_pv + γ · SE · ann_due_term_1st ) / ( (1 − β) · tariff_annuity − α · m )
 ```
 
 `check_equivalence()` asserts that identity closes. **Note that the acquisition cost `α · BS` is in
@@ -465,11 +465,11 @@ Then the two reserving premiums, and the zillmered cost:
 ```
 beitragssumme     = prem_gross_pp · m
 alpha_cost        = zillmer_on · alpha_rate · beitragssumme
-prem_net_level_pp = pv_benefit_1st / ann_due_prem_1st
-prem_zill_pp      = prem_net_level_pp + alpha_cost / ann_due_prem_1st
+prem_net_level_pp = tariff_benefit_pv / tariff_annuity
+prem_zill_pp      = prem_net_level_pp + alpha_cost / tariff_annuity
 ```
 
-**Single premium.** `prem_term = 1` gives `ann_due_prem_1st = 1` and `BS = B`, so the 25 ‰
+**Single premium.** `prem_term = 1` gives `tariff_annuity = 1` and `BS = B`, so the 25 ‰
 *Zillmersatz* buys almost nothing and the § 169 floor is slack from the first anniversary. That is
 the correct answer, not a degenerate case.
 
@@ -483,7 +483,7 @@ pv_benefit_fut(t)    = SD · Σ_{j=0}^{n-k-1} v₁^(j+1) · jp(x(t)) · q₁(x(t
 ann_due_prem_fut(t)  = Σ_{j=0}^{max(0, m-k)-1} v₁^j · jp(x(t))
 
 res_net_pp(t)   = pv_benefit_fut(t) − prem_net_level_pp · ann_due_prem_fut(t)
-res_zill_pp(t)  = res_net_pp(t) − alpha_cost · ann_due_prem_fut(t) / ann_due_prem_1st
+res_zill_pp(t)  = res_net_pp(t) − alpha_cost · ann_due_prem_fut(t) / tariff_annuity
 res_min_pp(t)   = res_net_pp(t) − alpha_cost · max(0, 1 − t / 5)
 res_pp(t)       = res_zill_pp(t)                       while premium-paying
                 = bfz_si_pp · pu_single_prem(t)        once paid-up
@@ -498,7 +498,7 @@ the reserve is positive from the first anniversary (−1 252,53 € opening, +57
 anchor cell). Under the pre-2015 40 ‰ ceiling [R7] [REG-R16], or on a long term with a short
 *Beitragszahlungsdauer*, it is negative for longer. **`res_min_pp` is that floor**, on the
 straight-line reading of the five-year spreading. And **the floor normally binds**:
-`ann_due_prem_fut(t)/ann_due_prem_1st` falls roughly linearly over `m` years while `max(0, 1 − k/5)`
+`ann_due_prem_fut(t)/tariff_annuity` falls roughly linearly over `m` years while `max(0, 1 − k/5)`
 reaches zero after five, so `res_min_pp(t) ≥ res_zill_pp(t)` at every duration on a long *gezillmert*
 contract, with equality only at durations 0 and `m`. **A model publishing only the Zillmer reserve as
 the surrender value understates it at essentially every duration; one publishing only the floor loses
@@ -685,7 +685,7 @@ on every model point.
 | `check_surplus_roll_fwd()` | The active surplus vehicle's ledger closes, per **policy year**: `av_sur_pp(k+1) == av_sur_pp(k)·(1 + a(k)) + C(k)` under `ansammlung`, the bonus-purchase identity under `bonus`, and `prem_offset_pp(k) == min(prem_charged_pp(k), C(k−1))` under `beitragsverrechnung`, with `C(k−1)` read as zero at `k = k_start` |
 | `check_surr_floor()` | § 169 Abs. 3, per **policy year**: `res_guar_pp(k) ≥ res_zill_pp(k+1)`, `≥ res_min_pp(k+1)` and `≥ 0`, and the *Rückkaufswert* at that year's anniversary `surr_value_pp(12k + 11) ≥ 0` |
 | `check_surr_nonneg()` | The *Rückkaufswert* is non-negative in **every month**. Added with the monthly grid, which quotes one in the eleven months of each policy year the annual grid never priced — months paid on the **last** anniversary's § 169 value, which is a different and smaller number |
-| `check_equivalence()` | The first-order pricing equivalence closes: `B·(1 − β)·ann_due_prem_1st − α·BS == pv_benefit_1st + γ·SE·ann_due_term_1st` |
+| `check_equivalence()` | The first-order pricing equivalence closes: `B·(1 − β)·tariff_annuity − α·BS == tariff_benefit_pv + γ·SE·ann_due_term_1st` |
 | `check_rechnungszins_cap()`, `check_zillmer_cap()` | The two DeckRV cohort ceilings: `rechnungszins ≤ hoechstrechnungszins(issue_year)` under § 2 [REG-R14] [REG-R15], and `alpha_rate ≤ hoechstzillmersatz(issue_year)` with `alpha_cost ≤ hoechstzillmersatz · beitragssumme` under § 4 [R7] [REG-R16] |
 
 The last two are parameter invariants rather than roll-forward identities, and they live here rather
@@ -707,7 +707,7 @@ year and is what the frame publishes.
 3. **Apply the *Beitragsverrechnung* offset**, where elected: last year's declared surplus reduces this
    year's *Zahlbeitrag*, floored at zero. That fixes the year's annual `prem_paid_pp(k)`.
 4. **Roll the guaranteed *Deckungskapital* forward** one year on the first-order basis — interest at
-   `rechnungszins`, mortality release at the unisex tariff rate `mort_rate_at_age(x(k))` — to
+   `rechnungszins`, mortality release at the unisex tariff rate `mort_rate_tariff_at_age(x(k))` — to
    `res_pp_at(k, "AFT_INT")`, the closing guaranteed reserve. This is the **allocation-date**
    *Deckungskapital*.
 5. **Declare and credit the surplus at the anniversary**: `z(k) = max(0, d(k) − i₁)`, base
@@ -841,7 +841,7 @@ a test in `tests/test_kapitallebensversicherung_de.py`.
     a death benefit wants mortality assumed **higher** than expected, a survival benefit **lower**
     [REG-R47] [REG-R48]. The model uses one first-order table for both and says so; assert that the
     single table is in fact used for both legs, so the compromise stays visible.
-14. **Crossing the first- and second-order bases.** `mort_rate_at_age` prices and reserves, on the
+14. **Crossing the first- and second-order bases.** `mort_rate_tariff_at_age` prices and reserves, on the
     unisex blend; `mort_rate_base` is this policy's own sex-specific table rate and `mort_rate`
     projects. Assert `mort_rate(t) == mort_rate_base(t) · mort_be_factor` with
     `mort_be_factor = 0.75`, that `res_pp` is invariant to `mort_be_factor`, and that `pols_death`
@@ -860,7 +860,7 @@ a test in `tests/test_kapitallebensversicherung_de.py`.
 17. **Letting `sex` into the premium.** Unisex since 21 December 2012 [REG-R34]. Assert that
     `prem_gross_pp` is identical for two otherwise-identical model points differing only in `sex`
     (points 1 and 7 both price at 2 004,0420 €), while `mort_rate` differs. This is why the pricing
-    reads `mort_rate_at_age`, the fixed unisex portfolio blend — itself **[std]** — and not
+    reads `mort_rate_tariff_at_age`, the fixed unisex portfolio blend — itself **[std]** — and not
     `mort_rate_base`, which is the policy's own row; reading one where the other belongs is silent,
     and it moved the anchor's premium by 9,15 € when it was first written that way.
 18. **Running past the *Ablauf*, or letting a final-year surrender collide with the maturity.**
@@ -932,7 +932,7 @@ rate table is public, for any carrier** (gap 16).
 Mortality `mort_rate_1st(M, x) = 0.00022 + B · 1.10^x`, `B` fixed by the anchor
 `mort_rate_1st(M, 37) = 0.001200` exactly **[std]**, standing in for **DAV 2008 T**, which is not
 public and is not shipped [R14] [REG-R47] [REG-R48]; the tariff prices and reserves on the **unisex
-blend** `mort_rate_at_age(37) = ½ · 0.001200 + ½ · 0.000896288505 = 0.001048144253` **[std]**
+blend** `mort_rate_tariff_at_age(37) = ½ · 0.001200 + ½ · 0.000896288505 = 0.001048144253` **[std]**
 [REG-R34], and the anchor cell's own decrement is `mort_rate(0) = 0.001200 × 0.75 = 0.000900`. *Zillmersatz* `alpha_rate = 25 ‰` of the
 *Beitragssumme* — the § 4 DeckRV ceiling [R7] [REG-R16], the level **[std]**. Premium loading
 `beta_rate = 3.0%` of the *Bruttobeitrag* over the *Beitragszahlungsdauer* — the form is the one the
@@ -981,7 +981,7 @@ All amounts in euros; `pols_if` to six decimals, cash flows and balances to the 
 **The derived tariff.** The equivalence gives a *Bruttobeitrag* of **2 004,04 €** a year, a
 *Beitragssumme* of **50 101,05 €**, `alpha_cost` **1 252,53 €**, `prem_net_level_pp`
 **1 811,15 €** and `prem_zill_pp` **1 868,92 €**, on `pv_death_1st` = 3 611,698493 €,
-`pv_maturity_1st` = 35 655,282574 € and `ann_due_prem_1st` = `ann_due_term_1st` = 21,680698 —
+`pv_maturity_1st` = 35 655,282574 € and `tariff_annuity` = `ann_due_term_1st` = 21,680698 —
 the two annuities coinciding because the *Beitragszahlungsdauer* is the whole
 *Versicherungsdauer*.
 
@@ -1096,8 +1096,8 @@ Each rebuilds a cell of the tables above a **different way**, in arithmetic a re
 on a calculator. None of them re-runs the model's own path to the number.
 
 **1. The *Bruttobeitrag*, from the equivalence.** The premium is not an input; it is the
-solution of `B (1 − β) ä_m − α B m = pv_benefit_1st + γ SE ä_n`. Numerator:
-`pv_benefit_1st` = 3 611,698493 + 35 655,282574 = **39 266,981067**, plus
+solution of `B (1 − β) ä_m − α B m = tariff_benefit_pv + γ SE ä_n`. Numerator:
+`tariff_benefit_pv` = 3 611,698493 + 35 655,282574 = **39 266,981067**, plus
 `γ SE ä_n` = 0,0015 × 50 000 × 21,680698 = **1 626,052368**, giving **40 893,033435**.
 Denominator: 0,97 × 21,680698 = 21,030277, less 0,025 × 25 = 0,625, giving **20,405277**.
 Then 40 893,033435 ÷ 20,405277 = **2 004,0420 €**, the table's *Bruttobeitrag*. The two
@@ -1153,7 +1153,7 @@ policy year 12, 1 353,591433 − 78,012539 − 0 − 876,440599 − 40,954555 �
 Model point 2 is the anchor cell with `prem_term` changed from 25 to 1 and nothing else, so it
 isolates the second premium form. The single premium is **43 273,05 €**; the *Beitragssumme* is
 that same amount, so the 25 ‰ *Zillmersatz* buys only 1 081,83 € of zillmered cost against
-1 252,53 € on the level-premium form, and `ann_due_prem_1st` collapses to exactly 1.
+1 252,53 € on the level-premium form, and `tariff_annuity` collapses to exactly 1.
 
 | policy year | pols_if | premiums | claims_death | claims_maturity | claims_lapse | expenses | commissions | net_cf |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -1248,7 +1248,7 @@ corrected, rather than the table being fitted to the prose.
 
 1. **`q₁` named two different quantities and the notation table conflated them.** The tariff must be
    unisex, so what *prices and reserves* is a fixed portfolio blend of the two table rows —
-   `mort_rate_at_age(x)`, ½ / ½ **[std]** — while the *decrement* is the policy's own sex-specific
+   `mort_rate_tariff_at_age(x)`, ½ / ½ **[std]** — while the *decrement* is the policy's own sex-specific
    rate `mort_rate_base(t)`, scaled by `mort_be_factor`. Pricing off the policy's own row made
    `prem_gross_pp` differ between model points 1 and 7, which is pitfall 17 exactly.
 2. **`check_res_roll_fwd()`'s identity carries the *Risikozuschlag*.** Because `rating_factor` loads

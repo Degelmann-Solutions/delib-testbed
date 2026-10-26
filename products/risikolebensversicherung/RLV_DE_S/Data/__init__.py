@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The six input CSVs are read here, **once per model**, and referenced from
+The seven input CSVs are read here, **once per model**, and referenced from
 :mod:`~.RLV_DE_S.Projection` as ``data``. :mod:`~.RLV_DE_S.Projection` is parameterized
 by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells
 cache; if the readers lived there, every model point would re-read every file. Holding
@@ -36,6 +36,7 @@ benefit_schedule_file     benefit_schedule()            benefit_schedule.csv
 nvg_schedule_file         nvg_schedule()                nvg_schedule.csv
 lapse_file                lapse_table()                 lapse_table.csv
 freq_loading_file         freq_loading_table()          freq_loading_table.csv
+param_file                param_table()                 param_table.csv
 ========================  ============================  ==========================
 
 **Every file but the model point table carries a per-row ``provenance`` column.** That is
@@ -152,7 +153,7 @@ def mort_table():
     Gompertz proxy standing in for DAV 2008 T, which is proprietary and is cited by name
     rather than shipped; see the Space docstring for the three anchors a replacement must
     preserve.  The table is *second order* — a best estimate for medically selected lives.
-    The first-order tariff rate is built from it in ``Projection.mort_rate_tar`` by taking
+    The first-order tariff rate is built from it in ``Projection.mort_rate_tariff`` by taking
     the unisex blend and applying the *Sicherheitszuschlag*, so there is exactly one
     unsourced mortality level in the model rather than two stacked on each other.
 
@@ -207,5 +208,7 @@ nvg_schedule_file = "nvg_schedule.csv"
 lapse_file = "lapse_table.csv"
 
 freq_loading_file = "freq_loading_table.csv"
+
+param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

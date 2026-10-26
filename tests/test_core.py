@@ -18,6 +18,10 @@
   its table rate times 0.75; an annual certainty falls in the anniversary month (Basis and RV
   deaths at the terminal age, KLV's failed *Beitragsfreistellung*); FRV splits mortality
   linearly; Index and RLV close the lapse in the final policy year without reading the table.
+- The policy counts: RLV and BU read their count from the model point; RLV opens at it; RLV and
+  Index close at exactly zero; the end-of-month count is the next month's opening count and
+  an unknown timing is rejected; the survivors mature in the last month; KLV's lapses are
+  taken from the survivors of the month's deaths.
 """
 from __future__ import annotations
 

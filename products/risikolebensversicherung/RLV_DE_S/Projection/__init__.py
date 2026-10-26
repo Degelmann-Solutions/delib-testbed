@@ -821,7 +821,17 @@ def lapse_factor(t):
     """The factor on the table lapse rate: 0 through the final policy year, else the shock.
 
     ``duration(t) >= proj_len_y() - 1`` closes the lapse, where cover expires; elsewhere it
-    is :func:`shock_lapse_factor`, 1.0 in the base run.  See :func:`lapse_rate`.
+    is :func:`shock_lapse_factor`, 1.0 in the base run.
+
+    The end of the final year is the moment cover expires, so a lapse and an expiry are then
+    the same event paying the same nothing, and the whole surviving cohort is booked through
+    :func:`pols_maturity` instead.  The zero covers the **year** and not merely its last
+    month, because that is what the annual-step model this replaced said of it: zeroing only
+    the last month would leave eleven months of 3 % lapse inside the final year and move the
+    expiring cohort away from the notes' own figure.  No cash flow moves either way — the
+    convention only decides how the closure identity divides between lapses and expiries —
+    but it is load-bearing for that identity, and putting it here rather than in the table
+    keeps the assumption and the convention readable apart.
 
     Override reason: the lapse is zero through the whole final policy year, where cover
     expires, and loaded by the premium-shock multiplier elsewhere,

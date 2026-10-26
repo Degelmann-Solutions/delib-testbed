@@ -1106,7 +1106,16 @@ def lapse_factor(t):
     """The factor on the table surrender rate: 0 through the whole final policy year, else 1.
 
     ``duration(t) == proj_len_y() - 1`` closes the lapse: that year ends at *Rentenbeginn*,
-    and the whole surviving cohort is booked as a maturity.  See :func:`lapse_rate`.
+    and the whole surviving cohort is booked as a maturity.
+
+    Unlike a term product, where the two paid the same nothing, **here they pay different
+    amounts** — a surrender carries the *Stornoabzug* and forfeits the running *Indexjahr*,
+    a maturity carries neither and takes the *Beitragsgarantie* floor — so this convention
+    moves real money and is a modelling decision rather than bookkeeping.  It is the
+    library's convention, shared with ``KLV_DE_S`` and ``RLV_DE_S``, and the monthly grid
+    does **not** change it: a within-final-year surrender is now expressible, but no source
+    establishes one, and the zero keeps the final-year cohort a single population with a
+    single benefit.
 
     Override reason: the surrender rate is zero through the whole final policy year, which
     ends at *Rentenbeginn*, products/indexpolice/technical-notes.md:566

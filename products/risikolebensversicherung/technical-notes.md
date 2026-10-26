@@ -749,7 +749,7 @@ run every month.
    at death" means on a grid with premiums in advance **[std]**, and applying a second `(1 − q₂ᵐ)`
    factor to `premiums(t)` charges the rule twice (pitfall 11).
 8. **End of month — lapse.** `pols_lapse(t) = l(t)·(1 − q₂ᵐ(t))·wᵐ(t)`; `claims(t,"LAPSE") = 0`.
-   Through the whole **final policy year**, `duration(t) ≥ n − 1`, `w` and hence `wᵐ` are 0 **[std]**.
+   Through the whole **final policy year**, `duration(t) ≥ n − 1`, `w` and hence `wᵐ` are 0 **[std]**; elsewhere `w` is the table rate times the premium-shock multiplier `M_shock(t)`.
 9. **End of month — expiry.** At `t = 12n − 1` only,
    `pols_maturity(12n − 1) = l(12n − 1)·(1 − q₂ᵐ(12n − 1))`; `claims(12n − 1,"MATURITY") = 0`.
 10. Roll forward `l(t+1)` and form `net_cf(t)`.

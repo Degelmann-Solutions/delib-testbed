@@ -71,7 +71,6 @@ benefit_schedule_file     data.benefit_schedule()            benefit_schedule.cs
 nvg_schedule_file         data.nvg_schedule()                nvg_schedule.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
-param_file                data.param_table()                 param_table.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -406,7 +405,7 @@ def smoker_codes():
     expected to claim more.
 
     Override reason: the product codes a smoker as ``R`` (*Raucher*), as its
-    ``mort_table.csv`` does, products/risikolebensversicherung/technical-notes.md:163
+    ``mort_table.csv`` does, products/risikolebensversicherung/technical-notes.md:162
     """
     return ("N", "R")
 
@@ -938,15 +937,6 @@ def lapse_cum(t):
 
 # ==========================================================================
 # Pricing: the Bruttobeitrag by first-order equivalence, struck once at issue
-
-
-def rechnungszins():
-    """i: the *Rechnungszins*, 1,00 % a year, from *param_table.csv*.
-
-    Override reason: the whole book is priced at one rate, a tariff parameter in
-    *param_table.csv* rather than a model-point column, products/risikolebensversicherung/technical-notes.md:929
-    """
-    return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
 
 
 def tariff_benefit_pv():

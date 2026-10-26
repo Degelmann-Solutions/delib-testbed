@@ -79,13 +79,13 @@ The remaining tables are standardizations of a different kind: ``lapse_table.csv
 ``surrender_table.csv`` encode a shape argued from the *Zillmerung* and the § 169 VVG
 five-year spread rather than from data — no lapse rate and no *Rückkaufswert* for a German
 *Pflegerente* at any duration was established — and ``param_table.csv`` holds the scalar
-parameters by ``item``. Its first thirteen rows are the bases and conventions: the
-*Rechnungszins*, the terminal age ``omega_age``, the unisex mix ``unisex_mix_male``, the
+parameters by ``item``. Its first twelve rows are the bases and conventions: the
+terminal age ``omega_age``, the unisex mix ``unisex_mix_male``, the
 recovery-damping shape ``rec_age_ref`` / ``rec_age_decay``, the ``inc_cap`` shape device,
 the *Beitragssumme* convention ``beitragssumme_cap_age``, the check tolerance
 ``roll_fwd_tol`` and the five first-order prudence margins ``inc_margin``, ``det_margin``,
-``rec_margin``, ``care_mort_margin`` and ``act_mort_margin``; only the *Rechnungszins* is
-cited. The last five rows are the expense assumptions with their ``unit``:
+``rec_margin``, ``care_mort_margin`` and ``act_mort_margin``, none of them cited; the
+*Rechnungszins* is a model-point column. The last five rows are the expense assumptions with their ``unit``:
 ``acq_permille`` (‰ of *Beitragssumme*, charged once at ``t = 0``), ``admin_prem_pct``
 (fraction of each *Beitrag* collected), ``admin_mth_pp`` (EUR per policy in force per month
 at ``t = 0`` prices), ``claim_expense_pp`` (EUR per annuity payment made) and

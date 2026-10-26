@@ -136,19 +136,18 @@ carries a per-row `provenance` column**, which is delib's second ruling and is m
 
 | File | Index columns | Value columns | Provenance |
 |---|---|---|---|
-| `model_point_table.csv` | `point_id` | the 18 model-point attributes below | **exempt** — a model point is a configuration, not an assumption |
+| `model_point_table.csv` | `point_id` | the 19 model-point attributes below | **exempt** — a model point is a configuration, not an assumption |
 | `mort_table.csv` | `table_id`, `sex`, `smoker`, `age` | `mort_rate` (second-order annual death rate) | per row |
 | `benefit_schedule.csv` | `schedule_id`, `policy_year` | `benefit_factor` | per row |
 | `nvg_schedule.csv` | `nvg_id`, `policy_year` | `sum_uplift` (cumulative multiplier on the sum insured) | per row |
 | `lapse_table.csv` | `policy_year` | `lapse_rate` | per row |
 | `freq_loading_table.csv` | `prem_freq` | `instalments`, `prem_freq_load` | per row |
-| `param_table.csv` | `item` | `value` (`rechnungszins`) | per row |
 
-Seven files, no orphans: the conventions suite asserts that every CSV beside the model backs a
+Six files, no orphans: the conventions suite asserts that every CSV beside the model backs a
 filename Reference in `Data` and that the set read by a full sweep is exactly the set registered in
 `tests/de_registry.py`. Scalar assumptions are **References on `Projection`**, not rows in a table,
 following `TradLife_A`; their values and tags are the assumption tables below. The exceptions are
-`rechnungszins`, a row of `param_table.csv` since phase 3, read by the common core's loader, and `mort_be_factor`, the core's neutral 1.00.
+`rechnungszins`, a model-point column since phase 3, and `mort_be_factor`, the core's neutral 1.00.
 
 ---
 
@@ -175,6 +174,7 @@ following `TradLife_A`; their values and tags are the assumption tables below. T
 | `rating_factor` | float | *Risikozuschlag*: a multiplier on the **mortality basis**, both orders. 1.00 standard | 11 |
 | `mort_table_id` | str | Key into `mort_table.csv`; one table shipped, `dav2008t_proxy` | all |
 | `duration_init` | int | Completed policy years at the valuation date; `0` for new business | 8 |
+| `rechnungszins` | float | *Rechnungszins* of the contract, fixed at conclusion for the whole term (DeckRV § 2 Abs. 2); 1,00 % on every shipped point, the DeckRV *Höchstzinssatz* adopted as the rate; a retrieved carrier prices its term tariff at 0,25 % instead [R10] [REG-R14] [REG-R15] [S3]; used only in the premium equivalence and the first-order reserve | all |
 | `issue_date` | date | Reporting only; the model runs on integer durations | none |
 
 Three of these are worth a sentence each. **`sex` is carried and must not be priced on**: art. 5(2)
@@ -926,7 +926,7 @@ frame summed into policy years by `result_cf_annual()` — is the **entire** pro
 `mort_be_factor = 1.00` **[std]**. *Tariff mortality*: the unisex 50/50 blend
 `0.00030 × 1.095^(x − 30)` **[std]** loaded by `1 + m` with `sicherheitszuschlag_m = 1.25`
 **[std]**, and `sex_mix_male = 0.50` **[std]** [R13] [REG-R34]. *Interest*:
-`rechnungszins = 1,00 %`, one rate for every model point, a tariff parameter in `param_table.csv` and not a per-contract model-point column — the DeckRV ***Höchstzinssatz***, a **ceiling the model adopts as the
+`rechnungszins = 1,00 %`, a model-point column fixed at conclusion for the whole term (DeckRV § 2 Abs. 2), 1,00 % on every shipped point — the DeckRV ***Höchstzinssatz***, a **ceiling the model adopts as the
 rate**; a retrieved carrier prices its term tariff at 0,25 % instead **[R10] [REG-R14] [REG-R15]
 [S3]** — used only in the premium equivalence and the first-order reserve and **never** to discount
 a published cash flow. *Loadings*: `zillmer_rate = 0.025` of the *Beitragssumme* at the

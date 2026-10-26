@@ -118,6 +118,7 @@ German ones, and each now carries a document that was read.
 | `wiedereingliederung_months` | int | *Wiedereingliederungshilfe*, in monthly *Renten*; 0 = off | all at 6; 12 at 0 |
 | `duration_mth_init` | int | Elapsed policy months at `t = 0`; 0 for new business | 6 (180), 7 (200) |
 | `claim_duration_init` | int | Months since onset at `t = 0`, for a `leistung` point | 7 (8) |
+| `rechnungszins` | float p.a. | *Rechnungszins*, the *Höchstrechnungszins* of 1,00 %: DeckRV § 2 Abs. 1 fixes it at 1 Prozent and § 2 Abs. 2 makes the rate used at conclusion apply for the whole term; the 1 January 2025 commencement is [unverified] [R13] [REG-R14] [REG-R15]; used only in the equivalence | all at 0,01 |
 
 `pols_if_init()` is **1.0 for every model point**: the model is a per-policy probability projection,
 one model point at a time, so `pols_if(0) == 1.0` exactly and `result_cf()`'s first `pols_if` value
@@ -339,20 +340,19 @@ source supplies.
 | Commission | Not a separate line — it sits inside `acq_rate`, which is the German taxonomy | **[std]** |
 | `freq_load` — *Ratenzahlungszuschlag* | annual **1,00**; half-yearly **1,02**; quarterly **1,03**; monthly **1,05** | German market convention `[unverified]`; **[std]** |
 
-**Input files.** Eight CSVs sit beside `run.py`, read once per model by the unparameterized `Data`
+**Input files.** Seven CSVs sit beside `run.py`, read once per model by the unparameterized `Data`
 Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv` carries a
 **`provenance` column**, one tag per row, as delib's second ruling requires.
 
 | File | Index | Value columns |
 |---|---|---|
-| `model_point_table.csv` | `point_id` | the 20 model-point attributes above (no `provenance` — a model point is a configuration, not an assumption) |
+| `model_point_table.csv` | `point_id` | the 21 model-point attributes above (no `provenance` — a model point is a configuration, not an assumption) |
 | `inception_table.csv` | `age` (18 – 66) | `inc_rate`, `provenance` |
 | `claim_duration_table.csv` | `dur_year` (1 – 11, the last being ultimate) | `recov_rate`, `mort_dis_sel_factor`, `provenance` |
 | `mortality_table.csv` | `age` (18 – 70) | `mort_rate_actv`, `mort_rate_dis`, `provenance` |
 | `occupation_table.csv` | `berufsgruppe` (BG1 – BG5) | `occ_factor`, `label`, `provenance` |
 | `lapse_table.csv` | `policy_year` (1 – 6, the last being ultimate) | `lapse_rate`, `provenance` |
 | `freq_loading_table.csv` | `prem_mode` | `prem_mode_months`, `freq_load`, `provenance` |
-| `param_table.csv` | `item` | `value` (`rechnungszins`), `provenance` |
 
 ---
 

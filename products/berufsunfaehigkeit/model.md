@@ -271,7 +271,7 @@ rather than to the payment. The alternative reading is defensible and is named.
 
 ## Inputs are external files
 
-The eight input CSVs live **in this directory**, beside `run.py`, and `BU_DE_S/` holds nothing
+The seven input CSVs live **in this directory**, beside `run.py`, and `BU_DE_S/` holds nothing
 but formulas — `__init__.py`, `_system.json`, `Data/__init__.py` and `Projection/__init__.py`, no
 `_data/`, no IOSpec, no embedded values. This follows lifelib's `annuallife/TradLife_A`, which
 keeps its inputs beside the model; it is the opposite of `basiclife/BasicTerm_S`, which stores
@@ -300,7 +300,6 @@ another same-schema file and the projection follows, with no formula change.
 | `occupation_file` | `occupation_table()` | `occupation_table.csv` | The five *Berufsgruppen* with loadings and labels: BG1 1,00, BG2 1,40, BG3 2,10, BG4 3,00, BG5 4,50. **[std]**, anchored at 1,00 for office and 3,00 for the reference manual class inside the recalled 2×–4× band [S6]. Carrier classifications are **not comparable with one another** |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual *Stornoquote* by policy year 1–5, row 6 the ultimate: 4,0 / 4,0 / 3,5 / 3,0 / 2,5 / 2,0 %. **[std]**, and **low by the standards of every other delib product** — a product fact, not a modelling choice, because cover cannot be replaced once health has changed [S16]. The 30-day *Widerruf* sits inside year 1 [REG-R23] |
 | `freq_loading_file` | `freq_loading_table()` | `freq_loading_table.csv` | `prem_mode_months` (12 / 6 / 3 / 1) and the *Ratenzahlungszuschlag* `freq_load` (1,00 / 1,02 / 1,03 / 1,05). **[std]**: the ladder is the recalled German market convention and no retrieved document confirms it |
-| `param_file` | `param_table()` | `param_table.csv` | The scalar tariff parameters by `item`: `rechnungszins` 1,00 %, the *Höchstrechnungszins* [R13] [REG-R14] [REG-R15]. Added in phase 3, when the rate moved from a Reference on `Projection` into the table the common core reads |
 
 Every file but the model point table carries a **`provenance` column**, one tag per row —
 delib's second ruling, and it is machine-checked.
@@ -429,7 +428,7 @@ only the *levels* that no retrievable document supplies.
 | Monthly conversion | `p_m = 1 − (1 − p)^(1/12)` on every annual rate | One convention applied uniformly to `i`, `r`, `q^a`, `q^i` and `w` |
 | Processing order | mortality → lapse → inception; then disabled deaths → terminations; then the run-off | Taking incidence first gives `0.000073362928` against `0.000073111651` in month 0 — 0,34 %, compounding over 444 months |
 | First-order loads | 1,30 / 0,70 / 0,80 / 0,80, **no lapse** | Prudence for a disability product forks: higher incidence, lower reactivation, lower disabled and active mortality, and no anticipation of a favourable decrement |
-| `rechnungszins` | **1,00 % p.a.** | The *Höchstrechnungszins*. **The figure is sourced**: DeckRV § 2 Abs. 1 fixes it "auf 1 Prozent", and § 2 Abs. 2 makes the rate used at conclusion apply for the whole term [R13]. **The 1 January 2025 commencement is not in the consolidated text and stays `[unverified]`** [REG-R15]. Used only in the equivalence. The model prices every model point at this one rate, a tariff parameter in `param_table.csv`, not a per-contract model-point column |
+| `rechnungszins` | **1,00 % p.a.** | The *Höchstrechnungszins*. **The figure is sourced**: DeckRV § 2 Abs. 1 fixes it "auf 1 Prozent", and § 2 Abs. 2 makes the rate used at conclusion apply for the whole term [R13]. **The 1 January 2025 commencement is not in the consolidated text and stays `[unverified]`** [REG-R15]. Used only in the equivalence. A model-point column, fixed at conclusion for the whole term; every shipped point carries this rate |
 | `acq_rate` | **2,5 % of the *Beitragssumme***, once at issue | Sits **at** the § 4 DeckRV *Höchstzillmersatz*: "Der Zillmersatz darf 25 Promille der Summe aller Prämien nicht überschreiten" [R13] [REG-R16], restated by both retrieved AVB as 2,5 % of the premiums payable over the term [S1] [S6]. The ceiling is the only sourced number in the charge structure, and the level is a choice to sit at it |
 | `admin_prem_rate` | **9 % of the *Bruttobeitrag*** | A construction, and **not** because the disclosure does not exist: VVG-InfoV § 2 Abs. 1 Nr. 1 with Abs. 2 and Abs. 4 requires a German BU insurer to state the calculated acquisition costs and the administration costs in euro, and one AVB points the customer to the *Produktinformationsblatt* for them [R12] [S6]. **No PIB was obtained** [S13], so the level here is a choice. A pure risk contract does separately lack an *Effektivkosten* figure, § 2 Abs. 1 Nr. 9 confining that to contracts whose obligation is certain [S14] |
 | `admin_flat_ann` | **18,00 € p.a.**, charged 1/12 monthly, **uninflated** | A German *Verwaltungskostenzuschlag* is fixed in the tariff at conclusion |

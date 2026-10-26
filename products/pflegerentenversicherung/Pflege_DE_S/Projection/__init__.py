@@ -467,22 +467,6 @@ def pols_if_init():
     return float(model_point()["pols_if_init"])
 
 
-def rechnungszins():
-    """i: the technical interest rate, 1,00 % a year, from *param_table.csv*.
-
-    The *Höchstrechnungszins* of the DeckRV for new business from 1 January 2025, which
-    attaches to the cohort at issue and is then locked for the life of the contract.
-    **This is the one place a discount rate appears in the model**, and it is used only by
-    the pricing engine: the projection publishes undiscounted cash flows.  It is also the
-    single most leveraged pricing assumption here, because a *Pflegerente*'s benefits fall
-    on average some thirty-five years after issue.
-
-    Override reason: the whole book is priced at one rate, a tariff parameter in
-    *param_table.csv* rather than a model-point column, products/pflegerentenversicherung/technical-notes.md:232
-    """
-    return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
-
-
 def t_start():
     """The month the frame opens at, ``duration_mth_init()``; 0 for new business.
 
@@ -1668,7 +1652,7 @@ def tariff_annuity():
 
     Override reason: the premium is monthly, so the annuity sums the premium months on the
     multi-state tariff ledger ``tar_pols_prem`` in units of the monthly premium, not an
-    annual annuity-due, products/pflegerentenversicherung/technical-notes.md:617
+    annual annuity-due, products/pflegerentenversicherung/technical-notes.md:618
     """
     m = prem_mode_months()
     mult = m if m > 0 else 1

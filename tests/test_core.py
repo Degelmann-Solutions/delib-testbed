@@ -11,7 +11,7 @@
 - The time axis: Basis and Riester offset every clock cell by ``clock_offset_mth``, KLV
   counts from issue; RLV's derived ``age`` and ``policy_year`` follow the inception clock, BU's
   ``duration`` floors them before inception, Sofort's ``age`` reads the second life.
-- The tariff basis: KLV reads its rate from the model point, RLV from ``param_table.csv``;
+- The tariff basis: KLV, RLV, BU and Pflege read their rate from the model point;
   the monthly discount factor equals the annual one on a year start; the tariff
   survivorship is 1 at issue; the net level premium is the benefit value over the annuity.
 """
@@ -361,13 +361,13 @@ CORE_CELLS = {
                           "riester_rente": "derived",
                           "sofortrente": "derived"},
         "rechnungszins": {"basisrente": "derived",
-                          "berufsunfaehigkeit": "override",
+                          "berufsunfaehigkeit": "derived",
                           "indexpolice": "derived",
                           "kapitallebensversicherung": "derived",
                           "klassische_rentenversicherung": "derived",
-                          "pflegerentenversicherung": "override",
+                          "pflegerentenversicherung": "derived",
                           "riester_rente": "derived",
-                          "risikolebensversicherung": "override",
+                          "risikolebensversicherung": "derived",
                           "sofortrente": "derived"},
         "disc_factor_mth": {"berufsunfaehigkeit": "derived",
                             "pflegerentenversicherung": "derived"},
@@ -549,6 +549,12 @@ def test_pflege_param_table_holds_the_two_merged_tables(product_models):
     merged = model.Data.param_table()
     basis = upstream_table(product, "basis_table.csv", index_col="param")
     expense = upstream_table(product, "expense_table.csv", index_col="item")
+    # The Rechnungszins moved from the table to the model point (a contract attribute).
+    moved = ["rechnungszins"]
+    points = model.Data.model_point_table()
+    for item in moved:
+        assert (points[item] == basis.at[item, "value"]).all(), item
+    basis = basis.drop(moved)
     assert list(merged.columns) == ["value", "unit", "provenance"]
     assert list(merged.index) == list(basis.index) + list(expense.index)
     for item in basis.index:
@@ -713,13 +719,15 @@ def test_klv_in_force_point_reads_its_own_rechnungszins(product_models):
                 == float(points.at[point_id, "rechnungszins"])), point_id
 
 
-def test_rlv_rechnungszins_is_the_book_rate_from_param_table(product_models):
-    model = product_models("risikolebensversicherung")
+@pytest.mark.parametrize("product", ["berufsunfaehigkeit", "pflegerentenversicherung",
+                                     "risikolebensversicherung"])
+def test_rechnungszins_is_read_from_the_model_point(product, product_models):
+    model = product_models(product)
     projection = model.Projection
-    assert projection.rechnungszins._is_defined()
-    assert model.Data.param_table.formula is model.CoreData.param_table.formula
-    assert model.Data.param_table().at["rechnungszins", "value"] == 0.01
-    assert projection[1].rechnungszins() == 0.01
+    assert projection.rechnungszins._is_derived()
+    points = model.Data.model_point_table()
+    for point_id in points.index:
+        assert projection[point_id].rechnungszins() == 0.01, point_id
 
 
 def test_pflege_monthly_discount_equals_the_annual_one_on_a_year_start(product_models):

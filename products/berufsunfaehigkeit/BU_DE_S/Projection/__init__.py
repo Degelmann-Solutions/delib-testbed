@@ -47,7 +47,6 @@ mort_file                 data.mort_table()                  mortality_table.csv
 occupation_file           data.occupation_table()            occupation_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
-param_file                data.param_table()                 param_table.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -950,15 +949,6 @@ def mort_rate_dis_first_mth_year(s):
     q = mort_rate_dis_at_age(age_first(s)) * mort_dis_load_first     # noqa: F821
     return tuple(1.0 - (1.0 - q * f) ** (1.0 / 12.0)
                  for f in mort_dis_sel_factors())
-
-
-def rechnungszins():
-    """i: the *Rechnungszins*, 1,00 % a year, from *param_table.csv*.
-
-    Override reason: the whole book is priced at one rate, a tariff parameter in
-    *param_table.csv* rather than a model-point column, products/berufsunfaehigkeit/model.md:432
-    """
-    return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
 
 
 # --- benefit and premium amounts ---

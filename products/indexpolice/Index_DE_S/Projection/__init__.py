@@ -1175,18 +1175,6 @@ def pols_if_at(t, timing):
     raise ValueError("invalid timing")
 
 
-def pols_maturity(t):
-    """The cohort reaching *Rentenbeginn*: the survivors of both decrements at the last month.
-
-    Zero in every other month.  The name is the library's — a count whose cover ends
-    at the scheduled end of the contract, whether or not anything is paid for it — and here
-    something very much is paid for it.
-    """
-    if t != proj_len() - 1:
-        return 0.0
-    return pols_if_at(t, "AFT_LAPSE")
-
-
 # --- benefits ----------------------------------------------------------------
 
 def db_pp(k):

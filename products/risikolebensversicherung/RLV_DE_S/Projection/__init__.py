@@ -1165,25 +1165,6 @@ def pols_if(t):
             - pols_maturity(t - 1))
 
 
-def pols_maturity(t):
-    """The expiring survivors, at the **last projected month** ``t = proj_len() - 1``.
-
-    ``l(proj_len()-1)(1 - q2m(proj_len()-1))``, and zero in every month before it: the
-    *Versicherungsdauer* runs to the end of the last month of the last policy year, and
-    that is the single instant cover ceases.  Lapse is already zero through the whole of
-    that policy year, so the survivors of the twelve months' mortality all leave here.
-
-    Cover simply ends.  **Nothing is paid** — there is no *Erlebensfallleistung*, no
-    maturity value and no return of premium — so ``claims(t, "MATURITY")`` is zero and the
-    count is published only because the closure identity needs it.  The name is the
-    library's: ``pols_maturity`` is the count whose cover ends at the scheduled end of the
-    contract, whether or not anything is paid for it, and ``pols_expiry`` is retired.
-    """
-    if t != proj_len() - 1:
-        return 0.0
-    return pols_if(t) * (1.0 - mort_rate_mth(t))
-
-
 # ==========================================================================
 # Cash flows
 

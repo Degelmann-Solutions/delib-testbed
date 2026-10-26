@@ -1403,18 +1403,6 @@ def pols_if(t):
     return pols_if_at(t - 1, "AFT_DEATH") * (1.0 - lapse_rate_mth(t - 1))
 
 
-def pols_maturity(t):
-    """Policies reaching the *Ablauf* at the end of the last projected month; zero before it.
-
-    ``pols_if(N) * (1 - mort_rate_mth(N))`` at ``N = proj_len() - 1`` - the survivors of that
-    month's mortality, all of them, because :func:`lapse_rate` is zero through the whole final
-    policy year.  They take the *Erlebensfallleistung*.
-    """
-    if t != proj_len() - 1:
-        return 0.0
-    return pols_if_at(t, "AFT_DEATH")
-
-
 # --- benefits --------------------------------------------------------------
 
 def av_sur_close_pp(t):

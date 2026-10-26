@@ -1350,20 +1350,6 @@ def pols_if_at(t, timing):
         raise ValueError("invalid timing")
 
 
-def pols_maturity(t):
-    """Policies reaching *Rentenbeginn*: zero except in the last projected month.
-
-    At ``t = proj_len() - 1`` it is the whole surviving cohort,
-    ``pols_if_at(t, "AFT_DECR")``, since the lapse rate is zero there.  Named
-    ``pols_maturity`` and not ``pols_expiry`` per the library's register: it is the count
-    whose cover ends at the scheduled end of the contract, and what is paid for it is
-    ``claims(t, "MATURITY")``.
-    """
-    if t < proj_len() - 1:
-        return 0.0
-    return pols_if_at(t, "AFT_DECR")
-
-
 # ----------------------------------------  cash flows
 
 def premiums(t):

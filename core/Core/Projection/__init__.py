@@ -412,6 +412,20 @@ def pols_lapse(t):
     return pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)            # noqa: F821
 
 
+def pols_maturity(t):
+    """The policies whose term ends with the last projected month, ``t = proj_len() - 1``.
+
+    There the survivors of both decrements, ``pols_if_at(t, "AFT_DEATH") x (1 -
+    lapse_rate_mth(t))``, and 0 in every month before; where the lapse is closed in the
+    final month, the factor is exactly 1.  The count whose cover ends at the scheduled end
+    of the contract, whether or not anything is paid for it.
+    """
+    if t != proj_len() - 1:                                          # noqa: F821
+        return 0.0
+    return (pols_if_at(t, "AFT_DEATH")                               # noqa: F821
+            * (1.0 - lapse_rate_mth(t)))                             # noqa: F821
+
+
 def rechnungszins():
     """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
 

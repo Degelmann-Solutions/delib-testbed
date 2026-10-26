@@ -585,6 +585,10 @@ CORE_CELLS = {
                        "pflegerentenversicherung": "override",
                        "riester_rente": "derived",
                        "risikolebensversicherung": "derived"},
+        "pols_maturity": {"fondsgebundene_rentenversicherung": "derived",
+                          "indexpolice": "derived",
+                          "kapitallebensversicherung": "derived",
+                          "risikolebensversicherung": "derived"},
     },
 }
 
@@ -1102,3 +1106,22 @@ def test_klv_lapses_are_taken_from_the_survivors_of_the_deaths(product_models):
                 == item.pols_if_at(t, "AFT_DEATH") * item.lapse_rate_mth(t)), t
         assert (item.pols_if_at(t, "AFT_DEATH")
                 == item.pols_if(t) * (1.0 - item.mort_rate_mth(t))), t
+
+
+
+@pytest.mark.parametrize("product", ["fondsgebundene_rentenversicherung", "indexpolice",
+                                     "kapitallebensversicherung", "risikolebensversicherung"])
+def test_the_survivors_of_both_decrements_mature_in_the_last_month(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.pols_maturity._is_derived()
+    item = projection[model.Data.model_point_table().index[0]]
+    last = item.proj_len() - 1
+    for t in range(item.t_start(), last):
+        assert item.pols_maturity(t) == 0.0, t
+    # The lapse is closed in the last month, so the survivors of both decrements are the
+    # survivors of the month's deaths.
+    assert item.lapse_rate_mth(last) == 0.0
+    assert item.pols_lapse(last) == 0.0
+    assert item.pols_maturity(last) > 0.0
+    assert item.pols_maturity(last) == item.pols_if_at(last, "AFT_DEATH")

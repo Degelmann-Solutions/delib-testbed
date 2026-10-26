@@ -407,15 +407,6 @@ def smoker_codes():
     return ("N", "R")
 
 
-def sum_assured():
-    """S0: the initial *Versicherungssumme*, in euros.
-
-    The sum actually at risk in period ``t`` is :func:`benefit_pp`, which applies the
-    schedule and any *Nachversicherungsgarantie* uplift on top of this.
-    """
-    return float(model_point()["sum_assured"])
-
-
 def premium_form():
     """The premium form: ``laufend`` or ``einmal``.
 

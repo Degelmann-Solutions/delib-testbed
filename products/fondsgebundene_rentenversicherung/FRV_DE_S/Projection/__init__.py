@@ -461,17 +461,6 @@ def db_pct():
     return float(model_point()["db_pct"])
 
 
-def sum_assured():
-    """The *garantierte Mindesttodesfallleistung* used by the ``sum_assured`` death benefit.
-
-    **[std]** at 40 000 EUR on the one model point that carries it, chosen large enough
-    that the net amount at risk stays positive over a decaying paid-up fund.  This is the
-    shape that turns the contract into a savings-plus-term-cover package and the one whose
-    risk charge grows without limit as the fund falls.
-    """
-    return float(model_point()["sum_assured"])
-
-
 def charge_id():
     """The key into ``charge_table.csv`` naming this policy's charge scale."""
     return model_point()["charge_id"]

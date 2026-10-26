@@ -416,16 +416,6 @@ def pols_if_init():
     return float(model_point()["pols_if_init"])
 
 
-def sum_assured():
-    """SE: the guaranteed *Erlebensfallleistung*, in euros - the *Versicherungssumme*.
-
-    Paid at the *Ablauf* to a survivor, plus the accumulated *Überschussguthaben*, any bonus
-    sum insured and the accrued *Schlussüberschussanteil*.  It is **not** what a paid-up
-    contract receives; see :func:`bfz_si_pp`.
-    """
-    return float(model_point()["sum_assured"])
-
-
 def death_ratio():
     """The *Todesfallleistung* as a multiple of the *Erlebensfallleistung*.
 

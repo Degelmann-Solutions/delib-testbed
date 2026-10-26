@@ -33,6 +33,11 @@ def policy_id():
     return model_point()["policy_id"]                                # noqa: F821
 
 
+def sum_assured():
+    """The sum insured at issue, from the model point's ``sum_assured`` column."""
+    return float(model_point()["sum_assured"])                       # noqa: F821
+
+
 def issue_age():
     """The age at issue of the selected model point, from its ``issue_age`` column."""
     return int(model_point()["issue_age"])                           # noqa: F821

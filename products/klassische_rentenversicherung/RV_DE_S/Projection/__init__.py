@@ -1099,7 +1099,7 @@ def mort_rate_mth(t):
 def decl_rate(k):
     """d(k): the declared *laufende Verzinsung* for the model point's scenario in year k.
 
-    Read from *decl_rate_table.csv* at ``(decl_scenario_id, calendar_year_y(k))``, clamped to
+    Read from *decl_rate_table.csv* at ``(scenario_id, calendar_year_y(k))``, clamped to
     the table's calendar range so a projection running past its last declared year holds that
     year flat.  2,55 % level on the ``base`` path, 1,50 % on ``low`` **[std]**.
 
@@ -1107,7 +1107,7 @@ def decl_rate(k):
     *laufende Zinsüberschussbeteiligung*, never a surplus on top of the guarantee.
     """
     tbl = data.decl_rate_table()                                     # noqa: F821
-    scen = model_point()["decl_scenario_id"]
+    scen = scenario_id()
     years = tbl.loc[scen].index
     y = min(max(calendar_year_y(k), int(years.min())), int(years.max()))
     return float(tbl.at[(scen, y), "decl_rate"])

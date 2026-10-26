@@ -524,11 +524,6 @@ def rentengarantie_years():
     return int(model_point()["rentengarantie_years"])
 
 
-def scenario_id():
-    """The key into *surplus_scenario.csv* naming this policy's declared-rate path."""
-    return model_point()["scenario_id"]
-
-
 # === the time axis and the two phases
 
 

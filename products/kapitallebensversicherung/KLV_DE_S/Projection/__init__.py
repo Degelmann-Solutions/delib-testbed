@@ -486,16 +486,6 @@ def surplus_use():
     return v
 
 
-def scenario_id():
-    """The key into *surplus_rate_table.csv* naming this policy's declared-rate path.
-
-    ``base``, ``low`` or ``nil``.  The declared rate is **insurer-discretionary, revisable
-    annually and capable of being zero**, so it is a scenario rather than an assumption; the
-    ``nil`` path is the sourced statement that the surplus may be zero euros, made runnable.
-    """
-    return model_point()["scenario_id"]
-
-
 def av_sur_pp_init():
     """The *Überschussguthaben* per policy carried at ``t_start()``, in euros.
 

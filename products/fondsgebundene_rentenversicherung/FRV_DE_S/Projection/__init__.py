@@ -466,11 +466,6 @@ def charge_id():
     return model_point()["charge_id"]
 
 
-def scenario_id():
-    """The key into ``fund_scenario_table.csv`` naming this policy's return path."""
-    return model_point()["scenario_id"]
-
-
 def rentenfaktor_id():
     """The key into ``rentenfaktor_table.csv`` naming this policy's conversion factors."""
     return model_point()["rentenfaktor_id"]

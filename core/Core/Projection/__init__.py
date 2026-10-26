@@ -43,6 +43,11 @@ def rating_factor():
     return float(model_point()["rating_factor"])                     # noqa: F821
 
 
+def scenario_id():
+    """The key of the model point's scenario path, from its ``scenario_id`` column."""
+    return model_point()["scenario_id"]                              # noqa: F821
+
+
 def issue_age():
     """The age at issue of the selected model point, from its ``issue_age`` column."""
     return int(model_point()["issue_age"])                           # noqa: F821

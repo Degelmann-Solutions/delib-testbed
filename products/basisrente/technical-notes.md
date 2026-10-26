@@ -178,7 +178,7 @@ of `param_table.csv` since phase 3, read by the common core's loader.
 | `buz_prem_share` | rate | Share of the **total** contribution attributable to a BUZ. Must satisfy `buz_prem_share < 0.50` [R1] | 11 (0.49, the boundary) |
 | `tariff_id` | str | Key into `charge_table.csv` | all |
 | `beh_table_id` | str | Key into `behaviour_table.csv` | all |
-| `surplus_scenario_id` | str | Key into `surplus_table.csv` | all |
+| `scenario_id` | str | Key into `surplus_table.csv` | all |
 | `rf_scenario_id` | str | Key into `rentenfaktor_table.csv` | 13 (`low`) |
 
 **There is no `surr_rate`, no `lapse_rate` and no `kapitalwahl` column**, and their absence is a
@@ -907,7 +907,7 @@ so `prem_freq_load = 1.000`; `prem_dyn_rate = 0.02`; `zuzahlung_pp = 4,000.00 �
 `rechnungszins = 0.0100`; `rentenfaktor_gtd = 28.00 €` per month per 10 000 €; `guarantee_period_y = 0`;
 `surv_annuity_rate = 0.00`, so the survivor rider is **off** and `claims_death(t) = 0` at every `t`;
 `buz_prem_share = 0.00`; `tariff_id = de_basis_std`; `beh_table_id = base`;
-`surplus_scenario_id = base`; `rf_scenario_id = base`. Hence `age(0) = 45`,
+`scenario_id = base`; `rf_scenario_id = base`. Hence `age(0) = 45`,
 `k_conv() = 67 − 45 = 22` and `t_conv() = 264`, `omega_age() = 122`,
 `proj_len_y() = 122 − 45 = 77` and `proj_len() = 924`: twenty-two
 years of *Aufschubphase* at attained ages 45 to 66, then fifty-five years of *Rentenphase* at attained

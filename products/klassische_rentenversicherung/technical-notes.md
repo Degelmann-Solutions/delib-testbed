@@ -147,7 +147,7 @@ The right-hand column names the points that exercise each attribute away from it
 | `charge_id` | str | Key into `charge_table.csv`; `zillmer_25` or the pre-2015 `zillmer_40` [REG-R16] | 6 (`zillmer_40`) |
 | `annuity_rate_guar` | EUR/month per 10 000 € | *garantierter Rentenfaktor*, fixed at inception [S8] [R24] | all (levels **[std]**) |
 | `rf_scenario_id` | str | Key into `rentenfaktor_table.csv` for the *aktueller Rentenfaktor* | 5 (`high`), 13 (`low`) |
-| `decl_scenario_id` | str | Key into `decl_rate_table.csv` for the declared *laufende Verzinsung* | 14 (`low`) |
+| `scenario_id` | str | Key into `decl_rate_table.csv` for the declared *laufende Verzinsung* | 14 (`low`) |
 | `guar_capital_pp` | EUR | Minimum guaranteed contract value at *Rentenbeginn* [S9]; 0 = not stated | 13 (60 000) |
 | `death_benefit_form` | enum {prem_refund, deckungskapital, max} | The three documented designs [S1] [R24]; `max` **[std]** [S19] | 2, 12 (`deckungskapital`); 5, 13 (`max`) |
 | `db_incl_surplus` | int 0/1 | Whether the *Ansammlungsguthaben* is added to the death benefit [R24] | 4, 12 |
@@ -942,7 +942,7 @@ Every formula here is **[std]**; nothing in the corpus calibrates any of it (gap
 seventeenth policy year — at attained age 67;
 `rechnungszins = 1,00 %`, the 2026 vintage [REG-R15]; `charge_id = zillmer_25`;
 `annuity_rate_guar = 28,00 €` per month per 10 000 €; `rf_scenario_id = base`;
-`decl_scenario_id = base`; `guar_capital_pp = 0,00 €`, so the guaranteed-contract-value floor is
+`scenario_id = base`; `guar_capital_pp = 0,00 €`, so the guaranteed-contract-value floor is
 inoperative on this cell; `death_benefit_form = prem_refund`; `db_incl_surplus = 0`;
 `rgz_years = 10`; `kapitalwahl_rate = 0,30`; `pup_year = 0`; `dynamik_rate = 0,0000`;
 `payout_system = konstant`; `av_pp_init = 0,00 €`; `av_sur_pp_init = 0,00 €`;

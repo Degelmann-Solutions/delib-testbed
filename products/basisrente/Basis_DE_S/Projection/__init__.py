@@ -1071,7 +1071,7 @@ def decl_rate(k):
     *Höchstrechnungszins* by a plausible surplus margin and graded down.
     """
     tab = data.surplus_table()                                       # noqa: F821
-    key = model_point()["surplus_scenario_id"]
+    key = scenario_id()
     tt = min(max(k, 0), int(tab.loc[key].index.max()))
     return float(tab.loc[(key, tt), "decl_rate"])
 
@@ -1327,7 +1327,7 @@ def ann_bonus_rate(k):
     Both are **[std]** independently.
     """
     tab = data.surplus_table()                                       # noqa: F821
-    key = model_point()["surplus_scenario_id"]
+    key = scenario_id()
     tt = min(max(k, 0), int(tab.loc[key].index.max()))
     return float(tab.loc[(key, tt), "ann_bonus_rate"])
 

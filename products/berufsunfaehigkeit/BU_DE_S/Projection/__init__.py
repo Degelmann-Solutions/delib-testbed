@@ -373,17 +373,6 @@ def benefit_end_age():
     return int(model_point()["benefit_end_age"])
 
 
-def karenz_months():
-    """K: the *Karenzzeit* — the agreed deferment of **payment**, in months.
-
-    Not the six-month *Prognosezeitraum*, which is part of the *definition* of
-    *Berufsunfaehigkeit*; the *Karenzzeit* defers payment on a BU already established.
-    Cohorts at duration ``z <= K`` are *berufsunfaehig*, are **not** paid, and **still
-    pay premium**, because the *Beitragsbefreiung* runs with the benefit **[std]**.
-    """
-    return int(model_point()["karenz_months"])
-
-
 def leistungsdyn_rate():
     """g_L: the *Leistungsdynamik* — annual escalation of the *BU-Rente* **in payment**.
 

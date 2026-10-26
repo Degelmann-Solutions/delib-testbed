@@ -373,21 +373,6 @@ def wartezeit_months():
     return int(model_point()["wartezeit_months"])
 
 
-def karenz_months():
-    """K: the *Karenzzeit* from onset, in months; ``0`` in the base run.
-
-    A different device from the *Wartezeit* and routinely confused with it: the
-    *Wartezeit* runs from inception and denies cover, the *Karenzzeit* runs from **onset**
-    and defers an admitted claim.  It is a clock **per onset**, not a gate on the
-    aggregate, which is why :func:`pols_karenz` carries a ledger dimension for it rather
-    than a shift on the benefit.  Where it is positive, a material share of new claimants
-    die inside the deferral — mortality is highest immediately after onset — so it removes
-    disproportionately more claims than its length suggests.  Model point 7 carries six
-    months.
-    """
-    return int(model_point()["karenz_months"])
-
-
 def leistungsdynamik():
     """d: the annual escalation of the annuity **in payment**; ``0.0`` in the base run.
 

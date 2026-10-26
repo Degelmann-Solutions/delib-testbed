@@ -48,6 +48,11 @@ def scenario_id():
     return model_point()["scenario_id"]                              # noqa: F821
 
 
+def karenz_months():
+    """K: the *Karenzzeit*, the deferment of payment from the onset of a claim, in months."""
+    return int(model_point()["karenz_months"])                       # noqa: F821
+
+
 def issue_age():
     """The age at issue of the selected model point, from its ``issue_age`` column."""
     return int(model_point()["issue_age"])                           # noqa: F821

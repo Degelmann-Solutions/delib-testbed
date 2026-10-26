@@ -227,6 +227,8 @@ CORE_CELLS = {
                         "kapitallebensversicherung": "derived",
                         "klassische_rentenversicherung": "derived",
                         "riester_rente": "derived"},
+        "karenz_months": {"berufsunfaehigkeit": "derived",
+                          "pflegerentenversicherung": "derived"},
         "issue_age": {**dict.fromkeys(MODELS, "derived"), "sofortrente": "override"},
         "sex": {"berufsunfaehigkeit": "derived",
                 "fondsgebundene_rentenversicherung": "derived",

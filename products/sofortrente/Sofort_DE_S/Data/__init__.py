@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The five input CSVs are read here, **once per model**, and referenced from
+The six input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Sofort_DE_S.Projection` as ``data``. :mod:`~.Sofort_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its
 own cells cache; if the readers lived there, every model point would re-read every file.
@@ -35,6 +35,7 @@ mort_file                     mort_table()                    mort_table.csv
 improvement_file              improvement_table()             improvement_table.csv
 surplus_scale_file            surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
+param_file                    param_table()                   param_table.csv
 ============================  ==============================  ================================
 
 Every file but ``model_point_table.csv`` carries a final ``provenance`` column, one tag
@@ -113,8 +114,8 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table():
-    """The annual death rates by basis, sex and attained age, from *mort_table.csv*.
+def mort_table_index():
+    """The index columns of *mort_table.csv*: ``basis``, ``sex`` and attained ``age``.
 
     Indexed by ``(basis, sex, age)`` with ``basis`` in ``{FIRST, SECOND}`` and ``sex`` in
     ``{M, F}``.  The unisex series the tariff is struck on is **computed** from these two
@@ -125,12 +126,9 @@ def mort_table():
     anchor is and what a replacement must preserve.
 
     Override reason: the table carries a first- and a second-order basis, keyed by
-    ``basis``, ``sex`` and ``age``, products/sofortrente/technical-notes.md, section Input
-    files
+    ``basis``, ``sex`` and ``age``, products/sofortrente/technical-notes.md:376
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file,                                     # noqa: F821
-        index_col=["basis", "sex", "age"])
+    return ["basis", "sex", "age"]
 
 
 def improvement_table():
@@ -163,19 +161,6 @@ def surplus_scale_table():
         input_dir() / surplus_scale_file, index_col="surplus_form")  # noqa: F821
 
 
-def hoechstrechnungszins_table():
-    """The statutory *Höchstrechnungszins* history, from *hoechstrechnungszins_table.csv*.
-
-    Indexed by ``year_from``, with ``year_to`` closing each band and ``max_rate`` the cap
-    in force.  A contract's cap is the one in force at its own *Vertragsbeginn* and stays
-    with it for life, so an in-force model point is checked against its vintage rather
-    than against today's rate.  The cap is an upper bound and not the tariff rate: a
-    carrier may price below it, and one in the corpus is observed doing so.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / hoechstrechnungszins_file, index_col="year_from")   # noqa: F821
-
-
 # ---------------------------------------------------------------------------
 # References
 
@@ -188,5 +173,7 @@ improvement_file = "improvement_table.csv"
 surplus_scale_file = "surplus_scale_table.csv"
 
 hoechstrechnungszins_file = "hoechstrechnungszins_table.csv"
+
+param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

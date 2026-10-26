@@ -1,0 +1,2 @@
+item,value,provenance
+mort_be_factor,0.8,"[std] [REG-R47] the step from the accumulation death table to the best estimate, below it because a first-order death table assumes mortality higher than expected; the annuity basis runs the other way"

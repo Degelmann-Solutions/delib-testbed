@@ -41,6 +41,7 @@ mort_file                     data.mort_table()                    mort_table.cs
 improvement_file              data.improvement_table()             improvement_table.csv
 surplus_scale_file            data.surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     data.hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
+param_file                    data.param_table()                   param_table.csv
 ============================  ===================================  ================================
 
 .. rubric:: Naming
@@ -58,7 +59,7 @@ Notes symbol     Cells                                 Meaning
 (none)           model_point()                         The selected model point row
 t0               t_start()                             First projected month index
 n                proj_len()                            Exclusive end of the frame, t < n
-(none)           horizon_mths(life)                    12 (omega_age - entry age)
+(none)           horizon_mths(life)                    12 (omega_age() - entry age)
 (none)           duration_mth(t)                       Months elapsed since inception
 (none)           duration(t)                           Completed policy years, t // 12
 (none)           policy_year(t)                        Contractual policy year, t // 12 + 1
@@ -69,7 +70,7 @@ SP_net           net_single_prem()                     SP (1 - alpha)
 alpha            expense_load_alpha                    Acquisition loading in the tariff
 beta             expense_load_beta                     Loading on the annuity value
 i                rechnungszins()                       Tariff Rechnungszins
-(cap)            max_tariff_int_rate()                 Hoechstrechnungszins at issue_year
+(cap)            hoechstrechnungszins()                Hoechstrechnungszins at issue_year
 m                payment_freq()                        Instalments per year
 p = 12/m         pay_period_mths()                     Months between instalments
 D                defer_mths()                          Aufschubzeit in months
@@ -230,11 +231,6 @@ _spaces = []
 
 # ---------------------------------------------------------------------------
 # Cells
-
-def policy_id():
-    """The policy identifier of the selected model point."""
-    return str(model_point()["policy_id"])
-
 
 def single_prem():
     """SP: the *Einmalbeitrag*, in euros — the contract's whole consideration.
@@ -446,11 +442,11 @@ def t_start():
 def horizon_mths(life=1):
     """``12 (omega_age - issue_age(life))``: the month at which that life's survival ends.
 
-    With ``q = 1`` at attained age 120 in every series and ``omega_age = 121``, the
+    With ``q = 1`` at attained age 120 in every series and ``omega_age() = 121``, the
     survival path reaches zero inside this horizon and stays there, so the tail months
     carry no cash flow.
     """
-    return 12 * (omega_age - issue_age(life))                        # noqa: F821
+    return 12 * (omega_age() - issue_age(life))
 
 
 def proj_len():
@@ -474,7 +470,7 @@ def proj_len():
     ``proj_len() = 672``: 672 monthly rows, ``t = 0 ... 671``.
 
     Override reason: the horizon is the longest of the annuitant's survival, the guarantee
-    period and the second life's survival, products/sofortrente/technical-notes.md:437
+    period and the second life's survival, products/sofortrente/technical-notes.md:438
     """
     n = max(horizon_mths(1), guar_end_mth())
     if surv_pct() > 0.0:
@@ -491,7 +487,7 @@ def age(t, life=1):
     internal-consistency convention rather than a contract fact.
 
     Override reason: a joint-life contract has two lives; ``life=2`` is the second life's
-    attained age, products/sofortrente/technical-notes.md:406
+    attained age, products/sofortrente/technical-notes.md:407
     """
     return issue_age(life) + t // 12
 
@@ -814,24 +810,6 @@ def refund_pv():
         n = 0 if t < fp else (t - fp) // p + 1
         total += v ** (t / 12.0) * d * max(sp - n * r, 0.0)
     return total
-
-
-def max_tariff_int_rate():
-    """The statutory *Höchstrechnungszins* in force at ``issue_year()``.
-
-    Read from *hoechstrechnungszins_table.csv* by the contract's own vintage, because a
-    German in-force book is a stack of cohorts and the cap that applied at conclusion stays
-    with the contract for life: a 2012 point sits at 1,75 %, a 2022 point at 0,25 % and a
-    2025 point at 1,00 %, the last being the first increase in about thirty years.  The two
-    mid-year steps of 1994 and 2000 are assigned **[std]** to the rate in force on
-    1 January of the split year.
-    """
-    tab = data.hoechstrechnungszins_table()                          # noqa: F821
-    y = issue_year()
-    for year_from in tab.index:
-        if int(year_from) <= y <= int(tab.loc[year_from, "year_to"]):
-            return float(tab.loc[year_from, "max_rate"])
-    raise ValueError("no Hoechstrechnungszins band covers issue_year")
 
 
 def surplus_init_pct():
@@ -1402,14 +1380,14 @@ def check_death_option_xor():
 def check_tariff_int_rate():
     """True when the tariff *Rechnungszins* is within the cap of the contract's own vintage.
 
-    ``rechnungszins() <= max_tariff_int_rate() + roll_fwd_tol``.  An **inequality**, not
+    ``rechnungszins() <= hoechstrechnungszins() + roll_fwd_tol``.  An **inequality**, not
     an equality: the *Höchstrechnungszins* binds the reserving rate and, through the VAG,
     the rate a new tariff may be priced at, but a carrier may price below it and one in the
     corpus is observed pricing a guaranteed annuity factor at 0 % while the statutory
     maximum was positive.
     """
     return bool(rechnungszins()
-                <= max_tariff_int_rate() + roll_fwd_tol)             # noqa: F821
+                <= hoechstrechnungszins() + roll_fwd_tol)             # noqa: F821
 
 
 def result_cf():
@@ -1493,7 +1471,6 @@ mix_male = 0.45
 
 mort_base_year = 2025
 
-omega_age = 121
 
 roll_fwd_tol = 1e-08
 

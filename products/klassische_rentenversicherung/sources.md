@@ -511,7 +511,7 @@ documents, and what each gave them:
 - **REG-R11** — VAG §§ 141–143: the *Verantwortlicher Aktuar* and the *Treuhänder*, who signs off a declaration.
 - **REG-R12** — VAG §§ 221–236 and Protektor: the *Sicherungsfonds*, in the product spec's counterparty section.
 - **REG-R14**, **REG-R15** — DeckRV and the *Höchstrechnungszins* history: the article-level home of the rate whose vintage stack the model carries, and the 1,00 % of the 2026 points.
-- **REG-R16** — DeckRV § 4, *Höchstzillmersätze*: the **25 ‰ / 40 ‰ ceilings** and the *Beitragssumme* base — the two `charge_id` sets and `alpha_total_pp`.
+- **REG-R16** — DeckRV § 4, *Höchstzillmersätze*: the **25 ‰ / 40 ‰ ceilings** and the *Beitragssumme* base — the two `charge_id` sets and `zillmer_amount`.
 - **REG-R17** — DeckRV § 5 Abs. 3, the *Zinszusatzreserve* and the *Korridormethode*: cited in the reserve pointers, not modelled.
 - **REG-R18**, **REG-R19** — MindZV and RfBV: the minimum allocation to the RfB and its collective part, behind the statement that a declaration is constrained rather than free.
 - **REG-R20** — LVRG 2014: the reform that lowered the *Höchstzillmersatz* to 25 ‰ and restricted the *Bewertungsreserven* share.

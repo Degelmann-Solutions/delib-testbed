@@ -83,9 +83,10 @@ model_point_file          data.model_point_table()           model_point_table.c
 mort_file                 data.mort_table()                  mort_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 surplus_rate_file         data.surplus_rate_table()          surplus_rate_table.csv
-cost_file                 data.cost_table()                  cost_table.csv
+charge_file               data.charge_table()                cost_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
 deckrv_file               data.deckrv_table()                deckrv_table.csv
+param_file                data.param_table()                 param_table.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -126,12 +127,13 @@ alpha, beta, gamma  alpha_rate(), beta_rate(),             Zillmersatz; premium 
                     gamma_rate()                           sum-insured loading
 phi                 prem_freq_load()                       Ratenzahlungszuschlag
 (none)              instalments()                          Payments a year
-(pricing)           pv_death_1st(), pv_maturity_1st(),     The equivalence's parts
-                    tariff_benefit_pv(),
-                    tariff_annuity(), ann_due_term_1st()
+(pricing)           tariff_death_pv(),                     The equivalence's parts
+                    tariff_maturity_pv(),
+                    tariff_benefit_pv(), tariff_annuity(),
+                    tariff_term_annuity()
 B                   prem_gross_pp()                        Annual Bruttobeitrag before phi
 BS                  beitragssumme()                        Beitragssumme = B x m
-A                   alpha_cost()                           Zillmered acquisition cost
+A                   zillmer_amount()                       Zillmered acquisition cost
 P^n                 prem_net_level_pp()                    Net level premium
 P^Z                 prem_zill_pp()                         Zillmer premium
 (prospective)       pv_benefit_fut(k),                     The reserve's parts
@@ -213,7 +215,7 @@ no fund to earn on, and worth saying because it looks like a bug.
 
 .. rubric:: Three reserves, and the one the customer gets
 
-:func:`res_zill_pp` is the *gezillmerte Deckungskapital*: it is exactly ``-alpha_cost()`` at
+:func:`res_zill_pp` is the *gezillmerte Deckungskapital*: it is exactly ``-zillmer_amount()`` at
 issue and stays negative for several years. :func:`res_min_pp` is the § 169 Abs. 3 VVG floor,
 the same net reserve with the acquisition cost amortised **straight-line over the first five
 contract years** rather than over the whole premium term. Because
@@ -225,13 +227,13 @@ what "zum Schluss der laufenden Versicherungsperiode" requires — so it reads t
 ``k + 1``. What a surrender in a *non*-anniversary month is paid is
 :func:`res_guar_close_pp`, the value struck at the **last** anniversary.
 
-With ``zillmer_on = 0`` (model point 13) ``alpha_cost()`` is zero, all three coincide and the
+With ``zillmer_on = 0`` (model point 13) ``zillmer_amount()`` is zero, all three coincide and the
 floor is slack — a useful invariance test. With ``prem_term = 1`` (model point 2) the 25 ‰
 *Zillmersatz* buys almost nothing and the floor is slack from the first anniversary. Both are
 the correct answer rather than a degenerate case.
 
 Note that the acquisition cost is in the **premium** whether or not the contract is
-zillmered: ``zillmer_on`` enters :func:`alpha_cost`, which is a *reserving* quantity, and not
+zillmered: ``zillmer_on`` enters :func:`zillmer_amount`, which is a *reserving* quantity, and not
 the pricing equation, which always charges ``alpha_rate() * beitragssumme()``. That is why one
 insurer can publish a *gezillmerte* and a non-*gezillmerte* edition of the same tariff at the
 same price.
@@ -351,7 +353,7 @@ of 2,5 % of the *Beitragssumme* plus the 300 € acquisition expense - then annu
 the order of a thousand euros that decay as the cohort lapses, and a single very large
 negative year at the *Ablauf* when the *Erlebensfallleistung* and the whole accumulated
 *Überschussguthaben* fall due together. The new-business strain of a *gezillmert* German
-endowment sits in the **reserve**, which opens at ``-alpha_cost()``, and not in the cash flow.
+endowment sits in the **reserve**, which opens at ``-zillmer_amount()``, and not in the cash flow.
 
 .. rubric:: What the monthly grid changes, and what it does not
 
@@ -405,11 +407,6 @@ _spaces = []
 
 # --- the model point -------------------------------------------------------
 
-def policy_id():
-    """The policy identifier of the selected model point, e.g. ``DE-KLV-0001``."""
-    return model_point()["policy_id"]
-
-
 def pols_if_init():
     """The number of policies represented at ``t_start()``: 1.0, a single-policy model point.
 
@@ -418,16 +415,6 @@ def pols_if_init():
     ``result_cf()``'s first ``pols_if`` must equal it exactly.
     """
     return float(model_point()["pols_if_init"])
-
-
-def sum_assured():
-    """SE: the guaranteed *Erlebensfallleistung*, in euros - the *Versicherungssumme*.
-
-    Paid at the *Ablauf* to a survivor, plus the accumulated *Überschussguthaben*, any bonus
-    sum insured and the accrued *Schlussüberschussanteil*.  It is **not** what a paid-up
-    contract receives; see :func:`bfz_si_pp`.
-    """
-    return float(model_point()["sum_assured"])
 
 
 def death_ratio():
@@ -440,18 +427,6 @@ def death_ratio():
     design constraint** checked when the table is built and not a model formula.
     """
     return float(model_point()["death_ratio"])
-
-
-def prem_freq():
-    """The payment frequency, a key into *freq_loading_table.csv*.
-
-    ``annual``, ``half_yearly``, ``quarterly`` or ``monthly``.  The frequency buys a
-    *Ratenzahlungszuschlag* only where :func:`unterjaehrig_form` is ``unecht``.
-    """
-    v = model_point()["prem_freq"]
-    if v not in data.freq_loading_table().index:                     # noqa: F821
-        raise ValueError("no frequency loading for prem_freq " + str(v))
-    return v
 
 
 def unterjaehrig_form():
@@ -474,8 +449,11 @@ def zillmer_on():
 
     A **per-tariff design choice a German insurer makes and publishes** - one carrier
     maintains a *gezillmerte* and a non-*gezillmerte* edition of the same tariff - and not an
-    invariant of German practice.  It enters :func:`alpha_cost` and therefore the *reserve*;
+    invariant of German practice.  It enters :func:`zillmer_amount` and therefore the *reserve*;
     it does **not** enter the pricing equation, so the two editions cost the same.
+
+    Override reason: the *Zillmerung* is a per-tariff choice read from the model point,
+    products/kapitallebensversicherung/technical-notes.md:144
     """
     return int(model_point()["zillmer_on"])
 
@@ -498,28 +476,6 @@ def surplus_use():
     if v not in ("ansammlung", "bonus", "beitragsverrechnung"):
         raise ValueError("invalid surplus_use")
     return v
-
-
-def scenario_id():
-    """The key into *surplus_rate_table.csv* naming this policy's declared-rate path.
-
-    ``base``, ``low`` or ``nil``.  The declared rate is **insurer-discretionary, revisable
-    annually and capable of being zero**, so it is a scenario rather than an assumption; the
-    ``nil`` path is the sourced statement that the surplus may be zero euros, made runnable.
-    """
-    return model_point()["scenario_id"]
-
-
-def rating_factor():
-    """f: the *Risikozuschlag* multiplier; 1.00 at standard rates.
-
-    It scales the **first-order mortality in the death leg** of :func:`pv_death_1st` and
-    :func:`pv_benefit_fut`, so it raises :func:`prem_gross_pp`.  It must not reach the
-    survivorship factors, the benefit or the best-estimate rate: :func:`benefit_death_pp` and
-    :func:`mort_rate` are both invariant to it.  No German scale is public; model point 14
-    carries 1.50 **[std]**.
-    """
-    return float(model_point()["rating_factor"])
 
 
 def av_sur_pp_init():
@@ -568,35 +524,15 @@ def bfz_year():
 
 # --- the projection frame --------------------------------------------------
 
-def is_anniv(t):
-    """Whether month t is the **last month of a policy year**, ``t % 12 == 11``.
-
-    The policy anniversary falls at the end of it, and that is the instant the contract's
-    annual machinery acts: the *Überschussdeklaration* is credited, the *Deckungskapital*
-    rolls forward by Fackler, the § 169 value is struck, the *Beitragsfreistellung* election
-    takes effect and the *Ablauf* falls.  A claim in any **other** month is paid the balances
-    that were standing at the last anniversary; see :func:`av_sur_close_pp`.
-    """
-    return t % 12 == 11
-
-
-def policy_year_y(k):
-    """The contractual, 1-based label of **policy year** k: ``k + 1``.
-
-    The annual face of :func:`policy_year`, for the annual cells that key a 1-based schedule.
-    """
-    return k + 1
-
-
 # --- the bases -------------------------------------------------------------
 
 def mort_rate_tariff_at_age(x):
     """q1(x): the **first-order tariff** death rate at attained age x - the unisex blend.
 
-    ``unisex_share`` of the male table row plus the rest of the female one, at 0.5 / 0.5
+    ``unisex_blend`` of the male and the female table row, at ``unisex_mix_male`` 0.5 / 0.5
     **[std]**.  This is the *Rechnungsgrundlage erster Ordnung* of the tariff, and **every
     pricing and reserving formula in the model reads it**: :func:`pols_tariff`,
-    :func:`pv_death_1st`, :func:`pv_benefit_fut`, :func:`ann_due_prem_fut` and the Fackler
+    :func:`tariff_death_pv`, :func:`pv_benefit_fut`, :func:`ann_due_prem_fut` and the Fackler
     roll-forward in :func:`res_pp_at`.
 
     It is blended rather than read off the policy's own ``sex`` row because **German new
@@ -614,9 +550,8 @@ def mort_rate_tariff_at_age(x):
     see the ``Data`` docstring for what a replacement must preserve.
     """
     tbl = data.mort_table()                                          # noqa: F821
-    return (unisex_share * float(tbl.loc[("M", int(x)), "mort_rate_1st"])   # noqa: F821
-            + (1.0 - unisex_share)                                   # noqa: F821
-            * float(tbl.loc[("F", int(x)), "mort_rate_1st"]))
+    return unisex_blend(float(tbl.loc[("M", int(x)), "mort_rate_1st"]),
+                        float(tbl.loc[("F", int(x)), "mort_rate_1st"]))
 
 
 def mort_rate_base(t):
@@ -637,6 +572,16 @@ def mort_rate_base(t):
         (sex(), int(age(t))), "mort_rate_1st"])
 
 
+def mort_be_factor():
+    """The step from the first-order table to the best estimate, 0.75, from *param_table.csv*.
+
+    Override reason: the best estimate is 0.75 of the first-order table, a 33 % safety
+    loading and a tariff parameter in *param_table.csv*,
+    products/kapitallebensversicherung/model.md:513
+    """
+    return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
+
+
 def mort_rate(t):
     """q(t): the **best-estimate annual** death rate of the policy year containing month t.
 
@@ -649,7 +594,7 @@ def mort_rate(t):
 
     It is the only place ``sex`` reaches a cash flow.
     """
-    return min(1.0, mort_rate_base(t) * mort_be_factor)              # noqa: F821
+    return min(1.0, mort_rate_base(t) * mort_be_factor())
 
 
 def mort_rate_mth(t):
@@ -668,7 +613,7 @@ def mort_rate_mth(t):
     return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
 
 
-def hrz_max():
+def hoechstrechnungszins():
     """The § 2 DeckRV *Höchstrechnungszins* for this contract's ``issue_year``.
 
     A **cohort fact**: the ceiling in force at conclusion applies for the whole term.  The
@@ -676,6 +621,10 @@ def hrz_max():
     split years carry the **higher** of the two rates - which makes
     :func:`check_rechnungszins_cap` permissive rather than strict in exactly the two years
     where the model cannot know which half of the year a contract was written in **[std]**.
+
+    Override reason: the ceiling is read from the product's year-keyed *deckrv_table.csv*,
+    clamped to its range, with the split years 1994 and 2000 at the higher rate,
+    products/kapitallebensversicherung/technical-notes.md:252
     """
     tbl = data.deckrv_table()                                        # noqa: F821
     y = min(max(issue_year(), int(tbl.index.min())), int(tbl.index.max()))
@@ -695,17 +644,6 @@ def zillmer_max():
     return float(tbl.loc[y, "hoechstzillmersatz"])
 
 
-def instalments():
-    """The number of premium instalments a year for this policy's :func:`prem_freq`.
-
-    1, 2, 4 or 12.  Reported rather than used: the projection runs on an annual grid and
-    collects the year's *Beitrag* in advance, so the instalment count enters only the
-    *Ratenzahlungszuschlag* it justifies.
-    """
-    return int(data.freq_loading_table().loc[                        # noqa: F821
-        prem_freq(), "instalments"])
-
-
 def prem_freq_load():
     """phi: the *Ratenzahlungszuschlag* multiplier on the annual *Bruttobeitrag*.
 
@@ -714,6 +652,9 @@ def prem_freq_load():
     ``echt``**, because a genuine sub-annual *Versicherungsperiode* is not an instalment of an
     annual one and carries no loading.  Model points 4 and 5 are the same monthly contract
     under the two readings.
+
+    Override reason: an ``echt`` sub-annual payment is a genuine *Versicherungsperiode* and
+    carries no loading, products/kapitallebensversicherung/technical-notes.md:142
     """
     if unterjaehrig_form() == "echt":
         return 1.0
@@ -727,9 +668,9 @@ def alpha_rate():
     25 ‰, sitting **at** the § 4 DeckRV ceiling for a contract written from 2015 - the ceiling
     is cited, the level is **[std]**, and no German carrier's actual acquisition cost is
     public.  It is charged in the premium whether or not the contract is zillmered; only
-    :func:`alpha_cost` carries ``zillmer_on``.
+    :func:`zillmer_amount` carries ``zillmer_on``.
     """
-    return float(data.cost_table().loc[cost_id(), "alpha_rate"])     # noqa: F821
+    return float(data.charge_table().loc[cost_id(), "alpha_rate"])   # noqa: F821
 
 
 def beta_rate():
@@ -738,7 +679,7 @@ def beta_rate():
     3,0 % **[std]**.  The *form* - a percentage of the gross premium over the premium-paying
     period - is what the corpus establishes; the level is not.
     """
-    return float(data.cost_table().loc[cost_id(), "beta_rate"])      # noqa: F821
+    return float(data.charge_table().loc[cost_id(), "beta_rate"])    # noqa: F821
 
 
 def gamma_rate():
@@ -750,7 +691,7 @@ def gamma_rate():
     pricing equation funds the running cost and the classical reserve convention assumes the
     ongoing loadings meet it.
     """
-    return float(data.cost_table().loc[cost_id(), "gamma_rate"])     # noqa: F821
+    return float(data.charge_table().loc[cost_id(), "gamma_rate"])   # noqa: F821
 
 
 # --- pricing on the first-order basis --------------------------------------
@@ -766,47 +707,36 @@ def sum_death():
     return sum_assured() * death_ratio()
 
 
-def pv_death_1st():
-    """The first-order present value at issue of the death benefit, per policy.
+def tariff_death_sum():
+    """SD: the guaranteed *Todesfallleistung*, :func:`sum_death`, the death leg's sum.
 
-    ``SD * sum over k of v1^(k+1) * kpx * f * q1(x0 + k)`` over the whole *Versicherungsdauer*,
-    with the *Risikozuschlag* ``f`` on the **claim rate in this leg only**.  Claims fall at the
-    end of the policy year of death, which is why the discount exponent is ``k + 1``.
+    The core's :func:`tariff_death_pv` multiplies its sum over the policy years by it.
+
+    Override reason: the death leg pays the guaranteed Todesfallleistung SD,
+    products/kapitallebensversicherung/technical-notes.md:441
     """
-    n = policy_term()
-    x0 = issue_age()
-    return sum_death() * sum(
-        disc_factor(k + 1) * pols_tariff(k) * rating_factor()
-        * mort_rate_tariff_at_age(x0 + k) for k in range(n))
+    return sum_death()
 
 
-def pv_maturity_1st():
-    """The first-order present value at issue of the *Erlebensfallleistung*, per policy.
+def tariff_death_load(y):
+    """f: the *Risikozuschlag* :func:`rating_factor`, on the **claim rate in the death leg only**.
 
-    ``SE * v1^n * npx``.  No *Risikozuschlag*: an extra-mortality loading may not make the
-    survival benefit cheaper, so it stays out of both the discount and the survivorship.
+    Override reason: the Risikozuschlag loads the death leg only, never the survival leg,
+    products/kapitallebensversicherung/technical-notes.md:461
     """
-    return sum_assured() * disc_factor(policy_term()) * pols_tariff(policy_term())
+    return rating_factor()
 
 
-def tariff_benefit_pv():
-    """The first-order present value at issue of both guaranteed benefits, per policy.
+def tariff_maturity_sum():
+    """SE: the *Erlebensfallleistung*, :func:`sum_assured`, paid at the end of the term.
 
-    On the *gemischte Versicherung* proper, where ``death_ratio = 1``, this is very nearly the
-    endowment factor times the sum insured, and the price is only weakly sensitive to the
-    mortality basis - the survival leg dominating a twenty-five-year contract's reserve.
+    The core's :func:`tariff_maturity_pv` multiplies the discounted survivorship to the end
+    of the term by it.
+
+    Override reason: the endowment pays the Erlebensfallleistung SE at maturity,
+    products/kapitallebensversicherung/technical-notes.md:442
     """
-    return pv_death_1st() + pv_maturity_1st()
-
-
-def ann_due_term_1st():
-    """The first-order annuity-due factor over the *Versicherungsdauer*, per policy.
-
-    ``sum over k = 0 .. n-1 of v1^k * kpx``.  It is the base of the ``gamma`` administration
-    loading, which runs for the whole term rather than for the premium-paying period - the
-    asymmetry that makes an *abgekürzte Beitragszahlungsdauer* dearer per premium.
-    """
-    return sum(disc_factor(k) * pols_tariff(k) for k in range(policy_term()))
+    return sum_assured()
 
 
 def prem_gross_pp():
@@ -825,42 +755,20 @@ def prem_gross_pp():
     reported, and it rises with :func:`rating_factor` while being identical for two points
     differing only in :func:`sex`.
     """
-    return ((tariff_benefit_pv() + gamma_rate() * sum_assured() * ann_due_term_1st())
+    return ((tariff_benefit_pv() + gamma_rate() * sum_assured() * tariff_term_annuity())
             / ((1.0 - beta_rate()) * tariff_annuity()
                - alpha_rate() * prem_term()))
 
 
-def beitragssumme():
-    """BS: the *Beitragssumme*, ``prem_gross_pp() * prem_term()``.
-
-    The total of all premiums payable over the agreed term, **before** the
-    *Ratenzahlungszuschlag*, and the reference base for the § 4 DeckRV acquisition-cost cap,
-    for the initial commission and for the *Mindesttodesfallschutz* test.
-    """
-    return prem_gross_pp() * prem_term()
-
-
-def alpha_cost():
-    """A: the zillmered acquisition cost written into the reserve, in euros.
-
-    ``zillmer_on() * alpha_rate() * beitragssumme()``.  **Zero on a non-gezillmert tariff**,
-    where the three reserve constructions then coincide - but the cost is charged in the
-    premium either way, because ``zillmer_on`` decides where it sits in the *reserve* and not
-    whether it is charged.  It is capped by :func:`zillmer_max` times the *Beitragssumme*;
-    :func:`check_zillmer_cap` asserts it.
-    """
-    return zillmer_on() * alpha_rate() * beitragssumme()
-
-
 def prem_zill_pp():
-    """P^Z: the Zillmer premium, ``prem_net_level_pp() + alpha_cost() / tariff_annuity()``.
+    """P^Z: the Zillmer premium, ``prem_net_level_pp() + zillmer_amount() / tariff_annuity()``.
 
     The net premium plus the level annual charge that amortises the zillmered acquisition cost
     over the *Beitragszahlungsdauer*.  It is the premium the Zillmer reserve rolls forward on,
     which is why :func:`check_res_roll_fwd` reads it and not :func:`prem_charged_pp`: one is a
     first-order reserving quantity and the other is a cash flow.
     """
-    return prem_net_level_pp() + alpha_cost() / tariff_annuity()
+    return prem_net_level_pp() + zillmer_amount() / tariff_annuity()
 
 
 # --- the Deckungskapital ---------------------------------------------------
@@ -930,10 +838,10 @@ def res_net_pp(k):
 def res_zill_pp(k):
     """V^Z: the *gezillmerte Deckungskapital* at the start of policy year k, per policy.
 
-    ``res_net_pp(k) - alpha_cost() * ann_due_prem_fut(k) / tariff_annuity()``: the net
+    ``res_net_pp(k) - zillmer_amount() * ann_due_prem_fut(k) / tariff_annuity()``: the net
     reserve less the part of the acquisition cost the future premiums have yet to repay.
 
-    **It is exactly ``-alpha_cost()`` at ``k = 0``**, which on the anchor cell is
+    **It is exactly ``-zillmer_amount()`` at ``k = 0``**, which on the anchor cell is
     -1 252,53 €.  That is not a defect: it is the arithmetic of *Zillmerung*, and it is the
     reason § 169 Abs. 3 VVG needs a floor at all.  **How long it stays negative is a parameter
     question.**  At the post-2015 25 ‰ ceiling over a twenty-five-year *Beitragszahlungsdauer*
@@ -943,13 +851,13 @@ def res_zill_pp(k):
     ``zillmer_on = 0`` it coincides with :func:`res_net_pp`.
     """
     return (res_net_pp(k)
-            - alpha_cost() * ann_due_prem_fut(k) / tariff_annuity())
+            - zillmer_amount() * ann_due_prem_fut(k) / tariff_annuity())
 
 
 def res_min_pp(k):
     """V^min: the § 169 Abs. 3 VVG floor reserve at the start of policy year k, per policy.
 
-    ``res_net_pp(k) - alpha_cost() * max(0, 1 - k/5)`` for the 0-based **policy year** ``k``:
+    ``res_net_pp(k) - zillmer_amount() * max(0, 1 - k/5)`` for the 0-based **policy year** ``k``:
     the same net reserve with the *angesetzte Abschluss- und Vertriebskosten* spread **evenly over the
     first five contract years** rather than over the whole premium term.  The straight-line
     reading is **[std]**; the alternative - a five-year *Zillmerung* - gives a slightly lower
@@ -959,7 +867,7 @@ def res_min_pp(k):
     :func:`res_zill_pp` only at durations 0 and ``m``.  A model publishing only the Zillmer
     reserve as the surrender value understates it at essentially every duration.
     """
-    return res_net_pp(k) - alpha_cost() * max(0.0, 1.0 - k / 5.0)
+    return res_net_pp(k) - zillmer_amount() * max(0.0, 1.0 - k / 5.0)
 
 
 def is_paid_up(k):
@@ -1821,7 +1729,7 @@ def inflation_factor(k):
     year from issue, the exponent is ``k`` itself and is 1.0 in the first policy year.
     1,8 % p.a. is a placeholder.
     """
-    infl = float(data.cost_table().loc[cost_id(), "expense_infl"])   # noqa: F821
+    infl = float(data.charge_table().loc[cost_id(), "expense_infl"])  # noqa: F821
     return (1.0 + infl) ** k
 
 
@@ -1832,7 +1740,7 @@ def claim_expenses(t):
     the only expense line that scales with **claims** rather than with policies, and it is
     inside :func:`expenses`.
     """
-    ce = float(data.cost_table().loc[cost_id(), "claim_expense"])    # noqa: F821
+    ce = float(data.charge_table().loc[cost_id(), "claim_expense"])  # noqa: F821
     return ce * (pols_death(t) + pols_lapse(t) + pols_maturity(t))
 
 
@@ -1852,7 +1760,7 @@ def expenses_pp(t):
     modestly exceeds what the *Zillmerung* recovers, so that the anchor cell carries the
     new-business strain a real German endowment carries.
     """
-    cost = data.cost_table().loc[cost_id()]                          # noqa: F821
+    cost = data.charge_table().loc[cost_id()]                        # noqa: F821
     acq = (float(cost["acq_expense"])
            if (t == t_start() and duration_init() == 0) else 0.0)
     return (acq + float(cost["maint_expense"]) / 12.0
@@ -1893,7 +1801,7 @@ def commissions(t):
     :func:`prem_inst_pp`: under *Beitragsverrechnung* the intermediary is paid on the tariff
     premium, the surplus offset being a policyholder rebate rather than a price reduction.
     """
-    cost = data.cost_table().loc[cost_id()]                          # noqa: F821
+    cost = data.charge_table().loc[cost_id()]                        # noqa: F821
     init = (float(cost["comm_init_rate"]) * beitragssumme() * pols_if(t)
             if (t == t_start() and duration_init() == 0) else 0.0)
     renew = (float(cost["comm_renew_rate"]) * prem_charged_inst_pp(t) * pols_if(t)
@@ -2155,14 +2063,14 @@ def check_equivalence_resid(t):
     ``t`` - the equivalence is struck once, at issue - and it carries the argument only so
     that every ``check_*`` in this library has the same shape.
 
-    Note that it charges ``alpha_rate() * beitragssumme()`` and **not** :func:`alpha_cost`:
+    Note that it charges ``alpha_rate() * beitragssumme()`` and **not** :func:`zillmer_amount`:
     the acquisition cost is in the premium whether or not the contract is zillmered, which is
     why a *gezillmerte* and a non-*gezillmerte* edition of one tariff cost the same.
     """
     return (prem_gross_pp() * (1.0 - beta_rate()) * tariff_annuity()
             - alpha_rate() * beitragssumme()
             - tariff_benefit_pv()
-            - gamma_rate() * sum_assured() * ann_due_term_1st())
+            - gamma_rate() * sum_assured() * tariff_term_annuity())
 
 
 def check_equivalence():
@@ -2181,12 +2089,12 @@ def check_equivalence():
 def check_rechnungszins_cap_resid(t):
     """The § 2 DeckRV ceiling residual; zero unless the guarantee exceeds the cohort's cap.
 
-    ``min(0, hrz_max() - rechnungszins())``, the same value at every ``t``.  A **parameter
-    invariant rather than a roll-forward identity**, and it lives in the model rather than in
+    ``min(0, hoechstrechnungszins() - rechnungszins())``, the same value at every ``t``.
+    A **parameter invariant rather than a roll-forward identity**, and it lives in the model rather than in
     a build script because a German model point's cohort *is* an assumption: a 4,00 %
     guarantee on a 2026 issue year is not a stress, it is a data error.
     """
-    return min(0.0, hrz_max() - rechnungszins())
+    return min(0.0, hoechstrechnungszins() - rechnungszins())
 
 
 def check_rechnungszins_cap():
@@ -2202,7 +2110,7 @@ def check_zillmer_cap_resid(t):
     """The § 4 DeckRV ceiling residual; zero unless the *Zillmersatz* exceeds the cohort's cap.
 
     ``min(0, zillmer_max() - alpha_rate()) + min(0, zillmer_max() * beitragssumme()
-    - alpha_cost())``, the same value at every ``t``: the rate against the ceiling and the
+    - zillmer_amount())``, the same value at every ``t``: the rate against the ceiling and the
     zillmered amount against the ceiling applied to the *Beitragssumme*.
 
     It is asserted **separately** from :func:`check_surr_floor` on purpose.  § 4 DeckRV caps
@@ -2212,7 +2120,7 @@ def check_zillmer_cap_resid(t):
     research corpus does exactly that.
     """
     return (min(0.0, zillmer_max() - alpha_rate())
-            + min(0.0, zillmer_max() * beitragssumme() - alpha_cost()))
+            + min(0.0, zillmer_max() * beitragssumme() - zillmer_amount()))
 
 
 def check_zillmer_cap():
@@ -2302,7 +2210,7 @@ def result_surplus():
     is a statement a reader has to know which columns to skip.
 
     Read the first rows of this frame beside the first rows of :func:`result_cf_annual` and
-    the product is visible in two numbers.  ``res_pp`` opens at ``-alpha_cost()`` - the whole
+    the product is visible in two numbers.  ``res_pp`` opens at ``-zillmer_amount()`` - the whole
     of the *Zillmerung*, unrecovered - while ``surplus_credit_pp`` is struck on the year's
     *closing* reserve and is therefore small but positive from the first year.  The gap
     between the two columns in the early durations is the entire economics of a German
@@ -2331,8 +2239,6 @@ data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
 
-mort_be_factor = 0.75
-
 suicide_share = 0.02
 
 bfz_min_si = 2500.0
@@ -2347,7 +2253,6 @@ lapse_gap_a = 0.0
 
 ref_rate = 0.03
 
-unisex_share = 0.5
 
 roll_fwd_tol = 1e-10
 

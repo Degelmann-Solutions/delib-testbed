@@ -118,7 +118,7 @@ premiums(t)                 premiums(t)                     Beitrag income
 (none)                      brg_pp(t)                       Beitragsrueckgewaehr per policy
 claims_annuity, _lapse,     claims(t, kind)                 Benefit outgo by kind
 _death
-alpha x Beitragssumme       acq_expense_pp()                Acquisition charge at t = 0
+alpha x Beitragssumme       zillmer_amount()                Acquisition charge at t = 0
 (none)                      beitragssumme()                 The Zillmerung base
 (1 + f)^(t/12)              expense_infl_factor(t)          Expense inflation factor
 expenses(t)                 expenses(t)                     Acquisition + administration
@@ -275,11 +275,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def policy_id():
-    """The policy identifier of the selected model point, ``PFL-0000NN``."""
-    return str(model_point()["policy_id"])
-
-
 def status_init():
     """The state at the projection start: ``aktiv`` or ``pg1`` … ``pg5``.
 
@@ -329,8 +324,14 @@ def prem_end_age():
     return int(model_point()["prem_end_age"])
 
 
-def prem_mode():
-    """The instalment frequency: monthly, quarterly, half_yearly, annual or single."""
+def prem_freq():
+    """The instalment frequency: monthly, quarterly, half_yearly, annual or single.
+
+    Read from the model point's ``prem_mode`` column.
+
+    Override reason: the product has no frequency loading table and its frequencies include
+    ``single``, the *Einmalbeitrag*, products/pflegerentenversicherung/technical-notes.md:106
+    """
     v = str(model_point()["prem_mode"])
     if v not in ("monthly", "quarterly", "half_yearly", "annual", "single"):
         raise ValueError("invalid prem_mode")
@@ -351,7 +352,7 @@ def prem_mode_months():
     real German tariff.
     """
     return {"monthly": 1, "quarterly": 3, "half_yearly": 6,
-            "annual": 12, "single": 0}[prem_mode()]
+            "annual": 12, "single": 0}[prem_freq()]
 
 
 def premium_mth():
@@ -365,17 +366,6 @@ def premium_mth():
     return float(model_point()["premium_mth"])
 
 
-def rating_factor():
-    """The *Risikozuschlag* multiplier on the **gross** premium; 1.00 at standard rates.
-
-    A *Risikozuschlag* buys the same annuity at a higher price, so it scales the premium
-    and never the benefit, and :func:`claims` is invariant to it.  No German
-    *Risikozuschlag* scale for this product was established; model point 13 carries 1.50
-    as a **[std]** illustration.
-    """
-    return float(model_point()["rating_factor"])
-
-
 def wartezeit_months():
     """The *Wartezeit* from inception, in months; ``0`` in the base run.
 
@@ -387,21 +377,6 @@ def wartezeit_months():
     Model point 7 carries 36 months.
     """
     return int(model_point()["wartezeit_months"])
-
-
-def karenz_months():
-    """K: the *Karenzzeit* from onset, in months; ``0`` in the base run.
-
-    A different device from the *Wartezeit* and routinely confused with it: the
-    *Wartezeit* runs from inception and denies cover, the *Karenzzeit* runs from **onset**
-    and defers an admitted claim.  It is a clock **per onset**, not a gate on the
-    aggregate, which is why :func:`pols_karenz` carries a ledger dimension for it rather
-    than a shift on the benefit.  Where it is positive, a material share of new claimants
-    die inside the deferral — mortality is highest immediately after onset — so it removes
-    disproportionately more claims than its length suggests.  Model point 7 carries six
-    months.
-    """
-    return int(model_point()["karenz_months"])
 
 
 def leistungsdynamik():
@@ -467,35 +442,6 @@ def pols_if_init():
     return float(model_point()["pols_if_init"])
 
 
-def omega_age():
-    """The terminal age, 110, from *param_table.csv*.
-
-    A **[std]** modelling choice rather than a table fact — the DAV tables run higher —
-    and it costs nothing material: an active female life aged 45 survives to 110 with
-    probability of the order of 1e-4 on the shipped basis.  What it buys is a **closed**
-    system: :func:`mort_rate` is forced to 1.0 at ``omega_age() - 1``, so the decrements
-    account for the whole cohort and :func:`check_states` closes exactly instead of leaving
-    a truncation residue.
-    """
-    return int(data.param_table().at["omega_age", "value"])          # noqa: F821
-
-
-def rechnungszins():
-    """i: the technical interest rate, 1,00 % a year, from *param_table.csv*.
-
-    The *Höchstrechnungszins* of the DeckRV for new business from 1 January 2025, which
-    attaches to the cohort at issue and is then locked for the life of the contract.
-    **This is the one place a discount rate appears in the model**, and it is used only by
-    the pricing engine: the projection publishes undiscounted cash flows.  It is also the
-    single most leveraged pricing assumption here, because a *Pflegerente*'s benefits fall
-    on average some thirty-five years after issue.
-
-    Override reason: the whole book is priced at one rate, a tariff parameter in
-    *param_table.csv* rather than a model-point column, products/pflegerentenversicherung/technical-notes.md:232
-    """
-    return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
-
-
 def t_start():
     """The month the frame opens at, ``duration_mth_init()``; 0 for new business.
 
@@ -505,27 +451,19 @@ def t_start():
     return duration_mth_init()
 
 
-def proj_len():
-    """n: the **number of projected months**, ``12 (omega_age - issue_age)``.
+def horizon_age():
+    """The attained age at which the projection ends: ``omega_age()``.
 
-    The **exclusive end** of the frame, counted from ``t = 0``: the frame is
-    ``range(t_start(), proj_len())``, the last projected index is
-    ``proj_len() - 1`` and ``result_cf().index[-1] == proj_len() - 1`` whether the frame
-    is 0-based or opens partway through, which is the library's reading and is asserted
-    for every model point.  On the anchor cell — entry age 45, ``omega_age`` 110 — it is
-    780, so the frame runs ``t = 0 … 779``, 780 monthly rows, attained ages 45 to 109.
-
-    It depends on the entry age and the terminal age alone, **not** on
-    :func:`duration_mth_init`: a point opening at ``duration_mth_init() = d0`` publishes
-    ``proj_len() - d0`` rows and still ends at its own ``proj_len() - 1``, because
-    ``duration_mth_init`` shortens the frame at the front, never at the back.  That last
-    index is the point's own — ``proj_len()`` varies with the entry age — not the anchor's
-    779.
+    So ``proj_len() = 12 (omega_age - issue_age)``, the **exclusive end** of the frame
+    counted from ``t = 0``.  On the anchor cell — entry age 45, ``omega_age`` 110 — it is
+    780, so the frame runs ``t = 0 … 779``, attained ages 45 to 109.  It does **not**
+    depend on :func:`duration_mth_init`: a point opening partway through shortens the
+    frame at the front (``t_start``), never at the back.
 
     Override reason: the horizon is fixed by the entry age and the terminal age in months, with no
     policy term, products/pflegerentenversicherung/technical-notes.md:54
     """
-    return 12 * (omega_age() - issue_age())
+    return omega_age()
 
 
 def benefit_pct(g):
@@ -1266,33 +1204,46 @@ def claims(t, kind=None):
         raise ValueError("invalid kind")
 
 
-def beitragssumme():
-    """The *Beitragssumme* the *Zillmerung* allowance is struck on.
+def beitragssumme_prem():
+    """The annual premium of the *Beitragssumme*: ``premium_mth_pp() x 12``.
 
-    ``premium_mth_pp() x 12 x (min(prem_end_age(), beitragssumme_cap_age) - issue_age())``
-    and, for the *Einmalbeitrag*, the *Einmalbeitrag* itself.
+    And, for the *Einmalbeitrag*, the *Einmalbeitrag* itself, counted once.  The
+    *Beitragssumme* is the base the *Zillmerung* allowance is struck on.
+
+    Override reason: the premium is monthly, ``premium_mth_pp()``, or a single premium,
+    products/pflegerentenversicherung/technical-notes.md:403
+    """
+    if prem_mode_months() == 0:
+        return premium_mth_pp()
+    return premium_mth_pp() * 12.0
+
+
+def beitragssumme_years():
+    """The premium years of the *Beitragssumme*, ``min(prem_end_age(), 85) - issue_age()``.
 
     A lifelong-premium contract has no finite *Beitragssumme* without a convention, and
     ``beitragssumme_cap_age = 85`` **[std]** is that convention.  It is a parameter, not a
     citation: what is cited is the 25 ‰ ceiling of DeckRV § 4 that the per-mille is set
-    exactly at, cut from 40 ‰ by the LVRG from 1 January 2015.
+    exactly at, cut from 40 ‰ by the LVRG from 1 January 2015.  1 for the *Einmalbeitrag*.
+
+    Override reason: the premium runs to ``prem_end_age``, capped at
+    ``beitragssumme_cap_age``, products/pflegerentenversicherung/technical-notes.md:403
     """
-    m = prem_mode_months()
-    if m == 0:
-        return premium_mth_pp()
+    if prem_mode_months() == 0:
+        return 1
     cap = int(data.param_table().at[                                 # noqa: F821
         "beitragssumme_cap_age", "value"])
-    years = max(0, min(prem_end_age(), cap) - issue_age())
-    return premium_mth_pp() * 12.0 * years
+    return max(0, min(prem_end_age(), cap) - issue_age())
 
 
-def acq_expense_pp():
-    """The acquisition and distribution charge per policy, incurred once at ``t = 0``.
+def alpha_rate():
+    """The acquisition per-mille as a rate, ``acq_permille / 1000``.
 
-    ``acq_permille / 1000 x beitragssumme()``, with the per-mille set **exactly at** the
-    § 4 DeckRV *Höchstzillmersatz* so the ceiling binds visibly.  The base is the
-    *Beitragssumme*, **not** the annual premium — charging the per-mille on an annual
-    premium understates it by a factor of the paying term and is a listed pitfall.
+    :func:`zillmer_amount`, the acquisition and distribution charge per policy, incurred
+    once at ``t = 0``, is ``acq_permille / 1000 x beitragssumme()``, with the per-mille set
+    **exactly at** the § 4 DeckRV *Höchstzillmersatz* so the ceiling binds visibly.  The
+    base is the *Beitragssumme*, **not** the annual premium — charging the per-mille on an
+    annual premium understates it by a factor of the paying term and is a listed pitfall.
 
     Because it falls at ``t = 0`` only, an in-force model point never incurs it: its frame
     opens at ``duration_mth_init() > 0`` and the cost was incurred before the valuation
@@ -1301,7 +1252,7 @@ def acq_expense_pp():
     """
     permille = float(data.param_table().at[                          # noqa: F821
         "acq_permille", "value"])
-    return permille / 1000.0 * beitragssumme()
+    return permille / 1000.0
 
 
 def expense_infl_factor(t):
@@ -1332,7 +1283,7 @@ def expenses(t):
     total = admin_pp * expense_infl_factor(t) * pols_if(t)
     total += admin_pct * premiums(t)
     if t == 0:
-        total += acq_expense_pp()
+        total += zillmer_amount()
     return total
 
 
@@ -1405,12 +1356,11 @@ def tar_mort_rate(t):
     """
     if age(t) >= omega_age() - 1:
         return 1.0
-    mix = float(data.param_table().at["unisex_mix_male", "value"])   # noqa: F821
     margin = float(data.param_table().at[                            # noqa: F821
         "act_mort_margin", "value"])
     q_m = float(data.mort_table().at[("M", age(t)), "mort_rate"])    # noqa: F821
     q_f = float(data.mort_table().at[("F", age(t)), "mort_rate"])    # noqa: F821
-    return min(1.0 - 1e-12, margin * (mix * q_m + (1.0 - mix) * q_f))
+    return min(1.0 - 1e-12, margin * unisex_blend(q_m, q_f))
 
 
 def tar_mort_rate_care(t, g):
@@ -1426,13 +1376,12 @@ def tar_mort_rate_care(t, g):
     """
     if age(t) >= omega_age() - 1:
         return 1.0
-    mix = float(data.param_table().at["unisex_mix_male", "value"])   # noqa: F821
     margin = float(data.param_table().at[                            # noqa: F821
         "care_mort_margin", "value"])
     mult = float(data.care_table().at[g, "mort_mult"])               # noqa: F821
     q_m = float(data.mort_table().at[("M", age(t)), "mort_rate"])    # noqa: F821
     q_f = float(data.mort_table().at[("F", age(t)), "mort_rate"])    # noqa: F821
-    q = min(1.0 - 1e-12, mix * q_m + (1.0 - mix) * q_f)
+    q = min(1.0 - 1e-12, unisex_blend(q_m, q_f))
     mu = -math.log(1.0 - q)                                          # noqa: F821
     return min(1.0 - 1e-12, margin * (1.0 - math.exp(-mult * mu)))   # noqa: F821
 
@@ -1447,14 +1396,13 @@ def tar_inc_rate(t):
     that.  The cap binds only at the very oldest ages, where the exponential proxy would
     otherwise exceed the survival it is applied to.
     """
-    mix = float(data.param_table().at["unisex_mix_male", "value"])   # noqa: F821
     margin = float(data.param_table().at["inc_margin", "value"])     # noqa: F821
     cap = float(data.param_table().at["inc_cap", "value"])           # noqa: F821
     i_m = float(data.incidence_table().at[                           # noqa: F821
         ("M", age(t)), "inc_rate"])
     i_f = float(data.incidence_table().at[                           # noqa: F821
         ("F", age(t)), "inc_rate"])
-    return min(margin * (mix * i_m + (1.0 - mix) * i_f), cap)
+    return min(margin * unisex_blend(i_m, i_f), cap)
 
 
 def tar_det_rate(t, g):
@@ -1667,6 +1615,10 @@ def tariff_benefit_pv():
     ``sum_t v**t R sum_g pi_g tar_esc_pg(t, g)``, discounted at the *Rechnungszins*.  On
     the anchor cell it is the whole of the benefit side: with no *Beitragsrückgewähr* and no
     survival benefit, this annuity is the only thing the contract ever pays.
+
+    Override reason: the benefit is a *Pflegerente* by care grade on the multi-state tariff
+    ledger, monthly, not a death or survival benefit,
+    products/pflegerentenversicherung/technical-notes.md:617
     """
     total = 0.0
     for t in range(proj_len()):
@@ -1689,7 +1641,7 @@ def tariff_annuity():
 
     Override reason: the premium is monthly, so the annuity sums the premium months on the
     multi-state tariff ledger ``tar_pols_prem`` in units of the monthly premium, not an
-    annual annuity-due, products/pflegerentenversicherung/technical-notes.md:617
+    annual annuity-due, products/pflegerentenversicherung/technical-notes.md:618
     """
     m = prem_mode_months()
     mult = m if m > 0 else 1

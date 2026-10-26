@@ -155,7 +155,7 @@ defined at anniversaries and the monthly frame does not interpolate it.
 | Cells | What it is | On the anchor cell at `k` = 0 |
 |---|---|---|
 | `res_net_pp(k)` | The net prospective reserve, no acquisition cost at all | 0,00 € — the equivalence principle stated as a reserve |
-| `res_zill_pp(k)` | The *gezillmerte Deckungskapital* the insurer holds | **−1 252,53 €**, exactly `-alpha_cost()` |
+| `res_zill_pp(k)` | The *gezillmerte Deckungskapital* the insurer holds | **−1 252,53 €**, exactly `-zillmer_amount()` |
 | `res_min_pp(k)` | The § 169 Abs. 3 VVG floor: the same net reserve with the acquisition cost spread **evenly over the first five contract years** [R2] | −1 252,53 €, equal at duration 0 |
 | `res_guar_pp(k)` | `max(res_zill_pp(k+1), res_min_pp(k+1), 0)` — the § 169 value at the **end** of year `k` | 776,70 €, the floor already binding |
 
@@ -173,7 +173,7 @@ Model point 13 (`zillmer_on = 0`) makes all three coincide at every duration and
 slack, which is the invariance test; model point 2 (`prem_term = 1`) reverses the ordering
 from the first anniversary, a single premium leaving almost nothing to amortise. Both are
 the right answer rather than degenerate cases. Note that the acquisition cost is charged
-in the **premium** either way: `zillmer_on` enters `alpha_cost`, a *reserving* quantity,
+in the **premium** either way: `zillmer_on` enters `zillmer_amount`, a *reserving* quantity,
 and not the pricing equation. `zillmer_on = 0` is a **[std]** switch, not an observed
 market option: § 4 DeckRV sets a ceiling rather than a mandate [R7], and every carrier
 wording read here applies the *Verrechnungsverfahren* [S7] [S9] [S18].
@@ -337,7 +337,7 @@ collect the whole year's premium from a cohort measured at the year's start.
 
 ## Inputs are external files
 
-The seven input CSVs live **in this directory**, beside `run.py` — not inside the model
+The eight input CSVs live **in this directory**, beside `run.py` — not inside the model
 folder. `KLV_DE_S/` holds nothing but formulas:
 
 ```
@@ -349,6 +349,7 @@ products/kapitallebensversicherung/
   cost_table.csv
   freq_loading_table.csv
   deckrv_table.csv
+  param_table.csv
   run.py
   model.md
   product-spec.md              <- the documents this model implements
@@ -390,6 +391,7 @@ model shows logic changes only, and an input can be swapped in place with no for
 | `cost_file` | `cost_table()` | `cost_table.csv` | The first-order tariff loadings and the second-order expense basis **on the same row**, because the difference between them *is* the *Kostenüberschuss*. Ceilings cited [R7] [REG-R16] [R29]; every level **[std]** |
 | `freq_loading_file` | `freq_loading_table()` | `freq_loading_table.csv` | `instalments` and the *Ratenzahlungszuschlag* by frequency. The 2 / 3 / 5 % market convention [R28]; the single values **[std]** |
 | `deckrv_file` | `deckrv_table()` | `deckrv_table.csv` | Both DeckRV ceilings by `issue_year` — § 2's *Höchstrechnungszins* and § 4's *Höchstzillmersatz* — because both are **cohort facts** that travel with the contract [REG-R14] [REG-R15] [REG-R16] |
+| `param_file` | `param_table()` | `param_table.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.75, the step from the first-order table to the best estimate, and `unisex_mix_male` 0.5, the male share of the unisex tariff blend, both **[std]**. Added in phase 3, when the factors moved from a Reference on `Projection` into the table the common core reads |
 
 Every file but the model point table carries a per-row `provenance` column, which is this
 library's second ruling and is machine-checked.
@@ -507,7 +509,7 @@ quantitative parameter is either source-tagged or marked here.
 | Standardization | Value | Rationale |
 |---|---|---|
 | Mortality proxy and its anchor | `0.00022 + B·1.10^x`, `mort_rate_1st(M, 37) = 0.001200` | DAV 2008 T is not public and is not redistributed [R14]. The anchor is what makes the worked example reproduce, and is the one number a replacement must preserve |
-| Unisex blend `unisex_share` | 0.5 | New business is unisex [REG-R34]; **no insurer publishes the portfolio mix behind its own tariff** |
+| Unisex blend `unisex_mix_male`, a row of `param_table.csv` | 0.5 | New business is unisex [REG-R34]; **no insurer publishes the portfolio mix behind its own tariff** |
 | `mort_be_factor` | 0.75 | A 33 % first-order safety loading. The *Sicherheitszuschlag* level is not established for any German carrier |
 | Age basis | Age last birthday at issue, stepping at the anniversary | **No located German endowment wording states one** |
 | `alpha_rate` | 25 ‰ of the *Beitragssumme* | The § 4 DeckRV **ceiling** is cited [R7] [REG-R16]; sitting at it is the choice, no carrier's actual acquisition cost being public (gap 7) |

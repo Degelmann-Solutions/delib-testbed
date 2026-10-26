@@ -56,12 +56,12 @@ German terms of art keep their German form in prose.
 - **`proj_len()` is the number of projected periods**, the exclusive end of the frame, per the
   library ruling asserted in `tests/test_model_conventions_de.py`:
   `result_cf().index[-1] == proj_len() − 1` and `len(result_cf()) == proj_len()`.
-  `proj_len_y() = omega_age − age(0) + 1`, with `age(0) = issue_age + duration_init` and
-  `omega_age = 110` **[std]**. The frame is contiguous `0 … proj_len() − 1` on every model point,
+  `proj_len_y() = omega_age() − age(0)`, with `age(0) = issue_age + duration_init` and
+  `omega_age() = 111`, the limiting age one above the last age 110 of the mortality tables, where `q = 1` **[std]**. The frame is contiguous `0 … proj_len() − 1` on every model point,
   including a point that commutes at *Rentenbeginn* and therefore carries zeros to the end — a
   uniform frame is what lets two model points be read side by side, and truncating a commuted point
   is a numbered pitfall.
-- **Two phases in one projection.** `k_conv() = rentenbeginn_age − age(0)` is the **conversion
+- **Two phases in one projection.** `k_conv() = ret_age − age(0)` is the **conversion
   year** and `t_conv() = 12 · k_conv()` the conversion month. `is_accum(t)` holds for
   `t < t_conv()`, `is_payout(t)` for `t ≥ t_conv()`, with `is_accum_y(k)` and `is_payout_y(k)` the
   annual readings. The
@@ -122,11 +122,12 @@ reaches it through a `data` Reference and holds no `*_file` Reference and no `in
 | `model_point_table.csv` | `point_id` | the twenty-six attributes tabulated below |
 | `mort_table_accum.csv` | `age` (16–110) | `qx`, `provenance` |
 | `annuity_mort_table.csv` | `age` (55–110) | `qx_base`, `improvement`, `provenance` |
-| `lapse_table.csv` | `duration` (1–60) | `lapse_rate`, `transfer_rate`, `provenance` |
+| `lapse_table.csv` | `policy_year` (1–60) | `lapse_rate`, `transfer_rate`, `provenance` |
 | `zulage_schedule.csv` | `zulage_id`, `t` | `unmittelbar`, `n_kinder_pre2008`, `n_kinder_post2008`, `bonus`, `provenance` |
 | `income_schedule.csv` | `income_id`, `t` | `income`, `provenance` |
 | `surplus_scenario.csv` | `scenario_id`, `t` | `decl_rate`, `provenance` |
-| `freq_loading.csv` | `prem_freq` | `load`, `provenance` |
+| `freq_loading.csv` | `prem_freq` | `prem_freq_load`, `provenance` |
+| `param_table.csv` | `item` | `value` (`mort_be_factor`), `provenance` |
 
 **Every file except `model_point_table.csv` carries a per-row `provenance` column**, delib's second
 ruling: a model point is a configuration, every other row is an assumption and says where its number
@@ -137,13 +138,14 @@ exactly; what a replacement must preserve is stated in assumption class (c) and 
 ### Cells vocabulary
 
 `Data` publishes `input_dir`, `model_point_table`, `mort_table`, `annuity_mort_table`,
-`lapse_table`, `zulage_schedule`, `income_schedule`, `surplus_scenario` and `freq_loading_table`.
+`lapse_table`, `zulage_schedule`, `income_schedule`, `surplus_table`, `freq_loading_table`
+and `param_table`.
 
 `Projection` publishes the library's shared names — **`model_point`, `proj_len`, `age`, `pols_if`,
 `mort_rate`, `claims`, `expenses`, `net_cf`, `result_cf`** — plus, in the same lifelib spelling:
 `pols_if_init`, `pols_if_at`, `pols_death`, `pols_lapse`, `pols_transfer`, `pols_conv`,
 `pols_annuity_pay`; `mort_rate_at_age`, `annuity_mort_rate`, `lapse_rate`, `transfer_rate`;
-`duration`, `duration_y`, `duration_mth`, `contract_year`, `calendar_year`, `calendar_year_y`,
+`duration`, `duration_y`, `duration_mth`, `policy_year`, `calendar_year`, `calendar_year_y`,
 `proj_len_y`, `proj_year`, `is_anniv`, `prem_due`, `k_conv`, `t_conv`, `is_accum`, `is_accum_y`,
 `is_payout`, `is_payout_y`; `mort_rate_mth`, `lapse_rate_mth`, `transfer_rate_mth`; `income_ref`,
 `zulage_entitlement_pp`, `zulage_granted_pp`, `zulage_pp`, `zulage_cum_pp`,
@@ -178,7 +180,7 @@ value; the thirteen points are described under *Worked example*.
 | `issue_age` | int | Attained age at conclusion of the contract | all |
 | `duration_init` | int | Completed contract years at the valuation date; 0 for a point projected from issue | 2, 6, 13 at 0 or 1 |
 | `pols_if_init` | float | Policies represented; `result_cf()`'s first `pols_if` equals it exactly | all |
-| `rentenbeginn_age` | int | Attained age at which the payout phase starts; bounded below by 62 for a contract concluded from 2012 [R1] | 13 (at the statutory floor, 62) |
+| `ret_age` | int | Attained age at which the payout phase starts; bounded below by 62 for a contract concluded from 2012 [R1] | 13 (at the statutory floor, 62) |
 | `rechnungszins` | float | The tariff's guaranteed rate, at or below the *Höchstrechnungszins* of the vintage [R22] [REG-R15] | 3 (0,90 %), others 0,25 % |
 | `beitragssumme` | EUR | The *Beitragssumme* fixed at conclusion; the acquisition-charge and initial-commission base | all |
 | `contrib_form` | enum {mindest, fixed} | `mindest` recomputes the § 86 amount every year; `fixed` is a level contractual contribution | 5, 8 |
@@ -235,10 +237,10 @@ contract carries, an at-issue point beside the in-force ones, and four boundary 
 
 | Variable | Description | Updated |
 |---|---|---|
-| `proj_len_y()` | Number of projected **years**, `omega_age − age(0) + 1` | once per model point |
+| `proj_len_y()` | Number of projected **years**, `omega_age() − age(0)` | once per model point |
 | `proj_len()` | Number of projected **months**, `12 × proj_len_y()`; the frame is `0 … proj_len() − 1` | once per model point |
 | `proj_year(t)`, `is_anniv(t)`, `prem_due(t)` | The projection year of month `t`, `t // 12`; its last month; and the month the year's contribution falls due | within year |
-| `k_conv()`, `t_conv()` | The conversion **year**, `rentenbeginn_age − age(0)`, and the conversion **month**, `12 · k_conv()` | once |
+| `k_conv()`, `t_conv()` | The conversion **year**, `ret_age − age(0)`, and the conversion **month**, `12 · k_conv()` | once |
 | `age_y(k)`, `duration_y(k)`, `calendar_year_y(k)` | Attained age, completed contract years at the **start** of projection year `k` (0-based; the contract-year band is the 1-based `duration_y(k) + 1`), and the calendar year of year `k`; `age(t)`, `duration(t)` and `calendar_year(t)` read the same three from a month | annual, stepping on the anniversary |
 | `pols_if(t)` | Policies in force at the **start** of month `t`; `pols_if(0) = pols_if_init()` | monthly recursion |
 | `pols_if_at(t, timing)` | `"BEF_DECR"` = `pols_if(t)`, `"AFT_DECR"` = `pols_if(t+1)` | within month |
@@ -621,7 +623,7 @@ ones, `q_mth = 1 − (1 − q)^(1/12)` and likewise for `w` and `θ`:
                          = l(t)          otherwise
 
 with `q(t) = mort_rate_at_age(x(t)) · mort_be_factor` in accumulation and
-`annuity_mort_rate(x(t), τ(t)) · annuity_mort_be_factor` in payout, and `q(t) = 1` at `x = omega_age`
+`annuity_mort_rate(x(t), τ(t)) · annuity_mort_be_factor` in payout, and `q(t) = 1` at `x = omega_age() − 1`
 so the closure identity closes exactly — the certainty falling in the terminal year's **last month**.
 Twelve geometric twelfths compound back to each annual rate exactly, so `l(12k)` is the annual-step
 model's `l(k)` to the last bit; `q(t)/12` would close nothing.
@@ -893,7 +895,7 @@ the **1 January 2027** valuation date. `point_id = 1`; `sex = F` (reporting only
 conversion are unisex [R23]); `issue_age = 47`, the contract having been concluded on 1 January
 **2024**; `duration_init = 3`, so `age(0) = 50`, `duration(0) = 3` — contract year 4 — and
 `calendar_year(0) = 2027`;
-`pols_if_init = 1.0`; `rentenbeginn_age = 67`; `rechnungszins = 0.0025`, the *Höchstrechnungszins* of
+`pols_if_init = 1.0`; `ret_age = 67`; `rechnungszins = 0.0025`, the *Höchstrechnungszins* of
 the 2024 vintage [R22] [REG-R15]; `beitragssumme = 33,600.00`; `contrib_form = mindest` with
 `contrib_fixed_pp = 0.00`; `contrib_ratio = 1.00`, the full *Mindesteigenbeitrag* paid;
 `contrib_extra_pp = 0.00`, so the two contribution pools coincide; `rider_prem_pp = 0.00`, so the
@@ -950,8 +952,8 @@ now known to sit inside a statutory ceiling of **150,00 €** [R1] and to be the
 provider actually charges [S9] (gap 8 closed). Expenses **[std]**: maintenance 30,00 € per in-force policy per year inflating at **2,0 %**,
 annuity administration 24,00 € per annuitant per year, claim expense 80,00 € per death, surrender or
 transfer; no acquisition expense and no initial commission, because `duration_init = 3` puts them in
-the past. Renewal commission **1,5 %** of the contributions credited **[std]**. `omega_age = 110`
-**[std]**, with `q = 1` at that age so the decrements close exactly.
+the past. Renewal commission **1,5 %** of the contributions credited **[std]**. last age 110
+**[std]** (`omega_age() = 111`), with `q = 1` at that age so the decrements close exactly.
 
 All amounts in euros; `pols_if` and `pols_annuity_pay` to six decimals, cash flows to the cent.
 Totals are summed at **full precision and then rounded**, not summed from rounded cells.
@@ -1159,7 +1161,7 @@ of 1,48 € at `k = 0`, and is the usual way this identity fails.
 *Closure: the decrements sum to one.* Over the whole 732-month projection, expected deaths
 in accumulation are **0,04110900**, deaths in payout **0,76758768**, surrenders **0,07648390**
 and transfers out **0,11481942**. They sum to **1,00000000** exactly, and `pols_if(732) = 0`
-because `mort_rate` is forced to 1 at `omega_age = 110` and `mort_rate_mth` places that certainty
+because `mort_rate` is forced to 1 at age 110, `omega_age() − 1`, and `mort_rate_mth` places that certainty
 in the terminal year's last month. Nothing is left in force and no exit is
 counted twice. Note what the split says about the product: **23,24 % of the cohort leaves before
 *Rentenbeginn*, and of those, 49,4 % leave by *Anbieterwechsel* against 32,9 % by *Kündigung*

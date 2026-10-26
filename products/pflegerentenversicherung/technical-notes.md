@@ -112,6 +112,7 @@ German terms of art keep their German form in prose.
 | `beitragsrueckgewaehr` | bool | *Beitragsrückgewähr* death benefit on/off | 9 (True) |
 | `stornoabzug_rate` | float | Deduction from the *Rückkaufswert*, as a fraction; `0.0` = off | 10 (0.05) |
 | `pols_if_init` | float | Policy count at the frame's first `t`; `1.0` everywhere here | all |
+| `rechnungszins` | float | *Rechnungszins* of the contract: DeckRV § 2 Hoechstrechnungszins of 1,00 % for new business from 1 January 2025, which stays with the contract for its whole term [unverified as to the date] [REG-R14] [REG-R15] | all at 0.01 |
 
 **The three attributes most easily got wrong**, each a numbered pitfall: `sex` is a *projection*
 input and must not touch the price [REG-R34]; `premium_mth = 0.0` is a sentinel, not a free contract;
@@ -167,7 +168,7 @@ cells in the `Data` Space (the `annuallife/TradLife_A` layout). Every file **exc
 | `care_table.csv` | `pflegegrad` | `entry_share`, `det_rate`, `rec_rate`, `mort_mult`, `provenance` | The whole in-care basis in five rows: the distribution of the grade first entered, the annual deterioration rate to the next grade, the annual recovery rate to the previous grade or to active, and the force-of-mortality multiple over an active life of the same age |
 | `lapse_table.csv` | `policy_year` | `lapse_rate`, `provenance` | Annual lapse from the **active** state, policy years 1–40; year 40's rate applies to every later year |
 | `surrender_table.csv` | `policy_year` | `rkw_prem_ratio`, `provenance` | The guaranteed *Rückkaufswert* as a fraction of premiums paid to date, policy years 1–40, clamped as for lapse |
-| `param_table.csv` | `item` | `value`, `unit`, `provenance` | `rechnungszins`, `omega_age`, `unisex_mix_male`, `rec_age_ref`, `rec_age_decay`, `inc_cap`, `beitragssumme_cap_age`, `roll_fwd_tol`, and the five first-order prudence margins `inc_margin`, `det_margin`, `rec_margin`, `care_mort_margin`, `act_mort_margin` (`unit` empty); then `acq_permille`, `admin_prem_pct`, `admin_mth_pp`, `claim_expense_pp`, `expense_infl`. Upstream's `basis_table.csv` and `expense_table.csv`, merged in phase 3 |
+| `param_table.csv` | `item` | `value`, `unit`, `provenance` | `omega_age`, `unisex_mix_male`, `rec_age_ref`, `rec_age_decay`, `inc_cap`, `beitragssumme_cap_age`, `roll_fwd_tol`, and the five first-order prudence margins `inc_margin`, `det_margin`, `rec_margin`, `care_mort_margin`, `act_mort_margin` (`unit` empty); then `acq_permille`, `admin_prem_pct`, `admin_mth_pp`, `claim_expense_pp`, `expense_infl`. Upstream's `basis_table.csv` and `expense_table.csv`, merged in phase 3; `rechnungszins` moved to the model point |
 
 Eight files, each read by a reader cells in `Data`; the suite asserts there are no orphans.
 
@@ -229,7 +230,7 @@ entering as data (product spec, footnote 21).
 | Premium form | Level monthly *Beitrag*, guaranteed for the life of the contract, adjustable only on the § 163 VVG route | [R11]; [REG-R27] |
 | Premium cessation | On death; on the start of an insured annuity; at `prem_end_age` | [S4] |
 | Equivalence principle | The gross premium is struck so that, on the first-order bases at the *Rechnungszins*, the expected present value of premiums equals that of benefits plus expenses | [REG-R8] [REG-R47] |
-| *Rechnungszins* | **1,00 %** p.a. — § 2 Abs. 1 DeckRV for new business from 1 January 2025; Abs. 2 keeps the rate used at conclusion for the contract's whole term. The model prices every model point at this one rate, a tariff parameter in `param_table.csv`, not a per-contract model-point column | [R13]; [REG-R14] [REG-R15] |
+| *Rechnungszins* | **1,00 %** p.a. — § 2 Abs. 1 DeckRV for new business from 1 January 2025; Abs. 2 keeps the rate used at conclusion for the contract's whole term, so it is a model-point column; every shipped point carries 1,00 % | [R13]; [REG-R14] [REG-R15] |
 | *Höchstzillmersatz* | **25 ‰ of the *Summe aller Prämien***, § 4 Abs. 1 DeckRV, cut from 40 ‰ by the LVRG from 1 January 2015; the retrieved wording applies exactly this, at *"2,5 % der … zu zahlenden Beiträge"* | [R13]; [S4]; [REG-R16] [REG-R20] |
 | *Rückkaufswert* | The *Deckungskapital* on the premium bases, floored by the value that results from spreading acquisition and distribution costs evenly over the first **five** contract years | [REG-R28] |
 | *Stornoabzug* | Admissible only if agreed, quantified and appropriate (§ 169 Abs. 5 VVG); a deduction for unamortised acquisition costs is expressly ineffective. **The one retrieved *Pflegerenten* wording agrees 25 %**, rising to 50 % after a partial withdrawal — see the model-risk note at the end of this file | [R11] [REG-R28]; [S4] |
@@ -588,8 +589,8 @@ relative to the market-standard form — is stated rather than hidden, and pitfa
 ### Expenses and net cash flow
 
     expense_infl_factor(t) = (1 + f) ** (t / 12)
-    acq_expense_pp()       = α * beitragssumme()
-    expenses(t)            = acq_expense_pp() * 1{t = 0}
+    zillmer_amount()       = α * beitragssumme()
+    expenses(t)            = zillmer_amount() * 1{t = 0}
                            + γ * expense_infl_factor(t) * pols_if(t)
                            + β * premiums(t)
     claim_expenses(t)      = c * expense_infl_factor(t) * Σ_{g : π_g > 0} ℓ_g(t)
@@ -698,7 +699,7 @@ this list executed in a different sequence.
    otherwise zero. Accumulate `cum_prem_max_pp(t)`.
 4. **Pay the *Pflegerente*, in advance**, on the **escalation** ledger:
    `claims(t, "ANNUITY") = R × Σ_g π_g × esc_pg(t, g)`. The *Karenz* ledger receives nothing.
-5. **Charge start-of-month expenses.** `acq_expense_pp()` at `t = 0` only; per-policy administration
+5. **Charge start-of-month expenses.** `zillmer_amount()` at `t = 0` only; per-policy administration
    on `pols_if(t)`, inflated; premium-related administration on the premium just collected; and
    `claim_expenses(t)` on the annuity payments just made.
 6. **Look up the month's forces at `x(t)`.** `μ_A`, and `ι` — **zero while `t < wartezeit_months`**;
@@ -788,7 +789,7 @@ The specific ways an implementation of *this* product looks right and is wrong. 
     `x(t) ≥ prem_end_age` (point 4).
 13. **Charging the *Zillmerung* on the wrong base.** The 25 ‰ ceiling is a per-mille of the
     *Beitragssumme*, not of the annual premium [REG-R16]. Assert
-    `acq_expense_pp() == 0.025 × premium_mth_pp() × 12 × (min(prem_end_age, 85) - issue_age)`,
+    `zillmer_amount() == 0.025 × premium_mth_pp() × 12 × (min(prem_end_age, 85) - issue_age)`,
     charged at `t = 0` only, so an in-force point never incurs it.
 14. **Striking the equivalence premium on the projection basis.** Assert `check_prem_equiv()` is
     `True`, that `premium_mth_pp()` is invariant to every value in `lapse_table.csv`, and that

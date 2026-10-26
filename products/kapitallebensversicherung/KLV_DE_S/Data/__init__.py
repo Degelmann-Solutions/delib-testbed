@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The seven input CSVs are read here, **once per model**, and referenced from
+The eight input CSVs are read here, **once per model**, and referenced from
 :mod:`~.KLV_DE_S.Projection` as ``data``. :mod:`~.KLV_DE_S.Projection` is parameterized by
 ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells cache;
 if the readers lived there, every model point would re-read every file. Holding them in an
@@ -33,9 +33,10 @@ model_point_file          model_point_table()           model_point_table.csv
 mort_file                 mort_table()                  mort_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
 surplus_rate_file         surplus_rate_table()          surplus_rate_table.csv
-cost_file                 cost_table()                  cost_table.csv
+charge_file               charge_table()                cost_table.csv
 freq_loading_file         freq_loading_table()          freq_loading_table.csv
 deckrv_file               deckrv_table()                deckrv_table.csv
+param_file                param_table()                 param_table.csv
 ========================  ============================  ==========================
 
 Every file but ``model_point_table.csv`` carries a final **``provenance``** column, one tag
@@ -139,17 +140,20 @@ def surplus_rate_table():
         index_col=["scenario_id", "policy_year"])
 
 
-def cost_table():
-    """The tariff loadings and the expense basis by ``cost_id``, from *cost_table.csv*.
+def charge_table_index():
+    """The index column of *cost_table.csv*: ``cost_id``.
 
-    First order and second order on the same row — ``alpha_rate``, ``beta_rate`` and
-    ``gamma_rate`` are what the tariff charges, ``acq_expense``, ``maint_expense``,
-    ``expense_infl``, ``claim_expense``, ``comm_init_rate`` and ``comm_renew_rate`` are
-    what the insurer expects to spend — because the difference between them **is** the
+    The table holds the tariff loadings and the expense basis by ``cost_id``: first order
+    and second order on the same row — ``alpha_rate``, ``beta_rate`` and ``gamma_rate`` are
+    what the tariff charges, ``acq_expense``, ``maint_expense``, ``expense_infl``,
+    ``claim_expense``, ``comm_init_rate`` and ``comm_renew_rate`` are what the insurer
+    expects to spend — because the difference between them **is** the
     *Kostenüberschuss*.
+
+    Override reason: the tariff loadings and the expense basis share one row per
+    ``cost_id``, products/kapitallebensversicherung/technical-notes.md:214
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / cost_file, index_col="cost_id")                # noqa: F821
+    return "cost_id"
 
 
 def deckrv_table():
@@ -176,10 +180,12 @@ lapse_file = "lapse_table.csv"
 
 surplus_rate_file = "surplus_rate_table.csv"
 
-cost_file = "cost_table.csv"
+charge_file = "cost_table.csv"
 
 freq_loading_file = "freq_loading_table.csv"
 
 deckrv_file = "deckrv_table.csv"
+
+param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

@@ -33,7 +33,7 @@ is not.
 
 **There are three reserves and the product needs all three.** ``res_zill_pp`` is the
 *gezillmerte Deckungskapital* the insurer holds, negative at issue and equal to
-``-alpha_cost`` there; ``res_min_pp`` is the § 169 Abs. 3 VVG floor obtained by spreading
+``-zillmer_amount`` there; ``res_min_pp`` is the § 169 Abs. 3 VVG floor obtained by spreading
 the acquisition cost evenly over the first five contract years, and on a long *gezillmert*
 contract it **normally binds**; ``res_guar_pp`` is their maximum and is what the customer
 actually gets. Publishing only the first understates the surrender value at essentially
@@ -50,7 +50,7 @@ the two branches.
 **Spaces.** The model contains two:
 
 :mod:`~.KLV_DE_S.Data`
-    Reads the seven input CSVs and holds their filename References. It takes no
+    Reads the eight input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.KLV_DE_S.Projection`

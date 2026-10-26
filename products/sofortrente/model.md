@@ -261,13 +261,13 @@ fund of those who died, and the annuity starts at an older age.
 
 ## Inputs are external files
 
-The five input CSVs live **in this directory**, beside `run.py` — not inside the model
+The six input CSVs live **in this directory**, beside `run.py` — not inside the model
 folder. `Sofort_DE_S/` holds nothing but formulas:
 
 ```
 products/sofortrente/
   model_point_table.csv  mort_table.csv  improvement_table.csv      <- inputs live here
-  surplus_scale_table.csv  hoechstrechnungszins_table.csv
+  surplus_scale_table.csv  hoechstrechnungszins_table.csv  param_table.csv
   run.py  model.md  product-spec.md  technical-notes.md  sources.md
   Sofort_DE_S/                     <- formulas only
     __init__.py  _system.json         (the model docstring, and the serializer version)
@@ -295,6 +295,7 @@ conventions suite counts the reads and asserts the file set.
 | `improvement_table.csv` | `improvement_file` / `improvement_table()` | The *Trendfunktion* `λ(x)` by `(basis, age)`: **[std]** 1,5 % a year to age 70 on the second-order basis, tapering linearly to zero at 105, with the first-order basis improving 25 % faster. DAV 2004 R's own trend is **not public and was not reachable** — the DAV derivation and the contemporaneous expositions are members' and conference materials with no open address [R10] [R12] |
 | `surplus_scale_table.csv` | `surplus_scale_file` / `surplus_scale_table()` | `surplus_init_pct` and `surplus_growth` for the *Überschussverwendung* forms. **[std]** and **uncalibrated**: one carrier group's payout-phase declaration is now in the corpus — 3,35 % less the *Rechnungszins* for 2026, interest surplus only [S10] — and one carrier's realised increase, 0,75 % for 2024 [S8], but neither was used to set these values and the shipped two-component shape does not match either. The corpus still gives no range [R21] [R22] (research gap 4 narrows) |
 | `hoechstrechnungszins_table.csv` | `hoechstrechnungszins_file` / `hoechstrechnungszins_table()` | The statutory rate history by vintage band [REG-R14] [REG-R15]; the two mid-year steps of 1994 and 2000 are assigned **[std]** to the rate in force on 1 January of the split year |
+| `param_table.csv` | `param_file` / `param_table()` | Scalar tariff parameters by `item`, read by the common core's loader: the limiting age `omega_age`, 121 **[std]** |
 
 **No input file is keyed by the frame's `t`,** so the move to the 0-based convention left every
 CSV byte-identical. The time-like columns and why each stands: `mort_table.csv` and

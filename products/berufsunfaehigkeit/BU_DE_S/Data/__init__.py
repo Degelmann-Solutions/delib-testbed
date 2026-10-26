@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The eight input CSVs are read here, **once per model**, and referenced from
+The seven input CSVs are read here, **once per model**, and referenced from
 :mod:`~.BU_DE_S.Projection` as ``data``. :mod:`~.BU_DE_S.Projection` is parameterized by
 ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells cache;
 if the readers lived there, every model point would re-read every file. Holding them in
@@ -36,7 +36,6 @@ mort_file                 mort_table()                  mortality_table.csv
 occupation_file           occupation_table()            occupation_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
 freq_loading_file         freq_loading_table()          freq_loading_table.csv
-param_file                param_table()                 param_table.csv
 ========================  ============================  ==========================
 
 Every file but ``model_point_table.csv`` carries a per-row ``provenance`` column, which
@@ -128,8 +127,8 @@ def claim_duration_table():
         input_dir() / claim_duration_file, index_col="dur_year")     # noqa: F821
 
 
-def mort_table():
-    """The two annual mortality rates by attained age, ages 18-70.
+def mort_table_index():
+    """The index columns of *mortality_table.csv*: ``age`` alone.
 
     Read from *mortality_table.csv*: ``mort_rate_actv`` for lives in the *aktiv* and
     run-off ledgers and ``mort_rate_dis`` for lives in claim, before the claim-duration
@@ -140,11 +139,9 @@ def mort_table():
 
     Override reason: the table carries an active and a disabled rate (``mort_rate_actv``,
     ``mort_rate_dis``) keyed by ``age`` alone,
-    products/berufsunfaehigkeit/technical-notes.md, section (c) Behavioural / experience
-    assumptions (the modeller's view)
+    products/berufsunfaehigkeit/technical-notes.md:352
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col="age")                    # noqa: F821
+    return "age"
 
 
 def occupation_table():
@@ -160,23 +157,6 @@ def occupation_table():
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / occupation_file, index_col="berufsgruppe")     # noqa: F821
-
-
-def freq_loading_table():
-    """The payment frequency table, from *freq_loading_table.csv*.
-
-    ``prem_mode_months`` is the number of months between instalments — 12, 6, 3, 1 — and
-    ``freq_load`` the *Ratenzahlungszuschlag* on the tariff premium, 1.00 / 1.02 / 1.03 /
-    1.05.  The loading scales the *Bruttobeitrag* and the *Beitragsverrechnung* together,
-    so the quoted *Zahlbeitrag* ratio is untouched by it.  **[std]**: the ladder is the
-    recalled German market convention and no retrieved document confirms it.
-
-    Override reason: the table keys the payment frequency as ``prem_mode`` and carries its
-    length in months, products/berufsunfaehigkeit/technical-notes.md, section (c)
-    Behavioural / experience assumptions (the modeller's view)
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_mode")      # noqa: F821
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +175,5 @@ occupation_file = "occupation_table.csv"
 lapse_file = "lapse_table.csv"
 
 freq_loading_file = "freq_loading_table.csv"
-
-param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

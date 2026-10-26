@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The seven input CSVs are read here, **once per model**, and referenced from
+The six input CSVs are read here, **once per model**, and referenced from
 :mod:`~.RLV_DE_S.Projection` as ``data``. :mod:`~.RLV_DE_S.Projection` is parameterized
 by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells
 cache; if the readers lived there, every model point would re-read every file. Holding
@@ -36,7 +36,6 @@ benefit_schedule_file     benefit_schedule()            benefit_schedule.csv
 nvg_schedule_file         nvg_schedule()                nvg_schedule.csv
 lapse_file                lapse_table()                 lapse_table.csv
 freq_loading_file         freq_loading_table()          freq_loading_table.csv
-param_file                param_table()                 param_table.csv
 ========================  ============================  ==========================
 
 **Every file but the model point table carries a per-row ``provenance`` column.** That is
@@ -146,8 +145,8 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table():
-    """The second-order annual death rates, from *mort_table.csv*.
+def mort_table_index():
+    """The index columns of *mort_table.csv*, the second-order annual death rates.
 
     Indexed by ``table_id``, ``sex``, ``smoker`` and attained ``age``.  A **[std]**
     Gompertz proxy standing in for DAV 2008 T, which is proprietary and is cited by name
@@ -159,11 +158,9 @@ def mort_table():
 
     Override reason: the table carries a table id and the smoker split, keyed by
     ``table_id``, ``sex``, ``smoker`` and ``age``,
-    products/risikolebensversicherung/technical-notes.md, section External inputs
+    products/risikolebensversicherung/technical-notes.md:140
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file,                                     # noqa: F821
-        index_col=["table_id", "sex", "smoker", "age"])
+    return ["table_id", "sex", "smoker", "age"]
 
 
 def benefit_schedule():
@@ -208,7 +205,5 @@ nvg_schedule_file = "nvg_schedule.csv"
 lapse_file = "lapse_table.csv"
 
 freq_loading_file = "freq_loading_table.csv"
-
-param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

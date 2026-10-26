@@ -28,6 +28,54 @@ def model_point():
     return data.model_point_table().loc[point_id]                    # noqa: F821
 
 
+def policy_id():
+    """The policy identifier of the selected model point; reporting only."""
+    return model_point()["policy_id"]                                # noqa: F821
+
+
+def sum_assured():
+    """The sum insured at issue, from the model point's ``sum_assured`` column."""
+    return float(model_point()["sum_assured"])                       # noqa: F821
+
+
+def rating_factor():
+    """The *Risikozuschlag*, a multiplier from the model point; 1.00 at standard rates."""
+    return float(model_point()["rating_factor"])                     # noqa: F821
+
+
+def scenario_id():
+    """The key of the model point's scenario path, from its ``scenario_id`` column."""
+    return model_point()["scenario_id"]                              # noqa: F821
+
+
+def karenz_months():
+    """K: the *Karenzzeit*, the deferment of payment from the onset of a claim, in months."""
+    return int(model_point()["karenz_months"])                       # noqa: F821
+
+
+def prem_freq():
+    """The payment frequency, a key into the product's *freq_loading_table.csv*.
+
+    Raises ``ValueError`` for a frequency the table has no row for.
+    """
+    v = model_point()["prem_freq"]                                   # noqa: F821
+    if v not in data.freq_loading_table().index:                     # noqa: F821
+        raise ValueError("no frequency loading for prem_freq " + str(v))
+    return v
+
+
+def prem_freq_load():
+    """phi: the *Ratenzahlungszuschlag* for ``prem_freq()``, from *freq_loading_table.csv*."""
+    return float(data.freq_loading_table().at[                       # noqa: F821
+        prem_freq(), "prem_freq_load"])                              # noqa: F821
+
+
+def instalments():
+    """The number of premium instalments a year for ``prem_freq()``: 1, 2, 4 or 12."""
+    return int(data.freq_loading_table().at[                         # noqa: F821
+        prem_freq(), "instalments"])                                 # noqa: F821
+
+
 def issue_age():
     """The age at issue of the selected model point, from its ``issue_age`` column."""
     return int(model_point()["issue_age"])                           # noqa: F821
@@ -41,10 +89,18 @@ def sex():
     return v
 
 
+def smoker_codes():
+    """The model point's codes for a non-smoker and a smoker: ``N`` and ``S``."""
+    return ("N", "S")
+
+
 def smoker():
-    """The smoker status of the insured life, ``N`` or ``S``, from the model point."""
+    """The smoker status of the insured life, one of ``smoker_codes()``, from the model point.
+
+    Raises ``ValueError`` for a code outside them.
+    """
     v = model_point()["smoker"]                                      # noqa: F821
-    if v not in ("N", "S"):
+    if v not in smoker_codes():                                      # noqa: F821
         raise ValueError("invalid smoker")
     return v
 
@@ -55,8 +111,14 @@ def policy_term():
 
 
 def prem_term():
-    """The premium payment term in whole years, from the model point."""
-    return int(model_point()["prem_term"])                           # noqa: F821
+    """The premium payment term in whole years, from the model point.
+
+    Checked against ``1 <= prem_term <= policy_term()``; raises ``ValueError`` outside it.
+    """
+    k = int(model_point()["prem_term"])                              # noqa: F821
+    if k < 1 or k > policy_term():                                   # noqa: F821
+        raise ValueError("prem_term outside 1 .. policy_term")
+    return k
 
 
 def prem_term_y():
@@ -79,9 +141,21 @@ def duration_mth_init():
     return int(model_point()["duration_mth_init"])                   # noqa: F821
 
 
+def clock_offset_mth():
+    """The months from issue to ``t = 0``: 0, ``t`` counts policy months from issue.
+
+    The inception clock.  A product whose ``t`` counts months from the valuation date
+    overrides it with the policy months completed there; every clock cell below reads it.
+    """
+    return 0
+
+
 def k_start():
-    """The first projected policy year, ``duration_init()``."""
-    return duration_init()                                           # noqa: F821
+    """The first projected policy year, ``duration_init() - clock_offset_mth() // 12``.
+
+    ``duration_init()`` on the inception clock, 0 where ``t = 0`` is the valuation date.
+    """
+    return duration_init() - clock_offset_mth() // 12                # noqa: F821
 
 
 def t_start():
@@ -95,8 +169,8 @@ def proj_year(t):
 
 
 def duration_mth(t):
-    """The completed policy months at the start of month t: ``t``, counted from issue."""
-    return t
+    """The completed policy months at the start of month t, ``clock_offset_mth() + t``."""
+    return clock_offset_mth() + t                                    # noqa: F821
 
 
 def duration(t):
@@ -105,8 +179,8 @@ def duration(t):
 
 
 def duration_y(k):
-    """The completed policy years at the start of projection year k, ``duration_init() + k``."""
-    return duration_init() + k                                       # noqa: F821
+    """The completed policy years at the start of projection year k, ``duration(12 x k)``."""
+    return duration(12 * k)                                          # noqa: F821
 
 
 def policy_year(t):
@@ -114,34 +188,95 @@ def policy_year(t):
     return duration(t) + 1                                           # noqa: F821
 
 
+def policy_year_y(k):
+    """The contractual 1-based policy year of projection year k, ``duration_y(k) + 1``."""
+    return duration_y(k) + 1                                         # noqa: F821
+
+
 def age_y(k):
-    """The attained age at the start of policy year k, ``issue_age() + k``."""
-    return issue_age() + k                                           # noqa: F821
+    """The attained age at the start of projection year k, ``issue_age() + duration_y(k)``."""
+    return issue_age() + duration_y(k)                               # noqa: F821
 
 
 def age(t):
-    """The attained age in month t, ``age_y(duration(t))``, stepping on the anniversary."""
-    return age_y(duration(t))                                        # noqa: F821
+    """The attained age in month t, ``issue_age() + duration(t)``, stepping on the anniversary."""
+    return issue_age() + duration(t)                                 # noqa: F821
 
 
-def proj_len_y():
-    """The number of projected policy years, the policy term."""
-    return policy_term()                                             # noqa: F821
+def omega_age():
+    """omega: the limiting age, from the product's *param_table.csv*.
+
+    The first age nobody reaches: the death rate is 1 at ``omega_age() - 1``, so a
+    projection run to it ends with no survivors.
+    """
+    return int(data.param_table().at["omega_age", "value"])          # noqa: F821
+
+
+def ret_age():
+    """The attained age at *Rentenbeginn*, from the model point's ``ret_age`` column."""
+    return int(model_point()["ret_age"])                             # noqa: F821
+
+
+def k_conv():
+    """T: the projection year in which *Rentenbeginn* falls, ``ret_age() - age(0)``.
+
+    Negative for a model point that opens after *Rentenbeginn*, already in payment.
+    """
+    return ret_age() - age(0)                                        # noqa: F821
+
+
+def t_conv():
+    """The projection month of *Rentenbeginn*, ``12 x k_conv()``."""
+    return 12 * k_conv()                                             # noqa: F821
+
+
+def horizon_age():
+    """The attained age at which the projection ends, ``issue_age() + policy_term()``."""
+    return issue_age() + policy_term()                               # noqa: F821
 
 
 def proj_len():
-    """The number of projected months, ``12 x proj_len_y()``; the frame's exclusive end."""
-    return 12 * proj_len_y()                                         # noqa: F821
+    """The number of projected months, the frame's exclusive end.
+
+    ``12 x (horizon_age() - issue_age()) - clock_offset_mth()``: the months from issue to
+    the horizon, less those completed before ``t = 0``.
+    """
+    return 12 * (horizon_age() - issue_age()) - clock_offset_mth()   # noqa: F821
+
+
+def proj_len_y():
+    """The number of projected years, ``proj_len() // 12``."""
+    return proj_len() // 12                                          # noqa: F821
 
 
 def calendar_year_y(k):
-    """The calendar year of policy year k, ``issue_year() + k``."""
-    return issue_year() + k                                          # noqa: F821
+    """The calendar year of projection year k, ``issue_year() + duration_y(k)``."""
+    return issue_year() + duration_y(k)                              # noqa: F821
 
 
 def calendar_year(t):
-    """The calendar year of month t, ``calendar_year_y(duration(t))``."""
-    return calendar_year_y(duration(t))                              # noqa: F821
+    """The calendar year of month t, ``issue_year() + duration(t)``."""
+    return issue_year() + duration(t)                                # noqa: F821
+
+
+def is_anniv(t):
+    """Whether month t is the **last** month of its policy year: ``t % 12 == 11``.
+
+    The month the annual machinery acts in, the month before the next anniversary.  A
+    decrement that is a certainty rather than a rate (an annual rate of 1) cannot be spread
+    geometrically over twelve months without emptying the cohort eleven months early, so the
+    monthly rates place it here.
+    """
+    return t % 12 == 11
+
+
+def mort_be_factor():
+    """The step from the product's mortality table to the best estimate; 1, neutral.
+
+    A product whose best estimate is a multiple of its table overrides it with its own
+    value, a tariff parameter in its *param_table.csv*.
+    """
+    return 1.0
 
 
 def rechnungszins():
@@ -151,6 +286,58 @@ def rechnungszins():
     carries a stack of guarantee vintages and the rate is a model-point attribute.
     """
     return float(model_point()["rechnungszins"])                     # noqa: F821
+
+
+def hoechstrechnungszins():
+    """The statutory *Höchstrechnungszins* in force at ``issue_year()``, the contract's cap.
+
+    Read from ``data.hoechstrechnungszins_table()`` by the band that covers the year of
+    issue: the cap in force at conclusion stays with the contract for its whole term
+    (§ 2 Abs. 2 DeckRV).  Raises ``ValueError`` where no band covers it.
+    """
+    tab = data.hoechstrechnungszins_table()                          # noqa: F821
+    y = issue_year()                                                 # noqa: F821
+    for year_from in tab.index:
+        if int(year_from) <= y <= int(tab.loc[year_from, "year_to"]):
+            return float(tab.loc[year_from, "max_rate"])
+    raise ValueError("no Hoechstrechnungszins band covers issue_year")
+
+
+def beitragssumme_prem():
+    """The annual premium the *Beitragssumme* is struck on: the product's ``prem_gross_pp()``.
+
+    Reads the product's level annual gross premium; a product without one inherits this
+    cell unused.
+    """
+    return prem_gross_pp()                                           # noqa: F821
+
+
+def beitragssumme_years():
+    """The number of premium years the *Beitragssumme* counts, ``prem_term()``."""
+    return prem_term()                                               # noqa: F821
+
+
+def beitragssumme():
+    """BS: the *Beitragssumme*, ``beitragssumme_prem() x beitragssumme_years()``.
+
+    The total of the premiums payable over the agreed term, fixed at conclusion: the base
+    of the § 4 DeckRV acquisition-cost cap and of the initial commission.
+    """
+    return beitragssumme_prem() * beitragssumme_years()              # noqa: F821
+
+
+def zillmer_on():
+    """1 where the acquisition cost is zillmered into the reserve; 1, the default."""
+    return 1
+
+
+def zillmer_amount():
+    """The zillmered acquisition charge, ``zillmer_on() x alpha_rate() x beitragssumme()``.
+
+    Reads the product's ``alpha_rate``, its *Zillmersatz* on the *Beitragssumme*; a product
+    without one inherits this cell unused.
+    """
+    return zillmer_on() * alpha_rate() * beitragssumme()             # noqa: F821
 
 
 def disc_factor_mth(t):
@@ -167,13 +354,42 @@ def disc_factor(y):
     return (1.0 + rechnungszins()) ** -y                             # noqa: F821
 
 
-def mort_rate_tariff(t):
-    """The first-order (tariff) annual death rate in month t, at ``age(t)``.
+def unisex_mix_male():
+    """The male share of the unisex tariff blend, from the product's *param_table.csv*."""
+    return float(data.param_table().at["unisex_mix_male", "value"])  # noqa: F821
+
+
+def unisex_blend(q_m, q_f):
+    """The unisex blend of a male and a female rate, ``w q_m + (1 - w) q_f``.
+
+    ``w = unisex_mix_male()``: sex may not enter the premium of a contract concluded from
+    21 December 2012, so a tariff rate is struck on the mixed basis.
+    """
+    w = unisex_mix_male()                                            # noqa: F821
+    return w * q_m + (1.0 - w) * q_f
+
+
+def mort_load_tariff(t):
+    """The loading on the first-order base rate in month t: 1, neutral."""
+    return 1.0
+
+
+def mort_rate_tariff_base(t):
+    """The first-order base rate in month t, ``mort_rate_tariff_at_age(age(t))``.
 
     Reads the product's ``mort_rate_tariff_at_age``, its first-order rate at an attained
     age; a product without one inherits this cell unused.
     """
     return mort_rate_tariff_at_age(age(t))                           # noqa: F821
+
+
+def mort_rate_tariff(t):
+    """The first-order (tariff) annual death rate in month t.
+
+    ``mort_load_tariff(t) x mort_rate_tariff_base(t)``: the base rate at ``age(t)`` times
+    its loading, 1 unless the product loads it.
+    """
+    return mort_load_tariff(t) * mort_rate_tariff_base(t)            # noqa: F821
 
 
 def pols_tariff(y):
@@ -198,11 +414,64 @@ def tariff_annuity():
                for y in range(prem_term()))                          # noqa: F821
 
 
+def tariff_death_sum():
+    """The death sum the tariff's death benefit is struck on, outside the sum; 1, neutral."""
+    return 1.0
+
+
+def tariff_death_load(y):
+    """The loading on the first-order death rate of policy year y in the death leg; 1."""
+    return 1.0
+
+
+def tariff_schedule(y):
+    """The sum insured of policy year y relative to the death sum; 1, a level sum."""
+    return 1.0
+
+
+def tariff_maturity_sum():
+    """The survival benefit at the end of the term; 0, a pure death cover."""
+    return 0.0
+
+
+def tariff_death_pv():
+    """The first-order present value at issue of the death benefit, per policy.
+
+    ``tariff_death_sum() x sum v^(y+1) p1(y) load(y) q1(12 y) schedule(y)`` over
+    ``y < proj_len_y()``: claims fall at the end of the policy year of death, and the
+    annual rate and sum are read at that year's opening month.
+    """
+    return tariff_death_sum() * sum(                                 # noqa: F821
+        disc_factor(y + 1) * pols_tariff(y) * tariff_death_load(y)   # noqa: F821
+        * mort_rate_tariff(12 * y) * tariff_schedule(y)              # noqa: F821
+        for y in range(proj_len_y()))                                # noqa: F821
+
+
+def tariff_maturity_pv():
+    """The first-order present value at issue of the survival benefit, ``SE v^n p1(n)``."""
+    return (tariff_maturity_sum() * disc_factor(policy_term())       # noqa: F821
+            * pols_tariff(policy_term()))                            # noqa: F821
+
+
+def tariff_benefit_pv():
+    """A: the first-order present value at issue of the benefits, death plus survival."""
+    return tariff_death_pv() + tariff_maturity_pv()
+
+
+def tariff_term_annuity():
+    """The annuity-due over the cover term, ``sum v^y p1(y) schedule(y)``, ``y < proj_len_y()``.
+
+    The base of a loading on the sum insured that runs for as long as there is a sum at
+    risk, not only over the paying term.
+    """
+    return sum(disc_factor(y) * pols_tariff(y) * tariff_schedule(y)  # noqa: F821
+               for y in range(proj_len_y()))                         # noqa: F821
+
+
 def prem_net_level_pp():
     """The net level premium, ``tariff_benefit_pv() / tariff_annuity()``, before loadings.
 
-    Reads the product's ``tariff_benefit_pv``, the present value of its benefits on the
-    tariff basis; a product without one inherits this cell unused.  A pricing quantity,
-    never a cash flow.
+    ``tariff_benefit_pv`` is the present value of the benefits on the tariff basis.  A
+    pricing quantity, never a cash flow.
     """
     return tariff_benefit_pv() / tariff_annuity()                    # noqa: F821

@@ -104,7 +104,7 @@ convention, and the § 165 cash-out, which is a dated contractual act. Spreading
 would empty the cohort eleven months early.
 
 **Time-like inputs.** No CSV value changed, in this conversion or in the earlier move to a 0-based
-frame. `lapse_table.csv`'s `duration` is the **contractual policy year**, 1-based, and the model reads
+frame. `lapse_table.csv`'s `policy_year` is the **contractual policy year**, 1-based, and the model reads
 it through `policy_year(t) = duration(t) + 1` — the § 20 EStG twelve-year step stays at duration 12,
 which the model reads across months 132 to 143. `decl_rate_table.csv`'s `calendar_year` and the `age`
 keys of `mort_table.csv` and `rentenfaktor_table.csv` are absolute and unaffected. On the model point
@@ -197,7 +197,7 @@ instead of being free.
 
 ## The *Ratenzahlungszuschlag* is the whole of what the *Zahlweise* does
 
-Instalments are **not** modelled, on the monthly grid as on the annual one: `freq_load()` charges the
+Instalments are **not** modelled, on the monthly grid as on the annual one: `prem_freq_load()` charges the
 loaded annual amount in the first month of the policy year, `prem_due(t)` is
 `duration_mth(t) % 12 == 0`, and `n_instalments` stays documentation — so a monthly payer here pays
 1,050 × the annual premium once a year, not twelve times.
@@ -391,7 +391,7 @@ repository is checked out.
 | `decl_rate_file` | `decl_rate_table()` | `decl_rate_table.csv` | The declared *laufende Verzinsung* by scenario and calendar year, 2005–2060, clamped at both ends. `base` level at 2,55 %, `low` at 1,50 % **[std]** |
 | `rentenfaktor_file` | `rentenfaktor_table()` | `rentenfaktor_table.csv` | The *aktueller Rentenfaktor* by scenario and attained age at *Rentenbeginn*, rising 2,5 % per year of age. `base` / `low` / `high` anchored at age 67 on 32,00 € / 25,50 € / 35,00 € **[std]** — no market level was established for any carrier in any year (gap 3) |
 | `charge_file` | `charge_table()` | `charge_table.csv` | Two charge sets, `zillmer_25` and `zillmer_40`, eight items each, keyed per item so every number carries its own provenance |
-| `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual surrender by contractual policy year (`duration` 1–40, read through `policy_year(t)`), last row held. Levels **[std]**; the one shaped feature is the **duration-12 step** at the § 20 Abs. 1 Nr. 6 EStG twelve-year threshold [R6] [REG-R45] |
+| `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual surrender by contractual policy year (`policy_year` 1–40, read through `policy_year(t)`), last row held. Levels **[std]**; the one shaped feature is the **duration-12 step** at the § 20 Abs. 1 Nr. 6 EStG twelve-year threshold [R6] [REG-R45] |
 | `freq_loading_file` | `freq_loading_table()` | `freq_load_table.csv` | The *Ratenzahlungszuschlag*: 1,000 / 1,020 / 1,030 / 1,050 **[std]**, and `n_instalments` for documentation — the premium is collected annually in advance whatever the elected frequency, for the reasons under *The Ratenzahlungszuschlag* above |
 | `param_file` | `param_table()` | `param_table.csv` | Every scalar that is neither a charge nor a rate table — the four expense levels and their inflation, `mort_be_factor`, `mort_base_year`, `omega_age`, `val_reserve_rate`, the three *Überschussrente* parameters and `roll_fwd_tol`. They live in a file rather than in References so that each carries its own provenance tag, which a Reference cannot |
 
@@ -522,7 +522,7 @@ Everything below is **[std]** — chosen where the sources vary, are proprietary
 | `val_reserve_rate` | 1,5 % of the accumulated value | The *hälftige* participation (§ 153 Abs. 3 Satz 2) and the *Rentenbeginn* crystallisation (§ 153 Abs. 4, annuities only) are statutory [R4] and applied by [S4] and [S15]; **no amount, ratio or reserve level is established anywhere** |
 | *Überschussrente* | `sur_ann_rate` 12 %, `sur_ann_growth` 1,5 %, `sur_ann_theta` 0,5 | The three payout systems and their *directions* are established [R19] [R20] [R24]; no level, rate or split is |
 | Expenses | 400,00 € acquisition, 45,00 € p.a. accumulation, 30,00 € p.a. payout, 120,00 € per settlement, 2,0 % inflation | No German carrier publishes an expense assumption (gap 14) |
-| `freq_load` | 1,000 / 1,020 / 1,030 / 1,050 | No carrier's *Ratenzahlungszuschlag* was established (gap 14) |
+| `prem_freq_load` | 1,000 / 1,020 / 1,030 / 1,050 | No carrier's *Ratenzahlungszuschlag* was established (gap 14) |
 | Surrender table | 6,0 % falling to 3,0 %, with a **6,0 % step at duration 12** | No German *Stornoquote* for this product was established (gap 20). The duration-12 shape is argued from the § 20 Abs. 1 Nr. 6 EStG threshold; every level is a placeholder |
 | Within-year order and charge incidence | premium, then charges, then interest; `γ` and `ρ` on start-of-year balances; charges from the premium first, then from the account | No document in the corpus fixes the sequence. Start-of-year incidence keeps the recursion acyclic; premium-first incidence is what makes a paid-up contract pay for itself |
 | § 169 Abs. 3 floor scope | the *Deckungskapital* **alone**, and no *Stornoabzug* on the paid-up route | Profit shares sit on top of the statutory minimum, the reading § 165 Abs. 2 supports; the alternative is named and not implemented. Abs. 5 is drafted for a payout on *Kündigung*, and on the paid-up route the contract continues |

@@ -48,7 +48,7 @@ table, DAV 2004 R — which is why no cells reads both tables.
 **Spaces.** The model contains two:
 
 :mod:`~.FRV_DE_S.Data`
-    Reads the six input CSVs and holds their filename References. It takes no
+    Reads the seven input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.FRV_DE_S.Projection`
@@ -74,7 +74,7 @@ of a German unit-linked contract's early values. ``t`` is the **0-based** policy
 counted from the contract's own inception — ``t = 0`` is the inception month — so
 ``t = 60`` means the same thing on every model point. The frame is
 ``range(t_start(), proj_len())`` with ``t_start() = duration_mth_init`` and
-``proj_len() = 12 x (annuity_age - issue_age)``, the **number** of policy months and so
+``proj_len() = 12 x (ret_age - issue_age)``, the **number** of policy months and so
 the frame's exclusive end; an in-force model point simply opens partway through it. The
 contractual policy year is the 1-based label ``t // 12 + 1``.
 

@@ -1,5 +1,4 @@
 item,value,unit,provenance
-rechnungszins,0.01,,"[REG-R14] [REG-R15] DeckRV s 2 Hoechstrechnungszins for new business from 1 January 2025, which stays with the contract for its whole term [unverified as to the date]"
 omega_age,110.0,,[std] terminal age; mort_rate is forced to 1 at omega_age - 1 so the model is a closed system. The DAV tables run higher [R15] [REG-R51]
 unisex_mix_male,0.5,,[std] the pricing blend; sex may not enter a premium for contracts concluded from 21 December 2012 [REG-R34]. Writing 60/40 against a 50/50 price is model risk 7
 rec_age_ref,75.0,,"[std] age above which Reaktivierung is damped, so deterioration dominates recovery above 75 - property (b) a replacement table must preserve [R15]"

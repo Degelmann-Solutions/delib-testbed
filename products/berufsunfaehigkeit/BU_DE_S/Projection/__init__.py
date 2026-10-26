@@ -47,7 +47,6 @@ mort_file                 data.mort_table()                  mortality_table.csv
 occupation_file           data.occupation_table()            occupation_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
-param_file                data.param_table()                 param_table.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -66,6 +65,8 @@ Notes symbol               Cells                           Meaning
 n                          proj_len()                      Number of projected months
 (none)                     first_len()                     Months in the pricing run
 u(t)                       duration_mth(t)                 Elapsed policy months at t
+u(0)                       clock_offset_mth()              Elapsed policy months at t = 0
+(none)                     duration(t)                     Elapsed policy years, floored at 0
 y(t)                       policy_year(t)                  Policy year containing t
 x(t)                       age(t)                          Attained age, ALB
 (none)                     age_first(s)                    Attained age in the pricing run
@@ -81,8 +82,8 @@ g_B                        beitragsdyn_rate()              Beitragsdynamik p.a.
 (1 + g_B)^(y-1)            dyn_factor(t)                   Beitragsdynamik factor at t
 (1 + g_L)^((z-1)//12)      leistungsdyn_factor(z)          Leistungsdynamik factor at z
 theta                      beitragsverrechnung()           Zahlbeitrag / Bruttobeitrag
-rho                        risk_factor()                   Risikozuschlag on the premium
-phi                        freq_load()                     Ratenzahlungszuschlag
+rho                        rating_factor()                 Risikozuschlag on the premium
+phi                        prem_freq_load()                Ratenzahlungszuschlag
 M                          prem_mode_months()              Months between instalments
 kappa                      occ_factor()                    Occupational loading
 alpha                      accept_factor                   Anerkennungsquote factor
@@ -134,10 +135,10 @@ liability_cf(t)            liability_cf(t)                 The same stream, outg
 
 Five names needed care.
 
-``occ_factor`` and ``risk_factor`` are **not two spellings of the same thing**.
+``occ_factor`` and ``rating_factor`` are **not two spellings of the same thing**.
 :func:`occ_factor` loads the *inception rate* and reaches the premium only through the
 equivalence, so it moves every claim and every decrement;
-:func:`risk_factor` loads the *Bruttobeitrag* alone and leaves the claims untouched. A
+:func:`rating_factor` loads the *Bruttobeitrag* alone and leaves the claims untouched. A
 *Risikozuschlag* prices an individually assessed impairment that the base table does not
 carry and this model does not carry either, so a loaded contract is priced above its own
 modelled cost. The direction is stated rather than corrected.
@@ -185,7 +186,7 @@ administration loadings are proportional to it, so
     P = (PV_rente + PV_wgh + PV_cost + PV_admin)
         / ( PV_prem x (1 - admin_prem_rate) - acq_rate x BS_unit )
 
-and :func:`prem_gross_level_pp` is ``risk_factor() x P``, or ``risk_factor() x
+and :func:`prem_gross_level_pp` is ``rating_factor() x P``, or ``rating_factor() x
 gross_prem_ann()`` where the model point overrides it. **The recursion is acyclic**: no
 decrement in this model depends on the premium, so nothing in the ``pv_*`` cells depends
 on ``P``. The equivalence is struck **before** the *Risikozuschlag* and **without lapse**,
@@ -193,7 +194,7 @@ which is deliberate on both counts — German pricing does not anticipate lapse,
 lapse releases a liability and a prudent basis does not anticipate a favourable event.
 
 ``PV_prem`` is struck on ``P / 12`` in every month, so the *Ratenzahlungszuschlag*
-``freq_load`` is a genuine loading on top of the tariff premium rather than a
+``prem_freq_load`` is a genuine loading on top of the tariff premium rather than a
 re-expression of it. That is the market's own construction and it is why an annual payer
 and a monthly payer do not pay the same present value.
 
@@ -372,17 +373,6 @@ def benefit_end_age():
     return int(model_point()["benefit_end_age"])
 
 
-def karenz_months():
-    """K: the *Karenzzeit* — the agreed deferment of **payment**, in months.
-
-    Not the six-month *Prognosezeitraum*, which is part of the *definition* of
-    *Berufsunfaehigkeit*; the *Karenzzeit* defers payment on a BU already established.
-    Cohorts at duration ``z <= K`` are *berufsunfaehig*, are **not** paid, and **still
-    pay premium**, because the *Beitragsbefreiung* runs with the benefit **[std]**.
-    """
-    return int(model_point()["karenz_months"])
-
-
 def leistungsdyn_rate():
     """g_L: the *Leistungsdynamik* — annual escalation of the *BU-Rente* **in payment**.
 
@@ -422,18 +412,6 @@ def beitragsdyn_rate():
     return float(model_point()["beitragsdyn_rate"])
 
 
-def prem_mode():
-    """The payment frequency: ``annual``, ``half_yearly``, ``quarterly`` or ``monthly``.
-
-    The key into *freq_loading_table.csv*, which supplies both the months between
-    instalments and the *Ratenzahlungszuschlag*.
-    """
-    v = model_point()["prem_mode"]
-    if v not in ("annual", "half_yearly", "quarterly", "monthly"):
-        raise ValueError("invalid prem_mode")
-    return v
-
-
 def prem_mode_months():
     """M: the number of months between premium instalments — 12, 6, 3 or 1.
 
@@ -443,19 +421,7 @@ def prem_mode_months():
     rather than smoothing it is the whole reason this model runs on a monthly grid.
     """
     return int(data.freq_loading_table().loc[                        # noqa: F821
-        prem_mode(), "prem_mode_months"])
-
-
-def freq_load():
-    """phi: the *Ratenzahlungszuschlag* on the tariff premium **[std]**.
-
-    1.00 annual, 1.02 half-yearly, 1.03 quarterly, 1.05 monthly.  It loads the
-    *Bruttobeitrag* and the *Beitragsverrechnung* **together**, so
-    :func:`beitragsverrechnung` stays exactly the ratio the tariff quotes and the loading
-    is invisible in the *Brutto* / *Zahl* split.
-    """
-    return float(data.freq_loading_table().loc[                      # noqa: F821
-        prem_mode(), "freq_load"])
+        prem_freq(), "prem_mode_months"])
 
 
 def gross_prem_ann():
@@ -480,17 +446,6 @@ def beitragsverrechnung():
     by more than 40 % either way.
     """
     return float(model_point()["beitragsverrechnung"])
-
-
-def risk_factor():
-    """rho: the *Risikozuschlag* — a multiplier on the *Bruttobeitrag* **and nothing else**.
-
-    It prices an individually assessed impairment that the base inception table does not
-    carry, and which this model does not carry either, so the loaded contract is
-    projected above its own modelled cost.  Contrast :func:`occ_factor`, which loads the
-    inception rate and so moves every claim and every decrement.
-    """
-    return float(model_point()["risk_factor"])
 
 
 def au_klausel():
@@ -547,23 +502,18 @@ def pols_if_init():
 
 # --- the time frame ---
 
-def proj_len():
-    """n: the **number of projected months**, so the frame runs ``t = 0 ... proj_len() - 1``.
+def horizon_age():
+    """The attained age at which the projection ends: ``cover_end_age()``, the *Endalter*.
 
-    ``12 x (cover_end_age() - issue_age()) - duration_mth_init()``.  Cover ceases
-    at attained age ``cover_end_age()``, so the last projected month is the last month of
-    attained age ``cover_end_age() - 1``, index ``proj_len() - 1``.  On the anchor cell
-    that is ``12 x (67 - 30) = 444`` monthly rows, the last of them ``t = 443``.
+    So the core's ``proj_len() = 12 x (cover_end_age() - issue_age()) -
+    duration_mth_init()``: cover ceases at attained age ``cover_end_age()``, so the last
+    projected month is the last month of attained age ``cover_end_age() - 1``, index
+    ``proj_len() - 1``.  On the anchor cell that is ``12 x (67 - 30) = 444`` monthly rows,
+    the last of them ``t = 443``.
 
-    This is the library's reading of ``proj_len()`` — the **exclusive end** of the frame,
-    the row count rather than the last index — and ``result_cf().index[-1] ==
-    proj_len() - 1`` is asserted for every model point.
-
-    Override reason: cover ceases at ``cover_end_age()`` and ``t`` counts months from the valuation
-    month, so the horizon is in months net of the elapsed duration,
-    products/berufsunfaehigkeit/technical-notes.md:59
+    Override reason: cover ceases at ``cover_end_age()``, products/berufsunfaehigkeit/technical-notes.md:59
     """
-    return 12 * (cover_end_age() - issue_age()) - duration_mth_init()
+    return cover_end_age()
 
 
 def first_len():
@@ -580,10 +530,11 @@ def first_len():
     return 12 * (cover_end_age() - issue_age())
 
 
-def duration_mth(t):
-    """u(t): elapsed policy months at the start of month t.
+def clock_offset_mth():
+    """The policy months completed at ``t = 0``, ``duration_mth_init()``.
 
-    ``duration_mth_init() + t``.  Defined for negative ``t`` as well, because
+    So the core's ``duration_mth(t) = duration_mth_init() + t``, u(t), the elapsed policy
+    months at the start of month t.  Defined for negative ``t`` as well, because
     :func:`bu_rente_pp` reads it there to recover the insured *BU-Rente* at the onset of a
     claim that began before the valuation date.
 
@@ -591,34 +542,23 @@ def duration_mth(t):
     of issue, so the completed months add ``duration_mth_init()``,
     products/berufsunfaehigkeit/technical-notes.md:56
     """
-    return duration_mth_init() + t
+    return duration_mth_init()
 
 
-def policy_year(t):
-    """y(t): the policy year containing month t, 1-based.
+def duration(t):
+    """The completed policy years at the start of month t, ``max(0, duration_mth(t)) // 12``.
 
-    ``duration_mth(t) // 12 + 1``, floored at 1 so that a negative ``t`` reaching back
-    before inception reads as policy year 1 rather than as a year 0 the tariff never had.
-
-    Override reason: a disability cohort is paid the insured amount of its onset month
-    ``t - z``, which can precede inception, so the policy year is floored at 1,
-    products/berufsunfaehigkeit/technical-notes.md:58
-    """
-    return max(1, duration_mth(t) // 12 + 1)
-
-
-def age(t):
-    """x(t): the attained age at month t, age last birthday.
-
-    ``issue_age() + duration_mth(t) // 12``, so it steps at the **policy anniversary**
-    rather than at a birthday the model does not carry **[std]**.  Every rate lookup in
-    the model is keyed by this age.
+    Floored at zero elapsed months, so that a negative ``t`` reaching back before inception
+    reads as policy year 1, ``policy_year(t) = duration(t) + 1``, rather than as a year 0
+    the tariff never had, and as the issue age, ``age(t) = issue_age() + duration(t)``.
+    Both step at the **policy anniversary** rather than at a birthday the model does not
+    carry **[std]**; every rate lookup in the model is keyed by this age.
 
     Override reason: a disability cohort is paid the insured amount of its onset month
     ``t - z``, which can precede inception, so the elapsed months are floored at 0,
     products/berufsunfaehigkeit/technical-notes.md:58
     """
-    return issue_age() + max(0, duration_mth(t)) // 12
+    return max(0, duration_mth(t)) // 12
 
 
 def age_first(s):
@@ -769,7 +709,7 @@ def inc_rate(t):
     """The **composed** annual inception rate at month t.
 
     ``inc_rate_base(t) x occ_factor() x accept_factor x au_uplift()`` — and those are the
-    **only three** multipliers on it.  ``risk_factor`` is deliberately not among them: it
+    **only three** multipliers on it.  ``rating_factor`` is deliberately not among them: it
     loads the *Bruttobeitrag* and leaves every claim untouched.  Publishing the
     composition explicitly is what makes a substituted table that is already net of
     declinature visible rather than silent.
@@ -965,15 +905,6 @@ def mort_rate_dis_first_mth_year(s):
                  for f in mort_dis_sel_factors())
 
 
-def rechnungszins():
-    """i: the *Rechnungszins*, 1,00 % a year, from *param_table.csv*.
-
-    Override reason: the whole book is priced at one rate, a tariff parameter in
-    *param_table.csv* rather than a model-point column, products/berufsunfaehigkeit/model.md:432
-    """
-    return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
-
-
 # --- benefit and premium amounts ---
 
 def dyn_factor(t):
@@ -1049,7 +980,7 @@ def beitragssumme_unit():
 def prem_gross_level_pp():
     """P: the **level annual** *Bruttobeitrag* per policy, in euros.
 
-    ``risk_factor()`` times either the model point's ``gross_prem_ann`` override or, where
+    ``rating_factor()`` times either the model point's ``gross_prem_ann`` override or, where
     that is zero, the premium the equivalence produces::
 
         P = (pv_rente_first() + pv_wiedereingl_first() + pv_claim_cost_first()
@@ -1065,12 +996,12 @@ def prem_gross_level_pp():
     actually charged is :func:`prem_zahl_pp`, ``beitragsverrechnung()`` times it.
     """
     if gross_prem_ann() > 0.0:
-        return risk_factor() * gross_prem_ann()
+        return rating_factor() * gross_prem_ann()
     numer = (pv_rente_first() + pv_wiedereingl_first()
              + pv_claim_cost_first() + pv_admin_first())
     denom = (pv_prem_unit_first() * (1.0 - admin_prem_rate)          # noqa: F821
              - acq_rate * beitragssumme_unit())                      # noqa: F821
-    return risk_factor() * numer / denom
+    return rating_factor() * numer / denom
 
 
 def prem_gross_ann_pp(t):
@@ -1096,12 +1027,12 @@ def prem_due(t):
 def prem_gross_pp(t):
     """P_b(t): the *Bruttobeitrag* **instalment** due at the start of month t, per policy.
 
-    ``prem_due(t) x prem_gross_ann_pp(t) x freq_load() x prem_mode_months() / 12``, so it
+    ``prem_due(t) x prem_gross_ann_pp(t) x prem_freq_load() x prem_mode_months() / 12``, so it
     is zero in a month that is not a payment month and carries the whole period's premium
     in one that is.  The *Ratenzahlungszuschlag* scales it, which is why the annual
     *Bruttobeitrag* of a monthly payer buys a 5 % larger bill than the tariff amount.
     """
-    return (prem_due(t) * prem_gross_ann_pp(t) * freq_load()
+    return (prem_due(t) * prem_gross_ann_pp(t) * prem_freq_load()
             * prem_mode_months() / 12.0)
 
 
@@ -1296,7 +1227,7 @@ def pv_prem_unit_first():
     ``sum over s of disc_factor_mth(s) x dyn_factor_first(s) x pols_prem_first(s) / 12``:
     a twelfth of the annual premium in **every** month of the pricing run, weighted by the
     premium-paying population.  The *Ratenzahlungszuschlag* is deliberately **not** in it,
-    which is what makes ``freq_load`` a genuine loading on the tariff premium rather than
+    which is what makes ``prem_freq_load`` a genuine loading on the tariff premium rather than
     a re-expression of it.
     """
     return sum(disc_factor_mth(s) * dyn_factor_first(s) * pols_prem_first(s) / 12.0
@@ -1985,7 +1916,7 @@ def check_prem_split_resid(t):
     ``premiums(t) - surplus_credit(t) - prem_zahl_pp(t) x pols_prem(t)``.  The two premium
     columns must reconcile to the *Zahlbeitrag* actually billed, so that a reader can
     recover the cash collected from the frame without knowing the ratio.  It also fixes
-    the *Ratenzahlungszuschlag*'s place: ``freq_load`` scales the *Bruttobeitrag* and the
+    the *Ratenzahlungszuschlag*'s place: ``prem_freq_load`` scales the *Bruttobeitrag* and the
     *Beitragsverrechnung* together, so it cancels out of this identity and
     ``beitragsverrechnung`` stays exactly the ratio the tariff quotes.
     """

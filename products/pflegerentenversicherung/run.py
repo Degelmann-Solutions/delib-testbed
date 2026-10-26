@@ -22,7 +22,7 @@ print("Leistungsstaffel  PG1 {:.0%}  PG2 {:.0%}  PG3 {:.0%}  PG4 {:.0%}  PG5 {:.
     *[proj.benefit_pct(g) for g in range(1, 6)]))
 print("premium: mode = {} (m = {}), to age {}, model point value {:,.2f}, "
       "Risikozuschlag {:.2f}".format(
-          proj.prem_mode(), proj.prem_mode_months(), proj.prem_end_age(),
+          proj.prem_freq(), proj.prem_mode_months(), proj.prem_end_age(),
           proj.premium_mth(), proj.rating_factor()))
 print("options: Wartezeit {} m, Karenzzeit {} m, Leistungsdynamik {:.2%}, "
       "Beitragsrueckgewaehr {}, Stornoabzug {:.2%}".format(
@@ -31,7 +31,7 @@ print("options: Wartezeit {} m, Karenzzeit {} m, Leistungsdynamik {:.2%}, "
 print("Beitrag {:,.6f} EUR/month   net level premium {:,.6f} EUR/month   "
       "Beitragssumme {:,.2f} EUR   acquisition charge {:,.2f} EUR".format(
           proj.premium_mth_pp(), proj.prem_net_level_pp(), proj.beitragssumme(),
-          proj.acq_expense_pp()))
+          proj.zillmer_amount()))
 print("EPV benefits {:,.6f}   EPV premium units {:,.6f}   EPV admin {:,.6f}   "
       "EPV claim expense {:,.6f}".format(
           proj.tariff_benefit_pv(), proj.tariff_annuity(), proj.epv_admin(),

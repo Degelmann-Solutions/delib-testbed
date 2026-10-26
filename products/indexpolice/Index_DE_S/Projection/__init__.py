@@ -14,7 +14,7 @@ projecting model point 1::
 .. rubric:: Two clocks: a monthly frame over an annual *Indexjahr*
 
 ``t`` counts **policy months from issue**, 0-based. ``proj_len() = 12 x proj_len_y()`` is
-the **exclusive end** of the frame, with ``proj_len_y() = ann_start_age - issue_age`` the
+the **exclusive end** of the frame, with ``proj_len_y() = ret_age - issue_age`` the
 number of policy years, so ``result_cf().index[-1] == proj_len() - 1`` and the frame of an
 in-force point at ``duration_init = 8`` has 228 rows while still reporting ``proj_len() = 324``.
 A **new-business** point starts at ``t = 0``; an **in-force** point starts at
@@ -132,7 +132,7 @@ w_l(t)                     lapse_rate(t)                   Annual surrender rate
 w^m_l(t)                   lapse_rate_mth(t)               The monthly rate applied
 (table)                    lapse_rate_base(t)              The table rate before the
                                                            terminal-year override
-phi                        freq_load()                     Ratenzahlungszuschlag
+phi                        prem_freq_load()                Ratenzahlungszuschlag
 P_b(k)                     prem_base_pp(k)                 Annual-mode premium due
 P(k)                       prem_gross_pp(k)                Premium actually collected
 (none)                     prem_due(t)                     Whether P falls due in month t
@@ -255,11 +255,6 @@ _spaces = []
 
 # --- the model point ---------------------------------------------------------
 
-def policy_id():
-    """The policy identifier of the selected model point; reporting only."""
-    return model_point()["policy_id"]
-
-
 def pols_if_init():
     """Policies in force at ``t_start()``: 1.0, a single-policy model point.
 
@@ -269,27 +264,11 @@ def pols_if_init():
     return float(model_point()["pols_if_init"])
 
 
-def ann_start_age():
-    """Attained age at *Rentenbeginn*, the end of the accumulation phase."""
-    return int(model_point()["ann_start_age"])
-
-
 def prem_form():
     """``"level"`` (*laufender Beitrag*) or ``"single"`` (*Einmalbeitrag*)."""
     v = model_point()["prem_form"]
     if v not in ("level", "single"):
         raise ValueError("invalid prem_form")
-    return v
-
-
-def prem_freq():
-    """The payment frequency: annual, half_yearly, quarterly or monthly.
-
-    It selects the *Ratenzahlungszuschlag* in :func:`freq_load` and does nothing else.
-    """
-    v = model_point()["prem_freq"]
-    if v not in ("annual", "half_yearly", "quarterly", "monthly"):
-        raise ValueError("invalid prem_freq")
     return v
 
 
@@ -387,28 +366,19 @@ def surr_charge_on():
 
 # --- the frame ---------------------------------------------------------------
 
-def proj_len_y():
-    """``n``: the **number of projected policy years**, ``ann_start_age() - issue_age()``.
+def horizon_age():
+    """The attained age at which the projection ends: ``ret_age()``, *Rentenbeginn*.
 
-    Policy year ``n - 1`` is the last and ends at *Rentenbeginn*, at time ``n``, when the
-    capital falls due.  There is no policy year ``n``: the whole surviving cohort has
-    matured, while ``av_pp(n)`` and ``guar_cap_pp(n)`` are defined, being the time-``n``
-    per-policy amounts the maturity benefit is struck on.
+    So ``proj_len_y() = ret_age() - issue_age()``, n.  Policy year ``n - 1`` is the last and
+    ends at *Rentenbeginn*, at time ``n``, when the capital falls due.  There is no policy
+    year ``n``: the whole surviving cohort has matured, while ``av_pp(n)`` and
+    ``guar_cap_pp(n)`` are defined, being the time-``n`` per-policy amounts the maturity
+    benefit is struck on.
 
     Override reason: the model projects the accumulation phase only, to *Rentenbeginn*,
     products/indexpolice/technical-notes.md:42
     """
-    return ann_start_age() - issue_age()
-
-
-def is_anniv(t):
-    """Whether month t is the **last** month of its policy year: ``t % 12 == 11``.
-
-    The month the annual machinery acts in: the *Indexjahr* closes, the *Indexgutschrift*
-    is struck and locked in, the safe-arm credit is made and the account rolls to its next
-    opening balance.
-    """
-    return t % 12 == 11
+    return ret_age()
 
 
 def index_month(t):
@@ -444,17 +414,6 @@ def prem_sum():
     return float(model_point()["prem_gross_pp"]) * prem_term_y()
 
 
-def freq_load():
-    """``phi``: the *Ratenzahlungszuschlag* multiplier for this policy's payment frequency.
-
-    1.000 annual, 1.020 half-yearly, 1.030 quarterly, 1.050 monthly **[std]** — the market
-    convention, no carrier tariff having been established.  It multiplies the premium
-    **collected** and nothing else; see :func:`prem_sum`.
-    """
-    return float(data.freq_loading_table().loc[                      # noqa: F821
-        prem_freq(), "freq_load"])
-
-
 def prem_base_pp(k):
     """``P_b(k)``: the annual-mode premium due in period k, per policy.
 
@@ -478,7 +437,7 @@ def prem_gross_pp(k):
     :func:`premiums` and out of which the contractual charges are taken; the amount that
     drives the *Beitragssumme* is :func:`prem_base_pp`.
     """
-    return prem_base_pp(k) * freq_load()
+    return prem_base_pp(k) * prem_freq_load()
 
 
 def prem_charge_acq_pp(k):
@@ -575,7 +534,7 @@ def prem_due(t):
     the year (§ 12 Abs. 1 VVG), and the *Indexjahr* the whole product turns on is struck on
     the balance standing at the anniversary: splitting the premium without splitting the
     *Indexjahr* would credit a policy with a year it did not pay for.  The
-    *Ratenzahlungszuschlag* :func:`freq_load` is what a sub-annual *Zahlweise* costs, and it
+    *Ratenzahlungszuschlag* :func:`prem_freq_load` is what a sub-annual *Zahlweise* costs, and it
     remains the whole of what the *Zahlweise* does here.
     """
     return duration_mth(t) % 12 == 0

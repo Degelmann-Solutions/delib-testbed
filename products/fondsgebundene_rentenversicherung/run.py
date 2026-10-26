@@ -23,14 +23,14 @@ mp = proj.model_point()
 
 print("model point {}: {} - {}{} -> Rentenbeginn at {}, t = {} .. {}".format(
     point_id, mp["policy_id"], proj.sex(), proj.issue_age(),
-    proj.annuity_age(), proj.t_start(), proj.proj_len() - 1))
+    proj.ret_age(), proj.t_start(), proj.proj_len() - 1))
 print("premium: {} {:,.2f} EUR every {} month(s) for {} years   "
       "Beitragssumme {:,.2f} EUR".format(
           proj.prem_form(), proj.prem_pp_base(), proj.prem_mode_months(),
           proj.prem_term_y(), proj.beitragssumme()))
 print("charges: {}  acq {:,.2f} EUR over {} instalments of {:,.2f}  "
       "beta {:.2%}  gamma {:.2%} p.a.  Stueckkosten {:,.2f}/month".format(
-          proj.charge_id(), proj.charge_acq_total(), proj.acq_instalments(),
+          proj.charge_id(), proj.zillmer_amount(), proj.acq_instalments(),
           proj.charge_acq_pp(proj.t_start()), proj.beta_rate(),
           proj.gamma_rate_ann(), proj.policy_fee_mth()))
 print("fund: scenario {}  gross {:.2%} p.a.  TER {:.2%} p.a.  "

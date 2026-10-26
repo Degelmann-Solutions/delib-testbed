@@ -47,26 +47,73 @@ def param_table():
         input_dir() / param_file, index_col="item")                  # noqa: F821
 
 
+def mort_table_index():
+    """The index columns of the mortality table: ``sex`` and attained ``age``."""
+    return ["sex", "age"]
+
+
 def mort_table():
-    """The annual death rates by ``sex`` and attained ``age``, read from ``mort_file``."""
+    """The annual death rates, read from ``mort_file`` by ``mort_table_index()``."""
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col=["sex", "age"])           # noqa: F821
+        input_dir() / mort_file, index_col=mort_table_index())       # noqa: F821
+
+
+def lapse_table_index():
+    """The index column of the lapse table: the **1-based** ``policy_year``."""
+    return "policy_year"
 
 
 def lapse_table():
-    """The annual lapse rates by **1-based** ``policy_year``, read from ``lapse_file``."""
+    """The annual lapse rates, read from ``lapse_file`` by ``lapse_table_index()``."""
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="policy_year")           # noqa: F821
+        input_dir() / lapse_file, index_col=lapse_table_index())     # noqa: F821
+
+
+def rentenfaktor_table_index():
+    """The index columns of the *Rentenfaktor* table: ``rf_scenario_id`` and ``age``."""
+    return ["rf_scenario_id", "age"]
 
 
 def rentenfaktor_table():
-    """The *Rentenfaktor* by ``rf_scenario_id`` and ``age``, from ``rentenfaktor_file``."""
+    """The *Rentenfaktor*, from ``rentenfaktor_file`` by ``rentenfaktor_table_index()``."""
     return pd.read_csv(                                              # noqa: F821
         input_dir() / rentenfaktor_file,                             # noqa: F821
-        index_col=["rf_scenario_id", "age"])
+        index_col=rentenfaktor_table_index())
 
 
 def freq_loading_table():
     """The *Ratenzahlungszuschlag* by ``prem_freq``, from ``freq_loading_file``."""
     return pd.read_csv(                                              # noqa: F821
         input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
+
+
+def surplus_table_index():
+    """The index columns of the surplus table: ``scenario_id`` and the 0-based ``t``."""
+    return ["scenario_id", "t"]
+
+
+def surplus_table():
+    """The declared surplus path, read from ``surplus_file`` by ``surplus_table_index()``."""
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / surplus_file, index_col=surplus_table_index())  # noqa: F821
+
+
+def charge_table_index():
+    """The index column of the charge table: ``charge_id``."""
+    return "charge_id"
+
+
+def charge_table():
+    """The tariff charges, read from ``charge_file`` by ``charge_table_index()``."""
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / charge_file, index_col=charge_table_index())   # noqa: F821
+
+
+def hoechstrechnungszins_table():
+    """The statutory *Höchstrechnungszins* history by band, from ``hoechstrechnungszins_file``.
+
+    Indexed by ``year_from``, with ``year_to`` closing each band and ``max_rate`` the cap
+    in force.
+    """
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / hoechstrechnungszins_file, index_col="year_from")   # noqa: F821

@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The six input CSVs are read here, **once per model**, and referenced from
+The seven input CSVs are read here, **once per model**, and referenced from
 :mod:`~.FRV_DE_S.Projection` as ``data``. :mod:`~.FRV_DE_S.Projection` is parameterized
 by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells
 cache; if the readers lived there, every model point would re-read every file. Holding
@@ -36,6 +36,7 @@ lapse_file                lapse_table()                 lapse_table.csv
 charge_file               charge_table()                charge_table.csv
 fund_scenario_file        fund_scenario_table()         fund_scenario_table.csv
 rentenfaktor_file         rentenfaktor_table()          rentenfaktor_table.csv
+param_file                param_table()                 param_table.csv
 ========================  ============================  ==========================
 
 **Every file but ``model_point_table.csv`` carries a ``provenance`` column**, one tag per
@@ -107,8 +108,8 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table():
-    """The first-order annual death rates by attained age, from *mort_table.csv*.
+def mort_table_index():
+    """The index columns of *mort_table.csv*: ``age`` alone.
 
     A **[std]** proxy of DAV 2008 T, not the table itself; see the Space docstring for
     what it is, what it is anchored on and what a replacement must preserve.  It is the
@@ -117,25 +118,9 @@ def mort_table():
     *Rentenfaktor*, which rests on an annuity table.
 
     Override reason: the table is the unisex first-order basis of the *Risikobeitrag*, keyed
-    by ``age`` alone, products/fondsgebundene_rentenversicherung/technical-notes.md, section
-    (c) Behavioral / experience assumptions
+    by ``age`` alone, products/fondsgebundene_rentenversicherung/model.md:92
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col="age")                    # noqa: F821
-
-
-def charge_table():
-    """The charge scales by ``charge_id``, read from *charge_table.csv*.
-
-    One row per tariff: the acquisition rate on the *Beitragssumme* and the months it is
-    spread over, the premium-based and fund-based administration rates, the monthly
-    *Stückkosten*, the *Zuzahlungskosten* rate and the *Stornoabzug* rate.  Four rows
-    ship — ``std_gross``, ``std_netto``, ``std_high``, ``std_low`` — and the difference
-    between the first two is the acquisition load, the parameter this library most needs
-    and cannot source.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / charge_file, index_col="charge_id")            # noqa: F821
+    return "age"
 
 
 def fund_scenario_table():
@@ -155,22 +140,19 @@ def fund_scenario_table():
         index_col=["scenario_id", "policy_year"])
 
 
-def rentenfaktor_table():
-    """The guaranteed and current *Rentenfaktoren* by factor id and age at *Rentenbeginn*.
+def rentenfaktor_table_index():
+    """The index columns of *rentenfaktor_table.csv*: ``factor_id`` and ``annuity_age``.
 
-    Read from *rentenfaktor_table.csv*: euro of monthly annuity per 10 000 € of
-    *Fondsguthaben*.  **[std]** and derived rather than observed — see the Space
+    The table holds the guaranteed and current *Rentenfaktoren*, euro of monthly annuity per
+    10 000 € of *Fondsguthaben*.  **[std]** and derived rather than observed — see the Space
     docstring for the derivation and for what the underlying DAV 2004 R basis requires of
     a replacement.  The table is indexed by the **age at *Rentenbeginn***, not by the
     attained age in the last projected month, which is one lower.
 
     Override reason: the table carries a guaranteed and a current factor per ``factor_id``
-    and ``annuity_age``, products/fondsgebundene_rentenversicherung/technical-notes.md,
-    section *Rentenbeginn*
+    and ``annuity_age``, products/fondsgebundene_rentenversicherung/model.md:364
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / rentenfaktor_file,                             # noqa: F821
-        index_col=["factor_id", "annuity_age"])
+    return ["factor_id", "annuity_age"]
 
 
 # ---------------------------------------------------------------------------
@@ -187,5 +169,7 @@ charge_file = "charge_table.csv"
 fund_scenario_file = "fund_scenario_table.csv"
 
 rentenfaktor_file = "rentenfaktor_table.csv"
+
+param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

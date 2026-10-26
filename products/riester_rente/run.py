@@ -22,7 +22,7 @@ proj = model.Projection[point_id]
 print("model point {}: {}{} concluded at age {}, in force {} years, "
       "Rentenbeginn {}".format(
           point_id, proj.sex(), proj.age(0), proj.issue_age(),
-          proj.duration_init(), proj.rentenbeginn_age()))
+          proj.duration_init(), proj.ret_age()))
 print("contribution form = {} ({}), contrib_ratio = {:.2f}, "
       "frequency = {} (phi = {:.4f}), bfs_year = {}".format(
           proj.contrib_form(), proj.income_id(), proj.contrib_ratio(),

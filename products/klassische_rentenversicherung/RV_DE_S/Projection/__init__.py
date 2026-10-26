@@ -171,9 +171,9 @@ a(t)                        pols_annuity(t)                 Count the instalment
 P(k)                        prem_pp(k)                      Gross premium in policy year k
 P_sched(k)                  prem_pp_sched(k)                The premium as written at issue
 (none)                      prem_due(t)                     Whether P falls due in month t
-phi                         freq_load()                     Ratenzahlungszuschlag
-(sum of P_sched)            beitragssumme_pp()              Zillmer base
-alpha_total                 alpha_total_pp()                Total acquisition charge
+phi                         prem_freq_load()                Ratenzahlungszuschlag
+(sum of P_sched)            beitragssumme()                 Zillmer base
+alpha_total                 zillmer_amount()                Total acquisition charge
 alpha(k)                    charge_acq_pp(k)                Zillmered acquisition charge
 alpha~(k)                   charge_acq_spread_pp(k)         Evenly spread acquisition charge
 beta(k)                     charge_prem_pp(k)               Premium charge
@@ -455,38 +455,19 @@ _spaces = []
 # The model point and the frame
 
 
-def omega_age():
-    """The terminal age of the shipped mortality proxy, from *param_table.csv*.
-
-    121 **[std]**.  ``mort_rate`` is 1 at ``omega_age - 1``, so the projection ends with no
-    survivors and :func:`check_decrement_closure` closes on ``pols_if_init()`` exactly.
-    """
-    return int(data.param_table().at["omega_age", "value"])          # noqa: F821
-
-
-def proj_len_y():
-    """N: the **number** of projected policy years, ``omega_age() - issue_age``.
+def horizon_age():
+    """The attained age at which the projection ends: ``omega_age()``.
 
     A life annuity has no term, so the horizon is the age at which the annuitant cannot
     survive further rather than a fixed number of years — truncating one at, say, 40 years
-    silently drops the tail the *Rentenfaktor* was priced for.  **71** on the anchor cell,
-    whose last policy year ends at attained age 121.
+    silently drops the tail the *Rentenfaktor* was priced for.  ``proj_len_y() =
+    omega_age() - issue_age()`` is **71** on the anchor cell, whose last policy year ends
+    at attained age 121.
 
     Override reason: a life annuity has no term, so the projection ends at ``omega_age``,
     products/klassische_rentenversicherung/technical-notes.md:81
     """
-    return omega_age() - issue_age()
-
-
-def is_anniv(t):
-    """Whether month t is the **last** month of its policy year: ``t % 12 == 11``.
-
-    The month the annual machinery acts in.  Two decrements are certainties rather than
-    rates — the § 165 cash-out and the terminal ``q = 1`` of the mortality proxy — and a
-    certainty cannot be spread geometrically over twelve months without emptying the cohort
-    eleven months early, so both are placed here instead.
-    """
-    return t % 12 == 11
+    return omega_age()
 
 
 def pols_if_init():
@@ -502,6 +483,10 @@ def mort_be_factor():
     estimate and the second-order rate is the tariff rate loaded upward.  The safety margin
     of the real construction runs in two dimensions, level and trend; only the level is
     reproduced here.
+
+    Override reason: for an annuity the best estimate sits above the first-order table, a
+    factor of 1.15 and a tariff parameter in *param_table.csv*,
+    products/klassische_rentenversicherung/model.md:513
     """
     return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
 
@@ -519,27 +504,6 @@ def roll_fwd_tol():
 # The premium and the Beitragssumme
 
 
-def freq_load():
-    """phi: the *Ratenzahlungszuschlag* for the model point's *Zahlweise* **[std]**.
-
-    1,000 annual, 1,020 half-yearly, 1,030 quarterly, 1,050 monthly.
-
-    **The loading is what a sub-annual *Zahlweise* costs, and it is the whole of what this
-    model takes from the *Zahlweise*.**  The premium is charged once a policy year, at the
-    start of it, on a monthly grid exactly as on the annual one, because § 12 Abs. 1 VVG
-    makes the *Versicherungsperiode* the **year** for this tariff — and the *Deckungskapital*
-    the whole model turns on is defined at anniversaries and nowhere between them.  The
-    instalments themselves are therefore still not modelled and ``n_instalments`` in the
-    table remains documentation; what a finer grid would buy here is an unearned-premium
-    convention on mid-year exits that no source in this product's corpus establishes.
-    Compare ``KLV_DE_S``, whose *Zahlweise* **is** in the frame: there the ``echt`` reading
-    makes the *Versicherungsperiode* genuinely monthly and two model points differ in nothing
-    else, which is what justifies the instalment stream.
-    """
-    return float(data.freq_loading_table().at[                       # noqa: F821
-        model_point()["prem_freq"], "freq_load"])
-
-
 def prem_pp_sched(k):
     """P_sched(k): the premium schedule **as written at inception**, per policy.
 
@@ -549,7 +513,7 @@ def prem_pp_sched(k):
 
     It ignores any later *Beitragsfreistellung* on purpose.  The § 4 DeckRV zillmer base is
     the sum of all premiums payable under the contract **as written**, and a later election
-    does not retrospectively shrink that base — which is why :func:`beitragssumme_pp` sums
+    does not retrospectively shrink that base — which is why :func:`beitragssumme` sums
     this cells and not :func:`prem_pp`.
     """
     mp = model_point()
@@ -557,7 +521,7 @@ def prem_pp_sched(k):
         return 0.0
     if mp["premium_form"] == "einmal":
         return float(mp["premium_single_pp"]) if k == 0 else 0.0
-    return (float(mp["prem_gross_pp"]) * freq_load()
+    return (float(mp["prem_gross_pp"]) * prem_freq_load()
             * (1.0 + float(mp["dynamik_rate"])) ** k)
 
 
@@ -571,37 +535,41 @@ def prem_pp(k):
     return 0.0 if paid_up(k) else prem_pp_sched(k)
 
 
-def beitragssumme_pp():
+def beitragssumme():
     """The *Beitragssumme*: the sum of the premiums payable under the contract as written.
 
     ``sum of P_sched(u) for u = 0 .. min(prem_term_y, aufschub_y) - 1``, so the frequency loading
     is inside it.  51 000,00 € on the anchor cell.  This is the § 4 DeckRV base on which the
     acquisition charge is struck, and it is fixed at inception: a later
     *Beitragsfreistellung* does not shrink it.
+
+    Override reason: the sum runs over the premium schedule up to the *Aufschubzeit*, the
+    frequency loading inside it, products/klassische_rentenversicherung/technical-notes.md:462
     """
     mp = model_point()
     last = min(prem_term_y(), int(mp["aufschub_y"]))
     return sum(prem_pp_sched(u) for u in range(last))
 
 
-def alpha_total_pp():
-    """The total acquisition charge: ``alpha_rate x beitragssumme_pp()``.
+def alpha_rate():
+    """The *Zillmersatz* of the model point's charge set, from *charge_table.csv*.
 
-    The *Höchstzillmersatz* is 25 ‰ of the *Beitragssumme* for contracts concluded from
-    1 January 2015 and 40 ‰ before, the rate at conclusion applying for the whole term; the
-    model uses the cap itself **[std]**, which is what makes the year-one *Sparbeitrag* small
-    and the § 169 Abs. 3 floor bite.  1 275,00 € on the anchor cell.
+    :func:`zillmer_amount`, the total acquisition charge, is ``alpha_rate x
+    beitragssumme()``.  The *Höchstzillmersatz* is 25 ‰ of the *Beitragssumme* for
+    contracts concluded from 1 January 2015 and 40 ‰ before, the rate at conclusion
+    applying for the whole term; the model uses the cap itself **[std]**, which is what
+    makes the year-one *Sparbeitrag* small and the § 169 Abs. 3 floor bite.  1 275,00 € on
+    the anchor cell.
     """
-    return (float(data.charge_table().at[                            # noqa: F821
+    return float(data.charge_table().at[                             # noqa: F821
         (model_point()["charge_id"], "alpha_rate"), "value"])
-        * beitragssumme_pp())
 
 
 def alpha_cum_pp(k):
     """The acquisition charge already amortised at the **start** of period k.
 
     ``alpha_amort_pp_init`` at the frame's start, then a running total of
-    :func:`charge_acq_pp`.  It never exceeds :func:`alpha_total_pp`, which is what the
+    :func:`charge_acq_pp`.  It never exceeds :func:`zillmer_amount`, which is what the
     ``max(0, .)`` in :func:`charge_acq_pp` guarantees.
     """
     if k <= k_start():
@@ -628,7 +596,7 @@ def prem_due(t):
     ``duration_mth(t) % 12 == 0`` — the first month of each policy year and no other.  The
     *Versicherungsperiode* of this tariff is the year (§ 12 Abs. 1 VVG) and the *Beitrag* is
     payable in advance for it, so a monthly grid moves **when the exposed count is measured**
-    and not when the money arrives.  See :func:`freq_load` for why the *Ratenzahlungszuschlag*
+    and not when the money arrives.  See :func:`prem_freq_load` for why the *Ratenzahlungszuschlag*
     is the whole of what the *Zahlweise* does here.
     """
     return duration_mth(t) % 12 == 0
@@ -651,25 +619,25 @@ def premiums(t):
 def charge_acq_pp(k):
     """alpha(k): the **zillmered** acquisition charge taken in period k.
 
-    ``min(P(k), max(0, alpha_total_pp() - alpha_cum_pp(k)))`` — as much of the outstanding
+    ``min(P(k), max(0, zillmer_amount() - alpha_cum_pp(k)))`` — as much of the outstanding
     acquisition charge as the year's premium can meet, and no more.  On the anchor cell the
     whole 1 275,00 € comes out of the first year's premium (``k = 0``) and nothing
     thereafter, which is what *Zillmerung* means and why that year's *Sparbeitrag* is thin.
     """
-    return min(prem_pp(k), max(0.0, alpha_total_pp() - alpha_cum_pp(k)))
+    return min(prem_pp(k), max(0.0, zillmer_amount() - alpha_cum_pp(k)))
 
 
 def charge_acq_spread_pp(k):
     """alpha~(k): the same charge spread **evenly over the first five contract years**.
 
-    ``alpha_total_pp() / alpha_spread_years`` for ``k = 0 .. 4``, zero after.  This is the
+    ``zillmer_amount() / alpha_spread_years`` for ``k = 0 .. 4``, zero after.  This is the
     § 169 Abs. 3 VVG treatment, and it enters no account of its own: it drives
     :func:`spread_diff_pp`, the difference between the tariff *Deckungskapital* and the
     statutory surrender floor.  255,00 € on the anchor cell.
     """
     years = int(data.charge_table().at[                              # noqa: F821
         (model_point()["charge_id"], "alpha_spread_years"), "value"])
-    return alpha_total_pp() / years if 0 <= k < years else 0.0
+    return zillmer_amount() / years if 0 <= k < years else 0.0
 
 
 def charge_prem_pp(k):
@@ -1114,7 +1082,7 @@ def mort_rate_mth(t):
 def decl_rate(k):
     """d(k): the declared *laufende Verzinsung* for the model point's scenario in year k.
 
-    Read from *decl_rate_table.csv* at ``(decl_scenario_id, calendar_year_y(k))``, clamped to
+    Read from *decl_rate_table.csv* at ``(scenario_id, calendar_year_y(k))``, clamped to
     the table's calendar range so a projection running past its last declared year holds that
     year flat.  2,55 % level on the ``base`` path, 1,50 % on ``low`` **[std]**.
 
@@ -1122,7 +1090,7 @@ def decl_rate(k):
     *laufende Zinsüberschussbeteiligung*, never a surplus on top of the guarantee.
     """
     tbl = data.decl_rate_table()                                     # noqa: F821
-    scen = model_point()["decl_scenario_id"]
+    scen = scenario_id()
     years = tbl.loc[scen].index
     y = min(max(calendar_year_y(k), int(years.min())), int(years.max()))
     return float(tbl.at[(scen, y), "decl_rate"])

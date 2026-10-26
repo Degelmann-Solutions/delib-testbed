@@ -191,7 +191,7 @@ Footnotes to **[std]** rows:
 | Payment frequency | Monthly by SEPA direct debit is the retail norm; quarterly, half-yearly and annual are offered | [S1] [S9] `[unverified]` |
 | *Ratenzahlungszuschlag* | Annual 1,000; half-yearly **1,02**; quarterly **1,03**; monthly **1,05** | German market convention `[unverified]`; carried as **[std]** (9) |
 | Premium cessation | On death, on lapse, at the end of the *Versicherungsdauer*, and — for as long as the *BU-Rente* is in payment — under the *Beitragsbefreiung* | [S1] |
-| *Risikozuschlag* (model-point parameter) | `risk_factor`, a multiplier on the *Bruttobeitrag*; 1,00 at *Normaltarif*. Observed loadings commonly **25 % to 100 %**, occasionally more | [S1] [S3]–[S12] `[unverified]`; base value **[std]** |
+| *Risikozuschlag* (model-point parameter) | `rating_factor`, a multiplier on the *Bruttobeitrag*; 1,00 at *Normaltarif*. Observed loadings commonly **25 % to 100 %**, occasionally more | [S1] [S3]–[S12] `[unverified]`; base value **[std]** |
 | *Stundung*, *Anwartschaft*, premium tax | Deferral or a dormant *Anwartschaft* for parental leave, unemployment or study preserves insurability without full cover; not modelled. **No premium tax** | [S1] [R31] `[unverified]` |
 
 7. **This is the most consequential single gap in the whole corpus.** The

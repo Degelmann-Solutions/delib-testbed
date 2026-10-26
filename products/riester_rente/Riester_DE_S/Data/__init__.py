@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The eight input CSVs are read here, **once per model**, and referenced from
+The nine input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Riester_DE_S.Projection` as ``data``. :mod:`~.Riester_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its
 own cells cache; if the readers lived there, every model point would re-read every file.
@@ -36,8 +36,9 @@ annuity_mort_file          annuity_mort_table()            annuity_mort_table.cs
 lapse_file                 lapse_table()                   lapse_table.csv
 zulage_file                zulage_schedule()               zulage_schedule.csv
 income_file                income_schedule()               income_schedule.csv
-surplus_file               surplus_scenario()              surplus_scenario.csv
+surplus_file               surplus_table()                 surplus_scenario.csv
 freq_loading_file          freq_loading_table()            freq_loading.csv
+param_file                 param_table()                   param_table.csv
 =========================  ==============================  ==========================
 
 **Every file but ``model_point_table.csv`` carries a per-row ``provenance`` column**,
@@ -98,8 +99,8 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table():
-    """Accumulation-phase death rates by attained age, from *mort_table_accum.csv*.
+def mort_table_index():
+    """The index columns of *mort_table_accum.csv*: ``age`` alone.
 
     A **[std]** proxy for **DAV 2008 T**, which is proprietary and is not redistributed
     here; see the Space docstring for the anchor a replacement must preserve.  Ages 16 to
@@ -107,11 +108,9 @@ def mort_table():
     improvement, because on a death cover improvement favours the insurer.
 
     Override reason: the death basis of the *Aufschubzeit* has no sex key, ``qx`` by ``age``
-    alone (``qx``); the annuitant table is separate, products/riester_rente/technical-notes.md,
-    section Model inputs
+    alone; the annuitant table is separate, products/riester_rente/technical-notes.md:123
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col="age")                    # noqa: F821
+    return "age"
 
 
 def annuity_mort_table():
@@ -125,28 +124,6 @@ def annuity_mort_table():
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / annuity_mort_file, index_col="age")            # noqa: F821
-
-
-def lapse_table():
-    """Surrender and transfer-out rates by contract duration, from *lapse_table.csv*.
-
-    The ``duration`` key is the **contract year**, 1-based and contractual: row ``k`` is
-    contract year ``k``, and the projection reaches it through
-    ``duration(t) + 1 = duration_init() + t + 1`` rather than through the 0-based ``t``
-    — ``duration(t)`` is itself the 0-based count of completed contract years.
-
-    Two rates, not one.  ``lapse_rate`` is a *Kündigung*, which repays every Zulage and
-    every § 10a relief and taxes the accumulated growth; ``transfer_rate`` is an
-    *Anbieterwechsel* under the statutory *Wechselrecht*, which carries none of those
-    consequences.  The second is set **above** the first at every duration for that
-    reason, and a model of this book carrying only a lapse rate has mis-specified it.
-
-    Override reason: the table keys the 1-based contract year as ``duration`` and carries a
-    ``transfer_rate`` beside the lapse rate, products/riester_rente/technical-notes.md,
-    section Model inputs
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / lapse_file, index_col="duration")              # noqa: F821
 
 
 def zulage_schedule():
@@ -181,21 +158,6 @@ def income_schedule():
         input_dir() / income_file, index_col=["income_id", "t"])     # noqa: F821
 
 
-def surplus_scenario():
-    """The declared *laufende Verzinsung* by scenario id and projection period ``t``.
-
-    Read from *surplus_scenario.csv*.  The ``t`` key is the model's own **0-based** time
-    index, running ``0 ... 89``, and is read directly at ``t``.  Two paths ship: ``base`` at 2,30 % level and
-    ``low`` at 0,50 % level.  The declared rate **includes** the *Rechnungszins* — adding
-    the two is the German arithmetic error this model is built to make visible — so
-    ``decl_rate - rechnungszins`` is the *laufende Zinsüberschussbeteiligung* and is
-    what accrues in the *Überschussguthaben*.  It is the largest single lever in the model
-    and the least supported: no declared rate at any carrier was established.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / surplus_file, index_col=["scenario_id", "t"])  # noqa: F821
-
-
 # ---------------------------------------------------------------------------
 # References
 
@@ -214,5 +176,7 @@ income_file = "income_schedule.csv"
 surplus_file = "surplus_scenario.csv"
 
 freq_loading_file = "freq_loading.csv"
+
+param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

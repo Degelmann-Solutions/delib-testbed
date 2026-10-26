@@ -43,7 +43,7 @@ as the level, which is what prudence means for an annuity.
 **Spaces.** The model contains two:
 
 :mod:`~.Sofort_DE_S.Data`
-    Reads the five input CSVs and holds their filename References. It takes no
+    Reads the six input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.Sofort_DE_S.Projection`

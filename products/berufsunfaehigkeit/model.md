@@ -128,7 +128,7 @@ credit returned out of it, so the cash collected is the difference and the
 model carrying only the *Zahlbeitrag* silently assumes the credit is permanent; one carrying only
 the *Bruttobeitrag* overstates collected premium by `1/0,70 − 1 = 42,86 %`. Over the anchor
 cell's 444 months `Σ premiums / Σ (premiums − surplus_credit) = 24,771.0596 / 17,339.7417 =
-1.428571428571429`, which is `1 / 0.70` to fifteen figures — necessarily so, because `freq_load`
+1.428571428571429`, which is `1 / 0.70` to fifteen figures — necessarily so, because `prem_freq_load`
 scales *Bruttobeitrag* and *Beitragsverrechnung* **together** and cancels out of the ratio.
 
 There is **no surplus account, no RfB and no declaration mechanic**, which is correct for BU
@@ -162,7 +162,7 @@ so the monthly instalment is `P × 1,05 / 12 = 88,6436` € and the *Zahlbeitrag
 `= 62,0505` €. **The recursion is acyclic**: no decrement depends on the premium, so nothing
 in the `pv_*` cells depends on `P`. The equivalence is struck **before** the *Risikozuschlag*
 and **without lapse**, deliberately on both counts, and `PV_prem` is struck on `P / 12` in
-every month — so `freq_load` is a genuine loading on the tariff premium rather than a
+every month — so `prem_freq_load` is a genuine loading on the tariff premium rather than a
 re-expression of it. Running the shadow from inception rather than from the valuation date is
 what gives an in-force point the premium its contract was struck at: **model point 6 is model
 point 1 fifteen years on, and the two price identically at 1 013,0697 € p.a.** Model point 13
@@ -219,7 +219,7 @@ internally consistent, acyclic, and understating what the market would charge.
   equivalence. Model point 3 is the anchor at BG4: `inc_rate` scales by exactly 3,00 while
   the premium scales by **2,932141**, slightly *below* it, because the flat administration
   and assessment charges do not scale with the risk.
-- **`risk_factor`** (ρ) loads the ***Bruttobeitrag* alone**. Model point 11 carries 1,50: its
+- **`rating_factor`** (ρ) loads the ***Bruttobeitrag* alone**. Model point 11 carries 1,50: its
   premium and surplus credit scale by exactly 1,50 while every decrement, claim and claim
   expense is bit-for-bit what it would be at 1,00. A *Risikozuschlag* prices an individually
   assessed impairment the base table does not carry and this model does not carry either, so
@@ -271,7 +271,7 @@ rather than to the payment. The alternative reading is defensible and is named.
 
 ## Inputs are external files
 
-The eight input CSVs live **in this directory**, beside `run.py`, and `BU_DE_S/` holds nothing
+The seven input CSVs live **in this directory**, beside `run.py`, and `BU_DE_S/` holds nothing
 but formulas — `__init__.py`, `_system.json`, `Data/__init__.py` and `Projection/__init__.py`, no
 `_data/`, no IOSpec, no embedded values. This follows lifelib's `annuallife/TradLife_A`, which
 keeps its inputs beside the model; it is the opposite of `basiclife/BasicTerm_S`, which stores
@@ -299,8 +299,7 @@ another same-schema file and the projection follows, with no formula change.
 | `mort_file` | `mort_table()` | `mortality_table.csv` | `mort_rate_actv` and `mort_rate_dis` by attained age 18–70. **[std]** Gompertz proxies, active `0.00035 × 1.095^(age−30)` and disabled **exactly 4,00×** it; DAV 2008 T [R17] and DAV 1997 TI [R16] are not shipped. Anchored at `mort_rate_actv(30) = 0.000350`. **What must be preserved is the excess of disabled over active mortality** — never one rate for both states |
 | `occupation_file` | `occupation_table()` | `occupation_table.csv` | The five *Berufsgruppen* with loadings and labels: BG1 1,00, BG2 1,40, BG3 2,10, BG4 3,00, BG5 4,50. **[std]**, anchored at 1,00 for office and 3,00 for the reference manual class inside the recalled 2×–4× band [S6]. Carrier classifications are **not comparable with one another** |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual *Stornoquote* by policy year 1–5, row 6 the ultimate: 4,0 / 4,0 / 3,5 / 3,0 / 2,5 / 2,0 %. **[std]**, and **low by the standards of every other delib product** — a product fact, not a modelling choice, because cover cannot be replaced once health has changed [S16]. The 30-day *Widerruf* sits inside year 1 [REG-R23] |
-| `freq_loading_file` | `freq_loading_table()` | `freq_loading_table.csv` | `prem_mode_months` (12 / 6 / 3 / 1) and the *Ratenzahlungszuschlag* `freq_load` (1,00 / 1,02 / 1,03 / 1,05). **[std]**: the ladder is the recalled German market convention and no retrieved document confirms it |
-| `param_file` | `param_table()` | `param_table.csv` | The scalar tariff parameters by `item`: `rechnungszins` 1,00 %, the *Höchstrechnungszins* [R13] [REG-R14] [REG-R15]. Added in phase 3, when the rate moved from a Reference on `Projection` into the table the common core reads |
+| `freq_loading_file` | `freq_loading_table()` | `freq_loading_table.csv` | `prem_mode_months` (12 / 6 / 3 / 1) and the *Ratenzahlungszuschlag* `prem_freq_load` (1,00 / 1,02 / 1,03 / 1,05). **[std]**: the ladder is the recalled German market convention and no retrieved document confirms it |
 
 Every file but the model point table carries a **`provenance` column**, one tag per row —
 delib's second ruling, and it is machine-checked.
@@ -340,7 +339,7 @@ arriving in another, or arrives in two. The first fixes the definition, the seco
 | *Beitragsdynamik* | `beitragsdyn_rate`, gated by `premium_form` | `0.00` on the `level` form | Escalates the insured *BU-Rente* and the annual *Bruttobeitrag* together on each policy anniversary; 3 % on model point 4 |
 | *Wiedereingliederungshilfe* | `wiedereingliederung_months` | `6`, and `0` on model point 12 | Monthly *Renten* paid on each **completed** run-off |
 | *Leistungsdynamik* | `leistungsdyn_rate` | `0.02`, and `0.00` on model point 12 | In-claim escalation on each onset anniversary |
-| *Risikozuschlag* | `risk_factor` | `1.00` | A multiplier on the *Bruttobeitrag* alone |
+| *Risikozuschlag* | `rating_factor` | `1.00` | A multiplier on the *Bruttobeitrag* alone |
 | Premium override | `gross_prem_ann` | `0.0` = derive by equivalence | Model point 13 supplies 2 400,00 € p.a. instead |
 
 Model point 12 is the anchor with both escalations off: its equivalence gives 865,95 € against
@@ -400,7 +399,7 @@ Five names needed care:
 
 | Notes | Cells | Why |
 |---|---|---|
-| `κ` vs `ρ` | `occ_factor` / `risk_factor` | One loads the inception rate and moves every claim; the other loads the *Bruttobeitrag* and moves nothing else |
+| `κ` vs `ρ` | `occ_factor` / `rating_factor` | One loads the inception rate and moves every claim; the other loads the *Bruttobeitrag* and moves nothing else |
 | `R(t)` vs `R_p(t, z)` | `bu_rente_pp` / `rente_pay_pp` | The **insured** *BU-Rente* on the policy clock against the amount **in payment** on the onset clock |
 | `L(t)` vs `L_p(t)` | `pols_if` / `pols_prem` | In force against premium-paying: the difference *is* the *Beitragsbefreiung* |
 | `i(x)` vs the composed rate | `inc_rate_base` / `inc_rate` | The table rate and the rate after κ, α and υ, published separately so a substituted table already net of declinature is visible |
@@ -429,12 +428,12 @@ only the *levels* that no retrievable document supplies.
 | Monthly conversion | `p_m = 1 − (1 − p)^(1/12)` on every annual rate | One convention applied uniformly to `i`, `r`, `q^a`, `q^i` and `w` |
 | Processing order | mortality → lapse → inception; then disabled deaths → terminations; then the run-off | Taking incidence first gives `0.000073362928` against `0.000073111651` in month 0 — 0,34 %, compounding over 444 months |
 | First-order loads | 1,30 / 0,70 / 0,80 / 0,80, **no lapse** | Prudence for a disability product forks: higher incidence, lower reactivation, lower disabled and active mortality, and no anticipation of a favourable decrement |
-| `rechnungszins` | **1,00 % p.a.** | The *Höchstrechnungszins*. **The figure is sourced**: DeckRV § 2 Abs. 1 fixes it "auf 1 Prozent", and § 2 Abs. 2 makes the rate used at conclusion apply for the whole term [R13]. **The 1 January 2025 commencement is not in the consolidated text and stays `[unverified]`** [REG-R15]. Used only in the equivalence. The model prices every model point at this one rate, a tariff parameter in `param_table.csv`, not a per-contract model-point column |
+| `rechnungszins` | **1,00 % p.a.** | The *Höchstrechnungszins*. **The figure is sourced**: DeckRV § 2 Abs. 1 fixes it "auf 1 Prozent", and § 2 Abs. 2 makes the rate used at conclusion apply for the whole term [R13]. **The 1 January 2025 commencement is not in the consolidated text and stays `[unverified]`** [REG-R15]. Used only in the equivalence. A model-point column, fixed at conclusion for the whole term; every shipped point carries this rate |
 | `acq_rate` | **2,5 % of the *Beitragssumme***, once at issue | Sits **at** the § 4 DeckRV *Höchstzillmersatz*: "Der Zillmersatz darf 25 Promille der Summe aller Prämien nicht überschreiten" [R13] [REG-R16], restated by both retrieved AVB as 2,5 % of the premiums payable over the term [S1] [S6]. The ceiling is the only sourced number in the charge structure, and the level is a choice to sit at it |
 | `admin_prem_rate` | **9 % of the *Bruttobeitrag*** | A construction, and **not** because the disclosure does not exist: VVG-InfoV § 2 Abs. 1 Nr. 1 with Abs. 2 and Abs. 4 requires a German BU insurer to state the calculated acquisition costs and the administration costs in euro, and one AVB points the customer to the *Produktinformationsblatt* for them [R12] [S6]. **No PIB was obtained** [S13], so the level here is a choice. A pure risk contract does separately lack an *Effektivkosten* figure, § 2 Abs. 1 Nr. 9 confining that to contracts whose obligation is certain [S14] |
 | `admin_flat_ann` | **18,00 € p.a.**, charged 1/12 monthly, **uninflated** | A German *Verwaltungskostenzuschlag* is fixed in the tariff at conclusion |
 | `claim_assess_cost` / `claim_maint_cost_mth` | **800,00 €** per inception / **12,00 €** per month in payment | The BU-specific charge a modeller from a term-life background forgets. Flat euro amounts, which is why a heavier class carries a premium below the ratio of its inception rates |
-| `freq_load` | 1,00 / 1,02 / 1,03 / 1,05 | The recalled German *Ratenzahlungszuschlag* ladder `[unverified]` — the retrieved AVB name the frequencies (single, monthly, quarterly, half-yearly, annual) but no loading [S1]; it scales *Brutto* and *Beitragsverrechnung* together |
+| `prem_freq_load` | 1,00 / 1,02 / 1,03 / 1,05 | The recalled German *Ratenzahlungszuschlag* ladder `[unverified]` — the retrieved AVB name the frequencies (single, monthly, quarterly, half-yearly, annual) but no loading [S1]; it scales *Brutto* and *Beitragsverrechnung* together |
 | `beitragsverrechnung` | **0,70**, held constant | Midpoint of the recalled 0,60–0,75 common range inside a 0,50–0,80 band `[unverified]` — **no retrieved document gives a ratio**, though two now state the mechanic in their own words [S6] [S12]. **The largest single parameter uncertainty in the model**, and holding it constant its largest discretionary assumption |
 | `leistungsdyn_rate` | **2 % p.a.** | Midpoint of the recalled 1–3 % menu. A BU model without in-claim escalation misses the product's dominant long-duration sensitivity |
 | `wiedereingliederung_months` | **6**, paid on the **completed** run-off | Recalled range 3–12 monthly *Renten*. Paying it on every recovery instead overstates it by exactly the run-off's own mortality — 418,79 € against 409,61 € on the anchor cell |

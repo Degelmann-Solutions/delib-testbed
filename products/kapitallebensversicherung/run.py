@@ -25,7 +25,7 @@ print("model point {}: {} - {}{} {} - SE {:,.0f} EUR, ratio {:.2f}, term {}, "
           proj.prem_term()))
 print("issue {} at i1 = {:.2%} (cap {:.2%}), zillmer_on = {}, alpha = {:.4f} "
       "(cap {:.3f})".format(
-          proj.issue_year(), proj.rechnungszins(), proj.hrz_max(),
+          proj.issue_year(), proj.rechnungszins(), proj.hoechstrechnungszins(),
           proj.zillmer_on(), proj.alpha_rate(), proj.zillmer_max()))
 print("frequency {} {} x {}, phi = {:.3f}   surplus_use = {}   scenario = {}   "
       "bfz_year = {}".format(
@@ -34,7 +34,7 @@ print("frequency {} {} x {}, phi = {:.3f}   surplus_use = {}   scenario = {}   "
           proj.bfz_year()))
 print("Bruttobeitrag {:,.4f} EUR p.a.   Beitragssumme {:,.2f}   alpha_cost "
       "{:,.2f}   P^n {:,.4f}   P^Z {:,.4f}".format(
-          proj.prem_gross_pp(), proj.beitragssumme(), proj.alpha_cost(),
+          proj.prem_gross_pp(), proj.beitragssumme(), proj.zillmer_amount(),
           proj.prem_net_level_pp(), proj.prem_zill_pp()))
 print("frame t = {} .. {} months ({} policy years; policy_year = t // 12 + 1)   "
       "pols_if_init {:.6f}".format(

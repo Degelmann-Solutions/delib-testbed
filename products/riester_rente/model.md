@@ -254,7 +254,7 @@ quantity struck at *Rentenbeginn*.
 ## The payout phase, and the *Rentengarantiezeit*
 
 The projection does not stop at *Rentenbeginn*: the account is extinguished there and the
-lifelong *Leibrente* runs to `omega_age = 110` on the **second-order** generational annuitant
+lifelong *Leibrente* runs to age 110, `omega_age() − 1`, on the **second-order** generational annuitant
 basis, because a model that stopped at conversion would not have modelled the benefit the
 AltZertG requires [R1]. **The *Rente* is paid one instalment a month**, which is what the
 AltZertG requires and what the *Rentenfaktor* quotes: `annuity_month_pp() = 92,885458 €` on the
@@ -323,14 +323,14 @@ split, and the notes say so under *Key sensitivities*.
 
 ## Inputs are external files
 
-The eight input CSVs live **in this directory**, beside `run.py` — not inside the model
+The nine input CSVs live **in this directory**, beside `run.py` — not inside the model
 folder. `Riester_DE_S/` holds nothing but formulas:
 
 ```
 products/riester_rente/
   model_point_table.csv  mort_table_accum.csv  annuity_mort_table.csv   <- inputs live here
   lapse_table.csv  zulage_schedule.csv  income_schedule.csv
-  surplus_scenario.csv  freq_loading.csv
+  surplus_scenario.csv  freq_loading.csv  param_table.csv
   run.py  model.md  product-spec.md  technical-notes.md  sources.md
   Riester_DE_S/                <- formulas only
     __init__.py  _system.json
@@ -356,7 +356,8 @@ Each file has one string Reference and one reader cells on `Data`, named alike:
 `model_point_file` → `model_point_table()`, `mort_file` → `mort_table()`,
 `annuity_mort_file` → `annuity_mort_table()`, `lapse_file` → `lapse_table()`, `zulage_file` →
 `zulage_schedule()`, `income_file` → `income_schedule()`, `surplus_file` →
-`surplus_scenario()` and `freq_loading_file` → `freq_loading_table()`.
+`surplus_table()`, `freq_loading_file` → `freq_loading_table()` and `param_file` →
+`param_table()`.
 
 **The trade-off:** the model is not portable on its own — copy `Riester_DE_S/` without the CSVs
 and it reads fine, then fails on first evaluation. What you gain is a diff that shows logic
@@ -374,6 +375,7 @@ frequency-loading invariance is tested.
 | `income_schedule.csv` | Contribution-liable earnings by schedule id and `t`, 0–59 | **[std]** 2 % nominal growth paths plus a `zero` path for the *mittelbar* eligible spouse. It decides when the 2 100 € ceiling binds |
 | `surplus_scenario.csv` | `decl_rate` by scenario id and `t`, 0–89: `base` 2,30 %, `low` 0,50 % | **[std]**, the **largest single lever in the model** and the least supported (gap 12). The rate **includes** the *Rechnungszins* [REG-R53] |
 | `freq_loading.csv` | The *Ratenzuschlag* multiplier by payment frequency | **[std]** 1.0000 / 1.0100 / 1.0200 / 1.0300, a charge and never a credit |
+| `param_table.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.80 | **[std]**, the step from the first-order death table to the best estimate, below it because a death table carries its margin above [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads |
 
 ### How the time-like input columns are keyed
 
@@ -387,7 +389,7 @@ to a monthly grid re-keyed none of them: each is read through `k` rather than `t
 | `zulage_schedule.csv` | `t` | The model's own **annual** index `k`; values run **0 … 59** | `zulage_entitlement_pp(k)` reads the row at `k` directly, so the key *is* the frame's `t` |
 | `income_schedule.csv` | `t` | The model's own **annual** index `k`; values run **0 … 59** | `income_ref(k)` reads the row at `k − 1`, the previous year, and `income_init` supplies `t = 0`; the key is still the frame's `t`, offset by the calendar lag inside the formula |
 | `surplus_scenario.csv` | `t` | The model's own **annual** index `k`; values run **0 … 89** | `decl_rate(k)` reads the row at `k` directly |
-| `lapse_table.csv` | `duration` | **Unchanged, 1 … 60** | It is a contractual **contract-year band**, not the frame's `t` and not its `k` either. The projection maps into it with `duration(t) + 1 = duration_init() + t + 1`, which is 4 on the anchor's first period exactly as before; the cells `duration(t)` is itself the 0-based count of completed contract years, as in `Basis_DE_S` and `KLV_DE_S` |
+| `lapse_table.csv` | `policy_year` | **Values unchanged, 1 … 60; header renamed `duration` → `policy_year` in phase 3** | It is a contractual **contract-year band**, not the frame's `t` and not its `k` either. The projection maps into it with `policy_year(t) = duration(t) + 1 = duration_init() + t // 12 + 1`, which is 4 on the anchor's first period exactly as before; the cells `duration(t)` is itself the 0-based count of completed contract years, as in `Basis_DE_S` and `KLV_DE_S` |
 | `mort_table_accum.csv`, `annuity_mort_table.csv` | `age` | Unchanged | Attained age, not a time index |
 | `freq_loading.csv` | `prem_freq` | Unchanged | Not a time index |
 | `model_point_table.csv` | `duration_init` | **Unchanged** | An elapsed count of completed contract years, 0-based by nature |
@@ -443,11 +445,11 @@ example reproduces while the machinery stays visible and testable.
 | The low declared-rate stress — the only lever deciding whether the guarantee costs anything | `scenario_id` | `base`, 2,30 % | point 11, `low` at 0,50 % |
 | *Teilkapitalauszahlung* election, and the *Rentengarantiezeit* that pays on `pols_conv()` rather than `pols_if(t)` — both **on** by default | `teilkapital_share`, `rentengarantie_years` | `0.30`, `10` | point 12, at 0.00 and 0 |
 
-Two Space References are worth naming because a user will want to move them: `zulage_lag = 1`,
+Two parameters are worth naming because a user will want to move them: the Reference `zulage_lag = 1`,
 which is the statutory timing rather than a convention — §§ 88 to 90 EStG put the credit in the
 following year and AltvPIBV § 9 Abs. 3 dates it to **15 May** of that year [R5] [R11], closing
 gap 6, so what `zulage_lag` standardizes is only the annual-grid compression; and
-`mort_be_factor = 0.80` beside `annuity_mort_be_factor = 1.15`, which run in **opposite**
+`mort_be_factor = 0.80` (in `param_table.csv`) beside `annuity_mort_be_factor = 1.15`, which run in **opposite**
 directions because the direction of prudence forks by product — a first-order death table
 assumes mortality higher than expected, a first-order annuity table lower [REG-R47].
 
@@ -524,7 +526,7 @@ retrieved document has since confirmed, contradicted or left untouched.
 | *Kleinbetragsrente* threshold and the basis of the test; the one-year Zulage cash lag; 2,0 % p.a. nominal income growth | 39,55 € a month, flat in nominal terms, applied **after** the lump sum | **The first two are no longer standardizations but known errors, recorded and not fixed.** The threshold is 1,5 % of the monthly *Bezugsgröße*, § 93 Abs. 3 Satz 2 Nr. 1 EStG — **59,33 €** here [R15] — and the test belongs **before** the lump sum [S2]; both of the model's choices push toward fewer commutations and a longer-tailed liability (gap 7). **Gap 6 closes**: AltvPIBV § 9 Abs. 3 has the Zulage credited on **15 May after the contribution year** [R5], so only the annual-grid compression is standardized. The growth rate is a round real-plus-inflation number that decides when the 2 100 € ceiling binds |
 | Surrender and transfer rates, 0,8 / 0,6 / 0,4 % and 1,2 / 0,9 / 0,6 % by duration band; expenses and commission; the 30 % *Teilkapitalauszahlung* take-up | 30,00 € maintenance inflating at 2,0 %; 24,00 € per annuitant; 80,00 € per claim; 150,00 € + 2,0 % of `beitragssumme` at issue; 2,5 % initial and 1,5 % renewal commission | **No German Riester behavioural rate was established** (gap 16), and the transfer-above-surrender ordering is an argument from the statutory consequences rather than from data. No German insurer publishes a unit cost. The maintenance figure carries the Zulage administration — *Dauerzulageantrag*, annual ZfA exchange, *Leistungsmitteilung* — a real product-specific cost. German commentary reports the lump sum as the usual election, and **gap 10 records that this rests on nothing** |
 | Timing, processing and decrement order | Contribution and Zulage in the year's first month, interest at its end, decrements at the end of each month, conversion at `t_conv()`; mortality, then surrender, then transfer, within each month; the *Rente* one instalment a month in advance | No source fixes the ordering inside a period, so it is stated to be compared line by line. The annuity's *level* is right because the factor carries the Woolhouse correction, and the monthly grid now gets its *timing* right too; what stays **[std]** is *vorschüssig* against *nachschüssig* |
-| `omega_age = 110` with `q = 1` there; the opening balances and the model points themselves | — | The omega forces the decrement closure to be exact rather than approximate; the seeds are **[std]**, and the notes record that `guar_pp_init` and the account seeds were struck on different income paths, a 195,08 € discrepancy kept rather than papered over |
+| last age 110 (`omega_age() = 111`) with `q = 1` there; the opening balances and the model points themselves | — | The omega forces the decrement closure to be exact rather than approximate; the seeds are **[std]**, and the notes record that `guar_pp_init` and the account seeds were struck on different income paths, a 195,08 € discrepancy kept rather than papered over |
 
 The quantities that are **not** standardizations are the statutory ones, and after the
 2026-08-30 provenance pass every one of them has been read verbatim in the canonical statutory

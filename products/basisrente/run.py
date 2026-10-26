@@ -25,7 +25,7 @@ print("model point {}: {} - {}{} concluded {}, duration {} at valuation".format(
     mp["issue_year"], proj.duration(0)))
 print("Aufschubphase to Rentenbeginn at age {} (k = {}, t = {}), projection to age {} "
       "(k = {}, t = {})".format(
-          mp["ret_age"], proj.ret_y(), proj.ret_t(), proj.omega_age(),
+          mp["ret_age"], proj.k_conv(), proj.t_conv(), proj.omega_age() - 1,
           proj.proj_len_y() - 1, proj.proj_len() - 1))
 print("premium form = {} {}   Beitrag {:,.2f} EUR p.a. x freq load {:.3f}   "
       "Dynamik {:.1%}".format(
@@ -33,32 +33,32 @@ print("premium form = {} {}   Beitrag {:,.2f} EUR p.a. x freq load {:.3f}   "
           proj.prem_freq_load(), mp["prem_dyn_rate"]))
 print("Beitragssumme {:,.2f} EUR   Zillmerung {:,.2f} EUR over {} years   "
       "Zuzahlung {:,.2f} EUR p.a. to duration {}".format(
-          proj.beitragssumme_pp(), proj.alpha_total_pp(), proj.zill_spread_y,
+          proj.beitragssumme(), proj.zillmer_amount(), proj.zill_spread_y,
           mp["zuzahlung_pp"], mp["zuzahlung_end_dur"]))
 print("Rentenfaktor: guaranteed {:.2f}, current {:.2f}, option factor {:.3f} "
       "-> applied {:.4f}".format(
           mp["rentenfaktor_gtd"], proj.rentenfaktor_curr(),
           proj.rf_option_factor(), proj.rentenfaktor_applied()))
-if proj.ret_y() >= 0:
+if proj.k_conv() >= 0:
     print("fund at Rentenbeginn {:,.2f} EUR -> Rente {:,.2f} EUR a month "
           "({:,.2f} EUR p.a.) per annuitant".format(
-              proj.fund_at_conv(), proj.ann_mth_pp(proj.ret_t()),
-              proj.ann_pp(proj.ret_y())))
+              proj.fund_at_conv(), proj.ann_mth_pp(proj.t_conv()),
+              proj.ann_pp(proj.k_conv())))
 else:
     print("opens in payment: Rente {:,.2f} EUR a month ({:,.2f} EUR p.a.) per "
           "annuitant".format(proj.ann_mth_pp(0), proj.ann_pp(0)))
 if int(mp["guarantee_period_y"]) > 0:
     print("Rentengarantiezeit {} y = {} monthly instalments, t = {} .. {}".format(
         mp["guarantee_period_y"], 12 * int(mp["guarantee_period_y"]),
-        max(0, proj.ret_t()), proj.gtd_end_t()))
+        max(0, proj.t_conv()), proj.gtd_end_t()))
 print()
 
 df = proj.result_cf()
 print("first 13 months")
 print(df.head(13).round(2).to_string())
 print()
-if proj.ret_t() >= 0:
-    lo = max(0, proj.ret_t() - 1)
+if proj.t_conv() >= 0:
+    lo = max(0, proj.t_conv() - 1)
     print("the Rentenbeginn, month by month")
     print(df.loc[lo:lo + 3].round(2).to_string())
     print()

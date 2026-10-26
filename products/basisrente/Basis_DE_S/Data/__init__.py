@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The seven input CSVs are read here, **once per model**, and referenced from
+The eight input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Basis_DE_S.Projection` as ``data``. :mod:`~.Basis_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its
 own cells cache; if the readers lived there, every model point would re-read every file.
@@ -38,6 +38,7 @@ rentenfaktor_file          rentenfaktor_table()            rentenfaktor_table.cs
 charge_file                charge_table()                  charge_table.csv
 behaviour_file             behaviour_table()               behaviour_table.csv
 option_file                option_table()                  option_table.csv
+param_file                 param_table()                   param_table.csv
 =========================  ==============================  ==========================
 
 **Every file but ``model_point_table.csv`` carries a final ``provenance`` column**, one
@@ -125,8 +126,8 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table():
-    """The first-order annual death rates and improvement trends by age.
+def mort_table_index():
+    """The index columns of *mort_table.csv*: ``age`` alone.
 
     Read from *mort_table.csv*, indexed by ``age``: ``qx`` is the rate at the base
     calendar year ``mort_base_year`` and ``trend`` the annual improvement that makes the
@@ -134,38 +135,24 @@ def mort_table():
     2004 R; see the Space docstring for what a replacement must preserve.
 
     Override reason: the table is the unisex first-order basis with a generational ``trend``
-    column, keyed by ``age`` alone, products/basisrente/technical-notes.md, section External
-    input files
+    column, keyed by ``age`` alone, products/basisrente/technical-notes.md:138
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col="age")                    # noqa: F821
+    return "age"
 
 
-def surplus_table():
-    """The declared surplus path by scenario and projection year.
+def charge_table_index():
+    """The index column of *charge_table.csv*: ``tariff_id``.
 
-    Read from *surplus_table.csv*, indexed by ``scenario_id`` and the **0-based**
-    projection year ``t``, whose first row is ``t = 0``: ``decl_rate`` is
-    the declared *laufende Verzinsung* in the *Aufschubphase* — the **total** credited
-    rate including the *Rechnungszins*, not a spread over it — and ``ann_bonus_rate`` the
-    *Überschussrente* uplift in the *Rentenphase*.
+    The table is the charge, expense and commission scale by tariff.  The first four
+    columns are deductions from the policyholder's *Deckungskapital* and are therefore
+    insurer **income**; the last five are the insurer's own **outgo**.  Booking a charge as
+    both is the fourth listed modeling pitfall, and keeping the two groups in one file is
+    what makes the split visible.
+
+    Override reason: the charge scale is one row per tariff, keyed by ``tariff_id``,
+    products/basisrente/technical-notes.md:141
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / surplus_file,                                  # noqa: F821
-        index_col=["scenario_id", "t"])
-
-
-def charge_table():
-    """The charge, expense and commission scale by tariff, from *charge_table.csv*.
-
-    Indexed by ``tariff_id``.  The first four columns are deductions from the
-    policyholder's *Deckungskapital* and are therefore insurer **income**; the last five
-    are the insurer's own **outgo**.  Booking a charge as both is the fourth listed
-    modeling pitfall, and keeping the two groups in one file is what makes the split
-    visible.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / charge_file, index_col="tariff_id")            # noqa: F821
+    return "tariff_id"
 
 
 def behaviour_table():
@@ -212,5 +199,7 @@ charge_file = "charge_table.csv"
 behaviour_file = "behaviour_table.csv"
 
 option_file = "option_table.csv"
+
+param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

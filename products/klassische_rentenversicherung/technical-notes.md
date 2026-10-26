@@ -147,7 +147,7 @@ The right-hand column names the points that exercise each attribute away from it
 | `charge_id` | str | Key into `charge_table.csv`; `zillmer_25` or the pre-2015 `zillmer_40` [REG-R16] | 6 (`zillmer_40`) |
 | `annuity_rate_guar` | EUR/month per 10 000 € | *garantierter Rentenfaktor*, fixed at inception [S8] [R24] | all (levels **[std]**) |
 | `rf_scenario_id` | str | Key into `rentenfaktor_table.csv` for the *aktueller Rentenfaktor* | 5 (`high`), 13 (`low`) |
-| `decl_scenario_id` | str | Key into `decl_rate_table.csv` for the declared *laufende Verzinsung* | 14 (`low`) |
+| `scenario_id` | str | Key into `decl_rate_table.csv` for the declared *laufende Verzinsung* | 14 (`low`) |
 | `guar_capital_pp` | EUR | Minimum guaranteed contract value at *Rentenbeginn* [S9]; 0 = not stated | 13 (60 000) |
 | `death_benefit_form` | enum {prem_refund, deckungskapital, max} | The three documented designs [S1] [R24]; `max` **[std]** [S19] | 2, 12 (`deckungskapital`); 5, 13 (`max`) |
 | `db_incl_surplus` | int 0/1 | Whether the *Ansammlungsguthaben* is added to the death benefit [R24] | 4, 12 |
@@ -221,8 +221,8 @@ table carries a per-row `provenance` column, this library's second ruling.
 | `decl_rate_table.csv` | `scenario_id`, `calendar_year` | `decl_rate`, `provenance` |
 | `rentenfaktor_table.csv` | `rf_scenario_id`, `age` | `annuity_rate_curr`, `provenance` |
 | `charge_table.csv` | `charge_id`, `item` | `value`, `provenance` |
-| `lapse_table.csv` | `duration` | `lapse_rate`, `provenance` |
-| `freq_load_table.csv` | `prem_freq` | `freq_load`, `n_instalments` (**recorded, not applied**), `provenance` |
+| `lapse_table.csv` | `policy_year` | `lapse_rate`, `provenance` |
+| `freq_load_table.csv` | `prem_freq` | `prem_freq_load`, `n_instalments` (**recorded, not applied**), `provenance` |
 | `param_table.csv` | `item` | `value`, `provenance` |
 
 `param_table.csv` holds every scalar [std] assumption that is neither a charge nor a rate table:
@@ -348,7 +348,7 @@ prices a death benefit, so that benefit is systematically **under**-charged rela
 death-business basis such as DAV 2008 T [REG-R48], and the *Beitragsrückgewähr* design exists partly
 because it makes the mismatch immaterial — the benefit is the premiums, not a sum insured.
 
-**Lapse (*Storno*).** `lapse_table.csv`, keyed by the **contractual policy year** (`duration`,
+**Lapse (*Storno*).** `lapse_table.csv`, keyed by the **contractual policy year** (`policy_year`,
 1-based, so the lookup goes through `policy_year(t) = duration(t) + 1` and the twelve months of a
 policy year all read the same row), and **zero from *Rentenbeginn***:
 
@@ -454,13 +454,13 @@ flow in `result_cf()` is EUR for the model point as a whole.
     P(k) = 0                                                 if k ≥ n, or k ≥ prem_term_y,
                                                              or (pup_year > 0 and k ≥ pup_year − 1)
          = premium_single_pp                                 if premium_form = einmal and k = 0
-         = prem_gross_pp × freq_load × (1 + dynamik_rate)^k   if premium_form = laufend
+         = prem_gross_pp × prem_freq_load × (1 + dynamik_rate)^k   if premium_form = laufend
 
     prem_due(t) = ( t mod 12 == 0 )        the first month of each policy year, and no other
     premiums(t) = P(duration(t)) × l(t)    where prem_due(t), else 0
 
-    beitragssumme_pp = Σ_{u=0..min(prem_term_y, n)−1} P_sched(u)
-    alpha_total_pp   = alpha_rate × beitragssumme_pp
+    beitragssumme    = Σ_{u=0..min(prem_term_y, n)−1} P_sched(u)
+    zillmer_amount   = alpha_rate × beitragssumme
 
 `P_sched` is the premium schedule **as written at inception**, ignoring any later
 *Beitragsfreistellung*: § 4 DeckRV takes the *Zillmersatz* on the sum of all premiums payable under
@@ -469,8 +469,8 @@ frequency loading is inside `P`, so it is inside the *Beitragssumme* too.
 
 ### The premium decomposition
 
-    α(k)  = min( P(k), max(0, alpha_total_pp − alpha_cum_pp(k)) )        zillmered
-    α̃(k)  = alpha_total_pp / alpha_spread_years   for k < 5, else 0      § 169 Abs. 3 [REG-R28]
+    α(k)  = min( P(k), max(0, zillmer_amount − alpha_cum_pp(k)) )        zillmered
+    α̃(k)  = zillmer_amount / alpha_spread_years   for k < 5, else 0      § 169 Abs. 3 [REG-R28]
     β(k)  = beta_rate × P(k)
     γ(k)  = (paid_up(k) ? gamma_pup_rate : gamma_rate) × V(k)
     Ď(k)  = prem_cum_pp(k) + P(k)                     if death_benefit_form = prem_refund
@@ -889,8 +889,8 @@ becomes a test in `tests/test_klassische_rentenversicherung_de.py`.
     identical `charge_*` except through `mort_rate_guar`, and identical `annuity_rate_appl()`.
 17. **Amortising the acquisition charge against a shrunken *Beitragssumme*.** The § 4 DeckRV base is
     the sum of all premiums payable under the contract as written [REG-R16], not the premiums a later
-    *Beitragsfreistellung* leaves behind. Assert `alpha_total_pp` on point 7 is unchanged by
-    `pup_year`, and that `alpha_cum_pp` never exceeds `alpha_total_pp`.
+    *Beitragsfreistellung* leaves behind. Assert `zillmer_amount` on point 7 is unchanged by
+    `pup_year`, and that `alpha_cum_pp` never exceeds `zillmer_amount`.
 18. **Truncating the payout phase.** A life annuity has no term; `proj_len() = omega_age −
     issue_age`. Assert `result_cf().index[-1] == proj_len() − 1`, that `pols_if(proj_len()) = 0` —
     one past the last row — and that the decrement closure sums to `pols_if_init()` exactly. A 40-year horizon on the anchor cell
@@ -937,12 +937,12 @@ Every formula here is **[std]**; nothing in the corpus calibrates any of it (gap
 **Configuration.** Model point 1, `point_id = 1`, `policy_id = DE-RV-0001`: `sex = M`;
 `issue_age = 50`; `issue_year = 2026`; `duration_init = 0`, so the frame opens at `t = 0`;
 `pols_if_init = 1.0`; `premium_form = laufend`; `prem_gross_pp = 3 000,00 €`;
-`premium_single_pp = 0,00 €`; `prem_freq = annual`, hence `freq_load = 1,000`; `prem_term_y = 17`;
+`premium_single_pp = 0,00 €`; `prem_freq = annual`, hence `prem_freq_load = 1,000`; `prem_term_y = 17`;
 `aufschub_y = 17`, so the *Rentenbeginn* falls at the end of month `t = 203` — the end of the
 seventeenth policy year — at attained age 67;
 `rechnungszins = 1,00 %`, the 2026 vintage [REG-R15]; `charge_id = zillmer_25`;
 `annuity_rate_guar = 28,00 €` per month per 10 000 €; `rf_scenario_id = base`;
-`decl_scenario_id = base`; `guar_capital_pp = 0,00 €`, so the guaranteed-contract-value floor is
+`scenario_id = base`; `guar_capital_pp = 0,00 €`, so the guaranteed-contract-value floor is
 inoperative on this cell; `death_benefit_form = prem_refund`; `db_incl_surplus = 0`;
 `rgz_years = 10`; `kapitalwahl_rate = 0,30`; `pup_year = 0`; `dynamik_rate = 0,0000`;
 `payout_system = konstant`; `av_pp_init = 0,00 €`; `av_sur_pp_init = 0,00 €`;
@@ -953,7 +953,7 @@ survivor-weighted annuity runs from `t = 324` to `t = 851`.
 
 **Assumptions, each tagged.** *Contractual and cited:* the *Rechnungszins* `i = 1,00 % p.a.`
 [REG-R15]; the *Höchstzillmersatz* `alpha_rate = 25 ‰` of the *Beitragssumme* [REG-R16], giving
-`beitragssumme_pp = 17 × 3 000,00 = 51 000,00 €` and `alpha_total_pp = 1 275,00 €`, zillmered — taken
+`beitragssumme = 17 × 3 000,00 = 51 000,00 €` and `zillmer_amount = 1 275,00 €`, zillmered — taken
 in full from the first year's premium and nil thereafter; the § 169 Abs. 3 five-year spread,
 `alpha_spread_years = 5`, giving `α̃(k) = 255,00 €` for `k = 0 … 4` [REG-R28]; the § 165
 *Mindestversicherungsleistung* test, not triggered on this cell [R2]; the death benefit
@@ -1181,7 +1181,7 @@ attained age 67, with `death_benefit_form = deckungskapital` and `kapitalwahl_ra
 | **Total** | — | — | — | **50,000.00** | **1,128.88** | **21,374.96** | **46,844.86** | **1,908.71** | **−21,257.42** |
 
 Totals again at full precision then rounded; the rounded-cell `net_cf` is −21 257,45 €. Three things
-read off it. The *Beitragssumme* is the single premium, so `alpha_total_pp` is 1 250,00 € and the
+read off it. The *Beitragssumme* is the single premium, so `zillmer_amount` is 1 250,00 € and the
 first year's *Sparbeitrag* is 46 750,00 € — 93,5 % of the premium against the anchor's 53,4 %, which is
 the whole economic difference between the two forms. The net amount at risk is **identically zero**
 in every policy year, the benefit being the *Deckungskapital* itself, so the *Risikobeitrag* disappears from

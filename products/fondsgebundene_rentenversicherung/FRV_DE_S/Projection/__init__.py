@@ -1282,6 +1282,9 @@ def lapse_rate(t):
     ``min(lapse_cap, lapse_rate_base(t) x lapse_tax_step(t) + lapse_dyn_add(t))`` with a
     **[std]** cap of 40 %.  Annual by the library's convention; the monthly rate the
     projection actually uses is :func:`lapse_rate_mth`.
+
+    Override reason: the table rate is stepped at the tax threshold, raised by the dynamic
+    lapse and capped at 40 %, products/fondsgebundene_rentenversicherung/technical-notes.md:336
     """
     return min(lapse_cap,                                            # noqa: F821
                lapse_rate_base(t) * lapse_tax_step(t) + lapse_dyn_add(t))

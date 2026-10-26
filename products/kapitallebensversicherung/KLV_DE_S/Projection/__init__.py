@@ -1342,6 +1342,10 @@ def lapse_rate(t):
     This is the **annual** rate of the policy year containing month ``t``;
     :func:`lapse_rate_mth` is what the recursion applies, and it is where the election year's
     1.0 is placed on the anniversary rather than spread.
+
+    Override reason: § 165 VVG turns a *Beitragsfreistellung* election that fails the
+    minimum-sum test into a surrender, a rate of 1 in that year, and the final year's end is
+    the *Ablauf*, products/kapitallebensversicherung/technical-notes.md:537
     """
     if duration(t) >= proj_len_y() - 1:
         return 0.0

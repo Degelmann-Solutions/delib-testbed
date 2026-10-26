@@ -538,6 +538,14 @@ CORE_CELLS = {
                          "pflegerentenversicherung": "override",
                          "riester_rente": "override",
                          "risikolebensversicherung": "override"},
+        "lapse_rate": {"berufsunfaehigkeit": "derived",
+                       "fondsgebundene_rentenversicherung": "override",
+                       "indexpolice": "derived",
+                       "kapitallebensversicherung": "override",
+                       "klassische_rentenversicherung": "override",
+                       "pflegerentenversicherung": "derived",
+                       "riester_rente": "derived",
+                       "risikolebensversicherung": "derived"},
     },
 }
 
@@ -956,3 +964,29 @@ def test_frv_splits_mortality_linearly(product_models):
     item = projection[model.Data.model_point_table().index[0]]
     for t in range(item.proj_len()):
         assert item.mort_rate_mth(t) == item.mort_rate(t) / 12.0, t
+
+
+@pytest.mark.parametrize("product", ["indexpolice", "risikolebensversicherung"])
+def test_lapse_is_closed_in_the_final_policy_year_without_reading_the_table(
+        product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.lapse_rate._is_derived()
+    assert projection.lapse_factor._is_defined()
+    item = projection[model.Data.model_point_table().index[0]]
+    final = 12 * (item.proj_len_y() - 1)
+    for t in range(final, item.proj_len()):
+        assert item.lapse_rate(t) == 0.0, t
+        names = {node.obj.name for node in item.lapse_rate.precedents(t)}
+        assert names == {"lapse_factor"}, (t, names)
+    assert item.lapse_rate(final - 1) > 0.0
+
+
+def test_rlv_lapse_rate_is_the_table_rate_times_the_shock_factor(product_models):
+    model = product_models("risikolebensversicherung")
+    projection = model.Projection
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        for t in range(item.t_start(), 12 * (item.proj_len_y() - 1)):
+            assert (item.lapse_rate(t)
+                    == item.lapse_rate_base(t) * item.shock_lapse_factor(t)), (point_id, t)

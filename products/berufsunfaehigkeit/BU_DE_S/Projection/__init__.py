@@ -798,19 +798,6 @@ def recov_rate_mth_year():
     return tuple(1.0 - (1.0 - r) ** (1.0 / 12.0) for r in recov_rates())
 
 
-def lapse_rate(t):
-    """w(y(t)): the **annual** *Stornoquote* in the policy year containing month t.
-
-    4.0 % in the first two policy years falling to a 2.0 % ultimate from the sixth
-    **[std]**, capped at the table's last row.  Low by the standards of every other delib
-    product, and that is a product fact: once health has changed the cover cannot be
-    replaced, so an insured with a claimable impairment cannot rationally lapse.  Lapse
-    applies to :func:`pols_actv` only — a life in claim pays no premium and so cannot
-    lapse for non-payment.
-    """
-    return lapse_rate_base(t)
-
-
 def lapse_rate_mth(t):
     """w_m(t): the monthly lapse rate, ``1 - (1 - lapse_rate(t))^(1/12)`` **[std]**.
 

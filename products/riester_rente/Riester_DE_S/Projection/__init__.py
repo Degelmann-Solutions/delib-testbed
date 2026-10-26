@@ -698,23 +698,6 @@ def lapse_factor(t):
     return 1.0
 
 
-def lapse_rate(t):
-    """w(t): the **annual** surrender rate of the year month t falls in, by duration.
-
-    Read from *lapse_table.csv* at ``policy_year(t)``, so the twelve months of a
-    projection year share one band.  Zero from ``t_conv()``: a contract in payment cannot be
-    surrendered.  The level is deliberately small — a *Kündigung* is *schädliche Verwendung*,
-    repaying every Zulage and every § 10a relief and taxing the accumulated growth, against a
-    surrender value already below the contributions paid in the early years — so the German
-    market's description of a Riester contract as economically unsurrenderable is stated
-    numerically rather than only in prose.
-    """
-    f = lapse_factor(t)
-    if f == 0.0:
-        return 0.0
-    return lapse_rate_base(t) * f
-
-
 def lapse_rate_mth(t):
     """The **monthly** surrender rate applied in month t, the geometric twelfth of ``w(t)``.
 

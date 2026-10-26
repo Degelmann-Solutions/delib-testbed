@@ -333,6 +333,19 @@ def lapse_factor(t):
     return 1.0
 
 
+def lapse_rate(t):
+    """w(t): the **annual** lapse rate of the policy year containing month t.
+
+    ``lapse_rate_base(t) x lapse_factor(t)``, and 0 without reading the table where the
+    factor is 0.  The annual rate; ``lapse_rate_mth`` is the monthly rate the recursion
+    applies.
+    """
+    f = lapse_factor(t)                                              # noqa: F821
+    if f == 0.0:
+        return 0.0
+    return lapse_rate_base(t) * f                                    # noqa: F821
+
+
 def rechnungszins():
     """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
 

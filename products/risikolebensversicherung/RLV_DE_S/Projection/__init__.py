@@ -832,30 +832,6 @@ def lapse_factor(t):
     return shock_lapse_factor(t)
 
 
-def lapse_rate(t):
-    """w(t): the lapse rate applied at the end of period t.
-
-    The table rate times the premium-shock multiplier, and **exactly 0 through the whole
-    of the final policy year**, ``duration(t) >= proj_len_y() - 1`` — months 288 to 299 on
-    the anchor cell.  The end of that year is the moment cover expires, so a lapse and an
-    expiry are then the same event paying the same nothing, and the whole surviving cohort
-    is booked through :func:`pols_maturity` instead.  The zero covers the **year** and not
-    merely its last month, because that is what the annual-step model this replaced said
-    of it: zeroing only month 299 would leave eleven months of 3 % lapse inside the final
-    year and move the expiring cohort away from the notes' own figure.
-
-    No cash flow moves either way — the convention only decides how the closure identity
-    divides between lapses and expiries — but it is load-bearing for that identity, and
-    putting it here rather than in the table keeps the assumption and the convention
-    readable apart.  This is the **annual** rate; :func:`lapse_rate_mth` is what is
-    applied.
-    """
-    f = lapse_factor(t)
-    if f == 0.0:
-        return 0.0
-    return lapse_rate_base(t) * f
-
-
 def lapse_rate_mth(t):
     """wm(t): the lapse rate applied at the **end** of month t, after the death decrement.
 

@@ -679,24 +679,6 @@ def lapse_factor(t):
     return 1.0
 
 
-def lapse_rate(t):
-    """The **annual** lapse rate from the active state in policy year ``y(t)``.
-
-    Read from *lapse_table.csv*, tabulated to year 40 with year 40's rate applying to every
-    later year, and **zero once the premium term has ended**: a paid-up contract has no
-    premium-driven exit, and the model implements no *Beitragsfreistellung* election, so
-    every voluntary exit is a surrender.
-
-    Lapse here is *profitable* to the insurer — an early lapser paid for years and never
-    reached the risk period — which inverts the usual protection intuition and is why the
-    first-order pricing basis deliberately carries none.
-    """
-    f = lapse_factor(t)
-    if f == 0.0:
-        return 0.0
-    return lapse_rate_base(t) * f
-
-
 def lapse_rate_mth(t):
     """w(t): the monthly lapse probability, ``1 - (1 - lapse_rate(t))**(1/12)``.
 

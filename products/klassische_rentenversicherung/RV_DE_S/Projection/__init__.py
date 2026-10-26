@@ -1102,6 +1102,10 @@ def lapse_rate(t):
 
     This is the **annual** rate, flat across a policy year; :func:`lapse_rate_mth` is what the
     recursion applies.
+
+    Override reason: below the *Mindestversicherungsleistung* § 165 cashes the contract out
+    at the surrender value, a rate of 1 in that year, and there is no surrender from
+    *Rentenbeginn*, products/klassische_rentenversicherung/technical-notes.md:244
     """
     mp = model_point()
     if duration(t) >= int(mp["aufschub_y"]):

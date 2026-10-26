@@ -613,7 +613,7 @@ premiums(t)             = prem_inst_pp(t) · pols_if(t)
 pols_death(t)      = pols_if(t) · mort_rate_mth(t)
 pols_lapse(t)      = pols_if(t) · (1 − mort_rate_mth(t)) · lapse_rate_mth(t)
 pols_maturity(t)   = pols_if(t) · (1 − mort_rate_mth(t))    at t = 12n − 1, else 0
-pols_if(t+1)       = pols_if(t) − pols_death(t) − pols_lapse(t)
+pols_if(t+1)       = pols_if(t) − pols_death(t) − pols_lapse(t)   formed as pols_if(t) · (1 − mort_rate_mth(t)) · (1 − lapse_rate_mth(t))
 
 benefit_full_pp(t)     = sum_death + av_sur_close_pp(t) + bonus_si_close_pp(t)
                          + term_bonus_close_pp(t)

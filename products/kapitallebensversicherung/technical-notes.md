@@ -214,7 +214,7 @@ per row: delib's second ruling, machine-checked.
 | `cost_table.csv` | `cost_id` | `alpha_rate`, `beta_rate`, `gamma_rate`, `acq_expense`, `maint_expense`, `expense_infl`, `claim_expense`, `comm_init_rate`, `comm_renew_rate`, `provenance` |
 | `freq_loading_table.csv` | `prem_freq` | `instalments`, `prem_freq_load`, `provenance` |
 | `deckrv_table.csv` | `issue_year` | `hoechstrechnungszins`, `hoechstzillmersatz`, `provenance` |
-| `param_table.csv` | `item` | `value` (`mort_be_factor`), `provenance` |
+| `param_table.csv` | `item` | `value` (`mort_be_factor`, `unisex_mix_male`), `provenance` |
 
 `cost_table.csv` deliberately carries the **first-order tariff loadings and the second-order expense
 assumptions on the same row**, because the difference between them *is* the *Kostenüberschuss*, and
@@ -222,7 +222,7 @@ assumptions on the same row**, because the difference between them *is* the *Kos
 *Höchstzillmersatz* — keyed by `issue_year`, both being cohort facts that travel with the contract
 [REG-R14] [REG-R15] [REG-R16]. The scalars that are not tables — `suicide_share`,
 `bfz_min_si`, `term_surr_share`, `bwr_rate` and the two behaviour-module switches — are `Projection`
-References, and their values and tags are in this section; `mort_be_factor` is a row of
+References, and their values and tags are in this section; `mort_be_factor` and `unisex_mix_male` are rows of
 `param_table.csv` since phase 3, read by the common core's loader.
 
 Three classes. Class (a) is contractual or statutory and is cited; class (b) is the insurer's current

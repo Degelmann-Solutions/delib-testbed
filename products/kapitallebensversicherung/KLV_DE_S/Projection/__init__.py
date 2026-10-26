@@ -526,7 +526,7 @@ def bfz_year():
 def mort_rate_tariff_at_age(x):
     """q1(x): the **first-order tariff** death rate at attained age x - the unisex blend.
 
-    ``unisex_share`` of the male table row plus the rest of the female one, at 0.5 / 0.5
+    ``unisex_blend`` of the male and the female table row, at ``unisex_mix_male`` 0.5 / 0.5
     **[std]**.  This is the *Rechnungsgrundlage erster Ordnung* of the tariff, and **every
     pricing and reserving formula in the model reads it**: :func:`pols_tariff`,
     :func:`tariff_death_pv`, :func:`pv_benefit_fut`, :func:`ann_due_prem_fut` and the Fackler
@@ -547,9 +547,8 @@ def mort_rate_tariff_at_age(x):
     see the ``Data`` docstring for what a replacement must preserve.
     """
     tbl = data.mort_table()                                          # noqa: F821
-    return (unisex_share * float(tbl.loc[("M", int(x)), "mort_rate_1st"])   # noqa: F821
-            + (1.0 - unisex_share)                                   # noqa: F821
-            * float(tbl.loc[("F", int(x)), "mort_rate_1st"]))
+    return unisex_blend(float(tbl.loc[("M", int(x)), "mort_rate_1st"]),
+                        float(tbl.loc[("F", int(x)), "mort_rate_1st"]))
 
 
 def mort_rate_base(t):
@@ -2273,7 +2272,6 @@ lapse_gap_a = 0.0
 
 ref_rate = 0.03
 
-unisex_share = 0.5
 
 roll_fwd_tol = 1e-10
 

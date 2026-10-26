@@ -302,6 +302,21 @@ def disc_factor(y):
     return (1.0 + rechnungszins()) ** -y                             # noqa: F821
 
 
+def unisex_mix_male():
+    """The male share of the unisex tariff blend, from the product's *param_table.csv*."""
+    return float(data.param_table().at["unisex_mix_male", "value"])  # noqa: F821
+
+
+def unisex_blend(q_m, q_f):
+    """The unisex blend of a male and a female rate, ``w q_m + (1 - w) q_f``.
+
+    ``w = unisex_mix_male()``: sex may not enter the premium of a contract concluded from
+    21 December 2012, so a tariff rate is struck on the mixed basis.
+    """
+    w = unisex_mix_male()                                            # noqa: F821
+    return w * q_m + (1.0 - w) * q_f
+
+
 def mort_load_tariff(t):
     """The loading on the first-order base rate in month t: 1, neutral."""
     return 1.0

@@ -1343,12 +1343,11 @@ def tar_mort_rate(t):
     """
     if age(t) >= omega_age() - 1:
         return 1.0
-    mix = float(data.param_table().at["unisex_mix_male", "value"])   # noqa: F821
     margin = float(data.param_table().at[                            # noqa: F821
         "act_mort_margin", "value"])
     q_m = float(data.mort_table().at[("M", age(t)), "mort_rate"])    # noqa: F821
     q_f = float(data.mort_table().at[("F", age(t)), "mort_rate"])    # noqa: F821
-    return min(1.0 - 1e-12, margin * (mix * q_m + (1.0 - mix) * q_f))
+    return min(1.0 - 1e-12, margin * unisex_blend(q_m, q_f))
 
 
 def tar_mort_rate_care(t, g):
@@ -1364,13 +1363,12 @@ def tar_mort_rate_care(t, g):
     """
     if age(t) >= omega_age() - 1:
         return 1.0
-    mix = float(data.param_table().at["unisex_mix_male", "value"])   # noqa: F821
     margin = float(data.param_table().at[                            # noqa: F821
         "care_mort_margin", "value"])
     mult = float(data.care_table().at[g, "mort_mult"])               # noqa: F821
     q_m = float(data.mort_table().at[("M", age(t)), "mort_rate"])    # noqa: F821
     q_f = float(data.mort_table().at[("F", age(t)), "mort_rate"])    # noqa: F821
-    q = min(1.0 - 1e-12, mix * q_m + (1.0 - mix) * q_f)
+    q = min(1.0 - 1e-12, unisex_blend(q_m, q_f))
     mu = -math.log(1.0 - q)                                          # noqa: F821
     return min(1.0 - 1e-12, margin * (1.0 - math.exp(-mult * mu)))   # noqa: F821
 
@@ -1385,14 +1383,13 @@ def tar_inc_rate(t):
     that.  The cap binds only at the very oldest ages, where the exponential proxy would
     otherwise exceed the survival it is applied to.
     """
-    mix = float(data.param_table().at["unisex_mix_male", "value"])   # noqa: F821
     margin = float(data.param_table().at["inc_margin", "value"])     # noqa: F821
     cap = float(data.param_table().at["inc_cap", "value"])           # noqa: F821
     i_m = float(data.incidence_table().at[                           # noqa: F821
         ("M", age(t)), "inc_rate"])
     i_f = float(data.incidence_table().at[                           # noqa: F821
         ("F", age(t)), "inc_rate"])
-    return min(margin * (mix * i_m + (1.0 - mix) * i_f), cap)
+    return min(margin * unisex_blend(i_m, i_f), cap)
 
 
 def tar_det_rate(t, g):

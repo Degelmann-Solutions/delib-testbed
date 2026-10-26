@@ -61,7 +61,7 @@ German terms of art keep their German form in prose.
   including a point that commutes at *Rentenbeginn* and therefore carries zeros to the end — a
   uniform frame is what lets two model points be read side by side, and truncating a commuted point
   is a numbered pitfall.
-- **Two phases in one projection.** `k_conv() = rentenbeginn_age − age(0)` is the **conversion
+- **Two phases in one projection.** `k_conv() = ret_age − age(0)` is the **conversion
   year** and `t_conv() = 12 · k_conv()` the conversion month. `is_accum(t)` holds for
   `t < t_conv()`, `is_payout(t)` for `t ≥ t_conv()`, with `is_accum_y(k)` and `is_payout_y(k)` the
   annual readings. The
@@ -180,7 +180,7 @@ value; the thirteen points are described under *Worked example*.
 | `issue_age` | int | Attained age at conclusion of the contract | all |
 | `duration_init` | int | Completed contract years at the valuation date; 0 for a point projected from issue | 2, 6, 13 at 0 or 1 |
 | `pols_if_init` | float | Policies represented; `result_cf()`'s first `pols_if` equals it exactly | all |
-| `rentenbeginn_age` | int | Attained age at which the payout phase starts; bounded below by 62 for a contract concluded from 2012 [R1] | 13 (at the statutory floor, 62) |
+| `ret_age` | int | Attained age at which the payout phase starts; bounded below by 62 for a contract concluded from 2012 [R1] | 13 (at the statutory floor, 62) |
 | `rechnungszins` | float | The tariff's guaranteed rate, at or below the *Höchstrechnungszins* of the vintage [R22] [REG-R15] | 3 (0,90 %), others 0,25 % |
 | `beitragssumme` | EUR | The *Beitragssumme* fixed at conclusion; the acquisition-charge and initial-commission base | all |
 | `contrib_form` | enum {mindest, fixed} | `mindest` recomputes the § 86 amount every year; `fixed` is a level contractual contribution | 5, 8 |
@@ -240,7 +240,7 @@ contract carries, an at-issue point beside the in-force ones, and four boundary 
 | `proj_len_y()` | Number of projected **years**, `omega_age() − age(0)` | once per model point |
 | `proj_len()` | Number of projected **months**, `12 × proj_len_y()`; the frame is `0 … proj_len() − 1` | once per model point |
 | `proj_year(t)`, `is_anniv(t)`, `prem_due(t)` | The projection year of month `t`, `t // 12`; its last month; and the month the year's contribution falls due | within year |
-| `k_conv()`, `t_conv()` | The conversion **year**, `rentenbeginn_age − age(0)`, and the conversion **month**, `12 · k_conv()` | once |
+| `k_conv()`, `t_conv()` | The conversion **year**, `ret_age − age(0)`, and the conversion **month**, `12 · k_conv()` | once |
 | `age_y(k)`, `duration_y(k)`, `calendar_year_y(k)` | Attained age, completed contract years at the **start** of projection year `k` (0-based; the contract-year band is the 1-based `duration_y(k) + 1`), and the calendar year of year `k`; `age(t)`, `duration(t)` and `calendar_year(t)` read the same three from a month | annual, stepping on the anniversary |
 | `pols_if(t)` | Policies in force at the **start** of month `t`; `pols_if(0) = pols_if_init()` | monthly recursion |
 | `pols_if_at(t, timing)` | `"BEF_DECR"` = `pols_if(t)`, `"AFT_DECR"` = `pols_if(t+1)` | within month |
@@ -895,7 +895,7 @@ the **1 January 2027** valuation date. `point_id = 1`; `sex = F` (reporting only
 conversion are unisex [R23]); `issue_age = 47`, the contract having been concluded on 1 January
 **2024**; `duration_init = 3`, so `age(0) = 50`, `duration(0) = 3` — contract year 4 — and
 `calendar_year(0) = 2027`;
-`pols_if_init = 1.0`; `rentenbeginn_age = 67`; `rechnungszins = 0.0025`, the *Höchstrechnungszins* of
+`pols_if_init = 1.0`; `ret_age = 67`; `rechnungszins = 0.0025`, the *Höchstrechnungszins* of
 the 2024 vintage [R22] [REG-R15]; `beitragssumme = 33,600.00`; `contrib_form = mindest` with
 `contrib_fixed_pp = 0.00`; `contrib_ratio = 1.00`, the full *Mindesteigenbeitrag* paid;
 `contrib_extra_pp = 0.00`, so the two contribution pools coincide; `rider_prem_pp = 0.00`, so the

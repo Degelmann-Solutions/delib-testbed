@@ -113,8 +113,8 @@ d(k) + 1                   policy_year_y(k)                The same, in projecti
 y(k)                       calendar_year_y(k)              Calendar year in year k
 y(t)                       calendar_year(t)                The same, read from a month
 omega                      omega_age()                     Limiting age, table end + 1
-T                          ret_y()                         Projection year of Rentenbeginn
-12 T                       ret_t()                         Month of the first instalment
+T                          k_conv()                        Projection year of Rentenbeginn
+12 T                       t_conv()                        Month of the first instalment
 (none)                     gtd_end_t()                     Last month of the Rentengarantiezeit
 S                          beitragssumme_pp()              Beitragssumme at inception
 P0 (1 + delta)^d(k)        prem_base_pp(k)                 Contractual Beitrag before phi
@@ -271,13 +271,13 @@ three move :func:`net_cf` only through the smaller annuity the smaller fund buys
 
 .. rubric:: The conversion at Rentenbeginn
 
-At the start of projection year ``T = ret_y()`` — equivalently at the end of month
-``ret_t() - 1`` — the whole fund carried out of year ``T - 1``, grossed up by the
+At the start of projection year ``T = k_conv()`` — equivalently at the end of month
+``t_conv() - 1`` — the whole fund carried out of year ``T - 1``, grossed up by the
 *Schlussüberschussanteil*, converts::
 
     fund_at_conv()  = av_at(T, "BEF_PREM") x (1 + terminal_bonus_rate)
 
-    ann_pp(T)       = fund_at_conv() / pols_if(ret_t()) / rf_unit
+    ann_pp(T)       = fund_at_conv() / pols_if(t_conv()) / rf_unit
                       x rentenfaktor_applied() x ann_freq
 
     ann_mth_pp(t)   = ann_pp(proj_year(t)) / ann_freq
@@ -293,7 +293,7 @@ account is emptied at ``T`` and stays empty.
 ``ann_pp`` is an **annual** amount and is nobody's payment: the *Rentenfaktor* is quoted in
 euro a month, ``ann_freq = 12`` is the conversion from one to the other, and
 :func:`ann_mth_pp` is the instalment that is actually paid — monthly in advance, from
-``t = ret_t()``, to whoever is alive at the start of the month. The annual figure survives
+``t = t_conv()``, to whoever is alive at the start of the month. The annual figure survives
 as the cells the conversion and the *Überschussrente* are stated on, because both are
 annual terms: the factor is applied once and the uplift compounds once a year, so the
 twelve instalments of a payout year are equal and the thirteenth is ``(1 + b)`` times the
@@ -311,7 +311,7 @@ the thirteenth pitfall.
 margin and a conservative interest basis; the projection runs on the best estimate,
 ``mort_rate(t) = mort_be_factor x mort_rate_base(t)``. The wedge between the two is the
 payout phase's *Risikoüberschuss*, and ``ann_bonus_rate`` — a *teildynamische Rente* —
-is the mechanism that gives it back to the annuitant. :func:`ann_pp` at ``ret_t()`` is
+is the mechanism that gives it back to the annuitant. :func:`ann_pp` at ``t_conv()`` is
 therefore invariant to ``mort_be_factor`` while ``claims_annuity`` is not. A model that
 converted on its own best-estimate mortality would abolish the wedge and with it the
 whole German payout-phase surplus mechanic, which is the eleventh pitfall.
@@ -465,39 +465,10 @@ def clock_offset_mth():
     return 12 * duration_init()
 
 
-def ret_y():
-    """T: the projection **year** in which *Rentenbeginn* falls, ``ret_age - age(0)``.
-
-    22 on the anchor cell.  **``T < 0`` for a model point that opens in the
-    *Rentenphase***, in which case the conversion never occurs inside the projection,
-    ``ann_pp(0) = ann_pp_init`` and :func:`check_conversion` is vacuously true.  Model
-    point 8 has ``ret_y() = -3``.
-
-    The earliest permitted *Rentenbeginn* is the completion of the 62nd year of life for
-    contracts concluded after 31 December 2011 and the 60th for earlier ones; the model
-    reads ``ret_age`` from the model point and does not enforce the floor, which is a
-    contract-writing rule rather than a projection rule.
-    """
-    return int(model_point()["ret_age"]) - age(0)
-
-
-def ret_t():
-    """The projection **month** of the first annuity instalment, ``12 x ret_y()``.
-
-    The *Rentenbeginn* falls at the end of the deferment: the last accumulation month is
-    ``ret_t() - 1``, the fund is converted on the balance struck there, and the first of the
-    monthly instalments is paid at ``t = ret_t()``.  264 on the anchor cell.
-
-    Negative for a model point that opens in the *Rentenphase*, and every comparison against
-    it is written ``max(0, ret_t())`` for that reason.
-    """
-    return 12 * ret_y()
-
-
 def gtd_end_t():
     """The last projection **month** in which a *Rentengarantiezeit* continuation is payable.
 
-    ``max(0, ret_t()) + 12 x guarantee_period_y - 1``.  The guarantee runs from
+    ``max(0, t_conv()) + 12 x guarantee_period_y - 1``.  The guarantee runs from
     *Rentenbeginn*, **not** from each death, so every continuation ends on the same date and
     :func:`pols_gtd` is zero from ``gtd_end_t() + 1`` onwards however late the death that
     started it.  Zero-length where ``guarantee_period_y = 0``, in which case
@@ -507,7 +478,7 @@ def gtd_end_t():
     monthly **instalments** — where the annual grid could only offer ``m`` payments of a
     whole year's annuity each.
     """
-    return max(0, ret_t()) + 12 * int(model_point()["guarantee_period_y"]) - 1
+    return max(0, t_conv()) + 12 * int(model_point()["guarantee_period_y"]) - 1
 
 
 def beitragssumme_pp():
@@ -533,7 +504,7 @@ def beitragssumme_pp():
     base = float(model_point()["prem_base_pp"])
     if model_point()["prem_form"] == "single":
         return base
-    m = int(model_point()["ret_age"]) - issue_age()
+    m = ret_age() - issue_age()
     return sum(base * (1.0 + dyn) ** u for u in range(max(m, 0)))
 
 
@@ -578,7 +549,7 @@ def prem_pp(k):
 
     ``prem_base_pp(k) x prem_freq_load()``, taken at the **start** of the year (annual in
     advance; a fractionated mode changes the amount through the *Ratenzahlungszuschlag*,
-    not the grid).  Zero from ``k = ret_y()`` — premiums stop at *Rentenbeginn* — and zero
+    not the grid).  Zero from ``k = k_conv()`` — premiums stop at *Rentenbeginn* — and zero
     on a model point that opens *beitragsfrei*, whose whole cohort is in
     :func:`pols_paidup` anyway.  Letting premiums run past *Rentenbeginn* is the seventh
     pitfall.
@@ -587,7 +558,7 @@ def prem_pp(k):
     the year: :func:`premiums` is weighted by the **opening** :func:`pols_paying` and is
     not further multiplied by ``(1 - mort_rate)``.
     """
-    if k < 0 or k >= ret_y() or k >= proj_len_y():
+    if k < 0 or k >= k_conv() or k >= proj_len_y():
         return 0.0
     if int(model_point()["paidup_at_init"]) == 1:
         return 0.0
@@ -616,7 +587,7 @@ def zuz_pp(k):
 
     ``zuzahlung_pp x zuz_take_up(k)``, taken at the start of the year alongside the
     *laufender Beitrag* and carrying **no** *Ratenzahlungszuschlag*.  Zero from
-    ``k = ret_y()``, zero once ``duration_y(k) >= zuzahlung_end_dur``, and zero on a
+    ``k = k_conv()``, zero once ``duration_y(k) >= zuzahlung_end_dur``, and zero on a
     model point that opens *beitragsfrei*.
 
     The *Zuzahlung* is the product's signature premium form — a self-employed buyer tops
@@ -625,7 +596,7 @@ def zuz_pp(k):
     form on a distinct charge basis, carrying ``alpha_zuz_rate`` instead of a share of the
     *Zillmerung*.
     """
-    if k < 0 or k >= ret_y() or k >= proj_len_y():
+    if k < 0 or k >= k_conv() or k >= proj_len_y():
         return 0.0
     if int(model_point()["paidup_at_init"]) == 1:
         return 0.0
@@ -687,7 +658,7 @@ def alpha_amort_pp(k):
     reaches *Basisrentenverträge* at all was not established; the five years here are the
     LVRG-era German market shape and are **[std]**.
     """
-    if k < 0 or k >= ret_y() or k >= proj_len_y():
+    if k < 0 or k >= k_conv() or k >= proj_len_y():
         return 0.0
     if int(model_point()["paidup_at_init"]) == 1:
         return 0.0
@@ -737,9 +708,9 @@ def prem_to_av_pp(k):
     early years even though nothing is ever paid.  That a German *Deckungskapital* starts
     near zero is a consequence of this line and not a modelling artefact.
 
-    Zero from ``k = ret_y()``: there is no account in the *Rentenphase*.
+    Zero from ``k = k_conv()``: there is no account in the *Rentenphase*.
     """
-    if k < 0 or k >= ret_y() or k >= proj_len_y():
+    if k < 0 or k >= k_conv() or k >= proj_len_y():
         return 0.0
     beta = float(data.charge_table().loc[                            # noqa: F821
         model_point()["tariff_id"], "beta_prem"])
@@ -900,11 +871,11 @@ def bf_rate(t):
     the policy: the rate moves policies from :func:`pols_paying` to :func:`pols_paidup` and
     appears nowhere in :func:`pols_if`.  Treating it as a lapse is the second pitfall.
 
-    Zero from ``t = ret_t()`` — there is no premium left to stop — and zero on a
+    Zero from ``t = t_conv()`` — there is no premium left to stop — and zero on a
     single-premium contract for the same reason.  Applied to the **survivors** of the
     year's death decrement.
     """
-    if t < 0 or t >= ret_t() or t >= proj_len():
+    if t < 0 or t >= t_conv() or t >= proj_len():
         return 0.0
     if model_point()["prem_form"] == "single":
         return 0.0
@@ -1052,7 +1023,7 @@ def pols_freeze(t):
     *Versicherungsjahr*.  Nothing leaves the fund, which is why :func:`check_av_roll_fwd`
     closes across a freeze.
     """
-    if t < 0 or t >= ret_t() or t >= proj_len():
+    if t < 0 or t >= t_conv() or t >= proj_len():
         return 0.0
     if not is_anniv(t):
         return 0.0
@@ -1065,7 +1036,7 @@ def pols_gtd(t):
     The guarantee runs ``guarantee_period_y`` years **from *Rentenbeginn***, so every
     continuation ends on the same date::
 
-        g(t) = 0                                   for t < max(0, ret_t()) or t > gtd_end_t()
+        g(t) = 0                                   for t < max(0, t_conv()) or t > gtd_end_t()
         g(t) = g(t - 1) + pols_death(t - 1) x elig_surv_prob    inside the window
 
     On the monthly grid the window is ``12m`` **instalments** and a continuation starts in
@@ -1083,7 +1054,7 @@ def pols_gtd(t):
     """
     if int(model_point()["guarantee_period_y"]) == 0:
         return 0.0
-    start = max(0, ret_t())
+    start = max(0, t_conv())
     if t < start or t > gtd_end_t() or t > proj_len():
         return 0.0
     if t == start:
@@ -1135,10 +1106,10 @@ def av_pp(k):
 
     Per **policy**, against :func:`av_pu_at`, which is the premium-free block at **fund**
     level.  The two diverge from the first freeze and must not be averaged into one
-    per-policy figure: that is the third pitfall.  Zero from ``k = ret_y() + 1``, the fund
+    per-policy figure: that is the third pitfall.  Zero from ``k = k_conv() + 1``, the fund
     having become an annuity obligation.
     """
-    if k < 0 or k > ret_y() or k > proj_len_y():
+    if k < 0 or k > k_conv() or k > proj_len_y():
         return 0.0
     if k == 0:
         if int(model_point()["paidup_at_init"]) == 1:
@@ -1163,14 +1134,14 @@ def av_pp_at(k, timing):
         during the year has been credited a full year's interest, because deaths fall
         after crediting.
 
-    All three are zero from ``k = ret_y()`` except ``"BEF_PREM"`` at ``k = ret_y()``
+    All three are zero from ``k = k_conv()`` except ``"BEF_PREM"`` at ``k = k_conv()``
     itself, which is the fund the annuity is struck on.
     """
     if k < 0 or k >= proj_len_y():
         return 0.0
     if timing == "BEF_PREM":
         return av_pp(k)
-    if k >= ret_y():
+    if k >= k_conv():
         if timing in ("AFT_PREM", "AFT_INT"):
             return 0.0
         raise ValueError("invalid timing")
@@ -1209,7 +1180,7 @@ def av_pu_at(k, timing):
     if k < 0 or k >= proj_len_y():
         return 0.0
     if timing == "BEF_PREM":
-        if k > ret_y():
+        if k > k_conv():
             return 0.0
         if k == 0:
             if int(model_point()["paidup_at_init"]) == 1:
@@ -1217,7 +1188,7 @@ def av_pu_at(k, timing):
             return 0.0
         return (av_pu_at(k - 1, "AFT_INT") * (1.0 - mort_rate(12 * (k - 1)))
                 + pols_freeze(12 * k - 1) * av_pp_at(k - 1, "AFT_INT"))
-    if k >= ret_y():
+    if k >= k_conv():
         if timing in ("AFT_PREM", "AFT_INT"):
             return 0.0
         raise ValueError("invalid timing")
@@ -1257,7 +1228,7 @@ def av(k):
     column of :func:`result_cf` is a balance, not a cash flow, and adding it to anything
     is a category error.
 
-    Zero for every ``k > ret_y()``.  At ``k = ret_y()`` itself it is the **pre-conversion
+    Zero for every ``k > k_conv()``.  At ``k = k_conv()`` itself it is the **pre-conversion
     fund**, which is the number the annuity is struck on and the one a reader following the
     worked example needs; :func:`fund_at_conv` grosses it up by the *Schlussüberschussanteil*
     and the account is empty from the next year onwards.
@@ -1278,10 +1249,10 @@ def rentenfaktor_curr():
     liability.  Zero where the model point opens in the *Rentenphase* and no conversion
     occurs.
     """
-    if ret_t() < 0:
+    if t_conv() < 0:
         return 0.0
     return float(data.rentenfaktor_table().loc[                      # noqa: F821
-        (model_point()["rf_scenario_id"], int(model_point()["ret_age"])), "rf_curr"])
+        (model_point()["rf_scenario_id"], ret_age()), "rf_curr"])
 
 
 def rf_option_factor():
@@ -1326,9 +1297,9 @@ def rentenfaktor_applied():
 def fund_at_conv():
     """F: the fund converted at *Rentenbeginn*, including the *Schlussüberschussanteil*.
 
-    ``av_at(ret_y(), "BEF_PREM") x (1 + terminal_bonus_rate)``, at fund level: the balance
+    ``av_at(k_conv(), "BEF_PREM") x (1 + terminal_bonus_rate)``, at fund level: the balance
     carried out of the last accumulation year, struck at the start of projection year
-    ``ret_y()`` — equivalently at the end of month ``ret_t() - 1`` — before any annuity is
+    ``k_conv()`` — equivalently at the end of month ``t_conv() - 1`` — before any annuity is
     paid.
 
     The *Schlussüberschussanteil* is allocated at this **single date** and at no other,
@@ -1339,11 +1310,11 @@ def fund_at_conv():
     Zero for a model point that opens in the *Rentenphase*, where no conversion occurs
     inside the projection.
     """
-    if ret_y() < 0:
+    if k_conv() < 0:
         return 0.0
     sigma = float(data.charge_table().loc[                           # noqa: F821
         model_point()["tariff_id"], "terminal_bonus_rate"])
-    return av_at(ret_y(), "BEF_PREM") * (1.0 + sigma)
+    return av_at(k_conv(), "BEF_PREM") * (1.0 + sigma)
 
 
 def ann_bonus_rate(k):
@@ -1368,20 +1339,20 @@ def ann_bonus_rate(k):
 def ann_pp(k):
     """a(k): the **annual** annuity per surviving annuitant in projection year k.
 
-    Zero before *Rentenbeginn*; at ``k = ret_y()`` the conversion::
+    Zero before *Rentenbeginn*; at ``k = k_conv()`` the conversion::
 
-        ann_pp(T) = fund_at_conv() / pols_if(ret_t()) / rf_unit
+        ann_pp(T) = fund_at_conv() / pols_if(t_conv()) / rf_unit
                     x rentenfaktor_applied() x ann_freq
 
     which is the **cohort-average** annual annuity per annuitant — exact at fund level even
     though the paying and premium-free cohorts arrive with different per-policy reserves —
     and thereafter ``ann_pp(k) = ann_pp(k - 1) x (1 + ann_bonus_rate(k - 1))``.
 
-    ``pols_if(ret_t())`` is the count at the **first payout month**, which is the count at
+    ``pols_if(t_conv())`` is the count at the **first payout month**, which is the count at
     the start of payout year ``T``: the conversion is struck on the cohort that reaches
     *Rentenbeginn*.
 
-    For a model point that opens in the *Rentenphase* (``ret_y() < 0``) the conversion
+    For a model point that opens in the *Rentenphase* (``k_conv() < 0``) the conversion
     never occurs inside the projection and ``ann_pp(0) = ann_pp_init``.
 
     This is an **annual** amount and is not what anybody is paid: ``ann_freq = 12`` because
@@ -1392,15 +1363,15 @@ def ann_pp(k):
     """
     if k < 0 or k >= proj_len_y():
         return 0.0
-    start = max(0, ret_y())
+    start = max(0, k_conv())
     if k < start:
         return 0.0
     if k == start:
-        if ret_y() < 0:
+        if k_conv() < 0:
             return float(model_point()["ann_pp_init"])
-        if pols_if(max(0, ret_t())) <= 0.0:
+        if pols_if(max(0, t_conv())) <= 0.0:
             return 0.0
-        return (fund_at_conv() / pols_if(max(0, ret_t())) / rf_unit  # noqa: F821
+        return (fund_at_conv() / pols_if(max(0, t_conv())) / rf_unit  # noqa: F821
                 * rentenfaktor_applied() * ann_freq)                 # noqa: F821
     return ann_pp(k - 1) * (1.0 + ann_bonus_rate(k - 1))
 
@@ -1408,7 +1379,7 @@ def ann_pp(k):
 def ann_mth_pp(t):
     """The monthly *Rente* instalment per surviving annuitant in projection month t.
 
-    ``ann_pp(proj_year(t)) / ann_freq``, paid **monthly in advance** from ``t = ret_t()``
+    ``ann_pp(proj_year(t)) / ann_freq``, paid **monthly in advance** from ``t = t_conv()``
     and zero before it.  This is the amount the contract actually promises: a *Rentenfaktor*
     is quoted as euro of monthly annuity per 10 000 € of capital, and a *Leibrente* is paid
     monthly.
@@ -1427,7 +1398,7 @@ def ann_mth_pp(t):
     """
     if t < 0 or t >= proj_len():
         return 0.0
-    if t < max(0, ret_t()):
+    if t < max(0, t_conv()):
         return 0.0
     return ann_pp(proj_year(t)) / ann_freq                           # noqa: F821
 
@@ -1471,7 +1442,7 @@ def claims(t, kind=None):
         **Structurally zero where ``surv_annuity_rate = 0``**, which is the base design and
         the anchor's setting: the entitlement is *nicht vererblich*, so a death before
         *Rentenbeginn* pays nothing and the reserve is released as a mortality profit.  Zero
-        from ``t = ret_t()`` in every case.
+        from ``t = t_conv()`` in every case.
 
         Where the rider is on this is **not a lump sum to a beneficiary**.  Everything paid
         to a survivor must be paid as an annuity, so what is booked is the reserve leaving
@@ -1496,13 +1467,13 @@ def claims(t, kind=None):
     if kind == "DEATH":
         if float(model_point()["surv_annuity_rate"]) <= 0.0:
             return 0.0
-        if t < 0 or t >= ret_t() or t >= proj_len():
+        if t < 0 or t >= t_conv() or t >= proj_len():
             return 0.0
         k = proj_year(t)
         return elig_surv_prob * (                                    # noqa: F821
             db_pp(k) * pols_death_paying(t) + db_pu_pp(k) * pols_death_paidup(t))
     if kind == "ANNUITY":
-        if t < max(0, ret_t()) or t >= proj_len():
+        if t < max(0, t_conv()) or t >= proj_len():
             return 0.0
         return ann_mth_pp(t) * pols_if(t)
     if kind == "SURVIVOR":
@@ -1545,7 +1516,7 @@ def expenses(t):
     out = 0.0
     if t == 0 and duration_init() == 0:
         out += float(row["acq_expense_pp"]) * pols_if_init()
-    if t < ret_t():
+    if t < t_conv():
         out += float(row["maint_expense_pp"]) / 12.0 * infl * pols_if(t)
     else:
         out += (float(row["annuity_admin_pp"]) / 12.0 * infl
@@ -1701,15 +1672,15 @@ def check_av_roll_fwd_resid(k):
     eligible survivor exists, as a mortality profit where none does.  That is the
     arithmetic content of *nicht vererblich*.
 
-    At ``k = ret_y()`` the residual is ``av_at(k, "AFT_INT")``: the conversion empties the
+    At ``k = k_conv()`` the residual is ``av_at(k, "AFT_INT")``: the conversion empties the
     account, so nothing is credited into it in the conversion year.  After it the residual
     adds ``av(k)`` as well, so a *Deckungskapital* surviving into the *Rentenphase* fails
     here.  A model that collapsed the paying and premium-free blocks into one average
     per-policy reserve fails at the first freeze.
     """
-    if k < ret_y():
+    if k < k_conv():
         return av_at(k + 1, "BEF_PREM") - av_at(k, "AFT_INT") * (1.0 - mort_rate(12 * k))
-    if k == ret_y():
+    if k == k_conv():
         return av_at(k, "AFT_INT")
     return av_at(k, "AFT_INT") + av(k)
 
@@ -1723,11 +1694,11 @@ def check_av_roll_fwd():
 
 
 def check_conversion_resid(k):
-    """The conversion residual; zero at every k, and non-trivial only at ``ret_y()``.
+    """The conversion residual; zero at every k, and non-trivial only at ``k_conv()``.
 
-    Inverts the conversion identity at ``T = ret_y()``::
+    Inverts the conversion identity at ``T = k_conv()``::
 
-        ann_pp(T) x pols_if(ret_t()) x rf_unit / (rentenfaktor_applied() x ann_freq)
+        ann_pp(T) x pols_if(t_conv()) x rf_unit / (rentenfaktor_applied() x ann_freq)
         - fund_at_conv()
 
     so it catches a factor applied per policy instead of per fund, an ``ann_freq`` of 1
@@ -1743,11 +1714,11 @@ def check_conversion_resid(k):
     Vacuously zero for a model point that opens in the *Rentenphase*, where the conversion
     happened before the valuation date.
     """
-    if ret_y() < 0 or k != ret_y():
+    if k_conv() < 0 or k != k_conv():
         return 0.0
     if rentenfaktor_applied() <= 0.0:
         return 0.0
-    return (ann_pp(k) * pols_if(max(0, ret_t())) * rf_unit           # noqa: F821
+    return (ann_pp(k) * pols_if(max(0, t_conv())) * rf_unit           # noqa: F821
             / (rentenfaktor_applied() * ann_freq)                    # noqa: F821
             - fund_at_conv())
 
@@ -1765,7 +1736,7 @@ def check_no_capital_resid(t):
     A **non-negative** residual with two limbs:
 
     * ``|claims(t, "DEATH")|`` wherever the survivor rider is off (``surv_annuity_rate =
-      0``) or ``t >= ret_t()``.  A death before *Rentenbeginn* pays **nothing** in the base
+      0``) or ``t >= t_conv()``.  A death before *Rentenbeginn* pays **nothing** in the base
       design, and after *Rentenbeginn* the annuity simply stops; paying anything there is
       the ninth pitfall.
     * ``|claims(t) - claims(t, "DEATH") - claims(t, "ANNUITY") - claims(t, "SURVIVOR")|``,
@@ -1785,7 +1756,7 @@ def check_no_capital_resid(t):
     """
     resid = abs(claims(t) - claims(t, "DEATH") - claims(t, "ANNUITY")
                 - claims(t, "SURVIVOR"))
-    if float(model_point()["surv_annuity_rate"]) <= 0.0 or t >= ret_t():
+    if float(model_point()["surv_annuity_rate"]) <= 0.0 or t >= t_conv():
         resid += abs(claims(t, "DEATH"))
     return resid
 
@@ -1815,7 +1786,7 @@ def check_annuity_roll_fwd_resid(k):
       *Rentenbeginn*, not from each death, so every continuation ends on the same date, and
       on this grid that date is the end of the ``12m``-th instalment.
     """
-    start = max(0, ret_y())
+    start = max(0, k_conv())
     resid = 0.0
     if k < start:
         resid += abs(ann_pp(k))
@@ -1831,7 +1802,7 @@ def check_annuity_roll_fwd_resid(k):
 
 def check_annuity_roll_fwd():
     """True when the annuity compounds and the guarantee window closes on time."""
-    scale = max(1.0, abs(ann_pp(max(0, ret_y()))))
+    scale = max(1.0, abs(ann_pp(max(0, k_conv()))))
     return all(check_annuity_roll_fwd_resid(k) <= roll_fwd_tol * scale  # noqa: F821
                for k in range(proj_len_y()))
 

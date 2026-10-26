@@ -67,7 +67,7 @@ shipped index path so that the mechanics are asserted against them cell by cell.
   changed; `k_start() = duration_init` is the same instant on the annual clock. `result_cf()` is indexed
   `t_start() … proj_len() − 1`, contiguous, and its first `pols_if` value is `pols_if_init()`.
 - **`proj_len()` is the exclusive end of the frame in months**, `proj_len() = 12 × proj_len_y()` with
-  `proj_len_y() = ann_start_age − issue_age` the number of policy years, so
+  `proj_len_y() = ret_age − issue_age` the number of policy years, so
   `result_cf().index[-1] == proj_len() − 1` — the library's reading of `proj_len()` and lifelib's own
   `for t in range(proj_len())`, asserted in the conventions suite. It is **not** the row count of an
   in-force point: one at `duration_init = 8` publishes `324 − 96 = 228` rows and still reports
@@ -168,7 +168,7 @@ from its base value, so that no column is carried without being tested.
 | `issue_age` | int | age last birthday at inception; `age(t) = issue_age + t` | 3–13 |
 | `duration_init` | int | completed policy years at the valuation date; 0 = new business; the frame starts at `t_start() = 12 × duration_init`, `duration_init` already being a 0-based elapsed count of policy **years** | 8, 13 |
 | `pols_if_init` | float | policies represented at `t_start()` | — (1.0 everywhere) |
-| `ann_start_age` | int | attained age at *Rentenbeginn*; `proj_len() = ann_start_age − issue_age` | 6 |
+| `ret_age` | int | attained age at *Rentenbeginn*; `proj_len() = ret_age − issue_age` | 6 |
 | `prem_form` | enum {level, single} | *laufender Beitrag* or *Einmalbeitrag* | 7 |
 | `prem_gross_pp` | EUR | the **annual-mode** premium (the *Jahresbeitrag*), or the single premium | 5, 6, 7, 8, 12, 13 |
 | `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | payment frequency; drives `freq_load()` | 4, 5, 6 |
@@ -413,7 +413,7 @@ oversight.
 | Symbol | Cells | Meaning |
 |---|---|---|
 | `t` | — | the 0-based **month** index, `t = t₀ … 12n−1`; `t₀ = t_start() = 12·duration_init` |
-| `k` | `duration(t)` | the 0-based **policy year**, `t // 12`; `k₀ = k_start() = duration_init`, `n = proj_len_y() = ann_start_age − issue_age`; the contractual policy year is `k + 1`. Every annual construction below takes `k` |
+| `k` | `duration(t)` | the 0-based **policy year**, `t // 12`; `k₀ = k_start() = duration_init`, `n = proj_len_y() = ret_age − issue_age`; the contractual policy year is `k + 1`. Every annual construction below takes `k` |
 | `m(t)` | `index_month(t)` | which month of its *Indexjahr* `t` is, 1-based: `t % 12 + 1` |
 | `x(t)` | `age(t)` | attained age in month `t` = `issue_age + duration(t)`, stepping on the anniversary |
 | `l(t)` | `pols_if(t)` | policies in force at time `t`, the start of **month** `t`; `l(t₀) = pols_if_init()` |
@@ -869,7 +869,7 @@ them, and none for this product specifically.
 
 **Configuration.** Model point 1, the anchor cell, in full: `point_id = 1`;
 `policy_id = "DE-IDX-0001"`; `sex = M`; `issue_age = 40`; `duration_init = 0`, so `t_start() = 0` and the
-table below is the **entire** projection; `pols_if_init = 1.0`; `ann_start_age = 67`, hence
+table below is the **entire** projection; `pols_if_init = 1.0`; `ret_age = 67`, hence
 `proj_len_y() = 67 − 40 = 27` policy years and `proj_len() = 324` months, `t = 0 … 323`;
 `prem_form = level`; `prem_gross_pp = 2 400,00 €` (the annual-mode
 *Jahresbeitrag*, i.e. the research file's 200,00 € a month taken annually); `prem_freq = annual`, so

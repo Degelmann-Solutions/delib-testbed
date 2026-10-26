@@ -57,7 +57,7 @@ what a replacement must preserve.
 `t` is the **0-based** policy month counted from the contract's own inception: `t = 0` is
 the inception month, period `t` runs from time `t` to time `t + 1`, and `t = 60` means the
 same thing on every model point — the first month after the acquisition-charge instalment
-ends. `proj_len() = 12 × (annuity_age − issue_age)` is the **number** of policy months and
+ends. `proj_len() = 12 × (ret_age − issue_age)` is the **number** of policy months and
 so the frame's **exclusive** end, so `result_cf()` covers `range(t_start(), proj_len())`
 — the last row is `t = proj_len() − 1`, which is 359 on the anchor cell, and
 `len(result_cf())` is `proj_len() − t_start()`. That is lifelib's own convention
@@ -85,7 +85,7 @@ t // 12`. Because a 0-based frame has no `t = −1`, the opening *Anteilspreis* 
 | `model_point_table.csv` | `pup_month` | **Shifted −1**: a point on the frame's time axis. Model point 7 goes *beitragsfrei* at `t = 120` (was 121). `0` stays the "never" **sentinel**, not the inception month |
 | `model_point_table.csv` | `topup_month` | **Shifted −1**: model point 9 tops up at `t = 120` (was 121). `0` stays the "none" sentinel |
 | `model_point_table.csv` | `wd_month` | **Shifted −1**: model point 9 withdraws at `t = 240` (was 241). `0` stays the "none" sentinel |
-| `model_point_table.csv` | `issue_age`, `annuity_age`, `prem_term_y`, `prem_mode_months` | **Unchanged.** Ages, a term in years and a frequency in months — none is a point on the frame |
+| `model_point_table.csv` | `issue_age`, `ret_age`, `prem_term_y`, `prem_mode_months` | **Unchanged.** Ages, a term in years and a frequency in months — none is a point on the frame |
 | `lapse_table.csv` | `policy_year` | **Unchanged.** The contractual 1-based label; `lapse_rate_base(t)` maps through `policy_year(t) = t // 12 + 1` |
 | `fund_scenario_table.csv` | `policy_year` | **Unchanged**, for the same reason |
 | `charge_table.csv` | `alpha_spread_months` | **Unchanged.** A count of months, not an index |
@@ -285,8 +285,8 @@ convention decides only the split between the lapse total and the maturity count
 what the closure identity reproduces — deaths 0,04377181 plus lapses 0,65322937 plus maturity
 0,30299882 = 1,00000000. It is frlib's convention on `TD_FR_S` and delib adopts it.
 
-`age(proj_len() − 1) = annuity_age − 1`, because the annuity begins at the **end** of that month,
-and the *Rentenfaktor* is read at `annuity_age`: **25,00 at 67 on the anchor, not the 24,45 an
+`age(proj_len() − 1) = ret_age − 1`, because the annuity begins at the **end** of that month,
+and the *Rentenfaktor* is read at `ret_age`: **25,00 at 67 on the anchor, not the 24,45 an
 off-by-one fetches at 66**, a 2,2 % understatement of the pension. The rule applied is
 `max(rentenfaktor_guar(), rentenfaktor_curr())` [S4] [R22] — a guarantee **with upside**, so a
 model applying only the guaranteed factor understates the benefit whenever the current tariff

@@ -150,6 +150,24 @@ def omega_age():
     return int(data.param_table().at["omega_age", "value"])          # noqa: F821
 
 
+def ret_age():
+    """The attained age at *Rentenbeginn*, from the model point's ``ret_age`` column."""
+    return int(model_point()["ret_age"])                             # noqa: F821
+
+
+def k_conv():
+    """T: the projection year in which *Rentenbeginn* falls, ``ret_age() - age(0)``.
+
+    Negative for a model point that opens after *Rentenbeginn*, already in payment.
+    """
+    return ret_age() - age(0)                                        # noqa: F821
+
+
+def t_conv():
+    """The projection month of *Rentenbeginn*, ``12 x k_conv()``."""
+    return 12 * k_conv()                                             # noqa: F821
+
+
 def proj_len_y():
     """The number of projected policy years, the policy term."""
     return policy_term()                                             # noqa: F821

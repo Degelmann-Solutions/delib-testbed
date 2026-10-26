@@ -59,8 +59,8 @@ every model point, in force or new business. `k = proj_year(t) = t // 12` is the
 **year** and `proj_len() = 12 × proj_len_y()`. The contractual **policy year** is the 1-based
 label `duration(t) + 1`, and `duration_y(k) = duration_init + k` stays the count of *completed*
 policy years, 0 in a new-business point's first projected year. On the anchor cell
-`proj_len_y() = 77` (attained ages 45 to 121), `proj_len() = 924`, `ret_y() = 22`,
-`ret_t() = 264` and the last row is `t = 923`. The model and both
+`proj_len_y() = 77` (attained ages 45 to 121), `proj_len() = 924`, `k_conv() = 22`,
+`t_conv() = 264` and the last row is `t = 923`. The model and both
 its Spaces carry docstrings — `model.Projection.doc` holds the full mapping between the
 technical notes' symbols and the cells names, and `model.Data.doc` says what each input file
 is and, for the mortality table, what it is **not**.
@@ -119,7 +119,7 @@ and *nicht kapitalisierbar* [R1] [REG-R39] — arithmetically:
 
 `check_no_capital()` asserts the consequence at every `t`: the total of `claims(t)` is
 **exactly** the sum of its three permitted kinds, and `claims(t, "DEATH")` is zero wherever the
-survivor rider is off or `t ≥ ret_t()`. The absences themselves cannot be asserted from inside
+survivor rider is off or `t ≥ t_conv()`. The absences themselves cannot be asserted from inside
 the model — a missing cells has no formula — so `tests/test_basisrente_de.py` asserts the name
 list instead. The mirror error is subtler: computing a *Rückkaufswert* internally "for
 reference" and flooring the *Deckungskapital* at it. `prem_to_av_pp(t)` is **negative** in the
@@ -220,7 +220,7 @@ The *Beitragsdynamik* compounds on the base premium from **inception**, so it is
 opens at `3 600,00 × 1,02^17 = 5 040,87 €`, not at 3 600,00 €. The *Ratenzahlungszuschlag*
 `prem_freq_load()` multiplies the *laufender Beitrag* and **nothing else**: not the *Zuzahlung*,
 which is a single payment, and not an *Einmalbeitrag*, for which it is 1,000. Both streams stop
-at `ret_y()`, and the *Zuzahlung* stops again once `duration_y(k) ≥ zuzahlung_end_dur`.
+at `k_conv()`, and the *Zuzahlung* stops again once `duration_y(k) ≥ zuzahlung_end_dur`.
 `zuz_take_up` is published as a cells of its own rather than hidden inside `zuz_pp`, because it
 is a **utilisation rate and not a contract term** — the top-up is paid out of a profit not
 known until the year end — and a model that treats the *Zuzahlung* as contractual has quietly
@@ -234,9 +234,9 @@ statutory invariant [R1], with model point 11 at 0.49, the boundary.
 One date in the contract's life, and nothing happens at it that the policyholder chooses:
 
 ```
-fund_at_conv()         = av_at(ret_y(), "BEF_PREM") x (1 + terminal_bonus_rate)
+fund_at_conv()         = av_at(k_conv(), "BEF_PREM") x (1 + terminal_bonus_rate)
 rentenfaktor_applied() = max(rentenfaktor_gtd, rentenfaktor_curr()) x rf_option_factor()
-ann_pp(ret_y())        = fund_at_conv() / pols_if(ret_t()) / rf_unit
+ann_pp(k_conv())        = fund_at_conv() / pols_if(t_conv()) / rf_unit
                          x rentenfaktor_applied() x ann_freq
 ann_mth_pp(t)          = ann_pp(proj_year(t)) / ann_freq
 ```
@@ -244,7 +244,7 @@ ann_mth_pp(t)          = ann_pp(proj_year(t)) / ann_freq
 with `rf_unit = 10000` and `ann_freq = 12`. `ann_pp` is an **annual** amount and is nobody's
 payment: the factor is quoted in euro a month, and `ann_mth_pp` — 630,16 € on the anchor against
 the 7 561,91 € a year it sums to — is the instalment actually paid, monthly in advance from
-`t = ret_t() = 264`. The annual figure stays as the cells the conversion and the
+`t = t_conv() = 264`. The annual figure stays as the cells the conversion and the
 *Überschussrente* are stated on, because both are annual terms, so the twelve instalments of a
 payout year are equal and the thirteenth is `(1 + b)` times the twelfth. There is no lump sum, no election switch, no take-up
 assumption and no notice period — three simplifications that follow from the ban on
@@ -262,12 +262,12 @@ current 27,72 €, the guarantee there being worth 824,65 € a year against the
 `rentenfaktor_gtd` was struck at inception on **first-order** DAV 2004 R [R17] [S1]; the
 projection runs on the best estimate, `mort_rate(t) = mort_be_factor × mort_rate_base(t)`. The
 wedge between them is the payout phase's *Risikoüberschuss*, and `ann_bonus_rate` — a
-*teildynamische Rente* — is what gives it back, so `ann_pp(ret_y())` is **exactly invariant** to
+*teildynamische Rente* — is what gives it back, so `ann_pp(k_conv())` is **exactly invariant** to
 `mort_be_factor` while `claims_annuity` is not: dropping the factor from 0.85 to 0.70 leaves the
 annuity at 7 561,9135 € to the last bit and lifts the annuity claims from 265 725,57 € to
 292 090,33 €. A model that converted on its own best-estimate mortality would abolish the wedge,
 and with it the whole German payout-phase surplus mechanic. `check_conversion()` inverts the
-identity at `ret_y()` and is zero at every other `k`, so it catches a factor applied per policy
+identity at `k_conv()` and is zero at every other `k`, so it catches a factor applied per policy
 instead of per fund, an `ann_freq` of 1, an `rf_unit` of 1 000 — and a second conversion, of
 which there can be none.
 
@@ -291,7 +291,7 @@ tariff prices it: model point 3 converts at `31.50 × 0.930 = 29,295 €`.
 A *Rentengarantiezeit* runs `guarantee_period_y` years **from *Rentenbeginn***, not from each
 death, so every continuation ends on the same date and `pols_gtd` is a one-line recursion
 closing at `gtd_end_t()` — `t = 299` on model point 4, the 120th instalment of a ten-year
-guarantee that opens at `ret_t() = 180`, with `pols_gtd(300) = 0` however late the death that
+guarantee that opens at `t_conv() = 180`, with `pols_gtd(300) = 0` however late the death that
 started it. On the monthly grid the window is what the contract says it is, `12m` guaranteed
 **instalments**, and a continuation begins in the month after the death that triggered it rather
 than in the following year — which is why turning the grid up moves 116,29 € **onto** model
@@ -415,10 +415,10 @@ must not be the one quantity nothing checks.
 |---|---|---|
 | `check_net_cf()` | month | the line above, at every `t` |
 | `check_pols_roll_fwd()` | month | `pols_paying + pols_paidup = pols_if`, and `pols_if(t+1) = pols_if(t) × (1 − mort_rate_mth(t))` — `bf_rate` absent |
-| `check_no_capital()` | month | no payment other than a monthly annuity instalment, a guarantee continuation or a survivor's single premium; `claims_death = 0` where the rider is off or `t ≥ ret_t()` |
-| `check_av_roll_fwd()` | year | `av_at(k+1, "BEF_PREM") = av_at(k, "AFT_INT") × (1 − mort_rate(12k))` before `ret_y()`; the account emptied at `ret_y()`; `av(k) = 0` after it |
-| `check_conversion()` | year | the whole fund converts **exactly once**, at `ret_y()`, at `rentenfaktor_applied()`; residual zero at every other `k` |
-| `check_annuity_roll_fwd()` | year | `ann_pp(k) = ann_pp(k−1) × (1 + ann_bonus_rate(k−1))` in payment, `12 × ann_mth_pp(t) = ann_pp(k)` across the year's months, nothing in payment before `ret_t()`, and `pols_gtd = 0` past `gtd_end_t()` |
+| `check_no_capital()` | month | no payment other than a monthly annuity instalment, a guarantee continuation or a survivor's single premium; `claims_death = 0` where the rider is off or `t ≥ t_conv()` |
+| `check_av_roll_fwd()` | year | `av_at(k+1, "BEF_PREM") = av_at(k, "AFT_INT") × (1 − mort_rate(12k))` before `k_conv()`; the account emptied at `k_conv()`; `av(k) = 0` after it |
+| `check_conversion()` | year | the whole fund converts **exactly once**, at `k_conv()`, at `rentenfaktor_applied()`; residual zero at every other `k` |
+| `check_annuity_roll_fwd()` | year | `ann_pp(k) = ann_pp(k−1) × (1 + ann_bonus_rate(k−1))` in payment, `12 × ann_mth_pp(t) = ann_pp(k)` across the year's months, nothing in payment before `t_conv()`, and `pols_gtd = 0` past `gtd_end_t()` |
 
 `check_no_capital()` is **structural rather than arithmetic** — trivially zero on the anchor by
 construction, and published anyway, because what it guards against is not a slip but an edit.

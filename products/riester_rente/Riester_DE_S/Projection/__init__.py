@@ -57,7 +57,7 @@ transfer on what two decrements had already thinned — which moves 5,62 € off
 death outgo and 2,64 € off its surrender outgo and puts 8,30 € onto its transfers, with the
 survivorship at every anniversary unchanged.
 
-**Two phases in one projection.** ``k_conv() = rentenbeginn_age - age(0)`` is the
+**Two phases in one projection.** ``k_conv() = ret_age - age(0)`` is the
 conversion year and ``t_conv() = 12 x k_conv()`` the conversion month. ``is_accum(t)``
 holds for ``t < t_conv()`` and ``is_payout(t)`` for
 ``t >= t_conv()``, with ``is_accum_y(k)`` and ``is_payout_y(k)`` the annual readings. The
@@ -343,16 +343,6 @@ def pols_if_init():
     return float(model_point()["pols_if_init"])
 
 
-def rentenbeginn_age():
-    """The attained age at which the payout phase begins.
-
-    Bounded below by the completed 62nd year for a contract concluded from 1 January 2012
-    (the completed 60th before that), which is a certification condition of the AltZertG
-    rather than a tariff term.  Model point 13 sits at the floor.
-    """
-    return int(model_point()["rentenbeginn_age"])
-
-
 def beitragssumme():
     """The *Beitragssumme* fixed at conclusion, in euros.
 
@@ -555,26 +545,6 @@ def proj_len_y():
     ``omega_age()``, products/riester_rente/technical-notes.md:69
     """
     return omega_age() - age(0)
-
-
-def k_conv():
-    """T: the conversion **year**, ``rentenbeginn_age - age(0)``.
-
-    The boundary between the two phases and the single moment at which the
-    *Beitragsgarantie* is tested.  ``is_accum_y(k)`` holds strictly before it; the conversion
-    year itself is the first payout year, because the first annuity instalment falls at
-    *Rentenbeginn* and the account is extinguished there.
-    """
-    return rentenbeginn_age() - age(0)
-
-
-def t_conv():
-    """The conversion **month**, ``12 x k_conv()``.
-
-    The last accumulation month is ``t_conv() - 1``; the *Teilkapitalauszahlung*, the
-    *Abfindung* and the first monthly annuity instalment are all paid at ``t = t_conv()``.
-    """
-    return 12 * k_conv()
 
 
 def prem_due(t):

@@ -14,7 +14,7 @@ projecting model point 1::
 .. rubric:: Two clocks: a monthly frame over an annual *Indexjahr*
 
 ``t`` counts **policy months from issue**, 0-based. ``proj_len() = 12 x proj_len_y()`` is
-the **exclusive end** of the frame, with ``proj_len_y() = ann_start_age - issue_age`` the
+the **exclusive end** of the frame, with ``proj_len_y() = ret_age - issue_age`` the
 number of policy years, so ``result_cf().index[-1] == proj_len() - 1`` and the frame of an
 in-force point at ``duration_init = 8`` has 228 rows while still reporting ``proj_len() = 324``.
 A **new-business** point starts at ``t = 0``; an **in-force** point starts at
@@ -269,11 +269,6 @@ def pols_if_init():
     return float(model_point()["pols_if_init"])
 
 
-def ann_start_age():
-    """Attained age at *Rentenbeginn*, the end of the accumulation phase."""
-    return int(model_point()["ann_start_age"])
-
-
 def prem_form():
     """``"level"`` (*laufender Beitrag*) or ``"single"`` (*Einmalbeitrag*)."""
     v = model_point()["prem_form"]
@@ -388,7 +383,7 @@ def surr_charge_on():
 # --- the frame ---------------------------------------------------------------
 
 def proj_len_y():
-    """``n``: the **number of projected policy years**, ``ann_start_age() - issue_age()``.
+    """``n``: the **number of projected policy years**, ``ret_age() - issue_age()``.
 
     Policy year ``n - 1`` is the last and ends at *Rentenbeginn*, at time ``n``, when the
     capital falls due.  There is no policy year ``n``: the whole surviving cohort has
@@ -398,7 +393,7 @@ def proj_len_y():
     Override reason: the model projects the accumulation phase only, to *Rentenbeginn*,
     products/indexpolice/technical-notes.md:42
     """
-    return ann_start_age() - issue_age()
+    return ret_age() - issue_age()
 
 
 def index_month(t):

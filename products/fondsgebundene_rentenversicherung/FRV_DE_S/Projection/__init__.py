@@ -15,7 +15,7 @@ projecting model point 1::
 ``t = 0`` is the inception month, so ``t = 60`` means the same thing on every model point —
 the first month after the acquisition-charge instalment ends. The frame runs
 ``t = t_start() ... proj_len() - 1`` with ``t_start() = duration_mth_init`` — 0 for new
-business, 96 for the in-force cell — and ``proj_len() = 12 x (annuity_age - issue_age)``,
+business, 96 for the in-force cell — and ``proj_len() = 12 x (ret_age - issue_age)``,
 which is the **number** of policy months from inception and so the frame's **exclusive
 end**. There is nothing after ``t = proj_len() - 1``: the end of that month is
 *Rentenbeginn*, the units are cancelled, the *Fondsguthaben* is converted at the
@@ -272,8 +272,8 @@ flow moves either way; the convention only decides the split between the lapse t
 the maturity count, and it is what the closure identity reproduces. It is frlib's
 convention on ``TD_FR_S`` and delib adopts it.
 
-``age(proj_len() - 1) = annuity_age - 1``, because the annuity begins at the **end** of
-that month. The *Rentenfaktor* is read at ``annuity_age`` and not at ``age(proj_len() -
+``age(proj_len() - 1) = ret_age - 1``, because the annuity begins at the **end** of
+that month. The *Rentenfaktor* is read at ``ret_age`` and not at ``age(proj_len() -
 1)``: on
 the anchor cell 25.00 at 67, not the 24.45 an off-by-one would fetch at 66. The rule
 applied is ``max(guaranteed, current)`` — a guarantee **with upside**, so a model that
@@ -373,16 +373,6 @@ def pols_if_init():
     start-of-period convention asserted in the conventions suite.
     """
     return float(model_point()["pols_if_init"])
-
-
-def annuity_age():
-    """Age at *Rentenbeginn*.
-
-    It fixes :func:`proj_len` and it is the row read from ``rentenfaktor_table.csv`` —
-    **not** ``age(proj_len() - 1)``, which is one lower because the annuity begins at the
-    end of the last projected month.
-    """
-    return int(model_point()["annuity_age"])
 
 
 def prem_form():
@@ -613,17 +603,17 @@ def t_start():
 
 def proj_len():
     """The **number** of projected policy months from inception,
-    ``12 x (annuity_age() - issue_age())``.
+    ``12 x (ret_age() - issue_age())``.
 
     The library's reading of ``proj_len()``: a period **count**, so it is the frame's
     **exclusive** end.  ``result_cf()`` covers ``t = t_start() ... proj_len() - 1`` and
     ``result_cf().index[-1] == proj_len() - 1`` on every model point.  The end of month
     ``proj_len() - 1`` is *Rentenbeginn*; there is no ``t = proj_len()`` row.
 
-    Override reason: the model projects the *Aufschubzeit* only, in months to ``annuity_age()``,
+    Override reason: the model projects the *Aufschubzeit* only, in months to ``ret_age()``,
     products/fondsgebundene_rentenversicherung/technical-notes.md:59
     """
-    return 12 * (annuity_age() - issue_age())
+    return 12 * (ret_age() - issue_age())
 
 
 # ----------------------------------------  the charge scale
@@ -1665,7 +1655,7 @@ def liability_cf(t):
 def rentenfaktor_guar():
     """The *garantierter Rentenfaktor*: euro of monthly annuity per 10 000 EUR of fund.
 
-    Read from ``rentenfaktor_table.csv`` at **``annuity_age()``**, not at
+    Read from ``rentenfaktor_table.csv`` at **``ret_age()``**, not at
     ``age(proj_len() - 1)``, which is one lower: the annuity begins at the *end* of the
     last projected month.  On the anchor cell 25.00 at age 67; the off-by-one would fetch
     24.45.
@@ -1676,7 +1666,7 @@ def rentenfaktor_guar():
     and not implemented.
     """
     return float(data.rentenfaktor_table().loc[                      # noqa: F821
-        (rentenfaktor_id(), annuity_age()), "rentenfaktor_guar"])
+        (rentenfaktor_id(), ret_age()), "rentenfaktor_guar"])
 
 
 def rentenfaktor_curr():
@@ -1687,7 +1677,7 @@ def rentenfaktor_curr():
     bites.  Both are **[std]**.
     """
     return float(data.rentenfaktor_table().loc[                      # noqa: F821
-        (rentenfaktor_id(), annuity_age()), "rentenfaktor_curr"])
+        (rentenfaktor_id(), ret_age()), "rentenfaktor_curr"])
 
 
 def rentenfaktor_applied():

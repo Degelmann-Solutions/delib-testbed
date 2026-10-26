@@ -56,7 +56,7 @@ charge rate and not one *Rentenfaktor* was established at any carrier.
   frequency is monthly, the *Risikobeitrag* and the *kapitalbezogenen Verwaltungskosten* are
   levied monthly by unit cancellation, and the *Abschluss- und Vertriebskosten* instalment runs
   for exactly **60 months** [R1] [REG-R28]. An annual grid cannot place the month-60 cliff.
-- **Projection horizon.** The ***Aufschubzeit* only.** `proj_len() = 12 × (annuity_age −
+- **Projection horizon.** The ***Aufschubzeit* only.** `proj_len() = 12 × (ret_age −
   issue_age)` is the **number of policy months** from inception and so the frame's **exclusive
   end**; the last projected month is `t = proj_len() − 1`, the month in which *Rentenbeginn*
   falls. At the end of it the units are cancelled, the *Fondsguthaben* is converted at the
@@ -87,8 +87,8 @@ charge rate and not one *Rentenfaktor* was established at any carrier.
   *garantie plancher*.
 - **Age basis.** Age last birthday at inception, stepping at each policy anniversary:
   `policy_year(t) = t // 12 + 1`, `age(t) = issue_age + policy_year(t) − 1 = issue_age + t // 12`.
-  **At `t = proj_len() − 1` the attained age is `annuity_age − 1`**, because the annuity begins at
-  the **end** of that month. The *Rentenfaktor* is read at `annuity_age`, not at
+  **At `t = proj_len() − 1` the attained age is `ret_age − 1`**, because the annuity begins at
+  the **end** of that month. The *Rentenfaktor* is read at `ret_age`, not at
   `age(proj_len() − 1)`, and getting that wrong is a listed pitfall.
 - **One fund.** The composite carries a single composite fund; with a deterministic return a
   multi-fund split is arithmetically identical to one fund at the weighted return. *Fondswechsel*
@@ -118,7 +118,7 @@ that exercise the attribute non-trivially, so a reader can find the row that tes
 | `issue_age` | int (ALB) | age at inception | all |
 | `duration_mth_init` | int | policy months already elapsed at the valuation date; 0 for new business. An **elapsed count**, already 0-based, so it is `t_start()` itself | 6 |
 | `pols_if_init` | float | policies the model point represents | all |
-| `annuity_age` | int | age at *Rentenbeginn*; fixes `proj_len()` and the *Rentenfaktor* row | 13 (70), all others 67 |
+| `ret_age` | int | age at *Rentenbeginn*; fixes `proj_len()` and the *Rentenfaktor* row | 13 (70), all others 67 |
 | `prem_form` | enum {`laufend`, `einmal`} | recurring or single premium | 2 (`einmal`) |
 | `prem_pp` | EUR | the **instalment the policy states**, or the *Einmalbeitrag*. Already contains whatever *Ratenzahlungszuschlag* the tariff applied | all |
 | `prem_mode_months` | int {1, 3, 6, 12} | payment frequency in months | 3 (3), 4 (6), 5 (12) |
@@ -164,7 +164,7 @@ twelve-year deferment on the stress path, which is the acquisition-spread bounda
 | Variable | Description | Updated |
 |---|---|---|
 | `t_start()` | first projected month, `duration_mth_init` (0-based) | once |
-| `proj_len()` | projected months from inception, `12 × (annuity_age − issue_age)`; the frame's **exclusive** end, so the last month is `proj_len() − 1` | once |
+| `proj_len()` | projected months from inception, `12 × (ret_age − issue_age)`; the frame's **exclusive** end, so the last month is `proj_len() − 1` | once |
 | `beitragssumme()` | sum of premiums **payable** over the premium term at the initial level — the acquisition-charge base [R12] [REG-R16] | once |
 | `unit_price(t)` | *Anteilspreis* at the **end** of month `t`, `= unit_price_open(t) × (1 + i(t))` | monthly |
 | `unit_price_open(t)` | *Anteilspreis* at the **start** of month `t`; `unit_price_init` at `t = t_start()` and `unit_price(t − 1)` after it. A cells of its own because a 0-based frame has no `t = −1` to read | monthly |
@@ -413,7 +413,7 @@ with a PRIIPs performance scenario**.
 | Symbol | Cells | Meaning |
 |---|---|---|
 | `t` | — | **0-based** policy month index from inception, `t = 0` at inception; `t = t₀ … n − 1` |
-| `t₀`, `n` | `t_start()`, `proj_len()` | `duration_mth_init`; `12 × (annuity_age − issue_age)`, the month **count** and so the frame's exclusive end |
+| `t₀`, `n` | `t_start()`, `proj_len()` | `duration_mth_init`; `12 × (ret_age − issue_age)`, the month **count** and so the frame's exclusive end |
 | `y(t)`, `x(t)` | `policy_year(t)`, `age(t)` | `t // 12 + 1` (the contractual 1-based label); `issue_age + y(t) − 1` |
 | `p(t)`, `p_open(t)` | `unit_price(t)`, `unit_price_open(t)` | *Anteilspreis* at the **end** and at the **start** of month `t`; `p_open(t₀) = unit_price_init`, `p_open(t) = p(t−1)` for `t > t₀` |
 | `i(t)` | `fund_return_net_mth(t)` | monthly return net of the fund's TER |
@@ -562,8 +562,8 @@ that exclusion visible rather than merely asserted.
 
 ### *Rentenbeginn*
 
-    R_g = rentenfaktor_guar(annuity_age)      read at annuity_age, not at age(n − 1)
-    R_c = rentenfaktor_curr(annuity_age)
+    R_g = rentenfaktor_guar(ret_age)      read at ret_age, not at age(n − 1)
+    R_c = rentenfaktor_curr(ret_age)
     R   = max( R_g, R_c )
     av_maturity_pp() = F_BEF_DECR(n − 1)
     annuity_mth_pp() = av_maturity_pp() / 10 000 × R
@@ -761,9 +761,9 @@ one becomes a test.
 13. **Booking the whole *Fondsguthaben* as an insurer outgo.** `net_cf` is the non-unit stream;
     the fund is the policyholder's money passing through. Assert `check_benefit_funding()` and
     `check_net_cf()`, and that no account-value benefit appears inside `net_cf`.
-14. **Getting the age at *Rentenbeginn* off by one.** `age(proj_len() − 1) = annuity_age − 1`,
+14. **Getting the age at *Rentenbeginn* off by one.** `age(proj_len() − 1) = ret_age − 1`,
     because the annuity begins at the **end** of that month. Assert exactly that, and that
-    `rentenfaktor_guar()` is read at `annuity_age`: on the anchor 25.00 at 67, not 24.45 at 66.
+    `rentenfaktor_guar()` is read at `ret_age`: on the anchor 25.00 at 67, not 24.45 at 66.
 15. **Applying only the guaranteed *Rentenfaktor*.** The rule is `max(guaranteed, current)`
     [S4] [R22]. Assert equality on the anchor and, on model point 13,
     `rentenfaktor_applied() = rentenfaktor_curr() = 1.12 × rentenfaktor_guar()`.
@@ -830,7 +830,7 @@ any of them, and the research file's gaps register records that as gaps 18 and 1
 **Configuration.** Model point 1, the anchor cell of `model_point_table.csv`:
 `policy_id = DE-FRV-0001`; `sex = M` (reporting only — the tariff is unisex [REG-R34]);
 `issue_age = 37`; `duration_mth_init = 0`, so `t_start() = 0`; `pols_if_init = 1.0`;
-`annuity_age = 67`, so `proj_len() = 12 × (67 − 37) = 360` months and the frame is
+`ret_age = 67`, so `proj_len() = 12 × (67 − 37) = 360` months and the frame is
 `t = 0 … 359`;
 `prem_form = laufend`; `prem_pp = 200.00 EUR`; `prem_mode_months = 1`; `prem_term_y = 30`;
 `dynamik_rate = 0.00`; `pup_month = 0`; `db_form = prem_return`, so `db_pct` and `sum_assured` are
@@ -1032,7 +1032,7 @@ about one policy in four has already gone. The last line is the one that matters
 the rest is the policyholder's own units coming back.
 
 **The annuity the contract exists for.** The *Fondsguthaben* at *Rentenbeginn* is
-**129,699.88 EUR**. The *Rentenfaktor* is read at `annuity_age = 67`, not at `age(359) = 66`;
+**129,699.88 EUR**. The *Rentenfaktor* is read at `ret_age = 67`, not at `age(359) = 66`;
 guaranteed and current are both 25.00, so `rentenfaktor_applied() = 25.00` and the monthly
 annuity is 129,699.88 / 10,000 x 25.00 = **324.25 EUR**. The off-by-one would fetch 24.45 and
 understate the pension by 2.2 %.

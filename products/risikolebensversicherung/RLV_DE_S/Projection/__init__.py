@@ -621,24 +621,6 @@ def mort_rate(t):
             * mort_rate_base(t) * sel_lapse_factor(t))
 
 
-def mort_rate_mth(t):
-    """q2m(t): the **monthly** death rate applied at the end of month t **[std]**.
-
-    ``1 - (1 - q2(t))^(1/12)``, the constant-force conversion of the policy year's annual
-    rate — derived geometrically and **not** by dividing by twelve, so that twelve months
-    of it compound back to exactly ``q2(t)``, which is the factor the annual-step model
-    applied at the anniversary.  Dividing by twelve instead leaves a second-order gap that
-    accumulates over a twenty-five-year term; the geometric form leaves none, and that is
-    what makes ``pols_if(12k)`` here reproduce the annual model's ``pols_if(k)``.
-
-    No German instrument states a conversion convention for any decrement, so the choice
-    is a standardization; what is not optional is that it reproduce the annual factor.
-    Unlike ``frlib.TD_FR_S``, this product has a **single** insured decrement, so there is
-    no dependent-rate split to make: the conversion is applied to the one rate.
-    """
-    return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
-
-
 def mort_load_tariff(t):
     """The loading of the first-order tariff rate, ``(1 + m) x rf``.
 

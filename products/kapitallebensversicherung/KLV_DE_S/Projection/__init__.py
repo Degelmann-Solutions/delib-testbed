@@ -583,22 +583,6 @@ def mort_be_factor():
     return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
 
 
-def mort_rate_mth(t):
-    """qm(t): the **monthly** best-estimate death rate applied at the end of month t **[std]**.
-
-    ``1 - (1 - q(t))^(1/12)``, the constant-force conversion of the policy year's annual
-    rate — derived geometrically and **not** by dividing by twelve, so that twelve months of
-    it compound back to exactly ``q(t)``, which is the factor the annual-step model this
-    replaced applied at the anniversary.  That is what makes the in-force at every policy
-    anniversary identical to the annual model's, and with it every annual quantity the
-    reserve and the *Überschussbeteiligung* are built on.
-
-    No German instrument states a conversion convention for any decrement, so the choice is a
-    standardization; what is not optional is that it reproduce the annual factor.
-    """
-    return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
-
-
 def hoechstrechnungszins():
     """The § 2 DeckRV *Höchstrechnungszins* for this contract's ``issue_year``.
 

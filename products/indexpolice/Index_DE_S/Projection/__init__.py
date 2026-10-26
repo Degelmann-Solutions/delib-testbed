@@ -1083,21 +1083,6 @@ def mort_rate_at_age(x):
     return float(data.mort_table().loc[(sex(), x), "qx"])            # noqa: F821
 
 
-def mort_rate_mth(t):
-    """``q^m_d(t)``: the **monthly** death rate, ``1 - (1 - q_d(t))^(1/12)``.
-
-    A **geometric** twelfth and never ``q_d(t) / 12``: twelve of it compound back to the
-    year's rate exactly, which is what leaves ``pols_if`` at every anniversary equal to the
-    annual-step model's and with it the whole account, the *Höchststandsicherung* ledger and
-    every *Indexgutschrift*.  Dividing by twelve would undershoot and leave a cohort that
-    never quite runs off.
-    """
-    q = mort_rate(t)
-    if q >= 1.0:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - q) ** (1.0 / 12.0)
-
-
 def lapse_rate_base(t):
     """The table surrender rate for period t, **before** the terminal-year override.
 

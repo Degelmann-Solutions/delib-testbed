@@ -299,6 +299,20 @@ def mort_rate(t):
     return min(1.0, mort_rate_base(t) * mort_be_factor())            # noqa: F821
 
 
+def mort_rate_mth(t):
+    """The **monthly** death rate applied in month t, the geometric twelfth of ``mort_rate(t)``.
+
+    ``1 - (1 - q)^(1/12)``, so the twelve months of a policy year compound back to the
+    annual rate exactly.  A rate of 1 is a certainty, not a rate: it is not twelfth-rooted
+    but placed in the anniversary month, 1 where ``is_anniv(t)`` and 0 in the eleven months
+    before it.
+    """
+    q = mort_rate(t)                                                 # noqa: F821
+    if q >= 1.0:
+        return 1.0 if is_anniv(t) else 0.0                           # noqa: F821
+    return 1.0 - (1.0 - q) ** (1.0 / 12.0)
+
+
 def rechnungszins():
     """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
 

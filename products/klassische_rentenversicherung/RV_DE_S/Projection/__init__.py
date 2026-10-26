@@ -1053,28 +1053,6 @@ def mort_rate_base(t):
     return mort_rate_guar(t)
 
 
-def mort_rate_mth(t):
-    """q^m(t): the **monthly** death rate, ``1 - (1 - q(t))^(1/12)``.
-
-    The rate the in-force recursion applies.  It is a **geometric** twelfth and never
-    ``q(t) / 12``: twelve of it compound back to the year's annual rate exactly, which is what
-    leaves ``pols_if`` at every anniversary equal to the annual-step model's and with it every
-    account balance, every reserve and every premium.  Dividing by twelve would undershoot the
-    annual rate and leave a cohort that never quite runs off.
-
-    **One exception, and it is a certainty rather than a rate.**  ``mort_rate`` is 1 at attained
-    age ``omega_age() - 1``, which is the mortality proxy's closure convention — nobody survives
-    the table's last year — and not an experience rate.  Twelfth-rooting it would kill the whole
-    cohort in the **first** month of that policy year and stop the annuity eleven months early;
-    the certainty is placed in the anniversary month instead, so the survivors are paid the
-    table's last full year of annuity and then die, which is what the table says.
-    """
-    q = mort_rate(t)
-    if q >= 1.0:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - q) ** (1.0 / 12.0)
-
-
 def decl_rate(k):
     """d(k): the declared *laufende Verzinsung* for the model point's scenario in year k.
 

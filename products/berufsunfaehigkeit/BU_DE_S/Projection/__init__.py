@@ -722,11 +722,6 @@ def inc_rate_mth(t):
     return 1.0 - (1.0 - inc_rate(t)) ** (1.0 / 12.0)
 
 
-def mort_rate_mth(t):
-    """q^a_m(t): the monthly active-lives mortality rate, ``1 - (1 - mort_rate(t))^(1/12)``."""
-    return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
-
-
 def mort_dis_sel_factor(z):
     """s(z): the disabled-mortality select factor at claim duration z.
 

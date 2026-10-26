@@ -522,6 +522,10 @@ def mort_rate_mth(t):
     the opposite of the intuition, which is why the pair is published.  The projection
     itself does not use it — it works in forces, through :func:`mort_force` — but the two
     agree by construction, ``1 - exp(-mort_force(t)/12)`` being this same number.
+
+    Override reason: a published diagnostic of the force-based monthly step, the plain
+    geometric twelfth at every age, the limiting one included, as the house convention asserts,
+    products/pflegerentenversicherung/technical-notes.md:762
     """
     return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
 

@@ -686,24 +686,6 @@ def mort_rate(t):
                * annuity_mort_be_factor)                             # noqa: F821
 
 
-def mort_rate_mth(t):
-    """The **monthly** death rate applied in month t, ``1 - (1 - mort_rate(t))^(1/12)``.
-
-    The geometric twelfth, so twelve months compound back to the year's annual rate exactly
-    and the survivorship at every anniversary is the annual-step model's to the last bit.
-    ``mort_rate(t) / 12`` would not close, and the residue it leaves grows with the rate —
-    largest exactly where this product's cash flows are, in the tail of a lifelong annuity.
-
-    A rate of **1 is a certainty and is not twelfth-rooted**: at the terminal age the whole
-    cohort dies in the year's last month, so the annuity is paid for the whole of that year
-    and ``pols_if(proj_len())`` is still zero.
-    """
-    q = mort_rate(t)
-    if q >= 1.0:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - q) ** (1.0 / 12.0)
-
-
 def lapse_rate(t):
     """w(t): the **annual** surrender rate of the year month t falls in, by duration.
 

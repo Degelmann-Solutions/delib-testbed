@@ -516,6 +516,16 @@ CORE_CELLS = {
                       "riester_rente": "override",
                       "risikolebensversicherung": "override",
                       "sofortrente": "override"},
+        "mort_rate_mth": {"basisrente": "derived",
+                          "berufsunfaehigkeit": "derived",
+                          "fondsgebundene_rentenversicherung": "override",
+                          "indexpolice": "derived",
+                          "kapitallebensversicherung": "derived",
+                          "klassische_rentenversicherung": "derived",
+                          "pflegerentenversicherung": "override",
+                          "riester_rente": "derived",
+                          "risikolebensversicherung": "derived",
+                          "sofortrente": "override"},
     },
 }
 
@@ -910,3 +920,27 @@ def test_klv_mort_rate_steps_its_table_by_the_factor_from_param_table(product_mo
     assert item.mort_be_factor() == 0.75
     for t in range(item.proj_len()):
         assert item.mort_rate(t) == min(1.0, item.mort_rate_base(t) * 0.75), t
+
+
+@pytest.mark.parametrize("product", ["basisrente", "klassische_rentenversicherung"])
+def test_a_certain_death_falls_in_the_anniversary_month(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.mort_rate_mth._is_derived()
+    item = projection[model.Data.model_point_table().index[0]]
+    terminal = [t for t in range(item.proj_len()) if item.mort_rate(t) == 1.0]
+    assert terminal, "no month with mort_rate = 1"
+    start = terminal[0] - terminal[0] % 12
+    assert all(item.mort_rate(start + m) == 1.0 for m in range(12))
+    assert [item.mort_rate_mth(start + m) for m in range(12)] == [0.0] * 11 + [1.0]
+    assert item.is_anniv(start + 11)
+
+
+def test_frv_splits_mortality_linearly(product_models):
+    model = product_models("fondsgebundene_rentenversicherung")
+    projection = model.Projection
+    assert projection.mort_rate_mth._is_defined()
+    assert projection.mort_rate._is_derived()
+    item = projection[model.Data.model_point_table().index[0]]
+    for t in range(item.proj_len()):
+        assert item.mort_rate_mth(t) == item.mort_rate(t) / 12.0, t

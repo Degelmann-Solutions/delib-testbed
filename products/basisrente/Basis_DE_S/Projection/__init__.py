@@ -856,25 +856,6 @@ def mort_rate(t):
     return min(1.0, mort_be_factor() * mort_rate_base(t))
 
 
-def mort_rate_mth(t):
-    """The **monthly** death rate applied in projection month t.
-
-    ``1 - (1 - mort_rate(t))^(1/12)``: the geometric twelfth of the year's annual rate, so
-    the twelve months of a projection year compound back to it **exactly** and
-    ``pols_if(12k)`` is the annual-step model's ``pols_if(k)`` to the last bit.  Dividing
-    the annual rate by twelve instead would leave a residue that grows with the rate and is
-    largest exactly where this product's cash flows are — in the tail of a lifelong annuity.
-
-    A rate of **1 is a certainty and is not twelfth-rooted**: at the terminal age the whole
-    cohort dies, and it dies in the last month of the year rather than a little in each, so
-    the annuity is paid for the whole terminal year and ``pols_if(proj_len()) = 0``.
-    """
-    q = mort_rate(t)
-    if q >= 1.0:
-        return 1.0 if is_anniv(t) else 0.0
-    return 1.0 - (1.0 - q) ** (1.0 / 12.0)
-
-
 def bf_rate(t):
     """f(t): the *Beitragsfreistellung* rate of the year month t falls in, **annual**.
 

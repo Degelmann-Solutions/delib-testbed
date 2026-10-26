@@ -1230,6 +1230,10 @@ def mort_rate_mth(t):
     The projection's decrement, and 0.00005 in policy year 1 of the anchor cell.  Split
     the same way as the tariff rate, for the reason given in
     :func:`mort_rate_tariff_mth`.
+
+    Override reason: the split is linear, as the tariff's *Risikobeitrag* is ``q/12`` times
+    the *riskiertes Kapital* and charge and decrement rest on the same split,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:308
     """
     return mort_rate(t) / 12.0
 

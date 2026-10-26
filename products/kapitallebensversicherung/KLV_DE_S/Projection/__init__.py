@@ -83,7 +83,7 @@ model_point_file          data.model_point_table()           model_point_table.c
 mort_file                 data.mort_table()                  mort_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 surplus_rate_file         data.surplus_rate_table()          surplus_rate_table.csv
-cost_file                 data.cost_table()                  cost_table.csv
+charge_file               data.charge_table()                cost_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
 deckrv_file               data.deckrv_table()                deckrv_table.csv
 param_file                data.param_table()                 param_table.csv
@@ -663,7 +663,7 @@ def alpha_rate():
     public.  It is charged in the premium whether or not the contract is zillmered; only
     :func:`alpha_cost` carries ``zillmer_on``.
     """
-    return float(data.cost_table().loc[cost_id(), "alpha_rate"])     # noqa: F821
+    return float(data.charge_table().loc[cost_id(), "alpha_rate"])   # noqa: F821
 
 
 def beta_rate():
@@ -672,7 +672,7 @@ def beta_rate():
     3,0 % **[std]**.  The *form* - a percentage of the gross premium over the premium-paying
     period - is what the corpus establishes; the level is not.
     """
-    return float(data.cost_table().loc[cost_id(), "beta_rate"])      # noqa: F821
+    return float(data.charge_table().loc[cost_id(), "beta_rate"])    # noqa: F821
 
 
 def gamma_rate():
@@ -684,7 +684,7 @@ def gamma_rate():
     pricing equation funds the running cost and the classical reserve convention assumes the
     ongoing loadings meet it.
     """
-    return float(data.cost_table().loc[cost_id(), "gamma_rate"])     # noqa: F821
+    return float(data.charge_table().loc[cost_id(), "gamma_rate"])   # noqa: F821
 
 
 # --- pricing on the first-order basis --------------------------------------
@@ -1755,7 +1755,7 @@ def inflation_factor(k):
     year from issue, the exponent is ``k`` itself and is 1.0 in the first policy year.
     1,8 % p.a. is a placeholder.
     """
-    infl = float(data.cost_table().loc[cost_id(), "expense_infl"])   # noqa: F821
+    infl = float(data.charge_table().loc[cost_id(), "expense_infl"])  # noqa: F821
     return (1.0 + infl) ** k
 
 
@@ -1766,7 +1766,7 @@ def claim_expenses(t):
     the only expense line that scales with **claims** rather than with policies, and it is
     inside :func:`expenses`.
     """
-    ce = float(data.cost_table().loc[cost_id(), "claim_expense"])    # noqa: F821
+    ce = float(data.charge_table().loc[cost_id(), "claim_expense"])  # noqa: F821
     return ce * (pols_death(t) + pols_lapse(t) + pols_maturity(t))
 
 
@@ -1786,7 +1786,7 @@ def expenses_pp(t):
     modestly exceeds what the *Zillmerung* recovers, so that the anchor cell carries the
     new-business strain a real German endowment carries.
     """
-    cost = data.cost_table().loc[cost_id()]                          # noqa: F821
+    cost = data.charge_table().loc[cost_id()]                        # noqa: F821
     acq = (float(cost["acq_expense"])
            if (t == t_start() and duration_init() == 0) else 0.0)
     return (acq + float(cost["maint_expense"]) / 12.0
@@ -1827,7 +1827,7 @@ def commissions(t):
     :func:`prem_inst_pp`: under *Beitragsverrechnung* the intermediary is paid on the tariff
     premium, the surplus offset being a policyholder rebate rather than a price reduction.
     """
-    cost = data.cost_table().loc[cost_id()]                          # noqa: F821
+    cost = data.charge_table().loc[cost_id()]                        # noqa: F821
     init = (float(cost["comm_init_rate"]) * beitragssumme() * pols_if(t)
             if (t == t_start() and duration_init() == 0) else 0.0)
     renew = (float(cost["comm_renew_rate"]) * prem_charged_inst_pp(t) * pols_if(t)

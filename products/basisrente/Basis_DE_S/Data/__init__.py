@@ -140,17 +140,19 @@ def mort_table_index():
     return "age"
 
 
-def charge_table():
-    """The charge, expense and commission scale by tariff, from *charge_table.csv*.
+def charge_table_index():
+    """The index column of *charge_table.csv*: ``tariff_id``.
 
-    Indexed by ``tariff_id``.  The first four columns are deductions from the
-    policyholder's *Deckungskapital* and are therefore insurer **income**; the last five
-    are the insurer's own **outgo**.  Booking a charge as both is the fourth listed
-    modeling pitfall, and keeping the two groups in one file is what makes the split
-    visible.
+    The table is the charge, expense and commission scale by tariff.  The first four
+    columns are deductions from the policyholder's *Deckungskapital* and are therefore
+    insurer **income**; the last five are the insurer's own **outgo**.  Booking a charge as
+    both is the fourth listed modeling pitfall, and keeping the two groups in one file is
+    what makes the split visible.
+
+    Override reason: the charge scale is one row per tariff, keyed by ``tariff_id``,
+    products/basisrente/technical-notes.md:141
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / charge_file, index_col="tariff_id")            # noqa: F821
+    return "tariff_id"
 
 
 def behaviour_table():

@@ -127,8 +127,8 @@ def decl_rate_table():
         index_col=["scenario_id", "calendar_year"])
 
 
-def charge_table():
-    """The tariff charge set by ``(charge_id, item)``, from *charge_table.csv*.
+def charge_table_index():
+    """The index columns of *charge_table.csv*: ``charge_id`` and ``item``.
 
     Two charge sets: ``zillmer_25`` for contracts concluded from 1 January 2015 and
     ``zillmer_40`` for the earlier *Höchstzillmersatz*.  Eight items each — ``alpha_rate``,
@@ -142,9 +142,12 @@ def charge_table():
     **expense** is the insurer's own outgo and is a cash flow.  The two are different
     things and confusing them is a listed pitfall; the expense levels live in
     :func:`param_table`.
+
+    Override reason: the table is keyed per item, so each number carries its own
+    provenance, by ``charge_id`` and ``item``,
+    products/klassische_rentenversicherung/technical-notes.md:223
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / charge_file, index_col=["charge_id", "item"])   # noqa: F821
+    return ["charge_id", "item"]
 
 
 # ---------------------------------------------------------------------------

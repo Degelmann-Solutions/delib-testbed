@@ -123,20 +123,6 @@ def mort_table_index():
     return "age"
 
 
-def charge_table():
-    """The charge scales by ``charge_id``, read from *charge_table.csv*.
-
-    One row per tariff: the acquisition rate on the *Beitragssumme* and the months it is
-    spread over, the premium-based and fund-based administration rates, the monthly
-    *Stückkosten*, the *Zuzahlungskosten* rate and the *Stornoabzug* rate.  Four rows
-    ship — ``std_gross``, ``std_netto``, ``std_high``, ``std_low`` — and the difference
-    between the first two is the acquisition load, the parameter this library most needs
-    and cannot source.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / charge_file, index_col="charge_id")            # noqa: F821
-
-
 def fund_scenario_table():
     """The gross fund return and TER by scenario and policy year, from *fund_scenario_table.csv*.
 

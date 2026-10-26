@@ -96,3 +96,14 @@ def surplus_table():
     """The declared surplus path, read from ``surplus_file`` by ``surplus_table_index()``."""
     return pd.read_csv(                                              # noqa: F821
         input_dir() / surplus_file, index_col=surplus_table_index())  # noqa: F821
+
+
+def charge_table_index():
+    """The index column of the charge table: ``charge_id``."""
+    return "charge_id"
+
+
+def charge_table():
+    """The tariff charges, read from ``charge_file`` by ``charge_table_index()``."""
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / charge_file, index_col=charge_table_index())   # noqa: F821

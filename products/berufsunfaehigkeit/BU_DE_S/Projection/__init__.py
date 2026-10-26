@@ -82,7 +82,7 @@ g_B                        beitragsdyn_rate()              Beitragsdynamik p.a.
 (1 + g_B)^(y-1)            dyn_factor(t)                   Beitragsdynamik factor at t
 (1 + g_L)^((z-1)//12)      leistungsdyn_factor(z)          Leistungsdynamik factor at z
 theta                      beitragsverrechnung()           Zahlbeitrag / Bruttobeitrag
-rho                        risk_factor()                   Risikozuschlag on the premium
+rho                        rating_factor()                 Risikozuschlag on the premium
 phi                        freq_load()                     Ratenzahlungszuschlag
 M                          prem_mode_months()              Months between instalments
 kappa                      occ_factor()                    Occupational loading
@@ -135,10 +135,10 @@ liability_cf(t)            liability_cf(t)                 The same stream, outg
 
 Five names needed care.
 
-``occ_factor`` and ``risk_factor`` are **not two spellings of the same thing**.
+``occ_factor`` and ``rating_factor`` are **not two spellings of the same thing**.
 :func:`occ_factor` loads the *inception rate* and reaches the premium only through the
 equivalence, so it moves every claim and every decrement;
-:func:`risk_factor` loads the *Bruttobeitrag* alone and leaves the claims untouched. A
+:func:`rating_factor` loads the *Bruttobeitrag* alone and leaves the claims untouched. A
 *Risikozuschlag* prices an individually assessed impairment that the base table does not
 carry and this model does not carry either, so a loaded contract is priced above its own
 modelled cost. The direction is stated rather than corrected.
@@ -186,7 +186,7 @@ administration loadings are proportional to it, so
     P = (PV_rente + PV_wgh + PV_cost + PV_admin)
         / ( PV_prem x (1 - admin_prem_rate) - acq_rate x BS_unit )
 
-and :func:`prem_gross_level_pp` is ``risk_factor() x P``, or ``risk_factor() x
+and :func:`prem_gross_level_pp` is ``rating_factor() x P``, or ``rating_factor() x
 gross_prem_ann()`` where the model point overrides it. **The recursion is acyclic**: no
 decrement in this model depends on the premium, so nothing in the ``pv_*`` cells depends
 on ``P``. The equivalence is struck **before** the *Risikozuschlag* and **without lapse**,
@@ -483,17 +483,6 @@ def beitragsverrechnung():
     return float(model_point()["beitragsverrechnung"])
 
 
-def risk_factor():
-    """rho: the *Risikozuschlag* — a multiplier on the *Bruttobeitrag* **and nothing else**.
-
-    It prices an individually assessed impairment that the base inception table does not
-    carry, and which this model does not carry either, so the loaded contract is
-    projected above its own modelled cost.  Contrast :func:`occ_factor`, which loads the
-    inception rate and so moves every claim and every decrement.
-    """
-    return float(model_point()["risk_factor"])
-
-
 def au_klausel():
     """Whether the *AU-Klausel* is elected.
 
@@ -755,7 +744,7 @@ def inc_rate(t):
     """The **composed** annual inception rate at month t.
 
     ``inc_rate_base(t) x occ_factor() x accept_factor x au_uplift()`` — and those are the
-    **only three** multipliers on it.  ``risk_factor`` is deliberately not among them: it
+    **only three** multipliers on it.  ``rating_factor`` is deliberately not among them: it
     loads the *Bruttobeitrag* and leaves every claim untouched.  Publishing the
     composition explicitly is what makes a substituted table that is already net of
     declinature visible rather than silent.
@@ -1026,7 +1015,7 @@ def beitragssumme_unit():
 def prem_gross_level_pp():
     """P: the **level annual** *Bruttobeitrag* per policy, in euros.
 
-    ``risk_factor()`` times either the model point's ``gross_prem_ann`` override or, where
+    ``rating_factor()`` times either the model point's ``gross_prem_ann`` override or, where
     that is zero, the premium the equivalence produces::
 
         P = (pv_rente_first() + pv_wiedereingl_first() + pv_claim_cost_first()
@@ -1042,12 +1031,12 @@ def prem_gross_level_pp():
     actually charged is :func:`prem_zahl_pp`, ``beitragsverrechnung()`` times it.
     """
     if gross_prem_ann() > 0.0:
-        return risk_factor() * gross_prem_ann()
+        return rating_factor() * gross_prem_ann()
     numer = (pv_rente_first() + pv_wiedereingl_first()
              + pv_claim_cost_first() + pv_admin_first())
     denom = (pv_prem_unit_first() * (1.0 - admin_prem_rate)          # noqa: F821
              - acq_rate * beitragssumme_unit())                      # noqa: F821
-    return risk_factor() * numer / denom
+    return rating_factor() * numer / denom
 
 
 def prem_gross_ann_pp(t):

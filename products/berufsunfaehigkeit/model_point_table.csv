@@ -1,4 +1,4 @@
-point_id,status,issue_age,sex,berufsgruppe,bu_rente_mth,cover_end_age,benefit_end_age,karenz_months,leistungsdyn_rate,premium_form,beitragsdyn_rate,prem_mode,gross_prem_ann,beitragsverrechnung,risk_factor,au_klausel,au_uplift,wiedereingliederung_months,duration_mth_init,claim_duration_init,rechnungszins
+point_id,status,issue_age,sex,berufsgruppe,bu_rente_mth,cover_end_age,benefit_end_age,karenz_months,leistungsdyn_rate,premium_form,beitragsdyn_rate,prem_mode,gross_prem_ann,beitragsverrechnung,rating_factor,au_klausel,au_uplift,wiedereingliederung_months,duration_mth_init,claim_duration_init,rechnungszins
 1,aktiv,30,F,BG1,1500.0,67,67,0,0.02,level,0.0,monthly,0.0,0.7,1.0,False,1.0,6,0,0,0.01
 2,aktiv,30,M,BG1,1500.0,67,67,0,0.02,level,0.0,monthly,0.0,0.7,1.0,False,1.0,6,0,0,0.01
 3,aktiv,30,F,BG4,1500.0,67,67,0,0.02,level,0.0,monthly,0.0,0.7,1.0,False,1.0,6,0,0,0.01

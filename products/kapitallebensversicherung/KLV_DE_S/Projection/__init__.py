@@ -496,18 +496,6 @@ def scenario_id():
     return model_point()["scenario_id"]
 
 
-def rating_factor():
-    """f: the *Risikozuschlag* multiplier; 1.00 at standard rates.
-
-    It scales the **first-order mortality in the death leg** of :func:`pv_death_1st` and
-    :func:`pv_benefit_fut`, so it raises :func:`prem_gross_pp`.  It must not reach the
-    survivorship factors, the benefit or the best-estimate rate: :func:`benefit_death_pp` and
-    :func:`mort_rate` are both invariant to it.  No German scale is public; model point 14
-    carries 1.50 **[std]**.
-    """
-    return float(model_point()["rating_factor"])
-
-
 def av_sur_pp_init():
     """The *Überschussguthaben* per policy carried at ``t_start()``, in euros.
 

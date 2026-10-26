@@ -360,17 +360,6 @@ def premium_mth():
     return float(model_point()["premium_mth"])
 
 
-def rating_factor():
-    """The *Risikozuschlag* multiplier on the **gross** premium; 1.00 at standard rates.
-
-    A *Risikozuschlag* buys the same annuity at a higher price, so it scales the premium
-    and never the benefit, and :func:`claims` is invariant to it.  No German
-    *Risikozuschlag* scale for this product was established; model point 13 carries 1.50
-    as a **[std]** illustration.
-    """
-    return float(model_point()["rating_factor"])
-
-
 def wartezeit_months():
     """The *Wartezeit* from inception, in months; ``0`` in the base run.
 

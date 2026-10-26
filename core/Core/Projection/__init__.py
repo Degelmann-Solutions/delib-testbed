@@ -38,6 +38,11 @@ def sum_assured():
     return float(model_point()["sum_assured"])                       # noqa: F821
 
 
+def rating_factor():
+    """The *Risikozuschlag*, a multiplier from the model point; 1.00 at standard rates."""
+    return float(model_point()["rating_factor"])                     # noqa: F821
+
+
 def issue_age():
     """The age at issue of the selected model point, from its ``issue_age`` column."""
     return int(model_point()["issue_age"])                           # noqa: F821

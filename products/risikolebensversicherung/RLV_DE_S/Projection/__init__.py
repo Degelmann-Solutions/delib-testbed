@@ -493,23 +493,6 @@ def smoker2():
     return v
 
 
-def rating_factor():
-    """rf: the *Risikozuschlag*, a multiplier on the **mortality basis**; 1.00 standard.
-
-    A German impairment loading is normally expressed as a percentage of the risk premium
-    rather than as a benefit exclusion, life *Leistungsausschlüsse* being used sparingly.
-    So it multiplies **both** orders — :func:`mort_rate` and :func:`mort_rate_tariff` alike —
-    and an impaired life pays more *and* is expected to claim more.  The consequence worth
-    testing is the invariance: ``prem_paid_pp(0)/prem_gross_pp(0)`` barely moves when the
-    factor goes from 1.00 to 1.75, because the rebate scales with the loading it is struck
-    on.  The alternative reading, in which the loading is pure price and falls through to
-    surplus, is a listed pitfall rather than an alternative default.  **No German carrier
-    publishes a *Risikozuschlag* scale**, so the levels in the model point table are
-    **[std]**.
-    """
-    return float(model_point()["rating_factor"])
-
-
 def mort_table_id():
     """The key into *mort_table.csv*; one table ships, ``dav2008t_proxy``."""
     return model_point()["mort_table_id"]

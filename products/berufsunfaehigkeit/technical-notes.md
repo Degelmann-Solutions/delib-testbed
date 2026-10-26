@@ -112,7 +112,7 @@ German ones, and each now carries a document that was read.
 | `prem_mode` | enum {`monthly`,`quarterly`,`half_yearly`,`annual`} | Payment frequency; keys `freq_loading_table.csv` | 1 (monthly), 4 (annual), 5 (quarterly), 6 (half-yearly) |
 | `gross_prem_ann` | EUR p.a. | *Bruttobeitrag* override; **0 = derive by equivalence** | 13 (2 400,00) |
 | `beitragsverrechnung` | float | *Zahlbeitrag* / *Bruttobeitrag* | all at 0,70; 13 at 0,55 |
-| `risk_factor` | float | *Risikozuschlag* — a multiplier on the *Bruttobeitrag* **only** | 11 (1,50) |
+| `rating_factor` | float | *Risikozuschlag* — a multiplier on the *Bruttobeitrag* **only** | 11 (1,50) |
 | `au_klausel` | bool | *AU-Klausel* switch | 10 (true) |
 | `au_uplift` | float | Inception uplift when the clause is on. **Shipped at 1,00 everywhere** — no source quantifies it (gap 12) | 10, inertly |
 | `wiedereingliederung_months` | int | *Wiedereingliederungshilfe*, in monthly *Renten*; 0 = off | all at 6; 12 at 0 |
@@ -127,7 +127,7 @@ is that. There is no `policy_count` column.
 **The shipped model point table.** Thirteen points, `bu_rente_mth` in EUR per month, `LD` the
 *Leistungsdynamik* and `WE` the *Wiedereingliederungshilfe* in monthly *Renten*. Every column not
 shown takes its base value (`leistungsdyn_rate` 0,02, `premium_form` `level`, `beitragsdyn_rate`
-0,00, `gross_prem_ann` 0, `beitragsverrechnung` 0,70, `risk_factor` 1,00, `au_klausel` false,
+0,00, `gross_prem_ann` 0, `beitragsverrechnung` 0,70, `rating_factor` 1,00, `au_klausel` false,
 `au_uplift` 1,00, `WE` 6, `duration_mth_init` 0, `claim_duration_init` 0).
 
 | # | status | entry | sex | BG | *BU-Rente* | cover/benefit end | K | what it exercises |
@@ -142,7 +142,7 @@ shown takes its base value (`leistungsdyn_rate` 0,02, `premium_form` `level`, `b
 | 8 | aktiv | 50 | M | BG5 | 1 000 | 60 / 60 | 3 | **boundary** — short term, heaviest class, *Endalter* 60 |
 | 9 | aktiv | 45 | F | BG2 | 1 500 | 67 / **63** | 0 | **boundary** — *Leistungsendalter* below the *Versicherungsdauer* |
 | 10 | aktiv | 33 | M | BG1 | 1 500 | 67 / 67 | 0 | *AU-Klausel* **on** with `au_uplift` 1,00 — an invariance test |
-| 11 | aktiv | 38 | F | BG2 | 1 500 | 67 / 67 | 0 | *Risikozuschlag* `risk_factor` 1,50 |
+| 11 | aktiv | 38 | F | BG2 | 1 500 | 67 / 67 | 0 | *Risikozuschlag* `rating_factor` 1,50 |
 | 12 | aktiv | 30 | M | BG1 | 1 500 | 67 / 67 | 0 | **options off** — `leistungsdyn_rate` 0,00, `WE` 0 |
 | 13 | aktiv | 50 | F | BG1 | 2 500 | 67 / 67 | 12 | premium **override** 2 400,00 € p.a., `beitragsverrechnung` 0,55, longest *Karenzzeit* |
 
@@ -151,7 +151,7 @@ deliberately one-attribute neighbours of it, so that the unisex invariance and t
 loading can each be measured against the anchor rather than inferred.
 
 **Three columns a reader is most likely to get wrong.** `berufsgruppe` loads **the inception rate**,
-and so reaches the premium only through the equivalence, while `risk_factor` loads **the premium
+and so reaches the premium only through the equivalence, while `rating_factor` loads **the premium
 alone** and leaves every claim untouched — they are not two spellings of the same thing.
 `benefit_end_age` is a separate contractual term from `cover_end_age`, not a synonym.
 And `leistungsdyn_rate` escalates the *BU-Rente* **in payment on the anniversary of onset**, while
@@ -372,7 +372,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | `R(t)` | `bu_rente_pp(t)` — the **insured** monthly *BU-Rente*, `= R × (1 + g_B)^(y(t) − 1)` |
 | `R_p(t, z)` | `rente_pay_pp(t, z)` — the monthly *BU-Rente* **in payment** for cohort `z` |
 | `K` | `karenz_months`; `g_L` = `leistungsdyn_rate`; `g_B` = `beitragsdyn_rate` |
-| `θ` | `beitragsverrechnung`; `ρ` = `risk_factor`; `φ` = `freq_load`; `M` = `prem_mode_months` |
+| `θ` | `beitragsverrechnung`; `ρ` = `rating_factor`; `φ` = `freq_load`; `M` = `prem_mode_months` |
 | `κ` | `occ_factor` for the model point's `berufsgruppe`; `α` = `accept_factor` = 0,80; `υ` = `au_uplift` |
 | `P` | `prem_gross_level_pp()`, the **level annual** *Bruttobeitrag* |
 | `P_b(t)` | `prem_gross_pp(t)` — the *Bruttobeitrag* instalment due at `t`; `P_z(t)` the *Zahlbeitrag* instalment |
@@ -403,7 +403,7 @@ strictly below the annual one wherever the annual one is positive.
     w_m(t)      = 1 - (1 - w(y(t)))^(1/12)
 
 `κ`, `α` and `υ` are the **only** three multipliers on the inception rate, and their composition is
-the model's published definition of `inc_rate(t)`. `ρ` (`risk_factor`) is **not** among them: it
+the model's published definition of `inc_rate(t)`. `ρ` (`rating_factor`) is **not** among them: it
 loads the premium and nothing else.
 
 ### The premium — and the equivalence that fixes it
@@ -638,7 +638,7 @@ is a test.
     composition `inc_rate(t) = inc_rate_base(t) × occ_factor × accept_factor × au_uplift` exactly,
     so that a substitution which is already net is visible rather than silent.
 11. **Confusing the two rating multipliers.** `occ_factor` loads the **inception rate** and reaches
-    the premium only through the equivalence; `risk_factor` loads the **premium alone**. On model
+    the premium only through the equivalence; `rating_factor` loads the **premium alone**. On model
     point 11 (`ρ = 1,50`) assert every claim and every decrement is identical to the unloaded twin
     while `premiums` scales by exactly 1,50; on model point 3 (BG4 against the anchor's BG1) assert
     `inc_rate` scales by exactly 3,00 while the premium ratio is slightly **below** 3,00, because
@@ -718,7 +718,7 @@ for any of them, and the two that would matter most are the two no source suppli
 `cover_end_age = 67`, `benefit_end_age = 67`, `karenz_months = 0`, `leistungsdyn_rate = 0,02`,
 `premium_form = level`, `beitragsdyn_rate = 0,00`, `prem_mode = monthly` (`prem_mode_months = 1`,
 `freq_load = 1,05`), `gross_prem_ann = 0` so the *Bruttobeitrag* is **derived by equivalence**,
-`beitragsverrechnung = 0,70`, `risk_factor = 1,00`, `au_klausel = false`, `au_uplift = 1,00`,
+`beitragsverrechnung = 0,70`, `rating_factor = 1,00`, `au_klausel = false`, `au_uplift = 1,00`,
 `wiedereingliederung_months = 6`, `duration_mth_init = 0`, `claim_duration_init = 0`. Hence
 `pols_if_init() = 1,0`, `proj_len() = 12 × (67 − 30) = 444`, and the projection runs over
 attained ages 30 to 66 inclusive — 444 monthly rows, `t = 0 … 443`, of which the table below shows

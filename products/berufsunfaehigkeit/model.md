@@ -219,7 +219,7 @@ internally consistent, acyclic, and understating what the market would charge.
   equivalence. Model point 3 is the anchor at BG4: `inc_rate` scales by exactly 3,00 while
   the premium scales by **2,932141**, slightly *below* it, because the flat administration
   and assessment charges do not scale with the risk.
-- **`risk_factor`** (ρ) loads the ***Bruttobeitrag* alone**. Model point 11 carries 1,50: its
+- **`rating_factor`** (ρ) loads the ***Bruttobeitrag* alone**. Model point 11 carries 1,50: its
   premium and surplus credit scale by exactly 1,50 while every decrement, claim and claim
   expense is bit-for-bit what it would be at 1,00. A *Risikozuschlag* prices an individually
   assessed impairment the base table does not carry and this model does not carry either, so
@@ -339,7 +339,7 @@ arriving in another, or arrives in two. The first fixes the definition, the seco
 | *Beitragsdynamik* | `beitragsdyn_rate`, gated by `premium_form` | `0.00` on the `level` form | Escalates the insured *BU-Rente* and the annual *Bruttobeitrag* together on each policy anniversary; 3 % on model point 4 |
 | *Wiedereingliederungshilfe* | `wiedereingliederung_months` | `6`, and `0` on model point 12 | Monthly *Renten* paid on each **completed** run-off |
 | *Leistungsdynamik* | `leistungsdyn_rate` | `0.02`, and `0.00` on model point 12 | In-claim escalation on each onset anniversary |
-| *Risikozuschlag* | `risk_factor` | `1.00` | A multiplier on the *Bruttobeitrag* alone |
+| *Risikozuschlag* | `rating_factor` | `1.00` | A multiplier on the *Bruttobeitrag* alone |
 | Premium override | `gross_prem_ann` | `0.0` = derive by equivalence | Model point 13 supplies 2 400,00 € p.a. instead |
 
 Model point 12 is the anchor with both escalations off: its equivalence gives 865,95 € against
@@ -399,7 +399,7 @@ Five names needed care:
 
 | Notes | Cells | Why |
 |---|---|---|
-| `κ` vs `ρ` | `occ_factor` / `risk_factor` | One loads the inception rate and moves every claim; the other loads the *Bruttobeitrag* and moves nothing else |
+| `κ` vs `ρ` | `occ_factor` / `rating_factor` | One loads the inception rate and moves every claim; the other loads the *Bruttobeitrag* and moves nothing else |
 | `R(t)` vs `R_p(t, z)` | `bu_rente_pp` / `rente_pay_pp` | The **insured** *BU-Rente* on the policy clock against the amount **in payment** on the onset clock |
 | `L(t)` vs `L_p(t)` | `pols_if` / `pols_prem` | In force against premium-paying: the difference *is* the *Beitragsbefreiung* |
 | `i(x)` vs the composed rate | `inc_rate_base` / `inc_rate` | The table rate and the rate after κ, α and υ, published separately so a substituted table already net of declinature is visible |

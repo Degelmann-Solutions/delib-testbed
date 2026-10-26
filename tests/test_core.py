@@ -555,3 +555,11 @@ def test_net_level_premium_divides_benefit_pv_by_tariff_annuity(product, product
         item = projection[point_id]
         assert (item.prem_net_level_pp()
                 == item.tariff_benefit_pv() / item.tariff_annuity()), point_id
+
+
+@pytest.mark.parametrize("product", ["kapitallebensversicherung", "risikolebensversicherung"])
+def test_annual_discount_factor_is_the_rechnungszins_power(product, product_models):
+    projection = product_models(product).Projection
+    assert projection.disc_factor._is_derived()
+    item = projection[1]
+    assert item.disc_factor(3) == (1.0 + item.rechnungszins()) ** -3

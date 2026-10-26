@@ -291,7 +291,7 @@ VVG at all [REG-R27].
 
 Three quantities, deliberately not two indexings of one:
 
-- **`mort_rate_at_age(x)`** is the first-order **tariff** rate: it prices and it reserves,
+- **`mort_rate_tariff_at_age(x)`** is the first-order **tariff** rate: it prices and it reserves,
   and it is a fixed unisex blend, `½ q₁(M, x) + ½ q₁(F, x)` **[std]**, because German new
   business has been unisex since 21 December 2012 [REG-R34]. Points 1 and 7 differ only in
   `sex` and price identically at 2 004,0420 €; pricing off the policy's own row moved that
@@ -480,7 +480,7 @@ symbols; the full mapping lives in the `Projection` Space docstring. Six cases n
 
 | Notes | Cells | Why |
 |---|---|---|
-| `q₁(x)`, `q(t)` | `mort_rate_at_age` / `mort_rate_base` / `mort_rate` | Three quantities: the unisex **tariff** rate that prices and reserves, the policy's own sex-specific table row, and the best estimate that projects. `mort_rate_table` and `mort_ae_factor` are both retired names |
+| `q₁(x)`, `q(t)` | `mort_rate_tariff_at_age` / `mort_rate_base` / `mort_rate` | Three quantities: the unisex **tariff** rate that prices and reserves, the policy's own sex-specific table row, and the best estimate that projects. `mort_rate_table` and `mort_ae_factor` are both retired names |
 | `V(t)` | `res_pp` / `res_net_pp` / `res_zill_pp` / `res_min_pp` / `res_guar_pp` | One symbol, five amounts. `res_pp` is what the contract holds; the middle three are constructions; `res_guar_pp` is the § 169 value at the **end** of the year |
 | `B`, `P^n`, `P^Z` | `prem_gross_pp` / `prem_net_level_pp` / `prem_zill_pp` | The *Bruttobeitrag* and two **pricing quantities that never become cash flows**. `premium_net_pp` is a retired name; `prem_net_level_pp` is the one that won |
 | (charged / paid) | `prem_charged_pp(k)` / `prem_paid_pp(k)` | The **year's** *Zahlbeitrag* before and after the *Beitragsverrechnung* offset, with `prem_charged_inst_pp(t)` and `prem_inst_pp(t)` the instalments the *Zahlweise* makes due. The renewal commission reads the charged instalment |

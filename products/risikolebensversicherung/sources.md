@@ -476,7 +476,7 @@ documents:
 - **REG-R36** — the BGH line of authority on German life contracts: the cross-product companion to [R23], cited for the same reason and with no holding asserted about term assurance.
 - **REG-R45** — EStG § 20 Abs. 1 Nr. 6, the *Unterschiedsbetrag*, the 12/62 rule and the *Mindesttodesfallschutz*: the cross-product entry behind [R14], cited for the section's **non-application** to a pure death benefit.
 - **REG-R46** — ErbStG and the SGB V contribution rules: the cross-product entry behind [R15], and the tax fact the *Über-Kreuz-Versicherung* exists to change.
-- **REG-R47** — *Rechnungsgrundlagen erster und zweiter Ordnung*, and the DAV as owner of the tables: the framework `mort_rate_tar` and `mort_rate` implement, and the reason the model publishes both orders.
+- **REG-R47** — *Rechnungsgrundlagen erster und zweiter Ordnung*, and the DAV as owner of the tables: the framework `mort_rate_tariff` and `mort_rate` implement, and the reason the model publishes both orders.
 - **REG-R48** — DAV 2008 T and its predecessors: the cross-product entry behind [R12] — **the** table for this product, cited by name and never shipped.
 - **REG-R49** — DAV 2004 R and DAV 2004 R-Bestand: cited once, to say the annuity family is **not** the basis for a death-benefit contract.
 - **REG-R52** — Destatis *Sterbetafeln* and the reuse licence: cited to say a population table is the **wrong starting point** for a replacement decrement basis — without a selection adjustment it overstates claims by a wide margin at the issue ages this product is sold at.

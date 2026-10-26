@@ -297,7 +297,7 @@ mort_rate_1st(F, x) = 0.00016 + B · 1.10^(x − 3)     a three-year setback on 
 example reproduce; the `Data` docstring states it.
 
 **The table is read twice, for two different purposes, and they must not be confused.** The
-*tariff* rate `mort_rate_at_age(x)` — what prices and what reserves — is a **fixed unisex blend**
+*tariff* rate `mort_rate_tariff_at_age(x)` — what prices and what reserves — is a **fixed unisex blend**
 of the two rows, `½ · q₁(M, x) + ½ · q₁(F, x)` **[std]**, because German new business has been
 unisex since 21 December 2012 [REG-R34] and a tariff that priced on `sex` would be unlawful; the
 blend itself is a portfolio mix no insurer publishes. The *decrement* is the policy's own
@@ -406,7 +406,7 @@ optional modules are under *Policyholder behaviour modelling*.
 | `x(k)` | `age_y(k)`, `age(t)` | attained age at the start of policy year `k` = `issue_age + k`; `age(t) = age_y(duration(t))` |
 | `SE`, `SD` | `sum_assured`, `sum_death` | guaranteed survival sum; guaranteed death sum `= SE × death_ratio` |
 | `i₁`, `v₁` | `rechnungszins` | first-order interest rate; `v₁ = 1/(1 + i₁)` |
-| `q₁(x)` | `mort_rate_at_age(x)` | first-order **tariff** mortality at attained age `x`: the unisex blend, which prices and reserves |
+| `q₁(x)` | `mort_rate_tariff_at_age(x)` | first-order **tariff** mortality at attained age `x`: the unisex blend, which prices and reserves |
 | `q(t)` | `mort_rate(t)` | best-estimate **annual** mortality of month `t`'s policy year, `= mort_rate_base(t) × mort_be_factor` |
 | `qᵐ(t)` | `mort_rate_mth(t)` | the monthly rate applied, `= 1 − (1 − q(t))^(1/12)` **[std]** |
 | (table) | `mort_rate_base(t)` | this policy's own **sex-specific** first-order annual rate |
@@ -707,7 +707,7 @@ year and is what the frame publishes.
 3. **Apply the *Beitragsverrechnung* offset**, where elected: last year's declared surplus reduces this
    year's *Zahlbeitrag*, floored at zero. That fixes the year's annual `prem_paid_pp(k)`.
 4. **Roll the guaranteed *Deckungskapital* forward** one year on the first-order basis — interest at
-   `rechnungszins`, mortality release at the unisex tariff rate `mort_rate_at_age(x(k))` — to
+   `rechnungszins`, mortality release at the unisex tariff rate `mort_rate_tariff_at_age(x(k))` — to
    `res_pp_at(k, "AFT_INT")`, the closing guaranteed reserve. This is the **allocation-date**
    *Deckungskapital*.
 5. **Declare and credit the surplus at the anniversary**: `z(k) = max(0, d(k) − i₁)`, base
@@ -841,7 +841,7 @@ a test in `tests/test_kapitallebensversicherung_de.py`.
     a death benefit wants mortality assumed **higher** than expected, a survival benefit **lower**
     [REG-R47] [REG-R48]. The model uses one first-order table for both and says so; assert that the
     single table is in fact used for both legs, so the compromise stays visible.
-14. **Crossing the first- and second-order bases.** `mort_rate_at_age` prices and reserves, on the
+14. **Crossing the first- and second-order bases.** `mort_rate_tariff_at_age` prices and reserves, on the
     unisex blend; `mort_rate_base` is this policy's own sex-specific table rate and `mort_rate`
     projects. Assert `mort_rate(t) == mort_rate_base(t) · mort_be_factor` with
     `mort_be_factor = 0.75`, that `res_pp` is invariant to `mort_be_factor`, and that `pols_death`
@@ -860,7 +860,7 @@ a test in `tests/test_kapitallebensversicherung_de.py`.
 17. **Letting `sex` into the premium.** Unisex since 21 December 2012 [REG-R34]. Assert that
     `prem_gross_pp` is identical for two otherwise-identical model points differing only in `sex`
     (points 1 and 7 both price at 2 004,0420 €), while `mort_rate` differs. This is why the pricing
-    reads `mort_rate_at_age`, the fixed unisex portfolio blend — itself **[std]** — and not
+    reads `mort_rate_tariff_at_age`, the fixed unisex portfolio blend — itself **[std]** — and not
     `mort_rate_base`, which is the policy's own row; reading one where the other belongs is silent,
     and it moved the anchor's premium by 9,15 € when it was first written that way.
 18. **Running past the *Ablauf*, or letting a final-year surrender collide with the maturity.**
@@ -932,7 +932,7 @@ rate table is public, for any carrier** (gap 16).
 Mortality `mort_rate_1st(M, x) = 0.00022 + B · 1.10^x`, `B` fixed by the anchor
 `mort_rate_1st(M, 37) = 0.001200` exactly **[std]**, standing in for **DAV 2008 T**, which is not
 public and is not shipped [R14] [REG-R47] [REG-R48]; the tariff prices and reserves on the **unisex
-blend** `mort_rate_at_age(37) = ½ · 0.001200 + ½ · 0.000896288505 = 0.001048144253` **[std]**
+blend** `mort_rate_tariff_at_age(37) = ½ · 0.001200 + ½ · 0.000896288505 = 0.001048144253` **[std]**
 [REG-R34], and the anchor cell's own decrement is `mort_rate(0) = 0.001200 × 0.75 = 0.000900`. *Zillmersatz* `alpha_rate = 25 ‰` of the
 *Beitragssumme* — the § 4 DeckRV ceiling [R7] [REG-R16], the level **[std]**. Premium loading
 `beta_rate = 3.0%` of the *Bruttobeitrag* over the *Beitragszahlungsdauer* — the form is the one the
@@ -1248,7 +1248,7 @@ corrected, rather than the table being fitted to the prose.
 
 1. **`q₁` named two different quantities and the notation table conflated them.** The tariff must be
    unisex, so what *prices and reserves* is a fixed portfolio blend of the two table rows —
-   `mort_rate_at_age(x)`, ½ / ½ **[std]** — while the *decrement* is the policy's own sex-specific
+   `mort_rate_tariff_at_age(x)`, ½ / ½ **[std]** — while the *decrement* is the policy's own sex-specific
    rate `mort_rate_base(t)`, scaled by `mort_be_factor`. Pricing off the policy's own row made
    `prem_gross_pp` differ between model points 1 and 7, which is pitfall 17 exactly.
 2. **`check_res_roll_fwd()`'s identity carries the *Risikozuschlag*.** Because `rating_factor` loads

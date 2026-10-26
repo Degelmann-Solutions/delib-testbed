@@ -105,7 +105,7 @@ Q(t) tilde                 mort_rate_base(t)               Own-sex rate, first d
 (unisex blend)             mort_rate_blend(t)              50/50 blend, first death
 q2(t)                      mort_rate(t)                    Second-order annual rate
 q2m(t)                     mort_rate_mth(t)                The same, applied in month t
-q1(t)                      mort_rate_tar(t)                First-order tariff rate
+q1(t)                      mort_rate_tariff(t)             First-order tariff rate
 rf                         rating_factor()                 Risikozuschlag multiplier
 w(t)                       lapse_rate(t)                   Annual lapse rate of the year
 wm(t)                      lapse_rate_mth(t)               The same, applied in month t
@@ -171,7 +171,7 @@ actuarial net premium, because ``Gn`` is struck on the loaded first-order rate a
 that loading is handed straight back as *Beitragsverrechnung*. A test asserting
 ``Gn < P`` is asserting the absence of the product's central mechanic.
 
-**``q1`` prices and ``q2`` projects.** :func:`mort_rate_tar` is the first-order tariff
+**``q1`` prices and ``q2`` projects.** :func:`mort_rate_tariff` is the first-order tariff
 rate — the unisex 50/50 blend, loaded by ``(1 + sicherheitszuschlag_m)`` and by the
 *Risikozuschlag* — and it enters the premium and the reserve and **nothing else**.
 :func:`mort_rate` is the second-order rate on the policy's own sex and smoker status and
@@ -533,7 +533,7 @@ def rating_factor():
 
     A German impairment loading is normally expressed as a percentage of the risk premium
     rather than as a benefit exclusion, life *Leistungsausschlüsse* being used sparingly.
-    So it multiplies **both** orders — :func:`mort_rate` and :func:`mort_rate_tar` alike —
+    So it multiplies **both** orders — :func:`mort_rate` and :func:`mort_rate_tariff` alike —
     and an impaired life pays more *and* is expected to claim more.  The consequence worth
     testing is the invariance: ``prem_paid_pp(0)/prem_gross_pp(0)`` barely moves when the
     factor goes from 1.00 to 1.75, because the rebate scales with the loading it is struck
@@ -696,7 +696,7 @@ def mort_rate_mth(t):
     return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
 
 
-def mort_rate_tar(t):
+def mort_rate_tariff(t):
     """q1(t): the **first-order** tariff rate, ``(1 + m) x rf x`` the unisex blend.
 
     It prices the *Bruttobeitrag* and the first-order *Deckungskapital* and enters nothing
@@ -707,10 +707,14 @@ def mort_rate_tar(t):
     is returned as *Beitragsverrechnung*, the parameter with the widest uncertainty has
     the narrowest effect on the billed premium.
 
-    ``mort_rate_tar(t) / mort_rate(t)`` is **not** ``1 + m``.  It is
+    ``mort_rate_tariff(t) / mort_rate(t)`` is **not** ``1 + m``.  It is
     ``(1 + m) x (blend / own-sex rate)``, which on the shipped proxy is 1.6875 for a male
     and 3.375 for a female.  That is the unisex cross-subsidy, and expecting 2.25 for both is a
     listed pitfall.
+
+    Override reason: the tariff rate is the unisex blend loaded by ``1 + m`` and the rating
+    factor, combined over two lives by the first-death rule, not one table read at the
+    attained age, products/risikolebensversicherung/technical-notes.md:230
     """
     return (1.0 + sicherheitszuschlag_m) * rating_factor() * mort_rate_blend(t)  # noqa: F821
 
@@ -985,7 +989,7 @@ def pols_tariff(y):
     """
     if y <= 0:
         return 1.0
-    return pols_tariff(y - 1) * (1.0 - mort_rate_tar(12 * (y - 1)))
+    return pols_tariff(y - 1) * (1.0 - mort_rate_tariff(12 * (y - 1)))
 
 
 def tariff_annuity():
@@ -1015,7 +1019,7 @@ def tariff_claims_pv():
     states in its own *Versicherungsschein*.
     """
     return sum(disc_factor(y + 1) * pols_tariff(y)
-               * mort_rate_tar(12 * y) * benefit_pp(12 * y)
+               * mort_rate_tariff(12 * y) * benefit_pp(12 * y)
                for y in range(proj_len_y()))
 
 
@@ -1298,7 +1302,7 @@ def res_pp_at(y, timing):
     p_y = pols_tariff(y)
     claims_pv = sum(
         disc_factor(u - y + 1) * (pols_tariff(u) / p_y)
-        * mort_rate_tar(12 * u) * benefit_pp(12 * u)
+        * mort_rate_tariff(12 * u) * benefit_pp(12 * u)
         for u in range(y, proj_len_y()))
     prem_pv = prem_net_level_pp() * sum(
         disc_factor(u - y) * (pols_tariff(u) / p_y)
@@ -1796,7 +1800,7 @@ def check_res_roll_fwd_resid(y):
     tariff was struck at issue.
     """
     lhs = (res_pp_at(y, "AFT_PREM")) * (1.0 + rechnungszins())       # noqa: F821
-    q1 = mort_rate_tar(12 * y)
+    q1 = mort_rate_tariff(12 * y)
     rhs = (q1 * benefit_pp(12 * y)
            + (1.0 - q1) * res_pp_at(y + 1, "BEF_PREM"))
     return lhs - rhs
@@ -1935,7 +1939,7 @@ def result_pols():
             "pols_maturity": [pols_maturity(t) for t in ts],
             "mort_rate": [mort_rate(t) for t in ts],
             "mort_rate_mth": [mort_rate_mth(t) for t in ts],
-            "mort_rate_tar": [mort_rate_tar(t) for t in ts],
+            "mort_rate_tar": [mort_rate_tariff(t) for t in ts],
             "lapse_rate": [lapse_rate(t) for t in ts],
             "lapse_rate_mth": [lapse_rate_mth(t) for t in ts],
             "benefit_pp": [benefit_pp(t) for t in ts],

@@ -115,7 +115,7 @@ SD                  sum_death()                            Guaranteed Todesfalll
 i1                  rechnungszins()                        First-order interest rate
 v1^k                disc_factor(k)                         First-order discount factor
 kpx                 tpx_1st(k)                             First-order survival from issue
-q1(x)               mort_rate_at_age(x)                    First-order tariff rate at age
+q1(x)               mort_rate_tariff_at_age(x)             First-order tariff rate at age
                                                            x - the unisex blend, which
                                                            prices and reserves
 (table)             mort_rate_base(t)                      Sex-specific annual table rate
@@ -289,7 +289,7 @@ band: it steps on the anniversary, not monthly.
 
 .. rubric:: The two mortality bases must not be crossed
 
-:func:`mort_rate_at_age` is the first-order **tariff** rate: it prices and it reserves, and
+:func:`mort_rate_tariff_at_age` is the first-order **tariff** rate: it prices and it reserves, and
 it is a fixed unisex blend of the two table rows, because German new business has been unisex
 since 21 December 2012. :func:`mort_rate_base` is this policy's own **sex-specific** table
 rate, and :func:`mort_rate` is ``mort_rate_base(t) * mort_be_factor`` with
@@ -590,7 +590,7 @@ def policy_year_y(k):
 
 # --- the bases -------------------------------------------------------------
 
-def mort_rate_at_age(x):
+def mort_rate_tariff_at_age(x):
     """q1(x): the **first-order tariff** death rate at attained age x - the unisex blend.
 
     ``unisex_share`` of the male table row plus the rest of the female one, at 0.5 / 0.5
@@ -628,7 +628,7 @@ def mort_rate_base(t):
     on the anniversary.
 
     It is **not** the rate the contract is priced or reserved on - that is
-    :func:`mort_rate_at_age`, the unisex blend - and the two are deliberately different
+    :func:`mort_rate_tariff_at_age`, the unisex blend - and the two are deliberately different
     quantities.  A German tariff may not price on sex; a best-estimate projection of a
     particular life must.  ``sex`` therefore reaches the **decrement** and nothing else, and
     ``prem_gross_pp()`` is identical for two model points differing only in it.
@@ -678,7 +678,7 @@ def tpx_1st(k):
     """
     if k <= 0:
         return 1.0
-    return tpx_1st(k - 1) * (1.0 - mort_rate_at_age(issue_age() + k - 1))
+    return tpx_1st(k - 1) * (1.0 - mort_rate_tariff_at_age(issue_age() + k - 1))
 
 
 def hrz_max():
@@ -790,7 +790,7 @@ def pv_death_1st():
     x0 = issue_age()
     return sum_death() * sum(
         disc_factor(k + 1) * tpx_1st(k) * rating_factor()
-        * mort_rate_at_age(x0 + k) for k in range(n))
+        * mort_rate_tariff_at_age(x0 + k) for k in range(n))
 
 
 def pv_maturity_1st():
@@ -918,7 +918,7 @@ def pv_benefit_fut(k):
     death = 0.0
     p = 1.0
     for j in range(rem):
-        q = mort_rate_at_age(x + j)
+        q = mort_rate_tariff_at_age(x + j)
         death += disc_factor(j + 1) * p * rating_factor() * q
         p *= (1.0 - q)
     return sum_death() * death + sum_assured() * disc_factor(rem) * p
@@ -940,7 +940,7 @@ def ann_due_prem_fut(k):
     p = 1.0
     for j in range(rem):
         s += disc_factor(j) * p
-        p *= (1.0 - mort_rate_at_age(x + j))
+        p *= (1.0 - mort_rate_tariff_at_age(x + j))
     return s
 
 
@@ -1068,7 +1068,7 @@ def res_pp_at(k, timing):
                 if (k < prem_term() and not is_paid_up(k)) else 0.0)
         return res_pp(k) + prem + bfz_uplift_pp(k)
     if timing == "AFT_INT":
-        q = mort_rate_at_age(age_y(k))
+        q = mort_rate_tariff_at_age(age_y(k))
         si = bfz_si_pp() if is_paid_up(k) else sum_assured()
         return ((res_pp_at(k, "AFT_PREM") * (1.0 + rechnungszins())
                  - rating_factor() * q * si * death_ratio()) / (1.0 - q))
@@ -1129,7 +1129,7 @@ def bfz_uplift_pp(k):
     if bfz_year() <= 0 or k != bfz_year() - 1 or not is_paid_up(k + 1):
         return 0.0
     return ((res_guar_pp(k) - res_zill_pp(k + 1))
-            * (1.0 - mort_rate_at_age(age_y(k))) / (1.0 + rechnungszins()))
+            * (1.0 - mort_rate_tariff_at_age(age_y(k))) / (1.0 + rechnungszins()))
 
 
 def res_guar_pp(k):

@@ -153,7 +153,7 @@ def mort_table():
     Gompertz proxy standing in for DAV 2008 T, which is proprietary and is cited by name
     rather than shipped; see the Space docstring for the three anchors a replacement must
     preserve.  The table is *second order* — a best estimate for medically selected lives.
-    The first-order tariff rate is built from it in ``Projection.mort_rate_tar`` by taking
+    The first-order tariff rate is built from it in ``Projection.mort_rate_tariff`` by taking
     the unisex blend and applying the *Sicherheitszuschlag*, so there is exactly one
     unsourced mortality level in the model rather than two stacked on each other.
 

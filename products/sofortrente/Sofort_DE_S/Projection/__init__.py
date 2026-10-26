@@ -590,6 +590,9 @@ def mort_rate_tariff(t, life=1):
     the model point's own sex, because a German tariff written since 21 December 2012 may
     not differentiate.  Letting ``sex()`` in here reproduces an unlawful tariff and is a
     listed pitfall.
+
+    Override reason: the tariff rate is generational and unisex, read at each life's birth
+    cohort with the argument ``life`` for the second life, products/sofortrente/model.md:223
     """
     if life == 2 and surv_pct() == 0.0:
         return 0.0

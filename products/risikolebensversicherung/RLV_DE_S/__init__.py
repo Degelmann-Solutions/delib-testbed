@@ -32,7 +32,7 @@ rather than assumed, because that is what it is in the real contract.
 **The tariff is unisex and the projection is not.** Sex may not enter a German premium
 for contracts concluded from 21 December 2012, while the DAV 2008 T tables the tariff is
 built on remain sex-distinct, so every German term tariff is a blend at a mixing ratio
-the carrier chooses. ``mort_rate_tar`` prices on a 50/50 blend and ``mort_rate``
+the carrier chooses. ``mort_rate_tariff`` prices on a 50/50 blend and ``mort_rate``
 projects on the policy's own sex, so the cross-subsidy appears in the cash flows instead
 of in the price: model points 1 and 2 differ only in ``sex``, pay the same premium to the
 last cent, and have claim totals differing by a factor near two.

@@ -227,7 +227,7 @@ anchor cell.**
 | `benefit_paid_pp(t)` | The benefit actually payable on a death in month `t`, after the § 161 switch | anniversary |
 | `mort_rate(t)` | **Second-order annual** death rate of the policy year: own sex, smoker, rated, first-death where `lives = 2` | lookup |
 | `mort_rate_mth(t)` | The monthly rate applied, `1 − (1 − mort_rate(t))^(1/12)` **[std]** | monthly |
-| `mort_rate_tar(t)` | **First-order annual** tariff rate: unisex 50/50 blend, `× (1 + m) × rating_factor` | lookup |
+| `mort_rate_tariff(t)` | **First-order annual** tariff rate: unisex 50/50 blend, `× (1 + m) × rating_factor` | lookup |
 | `lapse_rate(t)` | **Annual** lapse rate of the policy year; **0** through the whole final policy year | lookup |
 | `lapse_rate_mth(t)` | The monthly rate applied after the death decrement, `1 − (1 − lapse_rate(t))^(1/12)` **[std]** | monthly |
 | `suicide_factor(t)` | § 161 benefit switch, `< 1` inside three years of issue and of each increment | anniversary |
@@ -336,7 +336,7 @@ selection adjustment overstates claims by a wide margin at issue ages 25–45 [R
 
 **The two-order split.** The first-order (tariff) rate is
 
-    mort_rate_tar(t) = (1 + m) × [ ω·q_tab(M, smoker, x(t)) + (1 − ω)·q_tab(F, smoker, x(t)) ]
+    mort_rate_tariff(t) = (1 + m) × [ ω·q_tab(M, smoker, x(t)) + (1 − ω)·q_tab(F, smoker, x(t)) ]
                        × rating_factor
 
 with the *Sicherheitszuschlag* `m = 1.25` **[std]** and the unisex mix `ω = sex_mix_male = 0.50`
@@ -447,7 +447,7 @@ rather than buried.
 | `rf` | `rating_factor` |
 | `q₂(t)` | `mort_rate(t)`, the projected second-order **annual** rate of month `t`'s policy year |
 | `q₂ᵐ(t)` | `mort_rate_mth(t) = 1 − (1 − q₂(t))^(1/12)` **[std]**, the rate actually applied |
-| `q₁(t)` | `mort_rate_tar(t)`, the first-order **annual** tariff rate |
+| `q₁(t)` | `mort_rate_tariff(t)`, the first-order **annual** tariff rate |
 | `w(t)` | `lapse_rate(t)`, read at `policy_year(t)`; `w ≡ 0` through the whole final policy year **[std]** |
 | `wᵐ(t)` | `lapse_rate_mth(t) = 1 − (1 − w(t))^(1/12)` **[std]**, the rate actually applied |
 | `σ(t)` | `suicide_factor(t)`, the § 161 benefit switch |
@@ -805,7 +805,7 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
    `claims_death` totals differ by a factor near two.
 7. **Applying the *Sicherheitszuschlag* to the projection.** `q₁` prices, `q₂` projects. Assert that
    `claims_death` is invariant to `sicherheitszuschlag_m` while `prem_gross` is not, and that
-   `mort_rate_tar(t) / mort_rate(t)` equals `2.25 × (unisex blend / own-sex rate)` — 1.6875 for a
+   `mort_rate_tariff(t) / mort_rate(t)` equals `2.25 × (unisex blend / own-sex rate)` — 1.6875 for a
    male, 3.375 for a female on the shipped proxy, the blend being `0.75 × q̃(M)` — rather than 2.25
    for both.
 8. **Applying the § 161 switch beyond three years, or to the wrong things.** Assert
@@ -1246,7 +1246,7 @@ existed, and in each case the model was right. Nothing in the model was changed 
 1. **Pitfall 1's ordering was inverted.** It asked for `prem_net_level_pp() < prem_paid_pp(0)/φ`; the
    model gives 1 084,80 € against 733,01 €, the other way round, because `Gn` is struck on the
    **loaded** first-order rate and 90 % of that loading comes back as *Beitragsverrechnung*.
-2. **`mort_rate_tar / mort_rate` is 1,6875 for a male and 3,375 for a female**, not 1,5 and 3,0: the
+2. **`mort_rate_tariff / mort_rate` is 1,6875 for a male and 3,375 for a female**, not 1,5 and 3,0: the
    unisex blend of a proxy whose female rate is half the male one is `0,75 × q̃(M)`. Corrected in
    *The two-order split* and in pitfall 7.
 3. **`result_cf()` publishes eleven columns**, `liability_cf` added: the conventions suite reads

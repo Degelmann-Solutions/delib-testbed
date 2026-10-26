@@ -312,6 +312,10 @@ CORE_CELLS = {
                             "pflegerentenversicherung": "derived"},
         "disc_factor": {"kapitallebensversicherung": "derived",
                         "risikolebensversicherung": "derived"},
+        "mort_rate_tariff": {"fondsgebundene_rentenversicherung": "derived",
+                             "kapitallebensversicherung": "derived",
+                             "risikolebensversicherung": "override",
+                             "sofortrente": "override"},
     },
 }
 

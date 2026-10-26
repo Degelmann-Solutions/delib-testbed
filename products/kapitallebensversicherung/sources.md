@@ -497,7 +497,7 @@ kapitalbildende Lebensversicherung documents:
 - **REG-R31** — VVG §§ 6, 7, 1a, 7b, 7c and 214 with the VVG-InfoV: advice, information and the *Effektivkosten* at [R9].
 - **REG-R32** — PRIIPs, Verordnung (EU) Nr. 1286/2014 and its technical standards: the BIB regime at [R19] and [R27].
 - **REG-R33** — IDD, Richtlinie (EU) 2016/97 and § 34d GewO: the distribution frame behind the IPID at [S6].
-- **REG-R34** — Unisex: EuGH C-236/09 (Test-Achats) and §§ 19, 20 and 33 AGG. **The hard constraint behind `mort_rate_at_age`** — new business unisex from 21 December 2012, so `sex` may not enter the premium (pitfall 17).
+- **REG-R34** — Unisex: EuGH C-236/09 (Test-Achats) and §§ 19, 20 and 33 AGG. **The hard constraint behind `mort_rate_tariff_at_age`** — new business unisex from 21 December 2012, so `sex` may not enter the premium (pitfall 17).
 - **REG-R35** — BaFin Merkblatt 01/2023 and *angemessener Kundennutzen*: the cross-product statement of [R17].
 - **REG-R36** — the BGH line of authority on German life contracts: the cross-product frame for [R22], [R23] and [R24].
 - **REG-R38** — AltEinkG and the *Drei-Schichten-Modell*: where a *kapitalbildende Lebensversicherung* sits (Schicht 3), and the 2005 boundary at [R13].

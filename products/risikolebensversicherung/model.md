@@ -146,11 +146,11 @@ Sex may not enter a German premium for contracts concluded from 21 December 2012
 carrier chooses from its own expected new-business mix — proprietary, unpublished, and one
 of the largest single sources of unexplained rate spread between German carriers.
 
-`mort_rate_tar` prices on a 50/50 blend **[std]** and `mort_rate` projects on the policy's
+`mort_rate_tariff` prices on a 50/50 blend **[std]** and `mort_rate` projects on the policy's
 own sex, so the cross-subsidy appears in the cash flows instead of in the price. Model
 points 1 and 2 differ **only** in `sex`: they pay the same premium to the last bit,
 `beitragsverrechnung_rate()` is identical, and their `claims_death` totals stand at
-9 899,20 € against 5 009,05 €. The ratio `mort_rate_tar / mort_rate` is **not** `1 + m`:
+9 899,20 € against 5 009,05 €. The ratio `mort_rate_tariff / mort_rate` is **not** `1 + m`:
 it is `2.25 × (unisex blend / own-sex rate)`, which on the shipped proxy is **1.6875 for a
 male and 3.375 for a female**, the blend being `0.75 × q̃(M)`. **What the model does not
 do** is price on `sex`, or carry a carrier-specific mixing ratio, none being public;
@@ -442,7 +442,7 @@ the `Projection` Space docstring. Four cases needed care:
 | Notes | Cells | Why |
 |---|---|---|
 | `Gn`, `P(t)` | `prem_net_level_pp` / `prem_paid_pp` | The three "netto"s. `prem_net_level_pp` is the **actuarial** *Nettoprämie* `A/ä`, a pricing quantity that never becomes a cash flow; `prem_paid_pp` is the **consumer** *Zahlbeitrag*. The *Nettotarif* is a third, unrelated sense and is not modelled. The bare word *Nettobeitrag* is never a name here, and `prem_net_pp` is on the library's retired-names register |
-| `q₁(t)`, `q₂(t)` | `mort_rate_tar` / `mort_rate` | `q₁` **prices** and enters the premium and the reserve and nothing else; `q₂` **projects** and drives every decrement and claim. Their ratio is `2.25 × (blend / own-sex rate)`, not `1 + m` |
+| `q₁(t)`, `q₂(t)` | `mort_rate_tariff` / `mort_rate` | `q₁` **prices** and enters the premium and the reserve and nothing else; `q₂` **projects** and drives every decrement and claim. Their ratio is `2.25 × (blend / own-sex rate)`, not `1 + m` |
 | `B(t)` | `benefit_pp` / `benefit_paid_pp` | `benefit_pp` is the contractual *Versicherungssumme*; what a death claim actually pays differs inside a § 161 window, tranche by tranche, and `suicide_factor` is the ratio of the two |
 | `w(t)` vs `w_cum(t)` | `lapse_rate` / `lapse_cum` | `lapse_cum` is a proportion of the original cohort, not a running total of `lapse_rate`, and the loading it feeds moves *claims* |
 

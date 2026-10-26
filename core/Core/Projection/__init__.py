@@ -165,3 +165,12 @@ def disc_factor_mth(t):
 def disc_factor(y):
     """v^y: the *Rechnungszins* discount factor to the start of policy year y, ``(1 + i)^(-y)``."""
     return (1.0 + rechnungszins()) ** -y                             # noqa: F821
+
+
+def mort_rate_tariff(t):
+    """The first-order (tariff) annual death rate in month t, at ``age(t)``.
+
+    Reads the product's ``mort_rate_tariff_at_age``, its first-order rate at an attained
+    age; a product without one inherits this cell unused.
+    """
+    return mort_rate_tariff_at_age(age(t))                           # noqa: F821

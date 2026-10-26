@@ -109,6 +109,7 @@ d(t)                       duration(t)                     The same, read from a
 (none)                     duration_mth(t)                 Completed policy months
 12 d(0)                    clock_offset_mth()              Policy months done at t = 0
 (none)                     policy_year(t)                  Contractual 1-based label
+d(k) + 1                   policy_year_y(k)                The same, in projection year k
 y(k)                       calendar_year_y(k)              Calendar year in year k
 y(t)                       calendar_year(t)                The same, read from a month
 omega                      omega_age()                     Terminal age of the table
@@ -592,7 +593,7 @@ def prem_pp(k):
 def zuz_take_up(k):
     """The *Zuzahlung* utilisation rate in year k, from *behaviour_table.csv*.
 
-    Looked up at ``dur = duration_y(k) + 1``, the policy year: 0.70 at policy years 1–5,
+    Looked up at ``dur = policy_year_y(k)``, the policy year: 0.70 at policy years 1–5,
     0.85 at 6–15, 0.90 at 16+ **[std]**, clamped to the last row beyond the table.
 
     A *utilisation rate*, not a contract term.  The contribution the *Höchstbetrag* makes
@@ -602,7 +603,7 @@ def zuz_take_up(k):
     """
     tab = data.behaviour_table()                                     # noqa: F821
     key = model_point()["beh_table_id"]
-    d = min(duration_y(k) + 1, int(tab.loc[key].index.max()))
+    d = min(policy_year_y(k), int(tab.loc[key].index.max()))
     return float(tab.loc[(key, max(d, 1)), "zuz_take_up"])
 
 
@@ -1930,7 +1931,7 @@ def result_pols():
     ks = list(range(proj_len_y()))
     return pd.DataFrame(                                             # noqa: F821
         {
-            "policy_year": [duration_y(k) + 1 for k in ks],
+            "policy_year": [policy_year_y(k) for k in ks],
             "age": [age_y(k) for k in ks],
             "pols_if": [pols_if(12 * k) for k in ks],
             "pols_paidup": [pols_paidup(12 * k) for k in ks],

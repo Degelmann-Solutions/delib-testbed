@@ -128,6 +128,7 @@ d(t)                       duration(t)                     The same, read from a
 12 d(0)                    clock_offset_mth()              Contract months done at t = 0
 (none)                     issue_year()                    Year of issue, 2027 - d(0)
 (none)                     policy_year(t)                  Contractual 1-based label
+d(k) + 1                   policy_year_y(k)                The same, in projection year k
 tau(k)                     calendar_year_y(k)              Calendar year of year k
 tau(t)                     calendar_year(t)                The same, read from a month
 (phase)                    is_accum(t), is_payout(t)       Accumulation / payout flag
@@ -2125,7 +2126,7 @@ def result_acct():
     return pd.DataFrame(                                             # noqa: F821
         {
             "age": [age_y(k) for k in ks],
-            "contract_year": [duration_y(k) + 1 for k in ks],
+            "contract_year": [policy_year_y(k) for k in ks],
             "pols_if": [pols_if(12 * k) for k in ks],
             "mort_rate": [mort_rate(12 * k) for k in ks],
             "mort_rate_mth": [mort_rate_mth(12 * k) for k in ks],

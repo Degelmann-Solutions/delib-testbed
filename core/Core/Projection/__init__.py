@@ -126,6 +126,11 @@ def policy_year(t):
     return duration(t) + 1                                           # noqa: F821
 
 
+def policy_year_y(k):
+    """The contractual 1-based policy year of projection year k, ``duration_y(k) + 1``."""
+    return duration_y(k) + 1                                         # noqa: F821
+
+
 def age_y(k):
     """The attained age at the start of projection year k, ``issue_age() + duration_y(k)``."""
     return issue_age() + duration_y(k)                               # noqa: F821

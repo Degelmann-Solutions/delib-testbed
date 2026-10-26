@@ -569,14 +569,6 @@ def bfz_year():
 
 # --- the projection frame --------------------------------------------------
 
-def policy_year_y(k):
-    """The contractual, 1-based label of **policy year** k: ``k + 1``.
-
-    The annual face of :func:`policy_year`, for the annual cells that key a 1-based schedule.
-    """
-    return k + 1
-
-
 # --- the bases -------------------------------------------------------------
 
 def mort_rate_tariff_at_age(x):

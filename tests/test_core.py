@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import math
 import re
 import shutil
 import subprocess
@@ -589,6 +590,16 @@ CORE_CELLS = {
                           "indexpolice": "derived",
                           "kapitallebensversicherung": "derived",
                           "risikolebensversicherung": "derived"},
+        "pols_if": {"basisrente": "override",
+                    "berufsunfaehigkeit": "override",
+                    "fondsgebundene_rentenversicherung": "override",
+                    "indexpolice": "derived",
+                    "kapitallebensversicherung": "override",
+                    "klassische_rentenversicherung": "override",
+                    "pflegerentenversicherung": "override",
+                    "riester_rente": "override",
+                    "risikolebensversicherung": "derived",
+                    "sofortrente": "override"},
     },
 }
 
@@ -1125,3 +1136,29 @@ def test_the_survivors_of_both_decrements_mature_in_the_last_month(product, prod
     assert item.pols_lapse(last) == 0.0
     assert item.pols_maturity(last) > 0.0
     assert item.pols_maturity(last) == item.pols_if_at(last, "AFT_DEATH")
+
+
+
+def test_rlv_opens_at_pols_if_init_on_new_and_in_force_points(product_models):
+    model = product_models("risikolebensversicherung")
+    projection = model.Projection
+    assert projection.pols_if._is_derived()
+    points = model.Data.model_point_table()
+    in_force = points.index[points["duration_init"] > 0]
+    assert len(in_force), "no in-force model point"
+    for point_id in (points.index[0], in_force[0]):
+        item = projection[point_id]
+        assert item.pols_if(item.t_start()) == item.pols_if_init(), point_id
+        assert item.pols_if(item.t_start() - 1) == 0.0, point_id
+
+
+@pytest.mark.parametrize("product", ["indexpolice", "risikolebensversicherung"])
+def test_the_count_after_the_last_month_is_exactly_positive_zero(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.pols_if._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        closing = item.pols_if(item.proj_len())
+        assert closing == 0.0 and math.copysign(1.0, closing) == 1.0, point_id
+        assert item.pols_maturity(item.proj_len() - 1) > 0.0, point_id

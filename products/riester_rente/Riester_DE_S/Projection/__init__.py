@@ -727,6 +727,10 @@ def pols_if(t):
     annual-step model's ``pols_if(k)`` to the last bit.  What the finer grid changes is not
     the survivorship but the **split** of a year's exits between the three decrements, which
     now compete month by month instead of running in sequence inside one year end.
+
+    Override reason: the *Anbieterwechsel* is a third exit beside deaths and lapses,
+    products/riester_rente/technical-notes.md:615, and a commuted contract leaves whole in
+    its conversion month, products/riester_rente/technical-notes.md:619
     """
     if t < 0 or t > proj_len():
         return 0.0

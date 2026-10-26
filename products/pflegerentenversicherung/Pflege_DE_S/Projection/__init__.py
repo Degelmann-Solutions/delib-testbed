@@ -935,6 +935,10 @@ def pols_if(t):
 
     Every *Pflegegrad* transition is internal to this count.  Lives leave it only by death
     or by surrender, which is what :func:`check_pols_roll_fwd` asserts.
+
+    Override reason: the count is the sum of the active and the care ledgers, every
+    *Pflegegrad* transition internal to it,
+    products/pflegerentenversicherung/technical-notes.md:203
     """
     return pols_act(t) + pols_care(t)
 

@@ -1544,6 +1544,10 @@ def pols_if(t):
     weight on that same :func:`result_cf` row's cash flows and ``result_cf()``'s first
     value is ``pols_if_init()`` exactly.  End-of-month state goes through
     :func:`pols_if_at`.
+
+    Override reason: death and lapse are the only exits, with no maturity, and the count is
+    rolled forward from them so that :func:`check_states` tests it against the three
+    ledgers, products/berufsunfaehigkeit/model.md:83
     """
     if t < 0 or t > proj_len():
         return 0.0

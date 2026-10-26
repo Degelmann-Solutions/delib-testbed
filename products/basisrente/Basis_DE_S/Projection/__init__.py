@@ -937,6 +937,10 @@ def pols_if(t):
     the terminal year and :func:`mort_rate_mth` places that certainty in its last month.
     It is read by :func:`check_pols_roll_fwd` and by nothing else; :func:`result_cf` stops
     at ``t = proj_len() - 1``.
+
+    Override reason: the count is the sum of the paying and the paid-up ledger, between
+    which the *Beitragsfreistellung* moves policies,
+    products/basisrente/technical-notes.md:227
     """
     return pols_paying(t) + pols_paidup(t)
 

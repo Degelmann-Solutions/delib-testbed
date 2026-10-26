@@ -1314,6 +1314,10 @@ def pols_if(t):
     ``pols_if(proj_len()) = 0``, one past the frame's last index: the survivors of the last
     projected month leave as :func:`pols_maturity` and there is nothing after
     *Rentenbeginn* in this model.
+
+    Override reason: the recursion multiplies the survival factors, ``l(t) (1 - q^m(t)) (1 -
+    w^m(t))``, another float order than the subtraction of the exits,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:507
     """
     if t <= t_start():
         return pols_if_init()

@@ -1395,6 +1395,10 @@ def pols_if(t):
     insured, and only a *Kündigung* removes it.  ``pols_if(proj_len())`` is defined and is
     the maturing cohort; it is read by :func:`check_pols_roll_fwd` and
     :func:`check_decrement_closure` and weights no cash flow.
+
+    Override reason: the roll-forward subtracts no maturity, so ``pols_if(proj_len())`` is
+    the maturing cohort its checks read, and it multiplies the survival factors, another
+    float order, products/kapitallebensversicherung/technical-notes.md:616
     """
     if t < t_start() or t > proj_len():
         return 0.0

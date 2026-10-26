@@ -1304,6 +1304,9 @@ def pols_if(t):
     because ``mort_rate`` is 1 in the policy year at attained age ``omega_age() - 1``.  It is
     read by :func:`check_decrement_closure` and by nothing else, and :func:`result_cf` stops
     at ``proj_len() - 1``.
+
+    Override reason: the commutation at *Rentenbeginn* is an exit beside deaths and
+    surrenders, products/klassische_rentenversicherung/technical-notes.md:589
     """
     if t < t_start() or t > proj_len():
         return 0.0

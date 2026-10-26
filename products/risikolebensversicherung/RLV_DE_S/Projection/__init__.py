@@ -1135,36 +1135,6 @@ def res_zill_pp_at(y, timing):
 # Decrements
 
 
-def pols_if(t):
-    """l(t): policies in force at the **start** of month t.
-
-    ``pols_if_init()`` at ``t = t_start()``, then
-    ``l(t+1) = l(t) - pols_death(t) - pols_lapse(t) - pols_maturity(t)`` on the **monthly**
-    rates, which is ``l(t)(1 - q2m(t))(1 - wm(t))`` everywhere but the last month.  This is
-    the weight on every cash flow of the same :func:`result_cf` row — a start-of-period
-    exposure under a start-of-period name, which is the library-wide ruling and is
-    asserted by the conventions suite because breaking it is silent.
-
-    Because both monthly rates compound back to their policy year's annual rate, twelve
-    months of this recursion collapse to ``l(t+12) = l(t)(1 - q2(t))(1 - w(t))`` — the
-    annual-step recursion this replaced, term for term — so the in-force **at every policy
-    anniversary** is the annual model's own figure, ``pols_if(12k)`` here equalling
-    ``pols_if(k)`` there to floating point.  What the finer grid adds is the eleven months
-    between them.
-
-    ``pols_if(proj_len())`` is defined and is **exactly zero**: it is the state one step
-    past the last projected month, the expiring cohort having left through
-    :func:`pols_maturity` in that month, so every exit lands inside the frame and there is
-    no tail state.  Zero outside the projected range.
-    """
-    if t < t_start() or t > proj_len():
-        return 0.0
-    if t == t_start():
-        return pols_if_init()
-    return (pols_if(t - 1) - pols_death(t - 1) - pols_lapse(t - 1)
-            - pols_maturity(t - 1))
-
-
 # ==========================================================================
 # Cash flows
 

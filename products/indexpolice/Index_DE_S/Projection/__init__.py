@@ -1116,33 +1116,6 @@ def lapse_factor(t):
     return 1.0
 
 
-def pols_if(t):
-    """``l(t)``: policies in force at time t, the **start** of period t.
-
-    ``pols_if_init()`` at ``t_start()``, then ``pols_if_at(t - 1, "AFT_LAPSE")``, **month by
-    month**.  This is the weight on every cash flow of the same ``result_cf()`` row, which is
-    what makes it a start-of-month count: no decrement has been applied when a month opens,
-    so the frame opens at ``pols_if_init()`` exactly.
-
-    ``pols_if(12k)`` at an anniversary is **bit-identical to the annual-step model's**
-    ``pols_if(k)``, because both decrements compound geometrically and the order inside a
-    month is the annual model's order inside a year: deaths first, surrenders on the
-    survivors of them.  What the finer grid changes is the **split** of a year's exits
-    between the two, not their total.
-
-    ``pols_if(proj_len())`` is **zero**, not the surviving cohort: at the end of the last
-    month the survivors mature and leave through :func:`pols_maturity`.  Zero outside
-    ``t_start() .. proj_len()``.
-    """
-    if t < t_start() or t > proj_len():
-        return 0.0
-    if t == t_start():
-        return pols_if_init()
-    if t == proj_len():
-        return 0.0
-    return pols_if_at(t - 1, "AFT_LAPSE")
-
-
 def pols_if_at(t, timing):
     """The number of policies in force at a point inside period t.
 

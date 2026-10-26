@@ -961,6 +961,10 @@ def pols_if(t):
 
     There is no lapse, surrender or paid-up exit to net off it.  The only decrement is
     death.
+
+    Override reason: the weight is the probability that any payment obligation remains over
+    two lives and the guarantee period, not a policy count,
+    products/sofortrente/technical-notes.md:186
     """
     g = certain_floor(t)
     la = lives_if(t, 1)

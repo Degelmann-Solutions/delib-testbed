@@ -369,6 +369,23 @@ def lapse_rate_mth(t):
     return 1.0 - (1.0 - w) ** (1.0 / 12.0)
 
 
+def pols_if(t):
+    """l(t): the policies in force at the **start** of month t, the weight on that month's row.
+
+    ``pols_if_init()`` at ``t_start()``, then
+    ``l(t) = l(t-1) - pols_death(t-1) - pols_lapse(t-1) - pols_maturity(t-1)``, the exits of
+    the month before subtracted; 0 outside ``t_start() .. proj_len()``.  ``pols_if(proj_len())``
+    is the state one past the last month: every exit lands inside the frame, so it is 0
+    exactly where the survivors leave as maturities.
+    """
+    if t < t_start() or t > proj_len():                              # noqa: F821
+        return 0.0
+    if t == t_start():                                               # noqa: F821
+        return pols_if_init()
+    return (pols_if(t - 1) - pols_death(t - 1) - pols_lapse(t - 1)
+            - pols_maturity(t - 1))
+
+
 def pols_if_at(t, timing):
     """The policy count at a point inside month t, in the order of the month's decrements.
 

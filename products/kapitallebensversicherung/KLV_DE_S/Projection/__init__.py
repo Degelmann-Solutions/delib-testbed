@@ -410,29 +410,6 @@ def policy_id():
     return model_point()["policy_id"]
 
 
-def issue_year():
-    """The calendar year of conclusion: the contract's **cohort identity**.
-
-    It fixes the two DeckRV ceilings through :func:`hrz_max` and :func:`zillmer_max`, both of
-    which stay with the contract for its whole term, and it fixes the income-tax cohort.  A
-    4,00 % guarantee on a 2026 issue year is not a stress, it is a data error - which is why
-    :func:`check_rechnungszins_cap` is a model invariant rather than a build script.
-    """
-    return int(model_point()["issue_year"])
-
-
-def duration_init():
-    """The completed policy years at the valuation date; 0 for new business.
-
-    An **elapsed count**, so it is 0-based by nature and is already on the frame's scale: it
-    fixes where the frame opens - ``t_start() = duration_init()`` - and it is what suppresses
-    the acquisition expense and the initial commission on an in-force point, which incurred
-    both long ago.  Model point 10 carries 14, and its frame therefore opens at ``t = 14``,
-    the fifteenth policy year.
-    """
-    return int(model_point()["duration_init"])
-
-
 def pols_if_init():
     """The number of policies represented at ``t_start()``: 1.0, a single-policy model point.
 
@@ -602,78 +579,6 @@ def bfz_year():
 
 # --- the projection frame --------------------------------------------------
 
-def proj_len_y():
-    """n: the **number of policy years counted from year 0**, equal to :func:`policy_term`.
-
-    The unit every **annual** construction in this model is written against: the equivalence,
-    the three reserves, the § 169 value, the *Überschussdeklaration* and the paid-up purchase
-    all run over policy years and are indexed by ``k = 0 ... n``.  :func:`proj_len` is twelve
-    times this and is the frame.
-    """
-    return policy_term()
-
-
-def proj_len():
-    """The **number of projected policy months**, ``12 x proj_len_y()``.
-
-    300 on the anchor cell.  The **exclusive** end of the frame, which is 0-based:
-    ``result_cf()`` covers ``t = t_start() ... proj_len() - 1``, so
-    ``result_cf().index[-1] == proj_len() - 1`` on every model point and
-    ``len(result_cf()) == proj_len() - t_start()``.  This is lifelib's own
-    ``for t in range(proj_len())``.  The *Ablauf* falls at the end of the last month, where
-    the survivors take the *Erlebensfallleistung*.  **There is no ``t = proj_len()`` row**;
-    ``pols_if(proj_len())`` is defined because the closure identities need it, and it weights
-    no cash flow.
-    """
-    return 12 * proj_len_y()
-
-
-def t_start():
-    """The first projected **month**: ``12 x duration_init()``.
-
-    A new-business point opens at ``t = 0`` and an in-force point at the month its completed
-    duration reaches - an elapsed count of policy **years**, so the conversion is a
-    multiplication and not an offset.  Where the frame *starts* is a product fact and the
-    conventions suite does not assert it; contiguity from here to ``proj_len() - 1`` is what
-    it asserts instead.
-    """
-    return 12 * duration_init()
-
-
-def k_start():
-    """The first projected **policy year**: ``duration_init()``.
-
-    The annual clock's counterpart of :func:`t_start`, and the two are the same statement in
-    two units: ``t_start() == 12 * k_start()``.  Every annual cells that has to know where
-    the frame opens reads this one, so the two clocks cannot drift apart.
-    """
-    return duration_init()
-
-
-def duration_mth(t):
-    """Completed policy months at the start of month t; equal to ``t``.
-
-    ``t`` is 0-based and counted from **issue** on every model point, the in-force one
-    included - its frame opens at ``t = t_start()`` rather than re-basing the clock - so the
-    identity is trivial and the cells exists to name the unit.  It is what the premium
-    instalment cycle is counted in, and the vocabulary ``Sofort_DE_S``, ``BU_DE_S``,
-    ``Pflege_DE_S`` and ``RLV_DE_S`` already use.
-    """
-    return t
-
-
-def duration(t):
-    """k: the completed policy **years** at the start of month t, ``duration_mth(t) // 12``.
-
-    0-based, as lifelib's ``duration`` is: it is 0 through the whole first policy year.  It is
-    the **bridge between the two clocks** — every annual cells in this model takes a policy
-    year ``k``, and this is what a month resolves to.  It is what every duration-keyed
-    schedule is indexed on: the § 169 Abs. 3 five-year spreading in :func:`res_min_pp`, the
-    *Stornoabzug* band, the *Beitragszahlungsdauer*, the § 161 window.
-    """
-    return duration_mth(t) // 12
-
-
 def is_anniv(t):
     """Whether month t is the **last month of a policy year**, ``t % 12 == 11``.
 
@@ -684,37 +589,6 @@ def is_anniv(t):
     that were standing at the last anniversary; see :func:`av_sur_close_pp`.
     """
     return t % 12 == 11
-
-
-def age(t):
-    """x(t): the attained age in the policy year containing month t.
-
-    ``age_y(duration(t))``.  The age steps on the **policy anniversary** — at ``t = 12, 24,
-    ...`` — and not monthly: the age basis is the attained age at the anniversary and the
-    finer grid does not make it finer.
-    """
-    return age_y(duration(t))
-
-
-def age_y(k):
-    """x(k): the attained age at the start of **policy year** k, ``issue_age() + k``.
-
-    The annual face of :func:`age`, and the one every pricing and reserving cells reads:
-    those all take a policy year, so they must not go through a month to reach an age.
-    """
-    return issue_age() + k
-
-
-def policy_year(t):
-    """y(t): the **contractual, 1-based** policy year containing month t, ``duration(t) + 1``.
-
-    Derived, never indexed by: ``t`` is the model's clock and this is the label the contract
-    and the input tables use.  It is the key into the ``policy_year`` column of
-    *lapse_table.csv* (:func:`lapse_rate`, :func:`storno_rate`) and of
-    *surplus_rate_table.csv* (:func:`decl_rate`, :func:`term_rate`, :func:`ans_rate`), which
-    are 1-based schedules and are left that way rather than being re-keyed to the frame.
-    """
-    return duration(t) + 1
 
 
 def policy_year_y(k):

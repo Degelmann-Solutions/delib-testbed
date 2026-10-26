@@ -1,4 +1,4 @@
-point_id,policy_id,issue_age,sex,smoker,sum_assured,policy_term,prem_term,premium_form,prem_freq,benefit_schedule_id,nvg_schedule_id,surplus_form,lives,issue_age2,smoker2,rating_factor,mort_table_id,duration_y,issue_date
+point_id,policy_id,issue_age,sex,smoker,sum_assured,policy_term,prem_term,premium_form,prem_freq,benefit_schedule_id,nvg_schedule_id,surplus_form,lives,issue_age2,smoker2,rating_factor,mort_table_id,duration_init,issue_date
 1,RLV-000001,35,M,N,300000.0,25,25,laufend,jaehrlich,konstant,keine,beitragsverrechnung,1,0,-,1.0,dav2008t_proxy,0,2026-01-01
 2,RLV-000002,35,F,N,300000.0,25,25,laufend,jaehrlich,konstant,keine,beitragsverrechnung,1,0,-,1.0,dav2008t_proxy,0,2026-01-01
 3,RLV-000003,35,M,R,300000.0,25,25,laufend,jaehrlich,konstant,keine,beitragsverrechnung,1,0,-,1.0,dav2008t_proxy,0,2026-01-01

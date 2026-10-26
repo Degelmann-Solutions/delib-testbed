@@ -62,7 +62,7 @@ value moved with this frame change. `lapse_table.csv` is keyed by `policy_year` 
 left alone. `claim_duration_table.csv` is keyed by `dur_year` 1–10 with row 11 the ultimate,
 the **claim** year since onset, on the 1-based claim-duration clock `z` and independent of
 `t`; unchanged. `inception_table.csv` and `mortality_table.csv` are keyed by attained `age`,
-reached through `age(t)`; unchanged. In `model_point_table.csv`, `duration_init_months` and
+reached through `age(t)`; unchanged. In `model_point_table.csv`, `duration_mth_init` and
 `claim_duration_init` are **elapsed counts**, already 0-based by nature, and neither is a
 point on the frame's axis — the frame always opens at `t = 0` and carries the elapsed
 duration as an offset inside `duration_mth(t)` — so both are unchanged.

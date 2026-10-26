@@ -65,10 +65,10 @@ monthly frame.
 **The time index.** `t` counts policy **months** from issue and starts at **0**: month `t`
 runs from time `t` to time `t + 1`. `proj_len()` is the number of projected months,
 `12 × policy_term`, and it is the frame's **exclusive end**: `result_cf()` runs over
-`range(proj_start(), proj_len())`, so its last index is `proj_len() − 1` and it has
-`12 × (policy_term − duration_y)` rows — three hundred rows `t = 0 … 299` on the anchor,
-216 rows `t = 144 … 359` on the in-force point 8. `proj_start()` is `12 × duration_y`,
-`duration_y` being an elapsed count of completed policy years that is already 0-based.
+`range(t_start(), proj_len())`, so its last index is `proj_len() − 1` and it has
+`12 × (policy_term − duration_init)` rows — three hundred rows `t = 0 … 299` on the anchor,
+216 rows `t = 144 … 359` on the in-force point 8. `t_start()` is `12 × duration_init`,
+`duration_init` being an elapsed count of completed policy years that is already 0-based.
 
 **The product is annual and stays annual.** `duration_mth(t) = t`, `duration(t) = t // 12`
 and `policy_year(t) = duration(t) + 1` are derived and never indexed by, and everything the
@@ -84,7 +84,7 @@ to the year's rate and `pols_if` at every anniversary is the annual model's own 
 **What the CSVs are keyed on.** `benefit_schedule.csv`, `nvg_schedule.csv` and
 `lapse_table.csv` are keyed on `policy_year`, the contractual **1-based** label, and their
 values are unchanged by the monthly frame: the readers map through `policy_year(t)`. In
-`model_point_table.csv`, `duration_y` is an elapsed count of **years** and `policy_term` and
+`model_point_table.csv`, `duration_init` is an elapsed count of **years** and `policy_term` and
 `prem_term` are counts of years; no column there is a point on the frame's time axis, so no
 model-point value moves either. `mort_table.csv` is keyed on attained age, which is not a
 time index, and its rates stay **annual**. **No CSV value changed** in the move to the
@@ -494,7 +494,7 @@ checks, not inputs.
 | `lives = 2` combination | `q_A + q_B − q_A·q_B`, before loading | An independence assumption that **understates** the true first-death rate for a couple; no German figure bounds it (gap 15) |
 | `rating_factor` | 1.00 standard, 1.75 on point 11 | A *Risikozuschlag* is a **mortality** loading on both orders, not a price loading — which is why the `Zahl/Brutto` ratio moves by less than half a point across it. **No German or French *Risikozuschlag* scale is public** |
 | `premium_form = einmal` | Model point 7 | A **[std]** construction exercising the premium engine at `k = 1`. **No German standalone RLV in the corpus is written on it**; the out-of-scope *Restschuldversicherung* is, and it is a different product sold a different way |
-| Timing conventions | A premium instalment on the *Zahlweise*'s own cycle and the month's expenses at the beginning of the month, claims and lapses at the end, acquisition cost at issue only where `duration_y = 0` | **The approximation this row used to record is gone.** On the annual grid the model booked exits at anniversaries and said so, and the note recorded that the approximation was larger than first assumed: § 168 Abs. 1 with § 12 VVG gives termination at the end of the *Versicherungsperiode*, but both retrieved carriers allow it "jederzeit zum Ende des laufenden Monats" whatever the *Zahlweise* [S3] § 15 Abs. 9, [S4] § 13 Abs. 1. The monthly grid expresses exactly that. What remains **[std]** is the conversion of the annual rates to the month and the placing of claims at the end of the month |
+| Timing conventions | A premium instalment on the *Zahlweise*'s own cycle and the month's expenses at the beginning of the month, claims and lapses at the end, acquisition cost at issue only where `duration_init = 0` | **The approximation this row used to record is gone.** On the annual grid the model booked exits at anniversaries and said so, and the note recorded that the approximation was larger than first assumed: § 168 Abs. 1 with § 12 VVG gives termination at the end of the *Versicherungsperiode*, but both retrieved carriers allow it "jederzeit zum Ende des laufenden Monats" whatever the *Zahlweise* [S3] § 15 Abs. 9, [S4] § 13 Abs. 1. The monthly grid expresses exactly that. What remains **[std]** is the conversion of the annual rates to the month and the placing of claims at the end of the month |
 | `shock_lapse_lambda`, `sel_lapse_lambda` | 0.0 (references 2.0 and 0.30) | Both modules off, so the base run reproduces the worked example |
 | `roll_fwd_tol`, `val_tol` | 1e-10, 1e-9 | Tolerances scaled by `pols_if_init()` and `sum_assured()` respectively |
 | The fourteen model points | — | The anchor is the research file's representative composite; the rest are chosen to exercise the mechanics, not to describe a market |

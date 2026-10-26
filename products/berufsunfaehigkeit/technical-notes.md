@@ -55,8 +55,8 @@ German ones, and each now carries a document that was read.
   retail monthly premium [S1]. `t` is the **policy month**, `t = 0, 1, …, proj_len() − 1`,
   **0-based**: `t = 0` is the first projected month — the month of inception for a new-business
   point, the valuation month for an in-force one — and the contractual, 1-based *policy year* is
-  derived from it, `policy_year(t) = duration_mth(t) // 12 + 1`, never indexed by.
-- **Projection horizon.** `proj_len() = 12 × (cover_end_age − issue_age) − duration_init_months`,
+  derived from it, `policy_year(t) = duration_mth(t) // 12 + 1`, never indexed by. A claim cohort's onset month `t − z` may precede inception; there `policy_year` is floored at 1 and `age` at zero elapsed months.
+- **Projection horizon.** `proj_len() = 12 × (cover_end_age − issue_age) − duration_mth_init`,
   the **number of projected months** and so the **exclusive end** of the frame: `result_cf()` is
   indexed `t = 0 … proj_len() − 1` and `result_cf().index[-1] == proj_len() − 1`. On the anchor
   cell that is `12 × (67 − 30) = 444` monthly rows, the last of them `t = 443`. Cover ceases at
@@ -116,7 +116,7 @@ German ones, and each now carries a document that was read.
 | `au_klausel` | bool | *AU-Klausel* switch | 10 (true) |
 | `au_uplift` | float | Inception uplift when the clause is on. **Shipped at 1,00 everywhere** — no source quantifies it (gap 12) | 10, inertly |
 | `wiedereingliederung_months` | int | *Wiedereingliederungshilfe*, in monthly *Renten*; 0 = off | all at 6; 12 at 0 |
-| `duration_init_months` | int | Elapsed policy months at `t = 0`; 0 for new business | 6 (180), 7 (200) |
+| `duration_mth_init` | int | Elapsed policy months at `t = 0`; 0 for new business | 6 (180), 7 (200) |
 | `claim_duration_init` | int | Months since onset at `t = 0`, for a `leistung` point | 7 (8) |
 
 `pols_if_init()` is **1.0 for every model point**: the model is a per-policy probability projection,
@@ -127,7 +127,7 @@ is that. There is no `policy_count` column.
 *Leistungsdynamik* and `WE` the *Wiedereingliederungshilfe* in monthly *Renten*. Every column not
 shown takes its base value (`leistungsdyn_rate` 0,02, `premium_form` `level`, `beitragsdyn_rate`
 0,00, `gross_prem_ann` 0, `beitragsverrechnung` 0,70, `risk_factor` 1,00, `au_klausel` false,
-`au_uplift` 1,00, `WE` 6, `duration_init_months` 0, `claim_duration_init` 0).
+`au_uplift` 1,00, `WE` 6, `duration_mth_init` 0, `claim_duration_init` 0).
 
 | # | status | entry | sex | BG | *BU-Rente* | cover/benefit end | K | what it exercises |
 |---|---|---|---|---|---|---|---|---|
@@ -136,8 +136,8 @@ shown takes its base value (`leistungsdyn_rate` 0,02, `premium_form` `level`, `b
 | 3 | aktiv | 30 | F | BG4 | 1 500 | 67 / 67 | 0 | the **occupational factor** — differs from the anchor in `berufsgruppe` alone |
 | 4 | aktiv | 25 | F | BG2 | 1 200 | 67 / 67 | 0 | the second **premium form**, `dynamik` at 3 %, **annual** mode |
 | 5 | aktiv | 40 | M | BG3 | 2 000 | 67 / 67 | 6 | *Karenzzeit* 6, **quarterly** mode |
-| 6 | aktiv | 30 | F | BG1 | 1 500 | 67 / 67 | 0 | **in-force active**, `duration_init_months` 180, **half-yearly** mode |
-| 7 | leistung | 35 | M | BG3 | 1 800 | 67 / 67 | 0 | **in-force in claim**, `duration_init_months` 200, `claim_duration_init` 8 |
+| 6 | aktiv | 30 | F | BG1 | 1 500 | 67 / 67 | 0 | **in-force active**, `duration_mth_init` 180, **half-yearly** mode |
+| 7 | leistung | 35 | M | BG3 | 1 800 | 67 / 67 | 0 | **in-force in claim**, `duration_mth_init` 200, `claim_duration_init` 8 |
 | 8 | aktiv | 50 | M | BG5 | 1 000 | 60 / 60 | 3 | **boundary** — short term, heaviest class, *Endalter* 60 |
 | 9 | aktiv | 45 | F | BG2 | 1 500 | 67 / **63** | 0 | **boundary** — *Leistungsendalter* below the *Versicherungsdauer* |
 | 10 | aktiv | 33 | M | BG1 | 1 500 | 67 / 67 | 0 | *AU-Klausel* **on** with `au_uplift` 1,00 — an invariance test |
@@ -362,7 +362,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | Symbol | Meaning |
 |---|---|
 | `t` | policy month, 0-based, `t = 0 … n − 1`, `n = proj_len()` (the number of projected months) |
-| `u(t)` | `duration_mth(t) = duration_init_months + t`, elapsed policy months at the start of `t` |
+| `u(t)` | `duration_mth(t) = duration_mth_init + t`, elapsed policy months at the start of `t` |
 | `x(t)` | `age(t) = issue_age + u(t) // 12` |
 | `y(t)` | `policy_year(t) = u(t) // 12 + 1` |
 | `z` | claim duration in months since onset, `z ≥ 1` |
@@ -519,7 +519,7 @@ it is named so that a user who takes it knows what to change. On eleven of the t
     claims(t,"BU_RENTE")      = [ Σ_{z>K} R_p(t,z) l_d(t,z) + Σ_k V_r(t,k) ]  x 1{x(t) < benefit_end_age}
     claims(t,"REINTEGRATION") = wiedereingliederung_months x V_r(t,3) x (1 - q^a_m(t))
     claims(t,"LAPSE")         = 0                                              [R9] [R5]
-    expenses(t)         = A x prem_gross_level_pp() x BS_unit x 1{t = 0 and duration_init_months = 0}
+    expenses(t)         = A x prem_gross_level_pp() x BS_unit x 1{t = 0 and duration_mth_init = 0}
                         + β x P_b(t) x L_p(t)
                         + γ / 12 x L(t)
     claim_expenses(t)   = c_a x pols_inception(t)
@@ -650,7 +650,7 @@ is a test.
     `claims(t, "BU_RENTE") = 0` and `claim_expenses(t)` carries no maintenance component for every
     `t` with `age(t) ≥ 63`, while `premiums(t) > 0` continues to 67.
 14. **Charging acquisition cost to an in-force model point.** On points 6 and 7
-    (`duration_init_months > 0`) assert `expenses(0)` contains no acquisition component and equals
+    (`duration_mth_init > 0`) assert `expenses(0)` contains no acquisition component and equals
     `β × P_b(0) × L_p(0) + γ/12 × L(0)` exactly.
 15. **Deleting the disabled mass at the *Leistungsendalter* instead of holding it.** Deleting breaks
     both state identities. On model point 9 assert `check_states()` and `check_pols_roll_fwd()` are
@@ -718,7 +718,7 @@ for any of them, and the two that would matter most are the two no source suppli
 `premium_form = level`, `beitragsdyn_rate = 0,00`, `prem_mode = monthly` (`prem_mode_months = 1`,
 `freq_load = 1,05`), `gross_prem_ann = 0` so the *Bruttobeitrag* is **derived by equivalence**,
 `beitragsverrechnung = 0,70`, `risk_factor = 1,00`, `au_klausel = false`, `au_uplift = 1,00`,
-`wiedereingliederung_months = 6`, `duration_init_months = 0`, `claim_duration_init = 0`. Hence
+`wiedereingliederung_months = 6`, `duration_mth_init = 0`, `claim_duration_init = 0`. Hence
 `pols_if_init() = 1,0`, `proj_len() = 12 × (67 − 30) = 444`, and the projection runs over
 attained ages 30 to 66 inclusive — 444 monthly rows, `t = 0 … 443`, of which the table below shows
 a selection and the totals cover all of them.

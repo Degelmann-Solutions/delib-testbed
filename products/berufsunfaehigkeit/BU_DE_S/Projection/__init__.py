@@ -526,18 +526,6 @@ def wiedereingliederung_months():
     return int(model_point()["wiedereingliederung_months"])
 
 
-def duration_init_months():
-    """Elapsed policy months at ``t = 0``; 0 for a new-business point.
-
-    It shortens :func:`proj_len`, shifts :func:`age` and :func:`policy_year`, decides
-    which months carry a premium instalment, and **suppresses the acquisition charge**:
-    an in-force point has already incurred it, and charging it again at the valuation
-    date is a numbered pitfall.  It does *not* touch the first-order shadow, which always
-    runs from inception.
-    """
-    return int(model_point()["duration_init_months"])
-
-
 def claim_duration_init():
     """Months since the onset of the BU at ``t = 0``, for a ``leistung`` model point.
 
@@ -561,7 +549,7 @@ def pols_if_init():
 def proj_len():
     """n: the **number of projected months**, so the frame runs ``t = 0 ... proj_len() - 1``.
 
-    ``12 x (cover_end_age() - issue_age()) - duration_init_months()``.  Cover ceases
+    ``12 x (cover_end_age() - issue_age()) - duration_mth_init()``.  Cover ceases
     at attained age ``cover_end_age()``, so the last projected month is the last month of
     attained age ``cover_end_age() - 1``, index ``proj_len() - 1``.  On the anchor cell
     that is ``12 x (67 - 30) = 444`` monthly rows, the last of them ``t = 443``.
@@ -569,15 +557,19 @@ def proj_len():
     This is the library's reading of ``proj_len()`` — the **exclusive end** of the frame,
     the row count rather than the last index — and ``result_cf().index[-1] ==
     proj_len() - 1`` is asserted for every model point.
+
+    Override reason: cover ceases at ``cover_end_age()`` and ``t`` counts months from the valuation
+    month, so the horizon is in months net of the elapsed duration,
+    products/berufsunfaehigkeit/technical-notes.md:59
     """
-    return 12 * (cover_end_age() - issue_age()) - duration_init_months()
+    return 12 * (cover_end_age() - issue_age()) - duration_mth_init()
 
 
 def first_len():
     """The **number of months** in the **first-order pricing run**, from inception.
 
     ``12 x (cover_end_age() - issue_age())``, which is ``proj_len() +
-    duration_init_months()``, so the run is ``s = 0 ... first_len() - 1``.
+    duration_mth_init()``, so the run is ``s = 0 ... first_len() - 1``.
     :func:`pols_actv_first` admits ``s == first_len()`` as well, the month past the end,
     exactly as the roll-forward checks read ``t == proj_len()`` on the main frame.  The
     shadow ledgers run over the contract's original term whatever duration the model point
@@ -590,11 +582,15 @@ def first_len():
 def duration_mth(t):
     """u(t): elapsed policy months at the start of month t.
 
-    ``duration_init_months() + t``.  Defined for negative ``t`` as well, because
+    ``duration_mth_init() + t``.  Defined for negative ``t`` as well, because
     :func:`bu_rente_pp` reads it there to recover the insured *BU-Rente* at the onset of a
     claim that began before the valuation date.
+
+    Override reason: ``t = 0`` is the valuation month for an in-force point, not the month
+    of issue, so the completed months add ``duration_mth_init()``,
+    products/berufsunfaehigkeit/technical-notes.md:56
     """
-    return duration_init_months() + t
+    return duration_mth_init() + t
 
 
 def policy_year(t):
@@ -602,6 +598,10 @@ def policy_year(t):
 
     ``duration_mth(t) // 12 + 1``, floored at 1 so that a negative ``t`` reaching back
     before inception reads as policy year 1 rather than as a year 0 the tariff never had.
+
+    Override reason: a disability cohort is paid the insured amount of its onset month
+    ``t - z``, which can precede inception, so the policy year is floored at 1,
+    products/berufsunfaehigkeit/technical-notes.md:58
     """
     return max(1, duration_mth(t) // 12 + 1)
 
@@ -612,6 +612,10 @@ def age(t):
     ``issue_age() + duration_mth(t) // 12``, so it steps at the **policy anniversary**
     rather than at a birthday the model does not carry **[std]**.  Every rate lookup in
     the model is keyed by this age.
+
+    Override reason: a disability cohort is paid the insured amount of its onset month
+    ``t - z``, which can precede inception, so the elapsed months are floored at 0,
+    products/berufsunfaehigkeit/technical-notes.md:58
     """
     return issue_age() + max(0, duration_mth(t)) // 12
 
@@ -620,7 +624,7 @@ def age_first(s):
     """The attained age at month s of the **first-order pricing run**.
 
     ``issue_age() + s // 12``: the shadow ledgers run from inception, so their age clock
-    ignores ``duration_init_months()``.
+    ignores ``duration_mth_init()``.
     """
     return issue_age() + max(0, s) // 12
 
@@ -1788,7 +1792,7 @@ def expenses(t):
     it scales with claims rather than with policies.
     """
     acq = 0.0
-    if t == 0 and duration_init_months() == 0:
+    if t == 0 and duration_mth_init() == 0:
         acq = acq_rate * prem_gross_level_pp() * beitragssumme_unit()  # noqa: F821
     admin_prop = admin_prem_rate * prem_gross_pp(t) * pols_prem(t)   # noqa: F821
     admin_flat = admin_flat_ann / 12.0 * pols_if(t)                  # noqa: F821

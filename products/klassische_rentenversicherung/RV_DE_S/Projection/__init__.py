@@ -471,62 +471,11 @@ def proj_len_y():
     survive further rather than a fixed number of years — truncating one at, say, 40 years
     silently drops the tail the *Rentenfaktor* was priced for.  **71** on the anchor cell,
     whose last policy year ends at attained age 121.
+
+    Override reason: a life annuity has no term, so the projection ends at ``omega_age``,
+    products/klassische_rentenversicherung/technical-notes.md:81
     """
     return omega_age() - issue_age()
-
-
-def proj_len():
-    """The **exclusive** end of the frame, counted in policy **months**: ``12 x proj_len_y()``.
-
-    The library-wide reading of ``proj_len()``, asserted in
-    ``tests/test_model_conventions_de.py``: ``result_cf()`` covers
-    ``t = t_start() ... proj_len() - 1`` and ``result_cf().index[-1] == proj_len() - 1``.
-    This is lifelib's own ``for t in range(proj_len())``.  852 on the anchor cell, whose last
-    row is ``t = 851``.
-    """
-    return 12 * proj_len_y()
-
-
-def t_start():
-    """The frame's first **month**: ``12 x duration_init``.
-
-    ``duration_init`` is an elapsed count of completed policy **years**, so the conversion is
-    a multiplication and no model point column changed.  0 for new business; 168 on an
-    in-force point that has run fourteen years.
-    """
-    return 12 * k_start()
-
-
-def k_start():
-    """The frame's first **policy year**: ``duration_init`` itself.
-
-    The annual clock's counterpart to :func:`t_start`.  Every cells taking a policy year ``k``
-    — the premium, the charges, both accounts, the § 169 floor, the surrender value and the
-    death benefit — is defined from here.
-    """
-    return int(model_point()["duration_init"])
-
-
-def duration_mth(t):
-    """The number of **complete policy months** elapsed at the start of month t: ``t`` itself.
-
-    Published rather than inlined because it is the name the rest of the library uses for the
-    elapsed-month count, and because a model whose frame starts partway through a contract
-    must say once, in one place, that ``t`` is counted from **inception** and not from the
-    frame's own start.
-    """
-    return t
-
-
-def duration(t):
-    """k(t): the **0-based policy year** month t falls in, ``duration_mth(t) // 12``.
-
-    The bridge between the two clocks.  Every annual construction in this model — the
-    premium, the *Deckungskapital*, the *Ansammlungsguthaben*, the § 169 Abs. 3 account, the
-    declared rate, the surrender value and the death benefit — takes this ``k``, and every
-    monthly one takes ``t``.
-    """
-    return duration_mth(t) // 12
 
 
 def is_anniv(t):
@@ -538,49 +487,6 @@ def is_anniv(t):
     eleven months early, so both are placed here instead.
     """
     return t % 12 == 11
-
-
-def policy_year(t):
-    """The **contractual, 1-based** policy year of month t: ``duration(t) + 1``.
-
-    The label the input files are keyed on, and derived rather than indexed by.
-    """
-    return duration(t) + 1
-
-
-def age_y(k):
-    """x(k): the attained age at the start of policy year k, ``issue_age + k``."""
-    return issue_age() + k
-
-
-def age(t):
-    """x(t): the attained age in month t, ``age_y(duration(t))``.
-
-    Age last birthday at issue **stepping on the policy anniversary**, which is the age basis
-    the tariff is written on: the monthly grid does not refine it, and a model that stepped
-    the age monthly would read a mortality rate the table does not publish.
-    """
-    return age_y(duration(t))
-
-
-def calendar_year_y(k):
-    """tau(k): the calendar year of policy year k, ``issue_year + k``.
-
-    The second index of the generational mortality surface and of the declared-rate path.
-    Because it is derived from the model point's own ``issue_year``, one surface and one
-    declared path serve a book of mixed vintages: policy year 0 of a 2005 contract and policy
-    year 0 of a 2026 contract read different calendar years from the same table.
-
-    Like the attained age, it steps on the **anniversary** and not in a calendar month.  A
-    policy-year grid and a calendar-year grid coincide only for contracts written on
-    1 January, and reconciling the two is a valuation-date question this model does not pose.
-    """
-    return int(model_point()["issue_year"]) + k
-
-
-def calendar_year(t):
-    """tau(t): the calendar year of month t, ``calendar_year_y(duration(t))``."""
-    return calendar_year_y(duration(t))
 
 
 def pols_if_init():

@@ -300,7 +300,7 @@ conventions suite counts the reads and asserts the file set.
 CSV byte-identical. The time-like columns and why each stands: `mort_table.csv` and
 `improvement_table.csv` key on `age`, an **attained age** read at `age(t, life)`;
 `hoechstrechnungszins_table.csv` keys on `year_from`/`year_to`, **calendar years** matched
-against `entry_year()`; and in `model_point_table.csv`, `entry_year`, `birth_year` and
+against `issue_year()`; and in `model_point_table.csv`, `issue_year`, `birth_year` and
 `surv_birth_year` are calendar years, `issue_age` and `surv_age` are ages, `defer_years` and
 `guar_years` are contractual **durations in years**, and `duration_mth_init` is an **elapsed
 count** of months — already 0-based by nature, and the frame's first `t` exactly because a
@@ -452,7 +452,7 @@ table stands.
 | Death-benefit exclusivity | Refund **xor** (guarantee period, survivor's annuity) | Which carriers permit the combination was not established (research gap 10), and the refund's implicit equation is written against a plain annuity leg |
 | Payment timing | *vorschüssig*, first instalment at `t = 0` | **Contradicted by the retrieved market and retained anyway.** Two AVB pay in arrears — "Die erste Rente wird einen Monat nach dem vereinbarten Versicherungsbeginn gezahlt" [S4], and one payment period after inception at [S6]; the GDV template does not settle it [S1]. Moving the default moves the worked example and the golden tests, so it is reported rather than changed (`technical-notes.md`, correction 6). Model point 9 measures the alternative at 0,34 % |
 | Joint-life dependence | Independent lives | Real joint lives are positively dependent, so this **overstates** the joint-life annuity value and understates the rider's cost. No delib source quantifies it |
-| Age basis | `issue_age + t // 12`, with `entry_year == birth_year + issue_age` on every shipped point | An internal-consistency convention, not a contract fact; a real book carries a fractional offset of up to a year |
+| Age basis | `issue_age + t // 12`, with `issue_year == birth_year + issue_age` on every shipped point | An internal-consistency convention, not a contract fact; a real book carries a fractional offset of up to a year |
 | *Höchstrechnungszins* split years | 1994 and 2000 assigned to the 1 January rate | The statutory steps fall mid-year and a model point carries one vintage [REG-R15]. `kapitallebensversicherung/deckrv_table.csv` resolves the same two years to the **higher** of the pair instead, so the two tables agree on 2000 and differ on 1994 — 3,50 % here, 4,00 % there. Neither is derivable from [REG-R15], so the divergence is recorded here and in this file's `provenance` column rather than silently reconciled. No delib model point in either product carries a 1994 vintage — the earliest anywhere in the library is 2005 — so no shipped number turns on it |
 | Annuitant selection, proof of life | No adjustment factor on the first-order table; suspension not modelled | DAV 2004 R is an annuitant-experience table understood to carry *Selektionsfaktoren* already [REG-R49], so selection belongs inside the basis; a failed life certificate is a timing effect on an unchanged obligation |
 | Tolerances | `roll_fwd_tol = 1e-8`; `solve_tol = 1e-10`; `solve_max_iter = 200` | The refund solve is the only numerical solve in the model, so `solve_tol` is a change of answer rather than of runtime |

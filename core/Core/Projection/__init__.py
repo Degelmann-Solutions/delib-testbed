@@ -62,3 +62,83 @@ def prem_term():
 def prem_term_y():
     """The premium payment term in whole years, from the model point's ``prem_term_y``."""
     return int(model_point()["prem_term_y"])                         # noqa: F821
+
+
+def issue_year():
+    """The calendar year of issue, from the model point's ``issue_year`` column."""
+    return int(model_point()["issue_year"])                          # noqa: F821
+
+
+def duration_init():
+    """The completed policy years at the valuation date, from the model point."""
+    return int(model_point()["duration_init"])                       # noqa: F821
+
+
+def duration_mth_init():
+    """The completed policy months at the valuation date, from the model point."""
+    return int(model_point()["duration_mth_init"])                   # noqa: F821
+
+
+def k_start():
+    """The first projected policy year, ``duration_init()``."""
+    return duration_init()                                           # noqa: F821
+
+
+def t_start():
+    """The first projected month, ``12 x k_start()``; ``t`` counts months from issue."""
+    return 12 * k_start()                                            # noqa: F821
+
+
+def proj_year(t):
+    """The 0-based projection year month t falls in, ``t // 12``."""
+    return t // 12
+
+
+def duration_mth(t):
+    """The completed policy months at the start of month t: ``t``, counted from issue."""
+    return t
+
+
+def duration(t):
+    """The completed policy years at the start of month t, ``duration_mth(t) // 12``."""
+    return duration_mth(t) // 12                                     # noqa: F821
+
+
+def duration_y(k):
+    """The completed policy years at the start of projection year k, ``duration_init() + k``."""
+    return duration_init() + k                                       # noqa: F821
+
+
+def policy_year(t):
+    """The contractual 1-based policy year containing month t, ``duration(t) + 1``."""
+    return duration(t) + 1                                           # noqa: F821
+
+
+def age_y(k):
+    """The attained age at the start of policy year k, ``issue_age() + k``."""
+    return issue_age() + k                                           # noqa: F821
+
+
+def age(t):
+    """The attained age in month t, ``age_y(duration(t))``, stepping on the anniversary."""
+    return age_y(duration(t))                                        # noqa: F821
+
+
+def proj_len_y():
+    """The number of projected policy years, the policy term."""
+    return policy_term()                                             # noqa: F821
+
+
+def proj_len():
+    """The number of projected months, ``12 x proj_len_y()``; the frame's exclusive end."""
+    return 12 * proj_len_y()                                         # noqa: F821
+
+
+def calendar_year_y(k):
+    """The calendar year of policy year k, ``issue_year() + k``."""
+    return issue_year() + k                                          # noqa: F821
+
+
+def calendar_year(t):
+    """The calendar year of month t, ``calendar_year_y(duration(t))``."""
+    return calendar_year_y(duration(t))                              # noqa: F821

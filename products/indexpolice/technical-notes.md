@@ -62,15 +62,15 @@ shipped index path so that the mechanics are asserted against them cell by cell.
   **policy year is the 1-based label `k + 1`** and is derived, never indexed by. The attained age
   steps on the **anniversary**, `age(t) = issue_age + duration(t)`, and `is_anniv(t)` is
   `t % 12 == 11`, the month the annual machinery acts in. A **new-business** point starts at `t = 0`;
-  an **in-force** point starts at `t_start() = 12 × dur_init`, `dur_init` being a 0-based count of
+  an **in-force** point starts at `t_start() = 12 × duration_init`, `duration_init` being a 0-based count of
   completed policy **years**, so the conversion is a multiplication and no model point column
-  changed; `k_start() = dur_init` is the same instant on the annual clock. `result_cf()` is indexed
+  changed; `k_start() = duration_init` is the same instant on the annual clock. `result_cf()` is indexed
   `t_start() … proj_len() − 1`, contiguous, and its first `pols_if` value is `pols_if_init()`.
 - **`proj_len()` is the exclusive end of the frame in months**, `proj_len() = 12 × proj_len_y()` with
   `proj_len_y() = ann_start_age − issue_age` the number of policy years, so
   `result_cf().index[-1] == proj_len() − 1` — the library's reading of `proj_len()` and lifelib's own
   `for t in range(proj_len())`, asserted in the conventions suite. It is **not** the row count of an
-  in-force point: one at `dur_init = 8` publishes `324 − 96 = 228` rows and still reports
+  in-force point: one at `duration_init = 8` publishes `324 − 96 = 228` rows and still reports
   `proj_len_y() = 27`.
 - **Two speeds on each decrement.** `mort_rate(t)` and `lapse_rate(t)` return the **annual** rate of
   the policy year `t` falls in — the vectors tabulated below, flat across the year's twelve months —
@@ -166,7 +166,7 @@ from its base value, so that no column is carried without being tested.
 | `policy_id` | str | label, `DE-IDX-nnnn`; reporting only | all |
 | `sex` | enum {M, F} | selects the best-estimate mortality row; **never a rating factor** [REG-R34] | 3, 5, 7, 10, 12 |
 | `issue_age` | int | age last birthday at inception; `age(t) = issue_age + t` | 3–13 |
-| `dur_init` | int | completed policy years at the valuation date; 0 = new business; the frame starts at `t_start() = 12 × dur_init`, `dur_init` already being a 0-based elapsed count of policy **years** | 8, 13 |
+| `duration_init` | int | completed policy years at the valuation date; 0 = new business; the frame starts at `t_start() = 12 × duration_init`, `duration_init` already being a 0-based elapsed count of policy **years** | 8, 13 |
 | `pols_if_init` | float | policies represented at `t_start()` | — (1.0 everywhere) |
 | `ann_start_age` | int | attained age at *Rentenbeginn*; `proj_len() = ann_start_age − issue_age` | 6 |
 | `prem_form` | enum {level, single} | *laufender Beitrag* or *Einmalbeitrag* | 7 |
@@ -199,12 +199,12 @@ points, four *Rechnungszins* cohorts and four *Garantieniveaus*.
 | 5 | F 45 → 67, **quarterly** premiums of 3 600,00 € a year (22 years) |
 | 6 | M 50 → **65**, **half-yearly** premiums of 6 000,00 € a year, 80 % guarantee (15 years) |
 | 7 | F 55 → 67, ***Einmalbeitrag*** of 50 000,00 €, `ann_option = cash` — a 12-year term, which is also the § 20 Abs. 1 Nr. 6 EStG boundary [REG-R45] |
-| 8 | **In-force.** M 40 → 67 at `dur_init = 8`, `av_pp_init = 50 000,00 €`, 6 000,00 € a year, 0,90 % cohort rate — **its frame opens at `t = 96`, policy year `k = 8`, and that is its first projected *Indexjahr*, so it reproduces the research file's Examples A and B to the euro** |
+| 8 | **In-force.** M 40 → 67 at `duration_init = 8`, `av_pp_init = 50 000,00 €`, 6 000,00 € a year, 0,90 % cohort rate — **its frame opens at `t = 96`, policy year `k = 8`, and that is its first projected *Indexjahr*, so it reproduces the research file's Examples A and B to the euro** |
 | 9 | **Boundary — the guarantee binds.** M 55 → 67, 100 % *Beitragsgarantie*, `zero_path`: every credit is 0,00 € and the terminal capital falls **below** the guarantee |
 | 10 | F 40 → 67, `elect_id = switch_at_15` — index arm to policy year 15 (`t ≤ 14`), safe arm thereafter |
 | 11 | M 40 → 67, `elect_id = always_safe` — the *sichere Verzinsung* comparator, which reduces the contract to a *klassische Rentenversicherung* |
 | 12 | F 30 → 67 (**37 years**, the longest), 1 800,00 € a year, 60 % guarantee, `elect_id = half_half` — a partial election |
-| 13 | **In-force, boundary.** M 45 → 67 at `dur_init = 4`, `prem_term_y = 12` so premiums stop after policy year 12 (`k = 11`), `guar_rate = 0,25 %` **equal to the reserve charge**, `death_min_rate = 0`, `surr_charge_on = 0` |
+| 13 | **In-force, boundary.** M 45 → 67 at `duration_init = 4`, `prem_term_y = 12` so premiums stop after policy year 12 (`k = 11`), `guar_rate = 0,25 %` **equal to the reserve charge**, `death_min_rate = 0`, `surr_charge_on = 0` |
 
 ---
 
@@ -213,7 +213,7 @@ points, four *Rechnungszins* cohorts and four *Garantieniveaus*.
 | Variable | Description | Updated |
 |---|---|---|
 | `proj_len_y()`, `proj_len()` | the number of projected policy years; `12 ×` that, the frame's exclusive end in months | once per model point |
-| `k_start()`, `t_start()` | the first projected policy year, `dur_init`; the first projected month, `12 × dur_init` | once per model point |
+| `k_start()`, `t_start()` | the first projected policy year, `duration_init`; the first projected month, `12 × duration_init` | once per model point |
 | `duration(t)`, `policy_year(t)`, `is_anniv(t)`, `index_month(t)` | the bridge between the clocks: the 0-based policy year of month `t`, its 1-based label, whether `t` is the year's last month, and which month of the *Indexjahr* it is | derived |
 | `age(t)` | attained age in month `t` = `issue_age + duration(t)`; **steps on the anniversary** | annual step |
 | `pols_if(t)` | policies in force at time `t`, the **start of month** `t`; `pols_if(t_start()) = pols_if_init()` | monthly recursion |
@@ -412,8 +412,8 @@ oversight.
 
 | Symbol | Cells | Meaning |
 |---|---|---|
-| `t` | — | the 0-based **month** index, `t = t₀ … 12n−1`; `t₀ = t_start() = 12·dur_init` |
-| `k` | `duration(t)` | the 0-based **policy year**, `t // 12`; `k₀ = k_start() = dur_init`, `n = proj_len_y() = ann_start_age − issue_age`; the contractual policy year is `k + 1`. Every annual construction below takes `k` |
+| `t` | — | the 0-based **month** index, `t = t₀ … 12n−1`; `t₀ = t_start() = 12·duration_init` |
+| `k` | `duration(t)` | the 0-based **policy year**, `t // 12`; `k₀ = k_start() = duration_init`, `n = proj_len_y() = ann_start_age − issue_age`; the contractual policy year is `k + 1`. Every annual construction below takes `k` |
 | `m(t)` | `index_month(t)` | which month of its *Indexjahr* `t` is, 1-based: `t % 12 + 1` |
 | `x(t)` | `age(t)` | attained age in month `t` = `issue_age + duration(t)`, stepping on the anniversary |
 | `l(t)` | `pols_if(t)` | policies in force at time `t`, the start of **month** `t`; `l(t₀) = pols_if_init()` |
@@ -603,7 +603,7 @@ Two reported quantities that are not cash flows:
 
 ### Expenses and the cash flow statement
 
-    exp_acq_pp(t)   = acq_expense_rate · BS      at t = t₀ and only if dur_init == 0
+    exp_acq_pp(t)   = acq_expense_rate · BS      at t = t₀ and only if duration_init == 0
     exp_maint_pp(k) = exp_fixed_pp · (1 + exp_infl)^k          the YEAR's amount
     expenses(t)     = ( exp_acq_pp(t) + exp_maint_pp(duration(t)) / 12 ) · l(t)
 
@@ -868,7 +868,7 @@ them, and none for this product specifically.
 ## Worked example
 
 **Configuration.** Model point 1, the anchor cell, in full: `point_id = 1`;
-`policy_id = "DE-IDX-0001"`; `sex = M`; `issue_age = 40`; `dur_init = 0`, so `t_start() = 0` and the
+`policy_id = "DE-IDX-0001"`; `sex = M`; `issue_age = 40`; `duration_init = 0`, so `t_start() = 0` and the
 table below is the **entire** projection; `pols_if_init = 1.0`; `ann_start_age = 67`, hence
 `proj_len_y() = 67 − 40 = 27` policy years and `proj_len() = 324` months, `t = 0 … 323`;
 `prem_form = level`; `prem_gross_pp = 2 400,00 €` (the annual-mode
@@ -1124,7 +1124,7 @@ gets `S = +12,60 %` here; one that applies the floor to the compounded raw retur
 that applies the *Partizipationsquote* to it credits 3,86 %. All three are wrong, and all three look
 entirely plausible in a printout.
 
-**Model point 8 reproduces both to the euro.** It is the in-force cell, `dur_init = 8` and
+**Model point 8 reproduces both to the euro.** It is the in-force cell, `duration_init = 8` and
 `av_pp_init = 50 000,00 €`, so its frame opens at month 96 — policy year `k = 8`, its first projected
 *Indexjahr* — and its
 base is exactly the research file's `G = 50 000,00 €`:

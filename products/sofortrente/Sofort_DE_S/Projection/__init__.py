@@ -69,7 +69,7 @@ SP_net           net_single_prem()                     SP (1 - alpha)
 alpha            expense_load_alpha                    Acquisition loading in the tariff
 beta             expense_load_beta                     Loading on the annuity value
 i                tariff_int_rate()                     Tariff Rechnungszins
-(cap)            max_tariff_int_rate()                 Hoechstrechnungszins at entry_year
+(cap)            max_tariff_int_rate()                 Hoechstrechnungszins at issue_year
 m                payment_freq()                        Instalments per year
 p = 12/m         pay_period_mths()                     Months between instalments
 D                defer_mths()                          Aufschubzeit in months
@@ -308,18 +308,6 @@ def sex(life=1):
     return v
 
 
-def entry_year():
-    """The calendar year of *Vertragsbeginn*.
-
-    It is not a cash flow driver — every step in this product falls on a policy
-    anniversary, not on 31 December — but it does two things.  It is the calendar anchor of
-    the cohort exponent through :func:`calendar_year`, and it selects the contract's own
-    *Höchstrechnungszins* vintage, which stays with the contract for life; see
-    :func:`max_tariff_int_rate`.
-    """
-    return int(model_point()["entry_year"])
-
-
 def defer_mths():
     """D: the *Aufschubzeit* in months, 0 for a pure *Sofortrente*.
 
@@ -449,17 +437,6 @@ def annuity_pp_init():
     return float(model_point()["annuity_pp_init"])
 
 
-def duration_mth_init():
-    """Months already elapsed at the valuation date; the frame's first ``t``.
-
-    0 for a new-business point.  An in-force point opens at the duration it has already
-    run, so its frame contains no ``t = 0`` and therefore neither the *Einmalbeitrag* nor
-    the acquisition expense — both of which happened before the valuation date and belong
-    to a period this projection does not cover.
-    """
-    return int(model_point()["duration_mth_init"])
-
-
 def pols_if_init():
     """The number of policies the model point represents; 1.0 on every shipped point.
 
@@ -475,6 +452,9 @@ def t_start():
     Where the frame *starts* is a product fact rather than a house convention: a
     new-business point opens at 0 and an in-force point at the duration it has already run.
     What the library asserts instead is contiguity and the frame's *end*.
+
+    Override reason: the model point carries the elapsed duration in months, so the frame
+    opens at ``duration_mth_init()``, products/sofortrente/technical-notes.md:53
     """
     return duration_mth_init()
 
@@ -508,6 +488,9 @@ def proj_len():
     years — and stopping on the guarantee alone truncates the life annuity.  On the anchor
     cell ``horizon_mths(1) = 12 x (121 - 65) = 672``, the guarantee ends at month 120, and
     ``proj_len() = 672``: 672 monthly rows, ``t = 0 ... 671``.
+
+    Override reason: the horizon is the longest of the annuitant's survival, the guarantee
+    period and the second life's survival, products/sofortrente/technical-notes.md:437
     """
     n = max(horizon_mths(1), guar_end_mth())
     if surv_pct() > 0.0:
@@ -515,60 +498,18 @@ def proj_len():
     return n
 
 
-def duration_mth(t):
-    """Complete months elapsed since *Vertragsbeginn* at the start of month ``t``.
-
-    The frame's index is itself the duration, because ``t`` is counted from
-    *Vertragsbeginn* on a 0-based grid — so this cells is ``t``.  It is published because
-    the notes name the quantity, because an in-force point's frame opens at
-    ``duration_mth_init()`` rather than at 0 and the identity is then worth being able to
-    read off, and because a reader coming from a model whose index is a policy year should
-    find the unit stated rather than inferred.
-    """
-    return t
-
-
-def duration(t):
-    """Completed policy years at the start of month ``t``: ``t // 12``; 0 for t = 0..11.
-
-    The step that matters in this product.  The *Überschussrente* increase, the expense
-    inflation index and the attained-age step all fall on the **policy anniversary**;
-    nothing happens on 31 December, so no cells needs the civil month.  This is the
-    0-based elapsed count; the 1-based contractual label is :func:`policy_year`.
-    """
-    return t // 12
-
-
-def policy_year(t):
-    """y(t) = ``t // 12 + 1``: the contractual, 1-based policy year containing month ``t``.
-
-    1 for ``t = 0 ... 11``, 2 for ``t = 12 ... 23``, and so on.  It is **derived from**
-    ``t`` and never indexed **by**: no cells in this model takes a policy year as its
-    argument.  Every formula that needs the elapsed count — the *Überschussrente*
-    exponent, the inflation index, the attained age — uses :func:`duration` instead.
-    """
-    return duration(t) + 1
-
-
 def age(t, life=1):
     """Attained age of a life at month ``t``: ``issue_age(life) + t // 12``.
 
     Age last birthday at inception, incrementing at each 12-month multiple of it.  A real
     implementation on dates carries a fractional offset of up to a year; the shipped model
-    points satisfy ``entry_year == birth_year + issue_age``, which is a **[std]**
+    points satisfy ``issue_year == birth_year + issue_age``, which is a **[std]**
     internal-consistency convention rather than a contract fact.
+
+    Override reason: a joint-life contract has two lives; ``life=2`` is the second life's
+    attained age, products/sofortrente/technical-notes.md:406
     """
     return issue_age(life) + t // 12
-
-
-def calendar_year(t):
-    """The calendar year month ``t`` falls in: ``entry_year() + t // 12``.
-
-    Reporting, and the cross-check on the cohort exponent — the year a life attains
-    ``age(t, life)`` is ``birth_year(life) + age(t, life)``, which equals this only when
-    the model point's own consistency convention holds.
-    """
-    return entry_year() + t // 12
 
 
 def mort_rate_at_age(x, table_sex, basis):
@@ -889,7 +830,7 @@ def refund_pv():
 
 
 def max_tariff_int_rate():
-    """The statutory *Höchstrechnungszins* in force at ``entry_year()``.
+    """The statutory *Höchstrechnungszins* in force at ``issue_year()``.
 
     Read from *hoechstrechnungszins_table.csv* by the contract's own vintage, because a
     German in-force book is a stack of cohorts and the cap that applied at conclusion stays
@@ -899,11 +840,11 @@ def max_tariff_int_rate():
     1 January of the split year.
     """
     tab = data.hoechstrechnungszins_table()                          # noqa: F821
-    y = entry_year()
+    y = issue_year()
     for year_from in tab.index:
         if int(year_from) <= y <= int(tab.loc[year_from, "year_to"]):
             return float(tab.loc[year_from, "max_rate"])
-    raise ValueError("no Hoechstrechnungszins band covers entry_year")
+    raise ValueError("no Hoechstrechnungszins band covers issue_year")
 
 
 def surplus_init_pct():

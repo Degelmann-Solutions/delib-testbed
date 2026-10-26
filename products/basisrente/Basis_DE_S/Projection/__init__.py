@@ -107,8 +107,8 @@ d(k)                       duration_y(k)                   Completed policy year
 d(t)                       duration(t)                     The same, read from a month
 (none)                     duration_mth(t)                 Completed policy months
 (none)                     policy_year(t)                  Contractual 1-based label
-y(k)                       cal_year_y(k)                   Calendar year in year k
-y(t)                       cal_year(t)                     The same, read from a month
+y(k)                       calendar_year_y(k)              Calendar year in year k
+y(t)                       calendar_year(t)                The same, read from a month
 omega                      omega_age()                     Terminal age of the table
 T                          ret_y()                         Projection year of Rentenbeginn
 12 T                       ret_t()                         Month of the first instalment
@@ -435,40 +435,20 @@ def proj_len_y():
 
     This is the annual-step model's own ``proj_len()``, and ``k = 0 ... proj_len_y() - 1``
     indexes exactly the rows that model projected.
+
+    Override reason: the annuity is lifelong, so the projection runs from the valuation
+    date to the end of the mortality table, products/basisrente/technical-notes.md:80
     """
     return omega_age() - age(0) + 1
 
 
-def proj_len():
-    """The **number of projected months**, ``12 x proj_len_y()``.
+def k_start():
+    """The first projected year: 0, the frame opens at the valuation date.
 
-    The **exclusive end** of the frame: :func:`result_cf` is 0-based and runs
-    ``t = 0 ... proj_len() - 1``, so ``len(result_cf()) == proj_len()``, which is this
-    library's reading of ``proj_len()`` and is asserted by the conventions suite.  924 on
-    the anchor cell.
-
-    The last month is the last month of the terminal year, where :func:`mort_rate` is 1:
-    the last survivor dies at ``t = proj_len() - 1``, ``pols_if(proj_len()) = 0`` exactly
-    and there is no tail state of any kind.
+    Override reason: ``k`` counts projection years from the valuation date, so the first
+    projected year is 0 and ``t_start()`` derives 0, products/basisrente/model.md:57
     """
-    return 12 * proj_len_y()
-
-
-def proj_year(t):
-    """k(t): the 0-based **projection year** month t falls in, ``t // 12``.
-
-    The bridge between the model's two clocks.  ``t`` counts projection **months** from the
-    valuation date and is the argument of the in force, the decrements, the claims, the
-    expenses and the annuity instalments; ``k`` counts projection **years** and is the
-    argument of everything the contract states per *Versicherungsjahr* — the premium, the
-    *Zuzahlung*, the four account charges, the declared rate, the *Deckungskapital* and the
-    *Überschussrente*.  A cells' argument therefore says which clock it is on, and this is
-    the only place the two meet.
-
-    ``k`` is the annual-step model's own ``t``, which is what makes the two comparable row
-    by row: ``result_cf_annual().loc[k]`` is that model's row ``k``.
-    """
-    return t // 12
+    return 0
 
 
 def is_anniv(t):
@@ -490,8 +470,11 @@ def age_y(k):
     (*Eintrittsalter*), stepping on the policy anniversary **[std]**: no German convention
     was established, and here mortality drives the annuity's duration rather than any
     benefit amount, so a half-year offset is second order.
+
+    Override reason: ``k`` is the projection year from the valuation date, not the policy
+    year, so the age adds ``duration_init()``, products/basisrente/model.md:58
     """
-    return issue_age() + int(model_point()["duration_init"]) + k
+    return issue_age() + duration_init() + k
 
 
 def age(t):
@@ -500,32 +483,11 @@ def age(t):
     The age **steps on the anniversary** and not monthly, which is what lets one
     generational mortality surface serve every month of a *Versicherungsjahr* and is why
     the twelve months of a year share one annual death rate.
+
+    Override reason: ``t`` counts months from the valuation date, so the age is read at the
+    projection year, not at the policy year, products/basisrente/model.md:54
     """
     return age_y(proj_year(t))
-
-
-def duration_y(k):
-    """d(k): **completed** policy years at the start of projection year k.
-
-    ``duration_init + k``, so a new-business point opens at ``duration_y(0) = 0``.  The
-    *Beitragsdynamik*, the *Zillmerung* amortisation window and the *Zuzahlung* end date
-    are all keyed to this rather than to ``k``, which is what makes an in-force model
-    point work: model point 6 opens at ``duration_y(0) = 17`` and its premium at
-    ``prem_base_pp x 1.02^17``.  Keying any of the three to ``k`` is the seventh pitfall.
-
-    The ``dur`` index of *behaviour_table.csv* is the **policy year**, ``duration_y(k) + 1``.
-    """
-    return int(model_point()["duration_init"]) + k
-
-
-def duration(t):
-    """d(t): **completed** policy years at the start of projection month t.
-
-    ``duration_y(proj_year(t))``.  It steps on the anniversary, so the twelve months of a
-    projection year share one policy duration and therefore one row of
-    *behaviour_table.csv*.
-    """
-    return duration_y(proj_year(t))
 
 
 def duration_mth(t):
@@ -536,39 +498,38 @@ def duration_mth(t):
     completed twelve policy months, an in-force point opening at ``duration_init = 17`` has
     completed 216 — and because ``duration(t) = duration_mth(t) // 12`` states in code that
     the policy duration is the policy month divided down.
+
+    Override reason: ``t`` counts months from the valuation date, not from issue, so the
+    completed policy months add ``duration_init()`` years, products/basisrente/model.md:54
     """
-    return 12 * int(model_point()["duration_init"]) + t
+    return 12 * duration_init() + t
 
 
-def policy_year(t):
-    """The contractual **1-based** policy year label of month t, ``duration(t) + 1``.
-
-    The label the AVB and *behaviour_table.csv* use: the first year of the contract is
-    policy year 1 and ``duration`` is 0 through the whole of it.  Published so that a
-    reader never has to decide which of the two a table's ``dur`` column means.
-    """
-    return duration(t) + 1
-
-
-def cal_year_y(k):
+def calendar_year_y(k):
     """y(k): calendar year at the start of projection year k.
 
-    ``conclusion_year + duration_init + k``.  Carried because the mortality basis is
+    ``issue_year + duration_init + k``.  Carried because the mortality basis is
     **generational**: DAV 2004 R is a *Generationentafel* with the improvement inside the
     table, so :func:`mort_rate_at_age` needs a calendar year as well as an age.  Two model
     points that reach the same attained age in different calendar years see different
     rates, and treating the basis as a period table is the fifteenth pitfall.
+
+    Override reason: ``k`` is the projection year from the valuation date, not the policy
+    year, so the calendar year adds ``duration_init()``, products/basisrente/model.md:58
     """
-    return int(model_point()["conclusion_year"]) + int(model_point()["duration_init"]) + k
+    return issue_year() + duration_init() + k
 
 
-def cal_year(t):
-    """y(t): calendar year in projection month t, ``cal_year_y(proj_year(t))``.
+def calendar_year(t):
+    """y(t): calendar year in projection month t, ``calendar_year_y(proj_year(t))``.
 
     Steps on the policy anniversary rather than on 1 January, which is the same convention
     the attained age follows and the one the annual-step model necessarily used.
+
+    Override reason: ``t`` counts months from the valuation date, so the calendar year is
+    read at the projection year, not at the policy year, products/basisrente/model.md:54
     """
-    return cal_year_y(proj_year(t))
+    return calendar_year_y(proj_year(t))
 
 
 def ret_y():
@@ -672,7 +633,7 @@ def prem_base_pp(k):
     applies phi and stops at *Rentenbeginn*.
     """
     if model_point()["prem_form"] == "single":
-        if k == 0 and int(model_point()["duration_init"]) == 0:
+        if k == 0 and duration_init() == 0:
             return float(model_point()["prem_base_pp"])
         return 0.0
     return (float(model_point()["prem_base_pp"])
@@ -924,13 +885,13 @@ def mort_rate_at_age(x, y):
 def mort_rate_base(t):
     """The first-order table rate applying in projection month t, an **annual** rate.
 
-    ``mort_rate_at_age(age(t), cal_year(t))``.  Split from :func:`mort_rate` so that the
+    ``mort_rate_at_age(age(t), calendar_year(t))``.  Split from :func:`mort_rate` so that the
     table rate and the best-estimate rate have separate names and the step between them is
     a single visible factor.  Both are annual rates of the projection year the month falls
     in: the age and the calendar year step on the anniversary, so the twelve months of a
     year share one table rate.
     """
-    return mort_rate_at_age(age(t), cal_year(t))
+    return mort_rate_at_age(age(t), calendar_year(t))
 
 
 def mort_rate(t):
@@ -1640,7 +1601,7 @@ def expenses(t):
     row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
     infl = (1.0 + float(row["expense_infl"])) ** proj_year(t)
     out = 0.0
-    if t == 0 and int(model_point()["duration_init"]) == 0:
+    if t == 0 and duration_init() == 0:
         out += float(row["acq_expense_pp"]) * pols_if_init()
     if t < ret_t():
         out += float(row["maint_expense_pp"]) / 12.0 * infl * pols_if(t)
@@ -1673,7 +1634,7 @@ def commissions(t):
         return 0.0
     row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
     out = 0.0
-    if t == 0 and int(model_point()["duration_init"]) == 0:
+    if t == 0 and duration_init() == 0:
         out += float(row["comm_init_rate"]) * beitragssumme_pp() * pols_if_init()
     if t >= 1:
         out += float(row["comm_renew_rate"]) * (premiums(t) + zuzahlungen(t))

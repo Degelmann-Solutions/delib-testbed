@@ -16,9 +16,9 @@ projecting model point 1::
 ``t`` counts **policy months from issue**, 0-based. ``proj_len() = 12 x proj_len_y()`` is
 the **exclusive end** of the frame, with ``proj_len_y() = ann_start_age - issue_age`` the
 number of policy years, so ``result_cf().index[-1] == proj_len() - 1`` and the frame of an
-in-force point at ``dur_init = 8`` has 228 rows while still reporting ``proj_len() = 324``.
+in-force point at ``duration_init = 8`` has 228 rows while still reporting ``proj_len() = 324``.
 A **new-business** point starts at ``t = 0``; an **in-force** point starts at
-``t = t_start() = 12 x dur_init``, because ``t`` is counted from the policy's own inception
+``t = t_start() = 12 x duration_init``, because ``t`` is counted from the policy's own inception
 and not from the valuation date.
 
 **Almost nothing on this product is monthly, and the argument of a cells says which clock
@@ -112,8 +112,8 @@ Notes symbol               Cells                           Meaning
 n = ann_start - entry      proj_len_y()                    Number of projected policy
                                                            years; last one is n - 1
 12 n                       proj_len()                      Exclusive end, in months
-t0 = 12 dur_init           t_start()                       First projected month
-k0 = dur_init              k_start()                       First projected policy year
+t0 = 12 duration_init      t_start()                       First projected month
+k0 = duration_init         k_start()                       First projected policy year
 (none)                     duration_mth(t)                 Elapsed policy months, = t
 k(t)                       duration(t)                     0-based policy year of month t
 t + 1 (contractual)        policy_year(t)                  1-based policy year label
@@ -260,19 +260,6 @@ def policy_id():
     return model_point()["policy_id"]
 
 
-def dur_init():
-    """Completed policy years at the valuation date; 0 for new business.
-
-    The frame starts at ``t_start() = dur_init()``, because ``t`` is the policy's own
-    elapsed duration and both are 0-based counts of completed years.  An in-force point
-    brings its state with it — ``av_pp_init``,
-    ``guar_locked_init``, ``prem_paid_init`` — rather than having it re-derived, which is
-    what makes the in-force cells independent evidence about the recursion rather than a
-    replay of it.
-    """
-    return int(model_point()["dur_init"])
-
-
 def pols_if_init():
     """Policies in force at ``t_start()``: 1.0, a single-policy model point.
 
@@ -411,29 +398,6 @@ def surr_charge_on():
 
 # --- the frame ---------------------------------------------------------------
 
-def k_start():
-    """``k0``: the first projected **policy year**, ``dur_init()`` — the elapsed years.
-
-    New business starts at 0; an in-force point starts partway through its own term, at
-    the count of policy years it has already completed.  Every annual construction in this
-    model — the premium and its charges, the account, the *Indexjahr*, the
-    *Höchststandsicherung* ledger, the death benefit and the surrender value — is defined
-    from here.
-    """
-    return dur_init()
-
-
-def t_start():
-    """``t0``: the frame's first **month**, ``12 x k_start()``.
-
-    ``dur_init`` is an elapsed count of policy **years**, so the conversion is a
-    multiplication and no model point column changed.  The frame's *start* is a product fact
-    and is not fixed per model, which is why the conventions suite asserts contiguity and
-    the last index rather than the first.
-    """
-    return 12 * k_start()
-
-
 def proj_len_y():
     """``n``: the **number of projected policy years**, ``ann_start_age() - issue_age()``.
 
@@ -441,41 +405,11 @@ def proj_len_y():
     capital falls due.  There is no policy year ``n``: the whole surviving cohort has
     matured, while ``av_pp(n)`` and ``guar_cap_pp(n)`` are defined, being the time-``n``
     per-policy amounts the maturity benefit is struck on.
+
+    Override reason: the model projects the accumulation phase only, to *Rentenbeginn*,
+    products/indexpolice/technical-notes.md:42
     """
     return ann_start_age() - issue_age()
-
-
-def proj_len():
-    """The **exclusive end** of the frame, counted in policy **months**: ``12 x proj_len_y()``.
-
-    The library's reading of ``proj_len()`` and lifelib's own: ``result_cf()`` covers
-    ``t = t_start() ... proj_len() - 1``, so ``result_cf().index[-1] == proj_len() - 1``.
-    It is **not** the row count of an in-force point — one at ``dur_init = 8`` publishes
-    228 rows and still reports 324.
-    """
-    return 12 * proj_len_y()
-
-
-def duration_mth(t):
-    """The number of **complete policy months** elapsed at the start of month t: ``t`` itself.
-
-    Published rather than inlined because it is the name the rest of the library uses for
-    the elapsed-month count, and because a model whose frame starts partway through a
-    contract must say once, in one place, that ``t`` is counted from **inception** and not
-    from the frame's own start.
-    """
-    return t
-
-
-def duration(t):
-    """``k(t)``: the **0-based policy year** month t falls in, ``duration_mth(t) // 12``.
-
-    The bridge between the two clocks.  Everything annual on this product — the premium,
-    the account, the whole *Indexjahr*, the ledger, the guarantee, the death benefit and
-    the surrender value — takes this ``k``; the in force, the decrements, the claims and
-    the expenses take ``t``.
-    """
-    return duration_mth(t) // 12
 
 
 def is_anniv(t):
@@ -488,15 +422,6 @@ def is_anniv(t):
     return t % 12 == 11
 
 
-def policy_year(t):
-    """The **contractual, 1-based** policy year of month t: ``duration(t) + 1``.
-
-    Derived and never indexed by; the input tables that are keyed by duration are keyed on
-    the 0-based ``duration(t)`` instead, which is what they were already keyed on.
-    """
-    return duration(t) + 1
-
-
 def index_month(t):
     """``m(t)``: which month of its *Indexjahr* month t is, **1-based**: ``t % 12 + 1``.
 
@@ -507,21 +432,6 @@ def index_month(t):
     computed inside a single row, and they are now twelve rows of the frame.
     """
     return duration_mth(t) % 12 + 1
-
-
-def age_y(k):
-    """``x(k)``: the attained age in policy year k, ``issue_age() + k``."""
-    return issue_age() + k
-
-
-def age(t):
-    """``x(t)``: the attained age in month t, ``age_y(duration(t))``.
-
-    Age last birthday **stepping on the policy anniversary**, the basis the delib registry
-    fixes for the whole library: the monthly grid does not refine it, and a model that
-    stepped the age monthly would read a mortality rate the table does not publish.
-    """
-    return age_y(duration(t))
 
 
 # --- the premium and its charges ---------------------------------------------
@@ -1531,7 +1441,7 @@ def exp_acq_pp(t):
     :func:`prem_charge_acq_pp` over five years, and setting the expense equal to the charge
     is what makes the strain visible in ``net_cf`` rather than assumed away.
     """
-    if t != t_start() or dur_init() != 0:
+    if t != t_start() or duration_init() != 0:
         return 0.0
     return acq_expense_rate * prem_sum()                             # noqa: F821
 

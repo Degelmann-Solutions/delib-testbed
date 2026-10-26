@@ -304,7 +304,7 @@ discounts a continuation into a capital sum.
 
 DAV 2004 R is a *Generationentafel*: the improvement lives **inside** the basis rather than
 being applied on top of it [R17] [REG-R49]. So `mort_rate_at_age(x, y)` takes a calendar year as
-well as an age, `cal_year_y(k)` is carried on every model point, and two points that reach the
+well as an age, `calendar_year_y(k)` is carried on every model point, and two points that reach the
 same attained age in different calendar years see different rates — model points 6 and 9 both
 reach age 60, in 2029 and 2036, at 0.00467744 and 0.00420787. Treating the basis as a period
 table is the notes' fifteenth pitfall.
@@ -375,7 +375,7 @@ not moved. Neither file was re-keyed when the grid went monthly: both are annual
 annual contract, and both are read through the annual clock. `mort_table.csv` is keyed on attained `age` and `rentenfaktor_table.csv` on the
 conversion `age`; neither is a time index. On `model_point_table.csv`, `duration_init` and
 `zuzahlung_end_dur` are **elapsed policy-year counts** and are already 0-based by nature, so
-neither shifts; `conclusion_year` is a calendar year, and `issue_age` and `ret_age` are ages.
+neither shifts; `issue_year` is a calendar year, and `issue_age` and `ret_age` are ages.
 
 | File | Contents | Provenance |
 |---|---|---|

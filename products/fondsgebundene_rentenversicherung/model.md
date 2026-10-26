@@ -58,22 +58,22 @@ what a replacement must preserve.
 the inception month, period `t` runs from time `t` to time `t + 1`, and `t = 60` means the
 same thing on every model point — the first month after the acquisition-charge instalment
 ends. `proj_len() = 12 × (annuity_age − issue_age)` is the **number** of policy months and
-so the frame's **exclusive** end, so `result_cf()` covers `range(proj_start(), proj_len())`
+so the frame's **exclusive** end, so `result_cf()` covers `range(t_start(), proj_len())`
 — the last row is `t = proj_len() − 1`, which is 359 on the anchor cell, and
-`len(result_cf())` is `proj_len() − proj_start()`. That is lifelib's own convention
+`len(result_cf())` is `proj_len() − t_start()`. That is lifelib's own convention
 (`basiclife/BasicTerm_S`, `savings/CashValue_SE`: `for t in range(proj_len())`), and it is
 what the conventions suite asserts for every model point.
 
-`proj_start() = duration_init_m` — **0** for new business and **96** for the in-force cell.
-`duration_init_m` is an elapsed count and is therefore already 0-based, so it is the first
+`t_start() = duration_mth_init` — **0** for new business and **96** for the in-force cell.
+`duration_mth_init` is an elapsed count and is therefore already 0-based, so it is the first
 projected index itself and needs no `+ 1`; an in-force model point simply opens partway
-through a frame whose origin is still inception. `pols_if(proj_start()) == pols_if_init()`
+through a frame whose origin is still inception. `pols_if(t_start()) == pols_if_init()`
 exactly, and `pols_if(proj_len()) = 0`, one past the last row.
 
 The **contractual policy year is the 1-based label** `policy_year(t) = t // 12 + 1`, derived
 from `t` and never indexed by, and `age(t) = issue_age + policy_year(t) − 1 = issue_age +
 t // 12`. Because a 0-based frame has no `t = −1`, the opening *Anteilspreis* is its own cells,
-`unit_price_open(t)` — `unit_price_init` at `t = proj_start()` and `unit_price(t − 1)` after it
+`unit_price_open(t)` — `unit_price_init` at `t = t_start()` and `unit_price(t − 1)` after it
 — which is what `av_pp` and `units_bought_pp` read; the ledgers `cum_prem_pp` and
 `cum_charge_acq_pp` likewise seed inside the frame's first month rather than one before it.
 
@@ -81,7 +81,7 @@ t // 12`. Because a 0-based frame has no `t = −1`, the opening *Anteilspreis* 
 
 | File | Column | Decision |
 |---|---|---|
-| `model_point_table.csv` | `duration_init_m` | **Unchanged.** An elapsed count, 0-based by nature; 96 stays 96 and is now `proj_start()` itself |
+| `model_point_table.csv` | `duration_mth_init` | **Unchanged.** An elapsed count, 0-based by nature; 96 stays 96 and is now `t_start()` itself |
 | `model_point_table.csv` | `pup_month` | **Shifted −1**: a point on the frame's time axis. Model point 7 goes *beitragsfrei* at `t = 120` (was 121). `0` stays the "never" **sentinel**, not the inception month |
 | `model_point_table.csv` | `topup_month` | **Shifted −1**: model point 9 tops up at `t = 120` (was 121). `0` stays the "none" sentinel |
 | `model_point_table.csv` | `wd_month` | **Shifted −1**: model point 9 withdraws at `t = 240` (was 241). `0` stays the "none" sentinel |

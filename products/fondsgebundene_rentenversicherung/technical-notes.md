@@ -66,9 +66,9 @@ charge rate and not one *Rentenfaktor* was established at any carrier.
   opens partway through it.** `t` is the policy month index from the contract's own inception with
   **`t = 0` the inception month**, so `t = 60` means the same thing on every model point: the
   first month after the acquisition-charge instalment ends. Period `t` runs from time `t` to time
-  `t + 1`. The frame is `range(proj_start(), proj_len())` — `t = proj_start() … proj_len() − 1` —
-  with `proj_start() = duration_init_m`, which is `0` for new business and `96` for the in-force
-  cell; `duration_init_m` is an elapsed count and is already 0-based, so it **is** the first
+  `t + 1`. The frame is `range(t_start(), proj_len())` — `t = t_start() … proj_len() − 1` —
+  with `t_start() = duration_mth_init`, which is `0` for new business and `96` for the in-force
+  cell; `duration_mth_init` is an elapsed count and is already 0-based, so it **is** the first
   projected index. That is what lets a single `charge_acq_pp(t)` rule serve both without a
   duration offset, and it is why the library's conventions suite asserts frame **contiguity** and
   the last index rather than the first. **The contractual policy year is the 1-based label
@@ -116,7 +116,7 @@ that exercise the attribute non-trivially, so a reader can find the row that tes
 | `policy_id` | str | label, e.g. `DE-FRV-0001` | all |
 | `sex` | enum {M, F} | **reporting only.** German tariffs are unisex for contracts from 21 December 2012 [REG-R34], so this must not enter pricing | 1, 4, 9 |
 | `issue_age` | int (ALB) | age at inception | all |
-| `duration_init_m` | int | policy months already elapsed at the valuation date; 0 for new business. An **elapsed count**, already 0-based, so it is `proj_start()` itself | 6 |
+| `duration_mth_init` | int | policy months already elapsed at the valuation date; 0 for new business. An **elapsed count**, already 0-based, so it is `t_start()` itself | 6 |
 | `pols_if_init` | float | policies the model point represents | all |
 | `annuity_age` | int | age at *Rentenbeginn*; fixes `proj_len()` and the *Rentenfaktor* row | 13 (70), all others 67 |
 | `prem_form` | enum {`laufend`, `einmal`} | recurring or single premium | 2 (`einmal`) |
@@ -131,7 +131,7 @@ that exercise the attribute non-trivially, so a reader can find the row that tes
 | `charge_id` | str | key into `charge_table.csv` | 5 (`std_high`), 11 (`std_netto`), 13 (`std_low`) |
 | `scenario_id` | str | key into `fund_scenario_table.csv` | 7 (`zero`), 11 (`etf`), 12 (`stress`) |
 | `rentenfaktor_id` | str | key into `rentenfaktor_table.csv` | 13 (`rich_current`) |
-| `unit_price_init` | EUR | *Anteilspreis* at the projection's opening, i.e. `unit_price_open(proj_start())` | 6 (118.40); 100.00 elsewhere |
+| `unit_price_init` | EUR | *Anteilspreis* at the projection's opening, i.e. `unit_price_open(t_start())` | 6 (118.40); 100.00 elsewhere |
 | `units_init` | float | units held at the projection's opening | 6 (190.0); 0 elsewhere |
 | `cum_prem_init` | EUR | premiums paid before the valuation date — the *Beitragsrückgewähr* base | 6 (24,000.00) |
 | `topup_month` | int | 0-based month of a *Zuzahlung*; 0 = none (the sentinel) | 9 (120) |
@@ -163,11 +163,11 @@ twelve-year deferment on the stress path, which is the acquisition-spread bounda
 
 | Variable | Description | Updated |
 |---|---|---|
-| `proj_start()` | first projected month, `duration_init_m` (0-based) | once |
+| `t_start()` | first projected month, `duration_mth_init` (0-based) | once |
 | `proj_len()` | projected months from inception, `12 × (annuity_age − issue_age)`; the frame's **exclusive** end, so the last month is `proj_len() − 1` | once |
 | `beitragssumme()` | sum of premiums **payable** over the premium term at the initial level — the acquisition-charge base [R12] [REG-R16] | once |
 | `unit_price(t)` | *Anteilspreis* at the **end** of month `t`, `= unit_price_open(t) × (1 + i(t))` | monthly |
-| `unit_price_open(t)` | *Anteilspreis* at the **start** of month `t`; `unit_price_init` at `t = proj_start()` and `unit_price(t − 1)` after it. A cells of its own because a 0-based frame has no `t = −1` to read | monthly |
+| `unit_price_open(t)` | *Anteilspreis* at the **start** of month `t`; `unit_price_init` at `t = t_start()` and `unit_price(t − 1)` after it. A cells of its own because a 0-based frame has no `t = −1` to read | monthly |
 | `units_pp(t)` | *Anteileinheiten* per policy at the **start** of month `t` | monthly recursion |
 | `av_pp(t)` | *Fondsguthaben* per policy at the start of month `t`, `= units_pp(t) × unit_price_open(t)` | derived |
 | `av_pp_at(t, timing)` | the within-month balances: `"BEF_CHARGE"`, `"AFT_CHARGE"`, `"AFT_WD"`, `"BEF_DECR"` | within month |
@@ -176,7 +176,7 @@ twelve-year deferment on the stress path, which is the acquisition-spread bounda
 | `cum_charge_acq_pp(t)` | cumulative acquisition charge withheld — the ledger `check_acq_charge()` closes | monthly |
 | `db_floor_pp(t)` | guaranteed minimum death benefit under `db_form` | monthly |
 | `nar_pp(t)` | *riskiertes Kapital*, `max(db_floor_pp(t) − av_pp_at(t, "AFT_WD"), 0)` | monthly |
-| `pols_if(t)` | policies in force at the **start** of month `t`; `pols_if(proj_start()) = pols_if_init()` | monthly decrements |
+| `pols_if(t)` | policies in force at the **start** of month `t`; `pols_if(t_start()) = pols_if_init()` | monthly decrements |
 | `pols_if_at(t, timing)` | `"BEF_DECR"`, `"AFT_DEATH"`, `"AFT_DECR"`; `"AFT_DECR"` is the end-of-month count | within month |
 | `pols_death(t)`, `pols_lapse(t)`, `pols_maturity(t)` | the three exits; `pols_maturity` is non-zero only at `t = proj_len() − 1` | monthly |
 
@@ -413,7 +413,7 @@ with a PRIIPs performance scenario**.
 | Symbol | Cells | Meaning |
 |---|---|---|
 | `t` | — | **0-based** policy month index from inception, `t = 0` at inception; `t = t₀ … n − 1` |
-| `t₀`, `n` | `proj_start()`, `proj_len()` | `duration_init_m`; `12 × (annuity_age − issue_age)`, the month **count** and so the frame's exclusive end |
+| `t₀`, `n` | `t_start()`, `proj_len()` | `duration_mth_init`; `12 × (annuity_age − issue_age)`, the month **count** and so the frame's exclusive end |
 | `y(t)`, `x(t)` | `policy_year(t)`, `age(t)` | `t // 12 + 1` (the contractual 1-based label); `issue_age + y(t) − 1` |
 | `p(t)`, `p_open(t)` | `unit_price(t)`, `unit_price_open(t)` | *Anteilspreis* at the **end** and at the **start** of month `t`; `p_open(t₀) = unit_price_init`, `p_open(t) = p(t−1)` for `t > t₀` |
 | `i(t)` | `fund_return_net_mth(t)` | monthly return net of the fund's TER |
@@ -635,14 +635,14 @@ delib's own [std] stack and **must never be quoted as a market figure** [R10] [R
 ### `result_cf()` and the published identities
 
 `result_cf()` returns a DataFrame indexed by `t` (`index.name == "t"`), contiguous over
-`range(proj_start(), proj_len())` — so `index[-1] == proj_len() − 1` — with these columns in this
+`range(t_start(), proj_len())` — so `index[-1] == proj_len() − 1` — with these columns in this
 order:
 
     pols_if, premiums, prem_to_av, charge_acq, charge_admin_prem, charge_admin_fund,
     charge_policy_fee, charge_risk, stornoabzug, withdrawals, claims_death, claims_lapse,
     claims_maturity, av_releases, death_strain, expenses, commissions, net_cf, liability_cf
 
-`pols_if` is first and `pols_if(proj_start()) == pols_if_init()` exactly. Every flow on row `t` is
+`pols_if` is first and `pols_if(t_start()) == pols_if_init()` exactly. Every flow on row `t` is
 weighted by that row's `pols_if`, so dividing a flow by it recovers the per-policy amount; the
 end-of-month count is `pols_if_at(t, "AFT_DECR")`, and the closing fund of the surviving cohort is
 `av_pp(t+1) × pols_if(t+1)`, not `av_at(t, ·)`.
@@ -829,7 +829,7 @@ any of them, and the research file's gaps register records that as gaps 18 and 1
 
 **Configuration.** Model point 1, the anchor cell of `model_point_table.csv`:
 `policy_id = DE-FRV-0001`; `sex = M` (reporting only — the tariff is unisex [REG-R34]);
-`issue_age = 37`; `duration_init_m = 0`, so `proj_start() = 0`; `pols_if_init = 1.0`;
+`issue_age = 37`; `duration_mth_init = 0`, so `t_start() = 0`; `pols_if_init = 1.0`;
 `annuity_age = 67`, so `proj_len() = 12 × (67 − 37) = 360` months and the frame is
 `t = 0 … 359`;
 `prem_form = laufend`; `prem_pp = 200.00 EUR`; `prem_mode_months = 1`; `prem_term_y = 30`;

@@ -61,7 +61,7 @@ properties, or the model stops being a model of this product:
 
 * it must be **generational** — DAV 2004 R is a *Generationentafel*, with the improvement
   inside the table rather than applied on top of it, which is why ``mort_rate_at_age``
-  takes a calendar year as well as an age and why ``cal_year(t)`` is carried at all;
+  takes a calendar year as well as an age and why ``calendar_year(t)`` is carried at all;
 * it must be **first order**, carrying the DAV's prudential margins, because the
   guaranteed *Rentenfaktor* is struck on that basis and the projection's own
   ``mort_be_factor`` steps down from it to a best estimate;

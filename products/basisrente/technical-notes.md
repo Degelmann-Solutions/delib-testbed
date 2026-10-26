@@ -52,7 +52,7 @@ prose, where they are the name of the thing.
   `duration_y(k) = duration_init + k` completed policy years, so the **policy year** — the
   contractual, 1-based label — is `policy_year(t) = duration(t) + 1`; attained age is
   `age_y(k) = issue_age + duration_init + k` and steps on the **anniversary**; calendar year is
-  `cal_year_y(k) = conclusion_year + duration_init + k` and steps with it. `duration_mth(t) =
+  `calendar_year_y(k) = issue_year + duration_init + k` and steps with it. `duration_mth(t) =
   12 duration_init + t` is the completed policy months and `is_anniv(t)` — `t % 12 == 11` — the last
   month of a projection year. A new-business model point has `duration_init = 0`, so `k = 0` is its
   first policy year; an in-force point opens at whatever duration it has already run, and **the frame
@@ -121,7 +121,7 @@ prose, where they are the name of the thing.
   anniversary **[std]**: no German convention was established, and here mortality drives the annuity's
   duration rather than any benefit amount, so a half-year offset is second order. `mort_rate` is
   generational and depends on the **calendar** year as well as the age [R17] [REG-R49], which is why
-  `cal_year_y(k)` is carried. Both the age and the calendar year step on the anniversary, so the
+  `calendar_year_y(k)` is carried. Both the age and the calendar year step on the anniversary, so the
   twelve months of a projection year share one annual death rate and `mort_rate_mth` is its
   geometric twelfth.
 
@@ -156,7 +156,7 @@ tagged in *Assumption inputs* below: `mort_be_factor`, `elig_surv_prob`, `mort_b
 | `policy_id` | str | The carrier's own reference, carried for reporting | all |
 | `sex` | enum {M, F} | Reporting only. **Must not enter pricing**: unisex is mandatory for contracts concluded from 21 December 2012 [REG-R34] | 1–13 |
 | `issue_age` | int | Age last birthday at conclusion (*Eintrittsalter*) | all |
-| `conclusion_year` | int | Calendar year the contract was concluded. Fixes the age-floor cohort (60 before 2012, 62 after) [R1] [R8], the guarantee vintage [REG-R15] and the generational mortality cohort [R17] | 6, 7, 8 (pre-2012 / pre-2015 / pre-2010) |
+| `issue_year` | int | Calendar year the contract was concluded. Fixes the age-floor cohort (60 before 2012, 62 after) [R1] [R8], the guarantee vintage [REG-R15] and the generational mortality cohort [R17] | 6, 7, 8 (pre-2012 / pre-2015 / pre-2010) |
 | `duration_init` | int | Completed policy years at the valuation date; 0 = new business | 6, 7, 8 |
 | `ret_age` | int | Attained age at *Rentenbeginn* | 6 (60, the pre-2012 floor), 12 (70) |
 | `pols_if_init` | float | Policies the model point represents | all |
@@ -221,7 +221,7 @@ age-floor cohorts, four guarantee vintages and four boundary cases.
 | `proj_len_y` | Number of projected **years**, `omega_age() − age(0) + 1` | once per model point |
 | `proj_len` | Number of projected **months**, `12 × proj_len_y()`; the frame's exclusive end | once per model point |
 | `ret_y`, `ret_t` | The projection **year** in which *Rentenbeginn* falls, `ret_age − age(0)`, and the **month** of the first instalment, `12 × ret_y()`; **< 0 for a point that opens in payment** | once per model point |
-| `age_y(k)`, `duration_y(k)`, `cal_year_y(k)` | Attained age, completed policy years and calendar year in projection year `k`; `age(t)`, `duration(t)` and `cal_year(t)` read the same quantities from a month | annual, stepping on the anniversary |
+| `age_y(k)`, `duration_y(k)`, `calendar_year_y(k)` | Attained age, completed policy years and calendar year in projection year `k`; `age(t)`, `duration(t)` and `calendar_year(t)` read the same quantities from a month | annual, stepping on the anniversary |
 | `pols_if(t)` | Policies in force at the **start** of month `t`, paying and premium-free together; the weight on that same `result_cf()` row | monthly recursion |
 | `pols_paying(t)` | The premium-paying subset at the start of month `t` | monthly recursion |
 | `pols_paidup(t)` | The premium-free subset, `pols_if(t) − pols_paying(t)` | monthly |
@@ -343,7 +343,7 @@ surrender, no assignment, no provider transfer, no commutation. That is the prod
 |---|---|---|
 | `t` | — | projection **month**, **0-based**: `t = 0 … 12n − 1`, `12n = proj_len()` |
 | `k` | `proj_year(t)` | projection **year**, `t // 12`, **0-based**: `k = 0 … n − 1`, `n = proj_len_y()`; the contractual policy year is `d(k) + 1` |
-| `x(k)`, `d(k)`, `y(k)` | `age_y(k)`, `duration_y(k)`, `cal_year_y(k)` | attained age, completed policy years, calendar year in year `k`; all three step on the anniversary |
+| `x(k)`, `d(k)`, `y(k)` | `age_y(k)`, `duration_y(k)`, `calendar_year_y(k)` | attained age, completed policy years, calendar year in year `k`; all three step on the anniversary |
 | `T` | `ret_y()` | the projection year in which *Rentenbeginn* falls; `12T = ret_t()` is the month of the first instalment; `T < 0` for a point that opens in payment |
 | `l(t)`, `lᵖ(t)`, `lᶠ(t)` | `pols_if(t)`, `pols_paying(t)`, `pols_paidup(t)` | in force, premium-paying and premium-free at the start of **month** `t`; `l = lᵖ + lᶠ` |
 | `q(t)` | `mort_rate(t)` | best-estimate **annual** death rate of the year month `t` falls in, `mort_rate_base(t) × mort_be_factor` |
@@ -698,7 +698,7 @@ The order is stated per *Versicherungsjahr*, because that is the order the **con
 the months sit inside it. For `k = 0 … n − 1`, and within each year for `t = 12k … 12k + 11`, in
 exactly this order:
 
-1. **Open the year.** Compute `age_y(k)`, `duration_y(k)`, `cal_year_y(k)`; determine the phase from
+1. **Open the year.** Compute `age_y(k)`, `duration_y(k)`, `calendar_year_y(k)`; determine the phase from
    `k < ret_y()` (*Aufschubphase*) or `k ≥ ret_y()` (*Rentenphase*); take the year's annual rates —
    `mort_rate`, `bf_rate`, `cred_rate` — and the monthly death rate `mort_rate_mth` from the first.
 2. **Open the ledgers.** `pols_paying(12k)` and `pols_paidup(12k)` from the previous month's
@@ -834,7 +834,7 @@ a test.
 15. **Using a period table where the basis is generational.** DAV 2004 R is a *Generationentafel* and
     the improvement lives inside it [R17] [REG-R49]. Assert
     `mort_rate_at_age(x, y2) < mort_rate_at_age(x, y1)` for `y2 > y1` at every age, and that two model
-    points at the same attained age but different `conclusion_year` — 6 and 9 both reach age 60 — see
+    points at the same attained age but different `issue_year` — 6 and 9 both reach age 60 — see
     different `mort_rate`. Assert too that `mort_rate_mth` is the **geometric** twelfth, so that
     `(1 − mort_rate_mth(t))^12 = 1 − mort_rate(t)` to 1e-14 and the annual layer is reproduced
     exactly; `mort_rate(t) / 12` closes neither.
@@ -898,7 +898,7 @@ any of them, and the research file records the absence as gap 3.
 
 **Configuration.** Model point 1, the anchor cell, exactly as shipped in `model_point_table.csv`:
 `point_id = 1`; `policy_id = DE-BAS-0001`; `sex = M` (reporting only; pricing is unisex [REG-R34]);
-`issue_age = 45`; `conclusion_year = 2026`; `duration_init = 0`; `ret_age = 67`;
+`issue_age = 45`; `issue_year = 2026`; `duration_init = 0`; `ret_age = 67`;
 `pols_if_init = 1.0`; `prem_form = regular`; `prem_base_pp = 6,000.00 €` p.a.; `prem_mode = annual`,
 so `prem_freq_load = 1.000`; `prem_dyn_rate = 0.02`; `zuzahlung_pp = 4,000.00 €` p.a.;
 `zuzahlung_end_dur = 22`; `paidup_at_init = 0`; `av_pp_init = 0.00 €`; `ann_pp_init = 0.00 €`;
@@ -918,7 +918,7 @@ month, which is the view only the finer grid can give.
 **Assumptions, each tagged.** *Mortality*: the shipped `mort_table.csv` is a **[std]** DAV 2004
 R-shaped **first-order** proxy, anchored so that `mort_rate_at_age(67, 2005) = 0.014000` exactly, with
 a flat improvement `trend = 0.015` at every age applied from `mort_base_year = 2005`, so that
-`mort_rate_base(t) = qx(age(t)) × (1 − 0.015)^(cal_year(t) − 2005)`; the best-estimate factor is
+`mort_rate_base(t) = qx(age(t)) × (1 − 0.015)^(calendar_year(t) − 2005)`; the best-estimate factor is
 `mort_be_factor = 0.85` **[std]**, giving `mort_rate(t) = 0.85 × mort_rate_base(t)` as the year's
 **annual** rate and `mort_rate_mth(t) = 1 − (1 − mort_rate(t))^(1/12)` as the monthly rate applied. The real basis is
 **DAV 2004 R**, which is the property of the Deutsche Aktuarvereinigung and is **cited by name and

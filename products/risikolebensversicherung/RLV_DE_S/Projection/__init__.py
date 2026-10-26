@@ -17,7 +17,7 @@ policy month, month ``t`` runs from time ``t`` to time ``t + 1``, ``pols_if(t)``
 count at time ``t``, and ``proj_len() = 12 x policy_term`` is the **number** of projected
 months — 300 on the anchor cell — and so the frame's **exclusive end**, the loop being
 lifelib's ``for t in range(proj_len())``. A new-business model point opens at ``t = 0``;
-an **in-force** model point opens at ``t = proj_start() = 12 x duration_y``, so that
+an **in-force** model point opens at ``t = t_start() = 12 x duration_init``, so that
 everything keyed to duration reads off one clock and needs no second one. There is nothing
 after ``proj_len() - 1``: the survivors' cover simply expires, nothing is payable, and
 ``pols_if(proj_len())`` is exactly zero.
@@ -87,7 +87,7 @@ Notes symbol               Cells                           Meaning
 (none)                     model_point()                   The selected model point row
 n = policy_term            proj_len_y()                    Number of policy years
 12 n                       proj_len()                      Number of projected months
-t0 = 12 duration_y         proj_start()                    First projected month index
+t0 = 12 duration_init      t_start()                       First projected month index
 (none)                     duration_mth(t)                 Completed policy months, = t
 (none)                     duration(t)                     Completed policy years, t // 12
 y = duration(t) + 1        policy_year(t)                  Contractual 1-based policy year
@@ -550,20 +550,6 @@ def mort_table_id():
     return model_point()["mort_table_id"]
 
 
-def duration_y():
-    """Completed policy years at the valuation date; 0 for new business.
-
-    **The only thing that moves where the frame starts.**  It is an **elapsed count and so
-    already 0-based**: the projection opens at ``t = duration_y``, so an in-force point
-    reads the same lapse table, the same § 161 window and the same *Zillmerung* run-off off
-    the same clock as a new-business one, with no re-based issue age and no second duration
-    variable to keep in step.  It is also the acquisition-cost switch: on an in-force point
-    the acquisition cost and the initial commission are **sunk** and are not incurred at
-    all, which is why the switch tests ``duration_y = 0`` and not merely ``t = 0``.
-    """
-    return int(model_point()["duration_y"])
-
-
 def issue_date():
     """The issue date, for reporting only; the model runs on integer durations."""
     return model_point()["issue_date"]
@@ -585,87 +571,6 @@ def pols_if_init():
     cash flow in :func:`result_cf` is a per-policy expectation.
     """
     return 1.0
-
-
-def proj_start():
-    """t0: the first projected **month**, ``12 x duration_y``.
-
-    0 for a new-business point and 144 for the in-force model point 8, whose twelve
-    completed policy years are now twelve completed *years* of months.  ``result_cf()``
-    runs from here to ``proj_len() - 1`` inclusive and contiguously.  ``duration_y`` is an
-    elapsed count and already 0-based, so the conversion is a multiplication and not an
-    offset.
-    """
-    return 12 * duration_y()
-
-
-def proj_len_y():
-    """n: the **number of policy years**, equal to ``policy_term``.
-
-    The contract states its own horizon in whole years — the *Versicherungsdauer* — so
-    this cells keeps it in years, and everything annual is written against it: the
-    first-order equivalence sums over ``range(proj_len_y())``, and :func:`lapse_rate`
-    compares ``duration(t)`` with ``proj_len_y() - 1`` to find the final policy year.
-    :func:`proj_len` is twelve times this and is the frame.
-    """
-    return policy_term()
-
-
-def proj_len():
-    """The **number of projected policy months**, ``12 x proj_len_y()``.
-
-    300 on the anchor cell.  It is the frame's **exclusive end**: ``result_cf()`` runs
-    over ``range(proj_start(), proj_len())``, so the last index is ``proj_len() - 1`` and
-    the frame has ``12 (policy_term - duration_y)`` rows.  Cover ends at the end of the
-    last month ``t = proj_len() - 1`` with nothing payable, and ``pols_if(proj_len())`` is
-    exactly zero.
-    """
-    return 12 * proj_len_y()
-
-
-def duration_mth(t):
-    """Completed policy months at the start of month t; equal to ``t``.
-
-    ``t`` is 0-based and counted from **issue** on every model point, the in-force one
-    included — its frame opens at ``t = proj_start()`` rather than re-basing the clock —
-    so the identity is trivial and the cells exists to name the unit.  It is what the
-    premium instalment cycle is counted in, and the vocabulary ``Sofort_DE_S``,
-    ``BU_DE_S`` and ``Pflege_DE_S`` already use.
-    """
-    return t
-
-
-def duration(t):
-    """Completed policy **years** at the start of month t: ``duration_mth(t) // 12``.
-
-    0-based, as ``duration`` is throughout lifelib: 0 through the whole of the first
-    policy year.  Every contractual schedule on this product is annual, so this is what
-    the attained age, the *Versicherungssumme* schedule, the lapse table, the § 161
-    window, the *Beitragszahlungsdauer* and the commission year are keyed on.
-    """
-    return duration_mth(t) // 12
-
-
-def policy_year(t):
-    """y: the contractual **1-based** policy year containing month t; 1 for ``t = 0..11``.
-
-    The label ``duration(t) + 1``, derived from the 0-based ``t`` and never indexed by.
-    It exists because three shipped inputs are keyed on a contractual policy year —
-    *benefit_schedule.csv*, *nvg_schedule.csv* and *lapse_table.csv* — and those lookups
-    map through this cells rather than pass ``t`` raw.
-    """
-    return duration(t) + 1
-
-
-def age(t):
-    """x(t): the attained age of the first life, ``issue_age + duration(t)``.
-
-    The age steps on the **policy anniversary** — at ``t = 12, 24, ...`` — and not
-    monthly: the age basis is *Alter am Jahrestag* and the finer grid does not make it
-    finer.  Every rate read at this age is therefore flat across a policy year's twelve
-    months.
-    """
-    return issue_age() + duration(t)
 
 
 def age2(t):
@@ -906,7 +811,7 @@ def benefit_paid_pp(t):
     statement as ``t < 36``.  The comparison is left in years because that is the unit
     the statute and the *Bedingungen* use.
 
-    On an in-force point with ``duration_y >= 3`` and no increments the switch is inert at
+    On an in-force point with ``duration_init >= 3`` and no increments the switch is inert at
     every projected ``t``, which is model point 8.  ``suicide_share = 0.03`` is **[std]**
     with an argued range of 0.01 to 0.05: no German cause-of-death share was retrieved.
     It carries three times the weight of the French one-year factor simply because the
@@ -1034,17 +939,17 @@ def lapse_cum(t):
     the original cohort on a **lapse-only** basis, not a running total of
     :func:`pols_lapse` and not read off :func:`pols_if`: it feeds
     :func:`sel_lapse_factor`, which loads *mortality*, so building it from the in-force
-    count would close a loop between the two decrements.  Zero at ``t = proj_start()``.
+    count would close a loop between the two decrements.  Zero at ``t = t_start()``.
 
     Built on the **monthly** rate, so that at every anniversary it equals the annual-step
     model's own figure exactly — twelve months of ``wm`` compounding back to the year's
     ``w`` — while inside a policy year it now advances month by month instead of jumping
     at the anniversary.
     """
-    if t <= proj_start():
+    if t <= t_start():
         return 0.0
     surv = 1.0
-    for s in range(proj_start(), t):
+    for s in range(t_start(), t):
         surv *= (1.0 - lapse_rate_mth(s))
     return 1.0 - surv
 
@@ -1441,7 +1346,7 @@ def res_zill_pp_at(y, timing):
 def pols_if(t):
     """l(t): policies in force at the **start** of month t.
 
-    ``pols_if_init()`` at ``t = proj_start()``, then
+    ``pols_if_init()`` at ``t = t_start()``, then
     ``l(t+1) = l(t) - pols_death(t) - pols_lapse(t) - pols_maturity(t)`` on the **monthly**
     rates, which is ``l(t)(1 - q2m(t))(1 - wm(t))`` everywhere but the last month.  This is
     the weight on every cash flow of the same :func:`result_cf` row — a start-of-period
@@ -1460,9 +1365,9 @@ def pols_if(t):
     :func:`pols_maturity` in that month, so every exit lands inside the frame and there is
     no tail state.  Zero outside the projected range.
     """
-    if t < proj_start() or t > proj_len():
+    if t < t_start() or t > proj_len():
         return 0.0
-    if t == proj_start():
+    if t == t_start():
         return pols_if_init()
     return pols_if_at(t - 1, "AFT_DECR")
 
@@ -1488,7 +1393,7 @@ def pols_if_at(t, timing):
     if timing == "BEF_LAPSE":
         return pols_if(t) * (1.0 - mort_rate_mth(t))
     if timing == "AFT_DECR":
-        if t < proj_start() or t >= proj_len():
+        if t < t_start() or t >= proj_len():
             return 0.0
         return (pols_if(t) - pols_death(t) - pols_lapse(t) - pols_maturity(t))
     raise ValueError("invalid timing")
@@ -1699,7 +1604,7 @@ def expenses(t):
     """Total expense outgo in month t, **excluding** commission.
 
     Acquisition cost net of the initial commission in month ``t = 0`` and only where
-    ``duration_y = 0`` — a single amount at issue, not an annualised loading and not a
+    ``duration_init = 0`` — a single amount at issue, not an annualised loading and not a
     twelfth of one; maintenance and collection on the opening in-force; and the claim
     expense on the month's deaths, 250 € each **[std]**.
 
@@ -1709,7 +1614,7 @@ def expenses(t):
     libraries' columns look alike and do not mean the same thing, so the identity is
     written down in :func:`check_net_cf` rather than left to a reader's assumption.
     """
-    acq = (acq_cost_pp() - comm_init_pp()) if (t == 0 and duration_y() == 0) else 0.0
+    acq = (acq_cost_pp() - comm_init_pp()) if (t == 0 and duration_init() == 0) else 0.0
     return (acq + maint_pp(t) * pols_if(t)
             + claim_expense * pols_death(t))                        # noqa: F821
 
@@ -1718,7 +1623,7 @@ def commissions(t):
     """Commission outgo in month t.
 
     The initial *Abschlussprovision* at issue — in month ``t = 0`` and only where
-    ``duration_y = 0``, because on an in-force point it is sunk — plus the
+    ``duration_init = 0``, because on an in-force point it is sunk — plus the
     *Bestandspflegeprovision* at 1,0 % of each *Zahlbeitrag* instalment from
     ``duration(t) >= 1``, which is policy year 2.  Both **[std]**.
 
@@ -1727,7 +1632,7 @@ def commissions(t):
     instalments too.  On an annual-mode point that reproduces the annual model's
     commission exactly, both the rate and the collection sitting on the anniversary.
     """
-    init = comm_init_pp() if (t == 0 and duration_y() == 0) else 0.0
+    init = comm_init_pp() if (t == 0 and duration_init() == 0) else 0.0
     renew = (comm_rate_renew * prem_inst_pp(t) * pols_if(t)          # noqa: F821
              if duration(t) >= 1 else 0.0)
     return init + renew
@@ -1802,7 +1707,7 @@ def check_net_cf():
     """
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
     return all(abs(check_net_cf_resid(t)) <= tol
-               for t in range(proj_start(), proj_len()))
+               for t in range(t_start(), proj_len()))
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1830,10 +1735,10 @@ def check_pols_roll_fwd():
     """
     tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
     if not all(abs(check_pols_roll_fwd_resid(t)) <= tol
-               for t in range(proj_start(), proj_len())):
+               for t in range(t_start(), proj_len())):
         return False
     exits = sum(pols_death(t) + pols_lapse(t) + pols_maturity(t)
-                for t in range(proj_start(), proj_len()))
+                for t in range(t_start(), proj_len()))
     return abs(exits - pols_if_init()) <= tol
 
 
@@ -1871,7 +1776,7 @@ def check_prem_split():
     to all three terms alike.
     """
     tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    for t in range(proj_start(), proj_len()):
+    for t in range(t_start(), proj_len()):
         if abs(check_prem_split_resid(t)) > tol:
             return False
         if abs(prem_gross_pp(t) - prem_paid_pp(t) - prem_rebate_pp(t)) > tol:
@@ -1944,7 +1849,7 @@ def check_no_cash_value_resid(t):
 def check_no_cash_value():
     """True when a lapse and an expiry both pay nothing in every projected month."""
     return all(abs(check_no_cash_value_resid(t)) <= val_tol          # noqa: F821
-               for t in range(proj_start(), proj_len()))
+               for t in range(t_start(), proj_len()))
 
 
 # ==========================================================================
@@ -1967,11 +1872,11 @@ def result_cf():
     statute and by contract and are published rather than dropped.  ``liability_cf`` is
     ``net_cf`` outgo-positive.
 
-    The frame runs ``t = 12 duration_y ... proj_len() - 1`` contiguously and stops there:
+    The frame runs ``t = 12 duration_init ... proj_len() - 1`` contiguously and stops there:
     cover expires at the end of the last month with nothing payable and no survivors left
     in force.
     """
-    ts = list(range(proj_start(), proj_len()))
+    ts = list(range(t_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(t) for t in ts],
@@ -2019,7 +1924,7 @@ def result_pols():
     """Result table of policy counts, rates, per-policy amounts and the reserve, indexed by t.
 
     The same 0-based monthly frame as :func:`result_cf`:
-    ``t = proj_start() ... proj_len() - 1``.  Each **annual** rate is published beside the
+    ``t = t_start() ... proj_len() - 1``.  Each **annual** rate is published beside the
     **monthly** rate derived from it, so the two speeds of the conversion can be read off
     one table: ``mort_rate`` and ``lapse_rate`` are the annual rates of the policy year
     containing the month — the vectors the technical notes tabulate — and
@@ -2029,7 +1934,7 @@ def result_pols():
     year's reserves, flat across its twelve rows, the first-order *Deckungskapital* being
     an annual construction.
     """
-    ts = list(range(proj_start(), proj_len()))
+    ts = list(range(t_start(), proj_len()))
     return pd.DataFrame(                                             # noqa: F821
         {
             "age": [age(t) for t in ts],

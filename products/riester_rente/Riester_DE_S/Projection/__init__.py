@@ -329,19 +329,6 @@ _spaces = []
 # === the model point
 
 
-def duration_init():
-    """Completed contract years at the valuation date; 0 for a point projected from issue.
-
-    It drives three things and each of them matters.  ``duration(t) = duration_init() +
-    t`` selects the *Stornoabzug* band and the acquisition-charge window, so an in-force
-    point picks up the charge only for the contract years it has left; the expense
-    inflation factor runs on contract duration rather than projection year; and the
-    acquisition expense and initial commission fall only where ``duration_init() == 0``,
-    because on an in-force point they are in the past.
-    """
-    return int(model_point()["duration_init"])
-
-
 def pols_if_init():
     """The number of policies the model point represents at the start of period ``t = 0``.
 
@@ -571,21 +558,20 @@ def proj_len_y():
     *Beitragsgarantie* accumulator and the conversion are all annual.  ``k = 0 ...
     proj_len_y() - 1`` indexes exactly the rows the annual-step model this replaced
     projected, which is what makes the two comparable row by row.
+
+    Override reason: the annuity is lifelong, so the projection runs from the valuation date to
+    ``omega_age``, products/riester_rente/technical-notes.md:69
     """
     return omega_age - age(0) + 1                                    # noqa: F821
 
 
-def proj_len():
-    """The **number of projected months**, ``12 x proj_len_y()``.
+def k_start():
+    """The first projected year: 0, the frame opens at the valuation date.
 
-    The frame is ``range(proj_len())``, 0-based, so the last projected index is
-    ``proj_len() - 1`` and ``result_cf()`` has exactly ``proj_len()`` rows.  The projection
-    runs to the end of the mortality table so that the lifelong annuity is projected to
-    exhaustion and the decrement closure identity is exact: in the last projected year the
-    attained age is ``omega_age`` and ``mort_rate`` is 1, and :func:`mort_rate_mth` places
-    that certainty in the year's **last month**.
+    Override reason: ``k`` counts projection years from the valuation date, so the first
+    projected year is 0 and ``t_start()`` derives 0, products/riester_rente/technical-notes.md:36
     """
-    return 12 * proj_len_y()
+    return 0
 
 
 def k_conv():
@@ -606,22 +592,6 @@ def t_conv():
     *Abfindung* and the first monthly annuity instalment are all paid at ``t = t_conv()``.
     """
     return 12 * k_conv()
-
-
-def proj_year(t):
-    """k(t): the 0-based **projection year** month t falls in, ``t // 12``.
-
-    The bridge between the model's two clocks.  ``t`` counts projection **months** from the
-    valuation date and is the argument of the in force, the three decrements, the claims,
-    the expenses, the commission and the *Rente* instalments; ``k`` counts projection
-    **years** and is the argument of everything the contract and the AltZertG state per
-    year — the *Eigenbeitrag*, the Zulage and its lag, the two charges, the declared rate,
-    both account balances, the *Beitragsgarantie* accumulator and the conversion.
-
-    ``k`` is the annual-step model's own ``t``: ``result_cf_annual().loc[k]`` is that
-    model's row ``k``.
-    """
-    return t // 12
 
 
 def is_anniv(t):
@@ -653,6 +623,9 @@ def age_y(k):
 
     ``issue_age() + duration_init() + k``, so ``age_y(0)`` is the attained age at the
     valuation date.  Every rate in the model is indexed by this and never by sex.
+
+    Override reason: ``k`` is the projection year from the valuation date, not the policy
+    year, so the age adds ``duration_init()``, products/riester_rente/technical-notes.md:37
     """
     return issue_age() + duration_init() + k
 
@@ -662,32 +635,11 @@ def age(t):
 
     The age **steps on the anniversary** and not monthly, so the twelve months of a
     projection year share one annual death rate and one generational annuity rate.
+
+    Override reason: ``t`` counts months from the valuation date, so the age is read at the
+    projection year, not at the policy year, products/riester_rente/technical-notes.md:35
     """
     return age_y(proj_year(t))
-
-
-def duration_y(k):
-    """d(k): completed contract years at the start of projection year k, ``duration_init() + k``.
-
-    The **contract** clock rather than the projection clock, and **0-based**, as lifelib's
-    ``duration`` is and as ``Basis_DE_S`` and ``KLV_DE_S`` define it: a point projected from
-    its own inception opens at ``duration_y(0) = 0``.  The contractual band label is the
-    1-based ``duration_y(k) + 1`` — contract year ``k`` is ``duration_y(k) = k - 1`` — and
-    that is the key of *lapse_table.csv*, so the surrender and transfer bands are read at
-    ``duration_y(k) + 1``.  It also gates the five-year acquisition charge and drives the
-    expense inflation factor, so an in-force point inherits the charge window its contract
-    has actually used up.
-    """
-    return duration_init() + k
-
-
-def duration(t):
-    """d(t): completed contract years at the start of projection month t.
-
-    ``duration_y(proj_year(t))``.  It steps on the anniversary, so the twelve months of a
-    projection year share one contract duration and therefore one row of *lapse_table.csv*.
-    """
-    return duration_y(proj_year(t))
 
 
 def duration_mth(t):
@@ -696,6 +648,10 @@ def duration_mth(t):
     ``12 x duration_init() + t``.  It is what distinguishes two model points at the same
     projection month, and ``duration(t) = duration_mth(t) // 12`` states in code that the
     contract duration is the contract month divided down.
+
+    Override reason: ``t`` counts months from the valuation date, not from issue, so the
+    completed contract months add ``duration_init()`` years,
+    products/riester_rente/technical-notes.md:35
     """
     return 12 * duration_init() + t
 
@@ -715,6 +671,9 @@ def calendar_year_y(k):
     The projection opens at the **1 January 2027** valuation date on every model point, so
     the calendar axis is common across the table.  It enters only the generational annuity
     basis, where ``annuity_mort_rate(x, tau)`` needs both arguments.
+
+    Override reason: every model point opens at the common 1 January 2027 valuation date,
+    so the calendar year is counted from it, products/riester_rente/technical-notes.md:40
     """
     return valuation_year + k                                        # noqa: F821
 
@@ -724,6 +683,9 @@ def calendar_year(t):
 
     It steps on the policy anniversary rather than on 1 January, which is the convention the
     attained age follows and the one the annual-step model necessarily used.
+
+    Override reason: ``t`` counts months from the valuation date, so the calendar year is
+    read at the projection year, not at the policy year, products/riester_rente/technical-notes.md:35
     """
     return calendar_year_y(proj_year(t))
 

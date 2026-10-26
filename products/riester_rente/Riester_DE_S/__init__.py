@@ -45,7 +45,7 @@ much.
 **Spaces.** The model contains two:
 
 :mod:`~.Riester_DE_S.Data`
-    Reads the eight input CSVs and holds their filename References. It takes no
+    Reads the nine input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.Riester_DE_S.Projection`

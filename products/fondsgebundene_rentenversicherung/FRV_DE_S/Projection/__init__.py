@@ -48,6 +48,7 @@ lapse_file                data.lapse_table()                 lapse_table.csv
 charge_file               data.charge_table()                charge_table.csv
 fund_scenario_file        data.fund_scenario_table()         fund_scenario_table.csv
 rentenfaktor_file         data.rentenfaktor_table()          rentenfaktor_table.csv
+param_file                data.param_table()                 param_table.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -1207,6 +1208,16 @@ def mort_rate_tariff_at_age(x):
     return float(data.mort_table().loc[x, "qx_tariff"])              # noqa: F821
 
 
+def mort_be_factor():
+    """The step from the first-order death table to the best estimate, 0.75.
+
+    Override reason: the best estimate is a flat 0.75 of the first-order death table, a
+    tariff parameter in *param_table.csv* that makes the *Risikoergebnis* a quarter of the
+    *Risikobeitrag*, products/fondsgebundene_rentenversicherung/model.md:467
+    """
+    return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
+
+
 def mort_rate_at_age(x):
     """The **second-order** annual death rate at attained age x, the projection's decrement.
 
@@ -1216,7 +1227,7 @@ def mort_rate_at_age(x):
     calculator.  What a replacement basis must preserve is the **direction**: a first-order
     death table carries its margin **above** best estimate.
     """
-    return mort_be_factor * mort_rate_tariff_at_age(x)               # noqa: F821
+    return mort_be_factor() * mort_rate_tariff_at_age(x)
 
 
 def mort_rate_tariff_mth(t):
@@ -2047,8 +2058,6 @@ def result_fund():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-mort_be_factor = 0.75
 
 lapse_cap = 0.4
 

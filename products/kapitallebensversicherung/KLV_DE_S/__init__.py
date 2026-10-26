@@ -50,7 +50,7 @@ the two branches.
 **Spaces.** The model contains two:
 
 :mod:`~.KLV_DE_S.Data`
-    Reads the seven input CSVs and holds their filename References. It takes no
+    Reads the eight input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.KLV_DE_S.Projection`

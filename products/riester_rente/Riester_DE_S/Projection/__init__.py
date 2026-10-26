@@ -92,6 +92,7 @@ zulage_file                data.zulage_schedule()                 zulage_schedul
 income_file                data.income_schedule()                 income_schedule.csv
 surplus_file               data.surplus_scenario()                surplus_scenario.csv
 freq_loading_file          data.freq_loading_table()              freq_loading.csv
+param_file                 data.param_table()                     param_table.csv
 =========================  =====================================  ==========================
 
 .. rubric:: Naming
@@ -732,6 +733,19 @@ def annuity_mort_rate(x, tau):
     return qb * (1.0 - im) ** (tau - annuity_base_year)              # noqa: F821
 
 
+def mort_be_factor():
+    """The step from the accumulation death table to the best estimate, 0.80.
+
+    Read from *param_table.csv*; the payout phase's ``annuity_mort_be_factor`` runs the
+    other way and stays a Reference.
+
+    Override reason: the best estimate sits at 0.80 of the first-order death table, below
+    it because the direction of prudence forks by product, a tariff parameter in
+    *param_table.csv*, products/riester_rente/technical-notes.md:415
+    """
+    return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
+
+
 def mort_rate(t):
     """q(t): the **annual** death rate of the year month t falls in, best-estimate basis.
 
@@ -751,7 +765,7 @@ def mort_rate(t):
     if age(t) >= omega_age:                                          # noqa: F821
         return 1.0
     if is_accum(t):
-        return min(1.0, mort_rate_at_age(age(t)) * mort_be_factor)   # noqa: F821
+        return min(1.0, mort_rate_at_age(age(t)) * mort_be_factor())
     return min(1.0, annuity_mort_rate(age(t), calendar_year(t))
                * annuity_mort_be_factor)                             # noqa: F821
 
@@ -2235,8 +2249,6 @@ rentenfaktor_margin = 0.3
 annuity_rechnungszins = 0.01
 
 woolhouse = 0.4583333333333333
-
-mort_be_factor = 0.8
 
 annuity_mort_be_factor = 1.15
 

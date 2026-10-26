@@ -48,7 +48,7 @@ table, DAV 2004 R — which is why no cells reads both tables.
 **Spaces.** The model contains two:
 
 :mod:`~.FRV_DE_S.Data`
-    Reads the six input CSVs and holds their filename References. It takes no
+    Reads the seven input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.FRV_DE_S.Projection`

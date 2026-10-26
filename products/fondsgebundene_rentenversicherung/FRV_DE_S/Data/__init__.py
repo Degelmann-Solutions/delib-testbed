@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The six input CSVs are read here, **once per model**, and referenced from
+The seven input CSVs are read here, **once per model**, and referenced from
 :mod:`~.FRV_DE_S.Projection` as ``data``. :mod:`~.FRV_DE_S.Projection` is parameterized
 by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells
 cache; if the readers lived there, every model point would re-read every file. Holding
@@ -36,6 +36,7 @@ lapse_file                lapse_table()                 lapse_table.csv
 charge_file               charge_table()                charge_table.csv
 fund_scenario_file        fund_scenario_table()         fund_scenario_table.csv
 rentenfaktor_file         rentenfaktor_table()          rentenfaktor_table.csv
+param_file                param_table()                 param_table.csv
 ========================  ============================  ==========================
 
 **Every file but ``model_point_table.csv`` carries a ``provenance`` column**, one tag per
@@ -187,5 +188,7 @@ charge_file = "charge_table.csv"
 fund_scenario_file = "fund_scenario_table.csv"
 
 rentenfaktor_file = "rentenfaktor_table.csv"
+
+param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

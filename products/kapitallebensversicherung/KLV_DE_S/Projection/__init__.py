@@ -86,6 +86,7 @@ surplus_rate_file         data.surplus_rate_table()          surplus_rate_table.
 cost_file                 data.cost_table()                  cost_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
 deckrv_file               data.deckrv_table()                deckrv_table.csv
+param_file                data.param_table()                 param_table.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -625,6 +626,16 @@ def mort_rate_base(t):
         (sex(), int(age(t))), "mort_rate_1st"])
 
 
+def mort_be_factor():
+    """The step from the first-order table to the best estimate, 0.75, from *param_table.csv*.
+
+    Override reason: the best estimate is 0.75 of the first-order table, a 33 % safety
+    loading and a tariff parameter in *param_table.csv*,
+    products/kapitallebensversicherung/model.md:513
+    """
+    return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
+
+
 def mort_rate(t):
     """q(t): the **best-estimate annual** death rate of the policy year containing month t.
 
@@ -637,7 +648,7 @@ def mort_rate(t):
 
     It is the only place ``sex`` reaches a cash flow.
     """
-    return min(1.0, mort_rate_base(t) * mort_be_factor)              # noqa: F821
+    return min(1.0, mort_rate_base(t) * mort_be_factor())
 
 
 def mort_rate_mth(t):
@@ -2318,8 +2329,6 @@ def result_surplus():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-mort_be_factor = 0.75
 
 suicide_share = 0.02
 

@@ -491,6 +491,10 @@ def mort_be_factor():
     estimate and the second-order rate is the tariff rate loaded upward.  The safety margin
     of the real construction runs in two dimensions, level and trend; only the level is
     reproduced here.
+
+    Override reason: for an annuity the best estimate sits above the first-order table, a
+    factor of 1.15 and a tariff parameter in *param_table.csv*,
+    products/klassische_rentenversicherung/model.md:513
     """
     return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
 

@@ -82,6 +82,7 @@ rentenfaktor_file          data.rentenfaktor_table()            rentenfaktor_tab
 charge_file                data.charge_table()                  charge_table.csv
 behaviour_file             data.behaviour_table()               behaviour_table.csv
 option_file                data.option_table()                  option_table.csv
+param_file                 data.param_table()                   param_table.csv
 =========================  ===================================  ==========================
 
 .. rubric:: Naming
@@ -882,6 +883,15 @@ def mort_rate_base(t):
     return mort_rate_at_age(age(t), calendar_year(t))
 
 
+def mort_be_factor():
+    """The step from the first-order table to the best estimate, 0.85, from *param_table.csv*.
+
+    Override reason: the best estimate is a round 0.85 of the shipped first-order table, a
+    tariff parameter in *param_table.csv*, products/basisrente/technical-notes.md:321
+    """
+    return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
+
+
 def mort_rate(t):
     """q(t): the best-estimate **annual** death rate of the year month t falls in.
 
@@ -906,7 +916,7 @@ def mort_rate(t):
     """
     if age(t) >= omega_age():
         return 1.0
-    return min(1.0, mort_be_factor * mort_rate_base(t))              # noqa: F821
+    return min(1.0, mort_be_factor() * mort_rate_base(t))
 
 
 def mort_rate_mth(t):
@@ -2012,8 +2022,6 @@ def result_pols():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-mort_be_factor = 0.85
 
 elig_surv_prob = 0.55
 

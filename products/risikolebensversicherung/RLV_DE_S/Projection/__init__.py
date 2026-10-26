@@ -675,7 +675,7 @@ def mort_rate(t):
     age stepping on the anniversary.  What the projection applies is
     :func:`mort_rate_mth`.
     """
-    return (mort_be_factor * rating_factor()                         # noqa: F821
+    return (mort_be_factor() * rating_factor()
             * mort_rate_base(t) * sel_lapse_factor(t))
 
 
@@ -1921,8 +1921,6 @@ point_id = 1
 sicherheitszuschlag_m = 1.25
 
 sex_mix_male = 0.5
-
-mort_be_factor = 1.0
 
 surplus_share = 0.9
 

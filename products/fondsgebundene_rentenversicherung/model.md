@@ -306,13 +306,13 @@ period [R7] [R9] [REG-R31] [REG-R32]; this model implements neither.
 
 ## Inputs are external files
 
-The six input CSVs live **in this directory**, beside `run.py` — not inside the model folder.
+The seven input CSVs live **in this directory**, beside `run.py` — not inside the model folder.
 `FRV_DE_S/` holds nothing but formulas:
 
 ```
 products/fondsgebundene_rentenversicherung/
   model_point_table.csv  mort_table.csv  lapse_table.csv     <- inputs live here
-  charge_table.csv  fund_scenario_table.csv  rentenfaktor_table.csv
+  charge_table.csv  fund_scenario_table.csv  rentenfaktor_table.csv  param_table.csv
   run.py
   product-spec.md  technical-notes.md  model.md  sources.md  <- the documents
   FRV_DE_S/                                                  <- formulas only
@@ -344,6 +344,7 @@ wherever the repository is checked out.
 | `charge_file` | `charge_table()` | `charge_table.csv` |
 | `fund_scenario_file` | `fund_scenario_table()` | `fund_scenario_table.csv` |
 | `rentenfaktor_file` | `rentenfaktor_table()` | `rentenfaktor_table.csv` |
+| `param_file` | `param_table()` | `param_table.csv` |
 
 **The trade-off:** the model is not portable on its own — copy `FRV_DE_S/` without the CSVs and
 it reads fine, then fails on first evaluation — but a diff of the model shows logic changes
@@ -361,6 +362,7 @@ being a *configuration* and not an assumption.
 | `charge_table.csv` | Four tariffs: `std_gross`, `std_netto`, `std_high`, `std_low` | **[std]** but for `alpha_rate` on `std_gross`, the 25 ‰ cap [R12] [R13] [REG-R16], and the 60-month spread [R1] [REG-R28]. **One carrier's levels are now known** — 2,50 % acquisition, 6,90 % of premium, 0,42 % p.a. of fund, 18 €/yr [S15] — and `std_gross` is lighter than that on every line but the policy fee; nine other named carriers still supply none. The `std_gross`-to-`std_netto` gap is the acquisition load [S18] |
 | `fund_scenario_table.csv` | Gross return and TER by `(scenario_id, policy_year)`: `base`, `etf`, `zero`, `stress` | **[std]** deterministic paths. Not forecasts and **not PRIIPs scenarios** [R8] [R9] [REG-R32] — and note that on the profession's own standard a German Schicht-3 unit-linked annuity is a **PRIIP Kategorie 4** product whose scenarios come from a stochastic capital-market model, not from an underlying's own return history [R18] |
 | `rentenfaktor_table.csv` | Guaranteed and current factors by `(factor_id, annuity_age)`, ages 60–75 | **[std] and derived, not observed**: `10 000 / (12 · T_eff(x))` with `T_eff(x) = 100/3 − 0.75 (x − 67)` at a 0 % *Rechnungszins* — confirmed for a fondsgebundene tariff on DAV 2004 R [S2] [S10] [R16] [R22] [REG-R49] — giving exactly **25,00 at 67**. **Observed guaranteed factors at *Rentenbeginn* 67 are 25,22 / 24,12 / 22,91 / 21,83 € at deferments of 12 / 20 / 30 / 40 years** [S15], so the shipped table is about 9 % generous at the anchor cell and, being flat in the deferment, cannot reproduce the generational gradient. `std_2026` sets the current factor equal to the guaranteed one; `rich_current` 12 % higher |
+| `param_table.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.75 | **[std]**, the flat step from the first-order death table to the best estimate [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads |
 
 ## Modules that are off in the base run
 

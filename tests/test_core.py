@@ -332,6 +332,12 @@ CORE_CELLS = {
                      "kapitallebensversicherung": "derived",
                      "klassische_rentenversicherung": "derived",
                      "riester_rente": "derived"},
+        "mort_be_factor": {"basisrente": "override",
+                           "fondsgebundene_rentenversicherung": "override",
+                           "kapitallebensversicherung": "override",
+                           "klassische_rentenversicherung": "override",
+                           "riester_rente": "override",
+                           "risikolebensversicherung": "derived"},
     },
 }
 

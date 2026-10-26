@@ -337,7 +337,7 @@ collect the whole year's premium from a cohort measured at the year's start.
 
 ## Inputs are external files
 
-The seven input CSVs live **in this directory**, beside `run.py` — not inside the model
+The eight input CSVs live **in this directory**, beside `run.py` — not inside the model
 folder. `KLV_DE_S/` holds nothing but formulas:
 
 ```
@@ -349,6 +349,7 @@ products/kapitallebensversicherung/
   cost_table.csv
   freq_loading_table.csv
   deckrv_table.csv
+  param_table.csv
   run.py
   model.md
   product-spec.md              <- the documents this model implements
@@ -390,6 +391,7 @@ model shows logic changes only, and an input can be swapped in place with no for
 | `cost_file` | `cost_table()` | `cost_table.csv` | The first-order tariff loadings and the second-order expense basis **on the same row**, because the difference between them *is* the *Kostenüberschuss*. Ceilings cited [R7] [REG-R16] [R29]; every level **[std]** |
 | `freq_loading_file` | `freq_loading_table()` | `freq_loading_table.csv` | `instalments` and the *Ratenzahlungszuschlag* by frequency. The 2 / 3 / 5 % market convention [R28]; the single values **[std]** |
 | `deckrv_file` | `deckrv_table()` | `deckrv_table.csv` | Both DeckRV ceilings by `issue_year` — § 2's *Höchstrechnungszins* and § 4's *Höchstzillmersatz* — because both are **cohort facts** that travel with the contract [REG-R14] [REG-R15] [REG-R16] |
+| `param_file` | `param_table()` | `param_table.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.75, the step from the first-order table to the best estimate, **[std]**. Added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads |
 
 Every file but the model point table carries a per-row `provenance` column, which is this
 library's second ruling and is machine-checked.

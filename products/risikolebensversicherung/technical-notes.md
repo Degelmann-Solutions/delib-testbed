@@ -147,8 +147,8 @@ carries a per-row `provenance` column**, which is delib's second ruling and is m
 Seven files, no orphans: the conventions suite asserts that every CSV beside the model backs a
 filename Reference in `Data` and that the set read by a full sweep is exactly the set registered in
 `tests/de_registry.py`. Scalar assumptions are **References on `Projection`**, not rows in a table,
-following `TradLife_A`; their values and tags are the assumption tables below. The exception is
-`rechnungszins`, a row of `param_table.csv` since phase 3, read by the common core's loader.
+following `TradLife_A`; their values and tags are the assumption tables below. The exceptions are
+`rechnungszins`, a row of `param_table.csv` since phase 3, read by the common core's loader, and `mort_be_factor`, the core's neutral 1.00.
 
 ---
 

@@ -127,6 +127,7 @@ reaches it through a `data` Reference and holds no `*_file` Reference and no `in
 | `income_schedule.csv` | `income_id`, `t` | `income`, `provenance` |
 | `surplus_scenario.csv` | `scenario_id`, `t` | `decl_rate`, `provenance` |
 | `freq_loading.csv` | `prem_freq` | `load`, `provenance` |
+| `param_table.csv` | `item` | `value` (`mort_be_factor`), `provenance` |
 
 **Every file except `model_point_table.csv` carries a per-row `provenance` column**, delib's second
 ruling: a model point is a configuration, every other row is an assumption and says where its number
@@ -137,7 +138,8 @@ exactly; what a replacement must preserve is stated in assumption class (c) and 
 ### Cells vocabulary
 
 `Data` publishes `input_dir`, `model_point_table`, `mort_table`, `annuity_mort_table`,
-`lapse_table`, `zulage_schedule`, `income_schedule`, `surplus_scenario` and `freq_loading_table`.
+`lapse_table`, `zulage_schedule`, `income_schedule`, `surplus_scenario`, `freq_loading_table`
+and `param_table`.
 
 `Projection` publishes the library's shared names — **`model_point`, `proj_len`, `age`, `pols_if`,
 `mort_rate`, `claims`, `expenses`, `net_cf`, `result_cf`** — plus, in the same lifelib spelling:

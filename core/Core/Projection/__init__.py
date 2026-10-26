@@ -155,6 +155,15 @@ def is_anniv(t):
     return t % 12 == 11
 
 
+def mort_be_factor():
+    """The step from the product's mortality table to the best estimate; 1, neutral.
+
+    A product whose best estimate is a multiple of its table overrides it with its own
+    value, a tariff parameter in its *param_table.csv*.
+    """
+    return 1.0
+
+
 def rechnungszins():
     """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
 

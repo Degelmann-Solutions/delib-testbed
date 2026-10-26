@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The seven input CSVs are read here, **once per model**, and referenced from
+The eight input CSVs are read here, **once per model**, and referenced from
 :mod:`~.KLV_DE_S.Projection` as ``data``. :mod:`~.KLV_DE_S.Projection` is parameterized by
 ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells cache;
 if the readers lived there, every model point would re-read every file. Holding them in an
@@ -36,6 +36,7 @@ surplus_rate_file         surplus_rate_table()          surplus_rate_table.csv
 cost_file                 cost_table()                  cost_table.csv
 freq_loading_file         freq_loading_table()          freq_loading_table.csv
 deckrv_file               deckrv_table()                deckrv_table.csv
+param_file                param_table()                 param_table.csv
 ========================  ============================  ==========================
 
 Every file but ``model_point_table.csv`` carries a final **``provenance``** column, one tag
@@ -181,5 +182,7 @@ cost_file = "cost_table.csv"
 freq_loading_file = "freq_loading_table.csv"
 
 deckrv_file = "deckrv_table.csv"
+
+param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

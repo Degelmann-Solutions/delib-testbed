@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The eight input CSVs are read here, **once per model**, and referenced from
+The nine input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Riester_DE_S.Projection` as ``data``. :mod:`~.Riester_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its
 own cells cache; if the readers lived there, every model point would re-read every file.
@@ -38,6 +38,7 @@ zulage_file                zulage_schedule()               zulage_schedule.csv
 income_file                income_schedule()               income_schedule.csv
 surplus_file               surplus_scenario()              surplus_scenario.csv
 freq_loading_file          freq_loading_table()            freq_loading.csv
+param_file                 param_table()                   param_table.csv
 =========================  ==============================  ==========================
 
 **Every file but ``model_point_table.csv`` carries a per-row ``provenance`` column**,
@@ -214,5 +215,7 @@ income_file = "income_schedule.csv"
 surplus_file = "surplus_scenario.csv"
 
 freq_loading_file = "freq_loading.csv"
+
+param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

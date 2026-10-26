@@ -994,14 +994,33 @@ def test_lapse_is_closed_in_the_final_policy_year_without_reading_the_table(
     assert item.lapse_rate(final - 1) > 0.0
 
 
-def test_rlv_lapse_rate_is_the_table_rate_times_the_shock_factor(product_models):
-    model = product_models("risikolebensversicherung")
-    projection = model.Projection
-    for point_id in model.Data.model_point_table().index:
-        item = projection[point_id]
-        for t in range(item.t_start(), 12 * (item.proj_len_y() - 1)):
+def _rebate_cut_from_policy_year_4(t):
+    """The declaration cut to nothing from policy year 4: the bill rises to the guaranteed one."""
+    return 0.0 if duration(t) >= 3 else prem_rebate_level_pp(t)      # noqa: F821
+
+
+def test_rlv_lapse_rate_is_the_table_rate_times_the_shock_factor():
+    """With the premium-shock module on and the declaration cut in year 4, the shock fires."""
+    model = mx.read_model(PRODUCTS_DIR / "risikolebensversicherung"
+                          / MODELS["risikolebensversicherung"], name="ShockProbe")
+    try:
+        projection = model.Projection
+        assert projection.lapse_rate._is_derived()
+        projection.new_cells("prem_rebate_level_pp", formula=projection.prem_rebate_pp.formula)
+        projection.prem_rebate_pp.formula = _rebate_cut_from_policy_year_4
+        projection.shock_lapse_lambda = 2.0
+        item = projection[model.Data.model_point_table().index[0]]
+        final = 12 * (item.proj_len_y() - 1)
+        shocked = [t for t in range(item.t_start(), final) if item.shock_lapse_factor(t) > 1.0]
+        assert shocked, "the premium shock never fires"
+        for t in shocked:
             assert (item.lapse_rate(t)
-                    == item.lapse_rate_base(t) * item.shock_lapse_factor(t)), (point_id, t)
+                    == item.lapse_rate_base(t) * item.shock_lapse_factor(t)), t
+            assert item.lapse_rate(t) > item.lapse_rate_base(t), t
+        for t in range(final, item.proj_len()):
+            assert item.lapse_rate(t) == 0.0, t
+    finally:
+        model.close()
 
 
 def test_klv_failed_beitragsfreistellung_lapses_in_the_anniversary_month(product_models):

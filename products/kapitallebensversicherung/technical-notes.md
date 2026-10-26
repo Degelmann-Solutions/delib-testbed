@@ -435,12 +435,12 @@ First-order survival from issue and the two annuities-due, computed by summation
 own `sex` and `rechnungszins`:
 
 ```
-tpx_1st(k)        = Π_{j=0}^{k-1} ( 1 − q₁(x_0 + j) ),  tpx_1st(0) = 1
-pv_death_1st      = SD · Σ_{k=0}^{n-1} v₁^(k+1) · tpx_1st(k) · q₁(x_0 + k)
-pv_maturity_1st   = SE · v₁^n · tpx_1st(n)
+pols_tariff(k)    = Π_{j=0}^{k-1} ( 1 − q₁(x_0 + j) ),  pols_tariff(0) = 1
+pv_death_1st      = SD · Σ_{k=0}^{n-1} v₁^(k+1) · pols_tariff(k) · q₁(x_0 + k)
+pv_maturity_1st   = SE · v₁^n · pols_tariff(n)
 pv_benefit_1st    = pv_death_1st + pv_maturity_1st
-ann_due_prem_1st  = Σ_{k=0}^{m-1} v₁^k · tpx_1st(k)
-ann_due_term_1st  = Σ_{k=0}^{n-1} v₁^k · tpx_1st(k)
+ann_due_prem_1st  = Σ_{k=0}^{m-1} v₁^k · pols_tariff(k)
+ann_due_term_1st  = Σ_{k=0}^{n-1} v₁^k · pols_tariff(k)
 ```
 
 The *Bruttobeitrag* is struck by equivalence, which is linear in `B` because `BS = B · m`:

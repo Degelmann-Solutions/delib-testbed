@@ -174,3 +174,15 @@ def mort_rate_tariff(t):
     age; a product without one inherits this cell unused.
     """
     return mort_rate_tariff_at_age(age(t))                           # noqa: F821
+
+
+def pols_tariff(y):
+    """p1(y): the tariff survivorship entering policy year y, mortality only.
+
+    ``p1(0) = 1`` and ``p1(y) = p1(y - 1) x (1 - q1(12 (y - 1)))`` on the first-order
+    annual rate :func:`mort_rate_tariff`, read at the opening month of each policy year.
+    It always starts at issue, also on an in-force point: the tariff was struck then.
+    """
+    if y <= 0:
+        return 1.0
+    return pols_tariff(y - 1) * (1.0 - mort_rate_tariff(12 * (y - 1)))  # noqa: F821

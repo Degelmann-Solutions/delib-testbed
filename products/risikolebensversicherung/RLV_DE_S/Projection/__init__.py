@@ -971,27 +971,6 @@ def rechnungszins():
     return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
 
 
-def pols_tariff(y):
-    """p1(y): tariff survivorship entering **policy year** y — **mortality only**.
-
-    ``p1(0) = 1`` and ``p1(y+1) = p1(y)(1 - q1(y))`` on the first-order **annual** rate,
-    read at that policy year's opening month ``12 y``.  Lapse is **not** a German
-    first-order basis element: the bases are mortality, interest and expenses, and a
-    *Stornowahrscheinlichkeit* is a second-order quantity used for projection and
-    profit-testing, not for the tariff.  Striking the premium on this survivorship is also
-    what keeps the model acyclic — a pricing quantity cannot depend on a behavioural
-    assumption that depends on the path that depends on the premium.
-
-    A policy-year recursion and not a monthly one, for the same reason
-    :func:`disc_factor` is: it is the tariff basis of an annual equivalence.  It always
-    starts at issue, at ``y = 0``, even on an in-force model point whose projection opens
-    later: the tariff was struck when the contract was written.
-    """
-    if y <= 0:
-        return 1.0
-    return pols_tariff(y - 1) * (1.0 - mort_rate_tariff(12 * (y - 1)))
-
-
 def tariff_annuity():
     """ae: the premium annuity-due over the paying term, ``sum v^y p1(y)``.
 

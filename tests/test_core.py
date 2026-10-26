@@ -316,6 +316,8 @@ CORE_CELLS = {
                              "kapitallebensversicherung": "derived",
                              "risikolebensversicherung": "override",
                              "sofortrente": "override"},
+        "pols_tariff": {"kapitallebensversicherung": "derived",
+                        "risikolebensversicherung": "derived"},
     },
 }
 

@@ -393,7 +393,7 @@ level is **[std]**.
     **0,1 % p. a.** and "eine auf der DAV-Sterbetafel 2004 R basierende unternehmenseigene vom
     Geschlecht unabhängige Sterbetafel" [S7] § 1 Ziffer 3 — well below the 1,00 % *Höchstrechnungszins*
     that applies to the accumulation guarantee, which is why a *Rentenfaktor* cannot be read off
-    `guar_rate`. The base run sets the current factor equal to the guaranteed one,
+    `rechnungszins`. The base run sets the current factor equal to the guaranteed one,
     so the max-of-two rule is exercised by a test rather than by the base path. A *Rentenfaktor* is the
     arithmetic image of an annuity table plus a guaranteed rate, and the market-standard table is
     **DAV 2004 R**, a *Generationentafel* in attained age **and calendar year** [REG-R49] — the property

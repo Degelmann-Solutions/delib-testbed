@@ -142,11 +142,13 @@ carries a per-row `provenance` column**, which is delib's second ruling and is m
 | `nvg_schedule.csv` | `nvg_id`, `policy_year` | `sum_uplift` (cumulative multiplier on the sum insured) | per row |
 | `lapse_table.csv` | `policy_year` | `lapse_rate` | per row |
 | `freq_loading_table.csv` | `prem_freq` | `instalments`, `prem_freq_load` | per row |
+| `param_table.csv` | `item` | `value` (`rechnungszins`) | per row |
 
-Six files, no orphans: the conventions suite asserts that every CSV beside the model backs a
+Seven files, no orphans: the conventions suite asserts that every CSV beside the model backs a
 filename Reference in `Data` and that the set read by a full sweep is exactly the set registered in
 `tests/de_registry.py`. Scalar assumptions are **References on `Projection`**, not rows in a table,
-following `TradLife_A`; their values and tags are the assumption tables below.
+following `TradLife_A`; their values and tags are the assumption tables below. The exception is
+`rechnungszins`, a row of `param_table.csv` since phase 3, read by the common core's loader.
 
 ---
 

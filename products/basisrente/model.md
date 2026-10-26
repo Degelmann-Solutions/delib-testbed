@@ -12,7 +12,7 @@ specified in [`product-spec.md`](product-spec.md), and the sources are in
 > partner or *Kindergeld*-eligible child, and the rule that everything paid to a survivor is
 > paid as an annuity [R1]; the *Beitragsfreistellung* right of § 165 VVG [R14]; the
 > *Höchstzillmersatz* of 25 ‰ of the *Beitragssumme* [R16] [REG-R16]; the
-> *Höchstrechnungszins* ladder that fixes each cohort's `gtd_rate` [R16] [REG-R14] [REG-R15];
+> *Höchstrechnungszins* ladder that fixes each cohort's `rechnungszins` [R16] [REG-R14] [REG-R15];
 > the statutory *Überschussbeteiligung* [R15] [REG-R24]; and the `max(garantiert, aktuell)`
 > conversion rule [R17] [S1] — and **every level here is still a standardization.** Carrier
 > documents have since been reached — two carriers' Basisrente *Bedingungswerke*, the GDV's model
@@ -164,7 +164,7 @@ fact.
 
 ## The declared rate is the *total* credited rate
 
-`cred_rate(k) = max(gtd_rate, decl_rate(k))` — a **maximum**, not a sum. A German *laufende
+`cred_rate(k) = max(rechnungszins, decl_rate(k))` — a **maximum**, not a sum. A German *laufende
 Verzinsung* is quoted as the total rate credited to the *Deckungskapital*, already including the
 contract's *Rechnungszins* [R15] [R16] [REG-R24]; adding one to the other is the notes' sixth
 pitfall and over a twenty-two-year deferment it is worth a great deal.
@@ -379,7 +379,7 @@ neither shifts; `issue_year` is a calendar year, and `issue_age` and `ret_age` a
 
 | File | Contents | Provenance |
 |---|---|---|
-| `model_point_table.csv` | Thirteen model points, 25 attributes each. **Point 1 is the worked-example anchor cell** (M45 → 67, concluded 2026, 6 000 € annual + 4 000 € *Zuzahlung*, 2 % *Dynamik*, `gtd_rate` 1,00 %, no riders). Points 2–13 exercise the *Einmalbeitrag*, all four payment frequencies, all three in-force shapes, the survivor's annuity and the *Rentengarantiezeit* separately and together, both age-floor cohorts, four guarantee vintages, and four boundary cases | anchor cell **[std]**, the technical notes' worked example |
+| `model_point_table.csv` | Thirteen model points, 25 attributes each. **Point 1 is the worked-example anchor cell** (M45 → 67, concluded 2026, 6 000 € annual + 4 000 € *Zuzahlung*, 2 % *Dynamik*, `rechnungszins` 1,00 %, no riders). Points 2–13 exercise the *Einmalbeitrag*, all four payment frequencies, all three in-force shapes, the survivor's annuity and the *Rentengarantiezeit* separately and together, both age-floor cohorts, four guarantee vintages, and four boundary cases | anchor cell **[std]**, the technical notes' worked example |
 | `mort_table.csv` | First-order `qx` and the improvement `trend` by age 20–121 | **[std]** DAV 2004 R-shaped proxy `min(1, 0.014000 × 1.085^(age − 67))` with a flat `trend = 0.015`. *Not* DAV 2004 R, which is the DAV's property and is cited, never shipped [R17] [REG-R47] [REG-R49]. **The anchor a replacement must preserve is `qx(67) = 0.014000`**, because the worked example converts at 67; it must also stay generational, stay first order, and end at an age where `qx = 1.0` |
 | `surplus_table.csv` | `decl_rate` and `ann_bonus_rate` by scenario and `t`. **Its `t` is the model's own projection *year* `k` and is 0-based**, running 0…94: the 2,60 % band is `t = 0…9`, the 2,40 % band `t = 10…19`, 2,20 % thereafter | **[std]** — 2,60 % / 2,40 % / 2,20 % declared, 1,0 % *Überschussrente*. A scenario, not a forecast: **no declared rate specific to a Basisrente was established anywhere in the delib corpus**, and the sibling files' rates are Schicht-3 and endowment figures that must not be relabelled |
 | `rentenfaktor_table.csv` | `rf_curr` by scenario and conversion age 60–75 | **[std]** — 31,50 € at 67, graded 3,5 % per year of age; the `low` scenario is 0.88 of it, and exists so model point 13 exercises the other branch of the `max`. **No *Rentenfaktor* level, range or time series exists anywhere in the delib corpus**, for this or any product (gap 4) |
@@ -538,7 +538,7 @@ proprietary or unreachable. Nothing here is a market observation.
 | The *Kleinbetragsrenten-Abfindung* left unimplemented | — | Schicht 1 permits the commutation at 1,5 % of the monthly *Bezugsgröße* [R23] [REG-R42]; the model omits it because `Riester_DE_S` carries the mechanic, and because the retrieved wordings make it the **insurer's** election rather than the policyholder's [S12], so there is no take-up assumption to make. The only absence in this model that German law does not compel |
 
 The only quantities that are **not** standardizations are the 25 ‰ and 40 ‰ *Höchstzillmersätze*
-[R16] [REG-R16] [REG-R20], the `gtd_rate` ladder of *Höchstrechnungszins* vintages [R16]
+[R16] [REG-R16] [REG-R20], the `rechnungszins` ladder of *Höchstrechnungszins* vintages [R16]
 [REG-R14] [REG-R15], **the five-year *Zillmerung* spread** [R14] [S1] [S12], and the structural
 rules — the five prohibitions and the absences they impose, the *Beitragsfreistellung* right, the
 closed list of permitted survivors, the annuity-only payout **as this model implements it**, the

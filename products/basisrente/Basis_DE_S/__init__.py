@@ -40,7 +40,7 @@ Versicherungsperiode" and § 12 Abs. 1 VVG makes that period the *Versicherungsj
 ``pols_freeze`` is non-zero only in the last month of a projection year.
 
 **The declared rate is the *total* credited rate, not a spread.** A German *laufende
-Verzinsung* already includes the *Rechnungszins*, so ``cred_rate(k) = max(gtd_rate,
+Verzinsung* already includes the *Rechnungszins*, so ``cred_rate(k) = max(rechnungszins,
 decl_rate(k))``. Adding one to the other is the sixth pitfall, and on a book spanning
 seven guarantee vintages it is worth a great deal.
 
@@ -106,7 +106,7 @@ was there for.
 prohibitions and the absence of any surrender value, the confinement of survivor cover
 to a spouse, registered partner or *Kindergeld*-eligible child, the *Beitragsfreistellung*
 right, the *Höchstzillmersatz* of 25 ‰ of the *Beitragssumme*, the *Höchstrechnungszins*
-ladder that fixes each cohort's ``gtd_rate``, and the statutory *Überschussbeteiligung*.
+ladder that fixes each cohort's ``rechnungszins``, and the statutory *Überschussbeteiligung*.
 Every level is a standardization. **Not one carrier's Basisrente *Bedingungswerk*,
 *Produktinformationsblatt* or declared-rate history was reached** — direct HTTP egress
 was blocked and the session's search budget was exhausted before this product — so every

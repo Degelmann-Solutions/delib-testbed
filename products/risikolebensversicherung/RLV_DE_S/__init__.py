@@ -52,7 +52,7 @@ the modelling error this product invites, and ``check_res_roll_fwd()`` is what c
 **Spaces.** The model contains two:
 
 :mod:`~.RLV_DE_S.Data`
-    Reads the six input CSVs and holds their filename References. It takes no
+    Reads the seven input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.RLV_DE_S.Projection`

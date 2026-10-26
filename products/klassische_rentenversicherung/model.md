@@ -124,7 +124,7 @@ it is the first listed modeling pitfall. The German *laufende Verzinsung* **is**
 on top of the guarantee. So:
 
 ```
-bonus_rate(k) = max(0, decl_rate(k) − int_rate_guar())
+bonus_rate(k) = max(0, decl_rate(k) − rechnungszins())
 ```
 
 and the two credits together deliver the declared rate on the post-premium *Deckungskapital*
@@ -156,7 +156,7 @@ would be inventing three rates.
 
 ## The guarantee vintage is a model-point attribute
 
-`int_rate_guar()` reads the model point, not a Reference. The lock is statutory: § 2 Abs. 2 Satz 1
+`rechnungszins()` reads the model point, not a Reference. The lock is statutory: § 2 Abs. 2 Satz 1
 DeckRV, *"Bei Versicherungsverträgen mit Zinsgarantie gilt der von einem Versicherungsunternehmen zum
 Zeitpunkt des Vertragsabschlusses verwendete Rechnungszins für die Berechnung der
 Deckungsrückstellung für die gesamte Laufzeit des Vertrages"* [R7] [REG-R14]. So a German life book is
@@ -176,7 +176,7 @@ Premium in advance, then the charges, then the *Rechnungszins* on what is left:
 
 ```
 av_pp_at(k, "AFT_PREM") = av_pp(k) + prem_to_av_pp(k) − charge_from_av_pp(k)
-int_credited_pp(k)      = int_rate_guar() × av_pp_at(k, "AFT_PREM")
+int_credited_pp(k)      = rechnungszins() × av_pp_at(k, "AFT_PREM")
 av_pp_at(k, "AFT_INT")  = av_pp_at(k, "AFT_PREM") + int_credited_pp(k)
 ```
 
@@ -486,7 +486,7 @@ population. The technical notes use compact actuarial symbols; the full mapping 
 |---|---|---|
 | `Ď(k)`, `D(k)` | `db_base_pp` / `db_pp` | Two different quantities with deliberately similar names. `db_base_pp` is measured on **start-of-year** balances and exists only to strike the *Risikobeitrag*, because a risk charge on the post-charge balance would be circular. `db_pp` is what a claim actually pays, on end-of-year balances. Both take a policy year: a death in any month of year `k` is paid `db_pp(k)` |
 | `β(k)`, `γ(k)` vs the expense lines | `charge_*` / `expense_*` | A **charge** is a tariff deduction that moves money inside the contract and produces no cash flow; an **expense** is the insurer's own outgo and is a cash flow. `expenses(t)` is invariant to `beta_rate` and `gamma_rate`; `av_pp(k+1)` is not |
-| `V(k)`, `A(k)` | `av_pp` / `av_sur_pp` | Two accounts, not one balance split in two. The *Deckungskapital* carries the guarantee and is credited at `int_rate_guar()`; the *Ansammlungsguthaben* is the *verzinsliche Ansammlung* side account, credited at `decl_rate(k)` on its own balance plus `bonus_rate(k)` on the *Deckungskapital*'s post-premium base. Each has its own roll-forward check, and both are annual |
+| `V(k)`, `A(k)` | `av_pp` / `av_sur_pp` | Two accounts, not one balance split in two. The *Deckungskapital* carries the guarantee and is credited at `rechnungszins()`; the *Ansammlungsguthaben* is the *verzinsliche Ansammlung* side account, credited at `decl_rate(k)` on its own balance plus `bonus_rate(k)` on the *Deckungskapital*'s post-premium base. Each has its own roll-forward check, and both are annual |
 | `l(t)`, `a(t)` | `pols_if` / `pols_annuity` | They differ inside the *Rentengarantiezeit* and nowhere else. `pols_if(t)` is the start-of-**month** count and the weight on every cash flow of the same row; `pols_annuity(t)` is the count the instalment is *paid on* |
 | `q(t)`, `w(t)` | `mort_rate`, `lapse_rate` / `mort_rate_mth`, `lapse_rate_mth` | The library's two speeds, not two spellings of one rate. The unsuffixed name is the **annual** rate of the policy year, which is what the notes tabulate and `result_pols()` prints; the `_mth` name is the geometric twelfth the recursion applies. Nothing here applies an unsuffixed decrement rate, and nothing divides one by twelve |
 

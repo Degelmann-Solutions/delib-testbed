@@ -489,6 +489,9 @@ def rechnungszins():
     the pricing engine: the projection publishes undiscounted cash flows.  It is also the
     single most leveraged pricing assumption here, because a *Pflegerente*'s benefits fall
     on average some thirty-five years after issue.
+
+    Override reason: the whole book is priced at one rate, a tariff parameter in
+    *param_table.csv* rather than a model-point column, products/pflegerentenversicherung/technical-notes.md:232
     """
     return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
 

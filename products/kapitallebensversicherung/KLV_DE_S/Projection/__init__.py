@@ -469,17 +469,6 @@ def unterjaehrig_form():
     return v
 
 
-def rechnungszins():
-    """i1: the contract's own guaranteed technical rate, fixed at conclusion.
-
-    A **contract term, not a market rate**: it is set once, at conclusion, and carried for the
-    whole term, which is why a German in-force book is a stack of cohorts and why the in-force
-    model point carries 1,75 % while new business carries 1,00 %.  It must not exceed the
-    cohort's :func:`hrz_max`; :func:`check_rechnungszins_cap` asserts it.
-    """
-    return float(model_point()["rechnungszins"])
-
-
 def zillmer_on():
     """1 where the *Deckungskapital* is *gezillmert*, 0 where it is not.
 

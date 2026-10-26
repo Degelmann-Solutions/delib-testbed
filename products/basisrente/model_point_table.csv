@@ -1,4 +1,4 @@
-point_id,policy_id,sex,issue_age,issue_year,duration_init,ret_age,pols_if_init,prem_form,prem_base_pp,prem_mode,prem_dyn_rate,zuzahlung_pp,zuzahlung_end_dur,paidup_at_init,av_pp_init,ann_pp_init,gtd_rate,rentenfaktor_gtd,guarantee_period_y,surv_annuity_rate,buz_prem_share,tariff_id,beh_table_id,surplus_scenario_id,rf_scenario_id
+point_id,policy_id,sex,issue_age,issue_year,duration_init,ret_age,pols_if_init,prem_form,prem_base_pp,prem_mode,prem_dyn_rate,zuzahlung_pp,zuzahlung_end_dur,paidup_at_init,av_pp_init,ann_pp_init,rechnungszins,rentenfaktor_gtd,guarantee_period_y,surv_annuity_rate,buz_prem_share,tariff_id,beh_table_id,surplus_scenario_id,rf_scenario_id
 1,DE-BAS-0001,M,45,2026,0,67,1.0,regular,6000.00,annual,0.02,4000.00,22,0,0.00,0.00,0.0100,28.00,0,0.00,0.00,de_basis_std,base,base,base
 2,DE-BAS-0002,F,35,2026,0,67,1.0,regular,3000.00,monthly,0.03,0.00,0,0,0.00,0.00,0.0100,28.00,0,0.00,0.00,de_basis_std,base,base,base
 3,DE-BAS-0003,M,48,2026,0,67,1.0,regular,7200.00,quarterly,0.02,3000.00,19,0,0.00,0.00,0.0100,28.00,0,0.60,0.00,de_basis_std,base,base,base

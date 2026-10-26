@@ -88,7 +88,7 @@ The hash table of a product's `UPSTREAM.md` stays upstream's: it lists every cop
 
 `tests/test_provenance.py` skips the hash check for a listed file, requires every listed changed file to stay in the hash table, and requires every symlink in a product folder to be listed and to resolve to a core space folder under `core/`. A changed file that is not listed fails the hash check as before.
 
-As a rule a product adds no regular file, since an added file has no upstream hash; the paths phase 3 adds are symlinks to core space folders. The exception is a merge of input files, decided for each case (epic Notes): Pflege's `basis_table.csv` and `expense_table.csv` merge into one `param_table.csv`, so that RV and Pflege share the core's `param_table` loader. Such a merge is listed with two kinds of change:
+As a rule a product adds no regular file, since an added file has no upstream hash; the paths phase 3 adds are symlinks to core space folders. There are two exceptions. A product whose scalar tariff parameter moves into the core gets its first `param_table.csv` (columns `item, value, provenance`, the provenance from the docstring or notes that justified the old Reference) and a `param_file` Reference in its `Data`; RLV and BU got theirs for the *Rechnungszins*, listed as `added: …`. The other is a merge of input files, decided for each case (epic Notes): Pflege's `basis_table.csv` and `expense_table.csv` merge into one `param_table.csv`, so that RV and Pflege share the core's `param_table` loader. Such a merge is listed with two kinds of change:
 
 ```markdown
 | `param_table.csv` | added: merged from `basis_table.csv` and `expense_table.csv` |

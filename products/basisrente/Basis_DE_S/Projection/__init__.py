@@ -134,7 +134,7 @@ A^f(k, .)                  av_pu_at(k, timing)             Premium-free block, f
 A(k, .)                    av_at(k, timing)                Whole Deckungskapital, fund level
 A(k)                       av(k)                           Its start-of-year value
 (declared)                 decl_rate(k)                    Declared laufende Verzinsung
-i(k)                       cred_rate(k)                    max(gtd_rate, decl_rate(k))
+i(k)                       cred_rate(k)                    max(rechnungszins, decl_rate(k))
 q^t(x, y)                  mort_rate_at_age(x, y)          First-order table rate
 (table)                    mort_rate_base(t)               Table rate of the year of month t
 q(t)                       mort_rate(t)                    Best-estimate annual death rate
@@ -248,11 +248,11 @@ conservative on premium income and is a standardization rather than a contract f
 
 .. rubric:: The declared rate is the total credited rate
 
-``cred_rate(k) = max(gtd_rate, decl_rate(k))``, a maximum and not a sum. A German
+``cred_rate(k) = max(rechnungszins, decl_rate(k))``, a maximum and not a sum. A German
 *laufende Verzinsung* is quoted as the **total** rate credited to the *Deckungskapital*,
 already including the contract's *Rechnungszins*; adding the declared rate on top of the
 guarantee is the sixth pitfall. The guarantee is a cohort fact fixed at conclusion and
-carried on the model point as ``gtd_rate``, so a book spanning the 2,75 % vintage of 2006
+carried on the model point as ``rechnungszins``, so a book spanning the 2,75 % vintage of 2006
 and the 1,00 % vintage of 2025 has both branches of the ``max`` live at once — model
 point 8 credits its guarantee in every year while the anchor credits the declared path in
 every year.
@@ -1170,7 +1170,7 @@ def decl_rate(k):
 def cred_rate(k):
     """i(k): the rate credited to the *Deckungskapital* in projection year k.
 
-    ``max(gtd_rate, decl_rate(k))`` — a **maximum**, not a sum.  ``gtd_rate`` is the
+    ``max(rechnungszins, decl_rate(k))`` — a **maximum**, not a sum.  ``rechnungszins`` is the
     contract's *Rechnungszins*, capped at the *Höchstrechnungszins* in force at conclusion
     and fixed for the whole term, so a book carries a stack of guarantee vintages and the
     ``max`` picks a different branch on each.  On the anchor (1,00 %) the declared path
@@ -1181,7 +1181,7 @@ def cred_rate(k):
     great deal over a twenty-two-year deferment.  The reserve charge gamma is netted
     inside the same crediting step, in :func:`av_pp_at` and :func:`av_pu_at`.
     """
-    return max(float(model_point()["gtd_rate"]), decl_rate(k))
+    return max(rechnungszins(), decl_rate(k))
 
 
 def av_pp(k):

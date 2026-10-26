@@ -964,6 +964,15 @@ def mort_rate_dis_first_mth_year(s):
                  for f in mort_dis_sel_factors())
 
 
+def rechnungszins():
+    """i: the *Rechnungszins*, 1,00 % a year, from *param_table.csv*.
+
+    Override reason: the whole book is priced at one rate, a tariff parameter in
+    *param_table.csv* rather than a model-point column, products/berufsunfaehigkeit/model.md:432
+    """
+    return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
+
+
 def disc_first(s):
     """v^s: the *Rechnungszins* discount factor at month s, ``(1 + rechnungszins)^(-s/12)``.
 
@@ -973,7 +982,7 @@ def disc_first(s):
     reproduced.  The rate is the *Hoechstrechnungszins* for contracts written from
     1 January 2025, and both the figure and its effective date are ``[unverified]``.
     """
-    return (1.0 + rechnungszins) ** (-s / 12.0)                      # noqa: F821
+    return (1.0 + rechnungszins()) ** (-s / 12.0)                    # noqa: F821
 
 
 # --- benefit and premium amounts ---
@@ -2123,8 +2132,6 @@ recov_load_first = 0.7
 mort_dis_load_first = 0.8
 
 mort_actv_load_first = 0.8
-
-rechnungszins = 0.01
 
 acq_rate = 0.025
 

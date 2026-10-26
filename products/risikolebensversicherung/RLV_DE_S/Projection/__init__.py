@@ -958,6 +958,15 @@ def lapse_cum(t):
 # Pricing: the Bruttobeitrag by first-order equivalence, struck once at issue
 
 
+def rechnungszins():
+    """i: the *Rechnungszins*, 1,00 % a year, from *param_table.csv*.
+
+    Override reason: the whole book is priced at one rate, a tariff parameter in
+    *param_table.csv* rather than a model-point column, products/risikolebensversicherung/technical-notes.md:929
+    """
+    return float(data.param_table().at["rechnungszins", "value"])    # noqa: F821
+
+
 def disc_factor(y):
     """v^y: the *Rechnungszins* discount factor to the start of **policy year** y, 0-based.
 
@@ -974,7 +983,7 @@ def disc_factor(y):
     month by month would move ``G`` and with it every figure the notes publish, while
     changing nothing about the contract.
     """
-    return (1.0 + rechnungszins) ** -y                               # noqa: F821
+    return (1.0 + rechnungszins()) ** -y                             # noqa: F821
 
 
 def pols_tariff(y):
@@ -1805,7 +1814,7 @@ def check_res_roll_fwd_resid(y):
     in-force one whose cash flows start later: the reserve is a tariff quantity and the
     tariff was struck at issue.
     """
-    lhs = (res_pp_at(y, "AFT_PREM")) * (1.0 + rechnungszins)         # noqa: F821
+    lhs = (res_pp_at(y, "AFT_PREM")) * (1.0 + rechnungszins())       # noqa: F821
     q1 = mort_rate_tar(12 * y)
     rhs = (q1 * benefit_pp(12 * y)
            + (1.0 - q1) * res_pp_at(y + 1, "BEF_PREM"))
@@ -1968,8 +1977,6 @@ def result_pols():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-rechnungszins = 0.01
 
 sicherheitszuschlag_m = 1.25
 

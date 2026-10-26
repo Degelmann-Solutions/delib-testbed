@@ -169,7 +169,7 @@ tagged in *Assumption inputs* below: `mort_be_factor`, `elig_surv_prob`, `mort_b
 | `paidup_at_init` | bool | The model point is already *beitragsfrei* at the valuation date | 7 |
 | `av_pp_init` | EUR | *Deckungskapital* per policy at the valuation date | 6, 7 |
 | `ann_pp_init` | EUR p.a. | Annual annuity already in payment, for a point that opens in the *Rentenphase* | 8 |
-| `gtd_rate` | rate p.a. | The contract's *Rechnungszins*, the cohort's guarantee vintage [REG-R15] | 6 (2,25 %), 7 (1,75 %), 8 (2,75 %), rest 1,00 % |
+| `rechnungszins` | rate p.a. | The contract's *Rechnungszins*, the cohort's guarantee vintage [REG-R15] | 6 (2,25 %), 7 (1,75 %), 8 (2,75 %), rest 1,00 % |
 | `rentenfaktor_gtd` | EUR per month per 10 000 € | *Garantierter Rentenfaktor*, fixed at inception [R17] [S1] | 6, 13 (both set above the current-factor scenario at their conversion age, so the guarantee binds) |
 | `guarantee_period_y` | int | *Rentengarantiezeit* in years from *Rentenbeginn*; 0 = none | 4 (10), 12 (20) |
 | `surv_annuity_rate` | rate | Survivor's annuity as a fraction of the main annuity; 0 = **rider off**, which is the base design | 3 (0.60), 12 (0.60) |
@@ -199,8 +199,8 @@ which is the honest arrangement: averaging the two cohorts' reserves is pitfall 
 | 3 | Quarterly premium with the **survivor's annuity** switched on | 48 → 67, quarterly, `surv_annuity_rate = 0.60` |
 | 4 | Half-yearly premium with a **10-year *Rentengarantiezeit*** | 52 → 67, half-yearly, `guarantee_period_y = 10` |
 | 5 | ***Einmalbeitrag*** — the late-career deferral of a high-income year | 58 → 67, `prem_form = single`, 60 000 € once |
-| 6 | **In-force, pre-2012 cohort, at the 60 age floor** | concluded 2009, `duration_init = 17`, `ret_age = 60`, `gtd_rate = 2,25 %` |
-| 7 | **In-force and already *beitragsfrei*** | concluded 2014, `duration_init = 12`, `paidup_at_init = 1`, `gtd_rate = 1,75 %` |
+| 6 | **In-force, pre-2012 cohort, at the 60 age floor** | concluded 2009, `duration_init = 17`, `ret_age = 60`, `rechnungszins = 2,25 %` |
+| 7 | **In-force and already *beitragsfrei*** | concluded 2014, `duration_init = 12`, `paidup_at_init = 1`, `rechnungszins = 1,75 %` |
 | 8 | **In-force and already in payment** — opens in the *Rentenphase*, `ret_t() < 0` | concluded 2006, `issue_age = 48`, `duration_init = 20`, `ret_age = 65`, `ann_pp_init > 0` |
 | 9 | **Boundary — the whole *Höchstbetrag*** | 50 → 67, 30 826 € p.a. annual [R2] [R20] — 124 800 € × 24,7 %, rounded up under § 10 Abs. 3 Satz 1 EStG |
 | 10 | **Boundary — a *Kleinbetragsrente* this model annuitises rather than commutes** | 30 → 67, 300 € p.a. monthly (25 €/month) |
@@ -234,7 +234,7 @@ age-floor cohorts, four guarantee vintages and four boundary cases.
 | `av_pu_at(k, timing)` | *Deckungskapital* of the **premium-free cohort, at fund level**, same three timings | within year `k` |
 | `av_at(k, timing)` | The whole *Deckungskapital* at fund level, `av_pp_at(k, ·) × pols_paying(12k) + av_pu_at(k, ·)` | within year `k` |
 | `av(k)` | `av_at(k, "BEF_PREM")`; **zero for every `k > ret_y()`** | annual |
-| `cred_rate(k)` | The rate credited to the *Deckungskapital*, `max(gtd_rate, decl_rate(k))` | annual |
+| `cred_rate(k)` | The rate credited to the *Deckungskapital*, `max(rechnungszins, decl_rate(k))` | annual |
 | `ann_pp(k)` | **Annual** annuity per surviving annuitant in year `k`, in the *Rentenphase* only | annual recursion |
 | `ann_mth_pp(t)` | The monthly instalment actually paid, `ann_pp(proj_year(t)) / 12` | monthly |
 | `beitragssumme_pp` | The contract's *Beitragssumme* at inception, the base of the 25 ‰ *Zillmerung* cap | once per model point |
@@ -265,7 +265,7 @@ class (c) is the modeller's view of experience.
 | *Rentengarantiezeit* | Remaining instalments to the end of the guaranteed period, **only to an eligible survivor**, **never commutable** | [R1] |
 | BUZ premium share | Supplementary covers strictly **below 50 %** of the total contribution | **not [R1]** — the statute requires only that the cover be *ergänzend*. The 50 % test is BMF-Schreiben v. 24.05.2017 Rz. 38, measured on the actual total premium payable [R18], and is a contract term in the GDV BUZ model conditions § 9 Abs. 2 [S12] |
 | Conversion rule | `ann_pp = fund / 10 000 × max(rentenfaktor_gtd, rf_curr) × 12`, reduced by the option factors | [R17] [S1] |
-| *Rechnungszins* (`gtd_rate`) | The cohort's *Höchstrechnungszins*: 1,00 % from 1 January 2025; 0,25 % 2022–2024; 0,90 % 2017–2021; 1,25 % 2015–2016; 1,75 % 2012–2014; 2,25 % 2007–2011; 2,75 % 2004–2006. **Fixed at conclusion for the whole term** | [R16] [REG-R14] [REG-R15] |
+| *Rechnungszins* (`rechnungszins`) | The cohort's *Höchstrechnungszins*: 1,00 % from 1 January 2025; 0,25 % 2022–2024; 0,90 % 2017–2021; 1,25 % 2015–2016; 1,75 % 2012–2014; 2,25 % 2007–2011; 2,75 % 2004–2006. **Fixed at conclusion for the whole term** | [R16] [REG-R14] [REG-R15] |
 | *Höchstzillmersatz* (`zill_rate`) | **25 ‰ of the *Beitragssumme***, from 1 January 2015 (40 ‰ before) | [R16] [REG-R16] [REG-R20] |
 | *Überschussbeteiligung* entitlement | Statutory, on the same terms as any German life contract; MindZV floor 90 % / 90 % / 50 % | [R15] [REG-R24] [REG-R18] |
 | Mortality basis | **DAV 2004 R**, generational; first order for pricing and the guaranteed *Rentenfaktor*, second order for the best estimate. **Not public, not redistributed** | [R17] [REG-R47] [REG-R49] |
@@ -276,7 +276,7 @@ class (c) is the modeller's view of experience.
 | Input | Base-run value | Basis |
 |---|---|---|
 | Declared *laufende Verzinsung* `decl_rate(t)` | **2,60 %** p.a. for `t = 0…9`, **2,40 %** for `t = 10…19`, **2,20 %** thereafter, in scenario `base` | **[std]** (i) |
-| Credited rate | `cred_rate(t) = max(gtd_rate, decl_rate(t))` — the declared rate is the total credited rate, **not** a spread over the *Rechnungszins* | **[std]** (ii) |
+| Credited rate | `cred_rate(t) = max(rechnungszins, decl_rate(t))` — the declared rate is the total credited rate, **not** a spread over the *Rechnungszins* | **[std]** (ii) |
 | *Schlussüberschussanteil* `terminal_bonus_rate` | **4,0 %** of the fund, allocated **only at *Rentenbeginn*** | **[std]** (iii); single-date allocation [R15] |
 | *Überschussrente* `ann_bonus_rate(t)` | **1,0 %** p.a., compounding — a *teildynamische Rente* | **[std]** (iv) |
 | *Aktueller Rentenfaktor* `rf_curr(age)` | **31,50 €** at age 67 in scenario `base`; scenario `low` runs about 12 % below it | **[std]** (v) |
@@ -357,7 +357,7 @@ surrender, no assignment, no provider transfer, no commutation. That is the prod
 | `S` | `beitragssumme_pp()` | the *Beitragssumme* at inception |
 | `α`, `α_z`, `β`, `γ`, `u(k)` | `alpha_amort_pp(k)`, `alpha_zuz_pp(k)`, `beta_prem`, `gamma_av`, `unit_cost_pp(k)` | the four charges struck against the account, all annual |
 | `N(k)` | `prem_to_av_pp(k)` | premium credited to the account after all four charges |
-| `i(k)` | `cred_rate(k)` | credited rate, `max(gtd_rate, decl_rate(k))` |
+| `i(k)` | `cred_rate(k)` | credited rate, `max(rechnungszins, decl_rate(k))` |
 | `σ` | `terminal_bonus_rate` | *Schlussüberschussanteil* rate at *Rentenbeginn* |
 | `F` | `fund_at_conv()` | the fund converted at *Rentenbeginn*, including the terminal bonus |
 | `R` | `rentenfaktor_applied()` | `max(rentenfaktor_gtd, rf_curr(ret_age)) × rf_option_factor()` |
@@ -727,7 +727,7 @@ exactly this order:
    `claims(t, "DEATH")` as `elig_surv_prob ×` the released reserve — the **annual** `db_pp(k)`, struck
    at the end of the *Versicherungsjahr*; where it is off, the whole released reserve is a mortality
    profit and **nothing is paid**. Roll the two ledgers and, inside the guarantee window, `pols_gtd`.
-9. **End of year — credit interest** (*Aufschubphase* only). `cred_rate(k) = max(gtd_rate,
+9. **End of year — credit interest** (*Aufschubphase* only). `cred_rate(k) = max(rechnungszins,
    decl_rate(k))`, applied net of γ in one step to both blocks, giving `"AFT_INT"`. A policy that died
    during the year has been credited the whole of it, which is the annual-step convention preserved.
 10. **End of year — *Beitragsfreistellung*.** `pols_freeze(12k + 11)` on the survivors of the last
@@ -778,9 +778,9 @@ a test.
    `Σ_k alpha_amort_pp(k) = zill_rate × beitragssumme_pp()` to 1e-9, and that an in-force point past
    duration 5 (model point 6) sees `alpha_amort_pp(k) = 0` in every year.
 6. **Stacking the declared rate on top of the guarantee.** A German *laufende Verzinsung* is the
-   **total** credited rate, so `cred_rate(k) = max(gtd_rate, decl_rate(k))`, not `gtd_rate +
-   decl_rate(k)` [R15] [R16]. Assert that on model point 8 (`gtd_rate = 2,75 %`, above the whole
-   declared path) `cred_rate(k) = gtd_rate` in every year, while on the anchor it equals
+   **total** credited rate, so `cred_rate(k) = max(rechnungszins, decl_rate(k))`, not `rechnungszins +
+   decl_rate(k)` [R15] [R16]. Assert that on model point 8 (`rechnungszins = 2,75 %`, above the whole
+   declared path) `cred_rate(k) = rechnungszins` in every year, while on the anchor it equals
    `decl_rate(k)`.
 7. **Letting premiums or *Zuzahlungen* run past *Rentenbeginn*, or the *Dynamik* run off the policy
    duration.** Assert `prem_pp(k) = 0` and `zuz_pp(k) = 0` for every `k ≥ ret_y()`, that
@@ -840,7 +840,7 @@ a test.
     exactly; `mort_rate(t) / 12` closes neither.
 16. **Applying today's *Höchstrechnungszins* to an in-force contract.** The rate attaches at
     conclusion and stays with the contract [REG-R14] [REG-R15]. Assert that the shipped model points
-    carry four distinct `gtd_rate` values and that `cred_rate(k) ≥ gtd_rate` in every year on every
+    carry four distinct `rechnungszins` values and that `cred_rate(k) ≥ rechnungszins` in every year on every
     point.
 17. **Modelling the BUZ as premium income with no benefit.** `prem_base_pp` is the **old-age**
     contribution; the BUZ premium and the *BU-Rente* belong to `BU_DE_S`. Assert `buz_prem_share < 0.50`
@@ -902,7 +902,7 @@ any of them, and the research file records the absence as gap 3.
 `pols_if_init = 1.0`; `prem_form = regular`; `prem_base_pp = 6,000.00 €` p.a.; `prem_mode = annual`,
 so `prem_freq_load = 1.000`; `prem_dyn_rate = 0.02`; `zuzahlung_pp = 4,000.00 €` p.a.;
 `zuzahlung_end_dur = 22`; `paidup_at_init = 0`; `av_pp_init = 0.00 €`; `ann_pp_init = 0.00 €`;
-`gtd_rate = 0.0100`; `rentenfaktor_gtd = 28.00 €` per month per 10 000 €; `guarantee_period_y = 0`;
+`rechnungszins = 0.0100`; `rentenfaktor_gtd = 28.00 €` per month per 10 000 €; `guarantee_period_y = 0`;
 `surv_annuity_rate = 0.00`, so the survivor rider is **off** and `claims_death(t) = 0` at every `t`;
 `buz_prem_share = 0.00`; `tariff_id = de_basis_std`; `beh_table_id = base`;
 `surplus_scenario_id = base`; `rf_scenario_id = base`. Hence `age(0) = 45`,
@@ -924,7 +924,7 @@ a flat improvement `trend = 0.015` at every age applied from `mort_base_year = 2
 **DAV 2004 R**, which is the property of the Deutsche Aktuarvereinigung and is **cited by name and
 never shipped** [R17] [REG-R47] [REG-R49]; a replacement must preserve the generational structure, the
 first-order margin and the *Altersverschiebung* convention, and must reproduce the anchor above if the
-worked example is to close. *Interest*: `gtd_rate = 1.00 %` p.a., the *Höchstrechnungszins* for new
+worked example is to close. *Interest*: `rechnungszins = 1.00 %` p.a., the *Höchstrechnungszins* for new
 business from 1 January 2025 [R16] [REG-R14] [REG-R15]; declared `decl_rate(t) = 2.60 %` for
 `k = 0…9`, `2.40 %` for `k = 10…19`, `2.20 %` for `k ≥ 20` **[std]**, so
 `cred_rate(k) = max(0.0100, decl_rate(k)) = decl_rate(k)` throughout and the guarantee never binds on

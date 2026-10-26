@@ -1,0 +1,2 @@
+item,value,provenance
+rechnungszins,0.01,"[R10] [REG-R14] [REG-R15] the DeckRV Hoechstzinssatz of 1 Prozent, a ceiling the model adopts as the rate for the whole book; a retrieved carrier prices its term tariff at 0,25 % instead [S3]; used only in the premium equivalence and the first-order reserve"

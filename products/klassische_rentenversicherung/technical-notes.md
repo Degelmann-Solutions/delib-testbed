@@ -143,7 +143,7 @@ The right-hand column names the points that exercise each attribute away from it
 | `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | *Zahlweise*; keys `freq_load_table.csv` for the *Ratenzahlungszuschlag*. The **collection** is annual in advance whatever the elected frequency, § 12 Abs. 1 VVG making the *Versicherungsperiode* the year for this tariff | 3 (monthly), 4 (quarterly), 5 (half-yearly) |
 | `prem_term_y` | int | Premium-paying **years** from inception, a count: premiums fall in policy years `k < prem_term_y` | 4 (20 of 22), 5 (25 of 27) |
 | `aufschub_y` | int | Deferment in **years**, a count: *Rentenbeginn* at the end of month `t = 12 × aufschub_y − 1` | all |
-| `int_rate_guar` | rate | The contract's *Rechnungszins* — **a model-point attribute, not a global assumption** [R7] [REG-R14] [REG-R15] | 6 (2,75 %), 14 (0,90 %) |
+| `rechnungszins` | rate | The contract's *Rechnungszins* — **a model-point attribute, not a global assumption** [R7] [REG-R14] [REG-R15] | 6 (2,75 %), 14 (0,90 %) |
 | `charge_id` | str | Key into `charge_table.csv`; `zillmer_25` or the pre-2015 `zillmer_40` [REG-R16] | 6 (`zillmer_40`) |
 | `annuity_rate_guar` | EUR/month per 10 000 € | *garantierter Rentenfaktor*, fixed at inception [S8] [R24] | all (levels **[std]**) |
 | `rf_scenario_id` | str | Key into `rentenfaktor_table.csv` for the *aktueller Rentenfaktor* | 5 (`high`), 13 (`low`) |
@@ -268,7 +268,7 @@ so the total interest credited is 3,00 % for 2026. **The values below are unchan
 | Input | Value | Basis |
 |---|---|---|
 | Declared *laufende Verzinsung* `decl_rate` | **2,55 % p.a.** level on the `base` path; **1,50 %** on the `low` path | **[std]** (i) |
-| Surplus rate `bonus_rate(t)` | `max(0, decl_rate(t) − int_rate_guar)` — **1,55 %** on the 1,00 % vintage, **0 %** on the 2,75 % vintage | mechanic [R24] [REG-R53]; **[std]** level |
+| Surplus rate `bonus_rate(t)` | `max(0, decl_rate(t) − rechnungszins)` — **1,55 %** on the 1,00 % vintage, **0 %** on the 2,75 % vintage | mechanic [R24] [REG-R53]; **[std]** level |
 | Interest credited on the *Ansammlungsguthaben* | at `decl_rate(t)`, the full declared rate | mechanic [R24]; **[std]** (ii) |
 | *Bewertungsreserven* rate at *Rentenbeginn* `val_reserve_rate` | **1,5 %** of the accumulated value | mechanic [S4] [R4]; level **[std]** (iii) |
 | *aktueller Rentenfaktor* at *Rentenbeginn* | **32,00 €** per month per 10 000 € at age 67 on the `base` path; **25,50 €** `low`; **35,00 €** `high` | mechanic [S13] [R24]; level **[std]** (iv) |
@@ -438,7 +438,7 @@ instalment stream is therefore in the frame.
 | `β(k)`, `γ(k)`, `ρ(k)` | `charge_prem_pp`, `charge_admin_pp`, `charge_risk_pp` | premium, reserve-based and risk charges |
 | `S(k)` | `prem_to_av_pp` | *Sparbeitrag* — the premium net of what the charges take from it |
 | `C(k)` | `charge_from_av_pp` | the part of the charges the premium could not meet, taken from `V` |
-| `i`, `d(k)`, `b(k)` | `int_rate_guar`, `decl_rate`, `bonus_rate` | *Rechnungszins*; declared rate; `max(0, d(k) − i)` |
+| `i`, `d(k)`, `b(k)` | `rechnungszins`, `decl_rate`, `bonus_rate` | *Rechnungszins*; declared rate; `max(0, d(k) − i)` |
 | `D(k)`, `Ď(k)` | `db_pp`, `db_base_pp` | death benefit paid on a death in policy year `k`; its start-of-year measure, used only for `ρ` |
 | `R(k)`, `R̄(k)`, `R̲(k)` | `cv_pp`, `cv_tariff_pp`, `cv_floor_pp` | surrender value; the tariff value net of the *Stornoabzug*; the § 169 Abs. 3 floor |
 | `q*(t)`, `q(t)`, `w(t)` | `mort_rate_guar`, `mort_rate`, `lapse_rate` | first-order and best-estimate mortality, and the surrender rate — all three **annual**, flat across a policy year |
@@ -731,12 +731,12 @@ A3. **Premium in advance, decomposed.** `prem_pp(k)`, then `charge_acq_pp`, `cha
     `charge_from_prem_pp`, `charge_from_av_pp` and the *Sparbeitrag* `prem_to_av_pp`.
 A4. **Credit the *Deckungskapital* and accrue the guarantee.**
     `av_pp_at(k,"AFT_PREM") = av_pp(k) + prem_to_av_pp(k) − charge_from_av_pp(k)`, then
-    `int_credited_pp(k) = int_rate_guar × av_pp_at(k,"AFT_PREM")` and `av_pp_at(k,"AFT_INT")`.
+    `int_credited_pp(k) = rechnungszins × av_pp_at(k,"AFT_PREM")` and `av_pp_at(k,"AFT_INT")`.
     **This is the [std] ordering** — premium, then charges, then interest on what is left. The
     retrieved wordings fix the *decomposition* ([S8] § 1 Abs. 2, [S11] § 27 Abs. 1) but none of them
     fixes the **within-year sequence**, which stays a standardization.
 A5. **Credit the surplus.** `decl_rate(k)` from the declared-rate path,
-    `bonus_rate(k) = max(0, decl_rate(k) − int_rate_guar)`, then `bonus_credited_pp(k)` to the
+    `bonus_rate(k) = max(0, decl_rate(k) − rechnungszins)`, then `bonus_credited_pp(k)` to the
     *Ansammlungsguthaben*, at year end [R24].
 A6. **Roll the spread account and strike the year's values.** `spread_diff_pp_at(k,"AFT_INT")`, hence
     `av_spread_pp_at(k,"AFT_INT")`, the surrender value `cv_pp(k)` and the death benefit `db_pp(k)`.
@@ -780,7 +780,7 @@ becomes a test in `tests/test_klassische_rentenversicherung_de.py`.
 1. **Adding the declared rate on top of the guarantee.** The *laufende Verzinsung* **is** the
    *Garantieverzinsung* plus the *laufende Zinsüberschussbeteiligung* [REG-R53]. Assert
    `int_credited_pp(k) + bonus_rate(k)·av_pp_at(k,"AFT_PREM") = decl_rate(k)·av_pp_at(k,"AFT_PREM")`
-   whenever `decl_rate(k) ≥ int_rate_guar`, and that on model point 6 — a 2,75 % vintage against a
+   whenever `decl_rate(k) ≥ rechnungszins`, and that on model point 6 — a 2,75 % vintage against a
    2,55 % declaration — `bonus_rate(k) = 0` in every policy year while `int_credited_pp(k) > 0`. A model that
    credits 1,00 % **and** a further 2,55 % overstates the anchor cell's year-one
    crediting by 39 % (56,82 € against 40,82 €) and its accumulated value at *Rentenbeginn*
@@ -789,7 +789,7 @@ becomes a test in `tests/test_klassische_rentenversicherung_de.py`.
 2. **Getting the within-year order wrong.** Premium, then charges, then interest on the balance
    [std]. Crediting interest before the charges, or on the opening balance only, changes year-one
    interest by the whole of `i × (S(0) − C(0))`. Assert `int_credited_pp(k)` equals
-   `int_rate_guar × av_pp_at(k,"AFT_PREM")` exactly, and that
+   `rechnungszins × av_pp_at(k,"AFT_PREM")` exactly, and that
    `av_pp_at(k,"AFT_INT") ≠ (av_pp(k))·(1+i) + S(k)` on the anchor cell.
 3. **Applying only the guaranteed *Rentenfaktor*.** The rule is `max(guaranteed, current)` [S4]
    [R24]. Assert `annuity_rate_appl() = 32.00` on the anchor (the current factor wins) and
@@ -806,7 +806,7 @@ becomes a test in `tests/test_klassische_rentenversicherung_de.py`.
    consequences: the paid-up contract keeps its guarantee vintage and its guaranteed *Rentenfaktor*
    and pays a reduced benefit; the surrendered one is gone for cash [R1] [R2]. Assert that on point 7
    `pols_if` is unbroken through the paid-up year `k = pup_year − 1`, `prem_pp(k) = 0` from it,
-   `int_rate_guar` is unchanged, and that the conversion itself moves **no** policy: `lapse_rate` in
+   `rechnungszins` is unchanged, and that the conversion itself moves **no** policy: `lapse_rate` in
    policy year `pup_year − 2` is the ordinary duration-9 table rate of 3,5 % and not 1, and
    `av_pp(pup_year − 1) = pup_value_pp > av_pp_at(pup_year − 2,"AFT_INT")`. What is **not** true is
    that surrender ceases: a *beitragsfrei* contract keeps its § 168 VVG *Kündigung* right, so
@@ -940,7 +940,7 @@ Every formula here is **[std]**; nothing in the corpus calibrates any of it (gap
 `premium_single_pp = 0,00 €`; `prem_freq = annual`, hence `freq_load = 1,000`; `prem_term_y = 17`;
 `aufschub_y = 17`, so the *Rentenbeginn* falls at the end of month `t = 203` — the end of the
 seventeenth policy year — at attained age 67;
-`int_rate_guar = 1,00 %`, the 2026 vintage [REG-R15]; `charge_id = zillmer_25`;
+`rechnungszins = 1,00 %`, the 2026 vintage [REG-R15]; `charge_id = zillmer_25`;
 `annuity_rate_guar = 28,00 €` per month per 10 000 €; `rf_scenario_id = base`;
 `decl_scenario_id = base`; `guar_capital_pp = 0,00 €`, so the guaranteed-contract-value floor is
 inoperative on this cell; `death_benefit_form = prem_refund`; `db_incl_surplus = 0`;
@@ -1305,7 +1305,7 @@ In rough order of leverage on a German deferred-annuity block.
    the gap is visible rather than hidden. Anyone substituting a real DAV 2004 R must re-strike the
    *Rentenfaktoren* with it or accept an inconsistency the model will not flag.
 2. **The declared rate and the guarantee vintage together.** `bonus_rate = max(0, decl_rate −
-   int_rate_guar)` is a difference of two numbers of similar size, so a 25 bp move in `decl_rate`
+   rechnungszins)` is a difference of two numbers of similar size, so a 25 bp move in `decl_rate`
    moves the *Ansammlungsguthaben*'s accrual by about 16 % on the 1,00 % vintage and by **all of it**
    on the 2,75 % vintage, where the rate is already clipped at zero. The declared path is a level
    [std] scenario, not a forecast; the market's own 2026 averages disagree with each other by 33 bp

@@ -371,7 +371,7 @@ product, the entry below says so. Entries cited by the `sofortrente` documents:
 - **REG-R11** — VAG §§ 141–143, the *Verantwortlicher Aktuar* and the 1994 deregulation: who signs the tariff bases off.
 - **REG-R12** — VAG §§ 221–236 and Protektor, the *Sicherungsfonds*: what stands behind a lifelong promise, referenced in the product's risk section.
 - **REG-R14** — DeckRV and its § 2, the *Höchstrechnungszins*: the reserving-rate cap `check_tariff_int_rate` tests against.
-- **REG-R15** — the *Höchstrechnungszins* rate history and the regulation setting **1,00 % from 1 January 2025**, the first increase since 1994: the source of `hoechstrechnungszins_table.csv` and of the anchor cell's `tariff_int_rate`.
+- **REG-R15** — the *Höchstrechnungszins* rate history and the regulation setting **1,00 % from 1 January 2025**, the first increase since 1994: the source of `hoechstrechnungszins_table.csv` and of the anchor cell's `rechnungszins`.
 - **REG-R16** — DeckRV § 4, *Höchstzillmersätze*: cited for its **inapplicability** — there is no premium stream to zillmer against.
 - **REG-R17** — DeckRV § 5 Abs. 3, the *Referenzzins* and the *Zinszusatzreserve*: the reserve that competes with the *Überschussrente* for the same RfB, referenced as a driver and never computed.
 - **REG-R18** — MindZV: the statutory minimum share of each result that must reach policyholders, which bounds the discretion behind every **[std]** surplus figure — and, for an annuity, the floor under the *Risikoüberschuss* that longevity experience generates.

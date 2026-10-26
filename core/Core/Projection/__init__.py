@@ -142,3 +142,12 @@ def calendar_year_y(k):
 def calendar_year(t):
     """The calendar year of month t, ``calendar_year_y(duration(t))``."""
     return calendar_year_y(duration(t))                              # noqa: F821
+
+
+def rechnungszins():
+    """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
+
+    The rate used at conclusion applies for the whole term (§ 2 Abs. 2 DeckRV), so a book
+    carries a stack of guarantee vintages and the rate is a model-point attribute.
+    """
+    return float(model_point()["rechnungszins"])                     # noqa: F821

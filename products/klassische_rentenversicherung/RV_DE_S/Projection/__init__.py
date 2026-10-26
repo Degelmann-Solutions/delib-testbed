@@ -187,7 +187,7 @@ V after prem / after int    av_pp_at(k, timing)             BEF_PREM / AFT_PREM 
 A(k)                        av_sur_pp(k)                    Ansammlungsguthaben per policy
 Vtilde(k)                   av_spread_pp(k)                 Sec. 169(3) parallel account
 Delta(k)                    spread_diff_pp(k)               Vtilde(k) - V(k)
-i                           int_rate_guar()                 Rechnungszins
+i                           rechnungszins()                 Rechnungszins
 d(k)                        decl_rate(k)                    Declared laufende Verzinsung
 b(k)                        bonus_rate(k)                   max(0, d(k) - i)
 q*(t)                       mort_rate_guar(t)               First-order mortality, annual
@@ -231,7 +231,7 @@ not. Booking the *Kostenbeitrag* as an expense inflates outgo by the whole charg
 is the commonest way to make a German model look conservative.
 
 ``av_pp`` and ``av_sur_pp`` are two accounts, not one balance split in two. The
-*Deckungskapital* carries the guarantee and is credited at ``int_rate_guar()``; the
+*Deckungskapital* carries the guarantee and is credited at ``rechnungszins()``; the
 *Ansammlungsguthaben* is the *verzinsliche Ansammlung* side account and is credited at
 ``decl_rate(k)`` on its own balance plus ``bonus_rate(k)`` on the *Deckungskapital*'s
 post-premium base. Each has its own roll-forward check, and both checks are **annual**.
@@ -254,7 +254,7 @@ This is the first thing to get right about a German profit-participating contrac
 first listed modeling pitfall. The *laufende Verzinsung* is the *Garantieverzinsung* **plus**
 the *laufende Zinsüberschussbeteiligung*, not a surplus on top of the guarantee, so::
 
-    bonus_rate(k) = max(0, decl_rate(k) - int_rate_guar())
+    bonus_rate(k) = max(0, decl_rate(k) - rechnungszins())
 
 and the two credits together deliver ``decl_rate(k)`` on the post-premium *Deckungskapital*
 and never more. On the anchor cell that is 1,00 % into ``int_credited_pp`` and 1,55 % into
@@ -267,7 +267,7 @@ sitting in the *Ansammlungsguthaben*.
 
 .. rubric:: The guarantee vintage is a model-point attribute
 
-``int_rate_guar()`` reads the model point, not a Reference. A German life book is a layered
+``rechnungszins()`` reads the model point, not a Reference. A German life book is a layered
 stack of guarantee vintages: the *Höchstrechnungszins* applies to contracts concluded while
 it is in force and existing contracts keep the rate they were written on. Points 1, 6 and 14
 credit 1,00 %, 2,75 % and 0,90 % in the same run, from the same tables. Re-running point 6 on a
@@ -282,7 +282,7 @@ Premium in advance, then the charges, then the *Rechnungszins* on what is left �
 once a **policy year**, on the anniversary::
 
     av_pp_at(k, "AFT_PREM") = av_pp(k) + prem_to_av_pp(k) - charge_from_av_pp(k)
-    int_credited_pp(k)      = int_rate_guar() * av_pp_at(k, "AFT_PREM")
+    int_credited_pp(k)      = rechnungszins() * av_pp_at(k, "AFT_PREM")
     av_pp_at(k, "AFT_INT")  = av_pp_at(k, "AFT_PREM") + int_credited_pp(k)
 
 **This ordering is a standardization.** No document in this product's corpus fixes the
@@ -492,17 +492,6 @@ def is_anniv(t):
 def pols_if_init():
     """The number of policies the model point represents; ``pols_if`` at the frame's start."""
     return float(model_point()["pols_if_init"])
-
-
-def int_rate_guar():
-    """i: the contract's *Rechnungszins*, **read from the model point**.
-
-    Not a global assumption.  The *Höchstrechnungszins* applies to contracts concluded while
-    it is in force and an existing contract keeps the rate it was written on, so a German
-    life book is a layered stack of guarantee vintages: 1,00 % on the 2026 points, 2,75 % on
-    point 6 and 0,90 % on point 14, in one run from one set of tables.
-    """
-    return float(model_point()["int_rate_guar"])
 
 
 def mort_be_factor():
@@ -841,13 +830,13 @@ def av_pp_at(k, timing):
 
 
 def int_credited_pp(k):
-    """The *Rechnungszins* credited per policy: ``int_rate_guar() x av_pp_at(k, "AFT_PREM")``.
+    """The *Rechnungszins* credited per policy: ``rechnungszins() x av_pp_at(k, "AFT_PREM")``.
 
     The **guaranteed** part of the year's crediting.  The declared *laufende Verzinsung* is
     this plus :func:`bonus_credited_pp`'s interest-surplus component, never this plus the
     whole declared rate.
     """
-    return int_rate_guar() * av_pp_at(k, "AFT_PREM")
+    return rechnungszins() * av_pp_at(k, "AFT_PREM")
 
 
 def int_credited(k):
@@ -936,7 +925,7 @@ def bonus_credited_pp(k):
     the side account's own balance **[std]**.
 
     The first term is where the German arithmetic lives.  ``bonus_rate`` is
-    ``max(0, decl_rate - int_rate_guar)``, applied to the same base the guarantee is applied
+    ``max(0, decl_rate - rechnungszins)``, applied to the same base the guarantee is applied
     to, so the guarantee and the surplus together deliver the declared *laufende Verzinsung*
     and never more.  On a 2,75 % vintage against a 2,55 % declaration the term is zero at
     every k, and that is the correct answer rather than a missing credit.
@@ -1019,7 +1008,7 @@ def spread_diff_pp_at(k, timing):
         return spread_diff_pp(k)
     if timing == "AFT_INT":
         return ((spread_diff_pp(k) + charge_acq_pp(k) - charge_acq_spread_pp(k))
-                * (1.0 + int_rate_guar()))
+                * (1.0 + rechnungszins()))
     raise ValueError("invalid timing")
 
 
@@ -1140,7 +1129,7 @@ def decl_rate(k):
 
 
 def bonus_rate(k):
-    """b(k): the interest-surplus rate, ``max(0, decl_rate(k) - int_rate_guar())``.
+    """b(k): the interest-surplus rate, ``max(0, decl_rate(k) - rechnungszins())``.
 
     1,55 % on the anchor cell's 1,00 % vintage against a 2,55 % declaration; **zero in every
     policy year** on point 6's 2,75 % vintage against the same declaration, because a contract already
@@ -1148,7 +1137,7 @@ def bonus_rate(k):
     important German result, not a modelling artefact, and it is what the ``max(0, .)``
     exists to produce.
     """
-    return max(0.0, decl_rate(k) - int_rate_guar())
+    return max(0.0, decl_rate(k) - rechnungszins())
 
 
 def lapse_rate(t):
@@ -1690,7 +1679,7 @@ def annuity_due_factor():
     """A **diagnostic**: the annuity-due factor on the shipped proxy at the guarantee basis.
 
     ``sum over the payout **months** of v^(s/12) x s/12 p_x`` with
-    ``v = 1 / (1 + int_rate_guar())`` and survivorship from :func:`mort_rate_mth`, evaluated at
+    ``v = 1 / (1 + rechnungszins())`` and survivorship from :func:`mort_rate_mth`, evaluated at
     the annuitant's attained age at *Rentenbeginn*.  **No cash flow reads it.**
 
     It is a **monthly** annuity-due factor because the annuity is monthly, which is what the
@@ -1707,7 +1696,7 @@ def annuity_due_factor():
     *Rentenfaktoren* with it or accept an inconsistency the model will not flag.
     """
     n_mth = 12 * int(model_point()["aufschub_y"])
-    disc = (1.0 / (1.0 + int_rate_guar())) ** (1.0 / 12.0)
+    disc = (1.0 / (1.0 + rechnungszins())) ** (1.0 / 12.0)
     surv = 1.0
     total = 0.0
     for s in range(n_mth, proj_len()):

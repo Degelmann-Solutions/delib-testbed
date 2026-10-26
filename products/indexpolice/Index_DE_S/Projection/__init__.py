@@ -147,7 +147,7 @@ A(k)                       av_pp(k)                        Deckungskapital at th
                                                            AFT_CHARGE / AFT_GUAR /
                                                            AFT_CREDIT
 gamma, F(k)                exp_av_rate, av_charge_pp(k)    Reserve charge rate; amount
-i_g, I(k)                  guar_rate(), guar_int_pp(k)     Rechnungszins; guaranteed
+i_g, I(k)                  rechnungszins(), guar_int_pp(k) Rechnungszins; guaranteed
                                                            interest
 (shadow)                   av_min_pp(k), av_min_pp_at(..)  The 169 Abs. 3 account
 G(k)                       index_base_pp(k)                Participating capital of the
@@ -325,17 +325,6 @@ def guar_level():
     maturity-floor effect.
     """
     return float(model_point()["guar_level"])
-
-
-def guar_rate():
-    """``i_g``: the contract's *Rechnungszins*, a **cohort** fact and not today's rate.
-
-    The *Höchstrechnungszins* history the shipped points span — 1.00 % for 2025-2026,
-    0.90 % for a 2017-2021 cohort, 0.25 % for 2022-2024 — is why a book of this product
-    cannot be projected on one rate.  At 0.25 % the rate equals the reserve charge and the
-    account falls in a year that credits nothing, which is model point 13.
-    """
-    return float(model_point()["guar_rate"])
 
 
 def payoff_form():
@@ -971,7 +960,7 @@ def guar_int_pp(k):
     it is spent.  A model that credits the guarantee *and* the declared rate *and* the
     index payoff has spent the same money three times.
     """
-    return guar_rate() * av_pp_at(k, "AFT_CHARGE")
+    return rechnungszins() * av_pp_at(k, "AFT_CHARGE")
 
 
 def guar_int(k):
@@ -1066,7 +1055,7 @@ def av_min_pp_at(k, timing):
     if timing == "AFT_CHARGE":
         return av_min_pp_at(k, "AFT_PREM") * (1.0 - exp_av_rate)     # noqa: F821
     if timing == "AFT_GUAR":
-        return av_min_pp_at(k, "AFT_CHARGE") * (1.0 + guar_rate())
+        return av_min_pp_at(k, "AFT_CHARGE") * (1.0 + rechnungszins())
     if timing == "AFT_CREDIT":
         return (av_min_pp_at(k, "AFT_GUAR")
                 + index_credit_pp(k) + surplus_credit_pp(k))

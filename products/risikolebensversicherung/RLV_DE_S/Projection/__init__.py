@@ -501,15 +501,6 @@ def cover_end_age():
     return issue_age() + policy_term()
 
 
-def pols_if_init():
-    """The policy count the projection opens with: one policy.
-
-    Every delib model is a scalar single-model-point projection, so this is 1.0 and every
-    cash flow in :func:`result_cf` is a per-policy expectation.
-    """
-    return 1.0
-
-
 def age2(t):
     """x2(t): the attained age of the second life, ``issue_age2 + duration(t)``.
 
@@ -640,7 +631,7 @@ def mort_load_tariff(t):
     listed pitfall.
 
     Override reason: the tariff rate is the unisex blend loaded by ``1 + m`` and the rating
-    factor, products/risikolebensversicherung/technical-notes.md:230
+    factor, products/risikolebensversicherung/technical-notes.md:231
     """
     return (1.0 + sicherheitszuschlag_m) * rating_factor()           # noqa: F821
 
@@ -650,7 +641,7 @@ def mort_rate_tariff_base(t):
 
     Override reason: the tariff rate is the unisex blend combined over two lives by the
     first-death rule, not one table read at the attained age,
-    products/risikolebensversicherung/technical-notes.md:230
+    products/risikolebensversicherung/technical-notes.md:231
     """
     return mort_rate_blend(t)
 
@@ -835,7 +826,7 @@ def lapse_factor(t):
 
     Override reason: the lapse is zero through the whole final policy year, where cover
     expires, and loaded by the premium-shock multiplier elsewhere,
-    products/risikolebensversicherung/technical-notes.md:752
+    products/risikolebensversicherung/technical-notes.md:753
     """
     if duration(t) >= proj_len_y() - 1:
         return 0.0
@@ -881,7 +872,7 @@ def tariff_schedule(y):
     sum-exposure annuity :func:`tariff_term_annuity`, the base of the gamma loading.
 
     Override reason: the sum insured follows the benefit schedule and any
-    *Nachversicherungsgarantie* uplift, products/risikolebensversicherung/technical-notes.md:226
+    *Nachversicherungsgarantie* uplift, products/risikolebensversicherung/technical-notes.md:227
     """
     return benefit_pp(12 * y)
 

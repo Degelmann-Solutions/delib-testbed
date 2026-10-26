@@ -53,6 +53,16 @@ def karenz_months():
     return int(model_point()["karenz_months"])                       # noqa: F821
 
 
+def pols_if_init():
+    """The policy count the model point stands for, from its ``pols_if_init`` column.
+
+    The opening value of ``pols_if`` at ``t_start()``: no decrement has been applied when the
+    frame opens, so the first ``pols_if`` of the result equals it exactly.  A contract-book
+    attribute and so data, not code; 1.0 where the projection is per policy.
+    """
+    return float(model_point()["pols_if_init"])                      # noqa: F821
+
+
 def prem_freq():
     """The payment frequency, a key into the product's *freq_loading_table.csv*.
 

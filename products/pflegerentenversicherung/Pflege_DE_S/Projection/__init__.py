@@ -435,16 +435,6 @@ def stornoabzug_rate():
     return float(model_point()["stornoabzug_rate"])
 
 
-def pols_if_init():
-    """The policy count at the frame's first ``t``; 1.0 on every shipped model point.
-
-    ``result_cf()``'s first ``pols_if`` value equals this exactly, which is the
-    library-wide assertion that ``pols_if`` is a start-of-period count: no decrement has
-    been applied when a period opens.
-    """
-    return float(model_point()["pols_if_init"])
-
-
 def t_start():
     """The month the frame opens at, ``duration_mth_init()``; 0 for new business.
 

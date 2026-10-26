@@ -417,15 +417,6 @@ def annuity_pp_init():
     return float(model_point()["annuity_pp_init"])
 
 
-def pols_if_init():
-    """The number of policies the model point represents; 1.0 on every shipped point.
-
-    Every cash flow is proportional to it, and it is the scale
-    :func:`result_cf`'s first ``pols_if`` opens at.
-    """
-    return float(model_point()["pols_if_init"])
-
-
 def t_start():
     """t0: the first projected month index, ``duration_mth_init()``.
 

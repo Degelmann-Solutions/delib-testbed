@@ -406,16 +406,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def pols_if_init():
-    """The number of policies the model point represents at the valuation date.
-
-    The opening value of :func:`pols_if`, and therefore the first ``pols_if`` value of
-    :func:`result_cf`.  It opens entirely in :func:`pols_paying` or entirely in
-    :func:`pols_paidup` according to ``paidup_at_init``.
-    """
-    return float(model_point()["pols_if_init"])
-
-
 def omega_age():
     """omega: the limiting age, one above the last ``age`` in *mort_table.csv*.
 

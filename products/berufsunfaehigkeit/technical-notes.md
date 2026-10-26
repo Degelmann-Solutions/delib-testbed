@@ -120,9 +120,9 @@ German ones, and each now carries a document that was read.
 | `claim_duration_init` | int | Months since onset at `t = 0`, for a `leistung` point | 7 (8) |
 | `rechnungszins` | float p.a. | *Rechnungszins*, the *Höchstrechnungszins* of 1,00 %: DeckRV § 2 Abs. 1 fixes it at 1 Prozent and § 2 Abs. 2 makes the rate used at conclusion apply for the whole term; the 1 January 2025 commencement is [unverified] [R13] [REG-R14] [REG-R15]; used only in the equivalence | all at 0,01 |
 
-`pols_if_init()` is **1.0 for every model point**: the model is a per-policy probability projection,
-one model point at a time, so `pols_if(0) == 1.0` exactly and `result_cf()`'s first `pols_if` value
-is that. There is no `policy_count` column.
+`pols_if_init` is the model-point column read by `pols_if_init()`, **1.0 on every model point**: the
+model is a per-policy probability projection, one model point at a time, so `pols_if(0) == 1.0` exactly
+and `result_cf()`'s first `pols_if` value is that. A column since phase 3, where it was the literal 1.0.
 
 **The shipped model point table.** Thirteen points, `bu_rente_mth` in EUR per month, `LD` the
 *Leistungsdynamik* and `WE` the *Wiedereingliederungshilfe* in monthly *Renten*. Every column not
@@ -346,7 +346,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 
 | File | Index | Value columns |
 |---|---|---|
-| `model_point_table.csv` | `point_id` | the 21 model-point attributes above (no `provenance` — a model point is a configuration, not an assumption) |
+| `model_point_table.csv` | `point_id` | the 22 model-point attributes above (no `provenance` — a model point is a configuration, not an assumption) |
 | `inception_table.csv` | `age` (18 – 66) | `inc_rate`, `provenance` |
 | `claim_duration_table.csv` | `dur_year` (1 – 11, the last being ultimate) | `recov_rate`, `mort_dis_sel_factor`, `provenance` |
 | `mortality_table.csv` | `age` (18 – 70) | `mort_rate_actv`, `mort_rate_dis`, `provenance` |

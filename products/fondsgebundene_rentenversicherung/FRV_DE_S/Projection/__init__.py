@@ -362,15 +362,6 @@ _spaces = []
 
 # ----------------------------------------  the model point
 
-def pols_if_init():
-    """Policies in force at the projection's opening: the weight the model point carries.
-
-    ``pols_if(t_start()) == pols_if_init()`` exactly, which is the library's
-    start-of-period convention asserted in the conventions suite.
-    """
-    return float(model_point()["pols_if_init"])
-
-
 def prem_form():
     """The premium form: ``laufend`` (recurring) or ``einmal`` (single).
 

@@ -258,15 +258,6 @@ _spaces = []
 
 # --- the model point ---------------------------------------------------------
 
-def pols_if_init():
-    """Policies in force at ``t_start()``: 1.0, a single-policy model point.
-
-    Named rather than written as a literal because it is the scale of the roll-forward
-    tolerances and the quantity ``result_cf()``'s first ``pols_if`` value must equal.
-    """
-    return float(model_point()["pols_if_init"])
-
-
 def prem_form():
     """``"level"`` (*laufender Beitrag*) or ``"single"`` (*Einmalbeitrag*)."""
     v = model_point()["prem_form"]

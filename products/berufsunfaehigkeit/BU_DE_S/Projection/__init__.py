@@ -490,16 +490,6 @@ def claim_duration_init():
     return int(model_point()["claim_duration_init"])
 
 
-def pols_if_init():
-    """The policy count at ``t = 0``: **1.0 for every model point**.
-
-    This is a per-policy probability projection, one model point at a time, so every
-    ledger is a probability and every cash flow an expected amount per policy in force at
-    the valuation date.  ``result_cf()``'s first ``pols_if`` value is this number exactly.
-    """
-    return 1.0
-
-
 # --- the time frame ---
 
 def horizon_age():

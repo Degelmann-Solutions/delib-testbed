@@ -471,11 +471,6 @@ def horizon_age():
     return omega_age()
 
 
-def pols_if_init():
-    """The number of policies the model point represents; ``pols_if`` at the frame's start."""
-    return float(model_point()["pols_if_init"])
-
-
 def mort_be_factor():
     """The loading from the first-order table to the best estimate, from *param_table.csv*.
 

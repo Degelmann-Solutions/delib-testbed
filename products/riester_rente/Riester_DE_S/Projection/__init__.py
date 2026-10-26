@@ -335,15 +335,6 @@ _spaces = []
 # === the model point
 
 
-def pols_if_init():
-    """The number of policies the model point represents at the start of period ``t = 0``.
-
-    ``result_cf()``'s first ``pols_if`` value equals this exactly, because no decrement has
-    been applied when the first period opens.
-    """
-    return float(model_point()["pols_if_init"])
-
-
 def beitragssumme():
     """The *Beitragssumme* fixed at conclusion, in euros.
 

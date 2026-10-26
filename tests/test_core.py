@@ -558,6 +558,7 @@ CORE_CELLS = {
                            "pflegerentenversicherung": "derived",
                            "riester_rente": "derived",
                            "risikolebensversicherung": "derived"},
+        "pols_if_init": dict.fromkeys(MODELS, "derived"),
     },
 }
 
@@ -1034,3 +1035,14 @@ def test_klv_failed_beitragsfreistellung_lapses_in_the_anniversary_month(product
     assert all(item.lapse_rate(start + m) == 1.0 for m in range(12))
     assert [item.lapse_rate_mth(start + m) for m in range(12)] == [0.0] * 11 + [1.0]
     assert item.is_anniv(start + 11)
+
+
+@pytest.mark.parametrize("product", ["berufsunfaehigkeit", "risikolebensversicherung"])
+def test_pols_if_init_is_read_from_the_model_point(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.pols_if_init._is_derived()
+    points = model.Data.model_point_table()
+    assert (points["pols_if_init"] == 1.0).all()
+    for point_id in points.index:
+        assert projection[point_id].pols_if_init() == 1.0, point_id

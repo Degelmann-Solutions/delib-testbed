@@ -408,16 +408,6 @@ _spaces = []
 
 # --- the model point -------------------------------------------------------
 
-def pols_if_init():
-    """The number of policies represented at ``t_start()``: 1.0, a single-policy model point.
-
-    The library's projections are per policy, so this is 1 everywhere; it is named rather than
-    written as a literal because it is the scale of the roll-forward tolerances and because
-    ``result_cf()``'s first ``pols_if`` must equal it exactly.
-    """
-    return float(model_point()["pols_if_init"])
-
-
 def death_ratio():
     """The *Todesfallleistung* as a multiple of the *Erlebensfallleistung*.
 

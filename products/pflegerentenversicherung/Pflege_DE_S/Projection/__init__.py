@@ -1605,6 +1605,10 @@ def tariff_benefit_pv():
     ``sum_t v**t R sum_g pi_g tar_esc_pg(t, g)``, discounted at the *Rechnungszins*.  On
     the anchor cell it is the whole of the benefit side: with no *Beitragsrückgewähr* and no
     survival benefit, this annuity is the only thing the contract ever pays.
+
+    Override reason: the benefit is a *Pflegerente* by care grade on the multi-state tariff
+    ledger, monthly, not a death or survival benefit,
+    products/pflegerentenversicherung/technical-notes.md:617
     """
     total = 0.0
     for t in range(proj_len()):

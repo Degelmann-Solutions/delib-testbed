@@ -127,9 +127,10 @@ alpha, beta, gamma  alpha_rate(), beta_rate(),             Zillmersatz; premium 
                     gamma_rate()                           sum-insured loading
 phi                 prem_freq_load()                       Ratenzahlungszuschlag
 (none)              instalments()                          Payments a year
-(pricing)           pv_death_1st(), pv_maturity_1st(),     The equivalence's parts
-                    tariff_benefit_pv(),
-                    tariff_annuity(), ann_due_term_1st()
+(pricing)           tariff_death_pv(),                     The equivalence's parts
+                    tariff_maturity_pv(),
+                    tariff_benefit_pv(), tariff_annuity(),
+                    tariff_term_annuity()
 B                   prem_gross_pp()                        Annual Bruttobeitrag before phi
 BS                  beitragssumme()                        Beitragssumme = B x m
 A                   alpha_cost()                           Zillmered acquisition cost
@@ -528,7 +529,7 @@ def mort_rate_tariff_at_age(x):
     ``unisex_share`` of the male table row plus the rest of the female one, at 0.5 / 0.5
     **[std]**.  This is the *Rechnungsgrundlage erster Ordnung* of the tariff, and **every
     pricing and reserving formula in the model reads it**: :func:`pols_tariff`,
-    :func:`pv_death_1st`, :func:`pv_benefit_fut`, :func:`ann_due_prem_fut` and the Fackler
+    :func:`tariff_death_pv`, :func:`pv_benefit_fut`, :func:`ann_due_prem_fut` and the Fackler
     roll-forward in :func:`res_pp_at`.
 
     It is blended rather than read off the policy's own ``sex`` row because **German new
@@ -700,47 +701,40 @@ def sum_death():
     return sum_assured() * death_ratio()
 
 
-def pv_death_1st():
-    """The first-order present value at issue of the death benefit, per policy.
+def tariff_death_sum():
+    """SD: the death sum of the death leg, :func:`sum_death`, outside the sum over years.
 
-    ``SD * sum over k of v1^(k+1) * kpx * f * q1(x0 + k)`` over the whole *Versicherungsdauer*,
-    with the *Risikozuschlag* ``f`` on the **claim rate in this leg only**.  Claims fall at the
-    end of the policy year of death, which is why the discount exponent is ``k + 1``.
+    On the *gemischte Versicherung* proper, where ``death_ratio = 1``, the benefits' value
+    :func:`tariff_benefit_pv` is very nearly the endowment factor times the sum insured,
+    and the price is only weakly sensitive to the mortality basis - the survival leg
+    dominating a twenty-five-year contract's reserve.  Claims fall at the end of the policy
+    year of death, which is why the discount exponent is ``k + 1``.
+
+    Override reason: the death leg pays the guaranteed Todesfallleistung SD,
+    products/kapitallebensversicherung/technical-notes.md:441
     """
-    n = policy_term()
-    x0 = issue_age()
-    return sum_death() * sum(
-        disc_factor(k + 1) * pols_tariff(k) * rating_factor()
-        * mort_rate_tariff_at_age(x0 + k) for k in range(n))
+    return sum_death()
 
 
-def pv_maturity_1st():
-    """The first-order present value at issue of the *Erlebensfallleistung*, per policy.
+def tariff_death_load(y):
+    """f: the *Risikozuschlag* :func:`rating_factor`, on the **claim rate in the death leg only**.
+
+    Override reason: the Risikozuschlag loads the death leg only, never the survival leg,
+    products/kapitallebensversicherung/technical-notes.md:461
+    """
+    return rating_factor()
+
+
+def tariff_maturity_sum():
+    """SE: the *Erlebensfallleistung*, :func:`sum_assured`, paid at the end of the term.
 
     ``SE * v1^n * npx``.  No *Risikozuschlag*: an extra-mortality loading may not make the
     survival benefit cheaper, so it stays out of both the discount and the survivorship.
+
+    Override reason: the endowment pays the Erlebensfallleistung SE at maturity,
+    products/kapitallebensversicherung/technical-notes.md:442
     """
-    return sum_assured() * disc_factor(policy_term()) * pols_tariff(policy_term())
-
-
-def tariff_benefit_pv():
-    """The first-order present value at issue of both guaranteed benefits, per policy.
-
-    On the *gemischte Versicherung* proper, where ``death_ratio = 1``, this is very nearly the
-    endowment factor times the sum insured, and the price is only weakly sensitive to the
-    mortality basis - the survival leg dominating a twenty-five-year contract's reserve.
-    """
-    return pv_death_1st() + pv_maturity_1st()
-
-
-def ann_due_term_1st():
-    """The first-order annuity-due factor over the *Versicherungsdauer*, per policy.
-
-    ``sum over k = 0 .. n-1 of v1^k * kpx``.  It is the base of the ``gamma`` administration
-    loading, which runs for the whole term rather than for the premium-paying period - the
-    asymmetry that makes an *abgekürzte Beitragszahlungsdauer* dearer per premium.
-    """
-    return sum(disc_factor(k) * pols_tariff(k) for k in range(policy_term()))
+    return sum_assured()
 
 
 def prem_gross_pp():
@@ -759,7 +753,7 @@ def prem_gross_pp():
     reported, and it rises with :func:`rating_factor` while being identical for two points
     differing only in :func:`sex`.
     """
-    return ((tariff_benefit_pv() + gamma_rate() * sum_assured() * ann_due_term_1st())
+    return ((tariff_benefit_pv() + gamma_rate() * sum_assured() * tariff_term_annuity())
             / ((1.0 - beta_rate()) * tariff_annuity()
                - alpha_rate() * prem_term()))
 
@@ -2096,7 +2090,7 @@ def check_equivalence_resid(t):
     return (prem_gross_pp() * (1.0 - beta_rate()) * tariff_annuity()
             - alpha_rate() * beitragssumme()
             - tariff_benefit_pv()
-            - gamma_rate() * sum_assured() * ann_due_term_1st())
+            - gamma_rate() * sum_assured() * tariff_term_annuity())
 
 
 def check_equivalence():

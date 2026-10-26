@@ -437,21 +437,21 @@ First-order survival from issue and the two annuities-due, computed by summation
 own `sex` and `rechnungszins`:
 
 ```
-pols_tariff(k)    = Π_{j=0}^{k-1} ( 1 − q₁(x_0 + j) ),  pols_tariff(0) = 1
-pv_death_1st      = SD · Σ_{k=0}^{n-1} v₁^(k+1) · pols_tariff(k) · q₁(x_0 + k)
-pv_maturity_1st   = SE · v₁^n · pols_tariff(n)
-tariff_benefit_pv = pv_death_1st + pv_maturity_1st
-tariff_annuity    = Σ_{k=0}^{m-1} v₁^k · pols_tariff(k)
-ann_due_term_1st  = Σ_{k=0}^{n-1} v₁^k · pols_tariff(k)
+pols_tariff(k)       = Π_{j=0}^{k-1} ( 1 − q₁(x_0 + j) ),  pols_tariff(0) = 1
+tariff_death_pv      = SD · Σ_{k=0}^{n-1} v₁^(k+1) · pols_tariff(k) · q₁(x_0 + k)
+tariff_maturity_pv   = SE · v₁^n · pols_tariff(n)
+tariff_benefit_pv    = tariff_death_pv + tariff_maturity_pv
+tariff_annuity       = Σ_{k=0}^{m-1} v₁^k · pols_tariff(k)
+tariff_term_annuity  = Σ_{k=0}^{n-1} v₁^k · pols_tariff(k)
 ```
 
 The *Bruttobeitrag* is struck by equivalence, which is linear in `B` because `BS = B · m`:
 
 ```
 B · tariff_annuity = tariff_benefit_pv + α · B · m
-                     + β · B · tariff_annuity + γ · SE · ann_due_term_1st
+                     + β · B · tariff_annuity + γ · SE · tariff_term_annuity
 
-⇒  prem_gross_pp = ( tariff_benefit_pv + γ · SE · ann_due_term_1st ) / ( (1 − β) · tariff_annuity − α · m )
+⇒  prem_gross_pp = ( tariff_benefit_pv + γ · SE · tariff_term_annuity ) / ( (1 − β) · tariff_annuity − α · m )
 ```
 
 `check_equivalence()` asserts that identity closes. **Note that the acquisition cost `α · BS` is in
@@ -459,7 +459,7 @@ the premium whether or not the contract is zillmered**: *Zillmerung* decides whe
 **reserve**, not whether it is charged (`zillmer_on` enters `alpha_cost`, not the pricing equation).
 That is why `zillmer_on` moves the reserve profile and the surrender values without moving
 `prem_gross_pp` at all. The risk element carries the *Risikozuschlag*: `rating_factor` multiplies `q₁` in the
-**death** leg of `pv_death_1st` only, never the survival leg, never the benefit, and never a
+**death** leg of `tariff_death_pv` only, never the survival leg, never the benefit, and never a
 best-estimate rate (pitfall 12).
 
 Then the two reserving premiums, and the zillmered cost:
@@ -687,7 +687,7 @@ on every model point.
 | `check_surplus_roll_fwd()` | The active surplus vehicle's ledger closes, per **policy year**: `av_sur_pp(k+1) == av_sur_pp(k)·(1 + a(k)) + C(k)` under `ansammlung`, the bonus-purchase identity under `bonus`, and `prem_offset_pp(k) == min(prem_charged_pp(k), C(k−1))` under `beitragsverrechnung`, with `C(k−1)` read as zero at `k = k_start` |
 | `check_surr_floor()` | § 169 Abs. 3, per **policy year**: `res_guar_pp(k) ≥ res_zill_pp(k+1)`, `≥ res_min_pp(k+1)` and `≥ 0`, and the *Rückkaufswert* at that year's anniversary `surr_value_pp(12k + 11) ≥ 0` |
 | `check_surr_nonneg()` | The *Rückkaufswert* is non-negative in **every month**. Added with the monthly grid, which quotes one in the eleven months of each policy year the annual grid never priced — months paid on the **last** anniversary's § 169 value, which is a different and smaller number |
-| `check_equivalence()` | The first-order pricing equivalence closes: `B·(1 − β)·tariff_annuity − α·BS == tariff_benefit_pv + γ·SE·ann_due_term_1st` |
+| `check_equivalence()` | The first-order pricing equivalence closes: `B·(1 − β)·tariff_annuity − α·BS == tariff_benefit_pv + γ·SE·tariff_term_annuity` |
 | `check_rechnungszins_cap()`, `check_zillmer_cap()` | The two DeckRV cohort ceilings: `rechnungszins ≤ hoechstrechnungszins(issue_year)` under § 2 [REG-R14] [REG-R15], and `alpha_rate ≤ hoechstzillmersatz(issue_year)` with `alpha_cost ≤ hoechstzillmersatz · beitragssumme` under § 4 [R7] [REG-R16] |
 
 The last two are parameter invariants rather than roll-forward identities, and they live here rather
@@ -982,8 +982,8 @@ All amounts in euros; `pols_if` to six decimals, cash flows and balances to the 
 
 **The derived tariff.** The equivalence gives a *Bruttobeitrag* of **2 004,04 €** a year, a
 *Beitragssumme* of **50 101,05 €**, `alpha_cost` **1 252,53 €**, `prem_net_level_pp`
-**1 811,15 €** and `prem_zill_pp` **1 868,92 €**, on `pv_death_1st` = 3 611,698493 €,
-`pv_maturity_1st` = 35 655,282574 € and `tariff_annuity` = `ann_due_term_1st` = 21,680698 —
+**1 811,15 €** and `prem_zill_pp` **1 868,92 €**, on `tariff_death_pv` = 3 611,698493 €,
+`tariff_maturity_pv` = 35 655,282574 € and `tariff_annuity` = `tariff_term_annuity` = 21,680698 —
 the two annuities coinciding because the *Beitragszahlungsdauer* is the whole
 *Versicherungsdauer*.
 

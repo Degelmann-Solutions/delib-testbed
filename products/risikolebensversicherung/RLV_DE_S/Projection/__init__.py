@@ -119,7 +119,8 @@ v^y                        disc_factor(y)                  Rechnungszins discoun
 p1(y)                      pols_tariff(y)                  Tariff survivorship, no lapse
 ae                         tariff_annuity()                Premium annuity-due
 A                          tariff_benefit_pv()             APV of death benefits
-Gamma                      tariff_sum_pv()                 Sum-exposure annuity
+Gamma                      tariff_term_annuity()           Sum-exposure annuity
+B(y)                       tariff_schedule(y)              Sum insured of year y
 G                          prem_gross_level_pp()           Bruttobeitrag, before phi
 Gn                         prem_net_level_pp()             Actuarial Nettopraemie
 v_d                        beitragsverrechnung_rate()      Beitragsverrechnungssatz
@@ -907,37 +908,22 @@ def lapse_cum(t):
 # Pricing: the Bruttobeitrag by first-order equivalence, struck once at issue
 
 
-def tariff_benefit_pv():
-    """A: the actuarial present value of the death benefits, on first-order bases.
+def tariff_schedule(y):
+    """B(y): the sum insured of policy year y, ``benefit_pp(12 y)``, read at its opening month.
 
-    ``sum v^(y+1) p1(y) q1(y) B(y)`` over the whole cover period, ``y = 0 .. n - 1``,
-    benefits paid at the end of the **policy year** of death and the annual rate and sum
-    insured read at that year's opening month ``12 y``.  It is the quantity the whole
-    product turns on: the *Bruttobeitrag* is built from it and the
-    *Beitragsverrechnungssatz* returns ``surplus_share`` of ``m/(1+m)`` of it.
+    The death benefits' present value, :func:`tariff_benefit_pv`, is ``sum v^(y+1) p1(y)
+    q1(y) B(y)`` over the whole cover period, ``y = 0 .. n - 1``, benefits paid at the end
+    of the **policy year** of death.  It is the quantity the whole product turns on: the
+    *Bruttobeitrag* is built from it and the *Beitragsverrechnungssatz* returns
+    ``surplus_share`` of ``m/(1+m)`` of it.  The end-of-year benefit timing is the
+    **tariff's** convention and is not the projection's: the cash flow statement pays a
+    death claim at the end of the month of death.  The same schedule weights the
+    sum-exposure annuity :func:`tariff_term_annuity`, the base of the gamma loading.
 
-    The end-of-year benefit timing here is the **tariff's** convention and is not the
-    projection's: the cash flow statement pays a death claim at the end of the month of
-    death.  A first-order equivalence is a pricing calculation on a prudent annual basis,
-    and moving it to the month would change the guaranteed premium a German contract
-    states in its own *Versicherungsschein*.
+    Override reason: the sum insured follows the benefit schedule and any
+    *Nachversicherungsgarantie* uplift, products/risikolebensversicherung/technical-notes.md:226
     """
-    return sum(disc_factor(y + 1) * pols_tariff(y)
-               * mort_rate_tariff(12 * y) * benefit_pp(12 * y)
-               for y in range(proj_len_y()))
-
-
-def tariff_sum_pv():
-    """Gamma: the sum-exposure annuity ``sum v^y p1(y) B(y)``, for the gamma loading.
-
-    Runs over the whole **cover** period rather than the paying term, because the
-    sum-related administration charge is incurred for as long as there is a sum at risk —
-    which is exactly the situation HGB § 341f has in mind when it requires a provision for
-    future administration costs on a contract whose premiums stop before its cover does.
-    Annual, like the rest of the equivalence.
-    """
-    return sum(disc_factor(y) * pols_tariff(y) * benefit_pp(12 * y)
-               for y in range(proj_len_y()))
+    return benefit_pp(12 * y)
 
 
 def prem_gross_level_pp():
@@ -968,7 +954,7 @@ def prem_gross_level_pp():
     denom = (1.0 - beta_tariff) * tariff_annuity() - zillmer_rate * prem_term()  # noqa: F821
     if denom <= 0.0:
         raise ValueError("degenerate premium equivalence: loadings exceed the annuity")
-    return (tariff_benefit_pv() + gamma_rate * tariff_sum_pv()) / denom  # noqa: F821
+    return (tariff_benefit_pv() + gamma_rate * tariff_term_annuity()) / denom  # noqa: F821
 
 
 def beitragsverrechnung_rate():

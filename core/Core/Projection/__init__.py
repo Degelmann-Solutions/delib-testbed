@@ -347,11 +347,64 @@ def tariff_annuity():
                for y in range(prem_term()))                          # noqa: F821
 
 
+def tariff_death_sum():
+    """The death sum the tariff's death benefit is struck on, outside the sum; 1, neutral."""
+    return 1.0
+
+
+def tariff_death_load(y):
+    """The loading on the first-order death rate of policy year y in the death leg; 1."""
+    return 1.0
+
+
+def tariff_schedule(y):
+    """The sum insured of policy year y relative to the death sum; 1, a level sum."""
+    return 1.0
+
+
+def tariff_maturity_sum():
+    """The survival benefit at the end of the term; 0, a pure death cover."""
+    return 0.0
+
+
+def tariff_death_pv():
+    """The first-order present value at issue of the death benefit, per policy.
+
+    ``tariff_death_sum() x sum v^(y+1) p1(y) load(y) q1(12 y) schedule(y)`` over
+    ``y < proj_len_y()``: claims fall at the end of the policy year of death, and the
+    annual rate and sum are read at that year's opening month.
+    """
+    return tariff_death_sum() * sum(                                 # noqa: F821
+        disc_factor(y + 1) * pols_tariff(y) * tariff_death_load(y)   # noqa: F821
+        * mort_rate_tariff(12 * y) * tariff_schedule(y)              # noqa: F821
+        for y in range(proj_len_y()))                                # noqa: F821
+
+
+def tariff_maturity_pv():
+    """The first-order present value at issue of the survival benefit, ``SE v^n p1(n)``."""
+    return (tariff_maturity_sum() * disc_factor(policy_term())       # noqa: F821
+            * pols_tariff(policy_term()))                            # noqa: F821
+
+
+def tariff_benefit_pv():
+    """A: the first-order present value at issue of the benefits, death plus survival."""
+    return tariff_death_pv() + tariff_maturity_pv()
+
+
+def tariff_term_annuity():
+    """The annuity-due over the cover term, ``sum v^y p1(y) schedule(y)``, ``y < proj_len_y()``.
+
+    The base of a loading on the sum insured that runs for as long as there is a sum at
+    risk, not only over the paying term.
+    """
+    return sum(disc_factor(y) * pols_tariff(y) * tariff_schedule(y)  # noqa: F821
+               for y in range(proj_len_y()))                         # noqa: F821
+
+
 def prem_net_level_pp():
     """The net level premium, ``tariff_benefit_pv() / tariff_annuity()``, before loadings.
 
-    Reads the product's ``tariff_benefit_pv``, the present value of its benefits on the
-    tariff basis; a product without one inherits this cell unused.  A pricing quantity,
-    never a cash flow.
+    ``tariff_benefit_pv`` is the present value of the benefits on the tariff basis.  A
+    pricing quantity, never a cash flow.
     """
     return tariff_benefit_pv() / tariff_annuity()                    # noqa: F821

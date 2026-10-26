@@ -502,21 +502,6 @@ def waiver_flag(g):
     return benefit_pct(g) > 0.0
 
 
-def mort_rate(t):
-    """q_A(x): the annual **active-life** death rate at the attained age, by sex.
-
-    Read from *mort_table.csv*, a **[std]** Gompertz proxy — not DAV 2008 T and not the
-    DAV 2008 P active-life table, neither of which is public or redistributed here.  It is
-    forced to 1.0 at ``omega_age() - 1``, the limiting-age convention that closes the
-    system.
-
-    This is the rate of an **active** life.  In-care mortality is a multiple of its force
-    and is :func:`mort_rate_care`.  The table rate of the year is the core's
-    ``mort_rate_base(t)``, :func:`mort_rate_at_age` at ``age(t)``.
-    """
-    return mort_rate_base(t)
-
-
 def mort_rate_at_age(x):
     """q_A(x): the table's annual **active-life** death rate at attained age x, by sex.
 

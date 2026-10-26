@@ -846,6 +846,10 @@ def mort_rate(t):
     Deaths fall at the end of the **month**, after that month's annuity instalment; the
     interest credit and the premium are annual and fall at the two ends of the year, so a
     dying policy has been credited its year's interest and has paid its year's premium.
+
+    Override reason: the terminal age is absorbing, the rate is 1 from ``omega_age() - 1``
+    whatever the factor, where the generational trend would carry the table's own terminal
+    rate below 1, products/basisrente/technical-notes.md:82
     """
     if age(t) >= omega_age() - 1:
         return 1.0

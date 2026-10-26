@@ -1224,15 +1224,6 @@ def mort_rate_tariff_mth(t):
     return mort_rate_tariff(t) / 12.0
 
 
-def mort_rate(t):
-    """The best-estimate **annual** death rate in month t, at ``age(t)``.
-
-    ``mort_be_factor x mort_rate_base(t)``, 0.00060 in policy year 1 of the anchor cell:
-    0.75 x 0.00080.
-    """
-    return mort_be_factor() * mort_rate_base(t)
-
-
 def mort_rate_mth(t):
     """The best-estimate **monthly** death rate, ``mort_rate(t) / 12``.
 

@@ -289,6 +289,16 @@ def mort_rate_base(t):
     return mort_rate_at_age(age(t))                                  # noqa: F821
 
 
+def mort_rate(t):
+    """q(t): the best-estimate **annual** death rate of the policy year containing month t.
+
+    ``min(1, mort_rate_base(t) x mort_be_factor())``: the table rate stepped to the best
+    estimate, capped at 1.  The annual rate, flat across a policy year; ``mort_rate_mth``
+    is the monthly rate the recursion applies.
+    """
+    return min(1.0, mort_rate_base(t) * mort_be_factor())            # noqa: F821
+
+
 def rechnungszins():
     """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
 

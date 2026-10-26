@@ -1053,20 +1053,6 @@ def mort_rate_base(t):
     return mort_rate_guar(t)
 
 
-def mort_rate(t):
-    """q(t): the **best-estimate annual** death rate, ``mort_rate_guar(t) x mort_be_factor()``.
-
-    The second-order basis, which drives :func:`pols_death` and hence every decrement.  The
-    factor is above one because for an annuity prudence means assuming mortality *lower* than
-    expected, so the first-order table sits below best estimate.  Capped at 1, and equal to 1
-    at attained age ``omega_age() - 1``, which is what ends the projection with no survivors.
-
-    The **annual** rate, flat across a policy year; :func:`mort_rate_mth` is what the monthly
-    recursion applies.
-    """
-    return min(1.0, mort_rate_guar(t) * mort_be_factor())
-
-
 def mort_rate_mth(t):
     """q^m(t): the **monthly** death rate, ``1 - (1 - q(t))^(1/12)``.
 

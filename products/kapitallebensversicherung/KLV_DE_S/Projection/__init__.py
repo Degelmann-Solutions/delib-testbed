@@ -583,21 +583,6 @@ def mort_be_factor():
     return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
 
 
-def mort_rate(t):
-    """q(t): the **best-estimate annual** death rate of the policy year containing month t.
-
-    ``mort_rate_base(t) * mort_be_factor`` with ``mort_be_factor = 0.75`` **[std]**, so the
-    first-order table carries a 33 % safety loading.  **Annual**, as the library-wide
-    convention requires: this is the vector the technical notes tabulate, and
-    :func:`mort_rate_mth` is what the recursion applies.  Invariant to
-    :func:`rating_factor`, which is a *first-order* loading and has no business in a best
-    estimate.
-
-    It is the only place ``sex`` reaches a cash flow.
-    """
-    return min(1.0, mort_rate_base(t) * mort_be_factor())
-
-
 def mort_rate_mth(t):
     """qm(t): the **monthly** best-estimate death rate applied at the end of month t **[std]**.
 

@@ -1074,21 +1074,6 @@ def guar_cap_pp(k):
 
 # --- decrements --------------------------------------------------------------
 
-def mort_rate(t):
-    """``q_d(t)``: the **annual** death rate at the attained age of month t.
-
-    A **[std]** Gompertz proxy anchored at ``qx(M, 40) = 0.001200``; DAV 2008 T and DAV
-    2004 R are proprietary and are cited by name rather than shipped.  Mortality here is a
-    **timing** assumption: the death benefit is the account value with a floor, not a sum
-    at risk, so the rate decides when capital leaves and hardly at all how much.
-
-    The **annual** rate, flat across a policy year because the attained age steps on the
-    anniversary; :func:`mort_rate_mth` is what the monthly recursion applies.  The table rate
-    of the year is the core's ``mort_rate_base(t)``, :func:`mort_rate_at_age` at ``age(t)``.
-    """
-    return mort_rate_base(t)
-
-
 def mort_rate_at_age(x):
     """``q_d(x)``: the table's **annual** death rate at attained age x, for the model point's sex.
 

@@ -560,6 +560,9 @@ def mort_rate(t, life=1):
 
     Returns 0 for the second life where no *Hinterbliebenenrente* is in force: the life
     does not exist, its model point columns are zeros, and nothing may read them.
+
+    Override reason: the rate is read for each life, the argument ``life``, on the
+    generational surface at its birth cohort, products/sofortrente/technical-notes.md:456
     """
     if life == 2 and surv_pct() == 0.0:
         return 0.0

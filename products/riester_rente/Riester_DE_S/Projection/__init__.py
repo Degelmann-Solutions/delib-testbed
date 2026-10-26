@@ -673,6 +673,10 @@ def mort_rate(t):
     This is the library's two-speed convention: ``mort_rate`` is the **annual** rate and
     :func:`mort_rate_mth` is what the recursion applies.  The age and the calendar year step
     on the anniversary, so the twelve months of a projection year share one annual rate.
+
+    Override reason: the basis switches at ``t_conv()``, from the accumulation death table
+    to the generational annuitant table with its own factor,
+    products/riester_rente/technical-notes.md:625
     """
     if age(t) >= omega_age() - 1:
         return 1.0

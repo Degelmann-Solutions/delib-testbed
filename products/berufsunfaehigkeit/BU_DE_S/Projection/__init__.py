@@ -722,15 +722,6 @@ def inc_rate_mth(t):
     return 1.0 - (1.0 - inc_rate(t)) ** (1.0 / 12.0)
 
 
-def mort_rate(t):
-    """q^a(x(t)): the **annual** active-lives mortality rate at month t.
-
-    The library's convention is that ``mort_rate`` is annual and :func:`mort_rate_mth`
-    monthly.  It applies to the *aktiv* ledger and to the § 174 run-off.
-    """
-    return mort_rate_at_age(age(t))
-
-
 def mort_rate_mth(t):
     """q^a_m(t): the monthly active-lives mortality rate, ``1 - (1 - mort_rate(t))^(1/12)``."""
     return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)

@@ -506,6 +506,16 @@ CORE_CELLS = {
                            "pflegerentenversicherung": "derived",
                            "riester_rente": "derived",
                            "risikolebensversicherung": "override"},
+        "mort_rate": {"basisrente": "override",
+                      "berufsunfaehigkeit": "derived",
+                      "fondsgebundene_rentenversicherung": "derived",
+                      "indexpolice": "derived",
+                      "kapitallebensversicherung": "derived",
+                      "klassische_rentenversicherung": "derived",
+                      "pflegerentenversicherung": "derived",
+                      "riester_rente": "override",
+                      "risikolebensversicherung": "override",
+                      "sofortrente": "override"},
     },
 }
 
@@ -876,3 +886,27 @@ def test_annual_discount_factor_is_the_rechnungszins_power(product, product_mode
     assert projection.disc_factor._is_derived()
     item = projection[1]
     assert item.disc_factor(3) == (1.0 + item.rechnungszins()) ** -3
+
+
+def test_bu_mort_rate_is_its_table_rate_at_the_neutral_factor(product_models):
+    model = product_models("berufsunfaehigkeit")
+    projection = model.Projection
+    assert projection.mort_rate._is_derived()
+    assert projection.mort_be_factor._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        assert item.mort_be_factor() == 1.0
+        for t in range(item.proj_len()):
+            assert item.mort_rate(t) == item.mort_rate_at_age(item.age(t)), (point_id, t)
+
+
+def test_klv_mort_rate_steps_its_table_by_the_factor_from_param_table(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.mort_rate._is_derived()
+    assert projection.mort_be_factor._is_defined()
+    assert model.Data.param_table().at["mort_be_factor", "value"] == 0.75
+    item = projection[model.Data.model_point_table().index[0]]
+    assert item.mort_be_factor() == 0.75
+    for t in range(item.proj_len()):
+        assert item.mort_rate(t) == min(1.0, item.mort_rate_base(t) * 0.75), t

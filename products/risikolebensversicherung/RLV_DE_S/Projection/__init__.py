@@ -613,6 +613,9 @@ def mort_rate(t):
     technical notes tabulate — and is flat across that year's twelve months, the attained
     age stepping on the anniversary.  What the projection applies is
     :func:`mort_rate_mth`.
+
+    Override reason: the second-order rate carries the *Risikozuschlag* and the
+    selective-lapse loading, products/risikolebensversicherung/model.md:495
     """
     return (mort_be_factor() * rating_factor()
             * mort_rate_base(t) * sel_lapse_factor(t))

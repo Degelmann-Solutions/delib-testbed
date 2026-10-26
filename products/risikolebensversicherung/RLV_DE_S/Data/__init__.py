@@ -146,8 +146,8 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table():
-    """The second-order annual death rates, from *mort_table.csv*.
+def mort_table_index():
+    """The index columns of *mort_table.csv*, the second-order annual death rates.
 
     Indexed by ``table_id``, ``sex``, ``smoker`` and attained ``age``.  A **[std]**
     Gompertz proxy standing in for DAV 2008 T, which is proprietary and is cited by name
@@ -159,11 +159,9 @@ def mort_table():
 
     Override reason: the table carries a table id and the smoker split, keyed by
     ``table_id``, ``sex``, ``smoker`` and ``age``,
-    products/risikolebensversicherung/technical-notes.md, section External inputs
+    products/risikolebensversicherung/technical-notes.md:140
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file,                                     # noqa: F821
-        index_col=["table_id", "sex", "smoker", "age"])
+    return ["table_id", "sex", "smoker", "age"]
 
 
 def benefit_schedule():

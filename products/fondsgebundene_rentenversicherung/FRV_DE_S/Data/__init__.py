@@ -108,8 +108,8 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table():
-    """The first-order annual death rates by attained age, from *mort_table.csv*.
+def mort_table_index():
+    """The index columns of *mort_table.csv*: ``age`` alone.
 
     A **[std]** proxy of DAV 2008 T, not the table itself; see the Space docstring for
     what it is, what it is anchored on and what a replacement must preserve.  It is the
@@ -118,11 +118,9 @@ def mort_table():
     *Rentenfaktor*, which rests on an annuity table.
 
     Override reason: the table is the unisex first-order basis of the *Risikobeitrag*, keyed
-    by ``age`` alone, products/fondsgebundene_rentenversicherung/technical-notes.md, section
-    (c) Behavioral / experience assumptions
+    by ``age`` alone, products/fondsgebundene_rentenversicherung/model.md:92
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col="age")                    # noqa: F821
+    return "age"
 
 
 def charge_table():

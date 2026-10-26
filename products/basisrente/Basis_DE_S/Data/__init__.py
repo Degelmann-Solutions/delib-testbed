@@ -126,8 +126,8 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table():
-    """The first-order annual death rates and improvement trends by age.
+def mort_table_index():
+    """The index columns of *mort_table.csv*: ``age`` alone.
 
     Read from *mort_table.csv*, indexed by ``age``: ``qx`` is the rate at the base
     calendar year ``mort_base_year`` and ``trend`` the annual improvement that makes the
@@ -135,11 +135,9 @@ def mort_table():
     2004 R; see the Space docstring for what a replacement must preserve.
 
     Override reason: the table is the unisex first-order basis with a generational ``trend``
-    column, keyed by ``age`` alone, products/basisrente/technical-notes.md, section External
-    input files
+    column, keyed by ``age`` alone, products/basisrente/technical-notes.md:138
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col="age")                    # noqa: F821
+    return "age"
 
 
 def surplus_table():

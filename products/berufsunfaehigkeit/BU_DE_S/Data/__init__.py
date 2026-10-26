@@ -128,8 +128,8 @@ def claim_duration_table():
         input_dir() / claim_duration_file, index_col="dur_year")     # noqa: F821
 
 
-def mort_table():
-    """The two annual mortality rates by attained age, ages 18-70.
+def mort_table_index():
+    """The index columns of *mortality_table.csv*: ``age`` alone.
 
     Read from *mortality_table.csv*: ``mort_rate_actv`` for lives in the *aktiv* and
     run-off ledgers and ``mort_rate_dis`` for lives in claim, before the claim-duration
@@ -140,11 +140,9 @@ def mort_table():
 
     Override reason: the table carries an active and a disabled rate (``mort_rate_actv``,
     ``mort_rate_dis``) keyed by ``age`` alone,
-    products/berufsunfaehigkeit/technical-notes.md, section (c) Behavioural / experience
-    assumptions (the modeller's view)
+    products/berufsunfaehigkeit/technical-notes.md:351
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col="age")                    # noqa: F821
+    return "age"
 
 
 def occupation_table():

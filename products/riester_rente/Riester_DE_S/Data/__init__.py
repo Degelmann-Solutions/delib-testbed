@@ -99,8 +99,8 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table():
-    """Accumulation-phase death rates by attained age, from *mort_table_accum.csv*.
+def mort_table_index():
+    """The index columns of *mort_table_accum.csv*: ``age`` alone.
 
     A **[std]** proxy for **DAV 2008 T**, which is proprietary and is not redistributed
     here; see the Space docstring for the anchor a replacement must preserve.  Ages 16 to
@@ -108,11 +108,9 @@ def mort_table():
     improvement, because on a death cover improvement favours the insurer.
 
     Override reason: the death basis of the *Aufschubzeit* has no sex key, ``qx`` by ``age``
-    alone (``qx``); the annuitant table is separate, products/riester_rente/technical-notes.md,
-    section Model inputs
+    alone; the annuitant table is separate, products/riester_rente/technical-notes.md:123
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col="age")                    # noqa: F821
+    return "age"
 
 
 def annuity_mort_table():

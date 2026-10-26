@@ -47,10 +47,15 @@ def param_table():
         input_dir() / param_file, index_col="item")                  # noqa: F821
 
 
+def mort_table_index():
+    """The index columns of the mortality table: ``sex`` and attained ``age``."""
+    return ["sex", "age"]
+
+
 def mort_table():
-    """The annual death rates by ``sex`` and attained ``age``, read from ``mort_file``."""
+    """The annual death rates, read from ``mort_file`` by ``mort_table_index()``."""
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col=["sex", "age"])           # noqa: F821
+        input_dir() / mort_file, index_col=mort_table_index())       # noqa: F821
 
 
 def lapse_table():

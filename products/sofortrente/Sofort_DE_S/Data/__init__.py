@@ -114,8 +114,8 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table():
-    """The annual death rates by basis, sex and attained age, from *mort_table.csv*.
+def mort_table_index():
+    """The index columns of *mort_table.csv*: ``basis``, ``sex`` and attained ``age``.
 
     Indexed by ``(basis, sex, age)`` with ``basis`` in ``{FIRST, SECOND}`` and ``sex`` in
     ``{M, F}``.  The unisex series the tariff is struck on is **computed** from these two
@@ -126,12 +126,9 @@ def mort_table():
     anchor is and what a replacement must preserve.
 
     Override reason: the table carries a first- and a second-order basis, keyed by
-    ``basis``, ``sex`` and ``age``, products/sofortrente/technical-notes.md, section Input
-    files
+    ``basis``, ``sex`` and ``age``, products/sofortrente/technical-notes.md:376
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file,                                     # noqa: F821
-        index_col=["basis", "sex", "age"])
+    return ["basis", "sex", "age"]
 
 
 def improvement_table():

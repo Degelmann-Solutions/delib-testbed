@@ -403,6 +403,15 @@ def pols_death(t):
     return pols_if(t) * mort_rate_mth(t)                             # noqa: F821
 
 
+def pols_lapse(t):
+    """The expected lapses in month t, ``pols_if_at(t, "AFT_DEATH") x lapse_rate_mth(t)``.
+
+    Taken from the survivors of the month's deaths, at the end of the month; zero where the
+    lapse rate is zero.
+    """
+    return pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)            # noqa: F821
+
+
 def rechnungszins():
     """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
 

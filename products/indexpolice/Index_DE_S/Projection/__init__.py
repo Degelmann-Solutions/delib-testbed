@@ -1175,17 +1175,6 @@ def pols_if_at(t, timing):
     raise ValueError("invalid timing")
 
 
-def pols_lapse(t):
-    """Expected surrenders in **month** t, taken from the survivors of the month's deaths.
-
-    Zero through the final policy year, where the survivors leave as maturities instead.
-    A surrender in any month of policy year ``k`` is paid ``cv_pp(k)`` and forfeits that
-    year's *Indexgutschrift* — the payoff exists only at the *Indexjahr* end — which is the
-    behavioural asymmetry the annual grid could state but not date.
-    """
-    return pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)
-
-
 def pols_maturity(t):
     """The cohort reaching *Rentenbeginn*: the survivors of both decrements at the last month.
 

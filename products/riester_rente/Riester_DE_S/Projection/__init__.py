@@ -759,17 +759,6 @@ def pols_death(t):
     return pols_if(t) * mort_rate_mth(t)
 
 
-def pols_lapse(t):
-    """Expected surrenders in month t, on the survivors of that month's mortality.
-
-    A *Kündigung*: *schädliche Verwendung*, paying :func:`cv_pp` gross of the
-    *Rückzahlungsbetrag* the provider withholds and remits.  Zero from ``t_conv()``.
-    """
-    if not is_accum(t) or t < 0:
-        return 0.0
-    return pols_if(t) * (1.0 - mort_rate_mth(t)) * lapse_rate_mth(t)
-
-
 def pols_transfer(t):
     """Expected *Anbieterwechsel* exits in month t, on the survivors of both prior decrements.
 

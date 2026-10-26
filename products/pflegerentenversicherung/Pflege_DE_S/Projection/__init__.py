@@ -1011,6 +1011,10 @@ def pols_lapse(t):
     and a live annuity to forfeit.  A *Pflegegrad* 1 life on ``delib_std`` does still pay
     and could in principle surrender; the population is small and the model does not model
     it, which is a stated simplification rather than an oversight.
+
+    Override reason: the lapses come from the active state only, its survivors of the
+    insured decrements together with the month's reactivations,
+    products/pflegerentenversicherung/technical-notes.md:491
     """
     survivors = pols_act(t) * p_act_stay(t) + pols_reactiv(t)
     return survivors * lapse_rate_mth(t)

@@ -1284,6 +1284,9 @@ def pols_lapse(t):
     § 169 VVG through § 176 gives this contract a real *Rueckkaufswert* and § 165 a real
     *beitragsfreie BU-Rente*, but both are the release of a reserve this model does not
     compute, so a lapse is a pure decrement and ``claims(t, "LAPSE")`` is zero.
+
+    Override reason: the lapses come from the *aktiv* ledger only, after its deaths; lives
+    in claim or run-off do not lapse, products/berufsunfaehigkeit/technical-notes.md:182
     """
     return (pols_actv(t) - pols_death_actv(t)) * lapse_rate_mth(t)
 

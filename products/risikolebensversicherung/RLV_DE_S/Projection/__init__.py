@@ -1165,22 +1165,6 @@ def pols_if(t):
             - pols_maturity(t - 1))
 
 
-def pols_lapse(t):
-    """Lapses at the end of period t, taken from the survivors of the death decrement.
-
-    ``l(t)(1 - q2m(t)) wm(t)``.  Pays **nothing**: there is no *Rückkaufswert*, so this
-    moves :func:`pols_if` and nothing else, and at most an unearned fraction of a prepaid
-    instalment — not modelled, and smaller on a fractionated *Zahlweise* than on an annual
-    one — would be returned in practice.  Zero through the whole final policy year, where
-    the survivors leave as an expiry instead.
-
-    The economic reason lapse matters on a product with no surrender value to forfeit is
-    on the **other** side of the ledger: acquisition cost is incurred at issue and
-    recovered over the term, so an early lapse is a loss to the insurer.
-    """
-    return pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)
-
-
 def pols_maturity(t):
     """The expiring survivors, at the **last projected month** ``t = proj_len() - 1``.
 

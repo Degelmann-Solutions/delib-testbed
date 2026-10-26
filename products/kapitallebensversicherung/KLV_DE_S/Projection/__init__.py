@@ -1403,17 +1403,6 @@ def pols_if(t):
     return pols_if_at(t - 1, "AFT_DEATH") * (1.0 - lapse_rate_mth(t - 1))
 
 
-def pols_lapse(t):
-    """Expected surrenders at the end of month t, from the survivors of that month's mortality.
-
-    ``pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)``.  They are paid :func:`surr_value_pp`,
-    which on this product is a real and often large amount - unlike a term cover, where a
-    lapse pays nothing.  Zero through the final policy year, where the survivors leave as a
-    maturity instead.
-    """
-    return pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)
-
-
 def pols_maturity(t):
     """Policies reaching the *Ablauf* at the end of the last projected month; zero before it.
 

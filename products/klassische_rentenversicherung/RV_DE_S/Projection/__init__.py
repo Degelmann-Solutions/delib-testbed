@@ -1342,17 +1342,6 @@ def pols_if_at(t, timing):
     raise ValueError("invalid timing")
 
 
-def pols_lapse(t):
-    """Surrenders at the end of period t, taken from the survivors of the year's deaths.
-
-    Zero in the payout phase, where :func:`lapse_rate` is zero.  A *Beitragsfreistellung* is
-    **not** counted here: it is an election that keeps the contract alive, not a decrement.
-    The one place the two meet is the § 165 cash-out branch, where the whole surviving cohort
-    leaves through this decrement at the surrender value, in the anniversary month.
-    """
-    return pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)
-
-
 def pols_surv_rb():
     """The policies surviving to the *Rentenbeginn*: ``l - deaths - surrenders`` at ``n - 1``.
 

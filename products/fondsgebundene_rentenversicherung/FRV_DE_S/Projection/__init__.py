@@ -1350,15 +1350,6 @@ def pols_if_at(t, timing):
         raise ValueError("invalid timing")
 
 
-def pols_lapse(t):
-    """Expected surrenders in month t, on the survivors of the month's deaths.
-
-    Zero in the last month by construction, where the whole surviving cohort is booked as
-    :func:`pols_maturity` instead.
-    """
-    return pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)
-
-
 def pols_maturity(t):
     """Policies reaching *Rentenbeginn*: zero except in the last projected month.
 

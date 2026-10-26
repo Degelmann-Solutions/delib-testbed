@@ -577,6 +577,14 @@ CORE_CELLS = {
                        "pflegerentenversicherung": "derived",
                        "riester_rente": "derived",
                        "risikolebensversicherung": "derived"},
+        "pols_lapse": {"berufsunfaehigkeit": "override",
+                       "fondsgebundene_rentenversicherung": "derived",
+                       "indexpolice": "derived",
+                       "kapitallebensversicherung": "derived",
+                       "klassische_rentenversicherung": "derived",
+                       "pflegerentenversicherung": "override",
+                       "riester_rente": "derived",
+                       "risikolebensversicherung": "derived"},
     },
 }
 
@@ -1080,3 +1088,17 @@ def test_the_end_of_month_count_is_the_next_start_of_month_count(product, produc
         assert item.pols_if_at(t, "AFT_DECR") == item.pols_if(t + 1), t
     with pytest.raises(Exception, match="invalid timing"):
         item.pols_if_at(start, "END")
+
+
+def test_klv_lapses_are_taken_from_the_survivors_of_the_deaths(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.pols_lapse._is_derived()
+    item = projection[model.Data.model_point_table().index[0]]
+    lapsing = [t for t in range(item.t_start(), item.proj_len()) if item.pols_lapse(t) > 0.0]
+    assert lapsing, "no month with lapses"
+    for t in range(item.t_start(), item.proj_len()):
+        assert (item.pols_lapse(t)
+                == item.pols_if_at(t, "AFT_DEATH") * item.lapse_rate_mth(t)), t
+        assert (item.pols_if_at(t, "AFT_DEATH")
+                == item.pols_if(t) * (1.0 - item.mort_rate_mth(t))), t

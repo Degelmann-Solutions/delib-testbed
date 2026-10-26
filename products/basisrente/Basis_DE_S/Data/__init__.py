@@ -140,20 +140,6 @@ def mort_table_index():
     return "age"
 
 
-def surplus_table():
-    """The declared surplus path by scenario and projection year.
-
-    Read from *surplus_table.csv*, indexed by ``scenario_id`` and the **0-based**
-    projection year ``t``, whose first row is ``t = 0``: ``decl_rate`` is
-    the declared *laufende Verzinsung* in the *Aufschubphase* — the **total** credited
-    rate including the *Rechnungszins*, not a spread over it — and ``ann_bonus_rate`` the
-    *Überschussrente* uplift in the *Rentenphase*.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / surplus_file,                                  # noqa: F821
-        index_col=["scenario_id", "t"])
-
-
 def charge_table():
     """The charge, expense and commission scale by tariff, from *charge_table.csv*.
 

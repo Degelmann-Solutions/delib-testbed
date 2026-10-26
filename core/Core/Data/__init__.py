@@ -85,3 +85,14 @@ def freq_loading_table():
     """The *Ratenzahlungszuschlag* by ``prem_freq``, from ``freq_loading_file``."""
     return pd.read_csv(                                              # noqa: F821
         input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
+
+
+def surplus_table_index():
+    """The index columns of the surplus table: ``scenario_id`` and the 0-based ``t``."""
+    return ["scenario_id", "t"]
+
+
+def surplus_table():
+    """The declared surplus path, read from ``surplus_file`` by ``surplus_table_index()``."""
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / surplus_file, index_col=surplus_table_index())  # noqa: F821

@@ -36,7 +36,7 @@ annuity_mort_file          annuity_mort_table()            annuity_mort_table.cs
 lapse_file                 lapse_table()                   lapse_table.csv
 zulage_file                zulage_schedule()               zulage_schedule.csv
 income_file                income_schedule()               income_schedule.csv
-surplus_file               surplus_scenario()              surplus_scenario.csv
+surplus_file               surplus_table()                 surplus_scenario.csv
 freq_loading_file          freq_loading_table()            freq_loading.csv
 param_file                 param_table()                   param_table.csv
 =========================  ==============================  ==========================
@@ -156,21 +156,6 @@ def income_schedule():
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / income_file, index_col=["income_id", "t"])     # noqa: F821
-
-
-def surplus_scenario():
-    """The declared *laufende Verzinsung* by scenario id and projection period ``t``.
-
-    Read from *surplus_scenario.csv*.  The ``t`` key is the model's own **0-based** time
-    index, running ``0 ... 89``, and is read directly at ``t``.  Two paths ship: ``base`` at 2,30 % level and
-    ``low`` at 0,50 % level.  The declared rate **includes** the *Rechnungszins* — adding
-    the two is the German arithmetic error this model is built to make visible — so
-    ``decl_rate - rechnungszins`` is the *laufende Zinsüberschussbeteiligung* and is
-    what accrues in the *Überschussguthaben*.  It is the largest single lever in the model
-    and the least supported: no declared rate at any carrier was established.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / surplus_file, index_col=["scenario_id", "t"])  # noqa: F821
 
 
 # ---------------------------------------------------------------------------

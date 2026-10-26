@@ -356,7 +356,7 @@ Each file has one string Reference and one reader cells on `Data`, named alike:
 `model_point_file` → `model_point_table()`, `mort_file` → `mort_table()`,
 `annuity_mort_file` → `annuity_mort_table()`, `lapse_file` → `lapse_table()`, `zulage_file` →
 `zulage_schedule()`, `income_file` → `income_schedule()`, `surplus_file` →
-`surplus_scenario()`, `freq_loading_file` → `freq_loading_table()` and `param_file` →
+`surplus_table()`, `freq_loading_file` → `freq_loading_table()` and `param_file` →
 `param_table()`.
 
 **The trade-off:** the model is not portable on its own — copy `Riester_DE_S/` without the CSVs

@@ -206,6 +206,10 @@ CORE_CELLS = {
                                "klassische_rentenversicherung": "derived",
                                "riester_rente": "derived",
                                "risikolebensversicherung": "derived"},
+        "surplus_table_index": {"basisrente": "derived",
+                                "riester_rente": "derived"},
+        "surplus_table": {"basisrente": "derived",
+                          "riester_rente": "derived"},
     },
     "Projection": {
         "model_point": dict.fromkeys(MODELS, "derived"),

@@ -90,7 +90,7 @@ annuity_mort_file          data.annuity_mort_table()              annuity_mort_t
 lapse_file                 data.lapse_table()                     lapse_table.csv
 zulage_file                data.zulage_schedule()                 zulage_schedule.csv
 income_file                data.income_schedule()                 income_schedule.csv
-surplus_file               data.surplus_scenario()                surplus_scenario.csv
+surplus_file               data.surplus_table()                   surplus_scenario.csv
 freq_loading_file          data.freq_loading_table()              freq_loading.csv
 param_file                 data.param_table()                     param_table.csv
 =========================  =====================================  ==========================
@@ -1088,8 +1088,8 @@ def decl_rate(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return float(data.surplus_scenario().at[(scenario_id(), k),      # noqa: F821
-                                            "decl_rate"])
+    return float(data.surplus_table().at[(scenario_id(), k),         # noqa: F821
+                                         "decl_rate"])
 
 
 def int_guar_pp(k):

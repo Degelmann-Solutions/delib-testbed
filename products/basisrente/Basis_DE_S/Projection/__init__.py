@@ -116,7 +116,7 @@ omega                      omega_age()                     Limiting age, table e
 T                          k_conv()                        Projection year of Rentenbeginn
 12 T                       t_conv()                        Month of the first instalment
 (none)                     gtd_end_t()                     Last month of the Rentengarantiezeit
-S                          beitragssumme_pp()              Beitragssumme at inception
+S                          beitragssumme()                 Beitragssumme at inception
 P0 (1 + delta)^d(k)        prem_base_pp(k)                 Contractual Beitrag before phi
 phi                        prem_freq_load()                Ratenzahlungszuschlag
 P(k)                       prem_pp(k)                      Beitrag charged per paying policy
@@ -477,7 +477,7 @@ def gtd_end_t():
     return max(0, t_conv()) + 12 * int(model_point()["guarantee_period_y"]) - 1
 
 
-def beitragssumme_pp():
+def beitragssumme():
     """S: the contract's *Beitragssumme* at inception, per policy.
 
     The sum of the contractual *laufende Beiträge* over the whole premium term
@@ -495,6 +495,9 @@ def beitragssumme_pp():
 
     Struck once, at inception, from the *contract's* own terms — not from the projection —
     so an in-force model point carries the same S it was written with.
+
+    Override reason: the premiums escalate with the *Beitragsdynamik*, so the sum runs over
+    the schedule, not a level premium times the years, products/basisrente/technical-notes.md:431
     """
     dyn = float(model_point()["prem_dyn_rate"])
     base = float(model_point()["prem_base_pp"])
@@ -636,7 +639,7 @@ def prem_total_pp(k):
 def alpha_total_pp():
     """The zillmerised acquisition charge written into the account, per policy.
 
-    ``zill_rate x beitragssumme_pp()``.  The *Höchstzillmersatz* caps it at **25 ‰ of the
+    ``zill_rate x beitragssumme()``.  The *Höchstzillmersatz* caps it at **25 ‰ of the
     *Beitragssumme*** for business written from 1 January 2015, reduced from 40 ‰ by the
     LVRG; the shipped tariffs carry the two rates and the in-force pre-2015 model points
     take the older one.
@@ -647,7 +650,7 @@ def alpha_total_pp():
     pays out is sized to what it may write into the reserve.
     """
     return (float(data.charge_table().loc[                           # noqa: F821
-        model_point()["tariff_id"], "zill_rate"]) * beitragssumme_pp())
+        model_point()["tariff_id"], "zill_rate"]) * beitragssumme())
 
 
 def alpha_amort_pp(k):
@@ -663,7 +666,7 @@ def alpha_amort_pp(k):
 
     Charging the whole *Zillmerung* in year one is the fifth pitfall.  On the anchor cell
     the instalment is equal at ``k = 0 ... 4``, zero from ``k = 5``, and the five sum to
-    ``zill_rate x beitragssumme_pp()`` exactly.
+    ``zill_rate x beitragssumme()`` exactly.
 
     Whether the AltZertG's five-year spreading of acquisition and distribution costs
     reaches *Basisrentenverträge* at all was not established; the five years here are the
@@ -1538,7 +1541,7 @@ def expenses(t):
 def commissions(t):
     """C(t): commission outgo in projection month t, fund level.
 
-    ``comm_init_rate x beitragssumme_pp() x pols_if_init()`` at inception — the
+    ``comm_init_rate x beitragssumme() x pols_if_init()`` at inception — the
     *Abschlussprovision*, sized to the *Zillmerung* cap, which is the German design in
     which what the insurer pays out is what it may write into the reserve — plus
     ``comm_renew_rate x (premiums(t) + zuzahlungen(t))`` from ``t = 1``, the
@@ -1559,7 +1562,7 @@ def commissions(t):
     row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
     out = 0.0
     if t == 0 and duration_init() == 0:
-        out += float(row["comm_init_rate"]) * beitragssumme_pp() * pols_if_init()
+        out += float(row["comm_init_rate"]) * beitragssumme() * pols_if_init()
     if t >= 1:
         out += float(row["comm_renew_rate"]) * (premiums(t) + zuzahlungen(t))
     return out

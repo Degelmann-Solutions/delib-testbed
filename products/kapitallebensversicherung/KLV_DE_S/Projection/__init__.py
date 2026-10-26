@@ -761,16 +761,6 @@ def prem_gross_pp():
                - alpha_rate() * prem_term()))
 
 
-def beitragssumme():
-    """BS: the *Beitragssumme*, ``prem_gross_pp() * prem_term()``.
-
-    The total of all premiums payable over the agreed term, **before** the
-    *Ratenzahlungszuschlag*, and the reference base for the § 4 DeckRV acquisition-cost cap,
-    for the initial commission and for the *Mindesttodesfallschutz* test.
-    """
-    return prem_gross_pp() * prem_term()
-
-
 def alpha_cost():
     """A: the zillmered acquisition cost written into the reserve, in euros.
 

@@ -459,8 +459,8 @@ flow in `result_cf()` is EUR for the model point as a whole.
     prem_due(t) = ( t mod 12 == 0 )        the first month of each policy year, and no other
     premiums(t) = P(duration(t)) × l(t)    where prem_due(t), else 0
 
-    beitragssumme_pp = Σ_{u=0..min(prem_term_y, n)−1} P_sched(u)
-    alpha_total_pp   = alpha_rate × beitragssumme_pp
+    beitragssumme    = Σ_{u=0..min(prem_term_y, n)−1} P_sched(u)
+    alpha_total_pp   = alpha_rate × beitragssumme
 
 `P_sched` is the premium schedule **as written at inception**, ignoring any later
 *Beitragsfreistellung*: § 4 DeckRV takes the *Zillmersatz* on the sum of all premiums payable under
@@ -953,7 +953,7 @@ survivor-weighted annuity runs from `t = 324` to `t = 851`.
 
 **Assumptions, each tagged.** *Contractual and cited:* the *Rechnungszins* `i = 1,00 % p.a.`
 [REG-R15]; the *Höchstzillmersatz* `alpha_rate = 25 ‰` of the *Beitragssumme* [REG-R16], giving
-`beitragssumme_pp = 17 × 3 000,00 = 51 000,00 €` and `alpha_total_pp = 1 275,00 €`, zillmered — taken
+`beitragssumme = 17 × 3 000,00 = 51 000,00 €` and `alpha_total_pp = 1 275,00 €`, zillmered — taken
 in full from the first year's premium and nil thereafter; the § 169 Abs. 3 five-year spread,
 `alpha_spread_years = 5`, giving `α̃(k) = 255,00 €` for `k = 0 … 4` [REG-R28]; the § 165
 *Mindestversicherungsleistung* test, not triggered on this cell [R2]; the death benefit

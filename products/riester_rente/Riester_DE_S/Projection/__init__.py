@@ -349,6 +349,9 @@ def beitragssumme():
     The base of the acquisition charge and of the initial commission, and nothing else.
     On the ``mindest`` contribution form it is a contractual figure rather than the sum
     the projection actually collects, because the § 86 minimum moves with income.
+
+    Override reason: the *Beitragssumme* is a contractual figure of the model point, not a
+    premium times the years, products/riester_rente/technical-notes.md:185
     """
     return float(model_point()["beitragssumme"])
 

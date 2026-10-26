@@ -239,7 +239,7 @@ age-floor cohorts, four guarantee vintages and four boundary cases.
 | `cred_rate(k)` | The rate credited to the *Deckungskapital*, `max(rechnungszins, decl_rate(k))` | annual |
 | `ann_pp(k)` | **Annual** annuity per surviving annuitant in year `k`, in the *Rentenphase* only | annual recursion |
 | `ann_mth_pp(t)` | The monthly instalment actually paid, `ann_pp(proj_year(t)) / 12` | monthly |
-| `beitragssumme_pp` | The contract's *Beitragssumme* at inception, the base of the 25 ‰ *Zillmerung* cap | once per model point |
+| `beitragssumme` | The contract's *Beitragssumme* at inception, the base of the 25 ‰ *Zillmerung* cap | once per model point |
 
 There is **no** account value in the *Rentenphase*: the whole fund converts at `k_conv()` into an
 annuity obligation, and the reserve that stands behind that obligation is a
@@ -324,7 +324,7 @@ best-estimate factor for a Basisrente, and the research file records the absence
 | *Zuzahlung* take-up `zuz_take_up(dur)` | **0.70** at durations 1–5, **0.85** at 6–15, **0.90** at 16+ | The *Zuzahlung* is paid out of a profit not known until the year end, so it is behavioural, not contractual. Rising with duration because the contract and the habit bed in |
 | Eligible-survivor probability `elig_surv_prob` | **0.55** | The probability that a spouse or registered partner, or a *Kindergeld*-eligible child, exists at the moment of death [R1]. On a contract taken at 45 and running to 67 the child channel has usually closed, so this is in substance a marriage-survival probability. **One of the most consequential [std] numbers in the whole delib library** |
 | Acquisition expense `acq_expense_pp` | **250,00 €** at inception | Round-number placeholder |
-| Initial commission `comm_init_rate` | **2,5 % of `beitragssumme_pp`**, paid at inception | Sized to the *Zillmerung* cap [R16], the German design in which what the insurer pays out is what it may write into the reserve. **A carrier's published figure now matches it exactly**: NÜRNBERGER's *Muster*-PIB puts *Abschluss- und Vertriebskosten* at "*2,50 % der vereinbarten Beiträge*", 900,00 € on a 36 000 € *Beitragssumme* [S13] — that is the cost, not the commission, but on the German design they are the same lever. [S2]'s 1 575 € specimen *Abschlussprovision* stays [unverified] |
+| Initial commission `comm_init_rate` | **2,5 % of `beitragssumme`**, paid at inception | Sized to the *Zillmerung* cap [R16], the German design in which what the insurer pays out is what it may write into the reserve. **A carrier's published figure now matches it exactly**: NÜRNBERGER's *Muster*-PIB puts *Abschluss- und Vertriebskosten* at "*2,50 % der vereinbarten Beiträge*", 900,00 € on a 36 000 € *Beitragssumme* [S13] — that is the cost, not the commission, but on the German design they are the same lever. [S2]'s 1 575 € specimen *Abschlussprovision* stays [unverified] |
 | Renewal commission `comm_renew_rate` | **1,5 %** of premiums plus *Zuzahlungen* from year 2 | Market convention; no level established |
 | Maintenance expense `maint_expense_pp` | **60,00 €** per in-force policy p.a., inflating | Placeholder |
 | Annuity administration `annuity_admin_pp` | **36,00 €** per annuitant p.a., inflating | Placeholder; the payout phase is administratively cheaper than the accumulation phase |
@@ -356,7 +356,7 @@ surrender, no assignment, no provider transfer, no commutation. That is the prod
 | `A(k)`, `Aᵖ(k)`, `Aᶠ(k)` | `av_at(k, ·)`, `av_pp_at(k, ·)`, `av_pu_at(k, ·)` | *Deckungskapital*: fund level, per paying policy, and premium-free block at fund level |
 | `P(k)`, `Z(k)` | `prem_pp(k)`, `zuz_pp(k)` | the *laufender Beitrag* charged and the *Zuzahlung* paid, per paying policy, per year |
 | `P₀`, `δ`, `φ` | `prem_base_pp`, `prem_dyn_rate`, `prem_freq_load()` | base premium at inception, *Beitragsdynamik*, *Ratenzahlungszuschlag* |
-| `S` | `beitragssumme_pp()` | the *Beitragssumme* at inception |
+| `S` | `beitragssumme()` | the *Beitragssumme* at inception |
 | `α`, `α_z`, `β`, `γ`, `u(k)` | `alpha_amort_pp(k)`, `alpha_zuz_pp(k)`, `beta_prem`, `gamma_av`, `unit_cost_pp(k)` | the four charges struck against the account, all annual |
 | `N(k)` | `prem_to_av_pp(k)` | premium credited to the account after all four charges |
 | `i(k)` | `cred_rate(k)` | credited rate, `max(rechnungszins, decl_rate(k))` |
@@ -777,7 +777,7 @@ a test.
 5. **Charging the whole *Zillmerung* in year one.** It is spread over `zill_spread_y = 5` premium-paying
    years **[std]** and capped at 25 ‰ of the *Beitragssumme* [R16] [REG-R16]. Assert
    `alpha_amort_pp(k)` is equal for `k = 0 … 4` and zero from `k = 5`, that
-   `Σ_k alpha_amort_pp(k) = zill_rate × beitragssumme_pp()` to 1e-9, and that an in-force point past
+   `Σ_k alpha_amort_pp(k) = zill_rate × beitragssumme()` to 1e-9, and that an in-force point past
    duration 5 (model point 6) sees `alpha_amort_pp(k) = 0` in every year.
 6. **Stacking the declared rate on top of the guarantee.** A German *laufende Verzinsung* is the
    **total** credited rate, so `cred_rate(k) = max(rechnungszins, decl_rate(k))`, not `rechnungszins +
@@ -940,7 +940,7 @@ binds on this cell, and model point 13 exercises the other branch [R17] [S1]. *C
 `zill_spread_y = 5` years, now cited rather than **[std]** [R14] [S1] [S12]; `alpha_zuz_rate = 2.5 %` of each *Zuzahlung* **[std]**;
 `beta_prem = 7.5 %` **[std]**; `gamma_av = 0.35 %` p.a. **[std]**; `unit_cost_pp = 36.00 €` p.a.
 inflating at `expense_infl = 1.5 %` **[std]**. *Insurer expense and commission*, all **[std]**:
-`acq_expense_pp = 250.00 €` at inception; `comm_init_rate = 2.5 %` of `beitragssumme_pp()` at
+`acq_expense_pp = 250.00 €` at inception; `comm_init_rate = 2.5 %` of `beitragssumme()` at
 inception; `comm_renew_rate = 1.5 %` of premiums plus *Zuzahlungen* from the second projection year;
 `maint_expense_pp = 60.00 €` per in-force policy p.a. inflating; `annuity_admin_pp = 36.00 €` per
 annuitant p.a. inflating. *Behaviour*, all **[std]**: `bf_rate = 4.0 %` at durations 1–5, `3.0 %` at

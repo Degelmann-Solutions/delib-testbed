@@ -730,22 +730,36 @@ def topup_pp(t):
     return 0.0
 
 
-def beitragssumme():
-    """The *Beitragssumme*: the sum of premiums **payable**, at the **initial** level.
+def beitragssumme_prem():
+    """The annual premium of the *Beitragssumme*, at the **initial** level.
 
-    ``prem_pp_base() x (12 / prem_mode_months()) x prem_term_y()`` on a recurring-premium
-    contract — 200.00 x 12 x 30 = 72 000,00 EUR on the anchor cell — and the
-    *Einmalbeitrag* itself on a single-premium one.
+    ``prem_pp_base() x (12 / prem_mode_months())`` on a recurring-premium contract, and the
+    *Einmalbeitrag* itself on a single-premium one, counted once by
+    :func:`beitragssumme_years`; so ``beitragssumme()`` is 200.00 x 12 x 30 = 72 000,00 EUR
+    on the anchor cell.  It is the base of the acquisition charge and it is **invariant**:
+    it does not shrink when the contract lapses or goes *beitragsfrei*, and it does not
+    grow with a *Beitragsdynamik* increment or a *Zuzahlung*.  Letting it follow the
+    premiums actually paid is a listed pitfall — it would make the acquisition charge a
+    function of the lapse assumption, which is both wrong and circular.
 
-    It is the base of the acquisition charge and it is **invariant**: it does not shrink
-    when the contract lapses or goes *beitragsfrei*, and it does not grow with a
-    *Beitragsdynamik* increment or a *Zuzahlung*.  Letting it follow the premiums actually
-    paid is a listed pitfall — it would make the acquisition charge a function of the
-    lapse assumption, which is both wrong and circular.
+    Override reason: the premium is paid in instalments of ``prem_pp_base()`` every
+    ``prem_mode_months()`` months, or once as an *Einmalbeitrag*,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:168
     """
     if prem_form() == "einmal":
         return prem_pp_base()
-    return prem_pp_base() * (12.0 / prem_mode_months()) * prem_term_y()
+    return prem_pp_base() * (12.0 / prem_mode_months())
+
+
+def beitragssumme_years():
+    """The premium years of the *Beitragssumme*: ``prem_term_y()``, 1 for an *Einmalbeitrag*.
+
+    Override reason: the premium term is ``prem_term_y()`` years, and an *Einmalbeitrag* is
+    counted once, products/fondsgebundene_rentenversicherung/technical-notes.md:168
+    """
+    if prem_form() == "einmal":
+        return 1
+    return prem_term_y()
 
 
 def acq_window_months():

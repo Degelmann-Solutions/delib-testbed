@@ -1204,24 +1204,36 @@ def claims(t, kind=None):
         raise ValueError("invalid kind")
 
 
-def beitragssumme():
-    """The *Beitragssumme* the *Zillmerung* allowance is struck on.
+def beitragssumme_prem():
+    """The annual premium of the *Beitragssumme*: ``premium_mth_pp() x 12``.
 
-    ``premium_mth_pp() x 12 x (min(prem_end_age(), beitragssumme_cap_age) - issue_age())``
-    and, for the *Einmalbeitrag*, the *Einmalbeitrag* itself.
+    And, for the *Einmalbeitrag*, the *Einmalbeitrag* itself, counted once.  The
+    *Beitragssumme* is the base the *Zillmerung* allowance is struck on.
+
+    Override reason: the premium is monthly, ``premium_mth_pp()``, or a single premium,
+    products/pflegerentenversicherung/technical-notes.md:403
+    """
+    if prem_mode_months() == 0:
+        return premium_mth_pp()
+    return premium_mth_pp() * 12.0
+
+
+def beitragssumme_years():
+    """The premium years of the *Beitragssumme*, ``min(prem_end_age(), 85) - issue_age()``.
 
     A lifelong-premium contract has no finite *Beitragssumme* without a convention, and
     ``beitragssumme_cap_age = 85`` **[std]** is that convention.  It is a parameter, not a
     citation: what is cited is the 25 ‰ ceiling of DeckRV § 4 that the per-mille is set
-    exactly at, cut from 40 ‰ by the LVRG from 1 January 2015.
+    exactly at, cut from 40 ‰ by the LVRG from 1 January 2015.  1 for the *Einmalbeitrag*.
+
+    Override reason: the premium runs to ``prem_end_age``, capped at
+    ``beitragssumme_cap_age``, products/pflegerentenversicherung/technical-notes.md:403
     """
-    m = prem_mode_months()
-    if m == 0:
-        return premium_mth_pp()
+    if prem_mode_months() == 0:
+        return 1
     cap = int(data.param_table().at[                                 # noqa: F821
         "beitragssumme_cap_age", "value"])
-    years = max(0, min(prem_end_age(), cap) - issue_age())
-    return premium_mth_pp() * 12.0 * years
+    return max(0, min(prem_end_age(), cap) - issue_age())
 
 
 def acq_expense_pp():

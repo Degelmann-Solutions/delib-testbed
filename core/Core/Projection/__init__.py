@@ -303,6 +303,29 @@ def hoechstrechnungszins():
     raise ValueError("no Hoechstrechnungszins band covers issue_year")
 
 
+def beitragssumme_prem():
+    """The annual premium the *Beitragssumme* is struck on: the product's ``prem_gross_pp()``.
+
+    Reads the product's level annual gross premium; a product without one inherits this
+    cell unused.
+    """
+    return prem_gross_pp()                                           # noqa: F821
+
+
+def beitragssumme_years():
+    """The number of premium years the *Beitragssumme* counts, ``prem_term()``."""
+    return prem_term()                                               # noqa: F821
+
+
+def beitragssumme():
+    """BS: the *Beitragssumme*, ``beitragssumme_prem() x beitragssumme_years()``.
+
+    The total of the premiums payable over the agreed term, fixed at conclusion: the base
+    of the § 4 DeckRV acquisition-cost cap and of the initial commission.
+    """
+    return beitragssumme_prem() * beitragssumme_years()              # noqa: F821
+
+
 def disc_factor_mth(t):
     """v^(t/12): the *Rechnungszins* discount factor to month t, ``(1 + i)^(-t/12)``.
 

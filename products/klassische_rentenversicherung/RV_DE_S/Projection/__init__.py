@@ -172,7 +172,7 @@ P(k)                        prem_pp(k)                      Gross premium in pol
 P_sched(k)                  prem_pp_sched(k)                The premium as written at issue
 (none)                      prem_due(t)                     Whether P falls due in month t
 phi                         prem_freq_load()                Ratenzahlungszuschlag
-(sum of P_sched)            beitragssumme_pp()              Zillmer base
+(sum of P_sched)            beitragssumme()                 Zillmer base
 alpha_total                 alpha_total_pp()                Total acquisition charge
 alpha(k)                    charge_acq_pp(k)                Zillmered acquisition charge
 alpha~(k)                   charge_acq_spread_pp(k)         Evenly spread acquisition charge
@@ -513,7 +513,7 @@ def prem_pp_sched(k):
 
     It ignores any later *Beitragsfreistellung* on purpose.  The § 4 DeckRV zillmer base is
     the sum of all premiums payable under the contract **as written**, and a later election
-    does not retrospectively shrink that base — which is why :func:`beitragssumme_pp` sums
+    does not retrospectively shrink that base — which is why :func:`beitragssumme` sums
     this cells and not :func:`prem_pp`.
     """
     mp = model_point()
@@ -535,13 +535,16 @@ def prem_pp(k):
     return 0.0 if paid_up(k) else prem_pp_sched(k)
 
 
-def beitragssumme_pp():
+def beitragssumme():
     """The *Beitragssumme*: the sum of the premiums payable under the contract as written.
 
     ``sum of P_sched(u) for u = 0 .. min(prem_term_y, aufschub_y) - 1``, so the frequency loading
     is inside it.  51 000,00 € on the anchor cell.  This is the § 4 DeckRV base on which the
     acquisition charge is struck, and it is fixed at inception: a later
     *Beitragsfreistellung* does not shrink it.
+
+    Override reason: the sum runs over the premium schedule up to the *Aufschubzeit*, the
+    frequency loading inside it, products/klassische_rentenversicherung/technical-notes.md:462
     """
     mp = model_point()
     last = min(prem_term_y(), int(mp["aufschub_y"]))
@@ -549,7 +552,7 @@ def beitragssumme_pp():
 
 
 def alpha_total_pp():
-    """The total acquisition charge: ``alpha_rate x beitragssumme_pp()``.
+    """The total acquisition charge: ``alpha_rate x beitragssumme()``.
 
     The *Höchstzillmersatz* is 25 ‰ of the *Beitragssumme* for contracts concluded from
     1 January 2015 and 40 ‰ before, the rate at conclusion applying for the whole term; the
@@ -558,7 +561,7 @@ def alpha_total_pp():
     """
     return (float(data.charge_table().at[                            # noqa: F821
         (model_point()["charge_id"], "alpha_rate"), "value"])
-        * beitragssumme_pp())
+        * beitragssumme())
 
 
 def alpha_cum_pp(k):

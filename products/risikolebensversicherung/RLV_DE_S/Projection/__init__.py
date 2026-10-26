@@ -114,6 +114,7 @@ wm(t)                      lapse_rate_mth(t)               The same, applied in 
 (table)                    lapse_rate_base(t)              Table lapse rate
 w_cum(t)                   lapse_cum(t)                    Cumulative lapse proportion
 M_shock(t)                 shock_lapse_factor(t)           Premium-shock multiplier
+(gate)                     lapse_factor(t)                 0 in the final year, else M
 (none)                     sel_lapse_factor(t)             Loading on persisters
 v^y                        disc_factor(y)                  Rechnungszins discount
 p1(y)                      pols_tariff(y)                  Tariff survivorship, no lapse
@@ -816,6 +817,21 @@ def shock_lapse_factor(t):
         0.0, prem_paid_pp(t) / prev - 1.0)
 
 
+def lapse_factor(t):
+    """The factor on the table lapse rate: 0 through the final policy year, else the shock.
+
+    ``duration(t) >= proj_len_y() - 1`` closes the lapse, where cover expires; elsewhere it
+    is :func:`shock_lapse_factor`, 1.0 in the base run.  See :func:`lapse_rate`.
+
+    Override reason: the lapse is zero through the whole final policy year, where cover
+    expires, and loaded by the premium-shock multiplier elsewhere,
+    products/risikolebensversicherung/technical-notes.md:752
+    """
+    if duration(t) >= proj_len_y() - 1:
+        return 0.0
+    return shock_lapse_factor(t)
+
+
 def lapse_rate(t):
     """w(t): the lapse rate applied at the end of period t.
 
@@ -834,9 +850,10 @@ def lapse_rate(t):
     readable apart.  This is the **annual** rate; :func:`lapse_rate_mth` is what is
     applied.
     """
-    if duration(t) >= proj_len_y() - 1:
+    f = lapse_factor(t)
+    if f == 0.0:
         return 0.0
-    return lapse_rate_base(t) * shock_lapse_factor(t)
+    return lapse_rate_base(t) * f
 
 
 def lapse_rate_mth(t):

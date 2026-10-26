@@ -142,6 +142,7 @@ q_mth(t)                   mort_rate_mth(t)                Its geometric twelfth
 (table)                    mort_rate_at_age(x)             Accumulation table rate at x
 q(x, tau)                  annuity_mort_rate(x, tau)       Generational annuitant rate
 w(t)                       lapse_rate(t)                   ANNUAL surrender rate
+(gate)                     lapse_factor(t)                 0 from t_conv()
 w_mth(t)                   lapse_rate_mth(t)               Its geometric twelfth
 theta(t)                   transfer_rate(t)                ANNUAL Anbieterwechsel rate
 theta_mth(t)               transfer_rate_mth(t)            Its geometric twelfth
@@ -686,6 +687,17 @@ def mort_rate(t):
                * annuity_mort_be_factor)                             # noqa: F821
 
 
+def lapse_factor(t):
+    """The factor on the table surrender rate: 0 from ``t_conv()``, else 1.
+
+    Override reason: a contract in payment cannot be surrendered, so the rate is zero from
+    ``t_conv()``, products/riester_rente/technical-notes.md:763
+    """
+    if not is_accum(t):
+        return 0.0
+    return 1.0
+
+
 def lapse_rate(t):
     """w(t): the **annual** surrender rate of the year month t falls in, by duration.
 
@@ -697,9 +709,10 @@ def lapse_rate(t):
     market's description of a Riester contract as economically unsurrenderable is stated
     numerically rather than only in prose.
     """
-    if not is_accum(t):
+    f = lapse_factor(t)
+    if f == 0.0:
         return 0.0
-    return lapse_rate_base(t)
+    return lapse_rate_base(t) * f
 
 
 def lapse_rate_mth(t):

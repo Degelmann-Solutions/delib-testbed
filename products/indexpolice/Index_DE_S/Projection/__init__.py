@@ -134,6 +134,7 @@ w_l(t)                     lapse_rate(t)                   Annual surrender rate
 w^m_l(t)                   lapse_rate_mth(t)               The monthly rate applied
 (table)                    lapse_rate_base(t)              The table rate before the
                                                            terminal-year override
+(gate)                     lapse_factor(t)                 0 in the final policy year
 phi                        prem_freq_load()                Ratenzahlungszuschlag
 P_b(k)                     prem_base_pp(k)                 Annual-mode premium due
 P(k)                       prem_gross_pp(k)                Premium actually collected
@@ -1101,6 +1102,20 @@ def lapse_rate_base(t):
     return float(data.lapse_table().loc[duration(t), "lapse_rate"])  # noqa: F821
 
 
+def lapse_factor(t):
+    """The factor on the table surrender rate: 0 through the whole final policy year, else 1.
+
+    ``duration(t) == proj_len_y() - 1`` closes the lapse: that year ends at *Rentenbeginn*,
+    and the whole surviving cohort is booked as a maturity.  See :func:`lapse_rate`.
+
+    Override reason: the surrender rate is zero through the whole final policy year, which
+    ends at *Rentenbeginn*, products/indexpolice/technical-notes.md:566
+    """
+    if duration(t) == proj_len_y() - 1:
+        return 0.0
+    return 1.0
+
+
 def lapse_rate(t):
     """``w_l(t)``: the surrender rate actually applied in period t.
 
@@ -1117,9 +1132,10 @@ def lapse_rate(t):
     establishes one, and the zero keeps the final-year cohort a single population with a
     single benefit.
     """
-    if duration(t) == proj_len_y() - 1:
+    f = lapse_factor(t)
+    if f == 0.0:
         return 0.0
-    return lapse_rate_base(t)
+    return lapse_rate_base(t) * f
 
 
 def lapse_rate_mth(t):

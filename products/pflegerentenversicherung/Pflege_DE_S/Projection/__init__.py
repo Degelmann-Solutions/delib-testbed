@@ -90,6 +90,7 @@ delta_g(t)                  det_force(t, g)                 Force of deteriorati
 (table, damped)             rec_rate(t, g)                  Annual recovery rate
 rho_g(t)                    rec_force(t, g)                 Force of recovery
 (table)                     lapse_rate(t)                   Annual lapse, active state
+(gate)                      lapse_factor(t)                 0 after the premium term
 w(t)                        lapse_rate_mth(t)               Monthly lapse probability
 (allocation)                p_act_stay/death/care(t)        Active-state month transitions
 (allocation)                p_pg_stay/death/worse/better    Grade-g month transitions
@@ -667,6 +668,17 @@ def rec_force(t, g):
     return -math.log(1.0 - min(q, 1.0 - 1e-12))                      # noqa: F821
 
 
+def lapse_factor(t):
+    """The factor on the table lapse rate: 0 once the premium term has ended, else 1.
+
+    Override reason: lapse is zero once the premium term has ended, a paid-up contract
+    having no premium-driven exit, products/pflegerentenversicherung/technical-notes.md:363
+    """
+    if age(t) >= prem_end_age():
+        return 0.0
+    return 1.0
+
+
 def lapse_rate(t):
     """The **annual** lapse rate from the active state in policy year ``y(t)``.
 
@@ -679,9 +691,10 @@ def lapse_rate(t):
     reached the risk period — which inverts the usual protection intuition and is why the
     first-order pricing basis deliberately carries none.
     """
-    if age(t) >= prem_end_age():
+    f = lapse_factor(t)
+    if f == 0.0:
         return 0.0
-    return lapse_rate_base(t)
+    return lapse_rate_base(t) * f
 
 
 def lapse_rate_mth(t):

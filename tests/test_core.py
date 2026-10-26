@@ -534,6 +534,10 @@ CORE_CELLS = {
                             "pflegerentenversicherung": "derived",
                             "riester_rente": "derived",
                             "risikolebensversicherung": "derived"},
+        "lapse_factor": {"indexpolice": "override",
+                         "pflegerentenversicherung": "override",
+                         "riester_rente": "override",
+                         "risikolebensversicherung": "override"},
     },
 }
 

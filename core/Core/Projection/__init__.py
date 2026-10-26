@@ -324,6 +324,15 @@ def lapse_rate_base(t):
                         "lapse_rate"])
 
 
+def lapse_factor(t):
+    """The factor on the table lapse rate in month t; 1, neutral.
+
+    A product that closes the lapse in part of the frame (0 there) or loads it overrides
+    it; where it is 0 the table is not read.
+    """
+    return 1.0
+
+
 def rechnungszins():
     """i: the contract's *Rechnungszins*, fixed at conclusion, from the model point.
 

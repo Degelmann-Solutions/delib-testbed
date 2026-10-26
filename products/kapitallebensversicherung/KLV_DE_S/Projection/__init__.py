@@ -610,7 +610,7 @@ def mort_rate_mth(t):
     return 1.0 - (1.0 - mort_rate(t)) ** (1.0 / 12.0)
 
 
-def hrz_max():
+def hoechstrechnungszins():
     """The § 2 DeckRV *Höchstrechnungszins* for this contract's ``issue_year``.
 
     A **cohort fact**: the ceiling in force at conclusion applies for the whole term.  The
@@ -618,6 +618,10 @@ def hrz_max():
     split years carry the **higher** of the two rates - which makes
     :func:`check_rechnungszins_cap` permissive rather than strict in exactly the two years
     where the model cannot know which half of the year a contract was written in **[std]**.
+
+    Override reason: the ceiling is read from the product's year-keyed *deckrv_table.csv*,
+    clamped to its range, with the split years 1994 and 2000 at the higher rate,
+    products/kapitallebensversicherung/technical-notes.md:252
     """
     tbl = data.deckrv_table()                                        # noqa: F821
     y = min(max(issue_year(), int(tbl.index.min())), int(tbl.index.max()))
@@ -2108,12 +2112,12 @@ def check_equivalence():
 def check_rechnungszins_cap_resid(t):
     """The § 2 DeckRV ceiling residual; zero unless the guarantee exceeds the cohort's cap.
 
-    ``min(0, hrz_max() - rechnungszins())``, the same value at every ``t``.  A **parameter
-    invariant rather than a roll-forward identity**, and it lives in the model rather than in
+    ``min(0, hoechstrechnungszins() - rechnungszins())``, the same value at every ``t``.
+    A **parameter invariant rather than a roll-forward identity**, and it lives in the model rather than in
     a build script because a German model point's cohort *is* an assumption: a 4,00 %
     guarantee on a 2026 issue year is not a stress, it is a data error.
     """
-    return min(0.0, hrz_max() - rechnungszins())
+    return min(0.0, hoechstrechnungszins() - rechnungszins())
 
 
 def check_rechnungszins_cap():

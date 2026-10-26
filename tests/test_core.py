@@ -218,6 +218,7 @@ CORE_CELLS = {
                          "fondsgebundene_rentenversicherung": "derived",
                          "kapitallebensversicherung": "derived",
                          "klassische_rentenversicherung": "derived"},
+        "hoechstrechnungszins_table": {"sofortrente": "derived"},
     },
     "Projection": {
         "model_point": dict.fromkeys(MODELS, "derived"),
@@ -418,6 +419,8 @@ CORE_CELLS = {
                           "riester_rente": "derived",
                           "risikolebensversicherung": "derived",
                           "sofortrente": "derived"},
+        "hoechstrechnungszins": {"kapitallebensversicherung": "override",
+                                 "sofortrente": "derived"},
         "disc_factor_mth": {"berufsunfaehigkeit": "derived",
                             "pflegerentenversicherung": "derived"},
         "disc_factor": {"kapitallebensversicherung": "derived",

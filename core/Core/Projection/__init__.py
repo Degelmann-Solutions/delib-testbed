@@ -288,6 +288,21 @@ def rechnungszins():
     return float(model_point()["rechnungszins"])                     # noqa: F821
 
 
+def hoechstrechnungszins():
+    """The statutory *Höchstrechnungszins* in force at ``issue_year()``, the contract's cap.
+
+    Read from ``data.hoechstrechnungszins_table()`` by the band that covers the year of
+    issue: the cap in force at conclusion stays with the contract for its whole term
+    (§ 2 Abs. 2 DeckRV).  Raises ``ValueError`` where no band covers it.
+    """
+    tab = data.hoechstrechnungszins_table()                          # noqa: F821
+    y = issue_year()                                                 # noqa: F821
+    for year_from in tab.index:
+        if int(year_from) <= y <= int(tab.loc[year_from, "year_to"]):
+            return float(tab.loc[year_from, "max_rate"])
+    raise ValueError("no Hoechstrechnungszins band covers issue_year")
+
+
 def disc_factor_mth(t):
     """v^(t/12): the *Rechnungszins* discount factor to month t, ``(1 + i)^(-t/12)``.
 

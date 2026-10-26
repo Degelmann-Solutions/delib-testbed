@@ -25,7 +25,7 @@ print("model point {}: {} - {}{} {} - SE {:,.0f} EUR, ratio {:.2f}, term {}, "
           proj.prem_term()))
 print("issue {} at i1 = {:.2%} (cap {:.2%}), zillmer_on = {}, alpha = {:.4f} "
       "(cap {:.3f})".format(
-          proj.issue_year(), proj.rechnungszins(), proj.hrz_max(),
+          proj.issue_year(), proj.rechnungszins(), proj.hoechstrechnungszins(),
           proj.zillmer_on(), proj.alpha_rate(), proj.zillmer_max()))
 print("frequency {} {} x {}, phi = {:.3f}   surplus_use = {}   scenario = {}   "
       "bfz_year = {}".format(

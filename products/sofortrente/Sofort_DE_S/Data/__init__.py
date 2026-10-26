@@ -161,19 +161,6 @@ def surplus_scale_table():
         input_dir() / surplus_scale_file, index_col="surplus_form")  # noqa: F821
 
 
-def hoechstrechnungszins_table():
-    """The statutory *Höchstrechnungszins* history, from *hoechstrechnungszins_table.csv*.
-
-    Indexed by ``year_from``, with ``year_to`` closing each band and ``max_rate`` the cap
-    in force.  A contract's cap is the one in force at its own *Vertragsbeginn* and stays
-    with it for life, so an in-force model point is checked against its vintage rather
-    than against today's rate.  The cap is an upper bound and not the tariff rate: a
-    carrier may price below it, and one in the corpus is observed doing so.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / hoechstrechnungszins_file, index_col="year_from")   # noqa: F821
-
-
 # ---------------------------------------------------------------------------
 # References
 

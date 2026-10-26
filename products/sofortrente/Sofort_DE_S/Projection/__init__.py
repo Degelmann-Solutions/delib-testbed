@@ -70,7 +70,7 @@ SP_net           net_single_prem()                     SP (1 - alpha)
 alpha            expense_load_alpha                    Acquisition loading in the tariff
 beta             expense_load_beta                     Loading on the annuity value
 i                rechnungszins()                       Tariff Rechnungszins
-(cap)            max_tariff_int_rate()                 Hoechstrechnungszins at issue_year
+(cap)            hoechstrechnungszins()                Hoechstrechnungszins at issue_year
 m                payment_freq()                        Instalments per year
 p = 12/m         pay_period_mths()                     Months between instalments
 D                defer_mths()                          Aufschubzeit in months
@@ -812,24 +812,6 @@ def refund_pv():
     return total
 
 
-def max_tariff_int_rate():
-    """The statutory *Höchstrechnungszins* in force at ``issue_year()``.
-
-    Read from *hoechstrechnungszins_table.csv* by the contract's own vintage, because a
-    German in-force book is a stack of cohorts and the cap that applied at conclusion stays
-    with the contract for life: a 2012 point sits at 1,75 %, a 2022 point at 0,25 % and a
-    2025 point at 1,00 %, the last being the first increase in about thirty years.  The two
-    mid-year steps of 1994 and 2000 are assigned **[std]** to the rate in force on
-    1 January of the split year.
-    """
-    tab = data.hoechstrechnungszins_table()                          # noqa: F821
-    y = issue_year()
-    for year_from in tab.index:
-        if int(year_from) <= y <= int(tab.loc[year_from, "year_to"]):
-            return float(tab.loc[year_from, "max_rate"])
-    raise ValueError("no Hoechstrechnungszins band covers issue_year")
-
-
 def surplus_init_pct():
     """u0: the *Überschussrente* at outset, as a fraction of the *garantierte Rente*.
 
@@ -1398,14 +1380,14 @@ def check_death_option_xor():
 def check_tariff_int_rate():
     """True when the tariff *Rechnungszins* is within the cap of the contract's own vintage.
 
-    ``rechnungszins() <= max_tariff_int_rate() + roll_fwd_tol``.  An **inequality**, not
+    ``rechnungszins() <= hoechstrechnungszins() + roll_fwd_tol``.  An **inequality**, not
     an equality: the *Höchstrechnungszins* binds the reserving rate and, through the VAG,
     the rate a new tariff may be priced at, but a carrier may price below it and one in the
     corpus is observed pricing a guaranteed annuity factor at 0 % while the statutory
     maximum was positive.
     """
     return bool(rechnungszins()
-                <= max_tariff_int_rate() + roll_fwd_tol)             # noqa: F821
+                <= hoechstrechnungszins() + roll_fwd_tol)             # noqa: F821
 
 
 def result_cf():

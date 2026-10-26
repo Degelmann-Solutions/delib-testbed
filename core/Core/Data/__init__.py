@@ -107,3 +107,13 @@ def charge_table():
     """The tariff charges, read from ``charge_file`` by ``charge_table_index()``."""
     return pd.read_csv(                                              # noqa: F821
         input_dir() / charge_file, index_col=charge_table_index())   # noqa: F821
+
+
+def hoechstrechnungszins_table():
+    """The statutory *Höchstrechnungszins* history by band, from ``hoechstrechnungszins_file``.
+
+    Indexed by ``year_from``, with ``year_to`` closing each band and ``max_rate`` the cap
+    in force.
+    """
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / hoechstrechnungszins_file, index_col="year_from")   # noqa: F821

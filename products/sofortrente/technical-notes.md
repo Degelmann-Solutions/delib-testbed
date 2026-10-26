@@ -524,7 +524,7 @@ options and the tariff interest rate, and on nothing that depends on the path. I
 not priced into the guarantee (pitfall 1's neighbour), so `annuity_pp_derived()` is invariant to
 `surplus_form` and `check_equivalence()` closes on every derived point regardless of it.
 
-`check_tariff_int_rate()` asserts `rechnungszins() ≤ max_tariff_int_rate() + roll_fwd_tol`, the cap
+`check_tariff_int_rate()` asserts `rechnungszins() ≤ hoechstrechnungszins() + roll_fwd_tol`, the cap
 being read from `hoechstrechnungszins_table.csv` at `issue_year()` [REG-R14] [REG-R15]. The cap binds
 the *reserving* rate and, through § 138 Abs. 1 VAG, the rate a new tariff may be priced at [REG-R8];
 a carrier may price below it and one is observed doing so [S6], which is why the check is an
@@ -653,7 +653,7 @@ product's own roll-forward and pricing identities.
 | `check_guarantee_certain` | `payment_factor(t) == 1.0` at every payment month with `t < guar_end_mth()`, whatever `δ` — the instalment is certain inside the *Rentengarantiezeit* [R23] |
 | `check_equivalence` | `net_single_prem() == annuity_pp_derived()·ä·(1 + β) + refund_pv()` to `roll_fwd_tol` scaled by `net_single_prem()` — the identity is an equality between euro amounts of the order of 10⁵ and the refund solve converges on `R` rather than on the residual. Returns `True` where `annuity_pp_init() > 0`, the annuity having been struck on a basis this model does not reproduce; the notes say so rather than letting it pass silently |
 | `check_death_option_xor` | `refund_form() == "none"` **or** (`guar_years() == 0` **and** `surv_pct() == 0`) — the **[std]** exclusivity of research gap 10, asserted rather than assumed |
-| `check_tariff_int_rate` | `rechnungszins() ≤ max_tariff_int_rate() + roll_fwd_tol`, the cap read at `issue_year()` [REG-R14] [REG-R15]. An inequality, not an equality: a carrier may price below the cap and one is observed doing so [S6] |
+| `check_tariff_int_rate` | `rechnungszins() ≤ hoechstrechnungszins() + roll_fwd_tol`, the cap read at `issue_year()` [REG-R14] [REG-R15]. An inequality, not an equality: a carrier may price below the cap and one is observed doing so [S6] |
 
 ### Monthly processing order
 

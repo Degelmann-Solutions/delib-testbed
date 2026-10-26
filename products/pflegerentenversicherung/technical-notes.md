@@ -759,7 +759,7 @@ The specific ways an implementation of *this* product looks right and is wrong. 
 7. **Adding monthly transition probabilities instead of allocating one survival.** Assert
    `p_pg_stay + p_pg_death + p_pg_worse + p_pg_better == 1` to 1e-12 for every `t` and `g`, and the
    same for the three active-state probabilities.
-8. **Dividing an annual rate by twelve.** Assert `mort_rate_mth(t) == 1 - (1 - mort_rate(t))**(1/12)`
+8. **Dividing an annual rate by twelve.** Assert, on the published diagnostic `mort_rate_mth` of the force-based step (the plain twelfth at every age, the limiting one included), `mort_rate_mth(t) == 1 - (1 - mort_rate(t))**(1/12)`
    and the same form for lapse; that the monthly rate is strictly **below** the annual one wherever
    that is positive, which is the house convention; and that `q/12` is strictly below
    `1 - (1 - q)^(1/12)`, so **dividing by twelve understates the monthly decrement**. The direction

@@ -708,13 +708,9 @@ def sum_death():
 
 
 def tariff_death_sum():
-    """SD: the death sum of the death leg, :func:`sum_death`, outside the sum over years.
+    """SD: the guaranteed *Todesfallleistung*, :func:`sum_death`, the death leg's sum.
 
-    On the *gemischte Versicherung* proper, where ``death_ratio = 1``, the benefits' value
-    :func:`tariff_benefit_pv` is very nearly the endowment factor times the sum insured,
-    and the price is only weakly sensitive to the mortality basis - the survival leg
-    dominating a twenty-five-year contract's reserve.  Claims fall at the end of the policy
-    year of death, which is why the discount exponent is ``k + 1``.
+    The core's :func:`tariff_death_pv` multiplies its sum over the policy years by it.
 
     Override reason: the death leg pays the guaranteed Todesfallleistung SD,
     products/kapitallebensversicherung/technical-notes.md:441
@@ -734,8 +730,8 @@ def tariff_death_load(y):
 def tariff_maturity_sum():
     """SE: the *Erlebensfallleistung*, :func:`sum_assured`, paid at the end of the term.
 
-    ``SE * v1^n * npx``.  No *Risikozuschlag*: an extra-mortality loading may not make the
-    survival benefit cheaper, so it stays out of both the discount and the survivorship.
+    The core's :func:`tariff_maturity_pv` multiplies the discounted survivorship to the end
+    of the term by it.
 
     Override reason: the endowment pays the Erlebensfallleistung SE at maturity,
     products/kapitallebensversicherung/technical-notes.md:442

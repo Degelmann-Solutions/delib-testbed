@@ -8,7 +8,8 @@
 - Every product has the core spaces as bases, and every cell unified into the core
   (``CORE_CELLS``) is defined in the core and, in each product that has it, either derived
   from the core or overridden (with the reason the override test requires).
-- The time axis: RLV's derived ``age`` and ``policy_year`` follow the inception clock, BU's
+- The time axis: Basis and Riester offset every clock cell by ``clock_offset_mth``, KLV
+  counts from issue; RLV's derived ``age`` and ``policy_year`` follow the inception clock, BU's
   overrides floor them before inception, Sofort's ``age`` reads the second life.
 - The tariff basis: KLV reads its rate from the model point, RLV from ``param_table.csv``;
   the monthly discount factor equals the annual one on a year start; the tariff
@@ -212,6 +213,7 @@ CORE_CELLS = {
         "issue_year": {"basisrente": "derived",
                        "kapitallebensversicherung": "derived",
                        "klassische_rentenversicherung": "derived",
+                       "riester_rente": "override",
                        "sofortrente": "derived"},
         "duration_init": {"basisrente": "derived",
                           "indexpolice": "derived",
@@ -223,11 +225,20 @@ CORE_CELLS = {
                               "fondsgebundene_rentenversicherung": "derived",
                               "pflegerentenversicherung": "derived",
                               "sofortrente": "derived"},
-        "k_start": {"basisrente": "override",
+        "clock_offset_mth": {"basisrente": "override",
+                             "berufsunfaehigkeit": "override",
+                             "indexpolice": "derived",
+                             "kapitallebensversicherung": "derived",
+                             "klassische_rentenversicherung": "derived",
+                             "pflegerentenversicherung": "derived",
+                             "riester_rente": "override",
+                             "risikolebensversicherung": "derived",
+                             "sofortrente": "derived"},
+        "k_start": {"basisrente": "derived",
                     "indexpolice": "derived",
                     "kapitallebensversicherung": "derived",
                     "klassische_rentenversicherung": "derived",
-                    "riester_rente": "override"},
+                    "riester_rente": "derived"},
         "t_start": {"fondsgebundene_rentenversicherung": "override",
                     "indexpolice": "derived",
                     "kapitallebensversicherung": "derived",
@@ -237,13 +248,13 @@ CORE_CELLS = {
                     "sofortrente": "override"},
         "proj_year": {"basisrente": "derived",
                       "riester_rente": "derived"},
-        "duration_mth": {"basisrente": "override",
-                         "berufsunfaehigkeit": "override",
+        "duration_mth": {"basisrente": "derived",
+                         "berufsunfaehigkeit": "derived",
                          "indexpolice": "derived",
                          "kapitallebensversicherung": "derived",
                          "klassische_rentenversicherung": "derived",
                          "pflegerentenversicherung": "derived",
-                         "riester_rente": "override",
+                         "riester_rente": "derived",
                          "risikolebensversicherung": "derived",
                          "sofortrente": "derived"},
         "duration": {"basisrente": "derived",
@@ -264,19 +275,19 @@ CORE_CELLS = {
                         "pflegerentenversicherung": "derived",
                         "risikolebensversicherung": "derived",
                         "sofortrente": "derived"},
-        "age_y": {"basisrente": "override",
+        "age_y": {"basisrente": "derived",
                   "indexpolice": "derived",
                   "kapitallebensversicherung": "derived",
                   "klassische_rentenversicherung": "derived",
-                  "riester_rente": "override"},
-        "age": {"basisrente": "override",
+                  "riester_rente": "derived"},
+        "age": {"basisrente": "derived",
                 "berufsunfaehigkeit": "override",
                 "fondsgebundene_rentenversicherung": "derived",
                 "indexpolice": "derived",
                 "kapitallebensversicherung": "derived",
                 "klassische_rentenversicherung": "derived",
                 "pflegerentenversicherung": "derived",
-                "riester_rente": "override",
+                "riester_rente": "derived",
                 "risikolebensversicherung": "derived",
                 "sofortrente": "override"},
         "proj_len_y": {"basisrente": "override",
@@ -295,12 +306,12 @@ CORE_CELLS = {
                      "riester_rente": "derived",
                      "risikolebensversicherung": "derived",
                      "sofortrente": "override"},
-        "calendar_year_y": {"basisrente": "override",
+        "calendar_year_y": {"basisrente": "derived",
                             "klassische_rentenversicherung": "derived",
-                            "riester_rente": "override"},
-        "calendar_year": {"basisrente": "override",
+                            "riester_rente": "derived"},
+        "calendar_year": {"basisrente": "derived",
                           "klassische_rentenversicherung": "derived",
-                          "riester_rente": "override",
+                          "riester_rente": "derived",
                           "sofortrente": "derived"},
         "rechnungszins": {"basisrente": "derived",
                           "berufsunfaehigkeit": "override",
@@ -488,6 +499,42 @@ def test_rlv_age_and_policy_year_follow_the_inception_clock(product_models):
         for t in range(item.t_start(), item.proj_len()):
             assert item.age(t) == item.issue_age() + t // 12, (point_id, t)
             assert item.policy_year(t) == t // 12 + 1, (point_id, t)
+
+
+@pytest.mark.parametrize("product", ["basisrente", "riester_rente"])
+def test_the_valuation_clock_offsets_every_clock_cell(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.clock_offset_mth._is_defined()
+    for name in ("k_start", "duration_mth", "duration_y", "age_y", "age"):
+        assert projection.cells[name]._is_derived(), name
+    points = model.Data.model_point_table()
+    in_force = points.index[points["duration_init"] > 0]
+    assert len(in_force), "no in-force model point"
+    for point_id in in_force:
+        item = projection[point_id]
+        d = item.duration_init()
+        assert item.clock_offset_mth() == 12 * d
+        assert item.k_start() == 0
+        for k in range(3):
+            assert item.duration_y(k) == d + k, (point_id, k)
+        for t in (0, 11, 12, 30):
+            assert item.age(t) == item.issue_age() + d + t // 12, (point_id, t)
+
+
+def test_the_inception_clock_counts_from_issue(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.clock_offset_mth._is_derived()
+    points = model.Data.model_point_table()
+    in_force = points.index[points["duration_init"] > 0]
+    assert len(in_force), "no in-force model point"
+    for point_id in in_force:
+        item = projection[point_id]
+        assert item.clock_offset_mth() == 0
+        assert item.k_start() == item.duration_init()
+        for k in range(3):
+            assert item.duration_y(k) == k, (point_id, k)
 
 
 def test_bu_policy_year_and_age_are_floored_before_inception(product_models):

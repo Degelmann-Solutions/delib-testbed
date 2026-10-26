@@ -107,6 +107,7 @@ x(t)                       age(t)                          The same, read from a
 d(k)                       duration_y(k)                   Completed policy years in year k
 d(t)                       duration(t)                     The same, read from a month
 (none)                     duration_mth(t)                 Completed policy months
+12 d(0)                    clock_offset_mth()              Policy months done at t = 0
 (none)                     policy_year(t)                  Contractual 1-based label
 y(k)                       calendar_year_y(k)              Calendar year in year k
 y(t)                       calendar_year(t)                The same, read from a month
@@ -443,82 +444,20 @@ def proj_len_y():
     return omega_age() - age(0) + 1
 
 
-def k_start():
-    """The first projected year: 0, the frame opens at the valuation date.
+def clock_offset_mth():
+    """The policy months completed at ``t = 0``, ``12 x duration_init``.
 
-    Override reason: ``k`` counts projection years from the valuation date, so the first
-    projected year is 0 and ``t_start()`` derives 0, products/basisrente/model.md:57
-    """
-    return 0
-
-
-def age_y(k):
-    """x(k): attained age in projection year k.
-
-    ``issue_age + duration_init + k``.  Age last birthday at conclusion
-    (*Eintrittsalter*), stepping on the policy anniversary **[std]**: no German convention
-    was established, and here mortality drives the annuity's duration rather than any
-    benefit amount, so a half-year offset is second order.
-
-    Override reason: ``k`` is the projection year from the valuation date, not the policy
-    year, so the age adds ``duration_init()``, products/basisrente/model.md:58
-    """
-    return issue_age() + duration_init() + k
-
-
-def age(t):
-    """x(t): attained age in projection month t, ``age_y(proj_year(t))``.
-
-    The age **steps on the anniversary** and not monthly, which is what lets one
-    generational mortality surface serve every month of a *Versicherungsjahr* and is why
-    the twelve months of a year share one annual death rate.
-
-    Override reason: ``t`` counts months from the valuation date, so the age is read at the
-    projection year, not at the policy year, products/basisrente/model.md:54
-    """
-    return age_y(proj_year(t))
-
-
-def duration_mth(t):
-    """**Completed policy months** at the start of projection month t.
-
-    ``12 x duration_init + t``.  Carried because it is the only quantity that distinguishes
-    two model points at the same projection month — a new-business point at ``t = 12`` has
-    completed twelve policy months, an in-force point opening at ``duration_init = 17`` has
-    completed 216 — and because ``duration(t) = duration_mth(t) // 12`` states in code that
-    the policy duration is the policy month divided down.
+    ``t`` counts months from the valuation date, so every clock cell of the core adds the
+    elapsed policy months: ``duration_mth(t) = 12 x duration_init + t``, ``k_start() = 0``,
+    ``duration_y(k) = duration_init + k``, ``age_y(k) = issue_age + duration_init + k`` and
+    ``calendar_year_y(k) = issue_year + duration_init + k``.  The age and the calendar year
+    **step on the anniversary**, so the twelve months of a year share one annual death rate
+    on the generational DAV 2004 R surface.
 
     Override reason: ``t`` counts months from the valuation date, not from issue, so the
     completed policy months add ``duration_init()`` years, products/basisrente/model.md:54
     """
-    return 12 * duration_init() + t
-
-
-def calendar_year_y(k):
-    """y(k): calendar year at the start of projection year k.
-
-    ``issue_year + duration_init + k``.  Carried because the mortality basis is
-    **generational**: DAV 2004 R is a *Generationentafel* with the improvement inside the
-    table, so :func:`mort_rate_at_age` needs a calendar year as well as an age.  Two model
-    points that reach the same attained age in different calendar years see different
-    rates, and treating the basis as a period table is the fifteenth pitfall.
-
-    Override reason: ``k`` is the projection year from the valuation date, not the policy
-    year, so the calendar year adds ``duration_init()``, products/basisrente/model.md:58
-    """
-    return issue_year() + duration_init() + k
-
-
-def calendar_year(t):
-    """y(t): calendar year in projection month t, ``calendar_year_y(proj_year(t))``.
-
-    Steps on the policy anniversary rather than on 1 January, which is the same convention
-    the attained age follows and the one the annual-step model necessarily used.
-
-    Override reason: ``t`` counts months from the valuation date, so the calendar year is
-    read at the projection year, not at the policy year, products/basisrente/model.md:54
-    """
-    return calendar_year_y(proj_year(t))
+    return 12 * duration_init()
 
 
 def ret_y():

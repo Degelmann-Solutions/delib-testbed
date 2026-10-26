@@ -66,6 +66,7 @@ Notes symbol               Cells                           Meaning
 n                          proj_len()                      Number of projected months
 (none)                     first_len()                     Months in the pricing run
 u(t)                       duration_mth(t)                 Elapsed policy months at t
+u(0)                       clock_offset_mth()              Elapsed policy months at t = 0
 y(t)                       policy_year(t)                  Policy year containing t
 x(t)                       age(t)                          Attained age, ALB
 (none)                     age_first(s)                    Attained age in the pricing run
@@ -580,10 +581,11 @@ def first_len():
     return 12 * (cover_end_age() - issue_age())
 
 
-def duration_mth(t):
-    """u(t): elapsed policy months at the start of month t.
+def clock_offset_mth():
+    """The policy months completed at ``t = 0``, ``duration_mth_init()``.
 
-    ``duration_mth_init() + t``.  Defined for negative ``t`` as well, because
+    So the core's ``duration_mth(t) = duration_mth_init() + t``, u(t), the elapsed policy
+    months at the start of month t.  Defined for negative ``t`` as well, because
     :func:`bu_rente_pp` reads it there to recover the insured *BU-Rente* at the onset of a
     claim that began before the valuation date.
 
@@ -591,7 +593,7 @@ def duration_mth(t):
     of issue, so the completed months add ``duration_mth_init()``,
     products/berufsunfaehigkeit/technical-notes.md:56
     """
-    return duration_mth_init() + t
+    return duration_mth_init()
 
 
 def policy_year(t):

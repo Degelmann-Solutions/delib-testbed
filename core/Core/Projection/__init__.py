@@ -79,9 +79,21 @@ def duration_mth_init():
     return int(model_point()["duration_mth_init"])                   # noqa: F821
 
 
+def clock_offset_mth():
+    """The months from issue to ``t = 0``: 0, ``t`` counts policy months from issue.
+
+    The inception clock.  A product whose ``t`` counts months from the valuation date
+    overrides it with the policy months completed there; every clock cell below reads it.
+    """
+    return 0
+
+
 def k_start():
-    """The first projected policy year, ``duration_init()``."""
-    return duration_init()                                           # noqa: F821
+    """The first projected policy year, ``duration_init() - clock_offset_mth() // 12``.
+
+    ``duration_init()`` on the inception clock, 0 where ``t = 0`` is the valuation date.
+    """
+    return duration_init() - clock_offset_mth() // 12                # noqa: F821
 
 
 def t_start():
@@ -95,8 +107,8 @@ def proj_year(t):
 
 
 def duration_mth(t):
-    """The completed policy months at the start of month t: ``t``, counted from issue."""
-    return t
+    """The completed policy months at the start of month t, ``clock_offset_mth() + t``."""
+    return clock_offset_mth() + t                                    # noqa: F821
 
 
 def duration(t):
@@ -105,8 +117,8 @@ def duration(t):
 
 
 def duration_y(k):
-    """The completed policy years at the start of projection year k, ``duration_init() + k``."""
-    return duration_init() + k                                       # noqa: F821
+    """The completed policy years at the start of projection year k, ``duration(12 x k)``."""
+    return duration(12 * k)                                          # noqa: F821
 
 
 def policy_year(t):
@@ -115,13 +127,13 @@ def policy_year(t):
 
 
 def age_y(k):
-    """The attained age at the start of policy year k, ``issue_age() + k``."""
-    return issue_age() + k                                           # noqa: F821
+    """The attained age at the start of projection year k, ``issue_age() + duration_y(k)``."""
+    return issue_age() + duration_y(k)                               # noqa: F821
 
 
 def age(t):
-    """The attained age in month t, ``age_y(duration(t))``, stepping on the anniversary."""
-    return age_y(duration(t))                                        # noqa: F821
+    """The attained age in month t, ``issue_age() + duration(t)``, stepping on the anniversary."""
+    return issue_age() + duration(t)                                 # noqa: F821
 
 
 def proj_len_y():
@@ -135,13 +147,13 @@ def proj_len():
 
 
 def calendar_year_y(k):
-    """The calendar year of policy year k, ``issue_year() + k``."""
-    return issue_year() + k                                          # noqa: F821
+    """The calendar year of projection year k, ``issue_year() + duration_y(k)``."""
+    return issue_year() + duration_y(k)                              # noqa: F821
 
 
 def calendar_year(t):
-    """The calendar year of month t, ``calendar_year_y(duration(t))``."""
-    return calendar_year_y(duration(t))                              # noqa: F821
+    """The calendar year of month t, ``issue_year() + duration(t)``."""
+    return issue_year() + duration(t)                                # noqa: F821
 
 
 def is_anniv(t):

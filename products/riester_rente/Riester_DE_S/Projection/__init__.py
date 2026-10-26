@@ -125,6 +125,8 @@ x(t)                       age(t)                          The same, read from a
 d(k)                       duration_y(k)                   Contract years done at start k
 d(t)                       duration(t)                     The same, read from a month
 (none)                     duration_mth(t)                 Contract months done
+12 d(0)                    clock_offset_mth()              Contract months done at t = 0
+(none)                     issue_year()                    Year of issue, 2027 - d(0)
 (none)                     contract_year(t)                Contractual 1-based label
 tau(k)                     calendar_year_y(k)              Calendar year of year k
 tau(t)                     calendar_year(t)                The same, read from a month
@@ -553,15 +555,6 @@ def proj_len_y():
     return omega_age - age(0) + 1                                    # noqa: F821
 
 
-def k_start():
-    """The first projected year: 0, the frame opens at the valuation date.
-
-    Override reason: ``k`` counts projection years from the valuation date, so the first
-    projected year is 0 and ``t_start()`` derives 0, products/riester_rente/technical-notes.md:36
-    """
-    return 0
-
-
 def k_conv():
     """T: the conversion **year**, ``rentenbeginn_age - age(0)``.
 
@@ -596,42 +589,33 @@ def prem_due(t):
     return t % 12 == 0
 
 
-def age_y(k):
-    """x(k): attained age last birthday in projection year k.
+def clock_offset_mth():
+    """The contract months completed at ``t = 0``, ``12 x duration_init()``.
 
-    ``issue_age() + duration_init() + k``, so ``age_y(0)`` is the attained age at the
-    valuation date.  Every rate in the model is indexed by this and never by sex.
-
-    Override reason: ``k`` is the projection year from the valuation date, not the policy
-    year, so the age adds ``duration_init()``, products/riester_rente/technical-notes.md:37
-    """
-    return issue_age() + duration_init() + k
-
-
-def age(t):
-    """x(t): attained age in projection month t, ``age_y(proj_year(t))``.
-
-    The age **steps on the anniversary** and not monthly, so the twelve months of a
+    ``t`` counts months from the valuation date, so every clock cell of the core adds the
+    elapsed contract months: ``duration_mth(t) = 12 x duration_init() + t``, ``k_start() =
+    0``, ``duration_y(k) = duration_init() + k`` and ``age_y(k) = issue_age() +
+    duration_init() + k``.  The age **steps on the anniversary**, so the twelve months of a
     projection year share one annual death rate and one generational annuity rate.
-
-    Override reason: ``t`` counts months from the valuation date, so the age is read at the
-    projection year, not at the policy year, products/riester_rente/technical-notes.md:35
-    """
-    return age_y(proj_year(t))
-
-
-def duration_mth(t):
-    """Completed contract **months** at the start of projection month t.
-
-    ``12 x duration_init() + t``.  It is what distinguishes two model points at the same
-    projection month, and ``duration(t) = duration_mth(t) // 12`` states in code that the
-    contract duration is the contract month divided down.
 
     Override reason: ``t`` counts months from the valuation date, not from issue, so the
     completed contract months add ``duration_init()`` years,
     products/riester_rente/technical-notes.md:35
     """
-    return 12 * duration_init() + t
+    return 12 * duration_init()
+
+
+def issue_year():
+    """The calendar year of issue, ``valuation_year - duration_init()``.
+
+    The model point carries no year of issue: every point opens at the common **1 January
+    2027** valuation date, on its policy anniversary, so the core's ``calendar_year_y(k) =
+    issue_year() + duration_y(k)`` is ``2027 + k``.
+
+    Override reason: every model point opens at the common 1 January 2027 valuation date,
+    so the year of issue is counted back from it, products/riester_rente/technical-notes.md:40
+    """
+    return valuation_year - duration_init()                          # noqa: F821
 
 
 def contract_year(t):
@@ -641,31 +625,6 @@ def contract_year(t):
     the two a table's index means.
     """
     return duration(t) + 1
-
-
-def calendar_year_y(k):
-    """tau(k): the calendar year of projection year k, ``2027 + k``.
-
-    The projection opens at the **1 January 2027** valuation date on every model point, so
-    the calendar axis is common across the table.  It enters only the generational annuity
-    basis, where ``annuity_mort_rate(x, tau)`` needs both arguments.
-
-    Override reason: every model point opens at the common 1 January 2027 valuation date,
-    so the calendar year is counted from it, products/riester_rente/technical-notes.md:40
-    """
-    return valuation_year + k                                        # noqa: F821
-
-
-def calendar_year(t):
-    """tau(t): the calendar year of month t, ``calendar_year_y(proj_year(t))``.
-
-    It steps on the policy anniversary rather than on 1 January, which is the convention the
-    attained age follows and the one the annual-step model necessarily used.
-
-    Override reason: ``t`` counts months from the valuation date, so the calendar year is
-    read at the projection year, not at the policy year, products/riester_rente/technical-notes.md:35
-    """
-    return calendar_year_y(proj_year(t))
 
 
 def is_accum_y(k):

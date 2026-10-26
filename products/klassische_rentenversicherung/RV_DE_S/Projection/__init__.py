@@ -1331,8 +1331,9 @@ def pols_if_at(t, timing):
         l(t+1), the end-of-month state, after deaths, surrenders and — at the last
         accumulation month ``t = 12n - 1`` — the commutation split.
 
-    Override reason: ``"AFT_DEATH"`` subtracts the deaths, and ``"AFT_DECR"`` subtracts the
-    commutation at *Rentenbeginn* beside deaths and surrenders,
+    Override reason: ``"AFT_DEATH"`` subtracts the deaths,
+    products/klassische_rentenversicherung/technical-notes.md:583, and ``"AFT_DECR"``
+    subtracts the commutation at *Rentenbeginn* beside deaths and surrenders,
     products/klassische_rentenversicherung/technical-notes.md:589
     """
     if timing == "BEF_DECR":

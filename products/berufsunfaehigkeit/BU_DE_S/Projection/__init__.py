@@ -116,7 +116,7 @@ l_r(t, k)                  pols_runoff_slot(t, k)          § 174 run-off slot k
 V_r(t, k)                  runoff_val(t, k)                The same, times its BU-Rente
 (sum over k)               pols_runoff(t)                  The whole run-off ledger
 L(t)                       pols_if(t)                      In force at the start of t
-(none)                     pols_if_at(t, timing)           BEG / END of month t
+(none)                     pols_if_at(t, timing)           BEF_DECR / AFT_DECR of month t
 L_p(t)                     pols_prem(t)                    Premium-paying count
 (none)                     pols_inception(t)               Aktiv -> leistungspflichtig
 (none)                     pols_recovery(t)                Claim terminations into run-off
@@ -1547,25 +1547,6 @@ def pols_if(t):
     if t == 0:
         return pols_if_init()
     return pols_if(t - 1) - pols_death(t - 1) - pols_lapse(t - 1)
-
-
-def pols_if_at(t, timing):
-    """The policy count at a point inside month t.
-
-    ``"BEG"``
-        ``pols_if(t)``, the start of the month before any decrement — the same
-        number as :func:`pols_if` and the weight on that month's cash flows.
-
-    ``"END"``
-        ``pols_if(t + 1)``, the end-of-month state after deaths and lapses.
-        At ``t = proj_len() - 1`` it is the population whose cover simply runs
-        out, and nothing is payable to it.
-    """
-    if timing == "BEG":
-        return pols_if(t)
-    if timing == "END":
-        return pols_if(t + 1)
-    raise ValueError("invalid timing")
 
 
 def pols_prem(t):

@@ -1161,6 +1161,10 @@ def pols_if_at(t, timing):
         month of a policy year it is :func:`pols_surv_year_end`, the
         population the *Indexjahr* credit is given to; in the final policy
         year the surrender rate is zero, so that is the maturing cohort.
+
+    Override reason: ``"AFT_DEATH"`` subtracts the deaths, and ``"AFT_LAPSE"`` is the cohort
+    before the maturity that :func:`pols_surv_year_end` reads,
+    products/indexpolice/technical-notes.md:220
     """
     if timing == "BEF_DECR":
         return pols_if(t)

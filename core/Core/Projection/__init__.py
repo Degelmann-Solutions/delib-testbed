@@ -369,6 +369,31 @@ def lapse_rate_mth(t):
     return 1.0 - (1.0 - w) ** (1.0 / 12.0)
 
 
+def pols_if_at(t, timing):
+    """The policy count at a point inside month t, in the order of the month's decrements.
+
+    ``"BEF_DECR"``
+        l(t), the start of the month before any decrement: :func:`pols_if`, the weight on
+        that month's cash flows.
+
+    ``"AFT_DEATH"``
+        ``l(t) (1 - q^m(t))``, after the month's deaths: the population the later exits
+        are taken from.
+
+    ``"AFT_DECR"``
+        l(t + 1), the end-of-month state after every exit, ``pols_if(t + 1)``.
+
+    Raises ``ValueError`` for any other timing.
+    """
+    if timing == "BEF_DECR":
+        return pols_if(t)                                            # noqa: F821
+    if timing == "AFT_DEATH":
+        return pols_if(t) * (1.0 - mort_rate_mth(t))                 # noqa: F821
+    if timing == "AFT_DECR":
+        return pols_if(t + 1)                                        # noqa: F821
+    raise ValueError("invalid timing")
+
+
 def pols_death(t):
     """l(t) q^m(t): the expected deaths in month t, ``pols_if(t) x mort_rate_mth(t)``.
 

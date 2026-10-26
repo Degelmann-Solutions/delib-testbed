@@ -166,7 +166,7 @@ n                           (model point aufschub_y)        Deferment years
 m                           (model point rgz_years)         Rentengarantiezeit years
 kappa                       (model point kapitalwahl_rate)  Commutation take-up
 l(t)                        pols_if(t)                      In force at the start of month t
-l(t) - D, l(t+1)            pols_if_at(t, timing)           BEF_DECR / BEF_LAPSE / AFT_DECR
+l(t) - D, l(t+1)            pols_if_at(t, timing)           BEF_DECR / AFT_DEATH / AFT_DECR
 a(t)                        pols_annuity(t)                 Count the instalment is paid on
 P(k)                        prem_pp(k)                      Gross premium in policy year k
 P_sched(k)                  prem_pp_sched(k)                The premium as written at issue
@@ -1319,7 +1319,7 @@ def pols_if_at(t, timing):
         l(t), the start of the month, before any decrement; the same number as
         :func:`pols_if` and the weight on that month's cash flows.
 
-    ``"BEF_LAPSE"``
+    ``"AFT_DEATH"``
         after deaths, before surrenders — the processing order takes deaths at the end of the
         month and surrenders after them **[std order]**, so this is the population surrenders
         are taken from.  It is the annual-step model's order, one twelfth of the way along.
@@ -1327,10 +1327,14 @@ def pols_if_at(t, timing):
     ``"AFT_DECR"``
         l(t+1), the end-of-month state, after deaths, surrenders and — at the last
         accumulation month ``t = 12n - 1`` — the commutation split.
+
+    Override reason: ``"AFT_DEATH"`` subtracts the deaths, and ``"AFT_DECR"`` subtracts the
+    commutation at *Rentenbeginn* beside deaths and surrenders,
+    products/klassische_rentenversicherung/technical-notes.md:589
     """
     if timing == "BEF_DECR":
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == "AFT_DEATH":
         return pols_if(t) - pols_death(t)
     if timing == "AFT_DECR":
         return (pols_if(t) - pols_death(t) - pols_lapse(t)
@@ -1346,7 +1350,7 @@ def pols_lapse(t):
     The one place the two meet is the § 165 cash-out branch, where the whole surviving cohort
     leaves through this decrement at the surrender value, in the anniversary month.
     """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)
 
 
 def pols_surv_rb():

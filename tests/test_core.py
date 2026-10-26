@@ -568,6 +568,15 @@ CORE_CELLS = {
                        "pflegerentenversicherung": "override",
                        "riester_rente": "override",
                        "risikolebensversicherung": "derived"},
+        "pols_if_at": {"basisrente": "override",
+                       "berufsunfaehigkeit": "derived",
+                       "fondsgebundene_rentenversicherung": "override",
+                       "indexpolice": "override",
+                       "kapitallebensversicherung": "derived",
+                       "klassische_rentenversicherung": "override",
+                       "pflegerentenversicherung": "derived",
+                       "riester_rente": "derived",
+                       "risikolebensversicherung": "derived"},
     },
 }
 
@@ -1055,3 +1064,19 @@ def test_pols_if_init_is_read_from_the_model_point(product, product_models):
     assert (points["pols_if_init"] == 1.0).all()
     for point_id in points.index:
         assert projection[point_id].pols_if_init() == 1.0, point_id
+
+
+@pytest.mark.parametrize("product", ["berufsunfaehigkeit", "kapitallebensversicherung",
+                                     "pflegerentenversicherung", "risikolebensversicherung"])
+def test_the_end_of_month_count_is_the_next_start_of_month_count(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.pols_if_at._is_derived()
+    item = projection[model.Data.model_point_table().index[0]]
+    # BU's frame opens at t = 0, the valuation month; it has no t_start.
+    start = 0 if product == "berufsunfaehigkeit" else item.t_start()
+    for t in range(start, item.proj_len()):
+        assert item.pols_if_at(t, "BEF_DECR") == item.pols_if(t), t
+        assert item.pols_if_at(t, "AFT_DECR") == item.pols_if(t + 1), t
+    with pytest.raises(Exception, match="invalid timing"):
+        item.pols_if_at(start, "END")

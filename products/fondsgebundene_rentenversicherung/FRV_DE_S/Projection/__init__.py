@@ -1335,6 +1335,10 @@ def pols_if_at(t, timing):
         ``t = proj_len() - 1`` it is the surviving cohort **before** the maturity sweep,
         and so equals ``pols_maturity(proj_len() - 1)`` rather than ``pols_if(proj_len())``,
         which is zero.
+
+    Override reason: ``"AFT_DECR"`` is the cohort after both decrements and before the
+    maturity sweep, not ``pols_if(t + 1)``, which is zero after the last month,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:510
     """
     if timing == "BEF_DECR":
         return pols_if(t)

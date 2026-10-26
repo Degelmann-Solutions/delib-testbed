@@ -100,7 +100,7 @@ l_g(t)                      pols_pg(t, g)                   In a paying Pflegegr
 E_g(t)                      esc_pg(t, g)                    Escalation-weighted l_g
 (none)                      pols_care(t)                    Everyone in care
 l(t)                        pols_if(t)                      In force at the start of t
-l(t+1)                      pols_if_at(t, timing)           BEG / END
+l(t+1)                      pols_if_at(t, timing)           BEF_DECR / AFT_DECR
 (none)                      pols_in_term(t)                 In force inside the term
 (none)                      pols_waived(t)                  Beitragsbefreiung population
 (none)                      pols_prem(t)                    Units actually paying
@@ -154,7 +154,7 @@ Four names needed care.
 
 ``pols_if(t)`` is the count at the **start** of month ``t`` and is the weight on that same
 ``result_cf()`` row's cash flows, which is the library-wide convention; the end-of-period
-count is :func:`pols_if_at` with ``"END"`` and never :func:`pols_if` at ``t + 1`` written
+count is :func:`pols_if_at` with ``"AFT_DECR"`` and never :func:`pols_if` at ``t + 1`` written
 into a cash-flow row. Breaking that is silent: the exposure column becomes the correct
 series shifted one period while every cash flow beside it stays right.
 
@@ -937,22 +937,6 @@ def pols_if(t):
     or by surrender, which is what :func:`check_pols_roll_fwd` asserts.
     """
     return pols_act(t) + pols_care(t)
-
-
-def pols_if_at(t, timing):
-    """The in-force count at a point inside month ``t``: ``"BEG"`` or ``"END"``.
-
-    ``"BEG"`` is :func:`pols_if` at ``t`` and ``"END"`` is :func:`pols_if` at ``t + 1``.
-    The cells exists so that end-of-period state has somewhere to live other than
-    :func:`pols_if`, whose meaning is fixed to the start of the period across the whole
-    library.
-    """
-    if timing == "BEG":
-        return pols_if(t)
-    elif timing == "END":
-        return pols_if(t + 1)
-    else:
-        raise ValueError("invalid timing")
 
 
 def pols_in_term(t):

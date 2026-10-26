@@ -138,7 +138,7 @@ P_inst(t)                  prem_inst_pp(t)                 Zahlbeitrag instalmen
 (reserve)                  res_pp_at(y, timing)            First-order Deckungskapital
 (gezillmert)               res_zill_pp_at(y, timing)       The same, less the Zillmer
 l(t)                       pols_if(t)                      In force, start of period t
-l(t)(1-q2m), l(t+1)        pols_if_at(t, timing)           BEF_DECR / BEF_LAPSE / AFT_DECR
+l(t)(1-q2m), l(t+1)        pols_if_at(t, timing)           BEF_DECR / AFT_DEATH / AFT_DECR
 pols_death(t)              pols_death(t)                   Expected deaths in month t
 pols_lapse(t)              pols_lapse(t)                   Expected lapses in month t
 pols_maturity(t)           pols_maturity(t)                Expiring survivors, last month
@@ -1161,34 +1161,8 @@ def pols_if(t):
         return 0.0
     if t == t_start():
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
-
-
-def pols_if_at(t, timing):
-    """The number of policies in force at a point inside period t.
-
-    ``"BEF_DECR"``
-        l(t), the start of the period, before any decrement — the same number as
-        :func:`pols_if` and the weight on that period's cash flows.
-
-    ``"BEF_LAPSE"``
-        after the death decrement, before lapses.  The processing order takes deaths at
-        the end of the **month** and lapses **after** them, so this is the population
-        lapses are taken from.
-
-    ``"AFT_DECR"``
-        l(t+1), the end-of-month state, after deaths, lapses and — in the final month —
-        the expiry, which is why it is exactly zero at ``t = proj_len() - 1``.
-    """
-    if timing == "BEF_DECR":
-        return pols_if(t)
-    if timing == "BEF_LAPSE":
-        return pols_if(t) * (1.0 - mort_rate_mth(t))
-    if timing == "AFT_DECR":
-        if t < t_start() or t >= proj_len():
-            return 0.0
-        return (pols_if(t) - pols_death(t) - pols_lapse(t) - pols_maturity(t))
-    raise ValueError("invalid timing")
+    return (pols_if(t - 1) - pols_death(t - 1) - pols_lapse(t - 1)
+            - pols_maturity(t - 1))
 
 
 def pols_lapse(t):
@@ -1204,7 +1178,7 @@ def pols_lapse(t):
     on the **other** side of the ledger: acquisition cost is incurred at issue and
     recovered over the term, so an early lapse is a loss to the insurer.
     """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
+    return pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)
 
 
 def pols_maturity(t):

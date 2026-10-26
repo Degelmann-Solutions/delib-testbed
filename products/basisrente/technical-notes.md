@@ -227,7 +227,7 @@ age-floor cohorts, four guarantee vintages and four boundary cases.
 | `pols_if(t)` | Policies in force at the **start** of month `t`, paying and premium-free together; the weight on that same `result_cf()` row | monthly recursion |
 | `pols_paying(t)` | The premium-paying subset at the start of month `t` | monthly recursion |
 | `pols_paidup(t)` | The premium-free subset, `pols_if(t) − pols_paying(t)` | monthly |
-| `pols_if_at(t, timing)` | End-of-period state: `"BEF_DECR"`, `"AFT_DEATH"`, `"AFT_FREEZE"` | within month `t` |
+| `pols_if_at(t, timing)` | End-of-period state: `"BEF_DECR"`, `"AFT_DEATH"`, `"AFT_FREEZE"`, the last after the *Beitragsfreistellung* has moved policies between the two cohorts | within month `t` |
 | `pols_death(t)` | Expected deaths in month `t`, split as `pols_death_paying(t)` and `pols_death_paidup(t)` | monthly |
 | `pols_freeze(t)` | Policies going premium-free at the end of month `t` (the *Beitragsfreistellung* transition); non-zero only where `is_anniv(t)` | annual, in the year's last month |
 | `pols_gtd(t)` | *Rentengarantiezeit* continuations running at the start of month `t` | monthly recursion |

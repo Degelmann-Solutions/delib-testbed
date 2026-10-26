@@ -959,6 +959,10 @@ def pols_if_at(t, timing):
         removing any, so the total is unchanged.  The two timings exist so that the
         processing order is readable in the code and so that the equality is a statement
         the model makes rather than one a reader has to reconstruct.
+
+    Override reason: the timing ``"AFT_FREEZE"``, after the *Beitragsfreistellung* has moved
+    policies between the paying and the paid-up cohort, stands where the core has
+    ``"AFT_DECR"``, products/basisrente/technical-notes.md:230
     """
     if timing == "BEF_DECR":
         return pols_if(t)

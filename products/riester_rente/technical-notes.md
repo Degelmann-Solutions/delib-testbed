@@ -243,7 +243,7 @@ contract carries, an at-issue point beside the in-force ones, and four boundary 
 | `k_conv()`, `t_conv()` | The conversion **year**, `ret_age − age(0)`, and the conversion **month**, `12 · k_conv()` | once |
 | `age_y(k)`, `duration_y(k)`, `calendar_year_y(k)` | Attained age, completed contract years at the **start** of projection year `k` (0-based; the contract-year band is the 1-based `duration_y(k) + 1`), and the calendar year of year `k`; `age(t)`, `duration(t)` and `calendar_year(t)` read the same three from a month | annual, stepping on the anniversary |
 | `pols_if(t)` | Policies in force at the **start** of month `t`; `pols_if(0) = pols_if_init()` | monthly recursion |
-| `pols_if_at(t, timing)` | `"BEF_DECR"` = `pols_if(t)`, `"AFT_DECR"` = `pols_if(t+1)` | within month |
+| `pols_if_at(t, timing)` | `"BEF_DECR"` = `pols_if(t)`, `"AFT_DEATH"` = `pols_if(t) · (1 − q_mth(t))`, `"AFT_DECR"` = `pols_if(t+1)` | within month |
 | `pols_death(t)`, `pols_lapse(t)`, `pols_transfer(t)` | Expected deaths, surrenders and *Anbieterwechsel* exits in **month** `t`, at the geometric twelfths `q_mth`, `w_mth` and `θ_mth` of the year's annual rates; in the annual model they ran in sequence at one year end, here they compete month by month | monthly |
 | `pols_conv()`, `pols_annuity_pay(t)` | Policies reaching *Rentenbeginn*; policies on which an annuity instalment is actually paid, which during the *Rentengarantiezeit* is `pols_conv()` rather than `pols_if(t)` | annual |
 | `income_ref(k)` | The **previous** calendar year's contribution-liable earnings driving year `t`'s entitlement | annual (lag 1) |

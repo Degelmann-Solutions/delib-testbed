@@ -177,7 +177,7 @@ anniversary, before any claim: different quantities, different clocks.
 | `pols_reactivation(t)` | Run-off completions returning to *aktiv* at end of month `t` | monthly |
 | `pols_death_actv(t)`, `pols_death_dis(t)`, `pols_death_runoff(t)` | Deaths out of each ledger at end of month `t` | monthly |
 | `pols_death(t)` | Their sum — a decrement, **never a cash flow**, because an SBU pays nothing on death | derived |
-| `pols_if_at(t, timing)` | `pols_if(t)` for `timing = "BEG"`, the end-of-month count for `"END"` — the only route to end-of-period state | derived |
+| `pols_if_at(t, timing)` | `pols_if(t)` for `timing = "BEF_DECR"`, the end-of-month count for `"AFT_DECR"` — the only route to end-of-period state | derived |
 | `inc_rate_base(t)` | The **table** inception rate at `age(t)`, before `occ_factor`, `accept_factor` and `au_uplift`; `inc_rate(t)` is the composed rate | lookup |
 | `pols_lapse(t)` | Lapses, from `pols_actv` only | monthly |
 | `bu_rente_pp(t)` | The **insured** monthly *BU-Rente* at time `t`, after any *Beitragsdynamik* | at anniversaries |
@@ -501,7 +501,7 @@ the active ledger**: a life that recovers in month `t` is still paid in months `
 
     L(t+1) = L(t) - pols_death(t) - pols_lapse(t)
 
-and over the whole projection `Σ_t [pols_death(t) + pols_lapse(t)] + pols_if_at(n − 1, "END") = 1`.
+and over the whole projection `Σ_t [pols_death(t) + pols_lapse(t)] + pols_if_at(n − 1, "AFT_DECR") = 1`.
 Inception, recovery and reactivation are **internal transfers** and must not appear in that
 identity — putting them there is how a multi-state model silently loses mass.
 
@@ -886,7 +886,7 @@ all 444 months and adding the survivors must return the policy:
 
     deaths    0.069864886996
     lapses    0.536693205531
-    survivors 0.393441907473   ( = pols_if_at(443, "END") )
+    survivors 0.393441907473   ( = pols_if_at(443, "AFT_DECR") )
     ----------------------------
     total     1.000000000000
 

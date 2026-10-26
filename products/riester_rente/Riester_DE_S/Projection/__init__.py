@@ -136,7 +136,7 @@ tau(t)                     calendar_year(t)                The same, read from a
 (phase)                    is_accum_y(k), is_payout_y(k)   The same, on the annual clock
 l(t)                       pols_if(t)                      In force at the START of month t
 l(0)                       pols_if_init()                  Opening policy count
-l(t)(1-q), l(t+1)          pols_if_at(t, timing)           BEF_DECR / AFT_DECR
+l(t)(1-q), l(t+1)          pols_if_at(t, timing)           BEF_DECR / AFT_DEATH / AFT_DECR
 q(t)                       mort_rate(t)                    ANNUAL death rate of the year
 q_mth(t)                   mort_rate_mth(t)                Its geometric twelfth
 (table)                    mort_rate_at_age(x)             Accumulation table rate at x
@@ -732,33 +732,10 @@ def pols_if(t):
         return 0.0
     if t == 0:
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
-
-
-def pols_if_at(t, timing):
-    """Policies in force at a point inside month t.
-
-    ``"BEF_DECR"``
-        l(t), the start of the month, before any decrement — the same number as
-        :func:`pols_if` and the weight on that month's cash flows.
-
-    ``"AFT_DECR"``
-        l(t+1), the end-of-month state.  In accumulation that is mortality first, then
-        surrender on the survivors of mortality, then transfer on the survivors of both, a
-        stated **[std]** ordering — applied now within each **month** rather than once at a
-        year end.  In the conversion month of a **commuted** contract it is zero: the
-        *Kleinbetragsrenten-Abfindung* discharges the contract outright.
-    """
-    if timing == "BEF_DECR":
-        return pols_if(t)
-    if timing == "AFT_DECR":
-        if t < 0 or t >= proj_len():
-            return 0.0
-        if t == t_conv() and is_kleinbetrag():
-            return 0.0
-        return (pols_if(t) - pols_death(t) - pols_lapse(t)
-                - pols_transfer(t))
-    raise ValueError("invalid timing")
+    if t - 1 == t_conv() and is_kleinbetrag():
+        return 0.0
+    return (pols_if(t - 1) - pols_death(t - 1) - pols_lapse(t - 1)
+            - pols_transfer(t - 1))
 
 
 def pols_death(t):

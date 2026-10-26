@@ -255,11 +255,6 @@ _spaces = []
 
 # --- the model point ---------------------------------------------------------
 
-def policy_id():
-    """The policy identifier of the selected model point; reporting only."""
-    return model_point()["policy_id"]
-
-
 def pols_if_init():
     """Policies in force at ``t_start()``: 1.0, a single-policy model point.
 

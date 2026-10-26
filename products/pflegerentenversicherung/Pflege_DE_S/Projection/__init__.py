@@ -275,11 +275,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def policy_id():
-    """The policy identifier of the selected model point, ``PFL-0000NN``."""
-    return str(model_point()["policy_id"])
-
-
 def status_init():
     """The state at the projection start: ``aktiv`` or ``pg1`` … ``pg5``.
 

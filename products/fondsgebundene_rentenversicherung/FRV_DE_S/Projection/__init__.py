@@ -361,11 +361,6 @@ _spaces = []
 
 # ----------------------------------------  the model point
 
-def policy_id():
-    """The policy identifier of the selected model point."""
-    return model_point()["policy_id"]
-
-
 def pols_if_init():
     """Policies in force at the projection's opening: the weight the model point carries.
 

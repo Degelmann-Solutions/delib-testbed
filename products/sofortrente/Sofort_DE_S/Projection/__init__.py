@@ -232,11 +232,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def policy_id():
-    """The policy identifier of the selected model point."""
-    return str(model_point()["policy_id"])
-
-
 def single_prem():
     """SP: the *Einmalbeitrag*, in euros — the contract's whole consideration.
 

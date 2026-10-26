@@ -391,11 +391,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def policy_id():
-    """The policy identifier of the selected model point."""
-    return model_point()["policy_id"]
-
-
 def smoker_codes():
     """The codes of the *Nichtraucher* / *Raucher* status, N and R.
 

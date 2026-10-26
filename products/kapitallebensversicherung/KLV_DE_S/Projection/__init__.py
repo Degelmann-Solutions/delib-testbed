@@ -406,11 +406,6 @@ _spaces = []
 
 # --- the model point -------------------------------------------------------
 
-def policy_id():
-    """The policy identifier of the selected model point, e.g. ``DE-KLV-0001``."""
-    return model_point()["policy_id"]
-
-
 def pols_if_init():
     """The number of policies represented at ``t_start()``: 1.0, a single-policy model point.
 

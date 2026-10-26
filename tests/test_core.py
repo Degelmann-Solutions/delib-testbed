@@ -226,7 +226,7 @@ CORE_CELLS = {
         "policy_term": {"kapitallebensversicherung": "derived",
                         "risikolebensversicherung": "derived"},
         "prem_term": {"kapitallebensversicherung": "derived",
-                      "risikolebensversicherung": "override"},
+                      "risikolebensversicherung": "derived"},
         "prem_term_y": {"fondsgebundene_rentenversicherung": "derived",
                         "indexpolice": "derived",
                         "klassische_rentenversicherung": "derived"},
@@ -679,6 +679,24 @@ def test_rlv_smoker_reads_its_codes_and_rejects_others(tmp_path, product_models)
     try:
         with pytest.raises(Exception, match="invalid smoker"):
             copy.Projection[smokers[0]].smoker()
+    finally:
+        copy.close()
+
+
+def test_core_prem_term_rejects_a_term_beyond_the_policy_term(tmp_path, product_models):
+    model = product_models("risikolebensversicherung")
+    assert model.Projection.prem_term._is_derived()
+    points = model.Data.model_point_table()
+    point_id = points.index[0]
+    assert model.Projection[point_id].prem_term() <= model.Projection[point_id].policy_term()
+
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    points.loc[point_id, "prem_term"] = points.loc[point_id, "policy_term"] + 1
+    points.to_csv(folder / "model_point_table.csv")
+    copy = mx.read_model(folder / MODELS["risikolebensversicherung"], name="PremTermProbe")
+    try:
+        with pytest.raises(Exception, match="prem_term outside 1 .. policy_term"):
+            copy.Projection[point_id].prem_term()
     finally:
         copy.close()
 

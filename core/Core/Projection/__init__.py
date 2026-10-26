@@ -63,8 +63,14 @@ def policy_term():
 
 
 def prem_term():
-    """The premium payment term in whole years, from the model point."""
-    return int(model_point()["prem_term"])                           # noqa: F821
+    """The premium payment term in whole years, from the model point.
+
+    Checked against ``1 <= prem_term <= policy_term()``; raises ``ValueError`` outside it.
+    """
+    k = int(model_point()["prem_term"])                              # noqa: F821
+    if k < 1 or k > policy_term():                                   # noqa: F821
+        raise ValueError("prem_term outside 1 .. policy_term")
+    return k
 
 
 def prem_term_y():

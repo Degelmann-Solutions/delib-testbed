@@ -420,25 +420,6 @@ def sum_assured():
     return float(model_point()["sum_assured"])
 
 
-def prem_term():
-    """k: the *Beitragszahlungsdauer* in whole years, at most :func:`policy_term`.
-
-    An ***abgekürzte Beitragszahlungsdauer*** — premiums stopping before cover does — is
-    model point 6, where ``k = 12`` against a twenty-year term.  It is the configuration
-    that builds the largest *Deckungskapital* in the shipped set, and the one HGB § 341f
-    has in mind when it requires a provision for future administration costs where the
-    paying period is shorter than the cover period.
-
-    Override reason: the attribute is specified as ``1 <= prem_term <= policy_term``, and
-    the cell checks the range, products/risikolebensversicherung/technical-notes.md, section
-    Model point attributes
-    """
-    k = int(model_point()["prem_term"])
-    if k < 1 or k > policy_term():
-        raise ValueError("prem_term outside 1 .. policy_term")
-    return k
-
-
 def premium_form():
     """The premium form: ``laufend`` or ``einmal``.
 

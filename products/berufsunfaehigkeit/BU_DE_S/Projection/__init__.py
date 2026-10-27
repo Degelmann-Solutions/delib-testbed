@@ -1789,8 +1789,10 @@ def check_net_cf():
 
     The months are ``0 .. proj_len() - 1``, each within ``check_net_cf_tol(t)``.
 
-    Override reason: the frame runs from the valuation month t = 0; the model point carries
-    no duration_init, so the core's t_start() is not defined here,
+    The model point carries no ``duration_init``, so the core's ``t_start()`` is not defined
+    here and the months are counted from the valuation month.
+
+    Override reason: the frame is indexed t = 0 ... proj_len() - 1,
     products/berufsunfaehigkeit/technical-notes.md:60
     """
     return all(abs(check_net_cf_resid(t)) <= check_net_cf_tol(t)     # noqa: F821
@@ -1987,8 +1989,10 @@ def result_cf_columns():
 def result_cf():
     """The frame of :func:`result_cf_columns` over ``range(0, proj_len())``.
 
-    Override reason: the frame runs from the valuation month t = 0; the model point carries
-    no duration_init, so the core's t_start() is not defined here,
+    The model point carries no ``duration_init``, so the core's ``t_start()`` is not defined
+    here and the months are counted from the valuation month.
+
+    Override reason: the frame is indexed t = 0 ... proj_len() - 1,
     products/berufsunfaehigkeit/technical-notes.md:60
     """
     ts = list(range(0, proj_len()))
@@ -2035,8 +2039,10 @@ def result_states_columns():
 def result_states():
     """The frame of :func:`result_states_columns` over ``range(0, proj_len())``.
 
-    Override reason: the frame runs from the valuation month t = 0; the model point carries
-    no duration_init, so the core's t_start() is not defined here,
+    The model point carries no ``duration_init``, so the core's ``t_start()`` is not defined
+    here and the months are counted from the valuation month.
+
+    Override reason: the frame is indexed t = 0 ... proj_len() - 1,
     products/berufsunfaehigkeit/technical-notes.md:60
     """
     ts = list(range(0, proj_len()))

@@ -1722,31 +1722,47 @@ def expenses_pp(t):
     return level / 12.0 * (1.0 + expense_infl()) ** duration(t)
 
 
-def expenses(t):
-    """The insurer's own outgo in period t: acquisition, administration and settlement.
+def expenses_acq(t):
+    """The acquisition expense: once, in the frame's first **month**, new business only.
 
-    Acquisition falls once, in the frame's first **month** and only for new business — an
-    in-force model point's acquisition cost was incurred before the valuation date.
-    Administration is per policy per month on the exposed count, which is ``pols_if(t)`` while
-    premiums accumulate and ``pols_annuity(t)`` once the annuity is in payment.  Settlement
-    falls on every death, surrender and commutation, in the month it happens.
-
+    An in-force model point's acquisition cost was incurred before the valuation date.
     **These are expenses, not charges.**  The *Kostenbeiträge* the tariff deducts —
     ``charge_acq_pp``, ``charge_prem_pp``, ``charge_admin_pp``, ``charge_risk_pp`` — move
-    money inside the contract and are not here: ``expenses(t)`` is invariant to ``beta_rate``
-    and ``gamma_rate`` while ``av_pp(t+1)`` is not.  Booking the charges as expenses inflates
-    outgo by the whole charge load and is the commonest way to make a German model look
-    conservative.
+    money inside the contract and are not in :func:`expenses`: it is invariant to
+    ``beta_rate`` and ``gamma_rate`` while ``av_pp(t+1)`` is not.  Booking the charges as
+    expenses inflates outgo by the whole charge load and is the commonest way to make a
+    German model look conservative.
+
+    Override reason: the acquisition expense falls once at the frame's start, new business
+    only, products/klassische_rentenversicherung/technical-notes.md:659
+    """
+    if t == t_start() and k_start() == 0:
+        return expense_acq_pp() * pols_if(t)
+    return 0.0
+
+
+def expenses_maint(t):
+    """Administration per policy per month on the exposed count.
+
+    ``expenses_pp(t)`` on ``pols_if(t)`` while premiums accumulate and on
+    ``pols_annuity(t)`` once the annuity is in payment.
+
+    Override reason: the administration falls on the in-force before *Rentenbeginn* and on
+    the annuitants after it, products/klassische_rentenversicherung/technical-notes.md:658
     """
     mp = model_point()
     n_mth = 12 * int(mp["aufschub_y"])
-    out = 0.0
-    if t == t_start() and k_start() == 0:
-        out = out + expense_acq_pp() * pols_if(t)
-    out = out + expenses_pp(t) * (pols_if(t) if t < n_mth else pols_annuity(t))
-    out = out + expense_claim_pp() * (pols_death(t) + pols_lapse(t)
-                                      + pols_commutation(t))
-    return out
+    return expenses_pp(t) * (pols_if(t) if t < n_mth else pols_annuity(t))
+
+
+def expenses_claim(t):
+    """Settlement expense on every death, surrender and commutation, in the month it happens.
+
+    Override reason: settlement is an amount per death, surrender or commutation,
+    products/klassische_rentenversicherung/technical-notes.md:381
+    """
+    return expense_claim_pp() * (pols_death(t) + pols_lapse(t)
+                                 + pols_commutation(t))
 
 
 def net_cf(t):

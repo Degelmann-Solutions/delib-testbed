@@ -166,6 +166,8 @@ a(k) / 12                  ann_mth_pp(t)                   The monthly Rente ins
 (none)                     claim_kinds()                   DEATH / ANNUITY / SURVIVOR
 claims_death, _annuity,    claims(t, kind)                 Benefit outgo by kind
 claims_survivor
+(none)                     expenses_acq(t)                 Acquisition, inception only
+(none)                     expenses_maint(t)               Maintenance, annuity admin
 E(t)                       expenses(t)                     Insurer expense outgo
 C(t)                       commissions(t)                  Commission outgo
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
@@ -1513,11 +1515,33 @@ def claims(t, kind=None):
     raise ValueError("invalid kind")
 
 
-def expenses(t):
-    """E(t): the insurer's own expense outgo in projection month t, fund level.
+def expenses_acq(t):
+    """The acquisition expense, at inception (``t = 0`` and ``duration_init = 0``) only.
 
-    Acquisition expense at inception (``t = 0`` and ``duration_init = 0`` only), then a
-    **twelfth** of the annual maintenance expense per in-force policy in the
+    ``acq_expense_pp x pols_if_init()``, zero outside the frame.  **The commission is not
+    in the expenses.**  It is a separate line of the notes' cash flow statement and a
+    separate column of :func:`result_cf`, and :func:`net_cf` subtracts each once.  Nor are
+    the *charges*: beta, gamma, the *Stückkosten* and the *Zillmerung* amortisation are
+    deductions from the policyholder's account and hence insurer **income**.  The expenses
+    are therefore invariant to ``beta_prem``, ``gamma_av`` and ``zill_rate``, and those
+    three move :func:`net_cf` only through the smaller annuity that a smaller fund buys at
+    *Rentenbeginn*.  Booking a charge as an expense as well is the fourth pitfall.
+
+    Override reason: the acquisition expense falls at inception on new business only,
+    products/basisrente/technical-notes.md:607
+    """
+    if t < 0 or t >= proj_len():
+        return 0.0
+    if t == 0 and duration_init() == 0:
+        row = data.charge_table().loc[model_point()["tariff_id"]]    # noqa: F821
+        return float(row["acq_expense_pp"]) * pols_if_init()
+    return 0.0
+
+
+def expenses_maint(t):
+    """The maintenance expense of projection month t, fund level, inflating.
+
+    A **twelfth** of the annual maintenance expense per in-force policy in the
     *Aufschubphase* and a twelfth of the annual annuity administration per annuitant **and
     per *Rentengarantiezeit* continuation** in the *Rentenphase*, both inflating at
     ``expense_infl`` from the valuation date.  The payout phase is administratively cheaper
@@ -1529,29 +1553,18 @@ def expenses(t):
     third month of a year now bears three twelfths of that year's maintenance rather than
     the whole of it, which is the second thing the finer grid changes on this product.
 
-    **The commission is not in here.**  It is a separate line of the notes' cash flow
-    statement and a separate column of :func:`result_cf`, and :func:`net_cf` subtracts each
-    once.
-
-    Nor are the *charges*: beta, gamma, the *Stückkosten* and the *Zillmerung* amortisation
-    are deductions from the policyholder's account and hence insurer **income**.  This
-    cells is therefore invariant to ``beta_prem``, ``gamma_av`` and ``zill_rate``, and
-    those three move :func:`net_cf` only through the smaller annuity that a smaller fund
-    buys at *Rentenbeginn*.  Booking a charge as an expense as well is the fourth pitfall.
+    Override reason: the maintenance falls per in-force policy before *Rentenbeginn*,
+    products/basisrente/technical-notes.md:608, and per annuitant and guarantee
+    continuation after it, products/basisrente/technical-notes.md:609
     """
     if t < 0 or t >= proj_len():
         return 0.0
     row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
     infl = (1.0 + float(row["expense_infl"])) ** proj_year(t)
-    out = 0.0
-    if t == 0 and duration_init() == 0:
-        out += float(row["acq_expense_pp"]) * pols_if_init()
     if t < t_conv():
-        out += float(row["maint_expense_pp"]) / 12.0 * infl * pols_if(t)
-    else:
-        out += (float(row["annuity_admin_pp"]) / 12.0 * infl
-                * (pols_if(t) + pols_gtd(t)))
-    return out
+        return float(row["maint_expense_pp"]) / 12.0 * infl * pols_if(t)
+    return (float(row["annuity_admin_pp"]) / 12.0 * infl
+            * (pols_if(t) + pols_gtd(t)))
 
 
 def commissions(t):

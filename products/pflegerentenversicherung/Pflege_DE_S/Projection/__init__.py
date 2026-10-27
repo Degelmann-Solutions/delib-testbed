@@ -1256,6 +1256,10 @@ def expenses(t):
     collected, which is where the instalment loading the model does not charge separately
     lives.  Claims-handling cost is **not** here — it is a per-event cost and is published
     as its own column, :func:`claim_expenses`.
+
+    Override reason: the acquisition expense is the *Zillmerung* allowance at ``t = 0``,
+    products/pflegerentenversicherung/technical-notes.md:593, added after the two
+    administration terms, an order the core's sum of its terms would reassociate
     """
     admin_pp = float(data.param_table().at[                          # noqa: F821
         "admin_mth_pp", "value"])

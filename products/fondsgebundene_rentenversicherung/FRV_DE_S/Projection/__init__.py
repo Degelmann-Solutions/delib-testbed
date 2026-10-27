@@ -1560,6 +1560,11 @@ def expenses(t):
     convention, and the opposite of the frlib chassis, where commission sits inside the
     expense total.  Folding it back in while leaving the ``commissions`` column in the
     frame would charge it twice.
+
+    Override reason: five expenses are added left to right, the issue and maintenance
+    expense and the per-event expenses of a death, a surrender and an annuitisation,
+    products/fondsgebundene_rentenversicherung/model.md:400, a sum the core's three terms
+    would reassociate
     """
     return (expense_acq_pp(t) * pols_if(t)
             + expense_maint_pp(t) * pols_if(t)

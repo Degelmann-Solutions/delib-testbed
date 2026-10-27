@@ -151,6 +151,9 @@ z k G                      acq_cost_pp()                   Acquisition cost at i
 c0 k G                     comm_init_pp()                  Initial Abschlussprovision
 (1 + pi)^duration(t)       inflation_factor(t)             Expense inflation factor
 maint(t)                   maint_pp(t)                     Admin plus collection cost
+(acq_pp - comm_pp)         expenses_acq(t)                 Acquisition net of commission
+maint(t) l(t)              expenses_maint(t)               Maintenance on the in-force
+ec pols_death(t)           expenses_claim(t)               Claim expense per death
 expenses(t)                expenses(t)                     Total expense, ex commission
 commissions(t)             commissions(t)                  Commission outgo
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
@@ -1258,23 +1261,39 @@ def maint_pp(t):
             + maint_prem_pct * prem_inst_pp(t))                      # noqa: F821
 
 
-def expenses(t):
-    """Total expense outgo in month t, **excluding** commission.
+def expenses_acq(t):
+    """The acquisition cost net of the initial commission, at issue, or zero.
 
-    Acquisition cost net of the initial commission in month ``t = 0`` and only where
-    ``duration_init = 0`` — a single amount at issue, not an annualised loading and not a
-    twelfth of one; maintenance and collection on the opening in-force; and the claim
-    expense on the month's deaths, 250 € each **[std]**.
+    A single amount in month ``t = 0`` and only where ``duration_init = 0`` — not an
+    annualised loading and not a twelfth of one.  Commission is **not** in the expenses.  It
+    is :func:`commissions`, its own column, and :func:`net_cf` subtracts the two separately
+    — the opposite convention from ``frlib.TD_FR_S``, whose notes fold commission into the
+    expense total.  The two libraries' columns look alike and do not mean the same thing,
+    so the identity is written down in :func:`check_net_cf` rather than left to a reader's
+    assumption.
 
-    Commission is **not** in here.  It is :func:`commissions`, its own column, and
-    :func:`net_cf` subtracts the two separately — the opposite convention from
-    ``frlib.TD_FR_S``, whose notes fold commission into the expense total.  The two
-    libraries' columns look alike and do not mean the same thing, so the identity is
-    written down in :func:`check_net_cf` rather than left to a reader's assumption.
+    Override reason: the acquisition cost less the initial commission falls at issue on new
+    business only, products/risikolebensversicherung/technical-notes.md:606
     """
-    acq = (acq_cost_pp() - comm_init_pp()) if (t == 0 and duration_init() == 0) else 0.0
-    return (acq + maint_pp(t) * pols_if(t)
-            + claim_expense * pols_death(t))                        # noqa: F821
+    return (acq_cost_pp() - comm_init_pp()) if (t == 0 and duration_init() == 0) else 0.0
+
+
+def expenses_maint(t):
+    """Maintenance and collection on the opening in-force, ``maint_pp(t) x pols_if(t)``.
+
+    Override reason: maintenance is a per-policy amount on the opening in-force,
+    products/risikolebensversicherung/technical-notes.md:607
+    """
+    return maint_pp(t) * pols_if(t)
+
+
+def expenses_claim(t):
+    """The claim expense on the month's deaths, 250 € each **[std]**.
+
+    Override reason: the claim expense is an amount per death claim,
+    products/risikolebensversicherung/technical-notes.md:400
+    """
+    return claim_expense * pols_death(t)                             # noqa: F821
 
 
 def commissions(t):

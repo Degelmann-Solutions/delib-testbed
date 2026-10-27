@@ -207,6 +207,9 @@ a(k)                       annuity_pp(k)                   Annual annuity, 12 in
 (none)                     benefit_lapse_pp(t)             cv_pp(proj_year(t))
 (none)                     claims_other(t, kind)           TRANSFER, LUMPSUM, ...
 (none)                     claims(t, kind)                 Benefit outgo by kind
+(none)                     expenses_acq(t)                 Acquisition at issue
+(none)                     expenses_maint(t)               Maintenance + annuity expense
+(none)                     expenses_claim(t)               Per death, surrender, transfer
 (none)                     expenses(t)                     Expense outgo
 (none)                     commissions(t)                  Commission outgo
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
@@ -1647,35 +1650,51 @@ def int_credited(k):
     return int_credited_pp(k) * pols_if(12 * k)
 
 
-def expenses(t):
-    """Total expense outgo in month t, excluding commission.
+def expenses_acq(t):
+    """The acquisition expense ``expense_acq + expense_acq_rate x beitragssumme()`` at issue.
 
-    Four components, all **[std]** because no German insurer publishes a unit cost.  The
-    acquisition expense ``expense_acq + expense_acq_rate x beitragssumme()`` at issue, only
-    on a point with ``duration_init() == 0``.  A **twelfth** of the annual per-policy
-    maintenance ``expense_maint``, inflating at ``expense_infl`` on **contract** duration and
-    stepping on the anniversary, on the in-force, in accumulation only.  A twelfth of
-    ``expense_annuity`` per annuitant actually paid, in payout.  And ``expense_claim`` per
-    death, surrender or transfer, which is a per-**event** cost and so falls whole in the
-    month of the event.  The maintenance figure carries the
-    Zulage administration — the *Dauerzulageantrag*, the annual data exchange with the ZfA
-    and the *Leistungsmitteilung* — which is a real and product-specific cost.
+    Only on a point with ``duration_init() == 0``.  All expense components are **[std]**
+    because no German insurer publishes a unit cost; the commission is excluded.
 
-    A policy that exits in the fourth month of a contract year now bears four twelfths of
-    that year's maintenance rather than the whole of it.
+    Override reason: the acquisition expense is a fixed amount plus a rate on the
+    *Beitragssumme* at issue, products/riester_rente/technical-notes.md:422
     """
-    total = 0.0
     if t == 0 and duration_init() == 0:
-        total += (expense_acq + expense_acq_rate                     # noqa: F821
-                  * beitragssumme()) * pols_if(0)
-    if is_accum(t):
-        total += (expense_maint / 12.0                                # noqa: F821
-                  * (1.0 + expense_infl) ** duration(t)              # noqa: F821
-                  * pols_if(t))
-    total += expense_annuity / 12.0 * pols_annuity_pay(t)            # noqa: F821
-    total += expense_claim * (pols_death(t) + pols_lapse(t)          # noqa: F821
-                              + pols_transfer(t))
-    return total
+        return (expense_acq + expense_acq_rate                       # noqa: F821
+                * beitragssumme()) * pols_if(0)
+    return 0.0
+
+
+def expenses_maint(t):
+    """Maintenance in accumulation plus the annuity expense in payout, in month t.
+
+    A **twelfth** of the annual per-policy maintenance ``expense_maint``, inflating at
+    ``expense_infl`` on **contract** duration and stepping on the anniversary, on the
+    in-force, in accumulation only; and a twelfth of ``expense_annuity`` per annuitant
+    actually paid, in payout.  The maintenance figure carries the Zulage administration —
+    the *Dauerzulageantrag*, the annual data exchange with the ZfA and the
+    *Leistungsmitteilung* — which is a real and product-specific cost.  A policy that exits
+    in the fourth month of a contract year now bears four twelfths of that year's
+    maintenance rather than the whole of it.
+
+    Override reason: maintenance falls on the in-force in accumulation,
+    products/riester_rente/technical-notes.md:664, and the annuity expense on the
+    annuitants paid, products/riester_rente/technical-notes.md:665
+    """
+    maint = (expense_maint / 12.0                                    # noqa: F821
+             * (1.0 + expense_infl) ** duration(t)                   # noqa: F821
+             * pols_if(t)) if is_accum(t) else 0.0
+    return maint + expense_annuity / 12.0 * pols_annuity_pay(t)      # noqa: F821
+
+
+def expenses_claim(t):
+    """``expense_claim`` per death, surrender or transfer, whole in the month of the event.
+
+    Override reason: the claim expense is an amount per death, surrender or transfer,
+    products/riester_rente/technical-notes.md:666
+    """
+    return expense_claim * (pols_death(t) + pols_lapse(t)            # noqa: F821
+                            + pols_transfer(t))
 
 
 def commissions(t):

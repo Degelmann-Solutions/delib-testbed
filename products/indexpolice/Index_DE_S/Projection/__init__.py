@@ -183,6 +183,7 @@ V(k)                       benefit_lapse_pp(t)             cv_pp(duration(t))
 M(k)                       benefit_maturity_pp(t)          mat_pp(duration(t))
 claims_death, ...          claims(t, kind)                 Benefit outgo by kind
 (released)                 av_released(k)                  Account taken out by the exits
+(none)                     expenses_maint(t)               (acquisition + maintenance) x l
 E(t)                       expenses(t)                     Insurer expense outgo
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
 liability_cf(t)            liability_cf(t)                 The same stream, outgo positive
@@ -1336,20 +1337,24 @@ def exp_maint_pp(k):
     return exp_fixed_pp * (1.0 + exp_infl) ** k                      # noqa: F821
 
 
-def expenses(t):
-    """Total insurer expense outgo in **month** t, at the start of it.
+def expenses_maint(t):
+    """The insurer's expense per in-force at the start of **month** t, acquisition included.
 
-    ``(exp_acq_pp(t) + exp_maint_pp(duration(t)) / 12) x l(t)``.  The maintenance level is a
-    twelfth of the year's amount rather than a monthly amount of its own, so a year of it on
-    a closed cohort is exactly the annual-step model's charge; what the finer grid buys is
-    that a policy leaving mid-year bears administration only for the months it was there.
-    No claim expense is modelled: no source gives one and it would be immaterial beside a
-    benefit that is the account value.
+    ``(exp_acq_pp(t) + exp_maint_pp(duration(t)) / 12) x l(t)``: the core's acquisition term
+    keeps its neutral 0, the acquisition expense of the opening month being inside this
+    per-policy rate.  The maintenance level is a twelfth of the year's amount rather than a
+    monthly amount of its own, so a year of it on a closed cohort is exactly the annual-step
+    model's charge; what the finer grid buys is that a policy leaving mid-year bears
+    administration only for the months it was there.  No claim expense is modelled: no
+    source gives one and it would be immaterial beside a benefit that is the account value.
 
-    An **expense**, not a charge: this is the insurer's own cash going out, and it is the
-    only expense line in ``net_cf``.  The deductions from the policyholder's account —
-    ``prem_charge_acq_pp``, ``prem_charge_adm_pp``, ``av_charge_pp`` — are charges and
-    appear nowhere in this cells.
+    An **expense**, not a charge: this is the insurer's own cash going out, and the
+    expenses are the only expense line in ``net_cf``.  The deductions from the
+    policyholder's account — ``prem_charge_acq_pp``, ``prem_charge_adm_pp``,
+    ``av_charge_pp`` — are charges and appear nowhere here.
+
+    Override reason: the acquisition expense and a twelfth of the year's maintenance are one
+    per-policy rate on the in-force, products/indexpolice/technical-notes.md:608
     """
     return (exp_acq_pp(t) + exp_maint_pp(duration(t)) / 12.0) * pols_if(t)
 

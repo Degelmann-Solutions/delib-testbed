@@ -109,6 +109,9 @@ SP               prem_inst_pp(t)                       The Einmalbeitrag, at t =
 (none)           claim_kinds()                         GUARANTEE / REFUND
 (none)           claims_other(t, kind)                 Their outgo
 (none)           infl_factor(t)                        Expense inflation factor
+pi               expenses_acq(t)                       Acquisition at t = 0
+c_e              expenses_maint(t)                     Maintenance, a twelfth a month
+c_p              expenses_claim(t)                     Per-instalment payment run
 c_e, c_p, pi     expenses(t)                           Maintenance, per-instalment, acquisition
 liability_cf(t)  liability_cf(t)                       The stream, outgo positive
 net_cf(t)        net_cf(t)                             The same stream, income positive
@@ -1089,36 +1092,50 @@ def infl_factor(t):
     return (1.0 + expense_infl) ** (t // 12)                         # noqa: F821
 
 
-def expenses(t):
-    """Insurer expense in month ``t``: acquisition, maintenance and the payment run.
-
-    Three terms, all **[std]** — no expense parameter was established at any carrier::
-
-        1{t = 0} pols_if_init (expense_acq_rate SP + expense_acq_fixed)
-      + (expense_maint_pp / 12) infl_factor(t) pols_if(t)
-      + 1{payment month} expense_pay_pp infl_factor(t) pols_if_init payment_factor(t)
+def expenses_acq(t):
+    """The acquisition expense at ``t = 0`` only, ``pols_if_init (expense_acq_rate SP + c)``.
 
     The acquisition term appears at ``t = 0`` only, and therefore not at all on an in-force
-    point.  The per-instalment term is weighted by :func:`payment_factor` rather than by
-    :func:`pols_if`, and that is not a slip: a survivor's annuity in payment is a **second**
-    payment run, and inside the guarantee the beneficiary's instalment costs the same to
-    pay as the annuitant's.
+    point.  All three expense terms are **[std]** — no expense parameter was established at
+    any carrier.  These are the expenses *incurred*.  The two tariff *loadings* —
+    ``expense_load_alpha`` and ``expense_load_beta`` — are pricing parameters and appear
+    only in the equivalence.  Keeping them apart is the point of the split: the gap between
+    them is the modelled *Kostenüberschuss*, and a user replacing one set must replace the
+    other with it or the modelled profit moves silently.
 
-    These are the expenses *incurred*.  The two tariff *loadings* — ``expense_load_alpha``
-    and ``expense_load_beta`` — are pricing parameters and appear only in the equivalence.
-    Keeping them apart is the point of the split: the gap between them is the modelled
-    *Kostenüberschuss*, and a user replacing one set must replace the other with it or the
-    modelled profit moves silently.
+    Override reason: the acquisition expense is a rate on the single premium plus a fixed
+    amount at ``t = 0``, products/sofortrente/technical-notes.md:617
     """
-    e = 0.0
     if t == 0:
-        e = e + pols_if_init() * (expense_acq_rate * single_prem()   # noqa: F821
-                                  + expense_acq_fixed)               # noqa: F821
-    e = e + (expense_maint_pp / 12.0) * infl_factor(t) * pols_if(t)  # noqa: F821
+        return pols_if_init() * (expense_acq_rate * single_prem()   # noqa: F821
+                                 + expense_acq_fixed)               # noqa: F821
+    return 0.0
+
+
+def expenses_maint(t):
+    """The maintenance expense, ``(expense_maint_pp / 12) infl_factor(t) pols_if(t)``.
+
+    Override reason: maintenance is a twelfth of the annual amount, inflated, on the
+    obligation weight, products/sofortrente/technical-notes.md:618
+    """
+    return (expense_maint_pp / 12.0) * infl_factor(t) * pols_if(t)   # noqa: F821
+
+
+def expenses_claim(t):
+    """The payment run, ``expense_pay_pp infl_factor(t) pols_if_init payment_factor(t)``.
+
+    In a payment month, zero in the others.  The per-instalment term is weighted by
+    :func:`payment_factor` rather than by :func:`pols_if`, and that is not a slip: a
+    survivor's annuity in payment is a **second** payment run, and inside the guarantee the
+    beneficiary's instalment costs the same to pay as the annuitant's.
+
+    Override reason: the payment expense falls per instalment paid, weighted by the
+    payment factor, products/sofortrente/technical-notes.md:619
+    """
     if is_payment_mth(t):
-        e = e + (expense_pay_pp * infl_factor(t)                     # noqa: F821
-                 * pols_if_init() * payment_factor(t))
-    return e
+        return (expense_pay_pp * infl_factor(t)                      # noqa: F821
+                * pols_if_init() * payment_factor(t))
+    return 0.0
 
 
 def liability_cf(t):

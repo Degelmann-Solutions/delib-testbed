@@ -188,6 +188,8 @@ claims_*            claims(t, kind)                        DEATH / MATURITY / LA
 (none)              inflation_factor(k)                    Expense inflation factor
 (none)              claim_expenses(t)                      Claim handling expense
 (none)              expenses_pp(t)                         Per-policy expense in month t
+(none)              expenses_maint(t)                      expenses_pp(t) x pols_if(t)
+(none)              expenses_claim(t)                      claim_expenses(t)
 E(t)                expenses(t)                            Expense outgo, no commission
 (none)              commissions(t)                         Commission outgo
 net_cf(t)           net_cf(t)                              Net cash flow, income positive
@@ -1639,23 +1641,31 @@ def expenses_pp(t):
             * inflation_factor(duration(t)))
 
 
-def expenses(t):
-    """Total insurer expense outgo in month t, **excluding commission** **[std]**.
+def expenses_maint(t):
+    """The per-policy expense on the in-force, ``expenses_pp(t) x pols_if(t)`` **[std]**.
 
-    ``expenses_pp(t) * pols_if(t) + claim_expenses(t)``.
+    :func:`expenses_pp` folds the acquisition expense of month ``t_start()`` into the
+    month's per-policy rate beside the maintenance, so the core's acquisition term keeps its
+    neutral 0.  Commission is not in the expenses: :func:`commissions` is a separate line,
+    so the six flow columns of :func:`result_cf` sum to :func:`net_cf` rather than
+    double-counting the commission.  This is the rule on **every delib model that has a
+    commission to publish** — ``Basis_DE_S``, ``Riester_DE_S``, ``RLV_DE_S`` and
+    ``FRV_DE_S`` — so ``expenses`` means the same quantity across the library.
 
-    The deliberate difference from the frlib chassis, where commission sits *inside* the
-    expense column and is published beside it: here :func:`commissions` is a separate line, so
-    the six flow columns of :func:`result_cf` sum to :func:`net_cf` rather than double-counting
-    the commission.  Whichever convention a model takes, taking both at once is the error.
-
-    This is the rule on **every delib model that has a commission to publish** —
-    ``Basis_DE_S``, ``Riester_DE_S``, ``RLV_DE_S`` and ``FRV_DE_S`` — so ``expenses`` means
-    the same quantity across the library.  ``BU_DE_S`` is the one model that names no
-    commission at all: its acquisition cost is a single **[std]** ``acq_rate`` with nothing
-    inside it to separate, and its docstring says so rather than implying a split.
+    Override reason: the in-force carries the acquisition expense at issue,
+    products/kapitallebensversicherung/technical-notes.md:632, and the monthly maintenance,
+    products/kapitallebensversicherung/technical-notes.md:633, in one per-policy rate
     """
-    return expenses_pp(t) * pols_if(t) + claim_expenses(t)
+    return expenses_pp(t) * pols_if(t)
+
+
+def expenses_claim(t):
+    """The claim handling expense, :func:`claim_expenses`.
+
+    Override reason: the claim expense falls per death, lapse and maturity,
+    products/kapitallebensversicherung/technical-notes.md:634
+    """
+    return claim_expenses(t)
 
 
 def commissions(t):

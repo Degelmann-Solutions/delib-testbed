@@ -726,3 +726,28 @@ def claims(t, kind=None):
     if kind == "MATURITY":
         return benefit_maturity_pp(t) * pols_maturity(t)             # noqa: F821
     return claims_other(t, kind)                                     # noqa: F821
+
+
+def expenses_acq(t):
+    """The acquisition expense in month t; 0, none."""
+    return 0.0
+
+
+def expenses_maint(t):
+    """The maintenance (administration) expense in month t; 0, none."""
+    return 0.0
+
+
+def expenses_claim(t):
+    """The claim handling (per-event) expense in month t; 0, none."""
+    return 0.0
+
+
+def expenses(t):
+    """The insurer's own expense outgo in month t, **excluding commission**.
+
+    ``expenses_acq(t) + expenses_maint(t) + expenses_claim(t)``: the acquisition expense,
+    the maintenance expense on the policies in force and the expense on the month's claims.
+    :func:`commissions` is a line of its own, and :func:`net_cf` subtracts each once.
+    """
+    return expenses_acq(t) + expenses_maint(t) + expenses_claim(t)   # noqa: F821

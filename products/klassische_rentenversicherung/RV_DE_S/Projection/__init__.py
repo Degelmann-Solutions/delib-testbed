@@ -170,6 +170,7 @@ l(t) - D, l(t+1)            pols_if_at(t, timing)           BEF_DECR / AFT_DEATH
 a(t)                        pols_annuity(t)                 Count the instalment is paid on
 P(k)                        prem_pp(k)                      Gross premium in policy year k
 P_sched(k)                  prem_pp_sched(k)                The premium as written at issue
+(none)                      prem_inst_pp(t)                 P(k) in a due month, else 0
 (none)                      prem_due(t)                     Whether P falls due in month t
 phi                         prem_freq_load()                Ratenzahlungszuschlag
 (sum of P_sched)            beitragssumme()                 Zillmer base
@@ -598,14 +599,18 @@ def prem_due(t):
     return duration_mth(t) % 12 == 0
 
 
-def premiums(t):
-    """Premium income in month t, an inflow: ``prem_pp(duration(t)) x pols_if(t)``, or zero.
+def prem_inst_pp(t):
+    """P(k): the year's premium per policy in month t, ``prem_pp(duration(t))``, or zero.
 
-    Non-zero only where :func:`prem_due` makes the year's premium payable.  The count is the
-    in-force at the **start of the policy year**, which is ``pols_if(12k)`` — so the premium
-    income of this model is **bit-identical** to the annual-step model it replaced.
+    Non-zero only where :func:`prem_due` makes the year's premium payable.  The core's
+    :func:`premiums` weights it by the in-force at the **start of the policy year**, which
+    is ``pols_if(12k)`` — so the premium income of this model is **bit-identical** to the
+    annual-step model it replaced.
+
+    Override reason: the year's premium falls due whole in the month ``prem_due`` makes it
+    payable, products/klassische_rentenversicherung/technical-notes.md:460
     """
-    return prem_pp(duration(t)) * pols_if(t) if prem_due(t) else 0.0
+    return prem_pp(duration(t)) if prem_due(t) else 0.0
 
 
 # ----------------------------------------

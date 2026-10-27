@@ -639,3 +639,30 @@ def prem_net_level_pp():
     pricing quantity, never a cash flow.
     """
     return tariff_benefit_pv() / tariff_annuity()                    # noqa: F821
+
+
+def prem_inst_pp(t):
+    """The premium collected per policy at the start of month t; 0, no premium.
+
+    A product with a premium overrides it with its own per-policy amount, zero in a month
+    in which nothing falls due.
+    """
+    return 0.0
+
+
+def pols_prem(t):
+    """The count the premium is collected from at the start of month t, ``pols_if(t)``.
+
+    A product whose premium is paid by a part of the in-force only (a premium-paying ledger,
+    a waiver of premium) overrides it.
+    """
+    return pols_if(t)                                                # noqa: F821
+
+
+def premiums(t):
+    """Premium income at the **start** of month t, an inflow: ``prem_inst_pp(t) x pols_prem(t)``.
+
+    Not further multiplied by a survival factor: the decrements fall at the end of the
+    month, so a policy that leaves in it has already paid what fell due at its start.
+    """
+    return prem_inst_pp(t) * pols_prem(t)                            # noqa: F821

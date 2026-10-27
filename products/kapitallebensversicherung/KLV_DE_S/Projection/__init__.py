@@ -1283,25 +1283,13 @@ def prem_inst_pp(t):
     year's premium net of the *Beitragsverrechnung* offset, divided into the elected number of
     instalments.  Formed from the annual amount so that the offset is spread over the year's
     instalments exactly as the charge is, and the two cannot fall on different cycles.
+
+    Override reason: the instalment is the year's *Zahlbeitrag*, net of the
+    *Beitragsverrechnung*, over the elected instalments where one falls due,
+    products/kapitallebensversicherung/technical-notes.md:610
     """
     return (prem_paid_pp(duration(t)) / instalments()
             if prem_due(t) else 0.0)
-
-
-def premiums(t):
-    """*Beitrag* income at the **beginning** of month t, an inflow.
-
-    ``prem_inst_pp(t) * pols_if(t)``: the instalment the elected *Zahlweise* makes due this
-    month, weighted by the in-force entering it.  An annual payer contributes the whole
-    year's *Beitrag* in the first month of the policy year and nothing in the other eleven; a
-    monthly payer contributes a twelfth each month on a block that has already lost lives,
-    which is where the premium-cessation rule finally bites.
-
-    **Not** further multiplied by ``(1 - qm)``: decrements fall at the end of the month, so a
-    life that dies or surrenders in it has already paid that month's instalment, and applying
-    the premium-cessation rule again here charges it twice.
-    """
-    return prem_inst_pp(t) * pols_if(t)
 
 
 # --- decrements ------------------------------------------------------------

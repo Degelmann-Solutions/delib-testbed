@@ -198,6 +198,7 @@ a(k)                       annuity_pp(k)                   Annual annuity, 12 in
 (none)                     cv_pp(k)                        Rueckkaufswert, gross
 (none)                     transfer_value_pp(k)            Anbieterwechsel transfer value
 (none)                     exit_charge_pp(t)               Stornoabzug + transfer charge
+(none)                     prem_inst_pp(t)                 Contribution due per policy
 (none)                     premiums(t)                     Eigenbeitrag income
 (none)                     zulagen(t)                      Zulage income, SEPARATE column
 (none)                     int_credited(k)                 Interest credited, REPORTED
@@ -1561,28 +1562,31 @@ def claims(t, kind=None):
     raise ValueError("invalid kind")
 
 
-def premiums(t):
-    """The saver's own contribution income in month t, an inflow.
+def prem_inst_pp(t):
+    """The saver's own contribution per policy in month t, or zero.
 
-    ``(eigenbeitrag_paid_pp(k) + contrib_extra_pp) x l(t)`` in the month the year's
-    contribution falls due and zero in the other eleven: the *Eigenbeitrag* **after**
-    the *Ratenzuschlag*, plus any unsubsidised contribution.  It excludes the Zulagen,
-    which are :func:`zulagen`, and it excludes ``rider_prem_pp``, which is the biometric
-    rider's premium and belongs to the rider's own liability rather than to this one.
+    ``eigenbeitrag_paid_pp(k) + contrib_extra_pp`` in the month the year's contribution
+    falls due and zero in the other eleven: the *Eigenbeitrag* **after** the
+    *Ratenzuschlag*, plus any unsubsidised contribution.  It excludes the Zulagen, which
+    are :func:`zulagen`, and it excludes ``rider_prem_pp``, which is the biometric rider's
+    premium and belongs to the rider's own liability rather than to this one.
 
     **The contribution keeps the annual grid, and the *Ratenzuschlag* is the reason.** A
     fractionated payment mode is priced by loading the amount — that is what
     :func:`prem_freq_load` is — rather than by moving the contribution year, and the account
-    the contribution is credited to is struck per year.  The weight is therefore the count
-    at the start of the projection year, which is the annual-step model's own ``l(k)``, and
-    this column sums over a year to that model's premium income exactly.
+    the contribution is credited to is struck per year.  The core's :func:`premiums` weights
+    it by the count at the start of the projection year, which is the annual-step model's
+    own ``l(k)``, and that column sums over a year to that model's premium income exactly.
+
+    Override reason: the contribution is the *Eigenbeitrag* after the *Ratenzuschlag* plus
+    the unsubsidised extra, due once a year, products/riester_rente/technical-notes.md:661
     """
     if not prem_due(t):
         return 0.0
     k = proj_year(t)
     extra = (contrib_extra_pp() if (is_accum_y(k) and not
                                     (bfs_year() >= 0 and k >= bfs_year())) else 0.0)
-    return (eigenbeitrag_paid_pp(k) + extra) * pols_if(t)
+    return eigenbeitrag_paid_pp(k) + extra
 
 
 def zulagen(t):

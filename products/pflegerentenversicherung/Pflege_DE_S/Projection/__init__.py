@@ -116,6 +116,7 @@ pols_lapse(t)               pols_lapse(t)                   Surrenders, active s
 (none)                      premium_pp(t)                   The instalment charged
 (none)                      cum_prem_max_pp(t)              Premium payable to date
 (none)                      prem_units_at(t)                The same, in units of P
+(none)                      prem_inst_pp(t)                 premium_pp(t), per unit
 premiums(t)                 premiums(t)                     Beitrag income
 (none)                      rkw_pp(t)                       Rueckkaufswert per policy
 (none)                      brg_pp(t)                       Beitragsrueckgewaehr per policy
@@ -981,6 +982,9 @@ def pols_prem(t):
     premium obligation.  A model whose premium-paying count only ever falls has wired the
     waiver as an absorbing state, which is the single most common way to get this product's
     premium stream wrong.
+
+    Override reason: the paying units are the lives inside the premium term less those whose
+    *Beitrag* is waived in care, products/pflegerentenversicherung/technical-notes.md:540
     """
     return pols_in_term(t) - pols_waived(t)
 
@@ -1099,13 +1103,17 @@ def cum_prem_max_pp(t):
     return premium_mth_pp() * m * (last // m + 1)
 
 
-def premiums(t):
-    """*Beitrag* income in month ``t``: ``premium_pp(t) x pols_prem(t)``.
+def prem_inst_pp(t):
+    """The *Beitrag* per paying unit in month ``t``, :func:`premium_pp`.
 
-    Collected **in advance**, at the start of the month, from the lives then inside the
-    term and not waived.  Income-positive, like every other term of :func:`net_cf`.
+    Collected **in advance**, at the start of the month; the core's :func:`premiums`
+    weights it by :func:`pols_prem`, the lives then inside the term and not waived.
+    Income-positive, like every other term of :func:`net_cf`.
+
+    Override reason: the premium is ``premium_pp(t)``, the monthly *Beitrag* in a month it
+    is due, products/pflegerentenversicherung/technical-notes.md:551
     """
-    return premium_pp(t) * pols_prem(t)
+    return premium_pp(t)
 
 
 def rkw_pp(t):

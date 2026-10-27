@@ -138,6 +138,7 @@ w^m_l(t)                   lapse_rate_mth(t)               The monthly rate appl
 phi                        prem_freq_load()                Ratenzahlungszuschlag
 P_b(k)                     prem_base_pp(k)                 Annual-mode premium due
 P(k)                       prem_gross_pp(k)                Premium actually collected
+(none)                     prem_inst_pp(t)                 P(k) in a due month, else 0
 (none)                     prem_due(t)                     Whether P falls due in month t
 BS                         prem_sum()                      Beitragssumme
 alpha(k)                   prem_charge_acq_pp(k)           Acquisition charge, tariff
@@ -534,16 +535,20 @@ def prem_due(t):
     return duration_mth(t) % 12 == 0
 
 
-def premiums(t):
-    """Premium income in **month** t, an inflow: ``P(k) x l(t)``, or zero.
+def prem_inst_pp(t):
+    """P(k): the year's premium per policy in **month** t, or zero.
 
-    Non-zero only where :func:`prem_due` makes the year's premium payable, so the count is
-    the in-force at the **start of the policy year** and premium income is **bit-identical**
-    to the annual-step model this replaced.  Not further multiplied by ``(1 - q_d)``:
-    decrements fall at the **end** of a month, so a life that dies in the first month of a
-    policy year has paid that year's premium.
+    ``prem_gross_pp(duration(t))`` where :func:`prem_due` makes the year's premium payable,
+    zero in the other eleven months.  The core's :func:`premiums` weights it by the
+    in-force at the **start of the policy year**, so premium income is **bit-identical** to
+    the annual-step model this replaced.  Not further multiplied by ``(1 - q_d)``: decrements
+    fall at the **end** of a month, so a life that dies in the first month of a policy year
+    has paid that year's premium.
+
+    Override reason: the year's premium falls due whole in the month ``prem_due`` makes it
+    payable, products/indexpolice/technical-notes.md:463
     """
-    return prem_gross_pp(duration(t)) * pols_if(t) if prem_due(t) else 0.0
+    return prem_gross_pp(duration(t)) if prem_due(t) else 0.0
 
 
 # --- the surplus, the election and the option budget -------------------------

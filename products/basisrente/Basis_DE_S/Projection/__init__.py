@@ -129,6 +129,8 @@ alpha(k)                   alpha_amort_pp(k)               Its annual instalment
 alpha_z(k)                 alpha_zuz_pp(k)                 Acquisition charge on a Zuzahlung
 u(k)                       unit_cost_pp(k)                 Stueckkosten, inflating
 N(k)                       prem_to_av_pp(k)                Premium credited after charges
+P(k)                       prem_inst_pp(t)                 Premium due per policy in t
+L^p(t)                     pols_prem(t)                    Weight on it: pols_paying(t)
 premiums(t)                premiums(t)                     Laufende Beitraege, fund level
 zuzahlungen(t)             zuzahlungen(t)                  Zuzahlungen, fund level
 A^p(k, .)                  av_pp_at(k, timing)             Deckungskapital per paying policy
@@ -737,22 +739,32 @@ def prem_due(t):
     return t % 12 == 0
 
 
-def premiums(t):
-    """*Laufende Beiträge* collected in month t at fund level, an inflow.
+def prem_inst_pp(t):
+    """P(k): the *Laufender Beitrag* collected per policy in month t, or zero.
 
-    ``prem_pp(proj_year(t)) x pols_paying(t)`` in the month the year's premium falls due
-    and zero in the other eleven, weighted by the **premium-paying** ledger and by the
-    **opening** count: the premium falls at the start of the year and the year's deaths
-    after it, so a policy that dies during the year has already paid for it.  Multiplying
-    by ``(1 - mort_rate(t))`` here applies the death rule twice.
-
-    Because the count at the start of a projection year is the annual-step model's own
-    ``pols_paying(k)``, this column sums over a year to that model's premium income
+    ``prem_pp(proj_year(t))`` in the month the year's premium falls due and zero in the
+    other eleven; the core's :func:`premiums` weights it by :func:`pols_prem`.  Because the
+    count at the start of a projection year is the annual-step model's own
+    ``pols_paying(k)``, the premium column sums over a year to that model's premium income
     exactly.
+
+    Override reason: the year's premium ``prem_pp(proj_year(t))`` falls due whole in the
+    month ``prem_due`` makes it payable, products/basisrente/model.md:213
     """
-    if not prem_due(t):
-        return 0.0
-    return prem_pp(proj_year(t)) * pols_paying(t)
+    return prem_pp(proj_year(t)) if prem_due(t) else 0.0
+
+
+def pols_prem(t):
+    """The weight on the premium: the **premium-paying** ledger ``pols_paying(t)``.
+
+    The **opening** count: the premium falls at the start of the year and the year's deaths
+    after it, so a policy that dies during the year has already paid for it.  Multiplying by
+    ``(1 - mort_rate(t))`` here applies the death rule twice.
+
+    Override reason: the premium is paid by the premium-paying cohort only, the paid-up
+    cohort pays none, products/basisrente/technical-notes.md:647
+    """
+    return pols_paying(t)
 
 
 def zuzahlungen(t):

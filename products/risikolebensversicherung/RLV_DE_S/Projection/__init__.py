@@ -1052,6 +1052,9 @@ def prem_inst_pp(t):
     has already lost lives, so the premium-cessation rule finally bites where an annual
     grid could not express it — and the *Ratenzahlungszuschlag* is at last charging for
     something the model does.
+
+    Override reason: the *Zahlbeitrag* instalment is the gross instalment less the rebate,
+    products/risikolebensversicherung/technical-notes.md:614
     """
     return prem_gross_inst_pp(t) - prem_rebate_inst_pp(t)
 
@@ -1137,23 +1140,6 @@ def res_zill_pp_at(y, timing):
 
 # ==========================================================================
 # Cash flows
-
-
-def premiums(t):
-    """*Zahlbeitrag* income at the **beginning** of month t, an inflow.
-
-    ``prem_inst_pp(t) l(t)``: the instalment the elected *Zahlweise* makes due this month,
-    weighted by the in-force entering it.  **The billed stream, and the one inside**
-    :func:`net_cf`.  An annual payer contributes the whole year's *Zahlbeitrag* in the
-    first month of the policy year and nothing in the other eleven; a monthly payer
-    contributes a twelfth each month on a block that has already lost lives, which is
-    where § 168's *Versicherungsperiode* finally bites.
-
-    Not further multiplied by ``(1 - q2m)``: claims fall at the end of the month, so a
-    claimant has already paid that month's instalment, and applying the premium-cessation
-    rule again here charges it twice.
-    """
-    return prem_inst_pp(t) * pols_if(t)
 
 
 def prem_gross(t):

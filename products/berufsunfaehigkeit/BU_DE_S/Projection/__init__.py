@@ -124,6 +124,7 @@ L_p(t)                     pols_prem(t)                    Premium-paying count
 (none)                     pols_death(t)                   Deaths out of all three ledgers
 (none)                     pols_lapse(t)                   Lapses, from pols_actv only
 (the shadow ledgers)       ``*_first``                      The first-order pricing run
+P_b(t)                     prem_inst_pp(t)                 Bruttobeitrag due per policy
 premiums(t)                premiums(t)                     Gross Bruttobeitrag income
 surplus_credit(t)          surplus_credit(t)               Beitragsverrechnung returned
 claims_bu_rente etc.       claims(t, kind)                 Benefit outgo by kind
@@ -1569,6 +1570,10 @@ def pols_prem(t):
     deletes the *Beitragsbefreiung*, which is core cover rather than an option — the
     classic German BU implementation error.  On the anchor cell, where the *Karenzzeit* is
     zero, this equals :func:`pols_actv` at every ``t``.
+
+    Override reason: lives in claim past the *Karenzzeit* pay no premium (*Beitragsbefreiung*),
+    so the premium-paying count is the *aktiv* ledger plus the disabled inside the
+    *Karenzzeit*, products/berufsunfaehigkeit/technical-notes.md:174
     """
     dis = dis_cohorts(t)[0]
     return pols_actv(t) + sum(dis[:karenz_months()])
@@ -1576,16 +1581,19 @@ def pols_prem(t):
 
 # --- the cash flows ---
 
-def premiums(t):
-    """The **gross** *Bruttobeitrag* income at the start of month t, an inflow.
+def prem_inst_pp(t):
+    """The **gross** *Bruttobeitrag* instalment per policy at the start of month t.
 
-    ``prem_gross_pp(t) x pols_prem(t)``, zero in a month that is not a payment month.
-    This is the gross stream; the *Beitragsverrechnung* returned out of it is
-    :func:`surplus_credit`, and the cash actually collected is the difference.  Publishing
-    both is what keeps the *Ueberschussbeteiligung* a visible line rather than a netting
-    hidden inside the premium.
+    ``prem_gross_pp(t)``, zero in a month that is not a payment month; the core's
+    :func:`premiums` weights it by :func:`pols_prem`.  The premium column is the gross
+    stream; the *Beitragsverrechnung* returned out of it is :func:`surplus_credit`, and the
+    cash actually collected is the difference.  Publishing both is what keeps the
+    *Ueberschussbeteiligung* a visible line rather than a netting hidden inside the premium.
+
+    Override reason: the premium is the *Bruttobeitrag* instalment due in the month,
+    products/berufsunfaehigkeit/technical-notes.md:186
     """
-    return prem_gross_pp(t) * pols_prem(t)
+    return prem_gross_pp(t)
 
 
 def surplus_credit(t):

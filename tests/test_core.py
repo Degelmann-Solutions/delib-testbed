@@ -604,6 +604,18 @@ CORE_CELLS = {
                     "riester_rente": "override",
                     "risikolebensversicherung": "derived",
                     "sofortrente": "override"},
+        "prem_inst_pp": dict.fromkeys(MODELS, "override"),
+        "pols_prem": {"basisrente": "override",
+                      "berufsunfaehigkeit": "override",
+                      "fondsgebundene_rentenversicherung": "derived",
+                      "indexpolice": "derived",
+                      "kapitallebensversicherung": "derived",
+                      "klassische_rentenversicherung": "derived",
+                      "pflegerentenversicherung": "override",
+                      "riester_rente": "derived",
+                      "risikolebensversicherung": "derived",
+                      "sofortrente": "override"},
+        "premiums": dict.fromkeys(MODELS, "derived"),
     },
 }
 
@@ -1175,3 +1187,17 @@ def test_the_count_after_the_last_month_is_exactly_positive_zero(product, produc
         closing = item.pols_if(item.proj_len())
         assert closing == 0.0 and math.copysign(1.0, closing) == 1.0, point_id
         assert item.pols_maturity(item.proj_len() - 1) > 0.0, point_id
+
+
+def test_klv_premium_is_the_instalment_times_the_in_force(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.premiums._is_derived()
+    assert projection.pols_prem._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        paying = [t for t in range(item.t_start(), item.proj_len()) if item.premiums(t) > 0.0]
+        assert paying, point_id
+        for t in range(item.t_start(), item.proj_len()):
+            assert item.pols_prem(t) == item.pols_if(t), (point_id, t)
+            assert item.premiums(t) == item.prem_inst_pp(t) * item.pols_prem(t), (point_id, t)

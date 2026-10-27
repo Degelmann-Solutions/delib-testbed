@@ -101,6 +101,8 @@ C(t)             cum_annuity_guar_pp(t)                Guaranteed instalments pa
 K(t)             refund_pp(t)                          max(SP - C(t), 0)
 F(t)             payment_factor(t)                     Expected instalments payable at t
 (none)           pols_if(t)                            Probability an obligation remains
+SP               prem_inst_pp(t)                       The Einmalbeitrag, at t = 0 only
+(none)           pols_prem(t)                          pols_if_init(), its weight
 (none)           premiums(t)                           The Einmalbeitrag, at t = 0 only
 (none)           annuity_payments(t, kind)             ANNUITANT / SURVIVOR instalments
 (none)           claims(t, kind)                       GUARANTEE / REFUND death outgo
@@ -974,19 +976,31 @@ def pols_if(t):
     return pols_if_init() * min(1.0, x)
 
 
-def premiums(t):
-    """The *Einmalbeitrag*, an inflow at the start of month 0 and nowhere else.
+def prem_inst_pp(t):
+    """The *Einmalbeitrag* per policy, at the start of month 0 and nowhere else.
 
-    ``single_prem() x pols_if_init()`` at ``t = 0``.  An in-force model point's frame does
-    not contain ``t = 0``, so it collects nothing: the premium was paid before the
-    valuation date and counting it again is a listed pitfall.
+    ``single_prem()`` at ``t = 0``; the core's :func:`premiums` weights it by
+    :func:`pols_prem`.  An in-force model point's frame does not contain ``t = 0``, so it
+    collects nothing: the premium was paid before the valuation date and counting it again
+    is a listed pitfall.
 
     There is no premium stream, no *Beitragsdynamik* and no *Ratenzahlungszuschlag* on this
     product — the whole consideration is paid once.
+
+    Override reason: the *Einmalbeitrag* is paid once, at ``t = 0``,
+    products/sofortrente/technical-notes.md:592
     """
-    if t == 0:
-        return single_prem() * pols_if_init()
-    return 0.0
+    return single_prem() if t == 0 else 0.0
+
+
+def pols_prem(t):
+    """The count the *Einmalbeitrag* is paid by, ``pols_if_init()``.
+
+    Override reason: ``pols_if`` is the probability that a payment obligation remains, not
+    a count, so the premium is weighted by the count the point stands for,
+    products/sofortrente/technical-notes.md:193
+    """
+    return pols_if_init()
 
 
 def annuity_payments(t, kind=None):

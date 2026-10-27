@@ -77,6 +77,7 @@ x(t)                       age(t)                           Attained age in mont
 S                          beitragssumme()                  Sum of premiums payable
 B(t)                       prem_pp(t)                       Gross Beitrag due in month t
 Z(t)                       topup_pp(t)                      Zuzahlung in month t
+B(t) + Z(t)                prem_inst_pp(t)                  Premium per policy in month t
 d(t)                       dynamik_factor(t)                Beitragsdynamik factor
 alpha(t)                   charge_acq_pp(t)                 Acquisition instalment
 (ledger)                   cum_charge_acq_pp(t)             Acquisition charge to date
@@ -1356,16 +1357,20 @@ def pols_if_at(t, timing):
 
 # ----------------------------------------  cash flows
 
-def premiums(t):
-    """Gross premium income in month t, including any *Zuzahlung*.
+def prem_inst_pp(t):
+    """The gross premium per policy in month t, including any *Zuzahlung*.
 
-    ``(prem_pp(t) + topup_pp(t)) x pols_if(t)``.  It is published because the reader needs
-    it, and it is **excluded from** :func:`net_cf`: almost all of it is the *Anlagebeitrag*,
-    which is the policyholder's money passing into the unit fund.  What the insurer keeps
-    out of it is :func:`charge_acq` and :func:`charge_admin_prem`, and
-    :func:`check_prem_split` asserts that the three account for the whole premium.
+    ``prem_pp(t) + topup_pp(t)``; the core's :func:`premiums` weights it by ``pols_if(t)``.
+    The premium column is published because the reader needs it, and it is **excluded
+    from** :func:`net_cf`: almost all of it is the *Anlagebeitrag*, which is the
+    policyholder's money passing into the unit fund.  What the insurer keeps out of it is
+    :func:`charge_acq` and :func:`charge_admin_prem`, and :func:`check_prem_split` asserts
+    that the three account for the whole premium.
+
+    Override reason: the premium is the regular *Beitrag* plus the *Zuzahlung*,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:532
     """
-    return (prem_pp(t) + topup_pp(t)) * pols_if(t)
+    return prem_pp(t) + topup_pp(t)
 
 
 def prem_to_av(t):

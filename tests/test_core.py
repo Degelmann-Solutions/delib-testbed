@@ -22,6 +22,11 @@
   Index close at exactly zero; the end-of-month count is the next month's opening count and
   an unknown timing is rejected; the survivors mature in the last month; KLV's lapses are
   taken from the survivors of the month's deaths.
+- The cash flows: KLV's premium is the instalment times the in-force; RLV's claim total is its
+  death claim and its lapse and maturity claims are exactly zero; RV's commutation is a further
+  kind and an unknown kind is rejected; Index and RV pay exactly zero commission; KLV's net
+  cash flow subtracts its claims kind by kind; RLV's liability cash flow is its net cash flow
+  negated.
 """
 from __future__ import annotations
 

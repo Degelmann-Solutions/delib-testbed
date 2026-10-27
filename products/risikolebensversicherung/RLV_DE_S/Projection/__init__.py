@@ -1519,8 +1519,10 @@ def check_no_cash_value():
 # Result frames
 
 
-def result_cf():
-    """Result table of cash flows, indexed by the 0-based **policy month** t.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of cash flows, indexed by the 0-based **policy month** t.
 
     ``pols_if`` is the start-of-month count, which is the weight applied to every cash flow
     on the same row.  **Two premium columns**: ``prem_gross`` is the guaranteed
@@ -1538,23 +1540,22 @@ def result_cf():
     The frame runs ``t = 12 duration_init ... proj_len() - 1`` contiguously and stops there:
     cover expires at the end of the last month with nothing payable and no survivors left
     in force.
+
+    Override reason: the guaranteed premium and the *Beitragsverrechnung* published beside
+    the billed premium, products/risikolebensversicherung/technical-notes.md:678
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "prem_gross": [prem_gross(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "prem_rebate": [prem_rebate(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "commissions": [commissions(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("prem_gross", prem_gross),                                  # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("prem_rebate", prem_rebate),                                # noqa: F821
+        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
+        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
+        ("claims_maturity", lambda t: claims(t, "MATURITY")),        # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("commissions", commissions),                                # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
     )
 
 

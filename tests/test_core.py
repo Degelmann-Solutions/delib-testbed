@@ -741,6 +741,9 @@ CORE_CELLS = {
                    "sofortrente": "override"},
         "liability_cf": {**dict.fromkeys(MODELS, "derived"), "sofortrente": "override"},
         "roll_fwd_tol": dict.fromkeys(MODELS, "derived"),
+        "result_cf_columns": {**dict.fromkeys(MODELS, "override"),
+                              "kapitallebensversicherung": "derived"},
+        "result_cf": {**dict.fromkeys(MODELS, "derived"), "berufsunfaehigkeit": "override"},
     },
 }
 
@@ -1450,3 +1453,21 @@ def test_roll_fwd_tol_without_its_row_raises_key_error(tmp_path):
         assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
     finally:
         copy.close()
+
+
+def test_klv_result_cf_is_the_core_statement_from_t_start(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.result_cf._is_derived()
+    assert projection.result_cf_columns._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        frame = item.result_cf()
+        assert list(frame.columns) == [
+            "pols_if", "premiums", "claims_death", "claims_maturity", "claims_lapse",
+            "expenses", "commissions", "net_cf", "liability_cf"], point_id
+        assert frame.index.name == "t"
+        assert list(frame.index) == list(range(item.t_start(), item.proj_len())), point_id
+        t = item.t_start()
+        assert frame.loc[t, "claims_lapse"] == item.claims(t, "LAPSE")
+        assert frame.loc[t, "pols_if"] == item.pols_if_init()

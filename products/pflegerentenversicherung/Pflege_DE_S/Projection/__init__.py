@@ -1944,8 +1944,10 @@ def check_prem_equiv():
     return abs(total) <= tol * scale
 
 
-def result_cf():
-    """Result table of cash flows, indexed by policy month ``t``.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of cash flows, indexed by policy month ``t``.
 
     Contiguous from :func:`t_start` to ``proj_len() - 1``.  ``pols_if`` is the
     **start**-of-month count, which is the weight applied to every cash flow on the same
@@ -1959,24 +1961,24 @@ def result_cf():
     dropped so the product facts are stated instead of inferred.  ``net_cf`` is
     ``premiums`` less the three ``claims`` columns, ``expenses`` and ``claim_expenses``;
     ``liability_cf`` is its negative.
+
+    Override reason: the statement carries the state counts and the paying count, its three
+    claim kinds and the claims-handling cost, and no commission,
+    products/pflegerentenversicherung/technical-notes.md:643
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "pols_act": [pols_act(t) for t in ts],
-            "pols_care": [pols_care(t) for t in ts],
-            "pols_prem": [pols_prem(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "claims_annuity": [claims(t, "ANNUITY") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "claim_expenses": [claim_expenses(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("pols_act", pols_act),                                      # noqa: F821
+        ("pols_care", pols_care),                                    # noqa: F821
+        ("pols_prem", pols_prem),                                    # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("claims_annuity", lambda t: claims(t, "ANNUITY")),          # noqa: F821
+        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
+        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("claim_expenses", claim_expenses),                          # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
     )
 
 

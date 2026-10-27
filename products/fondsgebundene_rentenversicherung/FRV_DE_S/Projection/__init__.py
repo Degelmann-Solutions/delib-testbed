@@ -1935,8 +1935,10 @@ def check_acq_charge():
 
 # ----------------------------------------  result tables
 
-def result_cf():
-    """Result table of cash flows, indexed by policy month t.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of cash flows, indexed by policy month t.
 
     ``pols_if`` is the start-of-month count and is the weight applied to every cash flow
     on the same row, so dividing a flow by it recovers the per-policy amount.  The frame
@@ -1952,31 +1954,31 @@ def result_cf():
     two columns and not one: ``expenses`` excludes commission on every delib model that
     has a commission to publish.  ``liability_cf`` is ``net_cf`` outgo positive, published
     so the sign convention is verifiable in the frame.
+
+    Override reason: the statement carries the premium split into the unit fund, the
+    charges, the *Stornoabzug*, the unit-fund outgo and the death strain,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:636
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "prem_to_av": [prem_to_av(t) for t in ts],
-            "charge_acq": [charge_acq(t) for t in ts],
-            "charge_admin_prem": [charge_admin_prem(t) for t in ts],
-            "charge_admin_fund": [charge_admin_fund(t) for t in ts],
-            "charge_policy_fee": [charge_policy_fee(t) for t in ts],
-            "charge_risk": [charge_risk(t) for t in ts],
-            "stornoabzug": [stornoabzug(t) for t in ts],
-            "withdrawals": [withdrawals(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
-            "av_releases": [av_releases(t) for t in ts],
-            "death_strain": [death_strain(t) for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "commissions": [commissions(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("prem_to_av", prem_to_av),                                  # noqa: F821
+        ("charge_acq", charge_acq),                                  # noqa: F821
+        ("charge_admin_prem", charge_admin_prem),                    # noqa: F821
+        ("charge_admin_fund", charge_admin_fund),                    # noqa: F821
+        ("charge_policy_fee", charge_policy_fee),                    # noqa: F821
+        ("charge_risk", charge_risk),                                # noqa: F821
+        ("stornoabzug", stornoabzug),                                # noqa: F821
+        ("withdrawals", withdrawals),                                # noqa: F821
+        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
+        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
+        ("claims_maturity", lambda t: claims(t, "MATURITY")),        # noqa: F821
+        ("av_releases", av_releases),                                # noqa: F821
+        ("death_strain", death_strain),                              # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("commissions", commissions),                                # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
     )
 
 

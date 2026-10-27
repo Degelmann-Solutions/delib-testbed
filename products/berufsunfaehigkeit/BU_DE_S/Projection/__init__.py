@@ -1922,8 +1922,10 @@ def check_cover_end():
 
 # --- the result frames ---
 
-def result_cf():
-    """Result table of cash flows, indexed by policy month t.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of cash flows, indexed by policy month t.
 
     ``pols_if`` is the start-of-month count, which is the weight applied to every cash
     flow on the same row, and its first value is ``pols_if_init()`` exactly.  The three
@@ -1941,25 +1943,40 @@ def result_cf():
     The frame runs ``t = 0 ... proj_len() - 1`` and stops: cover ceases at attained age
     ``cover_end_age()`` with nothing payable, and a claim still in payment at the horizon
     simply stops.
+
+    Override reason: the statement carries the three state counts, the paying count, the
+    *Beitragsverrechnung*, the three claim kinds and the claims-handling cost,
+    products/berufsunfaehigkeit/technical-notes.md:539
+    """
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("pols_actv", pols_actv),                                    # noqa: F821
+        ("pols_dis", pols_dis),                                      # noqa: F821
+        ("pols_runoff", pols_runoff),                                # noqa: F821
+        ("pols_prem", pols_prem),                                    # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("surplus_credit", surplus_credit),                          # noqa: F821
+        ("claims_bu_rente", lambda t: claims(t, "BU_RENTE")),        # noqa: F821
+        ("claims_reintegration",
+         lambda t: claims(t, "REINTEGRATION")),                      # noqa: F821
+        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("claim_expenses", claim_expenses),                          # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
+    )
+
+
+def result_cf():
+    """The frame of :func:`result_cf_columns` over ``range(0, proj_len())``.
+
+    Override reason: the frame runs from the valuation month t = 0; the model point carries
+    no duration_init, so the core's t_start() is not defined here,
+    products/berufsunfaehigkeit/technical-notes.md:60
     """
     ts = list(range(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "pols_actv": [pols_actv(t) for t in ts],
-            "pols_dis": [pols_dis(t) for t in ts],
-            "pols_runoff": [pols_runoff(t) for t in ts],
-            "pols_prem": [pols_prem(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "surplus_credit": [surplus_credit(t) for t in ts],
-            "claims_bu_rente": [claims(t, "BU_RENTE") for t in ts],
-            "claims_reintegration": [claims(t, "REINTEGRATION") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "claim_expenses": [claim_expenses(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-        },
+        {label: [cell(t) for t in ts] for label, cell in result_cf_columns()},
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
 

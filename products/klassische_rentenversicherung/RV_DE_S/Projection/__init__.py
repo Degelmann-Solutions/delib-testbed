@@ -2021,8 +2021,10 @@ def check_annuity_guarantee():
 # Output
 
 
-def result_cf():
-    """Result table of **monthly** cash flows, indexed by the 0-based policy month t.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of **monthly** cash flows, indexed by the 0-based policy month t.
 
     The frame runs from the model point's first projected month — ``t = 0`` for new business,
     ``t = t_start()`` for an in-force point — to ``proj_len() - 1``, contiguously;
@@ -2041,22 +2043,22 @@ def result_cf():
     should not be printed twelve times over, and a cash flow statement whose columns do not all
     sum to its bottom line is one a reader has to know which columns to skip.
     :func:`result_cf_annual` sums this frame into policy years.
+
+    Override reason: the statement carries the annuity count, the *Kapitalabfindung* and the
+    annuity payments, no commission, and liability_cf before net_cf,
+    products/klassische_rentenversicherung/technical-notes.md:674
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "pols_annuity": [pols_annuity(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_commutation": [claims(t, "COMMUTATION") for t in ts],
-            "annuity_payments": [annuity_payments(t) for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("pols_annuity", pols_annuity),                              # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
+        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
+        ("claims_commutation", lambda t: claims(t, "COMMUTATION")),  # noqa: F821
+        ("annuity_payments", annuity_payments),                      # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
     )
 
 

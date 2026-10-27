@@ -1549,8 +1549,10 @@ def check_index_credit():
 
 # --- the result table --------------------------------------------------------
 
-def result_cf():
-    """Result table of **monthly** cash flows, indexed by the 0-based policy month t.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of **monthly** cash flows, indexed by the 0-based policy month t.
 
     The frame runs ``t = t_start() ... proj_len() - 1``, contiguous, and stops: month
     ``proj_len() - 1`` is the last month of the last policy year and ends at
@@ -1569,20 +1571,19 @@ def result_cf():
     cash flow only later, through a benefit, and summing them into ``net_cf`` is a numbered
     pitfall that :func:`check_net_cf` catches.  :func:`result_cf_annual` sums this frame
     into policy years.
+
+    Override reason: no commission column, and liability_cf before net_cf,
+    products/indexpolice/technical-notes.md:620
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
+        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
+        ("claims_maturity", lambda t: claims(t, "MATURITY")),        # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
     )
 
 

@@ -1444,8 +1444,10 @@ def check_tariff_int_rate():
                 <= hoechstrechnungszins() + roll_fwd_tol())           # noqa: F821
 
 
-def result_cf():
-    """Result table of cash flows, indexed by month ``t``.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of cash flows, indexed by month ``t``.
 
     ``pols_if`` is the start-of-month obligation weight, which is the weight applied to the
     maintenance expense on the same row.  ``annuity_payments`` is the total of the
@@ -1457,20 +1459,19 @@ def result_cf():
     The frame runs ``t_start() ... proj_len() - 1`` and stops.  There is no maturity payment
     and no tail state: the annuitant's survival has reached zero and the guarantee has
     expired, so nothing remains to be paid.
+
+    Override reason: the statement carries the annuity payments and its two claim kinds, no
+    commission, and liability_cf before net_cf, products/sofortrente/technical-notes.md:635
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "annuity_payments": [annuity_payments(t) for t in ts],
-            "claims_guarantee": [claims(t, "GUARANTEE") for t in ts],
-            "claims_refund": [claims(t, "REFUND") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("annuity_payments", annuity_payments),                      # noqa: F821
+        ("claims_guarantee", lambda t: claims(t, "GUARANTEE")),      # noqa: F821
+        ("claims_refund", lambda t: claims(t, "REFUND")),            # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
     )
 
 

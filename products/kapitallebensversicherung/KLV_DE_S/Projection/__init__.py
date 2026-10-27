@@ -1997,43 +1997,6 @@ def check_zillmer_cap():
                for t in range(t_start(), proj_len()))
 
 
-def result_cf():
-    """Result table of cash flows, indexed by the 0-based **policy month** t.
-
-    ``pols_if`` is the **start-of-month** count, which is the weight applied to every cash flow
-    on the same row, and its first value is :func:`pols_if_init` exactly.  ``expenses``
-    **excludes** commission, so the six flow columns
-
-        premiums, claims_death, claims_maturity, claims_lapse, expenses, commissions
-
-    sum to ``net_cf`` with no double count - which is what :func:`check_net_cf` asserts.
-    ``liability_cf`` is ``net_cf`` outgo-positive and is published as the last column so that
-    the sign convention is verifiable in the frame.
-
-    ``premiums`` is the instalment **collected in the month**, so on an annual *Zahlweise*
-    eleven rows in twelve carry a zero there; :func:`result_cf_annual` sums the frame into
-    policy years, which is the view the technical notes' worked example is stated on.
-
-    The frame runs ``t = t_start() ... proj_len() - 1`` contiguously and stops: the *Ablauf*
-    falls at the end of the last month and **there is no ``t = proj_len()`` row**.
-    """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "commissions": [commissions(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
-    )
-
-
 def result_cf_annual():
     """:func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.
 

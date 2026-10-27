@@ -1841,8 +1841,10 @@ def check_annuity_roll_fwd():
                for k in range(proj_len_y()))
 
 
-def result_cf():
-    """Result table of cash flows, indexed by projection **month** t.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of cash flows, indexed by projection **month** t.
 
     ``pols_if`` is the start-of-month count and the weight applied to every cash flow on the
     same row; ``pols_paying`` is the premium-paying subset and the weight on the two premium
@@ -1866,23 +1868,22 @@ def result_cf():
     ``proj_len()``.  At ``t = proj_len() - 1`` the last survivor dies, and there is no tail
     state, no maturity payment and nothing left to pay.  :func:`result_cf_annual` is the
     same stream summed into projection years, which is the view the technical notes print.
+
+    Override reason: the statement carries the premium-paying count, the *Zuzahlungen* and
+    the three claim kinds of a *Basisrente*, products/basisrente/technical-notes.md:640
     """
-    ts = list(range(proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "pols_paying": [pols_paying(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "zuzahlungen": [zuzahlungen(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_annuity": [claims(t, "ANNUITY") for t in ts],
-            "claims_survivor": [claims(t, "SURVIVOR") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "commissions": [commissions(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("pols_paying", pols_paying),                                # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("zuzahlungen", zuzahlungen),                                # noqa: F821
+        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
+        ("claims_annuity", lambda t: claims(t, "ANNUITY")),          # noqa: F821
+        ("claims_survivor", lambda t: claims(t, "SURVIVOR")),        # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("commissions", commissions),                                # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
     )
 
 

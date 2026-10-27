@@ -829,3 +829,37 @@ def roll_fwd_tol():
     magnitude of what it compares.  A product without the row raises ``KeyError``.
     """
     return float(data.param_table().at["roll_fwd_tol", "value"])     # noqa: F821
+
+
+def result_cf_columns():
+    """The columns of :func:`result_cf` in their order, as ``(label, cell)`` pairs.
+
+    Each cell is a function of the month ``t``.  The default is the statement the core's own
+    cells make: ``pols_if``, ``premiums``, one ``claims_<kind>`` column per kind of
+    ``claim_kinds()`` in its order (the kind in lower case), ``expenses``, ``commissions``,
+    ``net_cf`` and ``liability_cf``.  A product whose statement has other lines overrides the
+    tuple; a column that is not a cell of ``t`` alone is a lambda of ``t``.
+    """
+    claim_columns = tuple(("claims_" + kind.lower(),
+                           lambda t, kind=kind: claims(t, kind))     # noqa: F821
+                          for kind in claim_kinds())                 # noqa: F821
+    return (("pols_if", pols_if), ("premiums", premiums)            # noqa: F821
+            ) + claim_columns + (
+            ("expenses", expenses), ("commissions", commissions),    # noqa: F821
+            ("net_cf", net_cf), ("liability_cf", liability_cf))      # noqa: F821
+
+
+def result_cf():
+    """The table of cash flows by policy month t, ``t_start() .. proj_len() - 1``.
+
+    One column per pair of :func:`result_cf_columns`, in its order, each the cell evaluated
+    at every month of the frame; ``pols_if`` is the start-of-month count, the weight on every
+    cash flow of the same row.  The frame runs contiguously and stops: there is no
+    ``t = proj_len()`` row.
+    """
+    ts = list(range(t_start(), proj_len()))                          # noqa: F821
+    frame = pd.DataFrame(                                            # noqa: F821
+        {label: [cell(t) for t in ts] for label, cell in result_cf_columns()},  # noqa: F821
+        index=ts)
+    frame.index.name = "t"
+    return frame

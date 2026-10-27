@@ -1982,8 +1982,10 @@ def check_zulage_lag():
                for k in range(proj_len_y()))
 
 
-def result_cf():
-    """Result table of cash flows, indexed by projection **month** t, ``0 ... proj_len() - 1``.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of cash flows by projection **month** t, ``0 ... proj_len() - 1``.
 
     ``pols_if`` is the **start**-of-month count, which is the weight applied to every cash
     flow on the same row, and its first value is ``pols_if_init()`` exactly.
@@ -2005,26 +2007,25 @@ def result_cf():
     The frame is uniform across model points and carries ``proj_len()`` rows on every one
     of them, including a contract commuted at *Rentenbeginn*, which then carries zeros to
     the end rather than being truncated.
+
+    Override reason: the statement carries the annuity-paying count, the *Zulagen* and the
+    six claim kinds, products/riester_rente/technical-notes.md:685
     """
-    ts = list(range(proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "pols_annuity_pay": [pols_annuity_pay(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "zulagen": [zulagen(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_transfer": [claims(t, "TRANSFER") for t in ts],
-            "claims_lumpsum": [claims(t, "LUMPSUM") for t in ts],
-            "claims_commutation": [claims(t, "COMMUTATION") for t in ts],
-            "claims_annuity": [claims(t, "ANNUITY") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "commissions": [commissions(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("pols_annuity_pay", pols_annuity_pay),                      # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("zulagen", zulagen),                                        # noqa: F821
+        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
+        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
+        ("claims_transfer", lambda t: claims(t, "TRANSFER")),        # noqa: F821
+        ("claims_lumpsum", lambda t: claims(t, "LUMPSUM")),          # noqa: F821
+        ("claims_commutation", lambda t: claims(t, "COMMUTATION")),  # noqa: F821
+        ("claims_annuity", lambda t: claims(t, "ANNUITY")),          # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("commissions", commissions),                                # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
     )
 
 

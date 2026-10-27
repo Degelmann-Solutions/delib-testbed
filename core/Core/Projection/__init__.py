@@ -863,3 +863,30 @@ def result_cf():
         index=ts)
     frame.index.name = "t"
     return frame
+
+
+def result_cf_counts():
+    """The count columns of :func:`result_cf` taken at each year's start: ``pols_if``.
+
+    :func:`result_cf_annual` takes them at the policy year's start rather than summing them.
+    A product whose frame carries a further count overrides the tuple.
+    """
+    return ("pols_if",)
+
+
+def result_cf_annual():
+    """:func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.
+
+    A regrouping of the monthly frame and never a second projection: every cash flow column
+    is the sum of its policy year's months, while each column of ``result_cf_counts()`` is
+    the count at the year's **start** and stands first, in that order, which is the only
+    reading under which a count and a flow can share a row.
+    """
+    df = result_cf()                                                 # noqa: F821
+    years = pd.Series([duration(t) + 1 for t in df.index],           # noqa: F821
+                      index=df.index, name="policy_year")
+    counts = list(result_cf_counts())                                # noqa: F821
+    out = df.drop(columns=counts).groupby(years).sum()
+    for i, column in enumerate(counts):
+        out.insert(i, column, df[column].groupby(years).first())
+    return out

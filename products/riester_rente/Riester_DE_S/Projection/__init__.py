@@ -2043,6 +2043,10 @@ def result_cf_annual():
     of a year's exits between death, surrender and transfer does not, because the three now
     compete month by month, and the annuity and the expenses do not, because both are now
     paid as the months pass.
+
+    Override reason: indexed by the projection year k of the valuation clock, the
+    annual-step model's own t, and summed over each year's twelve-month slice,
+    products/riester_rente/technical-notes.md:697
     """
     ks = list(range(proj_len_y()))
     flows = ["premiums", "zulagen", "claims_death", "claims_lapse", "claims_transfer",

@@ -1559,31 +1559,6 @@ def result_cf_columns():
     )
 
 
-def result_cf_annual():
-    """:func:`result_cf` summed into policy years, indexed by ``policy_year``.
-
-    Every cash flow column is the total of that policy year's twelve months; ``pols_if``
-    is the count at the **start** of the policy year, ``pols_if(12 (policy_year - 1))``,
-    which is the number the annual-step model this replaced carried on the same row.  It
-    is the monthly frame **regrouped and never a second projection**, which is what lets
-    the notes' annual worked example stay annual and still be asserted cell by cell.
-
-    On the ten annual-*Zahlweise* model points the two grids agree exactly on four
-    columns — ``pols_if``, ``prem_gross``, ``premiums`` and ``prem_rebate`` — because an
-    annual instalment is collected on the anniversary and weighted by the anniversary
-    in-force under either grid.  They do **not** agree on ``claims_death`` or
-    ``expenses``, which now fall where they happen rather than at the anniversary, and so
-    not on ``net_cf``.  On a fractionated point not even the premium columns agree, and
-    that is the *Ratenzahlungszuschlag* finally being charged for something.
-    """
-    df = result_cf()
-    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821
-                     name="policy_year")
-    out = df.drop(columns="pols_if").groupby(years).sum()
-    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
-    return out
-
-
 def result_pols():
     """Result table of policy counts, rates, per-policy amounts and the reserve, indexed by t.
 

@@ -1587,22 +1587,6 @@ def result_cf_columns():
     )
 
 
-def result_cf_annual():
-    """:func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.
-
-    A **regrouping of the monthly frame and never a second projection**: every cash flow
-    column is the sum of that policy year's twelve months while ``pols_if`` is the count at
-    the year's **start**, which is the only reading under which a count and a flow can share
-    a row.  This is the view the technical notes' worked example is stated on.
-    """
-    df = result_cf()
-    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821
-                     name="policy_year")
-    out = df.drop(columns="pols_if").groupby(years).sum()
-    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
-    return out
-
-
 def result_index():
     """The **annual** state behind the monthly cash flows, indexed by the 1-based policy year.
 

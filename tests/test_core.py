@@ -744,6 +744,16 @@ CORE_CELLS = {
         "result_cf_columns": {**dict.fromkeys(MODELS, "override"),
                               "kapitallebensversicherung": "derived"},
         "result_cf": {**dict.fromkeys(MODELS, "derived"), "berufsunfaehigkeit": "override"},
+        "result_cf_counts": {"indexpolice": "derived",
+                             "kapitallebensversicherung": "derived",
+                             "klassische_rentenversicherung": "override",
+                             "risikolebensversicherung": "derived"},
+        "result_cf_annual": {"basisrente": "override",
+                             "indexpolice": "derived",
+                             "kapitallebensversicherung": "derived",
+                             "klassische_rentenversicherung": "derived",
+                             "riester_rente": "override",
+                             "risikolebensversicherung": "derived"},
     },
 }
 
@@ -1471,3 +1481,25 @@ def test_klv_result_cf_is_the_core_statement_from_t_start(product_models):
         t = item.t_start()
         assert frame.loc[t, "claims_lapse"] == item.claims(t, "LAPSE")
         assert frame.loc[t, "pols_if"] == item.pols_if_init()
+
+
+def test_rv_result_cf_annual_sums_flows_and_takes_counts_at_the_year_start(product_models):
+    model = product_models("klassische_rentenversicherung")
+    projection = model.Projection
+    assert projection.result_cf_annual._is_derived()
+    assert projection.result_cf_counts._is_defined()
+    item = projection[model.Data.model_point_table().index[0]]
+    monthly = item.result_cf()
+    annual = item.result_cf_annual()
+    assert annual.index.name == "policy_year"
+    assert list(annual.columns[:2]) == ["pols_if", "pols_annuity"]
+    assert list(annual.columns[2:]) == [c for c in monthly.columns
+                                        if c not in ("pols_if", "pols_annuity")]
+    for year in annual.index:
+        months = [t for t in monthly.index if item.duration(t) + 1 == year]
+        start = months[0]
+        assert annual.loc[year, "pols_if"] == monthly.loc[start, "pols_if"], year
+        assert annual.loc[year, "pols_annuity"] == monthly.loc[start, "pols_annuity"], year
+        for column in annual.columns[2:]:
+            assert annual.loc[year, column] == pytest.approx(
+                monthly.loc[months, column].sum(), rel=1e-12, abs=1e-9), (year, column)

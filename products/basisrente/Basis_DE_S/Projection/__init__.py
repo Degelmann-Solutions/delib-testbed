@@ -1907,6 +1907,10 @@ def result_cf_annual():
     weighted by a count the finer grid does not change.  The annuity rows do not and are not
     meant to: the instalments are monthly now, and a life that dies during a payout year is
     no longer paid the whole of it.
+
+    Override reason: indexed by the projection year k of the valuation clock, the
+    annual-step model's own t, and summed over each year's twelve-month slice,
+    products/basisrente/technical-notes.md:668
     """
     ks = list(range(proj_len_y()))
     flows = ["premiums", "zuzahlungen", "claims_death", "claims_annuity",

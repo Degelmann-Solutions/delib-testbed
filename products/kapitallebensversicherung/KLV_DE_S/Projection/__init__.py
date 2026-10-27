@@ -1997,30 +1997,6 @@ def check_zillmer_cap():
                for t in range(t_start(), proj_len()))
 
 
-def result_cf_annual():
-    """:func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.
-
-    Every cash flow column is the total of that policy year's twelve months; ``pols_if`` is
-    the count at the **start** of the policy year, ``pols_if(12 k)``, which is the number the
-    annual-step model this replaced carried on the same row and is unchanged by the
-    conversion.  It is the monthly frame **regrouped and never a second projection**, which is
-    what lets the notes' annual worked example stay annual and still be asserted cell by cell.
-
-    ``pols_if`` and the whole annual layer beside it — the three reserves, the § 169 value,
-    the surplus ledgers, the paid-up purchase, the equivalence — are the annual model's own
-    numbers. The cash flow columns are not, and are not meant to be: claims fall in the month
-    of exit and are paid the balances standing at the **last** anniversary, maintenance
-    accrues a twelfth a month on that month's in-force, and a fractionated *Beitrag* is
-    collected on a block that has already lost lives.
-    """
-    df = result_cf()
-    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821
-                     name="policy_year")
-    out = df.drop(columns="pols_if").groupby(years).sum()
-    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
-    return out
-
-
 def result_surplus():
     """Result table of the surplus machinery and the reserves, indexed by ``policy_year``.
 

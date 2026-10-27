@@ -2062,22 +2062,20 @@ def result_cf_columns():
     )
 
 
-def result_cf_annual():
-    """:func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.
+def result_cf_counts():
+    """``pols_if`` and ``pols_annuity``, the counts taken at each year's start.
 
-    A **regrouping of the monthly frame and never a second projection**: every cash flow column
-    is the sum of that policy year's twelve months, while ``pols_if`` and ``pols_annuity`` are
-    the counts at the year's **start**, which is the only reading under which a count and a
-    flow can share a row.  This is the view the technical notes' worked example is stated on.
+    :func:`result_cf_annual` is :func:`result_cf` summed into policy years, indexed by the
+    1-based ``policy_year``: a **regrouping of the monthly frame and never a second
+    projection**.  Every cash flow column is the sum of that policy year's twelve months, while
+    ``pols_if`` and ``pols_annuity`` are the counts at the year's **start**, which is the only
+    reading under which a count and a flow can share a row.  This is the view the technical
+    notes' worked example is stated on.
+
+    Override reason: the frame carries a second count, ``pols_annuity``, the count the annuity
+    instalment is paid on, products/klassische_rentenversicherung/technical-notes.md:678
     """
-    df = result_cf()
-    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821
-                     name="policy_year")
-    counts = ["pols_if", "pols_annuity"]
-    out = df.drop(columns=counts).groupby(years).sum()
-    for i, column in enumerate(counts):
-        out.insert(i, column, df[column].groupby(years).first())
-    return out
+    return ("pols_if", "pols_annuity")
 
 
 def result_pols():

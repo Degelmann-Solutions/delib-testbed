@@ -406,16 +406,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def pols_if_init():
-    """The number of policies the model point represents at the valuation date.
-
-    The opening value of :func:`pols_if`, and therefore the first ``pols_if`` value of
-    :func:`result_cf`.  It opens entirely in :func:`pols_paying` or entirely in
-    :func:`pols_paidup` according to ``paidup_at_init``.
-    """
-    return float(model_point()["pols_if_init"])
-
-
 def omega_age():
     """omega: the limiting age, one above the last ``age`` in *mort_table.csv*.
 
@@ -947,6 +937,10 @@ def pols_if(t):
     the terminal year and :func:`mort_rate_mth` places that certainty in its last month.
     It is read by :func:`check_pols_roll_fwd` and by nothing else; :func:`result_cf` stops
     at ``t = proj_len() - 1``.
+
+    Override reason: the count is the sum of the paying and the paid-up ledger, between
+    which the *Beitragsfreistellung* moves policies,
+    products/basisrente/technical-notes.md:227
     """
     return pols_paying(t) + pols_paidup(t)
 
@@ -969,6 +963,10 @@ def pols_if_at(t, timing):
         removing any, so the total is unchanged.  The two timings exist so that the
         processing order is readable in the code and so that the equality is a statement
         the model makes rather than one a reader has to reconstruct.
+
+    Override reason: the timing ``"AFT_FREEZE"``, after the *Beitragsfreistellung* has moved
+    policies between the paying and the paid-up cohort, stands where the core has
+    ``"AFT_DECR"``, products/basisrente/technical-notes.md:230
     """
     if timing == "BEF_DECR":
         return pols_if(t)
@@ -1006,6 +1004,9 @@ def pols_death(t):
     *Rentenphase* the annuity simply stops with that month's instalment, and each death
     contributes ``elig_surv_prob`` of a *Rentengarantiezeit* continuation where one is
     running.
+
+    Override reason: the deaths are summed over the two cohorts, paying and paid-up, whose
+    deaths release different reserves, products/basisrente/technical-notes.md:507
     """
     return pols_death_paying(t) + pols_death_paidup(t)
 

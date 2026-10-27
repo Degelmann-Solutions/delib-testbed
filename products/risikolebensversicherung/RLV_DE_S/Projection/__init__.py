@@ -138,7 +138,7 @@ P_inst(t)                  prem_inst_pp(t)                 Zahlbeitrag instalmen
 (reserve)                  res_pp_at(y, timing)            First-order Deckungskapital
 (gezillmert)               res_zill_pp_at(y, timing)       The same, less the Zillmer
 l(t)                       pols_if(t)                      In force, start of period t
-l(t)(1-q2m), l(t+1)        pols_if_at(t, timing)           BEF_DECR / BEF_LAPSE / AFT_DECR
+l(t)(1-q2m), l(t+1)        pols_if_at(t, timing)           BEF_DECR / AFT_DEATH / AFT_DECR
 pols_death(t)              pols_death(t)                   Expected deaths in month t
 pols_lapse(t)              pols_lapse(t)                   Expected lapses in month t
 pols_maturity(t)           pols_maturity(t)                Expiring survivors, last month
@@ -501,15 +501,6 @@ def cover_end_age():
     return issue_age() + policy_term()
 
 
-def pols_if_init():
-    """The policy count the projection opens with: one policy.
-
-    Every delib model is a scalar single-model-point projection, so this is 1.0 and every
-    cash flow in :func:`result_cf` is a per-policy expectation.
-    """
-    return 1.0
-
-
 def age2(t):
     """x2(t): the attained age of the second life, ``issue_age2 + duration(t)``.
 
@@ -640,7 +631,7 @@ def mort_load_tariff(t):
     listed pitfall.
 
     Override reason: the tariff rate is the unisex blend loaded by ``1 + m`` and the rating
-    factor, products/risikolebensversicherung/technical-notes.md:230
+    factor, products/risikolebensversicherung/technical-notes.md:231
     """
     return (1.0 + sicherheitszuschlag_m) * rating_factor()           # noqa: F821
 
@@ -650,7 +641,7 @@ def mort_rate_tariff_base(t):
 
     Override reason: the tariff rate is the unisex blend combined over two lives by the
     first-death rule, not one table read at the attained age,
-    products/risikolebensversicherung/technical-notes.md:230
+    products/risikolebensversicherung/technical-notes.md:231
     """
     return mort_rate_blend(t)
 
@@ -835,7 +826,7 @@ def lapse_factor(t):
 
     Override reason: the lapse is zero through the whole final policy year, where cover
     expires, and loaded by the premium-shock multiplier elsewhere,
-    products/risikolebensversicherung/technical-notes.md:752
+    products/risikolebensversicherung/technical-notes.md:753
     """
     if duration(t) >= proj_len_y() - 1:
         return 0.0
@@ -881,7 +872,7 @@ def tariff_schedule(y):
     sum-exposure annuity :func:`tariff_term_annuity`, the base of the gamma loading.
 
     Override reason: the sum insured follows the benefit schedule and any
-    *Nachversicherungsgarantie* uplift, products/risikolebensversicherung/technical-notes.md:226
+    *Nachversicherungsgarantie* uplift, products/risikolebensversicherung/technical-notes.md:227
     """
     return benefit_pp(12 * y)
 
@@ -1142,109 +1133,6 @@ def res_zill_pp_at(y, timing):
 
 # ==========================================================================
 # Decrements
-
-
-def pols_if(t):
-    """l(t): policies in force at the **start** of month t.
-
-    ``pols_if_init()`` at ``t = t_start()``, then
-    ``l(t+1) = l(t) - pols_death(t) - pols_lapse(t) - pols_maturity(t)`` on the **monthly**
-    rates, which is ``l(t)(1 - q2m(t))(1 - wm(t))`` everywhere but the last month.  This is
-    the weight on every cash flow of the same :func:`result_cf` row — a start-of-period
-    exposure under a start-of-period name, which is the library-wide ruling and is
-    asserted by the conventions suite because breaking it is silent.
-
-    Because both monthly rates compound back to their policy year's annual rate, twelve
-    months of this recursion collapse to ``l(t+12) = l(t)(1 - q2(t))(1 - w(t))`` — the
-    annual-step recursion this replaced, term for term — so the in-force **at every policy
-    anniversary** is the annual model's own figure, ``pols_if(12k)`` here equalling
-    ``pols_if(k)`` there to floating point.  What the finer grid adds is the eleven months
-    between them.
-
-    ``pols_if(proj_len())`` is defined and is **exactly zero**: it is the state one step
-    past the last projected month, the expiring cohort having left through
-    :func:`pols_maturity` in that month, so every exit lands inside the frame and there is
-    no tail state.  Zero outside the projected range.
-    """
-    if t < t_start() or t > proj_len():
-        return 0.0
-    if t == t_start():
-        return pols_if_init()
-    return pols_if_at(t - 1, "AFT_DECR")
-
-
-def pols_if_at(t, timing):
-    """The number of policies in force at a point inside period t.
-
-    ``"BEF_DECR"``
-        l(t), the start of the period, before any decrement — the same number as
-        :func:`pols_if` and the weight on that period's cash flows.
-
-    ``"BEF_LAPSE"``
-        after the death decrement, before lapses.  The processing order takes deaths at
-        the end of the **month** and lapses **after** them, so this is the population
-        lapses are taken from.
-
-    ``"AFT_DECR"``
-        l(t+1), the end-of-month state, after deaths, lapses and — in the final month —
-        the expiry, which is why it is exactly zero at ``t = proj_len() - 1``.
-    """
-    if timing == "BEF_DECR":
-        return pols_if(t)
-    if timing == "BEF_LAPSE":
-        return pols_if(t) * (1.0 - mort_rate_mth(t))
-    if timing == "AFT_DECR":
-        if t < t_start() or t >= proj_len():
-            return 0.0
-        return (pols_if(t) - pols_death(t) - pols_lapse(t) - pols_maturity(t))
-    raise ValueError("invalid timing")
-
-
-def pols_death(t):
-    """l(t) q2m(t): expected deaths in month t, claimed at the end of the month.
-
-    On the **monthly** death rate, so a claim now falls in the month it happens rather
-    than at the anniversary.  The claimant has already paid whatever instalment fell due
-    in advance at the start of that month; that is this model's reading of "premium
-    payment ceases at death" **[std]**, and multiplying :func:`premiums` by ``(1 - q2m)``
-    on top of it applies the rule twice.
-    """
-    return pols_if(t) * mort_rate_mth(t)
-
-
-def pols_lapse(t):
-    """Lapses at the end of period t, taken from the survivors of the death decrement.
-
-    ``l(t)(1 - q2m(t)) wm(t)``.  Pays **nothing**: there is no *Rückkaufswert*, so this
-    moves :func:`pols_if` and nothing else, and at most an unearned fraction of a prepaid
-    instalment — not modelled, and smaller on a fractionated *Zahlweise* than on an annual
-    one — would be returned in practice.  Zero through the whole final policy year, where
-    the survivors leave as an expiry instead.
-
-    The economic reason lapse matters on a product with no surrender value to forfeit is
-    on the **other** side of the ledger: acquisition cost is incurred at issue and
-    recovered over the term, so an early lapse is a loss to the insurer.
-    """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
-
-
-def pols_maturity(t):
-    """The expiring survivors, at the **last projected month** ``t = proj_len() - 1``.
-
-    ``l(proj_len()-1)(1 - q2m(proj_len()-1))``, and zero in every month before it: the
-    *Versicherungsdauer* runs to the end of the last month of the last policy year, and
-    that is the single instant cover ceases.  Lapse is already zero through the whole of
-    that policy year, so the survivors of the twelve months' mortality all leave here.
-
-    Cover simply ends.  **Nothing is paid** — there is no *Erlebensfallleistung*, no
-    maturity value and no return of premium — so ``claims(t, "MATURITY")`` is zero and the
-    count is published only because the closure identity needs it.  The name is the
-    library's: ``pols_maturity`` is the count whose cover ends at the scheduled end of the
-    contract, whether or not anything is paid for it, and ``pols_expiry`` is retired.
-    """
-    if t != proj_len() - 1:
-        return 0.0
-    return pols_if(t) * (1.0 - mort_rate_mth(t))
 
 
 # ==========================================================================

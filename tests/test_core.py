@@ -18,11 +18,16 @@
   its table rate times 0.75; an annual certainty falls in the anniversary month (Basis and RV
   deaths at the terminal age, KLV's failed *Beitragsfreistellung*); FRV splits mortality
   linearly; Index and RLV close the lapse in the final policy year without reading the table.
+- The policy counts: RLV and BU read their count from the model point; RLV opens at it; RLV and
+  Index close at exactly zero; the end-of-month count is the next month's opening count and
+  an unknown timing is rejected; the survivors mature in the last month; KLV's lapses are
+  taken from the survivors of the month's deaths.
 """
 from __future__ import annotations
 
 import hashlib
 import io
+import math
 import re
 import shutil
 import subprocess
@@ -558,6 +563,47 @@ CORE_CELLS = {
                            "pflegerentenversicherung": "derived",
                            "riester_rente": "derived",
                            "risikolebensversicherung": "derived"},
+        "pols_if_init": dict.fromkeys(MODELS, "derived"),
+        "pols_death": {"basisrente": "override",
+                       "berufsunfaehigkeit": "override",
+                       "fondsgebundene_rentenversicherung": "derived",
+                       "indexpolice": "derived",
+                       "kapitallebensversicherung": "derived",
+                       "klassische_rentenversicherung": "derived",
+                       "pflegerentenversicherung": "override",
+                       "riester_rente": "override",
+                       "risikolebensversicherung": "derived"},
+        "pols_if_at": {"basisrente": "override",
+                       "berufsunfaehigkeit": "derived",
+                       "fondsgebundene_rentenversicherung": "override",
+                       "indexpolice": "override",
+                       "kapitallebensversicherung": "derived",
+                       "klassische_rentenversicherung": "override",
+                       "pflegerentenversicherung": "derived",
+                       "riester_rente": "derived",
+                       "risikolebensversicherung": "derived"},
+        "pols_lapse": {"berufsunfaehigkeit": "override",
+                       "fondsgebundene_rentenversicherung": "derived",
+                       "indexpolice": "derived",
+                       "kapitallebensversicherung": "derived",
+                       "klassische_rentenversicherung": "derived",
+                       "pflegerentenversicherung": "override",
+                       "riester_rente": "derived",
+                       "risikolebensversicherung": "derived"},
+        "pols_maturity": {"fondsgebundene_rentenversicherung": "derived",
+                          "indexpolice": "derived",
+                          "kapitallebensversicherung": "derived",
+                          "risikolebensversicherung": "derived"},
+        "pols_if": {"basisrente": "override",
+                    "berufsunfaehigkeit": "override",
+                    "fondsgebundene_rentenversicherung": "override",
+                    "indexpolice": "derived",
+                    "kapitallebensversicherung": "override",
+                    "klassische_rentenversicherung": "override",
+                    "pflegerentenversicherung": "override",
+                    "riester_rente": "override",
+                    "risikolebensversicherung": "derived",
+                    "sofortrente": "override"},
     },
 }
 
@@ -1034,3 +1080,98 @@ def test_klv_failed_beitragsfreistellung_lapses_in_the_anniversary_month(product
     assert all(item.lapse_rate(start + m) == 1.0 for m in range(12))
     assert [item.lapse_rate_mth(start + m) for m in range(12)] == [0.0] * 11 + [1.0]
     assert item.is_anniv(start + 11)
+
+
+@pytest.mark.parametrize("product", ["berufsunfaehigkeit", "risikolebensversicherung"])
+def test_pols_if_init_is_read_from_the_model_point(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.pols_if_init._is_derived()
+    points = model.Data.model_point_table()
+    assert (points["pols_if_init"] == 1.0).all()
+    for point_id in points.index:
+        assert projection[point_id].pols_if_init() == 1.0, point_id
+
+
+@pytest.mark.parametrize("product", ["berufsunfaehigkeit", "kapitallebensversicherung",
+                                     "pflegerentenversicherung", "risikolebensversicherung"])
+def test_the_end_of_month_count_is_the_next_start_of_month_count(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.pols_if_at._is_derived()
+    item = projection[model.Data.model_point_table().index[0]]
+    # BU's frame opens at t = 0, the valuation month: its pols_if guards on t < 0 and does
+    # not use the t_start() it inherits from the core.
+    start = 0 if product == "berufsunfaehigkeit" else item.t_start()
+    for t in range(start, item.proj_len()):
+        assert item.pols_if_at(t, "BEF_DECR") == item.pols_if(t), t
+        assert item.pols_if_at(t, "AFT_DECR") == item.pols_if(t + 1), t
+    with pytest.raises(Exception, match="invalid timing") as raised:
+        item.pols_if_at(start, "END")
+    # modelx re-raises a formula's error as a FormulaError without chaining it, and names
+    # the original type in its message.
+    chain, error = [], raised.value
+    while error is not None and error not in chain:
+        chain.append(error)
+        error = error.__cause__ or error.__context__
+    assert (any(isinstance(e, ValueError) for e in chain)
+            or "ValueError: invalid timing" in str(raised.value)), raised.value
+
+
+def test_klv_lapses_are_taken_from_the_survivors_of_the_deaths(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.pols_lapse._is_derived()
+    item = projection[model.Data.model_point_table().index[0]]
+    lapsing = [t for t in range(item.t_start(), item.proj_len()) if item.pols_lapse(t) > 0.0]
+    assert lapsing, "no month with lapses"
+    for t in range(item.t_start(), item.proj_len()):
+        assert (item.pols_lapse(t)
+                == item.pols_if_at(t, "AFT_DEATH") * item.lapse_rate_mth(t)), t
+        assert (item.pols_if_at(t, "AFT_DEATH")
+                == item.pols_if(t) * (1.0 - item.mort_rate_mth(t))), t
+
+
+
+@pytest.mark.parametrize("product", ["fondsgebundene_rentenversicherung", "indexpolice",
+                                     "kapitallebensversicherung", "risikolebensversicherung"])
+def test_the_survivors_of_both_decrements_mature_in_the_last_month(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.pols_maturity._is_derived()
+    item = projection[model.Data.model_point_table().index[0]]
+    last = item.proj_len() - 1
+    for t in range(item.t_start(), last):
+        assert item.pols_maturity(t) == 0.0, t
+    # The lapse is closed in the last month, so the survivors of both decrements are the
+    # survivors of the month's deaths.
+    assert item.lapse_rate_mth(last) == 0.0
+    assert item.pols_lapse(last) == 0.0
+    assert item.pols_maturity(last) > 0.0
+    assert item.pols_maturity(last) == item.pols_if_at(last, "AFT_DEATH")
+
+
+
+def test_rlv_opens_at_pols_if_init_on_new_and_in_force_points(product_models):
+    model = product_models("risikolebensversicherung")
+    projection = model.Projection
+    assert projection.pols_if._is_derived()
+    points = model.Data.model_point_table()
+    in_force = points.index[points["duration_init"] > 0]
+    assert len(in_force), "no in-force model point"
+    for point_id in (points.index[0], in_force[0]):
+        item = projection[point_id]
+        assert item.pols_if(item.t_start()) == item.pols_if_init(), point_id
+        assert item.pols_if(item.t_start() - 1) == 0.0, point_id
+
+
+@pytest.mark.parametrize("product", ["indexpolice", "risikolebensversicherung"])
+def test_the_count_after_the_last_month_is_exactly_positive_zero(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.pols_if._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        closing = item.pols_if(item.proj_len())
+        assert closing == 0.0 and math.copysign(1.0, closing) == 1.0, point_id
+        assert item.pols_maturity(item.proj_len() - 1) > 0.0, point_id

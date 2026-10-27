@@ -258,15 +258,6 @@ _spaces = []
 
 # --- the model point ---------------------------------------------------------
 
-def pols_if_init():
-    """Policies in force at ``t_start()``: 1.0, a single-policy model point.
-
-    Named rather than written as a literal because it is the scale of the roll-forward
-    tolerances and the quantity ``result_cf()``'s first ``pols_if`` value must equal.
-    """
-    return float(model_point()["pols_if_init"])
-
-
 def prem_form():
     """``"level"`` (*laufender Beitrag*) or ``"single"`` (*Einmalbeitrag*)."""
     v = model_point()["prem_form"]
@@ -1125,33 +1116,6 @@ def lapse_factor(t):
     return 1.0
 
 
-def pols_if(t):
-    """``l(t)``: policies in force at time t, the **start** of period t.
-
-    ``pols_if_init()`` at ``t_start()``, then ``pols_if_at(t - 1, "AFT_LAPSE")``, **month by
-    month**.  This is the weight on every cash flow of the same ``result_cf()`` row, which is
-    what makes it a start-of-month count: no decrement has been applied when a month opens,
-    so the frame opens at ``pols_if_init()`` exactly.
-
-    ``pols_if(12k)`` at an anniversary is **bit-identical to the annual-step model's**
-    ``pols_if(k)``, because both decrements compound geometrically and the order inside a
-    month is the annual model's order inside a year: deaths first, surrenders on the
-    survivors of them.  What the finer grid changes is the **split** of a year's exits
-    between the two, not their total.
-
-    ``pols_if(proj_len())`` is **zero**, not the surviving cohort: at the end of the last
-    month the survivors mature and leave through :func:`pols_maturity`.  Zero outside
-    ``t_start() .. proj_len()``.
-    """
-    if t < t_start() or t > proj_len():
-        return 0.0
-    if t == t_start():
-        return pols_if_init()
-    if t == proj_len():
-        return 0.0
-    return pols_if_at(t - 1, "AFT_LAPSE")
-
-
 def pols_if_at(t, timing):
     """The number of policies in force at a point inside period t.
 
@@ -1170,6 +1134,10 @@ def pols_if_at(t, timing):
         month of a policy year it is :func:`pols_surv_year_end`, the
         population the *Indexjahr* credit is given to; in the final policy
         year the surrender rate is zero, so that is the maturing cohort.
+
+    Override reason: ``"AFT_DEATH"`` subtracts the deaths, and ``"AFT_LAPSE"`` is the cohort
+    before the maturity that :func:`pols_surv_year_end` reads,
+    products/indexpolice/technical-notes.md:220
     """
     if timing == "BEF_DECR":
         return pols_if(t)
@@ -1178,34 +1146,6 @@ def pols_if_at(t, timing):
     if timing == "AFT_LAPSE":
         return pols_if_at(t, "AFT_DEATH") - pols_lapse(t)
     raise ValueError("invalid timing")
-
-
-def pols_death(t):
-    """``l(t) q^m_d(t)``: expected deaths in **month** t, claimed at the end of it."""
-    return pols_if(t) * mort_rate_mth(t)
-
-
-def pols_lapse(t):
-    """Expected surrenders in **month** t, taken from the survivors of the month's deaths.
-
-    Zero through the final policy year, where the survivors leave as maturities instead.
-    A surrender in any month of policy year ``k`` is paid ``cv_pp(k)`` and forfeits that
-    year's *Indexgutschrift* — the payoff exists only at the *Indexjahr* end — which is the
-    behavioural asymmetry the annual grid could state but not date.
-    """
-    return pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)
-
-
-def pols_maturity(t):
-    """The cohort reaching *Rentenbeginn*: the survivors of both decrements at the last month.
-
-    Zero in every other month.  The name is the library's — a count whose cover ends
-    at the scheduled end of the contract, whether or not anything is paid for it — and here
-    something very much is paid for it.
-    """
-    if t != proj_len() - 1:
-        return 0.0
-    return pols_if_at(t, "AFT_LAPSE")
 
 
 # --- benefits ----------------------------------------------------------------

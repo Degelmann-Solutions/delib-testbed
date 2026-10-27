@@ -67,7 +67,7 @@ German terms of art keep their German form in prose.
   and premium-related expenses are charged at the start of the month; transitions act **over** the
   month; and death and surrender benefits fall **at the end** of the month. `pols_if(t)` is the
   count at the **start** of month `t` and is the weight on that same `result_cf()` row's cash flows,
-  as the house style requires; end-of-period state is reached through `pols_if_at(t, "END")`.
+  as the house style requires; end-of-period state is reached through `pols_if_at(t, "AFT_DECR")`.
 - **Why the annuity is in advance.** German *Renten* are conventionally *monatlich vorschüssig*, and
   paying in advance puts the annuity on the same weight as the premium it replaces, which is what
   lets `check_waiver()` reconcile the two streams against one ledger.
@@ -201,7 +201,7 @@ Forward moves are deterioration, backward moves are *Herabstufung* and, out of P
 | `pols_pg(t, g)` | Lives in *Pflegegrad* `g` at the start of month `t` whose *Karenzzeit* has been served — the ledger the annuity is paid on | monthly recursion |
 | `esc_pg(t, g)` | The **escalation-weighted** counterpart of `pols_pg(t, g)`: the sum over those lives of `(1 + leistungsdynamik)^(months since the annuity began / 12)`. Equal to `pols_pg` exactly when the dynamic is off | monthly recursion |
 | `pols_care(t)`, `pols_if(t)` | Everyone in care, waiting or paid, `Σ_z Σ_g pols_karenz + Σ_g pols_pg`; and `pols_act + pols_care`, the in-force count at the **start** of month `t` | monthly |
-| `pols_if_at(t, timing)` | `"BEG"` = `pols_if(t)`; `"END"` = `pols_if(t + 1)`. End-of-period state goes through here and never through `pols_if` | monthly |
+| `pols_if_at(t, timing)` | `"BEF_DECR"` = `pols_if(t)`; `"AFT_DECR"` = `pols_if(t + 1)`. End-of-period state goes through here and never through `pols_if` | monthly |
 | `pols_in_term(t)`, `pols_waived(t)`, `pols_prem(t)` | In-force units inside the premium term (`age(t) < prem_end_age`); of those, the units in a *Pflegegrad* whose `benefit_pct` is positive — the *Beitragsbefreiung* population; and the difference, the units that actually pay | monthly |
 | `pols_entry(t, g)`, `pols_grad(t, g)` | Lives entering *Pflegegrad* `g` from the active state during month `t`, and lives graduating out of the *Karenz* ledger into `pols_pg(·, g)` | monthly |
 | `pols_death(t)`, `pols_lapse(t)` | Deaths during month `t` from every state; lapses from the active state only, after the insured decrements | monthly |

@@ -136,7 +136,7 @@ carries a per-row `provenance` column**, which is delib's second ruling and is m
 
 | File | Index columns | Value columns | Provenance |
 |---|---|---|---|
-| `model_point_table.csv` | `point_id` | the 19 model-point attributes below | **exempt** — a model point is a configuration, not an assumption |
+| `model_point_table.csv` | `point_id` | the 20 model-point attributes below | **exempt** — a model point is a configuration, not an assumption |
 | `mort_table.csv` | `table_id`, `sex`, `smoker`, `age` | `mort_rate` (second-order annual death rate) | per row |
 | `benefit_schedule.csv` | `schedule_id`, `policy_year` | `benefit_factor` | per row |
 | `nvg_schedule.csv` | `nvg_id`, `policy_year` | `sum_uplift` (cumulative multiplier on the sum insured) | per row |
@@ -175,6 +175,7 @@ following `TradLife_A`; their values and tags are the assumption tables below. T
 | `mort_table_id` | str | Key into `mort_table.csv`; one table shipped, `dav2008t_proxy` | all |
 | `duration_init` | int | Completed policy years at the valuation date; `0` for new business | 8 |
 | `rechnungszins` | float | *Rechnungszins* of the contract, fixed at conclusion for the whole term (DeckRV § 2 Abs. 2); 1,00 % on every shipped point, the DeckRV *Höchstzinssatz* adopted as the rate; a retrieved carrier prices its term tariff at 0,25 % instead [R10] [REG-R14] [REG-R15] [S3]; used only in the premium equivalence and the first-order reserve | all |
+| `pols_if_init` | float | Policy count the model point stands for, the opening value of `pols_if`; 1.0 on every shipped point, a per-policy projection. A model-point column since phase 3, where the count was the literal 1.0 | all |
 | `issue_date` | date | Reporting only; the model runs on integer durations | none |
 
 Three of these are worth a sentence each. **`sex` is carried and must not be priced on**: art. 5(2)

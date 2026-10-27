@@ -166,7 +166,7 @@ n                           (model point aufschub_y)        Deferment years
 m                           (model point rgz_years)         Rentengarantiezeit years
 kappa                       (model point kapitalwahl_rate)  Commutation take-up
 l(t)                        pols_if(t)                      In force at the start of month t
-l(t) - D, l(t+1)            pols_if_at(t, timing)           BEF_DECR / BEF_LAPSE / AFT_DECR
+l(t) - D, l(t+1)            pols_if_at(t, timing)           BEF_DECR / AFT_DEATH / AFT_DECR
 a(t)                        pols_annuity(t)                 Count the instalment is paid on
 P(k)                        prem_pp(k)                      Gross premium in policy year k
 P_sched(k)                  prem_pp_sched(k)                The premium as written at issue
@@ -469,11 +469,6 @@ def horizon_age():
     products/klassische_rentenversicherung/technical-notes.md:81
     """
     return omega_age()
-
-
-def pols_if_init():
-    """The number of policies the model point represents; ``pols_if`` at the frame's start."""
-    return float(model_point()["pols_if_init"])
 
 
 def mort_be_factor():
@@ -1309,6 +1304,9 @@ def pols_if(t):
     because ``mort_rate`` is 1 in the policy year at attained age ``omega_age() - 1``.  It is
     read by :func:`check_decrement_closure` and by nothing else, and :func:`result_cf` stops
     at ``proj_len() - 1``.
+
+    Override reason: the commutation at *Rentenbeginn* is an exit beside deaths and
+    surrenders, products/klassische_rentenversicherung/technical-notes.md:589
     """
     if t < t_start() or t > proj_len():
         return 0.0
@@ -1324,7 +1322,7 @@ def pols_if_at(t, timing):
         l(t), the start of the month, before any decrement; the same number as
         :func:`pols_if` and the weight on that month's cash flows.
 
-    ``"BEF_LAPSE"``
+    ``"AFT_DEATH"``
         after deaths, before surrenders — the processing order takes deaths at the end of the
         month and surrenders after them **[std order]**, so this is the population surrenders
         are taken from.  It is the annual-step model's order, one twelfth of the way along.
@@ -1332,38 +1330,20 @@ def pols_if_at(t, timing):
     ``"AFT_DECR"``
         l(t+1), the end-of-month state, after deaths, surrenders and — at the last
         accumulation month ``t = 12n - 1`` — the commutation split.
+
+    Override reason: ``"AFT_DEATH"`` subtracts the deaths,
+    products/klassische_rentenversicherung/technical-notes.md:583, and ``"AFT_DECR"``
+    subtracts the commutation at *Rentenbeginn* beside deaths and surrenders,
+    products/klassische_rentenversicherung/technical-notes.md:589
     """
     if timing == "BEF_DECR":
         return pols_if(t)
-    if timing == "BEF_LAPSE":
+    if timing == "AFT_DEATH":
         return pols_if(t) - pols_death(t)
     if timing == "AFT_DECR":
         return (pols_if(t) - pols_death(t) - pols_lapse(t)
                 - pols_commutation(t))
     raise ValueError("invalid timing")
-
-
-def pols_death(t):
-    """l(t) q^m(t): expected deaths in **month** t, at the end of it.
-
-    On the **second-order** basis, at the monthly rate.  The claimant has already paid the
-    year's premium, which fell due in advance at the start of the *Versicherungsperiode*, so
-    :func:`premiums` is not further multiplied by a survival factor.  Deaths continue through
-    the payout phase and move :func:`pols_if`, but pay nothing: ``db_pp`` is zero after the
-    *Rentenbeginn*.
-    """
-    return pols_if(t) * mort_rate_mth(t)
-
-
-def pols_lapse(t):
-    """Surrenders at the end of period t, taken from the survivors of the year's deaths.
-
-    Zero in the payout phase, where :func:`lapse_rate` is zero.  A *Beitragsfreistellung* is
-    **not** counted here: it is an election that keeps the contract alive, not a decrement.
-    The one place the two meet is the § 165 cash-out branch, where the whole surviving cohort
-    leaves through this decrement at the surrender value, in the anniversary month.
-    """
-    return pols_if_at(t, "BEF_LAPSE") * lapse_rate_mth(t)
 
 
 def pols_surv_rb():

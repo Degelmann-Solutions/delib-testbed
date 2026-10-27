@@ -176,7 +176,7 @@ w(t)                lapse_rate(t)                          Annual surrender rate
 wm(t)               lapse_rate_mth(t)                      The same, applied in month t
 sigma(k)            storno_rate(k)                         Stornoabzug rate
 l(t)                pols_if(t)                             In force at the start of month t
-(within month)      pols_if_at(t, timing)                  BEF_DECR / AFT_MORT / AFT_LAPSE
+(within month)      pols_if_at(t, timing)                  BEF_DECR / AFT_DEATH / AFT_DECR
 (exits)             pols_death(t), pols_lapse(t),          Expected exits in month t
                     pols_maturity(t)
 (none)              benefit_full_pp(t)                     Full death benefit before 161
@@ -407,16 +407,6 @@ _spaces = []
 # Cells
 
 # --- the model point -------------------------------------------------------
-
-def pols_if_init():
-    """The number of policies represented at ``t_start()``: 1.0, a single-policy model point.
-
-    The library's projections are per policy, so this is 1 everywhere; it is named rather than
-    written as a literal because it is the scale of the roll-forward tolerances and because
-    ``result_cf()``'s first ``pols_if`` must equal it exactly.
-    """
-    return float(model_point()["pols_if_init"])
-
 
 def death_ratio():
     """The *Todesfallleistung* as a multiple of the *Erlebensfallleistung*.
@@ -1405,74 +1395,16 @@ def pols_if(t):
     insured, and only a *Kündigung* removes it.  ``pols_if(proj_len())`` is defined and is
     the maturing cohort; it is read by :func:`check_pols_roll_fwd` and
     :func:`check_decrement_closure` and weights no cash flow.
+
+    Override reason: the roll-forward subtracts no maturity, so ``pols_if(proj_len())`` is
+    the maturing cohort its checks read, and it multiplies the survival factors, another
+    float order, products/kapitallebensversicherung/technical-notes.md:616
     """
     if t < t_start() or t > proj_len():
         return 0.0
     if t == t_start():
         return pols_if_init()
-    return pols_if_at(t - 1, "AFT_LAPSE")
-
-
-def pols_if_at(t, timing):
-    """The number of policies in force at a point inside policy year t.
-
-    ``"BEF_DECR"``
-        l(t), the start of the year before any decrement - the same number as
-        :func:`pols_if` and the weight on that year's cash flows.
-
-    ``"AFT_MORT"``
-        after the mortality decrement, ``l(t) (1 - qm(t))``.  This is the population the
-        surrender rate is taken from **and** the population that matures at
-        ``t = proj_len() - 1``, which is why the two exits cannot both be applied to it in
-        the last month.
-
-    ``"AFT_LAPSE"``
-        l(t+1), the end-of-month state.  Through the final policy year :func:`lapse_rate` is
-        zero, so in the last month this equals :func:`pols_maturity`.
-    """
-    if timing == "BEF_DECR":
-        return pols_if(t)
-    if timing == "AFT_MORT":
-        return pols_if(t) * (1.0 - mort_rate_mth(t))
-    if timing == "AFT_LAPSE":
-        if t < t_start() or t > proj_len() - 1:
-            return 0.0
-        return pols_if_at(t, "AFT_MORT") * (1.0 - lapse_rate_mth(t))
-    raise ValueError("invalid timing")
-
-
-def pols_death(t):
-    """l(t) qm(t): expected deaths in month t, claimed at the **end** of the month.
-
-    On the **best-estimate monthly** mortality, not the first-order one, so a claim now falls
-    in the month it happens rather than at the anniversary.  The decedent has already paid
-    whatever instalment fell due in advance at the start of that month - which is what
-    "premiums cease on death" means on a grid with premiums in advance.
-    """
-    return pols_if(t) * mort_rate_mth(t)
-
-
-def pols_lapse(t):
-    """Expected surrenders at the end of month t, from the survivors of that month's mortality.
-
-    ``pols_if_at(t, "AFT_MORT") * lapse_rate_mth(t)``.  They are paid :func:`surr_value_pp`,
-    which on this product is a real and often large amount - unlike a term cover, where a
-    lapse pays nothing.  Zero through the final policy year, where the survivors leave as a
-    maturity instead.
-    """
-    return pols_if_at(t, "AFT_MORT") * lapse_rate_mth(t)
-
-
-def pols_maturity(t):
-    """Policies reaching the *Ablauf* at the end of the last projected month; zero before it.
-
-    ``pols_if(N) * (1 - mort_rate_mth(N))`` at ``N = proj_len() - 1`` - the survivors of that
-    month's mortality, all of them, because :func:`lapse_rate` is zero through the whole final
-    policy year.  They take the *Erlebensfallleistung*.
-    """
-    if t != proj_len() - 1:
-        return 0.0
-    return pols_if_at(t, "AFT_MORT")
+    return pols_if_at(t - 1, "AFT_DEATH") * (1.0 - lapse_rate_mth(t - 1))
 
 
 # --- benefits --------------------------------------------------------------
@@ -1836,7 +1768,7 @@ def check_pols_roll_fwd_resid(t):
     """
     r = (pols_if(t) - pols_if(t + 1) - pols_death(t) - pols_lapse(t))
     if t == proj_len() - 1:
-        r += pols_maturity(t) - pols_if_at(t, "AFT_MORT")
+        r += pols_maturity(t) - pols_if_at(t, "AFT_DEATH")
     return r
 
 

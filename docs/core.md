@@ -1,6 +1,6 @@
 # The common core of phase 3: layout and conventions
 
-Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates and the contract data and charges, and the conventions every core commit follows: commit trailers, the reason on a product override, and how a product's `UPSTREAM.md` names the files phase 3 changed. The tests that enforce the conventions are `tests/test_core.py` and `tests/test_provenance.py`.
+Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates, the policy counts and the contract data and charges, and the conventions every core commit follows: commit trailers, the reason on a product override, and how a product's `UPSTREAM.md` names the files phase 3 changed. The tests that enforce the conventions are `tests/test_core.py` and `tests/test_provenance.py`.
 
 ## Layout
 
@@ -103,6 +103,28 @@ The overrides, each with its reason in the cell's docstring:
 KLV derives `lapse_rate_mth`. Its own branch put 1 in the anniversary month of a failed election year; the core's certainty branch does the same wherever `lapse_rate` is 1 there, which is every such year but the final policy year, where `lapse_rate` is 0 and the survivors mature. No shipped point elects in its final year.
 
 Still in the products: the first-order and tariff rates (`mort_rate_tariff*`, Pflege's `tar_*`, BU's `*_first`), BU's disabled-lives and in-claim rates (`mort_rate_dis*`), Pflege's forces and care rates (`mort_force`, `mort_rate_care`), Riester's payout basis (`annuity_mort_rate`) and transfer rate, Basis's *Beitragsfreistellung* rate, and the surrender values and charges.
+
+## The policy counts
+
+The core's `Projection` holds the policy counts the monthly recursion is built from, on the rates above and the frame `t_start() .. proj_len()`:
+
+- `pols_if_init()`, the policy count the model point stands for, from its `pols_if_init` column. The count is a contract-book attribute and so data: every product derives it, and RLV and BU, whose cell was the literal 1.0, carry the column, 1.0 on every shipped point.
+- `pols_if(t)`, the count at the **start** of month `t` and the weight on that month's row: 0 outside `t_start() .. proj_len()`, `pols_if_init()` at `t_start()`, then `pols_if(t-1) - pols_death(t-1) - pols_lapse(t-1) - pols_maturity(t-1)`. Subtracting the exits makes `pols_if(proj_len()) = +0.0` exact where the survivors mature (RLV, Index).
+- `pols_death(t) = pols_if(t) * mort_rate_mth(t)` (FRV, Index, KLV, RV, RLV), `pols_lapse(t) = pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)` (FRV, Index, KLV, RV, RLV, Riester), the lapses taken from the survivors of the month's deaths, and `pols_maturity(t)`, 0 before the last month `proj_len() - 1` and the survivors of both decrements there, `pols_if_at(t, "AFT_DEATH") * (1 - lapse_rate_mth(t))` (KLV, FRV, Index, RLV); the lapse is closed in that month, so the factor is exactly 1.
+- `pols_if_at(t, timing)` on one sequence of timings: `"BEF_DECR"`, the start of the month, `pols_if(t)`; `"AFT_DEATH"`, after the month's deaths, `pols_if(t) * (1 - mort_rate_mth(t))`; `"AFT_DECR"`, the end of the month after every exit, `pols_if(t + 1)`; any other timing raises `ValueError` (BU, Pflege, RLV, KLV, Riester). The products' labels for the same points were renamed to these: KLV `AFT_MORT` and `AFT_LAPSE`, RLV and RV `BEF_LAPSE`, BU and Pflege `BEG` and `END`. BU and Pflege read only `"BEF_DECR"` and `"AFT_DECR"`; the inherited `"AFT_DEATH"` is the single-decrement population, not the survivors of their ledgers, and nothing reads it there.
+
+The float order carries the byte identity, as for the rates: a product derives a count only where the core expression gives its bits (`x - 0.0 == x`, `x * 1.0 == x`, `a - a == +0.0`). Index's and RV's `"AFT_DEATH"` subtracts the deaths, `pols_if(t) - pols_death(t)`, so they keep their `pols_if_at` and still derive `pols_lapse`, which reads it through their override. KLV's and Riester's `pols_if` read their own end-of-month expression, since the derived `"AFT_DECR"` is `pols_if(t + 1)`.
+
+The overrides, each with its reason in the cell's docstring:
+
+- `pols_death`: Basis, the deaths of the paying and the paid-up cohort summed; BU, the three ledgers' deaths summed; Pflege, every state at its own rate; Riester, zero outside the frame and in the conversion month of a commuted contract, where the *Kleinbetragsrenten-Abfindung* takes the whole cohort. Sofort has no such cell.
+- `pols_if_at`: Basis, `"AFT_FREEZE"`, after the *Beitragsfreistellung* has moved policies between the cohorts; FRV, `"AFT_DECR"` is the cohort before the maturity sweep, not `pols_if(t + 1)`; Index, `"AFT_DEATH"` subtracts the deaths and `"AFT_LAPSE"` is the cohort before the maturity that `pols_surv_year_end` reads; RV, `"AFT_DEATH"` subtracts the deaths and `"AFT_DECR"` the commutation at *Rentenbeginn* too.
+- `pols_lapse`: BU, from the *aktiv* ledger only; Pflege, from the active state's survivors and the month's reactivations.
+- `pols_if`: Basis and Pflege, the sum of their ledgers; BU, death and lapse its only exits with no maturity, rolled forward so that `check_states` tests the ledgers against it; FRV and KLV, the multiplicative recursion `l(t) (1 - q^m) (1 - w^m)`, and KLV subtracts no maturity, so its `pols_if(proj_len())` is the maturing cohort its checks read; RV, the commutation exit; Riester, the transfer exit (*Anbieterwechsel*) and the *Abfindung*; Sofort, the probability that a payment obligation remains over two lives and the guarantee period, not a count.
+
+Still in the products: the ledger counts (`pols_paying`, `pols_paidup`, `pols_actv`, `pols_dis`, `pols_act`, `pols_care`, `pols_pg`, `pols_karenz`, Sofort's `lives_if`), the exits other than death, lapse and maturity (RV's `pols_commutation`, Riester's `pols_transfer`, Basis's `pols_freeze`), `pols_tariff` of the tariff basis, the annuity counts (`pols_annuity`) and the surrender values.
+
+Open work, each a result-changing commit of its own: FRV's and KLV's multiplicative `pols_if` and Basis's summed `pols_death` give other bits than the core form; Index's and RV's subtracted `"AFT_DEATH"` other bits than the core's product; KLV's `pols_if(proj_len())`, the maturing cohort, would become 0 with its checks rewritten on `pols_maturity`, and FRV's `"AFT_DECR"` at the last month would become `pols_if(proj_len()) = 0`.
 
 ## Contract data and charges
 

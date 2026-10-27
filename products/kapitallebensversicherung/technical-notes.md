@@ -183,7 +183,7 @@ something it does not. Every one satisfies the *Mindesttodesfallschutz* [R12] [R
 
 | Variable | Description | Updated |
 |---|---|---|
-| `pols_if(t)` | Policies in force at the **start** of **month** `t`; `pols_if(t_start()) = pols_if_init()`. `pols_if_at(t, timing)` gives `"BEF_DECR"` / `"AFT_MORT"` / `"AFT_LAPSE"` | monthly decrements |
+| `pols_if(t)` | Policies in force at the **start** of **month** `t`; `pols_if(t_start()) = pols_if_init()`. `pols_if_at(t, timing)` gives `"BEF_DECR"` / `"AFT_DEATH"` / `"AFT_DECR"` | monthly decrements |
 | `res_pp(k)` | Guaranteed *Deckungskapital* per policy at the **start** of **policy year** `k`, on the first-order basis. `res_pp_at(k, timing)` gives `"BEF_PREM"` / `"AFT_PREM"` / `"AFT_INT"` | annual, prospective, with a roll-forward check |
 | `av_sur_pp(k)`, `bonus_si_pp(k)` | *Überschussguthaben* per policy at the start of **policy year** `k`, nil unless `surplus_use = ansammlung`, with `av_sur_pp_at(k, timing)` and `av_sur_at(k, timing)` per the house convention for a *verzinsliche Ansammlung* side account — library-wide `av_pp` is the **principal** balance, which in this product is the reserve `res_pp` and not an account; and the bonus sum insured bought out of surplus, nil unless `surplus_use = bonus` | annual recursion |
 | `term_bonus_pp(k)` | Accrued *Schlussüberschussanteil* at the start of **policy year** `k`, payable at the *Ablauf* and on death, not on surrender in the base run | annual accrual |
@@ -613,7 +613,7 @@ premiums(t)             = prem_inst_pp(t) · pols_if(t)
 pols_death(t)      = pols_if(t) · mort_rate_mth(t)
 pols_lapse(t)      = pols_if(t) · (1 − mort_rate_mth(t)) · lapse_rate_mth(t)
 pols_maturity(t)   = pols_if(t) · (1 − mort_rate_mth(t))    at t = 12n − 1, else 0
-pols_if(t+1)       = pols_if(t) − pols_death(t) − pols_lapse(t)
+pols_if(t+1)       = pols_if(t) − pols_death(t) − pols_lapse(t)   formed as pols_if(t) · (1 − mort_rate_mth(t)) · (1 − lapse_rate_mth(t))
 
 benefit_full_pp(t)     = sum_death + av_sur_close_pp(t) + bonus_si_close_pp(t)
                          + term_bonus_close_pp(t)

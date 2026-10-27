@@ -53,6 +53,16 @@ def karenz_months():
     return int(model_point()["karenz_months"])                       # noqa: F821
 
 
+def pols_if_init():
+    """The policy count the model point stands for, from its ``pols_if_init`` column.
+
+    The opening value of ``pols_if`` at ``t_start()``: no decrement has been applied when the
+    frame opens, so the first ``pols_if`` of the result equals it exactly.  A contract-book
+    attribute and so data, not code; 1.0 where the projection is per policy.
+    """
+    return float(model_point()["pols_if_init"])                      # noqa: F821
+
+
 def prem_freq():
     """The payment frequency, a key into the product's *freq_loading_table.csv*.
 
@@ -357,6 +367,80 @@ def lapse_rate_mth(t):
     if w >= 1.0:
         return 1.0 if is_anniv(t) else 0.0                           # noqa: F821
     return 1.0 - (1.0 - w) ** (1.0 / 12.0)
+
+
+def pols_if(t):
+    """l(t): the policies in force at the **start** of month t, the weight on that month's row.
+
+    ``pols_if_init()`` at ``t_start()``, then
+    ``l(t) = l(t-1) - pols_death(t-1) - pols_lapse(t-1) - pols_maturity(t-1)``, the exits of
+    the month before subtracted; 0 outside ``t_start() .. proj_len()``.  ``pols_if(proj_len())``
+    is the state one past the last month: every exit lands inside the frame, so it is 0
+    exactly where the survivors leave as maturities.
+    """
+    if t < t_start() or t > proj_len():                              # noqa: F821
+        return 0.0
+    if t == t_start():                                               # noqa: F821
+        return pols_if_init()
+    return (pols_if(t - 1) - pols_death(t - 1) - pols_lapse(t - 1)
+            - pols_maturity(t - 1))
+
+
+def pols_if_at(t, timing):
+    """The policy count at a point inside month t, in the order of the month's decrements.
+
+    ``"BEF_DECR"``
+        l(t), the start of the month before any decrement: :func:`pols_if`, the weight on
+        that month's cash flows.
+
+    ``"AFT_DEATH"``
+        ``l(t) (1 - q^m(t))``, after the month's deaths: the population the later exits
+        are taken from.
+
+    ``"AFT_DECR"``
+        l(t + 1), the end-of-month state after every exit, ``pols_if(t + 1)``.
+
+    Raises ``ValueError`` for any other timing.
+    """
+    if timing == "BEF_DECR":
+        return pols_if(t)                                            # noqa: F821
+    if timing == "AFT_DEATH":
+        return pols_if(t) * (1.0 - mort_rate_mth(t))                 # noqa: F821
+    if timing == "AFT_DECR":
+        return pols_if(t + 1)                                        # noqa: F821
+    raise ValueError("invalid timing")
+
+
+def pols_death(t):
+    """l(t) q^m(t): the expected deaths in month t, ``pols_if(t) x mort_rate_mth(t)``.
+
+    Taken first, at the end of the month, on the best-estimate monthly rate; the deceased
+    have paid what fell due in advance at the start of the month.
+    """
+    return pols_if(t) * mort_rate_mth(t)                             # noqa: F821
+
+
+def pols_lapse(t):
+    """The expected lapses in month t, ``pols_if_at(t, "AFT_DEATH") x lapse_rate_mth(t)``.
+
+    Taken from the survivors of the month's deaths, at the end of the month; zero where the
+    lapse rate is zero.
+    """
+    return pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)            # noqa: F821
+
+
+def pols_maturity(t):
+    """The policies whose term ends with the last projected month, ``t = proj_len() - 1``.
+
+    There the survivors of both decrements, ``pols_if_at(t, "AFT_DEATH") x (1 -
+    lapse_rate_mth(t))``, and 0 in every month before; where the lapse is closed in the
+    final month, the factor is exactly 1.  The count whose cover ends at the scheduled end
+    of the contract, whether or not anything is paid for it.
+    """
+    if t != proj_len() - 1:                                          # noqa: F821
+        return 0.0
+    return (pols_if_at(t, "AFT_DEATH")                               # noqa: F821
+            * (1.0 - lapse_rate_mth(t)))                             # noqa: F821
 
 
 def rechnungszins():

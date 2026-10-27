@@ -217,7 +217,7 @@ points, four *Rechnungszins* cohorts and four *Garantieniveaus*.
 | `duration(t)`, `policy_year(t)`, `is_anniv(t)`, `index_month(t)` | the bridge between the clocks: the 0-based policy year of month `t`, its 1-based label, whether `t` is the year's last month, and which month of the *Indexjahr* it is | derived |
 | `age(t)` | attained age in month `t` = `issue_age + duration(t)`; **steps on the anniversary** | annual step |
 | `pols_if(t)` | policies in force at time `t`, the **start of month** `t`; `pols_if(t_start()) = pols_if_init()` | monthly recursion |
-| `pols_if_at(t, timing)` | the within-month points of the same count: `"BEF_DECR"`, `"AFT_DEATH"`, `"AFT_LAPSE"` | within month `t` |
+| `pols_if_at(t, timing)` | the within-month points of the same count: `"BEF_DECR"`, `"AFT_DEATH"`, `"AFT_LAPSE"`; `"AFT_DEATH"` subtracts the month's deaths, and `"AFT_LAPSE"` is the cohort after both decrements and before the maturity, read by `pols_surv_year_end` | within month `t` |
 | `pols_surv_year_end(k)` | the survivors of all twelve months of policy year `k` — the population the *Indexjahr* credit is given to | once a policy year |
 | `av_pp(k)` | *Deckungskapital* per policy at time `k`, the **start** of policy year `k`; `av_pp(k_start()) = av_pp_init` | annual recursion |
 | `av_pp_at(k, timing)` | `"BEF_PREM"`, `"AFT_PREM"`, `"AFT_CHARGE"`, `"AFT_GUAR"`, `"AFT_CREDIT"` | within policy year `k` |

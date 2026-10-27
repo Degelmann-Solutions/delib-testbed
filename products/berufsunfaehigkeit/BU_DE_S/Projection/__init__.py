@@ -116,7 +116,7 @@ l_r(t, k)                  pols_runoff_slot(t, k)          § 174 run-off slot k
 V_r(t, k)                  runoff_val(t, k)                The same, times its BU-Rente
 (sum over k)               pols_runoff(t)                  The whole run-off ledger
 L(t)                       pols_if(t)                      In force at the start of t
-(none)                     pols_if_at(t, timing)           BEG / END of month t
+(none)                     pols_if_at(t, timing)           BEF_DECR / AFT_DECR of month t
 L_p(t)                     pols_prem(t)                    Premium-paying count
 (none)                     pols_inception(t)               Aktiv -> leistungspflichtig
 (none)                     pols_recovery(t)                Claim terminations into run-off
@@ -488,16 +488,6 @@ def claim_duration_init():
     Zero on every ``aktiv`` point.  See :func:`seed_claim_dur` for the cohort it seeds.
     """
     return int(model_point()["claim_duration_init"])
-
-
-def pols_if_init():
-    """The policy count at ``t = 0``: **1.0 for every model point**.
-
-    This is a per-policy probability projection, one model point at a time, so every
-    ledger is a probability and every cash flow an expected amount per policy in force at
-    the valuation date.  ``result_cf()``'s first ``pols_if`` value is this number exactly.
-    """
-    return 1.0
 
 
 # --- the time frame ---
@@ -1294,6 +1284,9 @@ def pols_lapse(t):
     § 169 VVG through § 176 gives this contract a real *Rueckkaufswert* and § 165 a real
     *beitragsfreie BU-Rente*, but both are the release of a reserve this model does not
     compute, so a lapse is a pure decrement and ``claims(t, "LAPSE")`` is zero.
+
+    Override reason: the lapses come from the *aktiv* ledger only, after its deaths; lives
+    in claim or run-off do not lapse, products/berufsunfaehigkeit/technical-notes.md:182
     """
     return (pols_actv(t) - pols_death_actv(t)) * lapse_rate_mth(t)
 
@@ -1529,6 +1522,9 @@ def pols_death(t):
     a claim, so there is no ``claims_death`` column for a reader arriving from a term-life
     model to find.  With :func:`pols_lapse` it is one of the only two exits from the
     model.
+
+    Override reason: the deaths are the sum of the three ledgers' deaths, active, disabled
+    and run-off, each at its own rate, products/berufsunfaehigkeit/technical-notes.md:496
     """
     return pols_death_actv(t) + pols_death_dis(t) + pols_death_runoff(t)
 
@@ -1548,31 +1544,16 @@ def pols_if(t):
     weight on that same :func:`result_cf` row's cash flows and ``result_cf()``'s first
     value is ``pols_if_init()`` exactly.  End-of-month state goes through
     :func:`pols_if_at`.
+
+    Override reason: death and lapse are the only exits, with no maturity, and the count is
+    rolled forward from them so that :func:`check_states` tests it against the three
+    ledgers, products/berufsunfaehigkeit/model.md:83
     """
     if t < 0 or t > proj_len():
         return 0.0
     if t == 0:
         return pols_if_init()
     return pols_if(t - 1) - pols_death(t - 1) - pols_lapse(t - 1)
-
-
-def pols_if_at(t, timing):
-    """The policy count at a point inside month t.
-
-    ``"BEG"``
-        ``pols_if(t)``, the start of the month before any decrement — the same
-        number as :func:`pols_if` and the weight on that month's cash flows.
-
-    ``"END"``
-        ``pols_if(t + 1)``, the end-of-month state after deaths and lapses.
-        At ``t = proj_len() - 1`` it is the population whose cover simply runs
-        out, and nothing is payable to it.
-    """
-    if timing == "BEG":
-        return pols_if(t)
-    if timing == "END":
-        return pols_if(t + 1)
-    raise ValueError("invalid timing")
 
 
 def pols_prem(t):

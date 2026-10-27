@@ -362,15 +362,6 @@ _spaces = []
 
 # ----------------------------------------  the model point
 
-def pols_if_init():
-    """Policies in force at the projection's opening: the weight the model point carries.
-
-    ``pols_if(t_start()) == pols_if_init()`` exactly, which is the library's
-    start-of-period convention asserted in the conventions suite.
-    """
-    return float(model_point()["pols_if_init"])
-
-
 def prem_form():
     """The premium form: ``laufend`` (recurring) or ``einmal`` (single).
 
@@ -1323,6 +1314,10 @@ def pols_if(t):
     ``pols_if(proj_len()) = 0``, one past the frame's last index: the survivors of the last
     projected month leave as :func:`pols_maturity` and there is nothing after
     *Rentenbeginn* in this model.
+
+    Override reason: the recursion multiplies the survival factors, ``l(t) (1 - q^m(t)) (1 -
+    w^m(t))``, another float order than the subtraction of the exits,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:507
     """
     if t <= t_start():
         return pols_if_init()
@@ -1344,6 +1339,10 @@ def pols_if_at(t, timing):
         ``t = proj_len() - 1`` it is the surviving cohort **before** the maturity sweep,
         and so equals ``pols_maturity(proj_len() - 1)`` rather than ``pols_if(proj_len())``,
         which is zero.
+
+    Override reason: ``"AFT_DECR"`` is the cohort after both decrements and before the
+    maturity sweep, not ``pols_if(t + 1)``, which is zero after the last month,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:510
     """
     if timing == "BEF_DECR":
         return pols_if(t)
@@ -1353,38 +1352,6 @@ def pols_if_at(t, timing):
         return pols_if_at(t, "AFT_DEATH") * (1.0 - lapse_rate_mth(t))
     else:
         raise ValueError("invalid timing")
-
-
-def pols_death(t):
-    """Expected deaths in month t, on the **best-estimate** basis.
-
-    ``pols_if(t) x mort_rate_mth(t)``.  The tariff's first-order rate prices the charge;
-    this rate produces the claims.  Their difference is the *Risikoergebnis*.
-    """
-    return pols_if(t) * mort_rate_mth(t)
-
-
-def pols_lapse(t):
-    """Expected surrenders in month t, on the survivors of the month's deaths.
-
-    Zero in the last month by construction, where the whole surviving cohort is booked as
-    :func:`pols_maturity` instead.
-    """
-    return pols_if_at(t, "AFT_DEATH") * lapse_rate_mth(t)
-
-
-def pols_maturity(t):
-    """Policies reaching *Rentenbeginn*: zero except in the last projected month.
-
-    At ``t = proj_len() - 1`` it is the whole surviving cohort,
-    ``pols_if_at(t, "AFT_DECR")``, since the lapse rate is zero there.  Named
-    ``pols_maturity`` and not ``pols_expiry`` per the library's register: it is the count
-    whose cover ends at the scheduled end of the contract, and what is paid for it is
-    ``claims(t, "MATURITY")``.
-    """
-    if t < proj_len() - 1:
-        return 0.0
-    return pols_if_at(t, "AFT_DECR")
 
 
 # ----------------------------------------  cash flows

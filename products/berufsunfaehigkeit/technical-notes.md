@@ -120,9 +120,9 @@ German ones, and each now carries a document that was read.
 | `claim_duration_init` | int | Months since onset at `t = 0`, for a `leistung` point | 7 (8) |
 | `rechnungszins` | float p.a. | *Rechnungszins*, the *Höchstrechnungszins* of 1,00 %: DeckRV § 2 Abs. 1 fixes it at 1 Prozent and § 2 Abs. 2 makes the rate used at conclusion apply for the whole term; the 1 January 2025 commencement is [unverified] [R13] [REG-R14] [REG-R15]; used only in the equivalence | all at 0,01 |
 
-`pols_if_init()` is **1.0 for every model point**: the model is a per-policy probability projection,
-one model point at a time, so `pols_if(0) == 1.0` exactly and `result_cf()`'s first `pols_if` value
-is that. There is no `policy_count` column.
+`pols_if_init` is the model-point column read by `pols_if_init()`, **1.0 on every model point**: the
+model is a per-policy probability projection, one model point at a time, so `pols_if(0) == 1.0` exactly
+and `result_cf()`'s first `pols_if` value is that. A column since phase 3, where it was the literal 1.0.
 
 **The shipped model point table.** Thirteen points, `bu_rente_mth` in EUR per month, `LD` the
 *Leistungsdynamik* and `WE` the *Wiedereingliederungshilfe* in monthly *Renten*. Every column not
@@ -177,7 +177,7 @@ anniversary, before any claim: different quantities, different clocks.
 | `pols_reactivation(t)` | Run-off completions returning to *aktiv* at end of month `t` | monthly |
 | `pols_death_actv(t)`, `pols_death_dis(t)`, `pols_death_runoff(t)` | Deaths out of each ledger at end of month `t` | monthly |
 | `pols_death(t)` | Their sum — a decrement, **never a cash flow**, because an SBU pays nothing on death | derived |
-| `pols_if_at(t, timing)` | `pols_if(t)` for `timing = "BEG"`, the end-of-month count for `"END"` — the only route to end-of-period state | derived |
+| `pols_if_at(t, timing)` | `pols_if(t)` for `timing = "BEF_DECR"`, the end-of-month count for `"AFT_DECR"` — the only route to end-of-period state | derived |
 | `inc_rate_base(t)` | The **table** inception rate at `age(t)`, before `occ_factor`, `accept_factor` and `au_uplift`; `inc_rate(t)` is the composed rate | lookup |
 | `pols_lapse(t)` | Lapses, from `pols_actv` only | monthly |
 | `bu_rente_pp(t)` | The **insured** monthly *BU-Rente* at time `t`, after any *Beitragsdynamik* | at anniversaries |
@@ -346,7 +346,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 
 | File | Index | Value columns |
 |---|---|---|
-| `model_point_table.csv` | `point_id` | the 21 model-point attributes above (no `provenance` — a model point is a configuration, not an assumption) |
+| `model_point_table.csv` | `point_id` | the 22 model-point attributes above (no `provenance` — a model point is a configuration, not an assumption) |
 | `inception_table.csv` | `age` (18 – 66) | `inc_rate`, `provenance` |
 | `claim_duration_table.csv` | `dur_year` (1 – 11, the last being ultimate) | `recov_rate`, `mort_dis_sel_factor`, `provenance` |
 | `mortality_table.csv` | `age` (18 – 70) | `mort_rate_actv`, `mort_rate_dis`, `provenance` |
@@ -501,7 +501,7 @@ the active ledger**: a life that recovers in month `t` is still paid in months `
 
     L(t+1) = L(t) - pols_death(t) - pols_lapse(t)
 
-and over the whole projection `Σ_t [pols_death(t) + pols_lapse(t)] + pols_if_at(n − 1, "END") = 1`.
+and over the whole projection `Σ_t [pols_death(t) + pols_lapse(t)] + pols_if_at(n − 1, "AFT_DECR") = 1`.
 Inception, recovery and reactivation are **internal transfers** and must not appear in that
 identity — putting them there is how a multi-state model silently loses mass.
 
@@ -886,7 +886,7 @@ all 444 months and adding the survivors must return the policy:
 
     deaths    0.069864886996
     lapses    0.536693205531
-    survivors 0.393441907473   ( = pols_if_at(443, "END") )
+    survivors 0.393441907473   ( = pols_if_at(443, "AFT_DECR") )
     ----------------------------
     total     1.000000000000
 

@@ -1608,6 +1608,10 @@ def net_cf(t):
     commission and the issue expense both fall there while the acquisition charge that
     funds them arrives over sixty months — after which the margin turns positive and grows
     with the fund.
+
+    Override reason: the non-unit cash flow is the charges and the *Stornoabzug* less
+    expenses, commissions and the death strain; the premium and the benefits pass through the
+    unit fund, products/fondsgebundene_rentenversicherung/technical-notes.md:543
     """
     return (charge_acq(t) + charge_admin_prem(t) + charge_admin_fund(t)
             + charge_policy_fee(t) + charge_risk(t) + stornoabzug(t)

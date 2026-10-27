@@ -215,6 +215,7 @@ f                           annuity_rate_appl()             max(f_g, f_c)
 G                           annuity_guar_mth_pp()           Garantierte Rente, monthly
 U(k)                        annuity_sur_mth_pp(k)           Ueberschussrente, monthly
 G + U(k)                    annuity_pp(t)                   The instalment paid in month t
+(none)                      annuity_outgo(t)                annuity_payments(t), in net_cf
 net_cf(t)                   net_cf(t)                       Net cash flow, income positive
 liability_cf(t)             liability_cf(t)                 The same stream, outgo positive
 ==========================  ==============================  ==========================
@@ -1765,20 +1766,19 @@ def expenses_claim(t):
                                  + pols_commutation(t))
 
 
-def net_cf(t):
-    """The net liability cash flow of period t, **income positive**.
+def annuity_outgo(t):
+    """The annuity instalments of month t, :func:`annuity_payments`, subtracted in ``net_cf``.
 
-    ``premiums - claims_death - claims_lapse - claims_commutation - annuity_payments -
-    expenses``.  The six components are exactly the six that cross the contract boundary; the
-    account movements beside them in :func:`result_cf` — ``prem_to_av``, ``int_credited``,
-    ``bonus_credited`` — are internal and are reported, not summed.
+    The annuity is not a kind of :func:`claims`: it is a recurring benefit with its own
+    weighting rule.  With it the six components of the net cash flow are exactly the six
+    that cross the contract boundary; the account movements beside them in
+    :func:`result_cf` — ``prem_to_av``, ``int_credited``, ``bonus_credited`` — are internal
+    and are reported, not summed.
 
-    The shape to expect on the anchor cell is strongly positive in the first month of each
-    accumulation year and mildly negative in the other eleven, a large negative spike at
-    ``t = 203`` where the *Kapitalabfindung* falls, and a long negative annuity tail thereafter.
+    Override reason: the net cash flow subtracts the annuity payments after the claims,
+    products/klassische_rentenversicherung/technical-notes.md:694
     """
-    return (premiums(t) - claims(t, "DEATH") - claims(t, "LAPSE")
-            - claims(t, "COMMUTATION") - annuity_payments(t) - expenses(t))
+    return annuity_payments(t)
 
 
 def liability_cf(t):

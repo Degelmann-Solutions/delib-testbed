@@ -1306,6 +1306,9 @@ def net_cf(t):
     tail from the seventies onward as the incidence curve overtakes it.  That crossing is
     where the *Deckungskapital* peaks, and it is the whole economic content of an ageing
     reserve carried on a life-assurance chassis.
+
+    Override reason: the claim total is subtracted at once and the claims-handling cost
+    after the expenses, products/pflegerentenversicherung/technical-notes.md:597
     """
     return premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
 

@@ -172,6 +172,7 @@ E(t)                       expenses(t)                     Insurer expense outgo
 (none)                     comm_init_rate()                Abschlussprovision rate
 (none)                     comm_renew(t)                   Bestandsprovision
 C(t)                       commissions(t)                  Commission outgo
+(none)                     income_other(t)                 zuzahlungen(t), in net_cf
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
 liability_cf(t)            liability_cf(t)                 The same stream, outgo positive
 =========================  ==============================  ==============================
@@ -1603,25 +1604,21 @@ def comm_renew(t):
     return float(row["comm_renew_rate"]) * (premiums(t) + zuzahlungen(t))
 
 
-def net_cf(t):
-    """The net liability cash flow of projection month t, **income positive**.
+def income_other(t):
+    """The *Zuzahlungen* of month t, :func:`zuzahlungen`, income beside the premium.
 
-    ``premiums + zuzahlungen - claims_death - claims_annuity - claims_survivor - expenses
-    - commissions``.  The library-wide sign; :func:`liability_cf` publishes the same stream
-    outgo-positive.
+    With it the net cash flow is ``premiums + zuzahlungen - claims_death - claims_annuity -
+    claims_survivor - expenses - commissions``.  ``expenses`` does **not** include the
+    commission — the two are separate lines and each is subtracted once — and the
+    *Deckungskapital* is a balance rather than a cash flow and enters nothing.
+    ``prem_total_pp`` enters nothing either: the BUZ premium buys a cover this model does
+    not project.  :func:`check_net_cf` reconstructs the net cash flow from
+    :func:`result_cf`'s own published columns.
 
-    ``expenses`` here does **not** include the commission — the two are separate lines and
-    each is subtracted once — and the *Deckungskapital* is a balance rather than a cash
-    flow and enters nothing.  ``prem_total_pp`` enters nothing either: the BUZ premium buys
-    a cover this model does not project.
-
-    :func:`check_net_cf` reconstructs this from :func:`result_cf`'s own published columns,
-    which is delib's first ruling — the headline number of a cash flow model must not be
-    the one quantity nothing checks.
+    Override reason: the *Zuzahlungen* are income beside the premiums,
+    products/basisrente/technical-notes.md:612
     """
-    return (premiums(t) + zuzahlungen(t)
-            - claims(t, "DEATH") - claims(t, "ANNUITY") - claims(t, "SURVIVOR")
-            - expenses(t) - commissions(t))
+    return zuzahlungen(t)
 
 
 def liability_cf(t):

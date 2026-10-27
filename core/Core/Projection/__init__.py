@@ -784,3 +784,28 @@ def commissions(t):
     each once.
     """
     return comm_init(t) + comm_renew(t)                              # noqa: F821
+
+
+def income_other(t):
+    """Income in month t beside the premium (a top-up, a subsidy); 0, none."""
+    return 0.0
+
+
+def annuity_outgo(t):
+    """Annuity outgo in month t that is not a kind of :func:`claims`; 0, none."""
+    return 0.0
+
+
+def net_cf(t):
+    """The net liability cash flow of month t, **income positive**.
+
+    ``premiums(t) + income_other(t)``, less ``claims(t, kind)`` for each kind of
+    ``claim_kinds()`` in turn, less ``annuity_outgo(t)``, ``expenses(t)`` and
+    ``commissions(t)``: each outgo subtracted exactly once, the commission apart from the
+    expenses.  The library-wide sign; :func:`liability_cf` publishes the same stream
+    outgo-positive.
+    """
+    out = premiums(t) + income_other(t)                              # noqa: F821
+    for kind in claim_kinds():                                       # noqa: F821
+        out = out - claims(t, kind)                                  # noqa: F821
+    return out - annuity_outgo(t) - expenses(t) - commissions(t)     # noqa: F821

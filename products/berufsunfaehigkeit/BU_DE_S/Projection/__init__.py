@@ -1733,6 +1733,10 @@ def net_cf(t):
     accelerates from the mid-forties, and turn negative in the last years before the
     *Endalter*, which is exactly the *Deckungsrueckstellung* this model does not compute
     being run down.
+
+    Override reason: the *Beitragsverrechnung* is subtracted before the claim total and the
+    *Leistungsbearbeitungskosten* after the expenses,
+    products/berufsunfaehigkeit/technical-notes.md:556
     """
     return (premiums(t) - surplus_credit(t) - claims(t)
             - expenses(t) - claim_expenses(t))

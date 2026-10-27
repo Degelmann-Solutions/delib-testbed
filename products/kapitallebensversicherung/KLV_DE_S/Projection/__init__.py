@@ -1704,24 +1704,6 @@ def comm_renew(t):
 
 # --- output ----------------------------------------------------------------
 
-def net_cf(t):
-    """The net liability cash flow of month t, **income positive**.
-
-    *Beiträge* less death, maturity and surrender claims, less expenses, less commission -
-    each subtracted exactly once, :func:`expenses` excluding commission by construction.  The
-    notes' own sign and the library-wide one.
-
-    The shape to expect on the anchor cell is a **first year that very nearly washes** -
-    +320,89 €, the year's *Beitrag* of 2 004,04 € almost exactly meeting the 1 252,53 € initial
-    commission plus the 300 € acquisition expense - then margins of the order of a thousand
-    euros a year that decay as the cohort lapses, then a single very large negative year at the
-    *Ablauf*, -28 172,76 €.  The new-business strain of this product sits in the **reserve**,
-    which opens at -1 252,53 €, and not in the cash flow.
-    """
-    return (premiums(t) - claims(t, "DEATH") - claims(t, "MATURITY")
-            - claims(t, "LAPSE") - expenses(t) - commissions(t))
-
-
 def liability_cf(t):
     """The same stream as :func:`net_cf`, outgo positive: ``-net_cf(t)`` exactly.
 

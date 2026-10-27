@@ -214,6 +214,7 @@ a(k)                       annuity_pp(k)                   Annual annuity, 12 in
 (none)                     comm_init_rate()                comm_rate_init
 (none)                     comm_renew(t)                   Renewal on the contributions
 (none)                     commissions(t)                  Commission outgo
+(none)                     income_other(t)                 zulagen(t), in net_cf
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
 liability_cf(t)            liability_cf(t)                 The same stream, outgo positive
 =========================  ==============================  ==========================
@@ -1733,27 +1734,19 @@ def comm_renew(t):
     return comm_rate_renew * (eigenbeitrag_pp(k) + zulage_pp(k)) * pols_if(t)  # noqa: F821
 
 
-def net_cf(t):
-    """The net liability cash flow of month t, **income positive**.
+def income_other(t):
+    """The Zulagen of month t, :func:`zulagen`, income beside the saver's own contribution.
 
-    Contributions and Zulagen in, the six kinds of benefit out, expenses and commission
-    out.  ``int_credited`` is **not** in it: interest moves money inside the account rather
-    than across the insurer's boundary, and it is not even a column of this frame.  The
-    notes' own sign and the library-wide one.
+    With it the net cash flow is the contributions and Zulagen in, the six kinds of benefit
+    out, expenses and commission out.  ``int_credited`` is **not** in it: interest moves
+    money inside the account rather than across the insurer's boundary.  The shape to expect
+    on the monthly frame is a saw-tooth: the whole year's contribution and Zulage land in
+    the first month of a projection year.
 
-    The shape to expect on the monthly frame is a saw-tooth: the whole year's contribution
-    and Zulage land in the first month of a projection year and nothing else does, so that
-    month is strongly positive and the other eleven carry a twelfth of the maintenance
-    expense and the month's exits.  Summed into years by :func:`result_cf_annual` the
-    familiar shape returns: a modest positive in accumulation, a very large negative in the
-    conversion year as the *Teilkapitalauszahlung* or the *Abfindung* leaves in one payment,
-    then a long thin negative tail of monthly annuity instalments.
+    Override reason: the Zulagen are income beside the contributions,
+    products/riester_rente/technical-notes.md:670
     """
-    return (premiums(t) + zulagen(t)
-            - claims(t, "DEATH") - claims(t, "LAPSE") - claims(t, "TRANSFER")
-            - claims(t, "LUMPSUM") - claims(t, "COMMUTATION")
-            - claims(t, "ANNUITY")
-            - expenses(t) - commissions(t))
+    return zulagen(t)
 
 
 def liability_cf(t):

@@ -715,6 +715,28 @@ CORE_CELLS = {
                        "risikolebensversicherung": "override",
                        "sofortrente": "derived"},
         "commissions": dict.fromkeys(MODELS, "derived"),
+        "income_other": {"basisrente": "override",
+                         "indexpolice": "derived",
+                         "kapitallebensversicherung": "derived",
+                         "klassische_rentenversicherung": "derived",
+                         "riester_rente": "override",
+                         "risikolebensversicherung": "derived"},
+        "annuity_outgo": {"basisrente": "derived",
+                          "indexpolice": "derived",
+                          "kapitallebensversicherung": "derived",
+                          "klassische_rentenversicherung": "override",
+                          "riester_rente": "derived",
+                          "risikolebensversicherung": "derived"},
+        "net_cf": {"basisrente": "derived",
+                   "berufsunfaehigkeit": "override",
+                   "fondsgebundene_rentenversicherung": "override",
+                   "indexpolice": "derived",
+                   "kapitallebensversicherung": "derived",
+                   "klassische_rentenversicherung": "derived",
+                   "pflegerentenversicherung": "override",
+                   "riester_rente": "derived",
+                   "risikolebensversicherung": "derived",
+                   "sofortrente": "override"},
     },
 }
 
@@ -1358,4 +1380,18 @@ def test_a_product_without_commission_pays_exactly_zero(product, product_models)
         for t in range(item.t_start(), item.proj_len()):
             zero = item.commissions(t)
             assert zero == 0.0 and math.copysign(1.0, zero) == 1.0, (point_id, t)
+
+
+def test_klv_net_cf_subtracts_each_claim_kind_in_turn(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.net_cf._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        for t in range(item.t_start(), item.proj_len()):
+            expected = (item.premiums(t) - item.claims(t, "DEATH")
+                        - item.claims(t, "MATURITY") - item.claims(t, "LAPSE")
+                        - item.expenses(t) - item.commissions(t))
+            assert math.copysign(1.0, item.net_cf(t)) == math.copysign(1.0, expected)
+            assert item.net_cf(t) == expected, (point_id, t)
 

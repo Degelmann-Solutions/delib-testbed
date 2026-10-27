@@ -1158,6 +1158,9 @@ def net_cf(t):
     at ``t = 0`` — the whole *Einmalbeitrag* against one instalment and the acquisition
     expense — and a long negative tail decaying with survival.  The tail is what a
     *Deckungsrückstellung* is held against; this model does not compute one.
+
+    Override reason: the net cash flow is the negative of the outgo-positive liability cash
+    flow, products/sofortrente/technical-notes.md:630
     """
     return -liability_cf(t)
 

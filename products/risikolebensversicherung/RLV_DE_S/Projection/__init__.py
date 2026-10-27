@@ -1326,21 +1326,6 @@ def comm_renew(t):
             if duration(t) >= 1 else 0.0)
 
 
-def net_cf(t):
-    """Net liability cash flow in period t, **income positive**.
-
-    ``premiums(t) - claims(t) - expenses(t) - commissions(t)`` — the *billed* premium, not
-    the guaranteed one.  This is the library-wide sign, so ``result_cf()["net_cf"]`` can be
-    compared and summed across delib without checking which product it came from; the
-    outgo-positive orientation is :func:`liability_cf`.
-
-    Undiscounted, and deliberately so: this library publishes gross best-estimate-style
-    liability cash flows and leaves discounting, the *Deckungsrückstellung*, Solvency II
-    technical provisions and the SCR to a layer that consumes them.
-    """
-    return premiums(t) - claims(t) - expenses(t) - commissions(t)
-
-
 def liability_cf(t):
     """The same stream, outgo positive: ``-net_cf(t)`` exactly.
 

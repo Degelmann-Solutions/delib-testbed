@@ -1359,23 +1359,6 @@ def expenses_maint(t):
     return (exp_acq_pp(t) + exp_maint_pp(duration(t)) / 12.0) * pols_if(t)
 
 
-def net_cf(t):
-    """The net liability cash flow of period t, **income positive**.
-
-    Premiums less death, surrender and *Rentenbeginn* benefits less expenses — the
-    library's sign convention, applied to every model in it.
-
-    The shape to expect is a large first-**month** strain, the acquisition expense falling
-    in one lump against the year's premium, then thin positive months while the account
-    builds, then a very large negative final month when the whole surviving cohort's capital
-    falls due at once.  ``guar_int``, ``surplus_credit``, ``index_credit`` and ``av`` are
-    reported beside it and are **not** in it: they are movements of the policyholder's
-    account, and they reach the insurer's cash flow only later, through a benefit.
-    """
-    return (premiums(t) - claims(t, "DEATH") - claims(t, "LAPSE")
-            - claims(t, "MATURITY") - expenses(t))
-
-
 def liability_cf(t):
     """The same stream as :func:`net_cf`, outgo positive: ``-net_cf(t)`` exactly.
 

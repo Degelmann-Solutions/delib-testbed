@@ -1891,7 +1891,7 @@ def check_pols_roll_fwd_resid(t):
 def check_pols_roll_fwd():
     """True when the in-force count rolls forward exactly in every projected month."""
     return all(abs(check_pols_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
+               <= roll_fwd_tol() * max(pols_if_init(), 1.0)          # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -2041,7 +2041,6 @@ expense_surr = 50.0
 
 expense_annuitisation = 100.0
 
-roll_fwd_tol = 1e-10
 
 val_tol = 1e-10
 

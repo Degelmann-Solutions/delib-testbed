@@ -820,3 +820,12 @@ def liability_cf(t):
     prose.
     """
     return -net_cf(t)                                                # noqa: F821
+
+
+def roll_fwd_tol():
+    """The tolerance the ``check_*`` identities close to, from *param_table.csv*.
+
+    A float comparison tolerance, not an actuarial assumption: each check scales it by the
+    magnitude of what it compares.  A product without the row raises ``KeyError``.
+    """
+    return float(data.param_table().at["roll_fwd_tol", "value"])     # noqa: F821

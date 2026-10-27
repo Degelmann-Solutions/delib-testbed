@@ -47,6 +47,7 @@ mort_file                 data.mort_table()                  mortality_table.csv
 occupation_file           data.occupation_table()            occupation_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
+param_file                data.param_table()                 param_table.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -1774,7 +1775,7 @@ def check_net_cf():
     No argument, one bool over all ``t``, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol            # noqa: F821
+    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol()          # noqa: F821
                * max(1.0, abs(bu_rente_pp(t)))
                for t in range(0, proj_len()))
 
@@ -1799,7 +1800,7 @@ def check_states_resid(t):
 def check_states():
     """True when the three ledgers account for the whole in-force population at every t."""
     return all(abs(check_states_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
+               <= roll_fwd_tol() * max(pols_if_init(), 1.0)          # noqa: F821
                for t in range(0, proj_len() + 1))
 
 
@@ -1823,7 +1824,7 @@ def check_pols_roll_fwd_resid(t):
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
     return all(abs(check_pols_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
+               <= roll_fwd_tol() * max(pols_if_init(), 1.0)          # noqa: F821
                for t in range(0, proj_len()))
 
 
@@ -1846,7 +1847,7 @@ def check_dis_roll_fwd_resid(t):
 def check_dis_roll_fwd():
     """True when the disabled ledger rolls forward exactly in every projected month."""
     return all(abs(check_dis_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
+               <= roll_fwd_tol() * max(pols_if_init(), 1.0)          # noqa: F821
                for t in range(0, proj_len()))
 
 
@@ -1866,7 +1867,7 @@ def check_runoff_roll_fwd_resid(t):
 def check_runoff_roll_fwd():
     """True when the § 174 run-off ledger rolls forward exactly in every projected month."""
     return all(abs(check_runoff_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
+               <= roll_fwd_tol() * max(pols_if_init(), 1.0)          # noqa: F821
                for t in range(0, proj_len()))
 
 
@@ -1885,7 +1886,7 @@ def check_prem_split_resid(t):
 
 def check_prem_split():
     """True when the two premium columns reconcile to the *Zahlbeitrag* in every month."""
-    return all(abs(check_prem_split_resid(t)) <= roll_fwd_tol        # noqa: F821
+    return all(abs(check_prem_split_resid(t)) <= roll_fwd_tol()      # noqa: F821
                * max(1.0, abs(prem_gross_ann_pp(t)))
                for t in range(0, proj_len()))
 
@@ -1915,7 +1916,7 @@ def check_cover_end_resid(t):
 
 def check_cover_end():
     """True when benefit and premium both stop exactly at their own contractual ages."""
-    return all(abs(check_cover_end_resid(t)) <= roll_fwd_tol         # noqa: F821
+    return all(abs(check_cover_end_resid(t)) <= roll_fwd_tol()       # noqa: F821
                for t in range(0, proj_len()))
 
 
@@ -2025,6 +2026,5 @@ claim_maint_cost_mth = 12.0
 
 runoff_months = 3
 
-roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")

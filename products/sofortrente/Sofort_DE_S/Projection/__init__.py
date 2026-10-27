@@ -1196,7 +1196,7 @@ def check_net_cf():
     not only in prose.  No argument, one bool over all ``t``;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
+    tol = roll_fwd_tol() * max(single_prem() * pols_if_init(), 1.0)  # noqa: F821
     return bool(all(abs(check_net_cf_resid(t)) <= tol
                     for t in range(t_start(), proj_len())))
 
@@ -1230,7 +1230,7 @@ def check_lives_roll_fwd():
     paid-up conversion and no option exercise — so this is the whole closure identity, and
     a life that leaves and reappears fails here rather than in a cash flow.
     """
-    tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
+    tol = roll_fwd_tol() * max(pols_if_init(), 1.0)                  # noqa: F821
     if not all(abs(check_lives_roll_fwd_resid(t)) <= tol
                for t in range(t_start(), proj_len())):
         return False
@@ -1270,7 +1270,7 @@ def check_annuity_roll_fwd():
     paid-up annuity, is not taken back off — which is what makes a rising
     *Überschussverwendung* ratchet rather than fluctuate.
     """
-    tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
+    tol = roll_fwd_tol() * max(single_prem() * pols_if_init(), 1.0)  # noqa: F821
     stepped = all(abs(check_annuity_roll_fwd_resid(t)) <= tol
                   for t in range(t_start(), proj_len()))
     ratchet = all(annuity_pp(t) >= annuity_pp(t - 1) - tol
@@ -1303,7 +1303,7 @@ def check_refund_run_off():
     directly.  The last is what catches a refund measured against the *total* annuity: the
     *Überschussrente* would retire the capital sooner and the count would not match.
     """
-    tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
+    tol = roll_fwd_tol() * max(single_prem() * pols_if_init(), 1.0)  # noqa: F821
     if refund_form() == "none":
         return bool(all(refund_pp(t) == 0.0
                         for t in range(t_start(), proj_len())))
@@ -1349,7 +1349,7 @@ def check_payment_factor_resid(t):
 
 def check_payment_factor():
     """True when the instalment splits exactly into its three legs at every month."""
-    tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
+    tol = roll_fwd_tol() * max(single_prem() * pols_if_init(), 1.0)  # noqa: F821
     return bool(all(abs(check_payment_factor_resid(t)) <= tol
                     for t in range(t_start(), proj_len())))
 
@@ -1374,7 +1374,7 @@ def check_guarantee_certain():
     Vacuously true on a model point with no guarantee period, which is the honest reading:
     there is nothing to be certain about.
     """
-    tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
+    tol = roll_fwd_tol() * max(pols_if_init(), 1.0)                  # noqa: F821
     return bool(all(abs(check_guarantee_certain_resid(t)) <= tol
                     for t in range(t_start(), proj_len())))
 
@@ -1410,7 +1410,7 @@ def check_equivalence():
     """
     if annuity_pp_init() > 0.0:
         return True
-    tol = roll_fwd_tol * max(net_single_prem(), 1.0)                 # noqa: F821
+    tol = roll_fwd_tol() * max(net_single_prem(), 1.0)               # noqa: F821
     return bool(abs(check_equivalence_resid()) <= tol)
 
 
@@ -1434,14 +1434,14 @@ def check_death_option_xor():
 def check_tariff_int_rate():
     """True when the tariff *Rechnungszins* is within the cap of the contract's own vintage.
 
-    ``rechnungszins() <= hoechstrechnungszins() + roll_fwd_tol``.  An **inequality**, not
+    ``rechnungszins() <= hoechstrechnungszins() + roll_fwd_tol()``.  An **inequality**, not
     an equality: the *Höchstrechnungszins* binds the reserving rate and, through the VAG,
     the rate a new tariff may be priced at, but a carrier may price below it and one in the
     corpus is observed pricing a guaranteed annuity factor at 0 % while the statutory
     maximum was positive.
     """
     return bool(rechnungszins()
-                <= hoechstrechnungszins() + roll_fwd_tol)             # noqa: F821
+                <= hoechstrechnungszins() + roll_fwd_tol())           # noqa: F821
 
 
 def result_cf():
@@ -1526,7 +1526,6 @@ mix_male = 0.45
 mort_base_year = 2025
 
 
-roll_fwd_tol = 1e-08
 
 solve_tol = 1e-10
 

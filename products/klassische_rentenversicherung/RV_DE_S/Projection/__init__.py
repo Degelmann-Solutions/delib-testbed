@@ -493,15 +493,6 @@ def mort_be_factor():
     return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
 
 
-def roll_fwd_tol():
-    """The relative tolerance the ``check_*`` identities close to, from *param_table.csv*.
-
-    1e-9, scaled by the magnitude of the quantities being compared.  A float comparison
-    tolerance, not an actuarial assumption.
-    """
-    return float(data.param_table().at["roll_fwd_tol", "value"])     # noqa: F821
-
-
 # ----------------------------------------
 # The premium and the Beitragssumme
 

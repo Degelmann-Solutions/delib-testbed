@@ -1652,7 +1652,7 @@ def check_net_cf():
     it means the same thing on a 300 € contribution and on a 30 826 € one.
     """
     scale = max([1.0] + [abs(net_cf(t)) for t in range(proj_len())])
-    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol * scale     # noqa: F821
+    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol() * scale   # noqa: F821
                for t in range(proj_len()))
 
 
@@ -1684,7 +1684,7 @@ def check_pols_roll_fwd_resid(t):
 def check_pols_roll_fwd():
     """True when both policy-ledger identities close in every projected month."""
     scale = max(pols_if_init(), 1.0)
-    return all(check_pols_roll_fwd_resid(t) <= roll_fwd_tol * scale  # noqa: F821
+    return all(check_pols_roll_fwd_resid(t) <= roll_fwd_tol() * scale  # noqa: F821
                for t in range(proj_len()))
 
 
@@ -1722,7 +1722,7 @@ def check_av_roll_fwd_resid(k):
 def check_av_roll_fwd():
     """True when the *Deckungskapital* rolls forward and is emptied at *Rentenbeginn*."""
     return all(abs(check_av_roll_fwd_resid(k))
-               <= roll_fwd_tol * max(1.0, abs(av_at(k, "AFT_INT")),   # noqa: F821
+               <= roll_fwd_tol() * max(1.0, abs(av_at(k, "AFT_INT")), # noqa: F821
                                      abs(av(k)))
                for k in range(proj_len_y()))
 
@@ -1760,7 +1760,7 @@ def check_conversion_resid(k):
 def check_conversion():
     """True when the whole fund converts exactly once, at *Rentenbeginn*."""
     scale = max(1.0, abs(fund_at_conv()))
-    return all(abs(check_conversion_resid(k)) <= roll_fwd_tol * scale  # noqa: F821
+    return all(abs(check_conversion_resid(k)) <= roll_fwd_tol() * scale  # noqa: F821
                for k in range(proj_len_y()))
 
 
@@ -1798,7 +1798,7 @@ def check_no_capital_resid(t):
 def check_no_capital():
     """True when no payment other than a permitted annuity or survivor benefit is made."""
     scale = max([1.0] + [abs(claims(t)) for t in range(proj_len())])
-    return all(check_no_capital_resid(t) <= roll_fwd_tol * scale      # noqa: F821
+    return all(check_no_capital_resid(t) <= roll_fwd_tol() * scale    # noqa: F821
                for t in range(proj_len()))
 
 
@@ -1837,7 +1837,7 @@ def check_annuity_roll_fwd_resid(k):
 def check_annuity_roll_fwd():
     """True when the annuity compounds and the guarantee window closes on time."""
     scale = max(1.0, abs(ann_pp(max(0, k_conv()))))
-    return all(check_annuity_roll_fwd_resid(k) <= roll_fwd_tol * scale  # noqa: F821
+    return all(check_annuity_roll_fwd_resid(k) <= roll_fwd_tol() * scale  # noqa: F821
                for k in range(proj_len_y()))
 
 
@@ -1982,6 +1982,5 @@ rf_unit = 10000.0
 
 ann_freq = 12
 
-roll_fwd_tol = 1e-9
 
 pd = ("Module", "pandas")

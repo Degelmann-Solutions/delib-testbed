@@ -71,6 +71,7 @@ benefit_schedule_file     data.benefit_schedule()            benefit_schedule.cs
 nvg_schedule_file         data.nvg_schedule()                nvg_schedule.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
+param_file                data.param_table()                 param_table.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -1395,7 +1396,7 @@ def check_pols_roll_fwd():
     with leaves it through exactly one named door.  On the anchor cell that is
     0,03305608 deaths, 0,53554078 lapses and 0,43140314 expiries.
     """
-    tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
+    tol = roll_fwd_tol() * max(pols_if_init(), 1.0)                  # noqa: F821
     if not all(abs(check_pols_roll_fwd_resid(t)) <= tol
                for t in range(t_start(), proj_len())):
         return False
@@ -1667,7 +1668,6 @@ sel_lapse_lambda = 0.0
 
 sel_lapse_ref = 0.25
 
-roll_fwd_tol = 1e-10
 
 val_tol = 1e-09
 

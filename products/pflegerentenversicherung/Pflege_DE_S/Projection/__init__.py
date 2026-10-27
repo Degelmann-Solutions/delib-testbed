@@ -1751,7 +1751,7 @@ def check_net_cf():
     No argument, one bool over all ``t``, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
     """
-    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = roll_fwd_tol()
     scale = max(pols_if_init() * max(rente_mth(), 1.0), 1.0)
     return all(abs(check_net_cf_resid(t)) <= tol * scale
                for t in range(t_start(), proj_len()))
@@ -1776,7 +1776,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = roll_fwd_tol()
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_pols_roll_fwd_resid(t)) <= tol * scale
                for t in range(t_start(), proj_len()))
@@ -1807,7 +1807,7 @@ def check_states_resid(t):
 
 def check_states():
     """True when the ledgers and the absorbed counts partition the cohort at every month."""
-    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = roll_fwd_tol()
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_states_resid(t)) <= tol * scale
                for t in range(t_start(), proj_len()))
@@ -1833,7 +1833,7 @@ def check_waiver_resid(t):
 
 def check_waiver():
     """True when the waiver splits the in-term population in every projected month."""
-    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = roll_fwd_tol()
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_waiver_resid(t)) <= tol * scale
                for t in range(t_start(), proj_len()))
@@ -1860,7 +1860,7 @@ def check_esc_ledger_resid(t):
 
 def check_esc_ledger():
     """True when the escalation ledger dominates the head count in every projected month."""
-    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = roll_fwd_tol()
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_esc_ledger_resid(t)) <= tol * scale
                for t in range(t_start(), proj_len()))
@@ -1936,7 +1936,7 @@ def check_prem_equiv():
     difference of two large discounted values and an absolute tolerance on it would be a
     statement about the contract's size rather than about the equivalence.
     """
-    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = roll_fwd_tol()
     if premium_mth() > 0.0:
         return True
     scale = max(premium_mth_pp() / rating_factor() * tariff_annuity(), 1.0)

@@ -1786,7 +1786,7 @@ def check_net_cf():
     argument, one bool over all ``t``; :func:`check_net_cf_resid` gives the signed residual
     of the month that failed.
     """
-    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol            # noqa: F821
+    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol()          # noqa: F821
                * max(1.0, guar_pp(k_conv() + 1))
                for t in range(proj_len()))
 
@@ -1825,7 +1825,7 @@ def check_av_roll_fwd_resid(k):
 
 def check_av_roll_fwd():
     """True when the account rolls forward exactly in every projected year."""
-    return all(abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol       # noqa: F821
+    return all(abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol()     # noqa: F821
                * max(1.0, guar_pp(k_conv() + 1))
                for k in range(proj_len_y()))
 
@@ -1862,12 +1862,12 @@ def check_guar_roll_fwd():
     cannot shrink the guarantee further.  Both are stated per projection **year**: the
     accumulator counts contributions, and a contribution is an annual event.
     """
-    ok = all(abs(check_guar_roll_fwd_resid(k)) <= roll_fwd_tol       # noqa: F821
+    ok = all(abs(check_guar_roll_fwd_resid(k)) <= roll_fwd_tol()     # noqa: F821
              * max(1.0, guar_pp(k_conv() + 1))
              for k in range(proj_len_y()))
     cap = all(guar_carve_out_pp(k) <= guar_carve_out_cap             # noqa: F821
               * (eigenbeitrag_pp(k) + zulage_pp(k) + contrib_extra_pp()
-                 + rider_prem_pp()) + roll_fwd_tol                   # noqa: F821
+                 + rider_prem_pp()) + roll_fwd_tol()                 # noqa: F821
               for k in range(k_conv()))
     return bool(ok and cap)
 
@@ -1902,7 +1902,7 @@ def check_pols_roll_fwd():
     the survivor term is exactly zero and the identity is exact rather than approximate.
     """
     n = proj_len()
-    step = all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
+    step = all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol()   # noqa: F821
                * max(pols_if_init(), 1.0)
                for t in range(n))
     exits = sum(pols_death(s) + pols_lapse(s) + pols_transfer(s)
@@ -1910,7 +1910,7 @@ def check_pols_roll_fwd():
     if is_kleinbetrag():
         exits += pols_conv()
     closure = abs(exits + pols_if(n) - pols_if_init()) <= (
-        roll_fwd_tol * max(pols_if_init(), 1.0))                     # noqa: F821
+        roll_fwd_tol() * max(pols_if_init(), 1.0))                   # noqa: F821
     return bool(step and closure)
 
 
@@ -1949,7 +1949,7 @@ def check_conversion_resid(k):
 
 def check_conversion():
     """True when the conversion at *Rentenbeginn* closes on all four identities."""
-    return all(check_conversion_resid(k) <= roll_fwd_tol             # noqa: F821
+    return all(check_conversion_resid(k) <= roll_fwd_tol()           # noqa: F821
                * max(1.0, guar_pp(k_conv() + 1))
                for k in range(proj_len_y()))
 
@@ -1977,7 +1977,7 @@ def check_zulage_lag_resid(k):
 
 def check_zulage_lag():
     """True when the Zulage is credited one projection year after it is earned, everywhere."""
-    return all(abs(check_zulage_lag_resid(k)) <= roll_fwd_tol        # noqa: F821
+    return all(abs(check_zulage_lag_resid(k)) <= roll_fwd_tol()      # noqa: F821
                * max(1.0, guar_pp(k_conv() + 1))
                for k in range(proj_len_y()))
 
@@ -2173,6 +2173,5 @@ comm_rate_init = 0.025
 
 comm_rate_renew = 0.015
 
-roll_fwd_tol = 1e-09
 
 pd = ("Module", "pandas")

@@ -340,7 +340,7 @@ source supplies.
 | Commission | Not a separate line — it sits inside `acq_rate`, which is the German taxonomy | **[std]** |
 | `prem_freq_load` — *Ratenzahlungszuschlag* | annual **1,00**; half-yearly **1,02**; quarterly **1,03**; monthly **1,05** | German market convention `[unverified]`; **[std]** |
 
-**Input files.** Seven CSVs sit beside `run.py`, read once per model by the unparameterized `Data`
+**Input files.** Eight CSVs, `param_table.csv` with `roll_fwd_tol` among them, sit beside `run.py`, read once per model by the unparameterized `Data`
 Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv` carries a
 **`provenance` column**, one tag per row, as delib's second ruling requires.
 

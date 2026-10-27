@@ -1731,7 +1731,7 @@ def check_net_cf():
     over all ``t``; :func:`check_net_cf_resid` gives the signed residual of the year that
     failed.
     """
-    tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
+    tol = roll_fwd_tol() * max(sum_assured(), 1.0)                   # noqa: F821
     return all(abs(check_net_cf_resid(t)) <= tol
                for t in range(t_start(), proj_len()))
 
@@ -1758,7 +1758,7 @@ def check_pols_roll_fwd():
     No argument, one bool over all ``t``; :func:`check_pols_roll_fwd_resid` gives the signed
     residual of the year that failed.
     """
-    tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
+    tol = roll_fwd_tol() * max(pols_if_init(), 1.0)                  # noqa: F821
     return all(abs(check_pols_roll_fwd_resid(t)) <= tol
                for t in range(t_start(), proj_len()))
 
@@ -1786,7 +1786,7 @@ def check_decrement_closure():
     signed residual of the year that failed.  At ``t = proj_len() - 1`` it is the notes'
     closure identity: the three exit streams sum to :func:`pols_if_init` exactly.
     """
-    tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
+    tol = roll_fwd_tol() * max(pols_if_init(), 1.0)                  # noqa: F821
     return all(abs(check_decrement_closure_resid(t)) <= tol
                for t in range(t_start(), proj_len()))
 
@@ -1821,7 +1821,7 @@ def check_res_roll_fwd():
     No argument, one bool over all policy years ``k``; :func:`check_res_roll_fwd_resid` gives
     the signed residual of the year that failed.
     """
-    tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
+    tol = roll_fwd_tol() * max(sum_assured(), 1.0)                   # noqa: F821
     return all(abs(check_res_roll_fwd_resid(k)) <= tol
                for k in range(k_start(), proj_len_y()))
 
@@ -1856,7 +1856,7 @@ def check_surplus_roll_fwd():
     No argument, one bool over all policy years ``k``; :func:`check_surplus_roll_fwd_resid`
     gives the signed residual of the year that failed.
     """
-    tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
+    tol = roll_fwd_tol() * max(sum_assured(), 1.0)                   # noqa: F821
     return all(abs(check_surplus_roll_fwd_resid(k)) <= tol
                for k in range(k_start(), proj_len_y()))
 
@@ -1893,7 +1893,7 @@ def check_surr_floor():
     non-negative in **every month** by :func:`check_surr_nonneg`, because the monthly grid
     quotes one in eleven months the annual grid never priced.
     """
-    tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
+    tol = roll_fwd_tol() * max(sum_assured(), 1.0)                   # noqa: F821
     return all(abs(check_surr_floor_resid(k)) <= tol
                for k in range(k_start(), proj_len_y()))
 
@@ -1915,7 +1915,7 @@ def check_surr_nonneg_resid(t):
 
 def check_surr_nonneg():
     """True when the *Rückkaufswert* is non-negative in every projected month."""
-    tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
+    tol = roll_fwd_tol() * max(sum_assured(), 1.0)                   # noqa: F821
     return all(abs(check_surr_nonneg_resid(t)) <= tol
                for t in range(t_start(), proj_len()))
 
@@ -1945,7 +1945,7 @@ def check_equivalence():
     the only check that would fail if the *Beitragssumme* were formed on the loaded
     *Zahlbeitrag* instead of on the *Bruttobeitrag*.
     """
-    tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
+    tol = roll_fwd_tol() * max(sum_assured(), 1.0)                   # noqa: F821
     return all(abs(check_equivalence_resid(t)) <= tol
                for t in range(t_start(), proj_len()))
 
@@ -1966,7 +1966,7 @@ def check_rechnungszins_cap():
 
     No argument, one bool; :func:`check_rechnungszins_cap_resid` gives the signed shortfall.
     """
-    return all(abs(check_rechnungszins_cap_resid(t)) <= roll_fwd_tol  # noqa: F821
+    return all(abs(check_rechnungszins_cap_resid(t)) <= roll_fwd_tol()  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1992,7 +1992,7 @@ def check_zillmer_cap():
 
     No argument, one bool; :func:`check_zillmer_cap_resid` gives the signed shortfall.
     """
-    tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
+    tol = roll_fwd_tol() * max(sum_assured(), 1.0)                   # noqa: F821
     return all(abs(check_zillmer_cap_resid(t)) <= tol
                for t in range(t_start(), proj_len()))
 
@@ -2117,7 +2117,5 @@ lapse_gap_a = 0.0
 
 ref_rate = 0.03
 
-
-roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")

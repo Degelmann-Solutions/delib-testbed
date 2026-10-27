@@ -740,6 +740,7 @@ CORE_CELLS = {
                    "risikolebensversicherung": "derived",
                    "sofortrente": "override"},
         "liability_cf": {**dict.fromkeys(MODELS, "derived"), "sofortrente": "override"},
+        "roll_fwd_tol": dict.fromkeys(MODELS, "derived"),
     },
 }
 
@@ -1410,3 +1411,42 @@ def test_rlv_liability_cf_is_the_negated_net_cf(product_models):
             assert (math.copysign(1.0, item.liability_cf(t))
                     == -math.copysign(1.0, item.net_cf(t))), (point_id, t)
 
+
+
+ROLL_FWD_TOL = {
+    "basisrente": 1e-09,
+    "berufsunfaehigkeit": 1e-10,
+    "fondsgebundene_rentenversicherung": 1e-10,
+    "indexpolice": 1e-08,
+    "kapitallebensversicherung": 1e-10,
+    "klassische_rentenversicherung": 1e-09,
+    "pflegerentenversicherung": 1e-10,
+    "riester_rente": 1e-09,
+    "risikolebensversicherung": 1e-10,
+    "sofortrente": 1e-08,
+}
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_roll_fwd_tol_is_read_from_param_table(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.roll_fwd_tol._is_derived()
+    assert "roll_fwd_tol" not in projection.refs
+    point_id = model.Data.model_point_table().index[0]
+    assert projection[point_id].roll_fwd_tol() == ROLL_FWD_TOL[product]
+
+
+def test_roll_fwd_tol_without_its_row_raises_key_error(tmp_path):
+    folder = product_copy(tmp_path, "kapitallebensversicherung")
+    table = folder / "param_table.csv"
+    params = pd.read_csv(table, index_col="item")
+    params.drop(index="roll_fwd_tol").to_csv(table)
+    copy = mx.read_model(folder / MODELS["kapitallebensversicherung"], name="TolProbe")
+    try:
+        point_id = copy.Data.model_point_table().index[0]
+        with pytest.raises(Exception, match="roll_fwd_tol") as raised:
+            copy.Projection[point_id].roll_fwd_tol()
+        assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+    finally:
+        copy.close()

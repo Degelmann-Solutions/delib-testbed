@@ -271,7 +271,7 @@ rather than to the payment. The alternative reading is defensible and is named.
 
 ## Inputs are external files
 
-The seven input CSVs live **in this directory**, beside `run.py`, and `BU_DE_S/` holds nothing
+The eight input CSVs, `param_table.csv` with `roll_fwd_tol` among them, live **in this directory**, beside `run.py`, and `BU_DE_S/` holds nothing
 but formulas — `__init__.py`, `_system.json`, `Data/__init__.py` and `Projection/__init__.py`, no
 `_data/`, no IOSpec, no embedded values. This follows lifelib's `annuallife/TradLife_A`, which
 keeps its inputs beside the model; it is the opposite of `basiclife/BasicTerm_S`, which stores

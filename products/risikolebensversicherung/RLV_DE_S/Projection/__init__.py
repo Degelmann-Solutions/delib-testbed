@@ -549,7 +549,7 @@ def mort_rate_base(t):
 
     Override reason: the table rate is read on sex and smoker status, and for two lives
     combined to the first-death rate before loading,
-    products/risikolebensversicherung/model.md:494
+    products/risikolebensversicherung/model.md:495
     """
     q_a = mort_rate_at_age(sex(), smoker(), age(t))
     if lives() == 1:
@@ -614,7 +614,7 @@ def mort_rate(t):
     :func:`mort_rate_mth`.
 
     Override reason: the second-order rate carries the *Risikozuschlag* and the
-    selective-lapse loading, products/risikolebensversicherung/model.md:495
+    selective-lapse loading, products/risikolebensversicherung/model.md:496
     """
     return (mort_be_factor() * rating_factor()
             * mort_rate_base(t) * sel_lapse_factor(t))
@@ -1342,7 +1342,7 @@ def check_net_cf_tol(t):
     tolerance scales with the sum insured, which is the largest number in the statement.
 
     Override reason: the statement is checked to val_tol relative to the sum insured,
-    products/risikolebensversicherung/model.md:499
+    products/risikolebensversicherung/model.md:500
     """
     return val_tol * max(sum_assured(), 1.0)                         # noqa: F821
 

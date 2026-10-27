@@ -1528,7 +1528,7 @@ def pols_death(t):
     model.
 
     Override reason: the deaths are the sum of the three ledgers' deaths, active, disabled
-    and run-off, each at its own rate, products/berufsunfaehigkeit/technical-notes.md:496
+    and run-off, each at its own rate, products/berufsunfaehigkeit/technical-notes.md:497
     """
     return pols_death_actv(t) + pols_death_dis(t) + pols_death_runoff(t)
 
@@ -1615,7 +1615,7 @@ def claim_kinds():
     """The three benefit kinds of :func:`claims`: ``BU_RENTE``, ``REINTEGRATION``, ``LAPSE``.
 
     Override reason: the claims are the *BU-Rente*, the *Wiedereingliederungshilfe* and the
-    zero lapse benefit, products/berufsunfaehigkeit/technical-notes.md:529
+    zero lapse benefit, products/berufsunfaehigkeit/technical-notes.md:530
     """
     return ("BU_RENTE", "REINTEGRATION", "LAPSE")
 
@@ -1643,9 +1643,9 @@ def claims_other(t, kind):
     published scope statement rather than a missing column.
 
     Override reason: the *BU-Rente* is paid to the disabled cohorts past the *Karenzzeit*
-    and the run-off slots, products/berufsunfaehigkeit/technical-notes.md:520, the
+    and the run-off slots, products/berufsunfaehigkeit/technical-notes.md:521, the
     *Wiedereingliederungshilfe* on completed run-offs,
-    products/berufsunfaehigkeit/technical-notes.md:521, no per-policy amount times a
+    products/berufsunfaehigkeit/technical-notes.md:522, no per-policy amount times a
     decrement
     """
     if kind == "BU_RENTE":
@@ -1686,7 +1686,7 @@ def expenses(t):
 
     Override reason: the acquisition charge is added to the proportional administration
     before the flat administration, ``(acq + prop) + flat``, an order the core's
-    ``acq + maint + claim`` would reassociate, products/berufsunfaehigkeit/technical-notes.md:523
+    ``acq + maint + claim`` would reassociate, products/berufsunfaehigkeit/technical-notes.md:524
     """
     acq = 0.0
     if t == 0 and duration_mth_init() == 0:
@@ -1735,7 +1735,7 @@ def net_cf(t):
 
     Override reason: the *Beitragsverrechnung* is subtracted before the claim total and the
     *Leistungsbearbeitungskosten* after the expenses,
-    products/berufsunfaehigkeit/technical-notes.md:556
+    products/berufsunfaehigkeit/technical-notes.md:557
     """
     return (premiums(t) - surplus_credit(t) - claims(t)
             - expenses(t) - claim_expenses(t))
@@ -1776,7 +1776,7 @@ def check_net_cf_scale(t):
     """The scale of :func:`check_net_cf`'s tolerance in month t: the *BU-Rente*, at least 1.
 
     Override reason: the statement is checked relative to the month's BU-Rente per policy,
-    products/berufsunfaehigkeit/technical-notes.md:556
+    products/berufsunfaehigkeit/technical-notes.md:557
     """
     return max(1.0, abs(bu_rente_pp(t)))                            # noqa: F821
 
@@ -1965,7 +1965,7 @@ def result_cf_columns():
 
     Override reason: the statement carries the three state counts, the paying count, the
     *Beitragsverrechnung*, the three claim kinds and the claims-handling cost,
-    products/berufsunfaehigkeit/technical-notes.md:541-543
+    products/berufsunfaehigkeit/technical-notes.md:542-544
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821
@@ -2018,7 +2018,7 @@ def result_states_columns():
     rate applied to a cohort is ``recov_rate(z)`` and belongs to the cohort.
 
     Override reason: the frame publishes the transitions, the rates and the per-policy
-    amounts of the three-state ledger, products/berufsunfaehigkeit/technical-notes.md:545
+    amounts of the three-state ledger, products/berufsunfaehigkeit/technical-notes.md:546
     """
     return (
         ("pols_inception", pols_inception),                          # noqa: F821

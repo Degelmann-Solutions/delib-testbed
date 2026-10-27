@@ -302,7 +302,7 @@ folder. `RLV_DE_S/` holds nothing but formulas:
 ```
 products/risikolebensversicherung/
   model_point_table.csv  mort_table.csv  benefit_schedule.csv     <- inputs live here
-  nvg_schedule.csv       lapse_table.csv freq_loading_table.csv
+  nvg_schedule.csv       lapse_table.csv freq_loading_table.csv  param_table.csv
   run.py  model.md  product-spec.md  technical-notes.md  sources.md
   RLV_DE_S/                    <- formulas only
     __init__.py  _system.json  Data/__init__.py  Projection/__init__.py
@@ -330,6 +330,7 @@ projected. The conventions suite counts the reads and asserts the *set* against
 | `nvg_schedule_file` | `nvg_schedule()` | `nvg_schedule.csv` |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` |
 | `freq_loading_file` | `freq_loading_table()` | `freq_loading_table.csv` |
+| `param_file` | `param_table()` | `param_table.csv` |
 
 **The trade-off:** the model is not portable on its own — copy `RLV_DE_S/` without the
 CSVs and it reads fine, then fails on first evaluation. What you gain is that a diff shows

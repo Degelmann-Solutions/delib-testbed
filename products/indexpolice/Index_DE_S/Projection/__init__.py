@@ -1381,7 +1381,7 @@ def check_net_cf_resid(t):
     be reconciled only in prose.
 
     Override reason: the claims enter as the kind-less total of the cells, not kind by kind
-    from the frame, products/indexpolice/model.md:405
+    from the frame, products/indexpolice/model.md:407
     """
     return net_cf(t) - (premiums(t) - claims(t) - expenses(t))
 

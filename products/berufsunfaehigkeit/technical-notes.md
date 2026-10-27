@@ -353,6 +353,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | `occupation_table.csv` | `berufsgruppe` (BG1 – BG5) | `occ_factor`, `label`, `provenance` |
 | `lapse_table.csv` | `policy_year` (1 – 6, the last being ultimate) | `lapse_rate`, `provenance` |
 | `freq_loading_table.csv` | `prem_freq` | `prem_mode_months`, `prem_freq_load`, `provenance` |
+| `param_table.csv` | `item` | `value`, `provenance`: `roll_fwd_tol`, the tolerance of the `check_*` identities |
 
 ---
 

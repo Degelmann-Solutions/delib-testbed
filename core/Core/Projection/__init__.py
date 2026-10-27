@@ -934,3 +934,42 @@ def result_states():
         index=ts)
     frame.index.name = "t"
     return frame
+
+
+def net_cf_income_columns():
+    """The income columns of :func:`result_cf` that :func:`check_net_cf_resid` adds: ``premiums``.
+
+    The first is the start of the rebuilt cash flow and the rest are added to it in order.
+    """
+    return ("premiums",)
+
+
+def net_cf_outgo_columns():
+    """The outgo columns of :func:`result_cf` that :func:`check_net_cf_resid` subtracts.
+
+    One ``claims_<kind>`` column per kind of ``claim_kinds()`` in its order, then
+    ``expenses`` and ``commissions``, each subtracted once: :func:`expenses` excludes the
+    commission.
+    """
+    return tuple("claims_" + kind.lower()                            # noqa: F821
+                 for kind in claim_kinds()) + ("expenses", "commissions")  # noqa: F821
+
+
+def check_net_cf_resid(t):
+    """The cash flow statement's residual in month t; zero everywhere.
+
+    ``net_cf`` less the cash flow rebuilt **from :func:`result_cf`'s own published columns**
+    rather than from the cells behind them: the columns of ``net_cf_income_columns()``
+    added left to right, less each column of ``net_cf_outgo_columns()`` in turn.  Reading the
+    frame is the point: the identity then holds of what the model publishes, so a column
+    dropped, renamed or mis-signed on the way into the frame, or a benefit kind missing from
+    the statement, fails here.
+    """
+    row = result_cf().loc[t]                                         # noqa: F821
+    income = net_cf_income_columns()                                 # noqa: F821
+    rebuilt = row[income[0]]
+    for label in income[1:]:
+        rebuilt = rebuilt + row[label]
+    for label in net_cf_outgo_columns():                             # noqa: F821
+        rebuilt = rebuilt - row[label]
+    return float(row["net_cf"] - rebuilt)

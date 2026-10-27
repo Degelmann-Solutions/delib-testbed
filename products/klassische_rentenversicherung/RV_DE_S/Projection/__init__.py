@@ -1776,20 +1776,20 @@ def annuity_outgo(t):
 # The published identities
 
 
-def check_net_cf_resid(t):
-    """The cash-flow-statement residual in month t; zero everywhere.
+def net_cf_outgo_columns():
+    """The outgo columns :func:`check_net_cf_resid` subtracts, the annuity payments among them.
 
-    ``net_cf`` as published in :func:`result_cf`, less the same frame's own
+    The residual is ``net_cf`` as published in :func:`result_cf`, less the same frame's own
     ``premiums - claims_death - claims_lapse - claims_commutation - annuity_payments -
     expenses``.  It is rebuilt **from the frame** rather than from the cells, so it fails if a
     published column and the headline number ever stop being the same arithmetic — which is
-    the failure the identity exists to catch.
+    the failure the identity exists to catch.  There is no commission column.
+
+    Override reason: the annuity payments are outgo beside the claim kinds and the product
+    pays no commission, products/klassische_rentenversicherung/technical-notes.md:694
     """
-    row = result_cf().loc[t]
-    rebuilt = (row["premiums"] - row["claims_death"] - row["claims_lapse"]
-               - row["claims_commutation"] - row["annuity_payments"]
-               - row["expenses"])
-    return float(row["net_cf"]) - float(rebuilt)
+    return ("claims_death", "claims_lapse", "claims_commutation", "annuity_payments",
+            "expenses")
 
 
 def check_net_cf():

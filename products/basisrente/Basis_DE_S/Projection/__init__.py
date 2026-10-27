@@ -1621,24 +1621,25 @@ def income_other(t):
     return zuzahlungen(t)
 
 
-def check_net_cf_resid(t):
-    """The cash flow statement's residual in projection month t; zero everywhere.
+def net_cf_income_columns():
+    """The income columns :func:`check_net_cf_resid` adds: ``premiums`` and ``zuzahlungen``.
 
-    Reconstructs ``net_cf(t)`` from :func:`result_cf`'s **own published columns** —
+    The residual reconstructs ``net_cf(t)`` from :func:`result_cf`'s **own published
+    columns** —
 
-        ``premiums + zuzahlungen - claims_death - claims_annuity - claims_survivor
-        - expenses - commissions - net_cf``
+        ``net_cf - (premiums + zuzahlungen - claims_death - claims_annuity - claims_survivor
+        - expenses - commissions)``
 
     — rather than from the cells that produced them, so a column added to the frame but not
     to :func:`net_cf`, a mis-signed column, or a column whose cells and frame entry have
     drifted apart all leave a residual here.  ``pols_if`` and ``pols_paying`` are counts and
     are excluded from the identity by construction; the *Deckungskapital* is a balance on an
     annual clock and is not a column of this frame at all.
+
+    Override reason: the *Zuzahlungen* are income beside the premium,
+    products/basisrente/technical-notes.md:685
     """
-    row = result_cf().loc[t]
-    return float(row["premiums"] + row["zuzahlungen"]
-                 - row["claims_death"] - row["claims_annuity"] - row["claims_survivor"]
-                 - row["expenses"] - row["commissions"] - row["net_cf"])
+    return ("premiums", "zuzahlungen")
 
 
 def check_net_cf():

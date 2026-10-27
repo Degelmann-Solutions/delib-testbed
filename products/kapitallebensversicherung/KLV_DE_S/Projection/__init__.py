@@ -1704,24 +1704,6 @@ def comm_renew(t):
 
 # --- output ----------------------------------------------------------------
 
-def check_net_cf_resid(t):
-    """The cash flow statement residual in policy year t; zero everywhere.
-
-    ``net_cf - (premiums - claims_death - claims_maturity - claims_lapse - expenses
-    - commissions)``, rebuilt **from :func:`result_cf`'s own published columns** rather than
-    from the cells behind them.  Reading the frame is the point: the identity then holds of
-    what the model actually publishes, so a column dropped, renamed or mis-signed on the way
-    into the frame fails here.
-
-    The commission is subtracted **once**: :func:`expenses` excludes it.  A model on the frlib
-    convention, where the expense column carries the commission, must not subtract both.
-    """
-    row = result_cf().loc[t]
-    rebuilt = (row["premiums"] - row["claims_death"] - row["claims_maturity"]
-               - row["claims_lapse"] - row["expenses"] - row["commissions"])
-    return float(row["net_cf"] - rebuilt)
-
-
 def check_net_cf():
     """True when the cash flow statement reconciles in every projected policy year.
 

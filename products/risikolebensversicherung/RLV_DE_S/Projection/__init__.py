@@ -1331,36 +1331,6 @@ def comm_renew(t):
 # The published check_* identities
 
 
-def check_net_cf_resid(t):
-    """The cash-flow-statement residual in month t; zero everywhere.
-
-    ``net_cf`` **as published in** :func:`result_cf`, less that same frame's own
-
-        ``premiums - claims_death - claims_lapse - claims_maturity - expenses
-        - commissions``
-
-    — read from the frame rather than from the cells behind it, and reached by a different
-    route from :func:`net_cf`'s own, which subtracts the kind-less ``claims(t)`` subtotal.
-    So the identity crosses two boundaries rather than restating a formula: the
-    cells-to-frame boundary, where a column can be dropped, renamed or mis-signed on the
-    way in, and the ``claims(t, kind)`` dispatch, where a benefit kind can exist in the
-    model and not in the subtotal.
-
-    This is **delib's first ruling**: every model in the library reconstructs its headline
-    number from its own published parts, in code and not only in prose, so that the one
-    quantity a cash flow model exists to produce is not the one quantity nothing checks.
-    What it catches on *this* product is the ambiguity the second premium stream creates —
-    ``prem_gross`` is published beside ``premiums`` and must **not** enter the identity,
-    and ``prem_rebate`` is the difference between them and must not be subtracted a second
-    time — and the commission convention, which is a column of its own here and part of
-    the expense total in ``frlib.TD_FR_S``.
-    """
-    row = result_cf().loc[t]
-    rebuilt = (row["premiums"] - row["claims_death"] - row["claims_lapse"]
-               - row["claims_maturity"] - row["expenses"] - row["commissions"])
-    return float(row["net_cf"] - rebuilt)
-
-
 def check_net_cf():
     """True when the cash flow statement reconciles in every projected period.
 

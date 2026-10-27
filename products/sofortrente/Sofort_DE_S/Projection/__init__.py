@@ -1181,6 +1181,9 @@ def check_net_cf_resid(t):
     payment factor.  So what the identity asserts is that the split into those legs is
     **exhaustive and non-overlapping**: a survivor's annuity paid on top of a guaranteed
     instalment, or a guarantee counted additively, leaves a residual here.
+
+    Override reason: the instalment outgo is rebuilt through the single payment factor, not
+    through the two published legs, products/sofortrente/model.md:323
     """
     if is_payment_mth(t):
         paid = pols_if_init() * annuity_pp(t) * payment_factor(t)

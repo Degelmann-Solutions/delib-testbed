@@ -1752,8 +1752,10 @@ def income_other(t):
 # === the check identities
 
 
-def check_net_cf_resid(t):
-    """The cash flow statement's own reconciliation residual in month t; zero everywhere.
+def net_cf_income_columns():
+    """The income columns :func:`check_net_cf_resid` adds: ``premiums`` and ``zulagen``.
+
+    The residual is the cash flow statement's own reconciliation in month t, zero everywhere:
 
     ``net_cf`` **as published in** :func:`result_cf`, less that same frame's own
     ``premiums + zulagen`` less its six ``claims_*`` columns less ``expenses`` less
@@ -1767,14 +1769,11 @@ def check_net_cf_resid(t):
     ``pols_if`` and ``pols_annuity_pay`` are counts and are excluded by construction; the
     interest credit is on the annual clock and is not a column of this frame at all, which
     removes the most tempting way to break the identity.
+
+    Override reason: the *Zulagen* are income beside the contribution,
+    products/riester_rente/technical-notes.md:711
     """
-    row = result_cf().loc[t]
-    rebuilt = (row["premiums"] + row["zulagen"]
-               - row["claims_death"] - row["claims_lapse"] - row["claims_transfer"]
-               - row["claims_lumpsum"] - row["claims_commutation"]
-               - row["claims_annuity"]
-               - row["expenses"] - row["commissions"])
-    return float(row["net_cf"] - rebuilt)
+    return ("premiums", "zulagen")
 
 
 def check_net_cf():

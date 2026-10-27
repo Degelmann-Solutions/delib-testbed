@@ -1766,6 +1766,9 @@ def check_net_cf_resid(t):
     so the check crosses the unit / non-unit boundary rather than restating the formula.
     A charge added to the ledger and not to ``net_cf``, or an account-value benefit
     wrongly booked as an insurer outgo, fails here.
+
+    Override reason: the first two charges are rebuilt by another route, premiums less the
+    premium to the unit fund, products/fondsgebundene_rentenversicherung/model.md:139
     """
     rebuilt = (premiums(t) - prem_to_av(t)
                + charge_admin_fund(t) + charge_policy_fee(t)

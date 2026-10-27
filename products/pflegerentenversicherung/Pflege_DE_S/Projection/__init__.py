@@ -1736,6 +1736,9 @@ def check_net_cf_resid(t):
     instead of silently changing the answer.  Every model in this library publishes this
     cells and its no-argument companion, so that no model's headline number is the one
     quantity nothing checks.
+
+    Override reason: rebuilt from the cells of the three claim kinds and the claims-handling
+    cost, products/pflegerentenversicherung/model.md:291
     """
     return net_cf(t) - (premiums(t)
                         - claims(t, "ANNUITY")

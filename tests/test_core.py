@@ -764,6 +764,26 @@ CORE_CELLS = {
                                   "pflegerentenversicherung": "override"},
         "result_states": {"berufsunfaehigkeit": "override",
                           "pflegerentenversicherung": "derived"},
+        "net_cf_income_columns": {"basisrente": "override",
+                                  "kapitallebensversicherung": "derived",
+                                  "klassische_rentenversicherung": "derived",
+                                  "riester_rente": "override",
+                                  "risikolebensversicherung": "derived"},
+        "net_cf_outgo_columns": {"basisrente": "derived",
+                                 "kapitallebensversicherung": "derived",
+                                 "klassische_rentenversicherung": "override",
+                                 "riester_rente": "derived",
+                                 "risikolebensversicherung": "derived"},
+        "check_net_cf_resid": {"basisrente": "derived",
+                               "berufsunfaehigkeit": "override",
+                               "fondsgebundene_rentenversicherung": "override",
+                               "indexpolice": "override",
+                               "kapitallebensversicherung": "derived",
+                               "klassische_rentenversicherung": "derived",
+                               "pflegerentenversicherung": "override",
+                               "riester_rente": "derived",
+                               "risikolebensversicherung": "derived",
+                               "sofortrente": "override"},
     },
 }
 
@@ -1513,3 +1533,22 @@ def test_rv_result_cf_annual_sums_flows_and_takes_counts_at_the_year_start(produ
         for column in annual.columns[2:]:
             assert annual.loc[year, column] == pytest.approx(
                 monthly.loc[months, column].sum(), rel=1e-12, abs=1e-9), (year, column)
+
+
+def test_rlv_net_cf_resid_rebuilds_net_cf_from_the_frame(product_models):
+    model = product_models("risikolebensversicherung")
+    projection = model.Projection
+    assert projection.check_net_cf_resid._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        assert item.net_cf_income_columns() == ("premiums",)
+        assert item.net_cf_outgo_columns() == (
+            "claims_death", "claims_lapse", "claims_maturity", "expenses", "commissions")
+        frame = item.result_cf()
+        for t in frame.index:
+            row = frame.loc[t]
+            rebuilt = (row["premiums"] - row["claims_death"] - row["claims_lapse"]
+                       - row["claims_maturity"] - row["expenses"] - row["commissions"])
+            resid = item.check_net_cf_resid(t)
+            assert resid == float(row["net_cf"] - rebuilt), (point_id, t)
+            assert resid == 0.0, (point_id, t)

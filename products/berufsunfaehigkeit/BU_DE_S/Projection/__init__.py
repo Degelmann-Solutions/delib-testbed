@@ -1642,8 +1642,10 @@ def claims_other(t, kind):
     published scope statement rather than a missing column.
 
     Override reason: the *BU-Rente* is paid to the disabled cohorts past the *Karenzzeit*
-    and the run-off slots, the *Wiedereingliederungshilfe* on completed run-offs, no
-    per-policy amount times a decrement, products/berufsunfaehigkeit/technical-notes.md:520
+    and the run-off slots, products/berufsunfaehigkeit/technical-notes.md:520, the
+    *Wiedereingliederungshilfe* on completed run-offs,
+    products/berufsunfaehigkeit/technical-notes.md:521, no per-policy amount times a
+    decrement
     """
     if kind == "BU_RENTE":
         if age(t) >= benefit_end_age():

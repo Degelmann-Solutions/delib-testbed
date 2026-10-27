@@ -1580,7 +1580,7 @@ def claims_other(t, kind):
 
     Override reason: the transfer, the lump sum, the commutation and the annuity are paid on
     their own counts, ``pols_transfer``, ``pols_conv`` and ``pols_annuity_pay``,
-    products/riester_rente/technical-notes.md:656
+    products/riester_rente/technical-notes.md:656, :657, :658 and :659
     """
     k = proj_year(t)
     if kind == "TRANSFER":

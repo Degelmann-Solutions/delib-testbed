@@ -1069,9 +1069,9 @@ def claims_other(t, kind):
 
     Raises ``ValueError`` for any other kind.
 
-    Override reason: the guarantee instalment and the refund are paid on the survival
-    probabilities of the annuitant, not on a count of deaths,
-    products/sofortrente/technical-notes.md:599
+    Override reason: the guarantee instalment, products/sofortrente/technical-notes.md:599,
+    and the refund, products/sofortrente/technical-notes.md:613, are paid on the survival
+    probabilities of the annuitant, not on a count of deaths
     """
     if kind == "GUARANTEE":
         if not is_payment_mth(t):

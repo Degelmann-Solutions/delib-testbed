@@ -1876,7 +1876,7 @@ def result_cf_columns():
     same stream summed into projection years, which is the view the technical notes print.
 
     Override reason: the statement carries the premium-paying count, the *Zuzahlungen* and
-    the three claim kinds of a *Basisrente*, products/basisrente/technical-notes.md:640
+    the three claim kinds of a *Basisrente*, products/basisrente/technical-notes.md:646-656
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821

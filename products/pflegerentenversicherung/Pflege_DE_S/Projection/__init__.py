@@ -1970,7 +1970,7 @@ def result_cf_columns():
 
     Override reason: the statement carries the state counts and the paying count, its three
     claim kinds and the claims-handling cost, and no commission,
-    products/pflegerentenversicherung/technical-notes.md:643
+    products/pflegerentenversicherung/technical-notes.md:649-660
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821

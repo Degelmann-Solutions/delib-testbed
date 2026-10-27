@@ -1963,7 +1963,7 @@ def result_cf_columns():
 
     Override reason: the statement carries the three state counts, the paying count, the
     *Beitragsverrechnung*, the three claim kinds and the claims-handling cost,
-    products/berufsunfaehigkeit/technical-notes.md:539
+    products/berufsunfaehigkeit/technical-notes.md:541-543
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821

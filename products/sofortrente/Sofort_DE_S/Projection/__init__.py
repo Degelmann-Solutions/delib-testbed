@@ -1468,7 +1468,7 @@ def result_cf_columns():
     expired, so nothing remains to be paid.
 
     Override reason: the statement carries the annuity payments and its two claim kinds, no
-    commission, and liability_cf before net_cf, products/sofortrente/technical-notes.md:635
+    commission, and liability_cf before net_cf, products/sofortrente/technical-notes.md:635-636
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821

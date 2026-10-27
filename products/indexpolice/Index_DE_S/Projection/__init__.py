@@ -1579,7 +1579,7 @@ def result_cf_columns():
     into policy years.
 
     Override reason: no commission column, and liability_cf before net_cf,
-    products/indexpolice/technical-notes.md:620
+    products/indexpolice/technical-notes.md:622-623
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821

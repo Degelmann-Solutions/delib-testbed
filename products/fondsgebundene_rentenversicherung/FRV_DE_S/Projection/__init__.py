@@ -1965,7 +1965,7 @@ def result_cf_columns():
 
     Override reason: the statement carries the premium split into the unit fund, the
     charges, the *Stornoabzug*, the unit-fund outgo and the death strain,
-    products/fondsgebundene_rentenversicherung/technical-notes.md:637
+    products/fondsgebundene_rentenversicherung/technical-notes.md:641-643
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821

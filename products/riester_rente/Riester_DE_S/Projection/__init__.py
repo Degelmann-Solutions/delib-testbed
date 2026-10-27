@@ -2012,7 +2012,7 @@ def result_cf_columns():
     the end rather than being truncated.
 
     Override reason: the statement carries the annuity-paying count, the *Zulagen* and the
-    six claim kinds, products/riester_rente/technical-notes.md:686
+    six claim kinds, products/riester_rente/technical-notes.md:690-692
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821

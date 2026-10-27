@@ -760,6 +760,10 @@ CORE_CELLS = {
                         "klassische_rentenversicherung": "override",
                         "risikolebensversicherung": "derived",
                         "sofortrente": "derived"},
+        "result_states_columns": {"berufsunfaehigkeit": "override",
+                                  "pflegerentenversicherung": "override"},
+        "result_states": {"berufsunfaehigkeit": "override",
+                          "pflegerentenversicherung": "derived"},
     },
 }
 

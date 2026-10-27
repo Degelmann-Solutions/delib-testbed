@@ -1982,8 +1982,10 @@ def result_cf_columns():
     )
 
 
-def result_states():
-    """Result table of the state ledgers, flows and rates, indexed by policy month ``t``.
+def result_states_columns():
+    """The columns of :func:`result_states`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of the state ledgers, flows and rates by policy month ``t``.
 
     The frame a reader needs to follow the multi-state machinery behind
     :func:`result_cf`: the five paying grades, the *Karenz* ledger and the three flows
@@ -1991,30 +1993,33 @@ def result_states():
     projection is built from.  It is not part of the house contract and carries no
     ``check_*``; ``mort_rate_care_pg5`` is published in preference to all five grades'
     because the grade-5 rate is the one that carries the product's central biometric fact.
+
+    Override reason: the frame publishes the Pflegegrad and Karenz ledgers, the flows
+    between them, the two decrements and the four annual rates,
+    products/pflegerentenversicherung/technical-notes.md:662
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_pg1": [pols_pg(t, 1) for t in ts],
-            "pols_pg2": [pols_pg(t, 2) for t in ts],
-            "pols_pg3": [pols_pg(t, 3) for t in ts],
-            "pols_pg4": [pols_pg(t, 4) for t in ts],
-            "pols_pg5": [pols_pg(t, 5) for t in ts],
-            "pols_karenz": [sum(pols_karenz(t, g, z)
-                                for g in range(1, 6)
-                                for z in range(1, karenz_months() + 1)) for t in ts],
-            "pols_entry": [sum(pols_entry(t, g) for g in range(1, 6)) for t in ts],
-            "pols_grad": [sum(pols_grad(t, g) for g in range(1, 6)) for t in ts],
-            "pols_reactiv": [pols_reactiv(t) for t in ts],
-            "pols_death": [pols_death(t) for t in ts],
-            "pols_lapse": [pols_lapse(t) for t in ts],
-            "mort_rate": [mort_rate(t) for t in ts],
-            "mort_rate_care_pg5": [mort_rate_care(t, 5) for t in ts],
-            "inc_rate": [inc_rate(t) for t in ts],
-            "lapse_rate": [lapse_rate(t) for t in ts],
-            "premium_pp": [premium_pp(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_pg1", lambda t: pols_pg(t, 1)),                       # noqa: F821
+        ("pols_pg2", lambda t: pols_pg(t, 2)),                       # noqa: F821
+        ("pols_pg3", lambda t: pols_pg(t, 3)),                       # noqa: F821
+        ("pols_pg4", lambda t: pols_pg(t, 4)),                       # noqa: F821
+        ("pols_pg5", lambda t: pols_pg(t, 5)),                       # noqa: F821
+        ("pols_karenz",
+         lambda t: sum(pols_karenz(t, g, z)                          # noqa: F821
+                       for g in range(1, 6)
+                       for z in range(1, karenz_months() + 1))),     # noqa: F821
+        ("pols_entry",
+         lambda t: sum(pols_entry(t, g) for g in range(1, 6))),      # noqa: F821
+        ("pols_grad",
+         lambda t: sum(pols_grad(t, g) for g in range(1, 6))),       # noqa: F821
+        ("pols_reactiv", pols_reactiv),                              # noqa: F821
+        ("pols_death", pols_death),                                  # noqa: F821
+        ("pols_lapse", pols_lapse),                                  # noqa: F821
+        ("mort_rate", mort_rate),                                    # noqa: F821
+        ("mort_rate_care_pg5", lambda t: mort_rate_care(t, 5)),      # noqa: F821
+        ("inc_rate", inc_rate),                                      # noqa: F821
+        ("lapse_rate", lapse_rate),                                  # noqa: F821
+        ("premium_pp", premium_pp),                                  # noqa: F821
     )
 
 

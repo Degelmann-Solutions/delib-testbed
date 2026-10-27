@@ -912,3 +912,25 @@ def result_pols():
         index=ts)
     frame.index.name = "t"
     return frame
+
+
+def result_states_columns():
+    """The columns of :func:`result_states` in their order, as ``(label, cell)`` pairs; none.
+
+    A product with a multi-state ledger that publishes its states, transitions and rates
+    beside the cash flows overrides the tuple; each cell is a function of the month ``t``.
+    """
+    return ()
+
+
+def result_states():
+    """The table of :func:`result_states_columns` by policy month t from ``t_start()``.
+
+    The same monthly frame as :func:`result_cf`, one column per pair, in its order.
+    """
+    ts = list(range(t_start(), proj_len()))                          # noqa: F821
+    frame = pd.DataFrame(                                            # noqa: F821
+        {label: [cell(t) for t in ts] for label, cell in result_states_columns()},  # noqa: F821
+        index=ts)
+    frame.index.name = "t"
+    return frame

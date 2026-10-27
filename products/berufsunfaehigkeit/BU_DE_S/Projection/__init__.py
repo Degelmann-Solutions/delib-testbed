@@ -1981,8 +1981,10 @@ def result_cf():
     )
 
 
-def result_states():
-    """Result table of transitions, rates and per-policy amounts, indexed by policy month t.
+def result_states_columns():
+    """The columns of :func:`result_states`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of transitions, rates and per-policy amounts by policy month t.
 
     The transition columns are the flows at the **end** of month ``t``, so they are the
     difference between one :func:`result_cf` row's state columns and the next.
@@ -1993,23 +1995,36 @@ def result_states():
     duration 1 in month 0, which is exactly the duration profile laid out along ``t``.
     Read it as the shape of the assumption, not as the rate applied in that month; the
     rate applied to a cohort is ``recov_rate(z)`` and belongs to the cohort.
+
+    Override reason: the frame publishes the transitions, the rates and the per-policy
+    amounts of the three-state ledger, products/berufsunfaehigkeit/technical-notes.md:545
+    """
+    return (
+        ("pols_inception", pols_inception),                          # noqa: F821
+        ("pols_recovery", pols_recovery),                            # noqa: F821
+        ("pols_reactivation", pols_reactivation),                    # noqa: F821
+        ("pols_death", pols_death),                                  # noqa: F821
+        ("pols_lapse", pols_lapse),                                  # noqa: F821
+        ("inc_rate", inc_rate),                                      # noqa: F821
+        ("recov_rate", lambda t: recov_rate(t + 1)),                 # noqa: F821
+        ("mort_rate", mort_rate),                                    # noqa: F821
+        ("lapse_rate", lapse_rate),                                  # noqa: F821
+        ("bu_rente_pp", bu_rente_pp),                                # noqa: F821
+        ("prem_gross_pp", prem_gross_pp),                            # noqa: F821
+        ("prem_zahl_pp", prem_zahl_pp),                              # noqa: F821
+    )
+
+
+def result_states():
+    """The frame of :func:`result_states_columns` over ``range(0, proj_len())``.
+
+    Override reason: the frame runs from the valuation month t = 0; the model point carries
+    no duration_init, so the core's t_start() is not defined here,
+    products/berufsunfaehigkeit/technical-notes.md:60
     """
     ts = list(range(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_inception": [pols_inception(t) for t in ts],
-            "pols_recovery": [pols_recovery(t) for t in ts],
-            "pols_reactivation": [pols_reactivation(t) for t in ts],
-            "pols_death": [pols_death(t) for t in ts],
-            "pols_lapse": [pols_lapse(t) for t in ts],
-            "inc_rate": [inc_rate(t) for t in ts],
-            "recov_rate": [recov_rate(t + 1) for t in ts],
-            "mort_rate": [mort_rate(t) for t in ts],
-            "lapse_rate": [lapse_rate(t) for t in ts],
-            "bu_rente_pp": [bu_rente_pp(t) for t in ts],
-            "prem_gross_pp": [prem_gross_pp(t) for t in ts],
-            "prem_zahl_pp": [prem_zahl_pp(t) for t in ts],
-        },
+        {label: [cell(t) for t in ts] for label, cell in result_states_columns()},
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
 

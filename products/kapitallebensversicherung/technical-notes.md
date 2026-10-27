@@ -670,6 +670,14 @@ moves once a year, and repeating each value twelve times would invite a reader t
 *Deckungskapital* accrues through the year. What a mid-year surrender is paid is in `result_cf()`, and
 is smaller.
 
+`premiums` is the instalment **collected in the month**, so on an annual *Zahlweise* eleven rows in
+twelve carry a zero there. In `result_cf_annual()`, `pols_if` and the annual layer beside it — the
+three reserves, the § 169 value, the surplus ledgers, the paid-up purchase, the equivalence — are the
+annual model's own numbers; the cash flow columns are not, and are not meant to be: claims fall in the
+month of exit and are paid the balances standing at the **last** anniversary, maintenance accrues a
+twelfth a month on that month's in-force, and a fractionated *Beitrag* is collected on a block that
+has already lost lives.
+
 ### Published identities
 
 Ten `check_*()` cells, each taking no argument, returning a `bool` and carrying a per-argument

@@ -833,7 +833,7 @@ def lapse_factor(t):
 
     Override reason: the lapse is zero through the whole final policy year, where cover
     expires, and loaded by the premium-shock multiplier elsewhere,
-    products/risikolebensversicherung/technical-notes.md:753
+    products/risikolebensversicherung/technical-notes.md:762
     """
     if duration(t) >= proj_len_y() - 1:
         return 0.0

@@ -1717,7 +1717,7 @@ def check_net_cf_scale(t):
     failed.
 
     Override reason: the statement is checked relative to the sum insured,
-    products/kapitallebensversicherung/technical-notes.md:683
+    products/kapitallebensversicherung/technical-notes.md:691
     """
     return max(sum_assured(), 1.0)                                   # noqa: F821
 

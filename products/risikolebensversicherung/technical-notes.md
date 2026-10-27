@@ -694,6 +694,15 @@ stream and does. Publishing both is required by the product — a model carrying
 cannot represent a German RLV [R6] — and `check_net_cf()` names exactly which columns enter the
 identity, so there is no ambiguity about which to skip.
 
+`prem_rebate` is the *Beitragsverrechnung* between the two premium columns and must not be
+subtracted a second time, and `commissions` is a column of its own here, where frlib's `TD_FR_S`
+counts it inside the expense total. On the annual-*Zahlweise* model points the monthly and the annual
+grid agree exactly on four columns of `result_cf_annual()` — `pols_if`, `prem_gross`, `premiums` and
+`prem_rebate` — because an annual instalment is collected on the anniversary and weighted by the
+anniversary in-force under either grid. They do **not** agree on `claims_death` or `expenses`, which
+fall where they happen rather than at the anniversary, and so not on `net_cf`; on a fractionated
+point not even the premium columns agree.
+
 `liability_cf` is the eleventh column and is `−net_cf(t)` exactly: `net_cf` is income-positive, the
 library-wide sign, and the outgo-positive orientation a valuation layer wants is published beside it
 rather than left to a reader to flip. It was added to the list at the model stage, because the

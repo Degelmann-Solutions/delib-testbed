@@ -809,3 +809,14 @@ def net_cf(t):
     for kind in claim_kinds():                                       # noqa: F821
         out = out - claims(t, kind)                                  # noqa: F821
     return out - annuity_outgo(t) - expenses(t) - commissions(t)     # noqa: F821
+
+
+def liability_cf(t):
+    """The same stream as :func:`net_cf`, outgo positive: ``-net_cf(t)`` exactly.
+
+    The orientation a valuation layer consumes: a best-estimate liability is
+    ``sum v(t) liability_cf(t)`` over whatever discount curve it supplies.  Published beside
+    :func:`net_cf` so the sign convention is verifiable in the frame rather than only in
+    prose.
+    """
+    return -net_cf(t)                                                # noqa: F821

@@ -1326,17 +1326,6 @@ def comm_renew(t):
             if duration(t) >= 1 else 0.0)
 
 
-def liability_cf(t):
-    """The same stream, outgo positive: ``-net_cf(t)`` exactly.
-
-    Published so that a best-estimate liability is ``sum v(t) liability_cf(t)`` over
-    whatever discount curve the valuation layer supplies, without a sign flip a reader has
-    to remember.  Both orientations are columns of :func:`result_cf`, so the identity is
-    verifiable in the frame.
-    """
-    return -net_cf(t)
-
-
 # ==========================================================================
 # The published check_* identities
 

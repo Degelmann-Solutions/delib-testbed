@@ -1742,17 +1742,6 @@ def net_cf(t):
             - expenses(t) - claim_expenses(t))
 
 
-def liability_cf(t):
-    """The same stream as :func:`net_cf`, outgo positive: ``-net_cf(t)`` exactly.
-
-    The orientation a valuation layer consumes: a Solvency II best estimate is
-    ``sum v(t) liability_cf(t)`` over whatever risk-free term structure is supplied, plus
-    a risk margin.  Published as a column beside :func:`net_cf` so the sign convention is
-    verifiable in the frame rather than only in prose.
-    """
-    return -net_cf(t)
-
-
 # --- the published identities ---
 
 def check_net_cf_resid(t):

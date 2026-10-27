@@ -737,6 +737,7 @@ CORE_CELLS = {
                    "riester_rente": "derived",
                    "risikolebensversicherung": "derived",
                    "sofortrente": "override"},
+        "liability_cf": {**dict.fromkeys(MODELS, "derived"), "sofortrente": "override"},
     },
 }
 
@@ -1394,4 +1395,16 @@ def test_klv_net_cf_subtracts_each_claim_kind_in_turn(product_models):
                         - item.expenses(t) - item.commissions(t))
             assert math.copysign(1.0, item.net_cf(t)) == math.copysign(1.0, expected)
             assert item.net_cf(t) == expected, (point_id, t)
+
+
+def test_rlv_liability_cf_is_the_negated_net_cf(product_models):
+    model = product_models("risikolebensversicherung")
+    projection = model.Projection
+    assert projection.liability_cf._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        for t in range(item.t_start(), item.proj_len()):
+            assert item.liability_cf(t) == -item.net_cf(t), (point_id, t)
+            assert (math.copysign(1.0, item.liability_cf(t))
+                    == -math.copysign(1.0, item.net_cf(t))), (point_id, t)
 

@@ -1781,17 +1781,6 @@ def annuity_outgo(t):
     return annuity_payments(t)
 
 
-def liability_cf(t):
-    """The same stream as :func:`net_cf`, outgo positive: ``-net_cf(t)`` exactly.
-
-    The orientation a valuation layer consumes: a Solvency II best estimate is
-    ``sum v(t) liability_cf(t)`` over the relevant risk-free term structure, plus a risk
-    margin.  Published as a column beside :func:`net_cf` so the sign convention is verifiable
-    in the frame rather than only in prose.
-    """
-    return -net_cf(t)
-
-
 # ----------------------------------------
 # The published identities
 

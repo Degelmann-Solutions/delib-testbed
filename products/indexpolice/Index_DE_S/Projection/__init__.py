@@ -1359,17 +1359,6 @@ def expenses_maint(t):
     return (exp_acq_pp(t) + exp_maint_pp(duration(t)) / 12.0) * pols_if(t)
 
 
-def liability_cf(t):
-    """The same stream as :func:`net_cf`, outgo positive: ``-net_cf(t)`` exactly.
-
-    The orientation a valuation layer consumes: a Solvency II best estimate is
-    ``sum v(t) liability_cf(t)`` over the relevant risk-free term structure, plus a risk
-    margin.  Published as a column beside ``net_cf`` so the sign convention is verifiable
-    in the frame rather than only in prose.
-    """
-    return -net_cf(t)
-
-
 # --- the published identities ------------------------------------------------
 
 def check_net_cf_resid(t):

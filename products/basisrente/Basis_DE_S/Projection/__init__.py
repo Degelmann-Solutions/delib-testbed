@@ -1621,18 +1621,6 @@ def income_other(t):
     return zuzahlungen(t)
 
 
-def liability_cf(t):
-    """The same stream as :func:`net_cf`, outgo positive: ``-net_cf(t)`` exactly.
-
-    The orientation the technical notes print and the one a valuation layer consumes: a
-    Solvency II best estimate is ``sum v(t) x liability_cf(t)`` over the relevant risk-free
-    term structure, plus a risk margin.  Published as a column beside :func:`net_cf` so
-    the sign convention is verifiable in the frame rather than only in prose.  This library
-    discounts nothing and computes no reserve.
-    """
-    return -net_cf(t)
-
-
 def check_net_cf_resid(t):
     """The cash flow statement's residual in projection month t; zero everywhere.
 

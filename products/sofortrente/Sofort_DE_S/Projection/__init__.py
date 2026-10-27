@@ -1146,6 +1146,9 @@ def liability_cf(t):
     over the relevant risk-free term structure, plus a risk margin.  Published as a column
     beside :func:`net_cf` so the sign convention is verifiable in the frame rather than
     only in prose.
+
+    Override reason: the liability cash flow is the notes' outgo-positive stream, annuity
+    payments, claims and expenses less the premium, products/sofortrente/technical-notes.md:629
     """
     return annuity_payments(t) + claims(t) + expenses(t) - premiums(t)
 

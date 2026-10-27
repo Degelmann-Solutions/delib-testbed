@@ -1618,17 +1618,6 @@ def net_cf(t):
             - expenses(t) - commissions(t) - death_strain(t))
 
 
-def liability_cf(t):
-    """The same stream outgo positive, ``-net_cf(t)`` exactly.
-
-    The orientation a valuation layer consumes: the non-unit best estimate is
-    ``sum v(t) x liability_cf(t)`` over whatever discount curve it supplies, with the unit
-    liability — the *Fondsguthaben* itself, backed one-for-one by the *Anlagestock* —
-    added at market value.  This model discounts nothing.
-    """
-    return -net_cf(t)
-
-
 # ----------------------------------------  Rentenbeginn and the reduction in yield
 
 def rentenfaktor_guar():

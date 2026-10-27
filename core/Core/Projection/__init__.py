@@ -937,7 +937,7 @@ def result_states():
 
 
 def net_cf_income_columns():
-    """The income columns of :func:`result_cf` that :func:`check_net_cf_resid` adds: ``premiums``.
+    """The income columns :func:`check_net_cf_resid` adds from the frame: ``premiums``.
 
     The first is the start of the rebuilt cash flow and the rest are added to it in order.
     """
@@ -973,3 +973,27 @@ def check_net_cf_resid(t):
     for label in net_cf_outgo_columns():                             # noqa: F821
         rebuilt = rebuilt - row[label]
     return float(row["net_cf"] - rebuilt)
+
+
+def check_net_cf_scale(t):
+    """The magnitude :func:`check_net_cf` scales the tolerance by in month t; 1, absolute."""
+    return 1.0
+
+
+def check_net_cf_tol(t):
+    """The tolerance of :func:`check_net_cf` in month t: ``roll_fwd_tol()`` times the scale."""
+    return roll_fwd_tol() * check_net_cf_scale(t)                    # noqa: F821
+
+
+def check_net_cf():
+    """True when the cash flow statement reconciles in every projected month.
+
+    **The library's first ruling**: every model publishes the identity that reconstructs
+    ``net_cf(t)`` from its own statement's published parts, so that the headline number of a
+    cash flow model is not the one quantity nothing checks.  No argument, one bool over
+    ``t_start() .. proj_len() - 1``, each ``abs(check_net_cf_resid(t))`` within
+    ``check_net_cf_tol(t)``; :func:`check_net_cf_resid` gives the signed residual of the
+    month that failed.
+    """
+    return all(abs(check_net_cf_resid(t)) <= check_net_cf_tol(t)     # noqa: F821
+               for t in range(t_start(), proj_len()))                # noqa: F821

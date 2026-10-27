@@ -1799,6 +1799,10 @@ def check_net_cf():
     reconstructs its headline number from the statement's own parts, so that ``net_cf`` is not
     the one quantity nothing checks.  It also asserts ``liability_cf(t) == -net_cf(t)``
     exactly, which is the library-wide sign convention.
+
+    Override reason: the check also asserts liability_cf(t) = -net_cf(t), each to
+    roll_fwd_tol() times the month's flows,
+    products/klassische_rentenversicherung/technical-notes.md:694
     """
     for t in result_cf().index:
         scale = max(1.0, abs(premiums(t)) + abs(claims(t))

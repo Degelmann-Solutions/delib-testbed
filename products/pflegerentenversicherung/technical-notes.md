@@ -672,7 +672,7 @@ on every model point.
 
 | Check | Identity |
 |---|---|
-| **`check_net_cf`** (delib ruling 1) | `net_cf(t) = premiums(t) - claims(t, "ANNUITY") - claims(t, "LAPSE") - claims(t, "DEATH") - expenses(t) - claim_expenses(t)` — `net_cf` rebuilt from the statement's own published parts, so the headline number is reconciled in code and not only in prose |
+| **`check_net_cf`** (delib ruling 1) | `net_cf(t) = premiums(t) - claims(t, "ANNUITY") - claims(t, "LAPSE") - claims(t, "DEATH") - expenses(t) - claim_expenses(t)` — `net_cf` rebuilt from the statement's own published parts, so the headline number is reconciled in code and not only in prose; to `roll_fwd_tol()` times `max(pols_if_init() × max(rente_mth(), 1), 1)` |
 | `check_pols_roll_fwd` | `pols_if(t+1) = pols_if(t) - pols_death(t) - pols_lapse(t)`: lives leave the in-force population only by death or surrender, and every *Pflegegrad* transition is internal |
 | `check_states` | `pols_act(t) + Σ_{g,z} pols_karenz(t,g,z) + Σ_g pols_pg(t,g) + pols_dead_cum(t) + pols_lapse_cum(t) = pols_if_init()`: the ledgers plus the absorbed partition the initial cohort at every `t` |
 | `check_waiver` | `pols_prem(t) + pols_waived(t) = pols_in_term(t)`: the *Beitragsbefreiung* splits the in-term population and neither loses nor creates a policy |

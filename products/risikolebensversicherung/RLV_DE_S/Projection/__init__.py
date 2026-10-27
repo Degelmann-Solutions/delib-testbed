@@ -1331,16 +1331,20 @@ def comm_renew(t):
 # The published check_* identities
 
 
-def check_net_cf():
-    """True when the cash flow statement reconciles in every projected period.
+def check_net_cf_tol(t):
+    """The tolerance of :func:`check_net_cf`: ``val_tol`` times the sum insured, at least 1.
+
+    :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
+    period.
 
     No argument, one bool over all ``t``, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the period that failed.  The
     tolerance scales with the sum insured, which is the largest number in the statement.
+
+    Override reason: the statement is checked to val_tol relative to the sum insured,
+    products/risikolebensversicherung/model.md:499
     """
-    tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_net_cf_resid(t)) <= tol
-               for t in range(t_start(), proj_len()))
+    return val_tol * max(sum_assured(), 1.0)                         # noqa: F821
 
 
 def check_pols_roll_fwd_resid(t):

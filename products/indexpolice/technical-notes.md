@@ -648,7 +648,7 @@ and `check_pols_roll_fwd()` carry `check_*_resid(t)` per month, and the four ann
 
 | Check | Clock | Identity |
 |---|---|---|
-| `check_net_cf()` | month | `net_cf(t) = premiums(t) − claims_death(t) − claims_lapse(t) − claims_maturity(t) − expenses(t)` |
+| `check_net_cf()` | month | `net_cf(t) = premiums(t) − claims_death(t) − claims_lapse(t) − claims_maturity(t) − expenses(t)`; to `roll_fwd_tol()` times the largest of the month's `abs(premiums)`, `abs(claims)`, `abs(expenses)` and 1 |
 | `check_av_roll_fwd()` | **year** | `av(k+1) = av(k) + prem_to_av(k) − av_charge(k) + guar_int(k) + surplus_credit(k) + index_credit(k) − av_released(k)`, where `av_released(k) = av_pp_at(k,"AFT_GUAR")·(deaths + surrenders of policy year k) + A(k+1)·maturities`; at `k = n−1` the `A(k+1)` term is `A(n)` |
 | `check_pols_roll_fwd()` | month | `pols_if(t+1) = pols_if(t) − pols_death(t) − pols_lapse(t) − pols_maturity(t)`, and the three exits plus nothing sum to `pols_if_init()` |
 | `check_surplus_alloc()` | **year** | `opt_budget_pp(k) + surplus_credit_pp(k) = surplus_rate(k) · index_base_pp(k)` |

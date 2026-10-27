@@ -1386,16 +1386,19 @@ def check_net_cf_resid(t):
     return net_cf(t) - (premiums(t) - claims(t) - expenses(t))
 
 
-def check_net_cf():
-    """True when the cash flow statement reconciles in every projected month.
+def check_net_cf_scale(t):
+    """The scale of :func:`check_net_cf`'s tolerance in month t: its largest flow, at least 1.
+
+    :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
+    month.
 
     The library-wide form: no argument, one bool over all ``t``;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
+
+    Override reason: the statement is checked relative to the month's largest premium, claim
+    or expense, products/indexpolice/technical-notes.md:651
     """
-    return bool(all(abs(check_net_cf_resid(t)) <= roll_fwd_tol()     # noqa: F821
-                    * max(abs(premiums(t)), abs(claims(t)),
-                          abs(expenses(t)), 1.0)
-                    for t in range(t_start(), proj_len())))
+    return max(abs(premiums(t)), abs(claims(t)), abs(expenses(t)), 1.0)  # noqa: F821
 
 
 def check_av_roll_fwd_resid(k):

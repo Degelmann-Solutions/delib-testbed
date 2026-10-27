@@ -1776,18 +1776,22 @@ def net_cf_income_columns():
     return ("premiums", "zulagen")
 
 
-def check_net_cf():
-    """True when the cash flow statement reconciles in every projected **month**.
+def check_net_cf_scale(t):
+    """The scale of :func:`check_net_cf`'s tolerance: the guaranteed annuity, at least 1.
+
+    :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
+    **month**.
 
     **delib's first ruling**: every model in this library publishes the identity that
     reconstructs ``net_cf(t)`` from its statement's own published parts, so that the
     headline number of a cash flow model is not the one quantity nothing checks.  No
     argument, one bool over all ``t``; :func:`check_net_cf_resid` gives the signed residual
     of the month that failed.
+
+    Override reason: the statement is checked relative to the guaranteed annuity at
+    Rentenbeginn, products/riester_rente/technical-notes.md:711
     """
-    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol()          # noqa: F821
-               * max(1.0, guar_pp(k_conv() + 1))
-               for t in range(proj_len()))
+    return max(1.0, guar_pp(k_conv() + 1))                           # noqa: F821
 
 
 def check_av_roll_fwd_resid(k):

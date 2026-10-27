@@ -1777,14 +1777,19 @@ def check_net_cf_resid(t):
     return net_cf(t) - rebuilt
 
 
-def check_net_cf():
-    """True when the cash flow statement reconciles in every projected month.
+def check_net_cf_tol(t):
+    """The tolerance of :func:`check_net_cf` in month t, ``val_tol`` relative to ``net_cf(t)``.
+
+    :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
+    month.
 
     No argument, one bool over all t, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
+
+    Override reason: the statement is checked to val_tol relative to the month's net cash
+    flow, products/fondsgebundene_rentenversicherung/technical-notes.md:655
     """
-    return all(abs(check_net_cf_resid(t)) <= val_tol * max(1.0, abs(net_cf(t)))  # noqa: F821
-               for t in range(t_start(), proj_len()))
+    return val_tol * max(1.0, abs(net_cf(t)))                        # noqa: F821
 
 
 def check_prem_split_resid(t):

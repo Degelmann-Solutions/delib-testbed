@@ -1748,16 +1748,19 @@ def check_net_cf_resid(t):
                         - claim_expenses(t))
 
 
-def check_net_cf():
-    """True when the cash flow statement reconciles in every projected month.
+def check_net_cf_scale(t):
+    """The scale of :func:`check_net_cf`'s tolerance: the book's monthly annuity, at least 1.
+
+    :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
+    month.
 
     No argument, one bool over all ``t``, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
+
+    Override reason: the statement is checked relative to the policy count times the monthly
+    Pflegerente, products/pflegerentenversicherung/technical-notes.md:675
     """
-    tol = roll_fwd_tol()
-    scale = max(pols_if_init() * max(rente_mth(), 1.0), 1.0)
-    return all(abs(check_net_cf_resid(t)) <= tol * scale
-               for t in range(t_start(), proj_len()))
+    return max(pols_if_init() * max(rente_mth(), 1.0), 1.0)            # noqa: F821
 
 
 def check_pols_roll_fwd_resid(t):

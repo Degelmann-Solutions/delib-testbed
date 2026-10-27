@@ -1772,14 +1772,28 @@ def check_net_cf_resid(t):
                         - expenses(t) - claim_expenses(t))
 
 
+def check_net_cf_scale(t):
+    """The scale of :func:`check_net_cf`'s tolerance in month t: the *BU-Rente*, at least 1.
+
+    Override reason: the statement is checked relative to the month's BU-Rente per policy,
+    products/berufsunfaehigkeit/technical-notes.md:556
+    """
+    return max(1.0, abs(bu_rente_pp(t)))                            # noqa: F821
+
+
 def check_net_cf():
     """True when the cash flow statement reconciles in every projected month.
 
     No argument, one bool over all ``t``, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
+
+    The months are ``0 .. proj_len() - 1``, each within ``check_net_cf_tol(t)``.
+
+    Override reason: the frame runs from the valuation month t = 0; the model point carries
+    no duration_init, so the core's t_start() is not defined here,
+    products/berufsunfaehigkeit/technical-notes.md:60
     """
-    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol()          # noqa: F821
-               * max(1.0, abs(bu_rente_pp(t)))
+    return all(abs(check_net_cf_resid(t)) <= check_net_cf_tol(t)     # noqa: F821
                for t in range(0, proj_len()))
 
 

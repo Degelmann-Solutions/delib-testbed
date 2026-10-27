@@ -553,7 +553,7 @@ Seven `check_*()` cells, each returning a single `bool` over all `t` with a per-
 
 | Check | Identity |
 |---|---|
-| **`check_net_cf`** (delib ruling 1) | `net_cf(t) = premiums(t) − surplus_credit(t) − Σ_kind claims(t, kind) − expenses(t) − claim_expenses(t)` |
+| **`check_net_cf`** (delib ruling 1) | `net_cf(t) = premiums(t) − surplus_credit(t) − Σ_kind claims(t, kind) − expenses(t) − claim_expenses(t)`; to `roll_fwd_tol()` times the larger of 1 and the month's `abs(bu_rente_pp(t))` |
 | `check_states` | `pols_if(t) = pols_actv(t) + pols_dis(t) + pols_runoff(t)` |
 | `check_pols_roll_fwd` | `pols_if(t+1) = pols_if(t) − pols_death(t) − pols_lapse(t)` — inception, recovery and reactivation are internal transfers |
 | `check_dis_roll_fwd` | `pols_dis(t+1) = pols_dis(t) − pols_death_dis(t) − pols_recovery(t) + pols_inception(t)` |

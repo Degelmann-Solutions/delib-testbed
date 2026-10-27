@@ -784,6 +784,23 @@ CORE_CELLS = {
                                "riester_rente": "derived",
                                "risikolebensversicherung": "derived",
                                "sofortrente": "override"},
+        "check_net_cf_scale": {"basisrente": "derived",
+                               "berufsunfaehigkeit": "override",
+                               "fondsgebundene_rentenversicherung": "derived",
+                               "indexpolice": "override",
+                               "kapitallebensversicherung": "override",
+                               "klassische_rentenversicherung": "derived",
+                               "pflegerentenversicherung": "override",
+                               "riester_rente": "override",
+                               "risikolebensversicherung": "derived",
+                               "sofortrente": "override"},
+        "check_net_cf_tol": {**dict.fromkeys(MODELS, "derived"),
+                             "fondsgebundene_rentenversicherung": "override",
+                             "risikolebensversicherung": "override"},
+        "check_net_cf": {**dict.fromkeys(MODELS, "derived"),
+                         "basisrente": "override",
+                         "berufsunfaehigkeit": "override",
+                         "klassische_rentenversicherung": "override"},
     },
 }
 
@@ -1552,3 +1569,28 @@ def test_rlv_net_cf_resid_rebuilds_net_cf_from_the_frame(product_models):
             resid = item.check_net_cf_resid(t)
             assert resid == float(row["net_cf"] - rebuilt), (point_id, t)
             assert resid == 0.0, (point_id, t)
+
+
+def test_klv_check_net_cf_closes_to_the_scaled_tolerance(tmp_path, product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.check_net_cf._is_derived()
+    assert projection.check_net_cf_tol._is_derived()
+    assert projection.check_net_cf_scale._is_defined()
+    point_id = model.Data.model_point_table().index[0]
+    item = projection[point_id]
+    assert item.check_net_cf() is True
+    t = item.t_start()
+    assert item.check_net_cf_tol(t) == item.roll_fwd_tol() * max(item.sum_assured(), 1.0)
+
+    # A residual above the tolerance fails the check: a tolerance of -1 is below any |resid|.
+    folder = product_copy(tmp_path, "kapitallebensversicherung")
+    table = folder / "param_table.csv"
+    params = pd.read_csv(table, index_col="item")
+    params.loc["roll_fwd_tol", "value"] = -1.0
+    params.to_csv(table)
+    copy = mx.read_model(folder / MODELS["kapitallebensversicherung"], name="NetCfProbe")
+    try:
+        assert copy.Projection[point_id].check_net_cf() is False
+    finally:
+        copy.close()

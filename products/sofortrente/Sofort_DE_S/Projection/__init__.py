@@ -1192,16 +1192,20 @@ def check_net_cf_resid(t):
     return net_cf(t) - (premiums(t) - paid - claims(t, "REFUND") - expenses(t))
 
 
-def check_net_cf():
-    """True when the cash flow statement reconciles in every projected month.
+def check_net_cf_scale(t):
+    """The scale of :func:`check_net_cf`'s tolerance: the book's single premium, at least 1.
+
+    :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
+    month.
 
     The library's first ruling: every model reconciles its own headline number in code and
     not only in prose.  No argument, one bool over all ``t``;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
+
+    Override reason: the statement is checked relative to the single premium of the book,
+    products/sofortrente/technical-notes.md:648
     """
-    tol = roll_fwd_tol() * max(single_prem() * pols_if_init(), 1.0)  # noqa: F821
-    return bool(all(abs(check_net_cf_resid(t)) <= tol
-                    for t in range(t_start(), proj_len())))
+    return max(single_prem() * pols_if_init(), 1.0)                  # noqa: F821
 
 
 def check_lives_roll_fwd_resid(t):

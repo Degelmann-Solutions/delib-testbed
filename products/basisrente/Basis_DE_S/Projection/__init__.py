@@ -1651,6 +1651,9 @@ def check_net_cf():
 
     The tolerance is ``roll_fwd_tol`` relative to the largest ``|net_cf|`` in the run, so
     it means the same thing on a 300 € contribution and on a 30 826 € one.
+
+    Override reason: one tolerance over the run, roll_fwd_tol() times the largest
+    abs(net_cf) of the run, products/basisrente/model.md:396
     """
     scale = max([1.0] + [abs(net_cf(t)) for t in range(proj_len())])
     return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol() * scale   # noqa: F821

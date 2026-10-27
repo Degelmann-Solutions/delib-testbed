@@ -1162,6 +1162,10 @@ def claims(t, kind=None):
 
     ``"LAPSE"`` is the *Rückkaufswert* and ``"DEATH"`` the *Beitragsrückgewähr*, both at the
     **end** of the month on the lives that left during it.
+
+    Override reason: the total adds the three kinds left to right, ``A + L + D``, where the
+    core's ``sum`` over the kinds rounds otherwise (compensated summation),
+    products/pflegerentenversicherung/technical-notes.md:570
     """
     if kind is None:
         return (claims(t, "ANNUITY") + claims(t, "LAPSE")

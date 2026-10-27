@@ -616,6 +616,42 @@ CORE_CELLS = {
                       "risikolebensversicherung": "derived",
                       "sofortrente": "override"},
         "premiums": dict.fromkeys(MODELS, "derived"),
+        "claim_kinds": {"basisrente": "override",
+                        "berufsunfaehigkeit": "override",
+                        "indexpolice": "derived",
+                        "kapitallebensversicherung": "override",
+                        "klassische_rentenversicherung": "override",
+                        "riester_rente": "override",
+                        "risikolebensversicherung": "derived",
+                        "sofortrente": "override"},
+        "benefit_death_pp": {"indexpolice": "override",
+                             "kapitallebensversicherung": "override",
+                             "klassische_rentenversicherung": "override",
+                             "riester_rente": "override",
+                             "risikolebensversicherung": "override"},
+        "benefit_lapse_pp": {"berufsunfaehigkeit": "derived",
+                             "indexpolice": "override",
+                             "kapitallebensversicherung": "override",
+                             "klassische_rentenversicherung": "override",
+                             "riester_rente": "override",
+                             "risikolebensversicherung": "derived"},
+        "benefit_maturity_pp": {"indexpolice": "override",
+                                "kapitallebensversicherung": "override",
+                                "risikolebensversicherung": "derived"},
+        "claims_other": {"berufsunfaehigkeit": "override",
+                         "klassische_rentenversicherung": "override",
+                         "riester_rente": "override",
+                         "sofortrente": "override"},
+        "claims": {"basisrente": "override",
+                   "berufsunfaehigkeit": "derived",
+                   "fondsgebundene_rentenversicherung": "override",
+                   "indexpolice": "derived",
+                   "kapitallebensversicherung": "derived",
+                   "klassische_rentenversicherung": "derived",
+                   "pflegerentenversicherung": "override",
+                   "riester_rente": "derived",
+                   "risikolebensversicherung": "derived",
+                   "sofortrente": "derived"},
     },
 }
 
@@ -1201,3 +1237,49 @@ def test_klv_premium_is_the_instalment_times_the_in_force(product_models):
         for t in range(item.t_start(), item.proj_len()):
             assert item.pols_prem(t) == item.pols_if(t), (point_id, t)
             assert item.premiums(t) == item.prem_inst_pp(t) * item.pols_prem(t), (point_id, t)
+
+
+def raised_value_error(raised, message: str) -> bool:
+    """Whether a modelx error carries a ``ValueError`` with ``message``.
+
+    modelx re-raises a formula's error as a FormulaError without chaining it, and names the
+    original type in its message.
+    """
+    chain, error = [], raised.value
+    while error is not None and error not in chain:
+        chain.append(error)
+        error = error.__cause__ or error.__context__
+    return (any(isinstance(e, ValueError) for e in chain)
+            or f"ValueError: {message}" in str(raised.value))
+
+
+def test_rlv_claim_total_is_the_death_claim_and_the_cash_values_are_zero(product_models):
+    model = product_models("risikolebensversicherung")
+    projection = model.Projection
+    assert projection.claims._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        assert item.claim_kinds() == ("DEATH", "LAPSE", "MATURITY")
+        for t in range(item.t_start(), item.proj_len()):
+            assert item.claims(t) == item.claims(t, "DEATH"), (point_id, t)
+            for kind in ("LAPSE", "MATURITY"):
+                zero = item.claims(t, kind)
+                assert zero == 0.0 and math.copysign(1.0, zero) == 1.0, (point_id, t, kind)
+
+
+def test_rv_commutation_is_a_further_kind_and_an_unknown_kind_is_rejected(product_models):
+    model = product_models("klassische_rentenversicherung")
+    projection = model.Projection
+    assert projection.claims._is_derived()
+    item = projection[model.Data.model_point_table().index[0]]
+    commuting = [t for t in range(item.t_start(), item.proj_len())
+                 if item.pols_commutation(t) > 0.0]
+    assert commuting, "no month with commutations"
+    for t in commuting:
+        assert (item.claims(t, "COMMUTATION")
+                == item.claims_other(t, "COMMUTATION")
+                == item.capital_conv_pp() * item.pols_commutation(t)), t
+    with pytest.raises(Exception, match="invalid kind") as raised:
+        item.claims(item.t_start(), "ANNUITY")
+    assert raised_value_error(raised, "invalid kind"), raised.value
+

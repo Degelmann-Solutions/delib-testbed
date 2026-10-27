@@ -1453,6 +1453,11 @@ def claims(t, kind):
     All three are funded from the unit fund and are therefore **outside** :func:`net_cf`;
     only the death benefit's net-amount-at-risk component, published separately as
     :func:`death_strain`, is an insurer cost.
+
+    Override reason: the surrender value is the *Fondsguthaben* less the *Stornoabzug*,
+    formed as count times fund times ``(1 - sigma)``, another float order than an amount
+    times a count, and there is no total over the kinds,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:519
     """
     if kind == "DEATH":
         return pols_death(t) * db_pp(t)

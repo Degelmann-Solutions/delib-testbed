@@ -128,6 +128,8 @@ P_b(t)                     prem_inst_pp(t)                 Bruttobeitrag due per
 premiums(t)                premiums(t)                     Gross Bruttobeitrag income
 surplus_credit(t)          surplus_credit(t)               Beitragsverrechnung returned
 claims_bu_rente etc.       claims(t, kind)                 Benefit outgo by kind
+(none)                     claim_kinds()                   BU_RENTE / REINTEGRATION / LAPSE
+(none)                     claims_other(t, kind)           BU_RENTE and REINTEGRATION
 expenses(t)                expenses(t)                     Acquisition and administration
 claim_expenses(t)          claim_expenses(t)               Leistungsbearbeitungskosten
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
@@ -1608,8 +1610,17 @@ def surplus_credit(t):
     return surplus_credit_pp(t) * pols_prem(t)
 
 
-def claims(t, kind=None):
-    """Benefit outgo at the start of month t, by kind; the total when kind is omitted.
+def claim_kinds():
+    """The three benefit kinds of :func:`claims`: ``BU_RENTE``, ``REINTEGRATION``, ``LAPSE``.
+
+    Override reason: the claims are the *BU-Rente*, the *Wiedereingliederungshilfe* and the
+    zero lapse benefit, products/berufsunfaehigkeit/technical-notes.md:529
+    """
+    return ("BU_RENTE", "REINTEGRATION", "LAPSE")
+
+
+def claims_other(t, kind):
+    """Benefit outgo at the start of month t of the kinds beside the core's lapse.
 
     ``"BU_RENTE"``
         the monthly annuity, paid in advance to the disabled cohorts past the
@@ -1624,15 +1635,16 @@ def claims(t, kind=None):
         not gated at the *Leistungsendalter*: a life may return to work after
         it while the cover still runs.
 
-    ``"LAPSE"``
-        zero, always.  § 169 VVG through § 176 gives this contract a real
-        *Rueckkaufswert* and § 165 a real *beitragsfreie BU-Rente*, and this
-        model prices neither, because both are the release of a reserve it
-        deliberately does not compute.  The kind exists so that the zero is a
-        published scope statement rather than a missing column.
+    ``"LAPSE"`` is the core's, zero, always: :func:`benefit_lapse_pp` keeps its neutral 0.
+    § 169 VVG through § 176 gives this contract a real *Rueckkaufswert* and § 165 a real
+    *beitragsfreie BU-Rente*, and this model prices neither, because both are the release
+    of a reserve it deliberately does not compute.  The kind exists so that the zero is a
+    published scope statement rather than a missing column.
+
+    Override reason: the *BU-Rente* is paid to the disabled cohorts past the *Karenzzeit*
+    and the run-off slots, the *Wiedereingliederungshilfe* on completed run-offs, no
+    per-policy amount times a decrement, products/berufsunfaehigkeit/technical-notes.md:520
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("BU_RENTE", "REINTEGRATION", "LAPSE"))
     if kind == "BU_RENTE":
         if age(t) >= benefit_end_age():
             return 0.0
@@ -1644,8 +1656,6 @@ def claims(t, kind=None):
         return (wiedereingliederung_months()
                 * runoff_val(t, runoff_months)                       # noqa: F821
                 * (1.0 - mort_rate_mth(t)))
-    if kind == "LAPSE":
-        return 0.0
     raise ValueError("invalid kind")
 
 

@@ -145,6 +145,7 @@ pols_maturity(t)           pols_maturity(t)                Expiring survivors, l
 premiums(t)                premiums(t)                     Zahlbeitrag income, billed
 prem_gross(t)              prem_gross(t)                   Bruttobeitrag, guaranteed
 prem_rebate(t)             prem_rebate(t)                  Beitragsverrechnung, in force
+(none)                     benefit_death_pp(t)             benefit_paid_pp(t)
 claims_death               claims(t, kind)                 Benefit outgo by kind
 z k G                      acq_cost_pp()                   Acquisition cost at issue
 c0 k G                     comm_init_pp()                  Initial Abschlussprovision
@@ -1166,41 +1167,23 @@ def prem_rebate(t):
     return prem_rebate_inst_pp(t) * pols_if(t)
 
 
-def claims(t, kind=None):
-    """Benefit outgo in period t, by kind; the total when kind is omitted.
+def benefit_death_pp(t):
+    """The *Todesfallleistung* per death in period t, :func:`benefit_paid_pp`.
 
-    ``"DEATH"``
-        the *Todesfallleistung* at the end of the period of death,
-        ``benefit_paid_pp(t) x pols_death(t)`` — the sum insured after the § 161 switch.
-        The only kind that is ever non-zero.
+    Paid at the end of the period of death: the sum insured after the § 161 switch.  The
+    only benefit that is ever non-zero.  The lapse and maturity benefits keep the core's
+    neutral 0, so ``claims(t, "LAPSE")`` and ``claims(t, "MATURITY")`` are **zero, always**:
+    § 169 Abs. 1 VVG confines the surrender-value duty to a life insurance whose insured
+    event is certain to occur and a term assurance's is not, § 165's
+    *Beitragsfreistellung* and § 166's paid-up conversion both collapse into the same nil
+    through the minimum-benefit test, and a term contract pays nothing at expiry.  Both
+    zeros are published as columns rather than dropped, and :func:`check_no_cash_value`
+    asserts them on every model point.
 
-    ``"LAPSE"``
-        **zero, always.**  § 169 Abs. 1 VVG confines the surrender-value duty to a life
-        insurance whose insured event is certain to occur and a term assurance's is not,
-        and § 165's *Beitragsfreistellung* and § 166's paid-up conversion both collapse
-        into the same nil through the minimum-benefit test.  The kind exists so that the
-        zero is stated rather than inferred.
-
-    ``"MATURITY"``
-        **zero, always.**  A term contract pays nothing at expiry: no
-        *Erlebensfallleistung*, no maturity value, no return of premium.  The
-        *Risikolebensversicherung mit Beitragsrückgewähr*, which does return premiums on
-        survival, has a savings element by construction and is a different product.
-
-    Both zeros are published as columns rather than dropped, and
-    :func:`check_no_cash_value` asserts them on every model point: a reader arriving from
-    a model with cash surrender values will wire one in, and every total in the frame will
-    still look plausible.
+    Override reason: a death pays the sum insured after the § 161 switch,
+    products/risikolebensversicherung/technical-notes.md:228
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE", "MATURITY"))
-    if kind == "DEATH":
-        return benefit_paid_pp(t) * pols_death(t)
-    if kind == "LAPSE":
-        return 0.0
-    if kind == "MATURITY":
-        return 0.0
-    raise ValueError("invalid kind")
+    return benefit_paid_pp(t)
 
 
 def acq_cost_pp():

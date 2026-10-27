@@ -202,6 +202,10 @@ a(k)                       annuity_pp(k)                   Annual annuity, 12 in
 (none)                     premiums(t)                     Eigenbeitrag income
 (none)                     zulagen(t)                      Zulage income, SEPARATE column
 (none)                     int_credited(k)                 Interest credited, REPORTED
+(none)                     claim_kinds()                   The six kinds of claims
+(none)                     benefit_death_pp(t)             db_pp(proj_year(t))
+(none)                     benefit_lapse_pp(t)             cv_pp(proj_year(t))
+(none)                     claims_other(t, kind)           TRANSFER, LUMPSUM, ...
 (none)                     claims(t, kind)                 Benefit outgo by kind
 (none)                     expenses(t)                     Expense outgo
 (none)                     commissions(t)                  Commission outgo
@@ -1507,21 +1511,44 @@ def exit_charge_pp(t):
             + min(transfer_charge, a) * pols_transfer(t))            # noqa: F821
 
 
-def claims(t, kind=None):
-    """Benefit outgo in month t, by kind; the total over all six kinds when kind is omitted.
+def claim_kinds():
+    """The six benefit kinds of :func:`claims`, in the order of its total.
 
     Every kind is paid in the **month** it falls; the per-policy amounts behind three of
     them are **annual**, struck at the end of the contract year, because that is where the
     account is struck.  So the month decides when a benefit is paid and not how much, and a
     contract year's exits release exactly what the annual-step model released.
 
-    ``"DEATH"``
-        the account value paid at the end of the month of death, gross of the
-        *Rückzahlungsbetrag*.  Zero in payout.
+    Override reason: the claims are death, lapse, transfer, lump sum, commutation and
+    annuity, products/riester_rente/technical-notes.md:163
+    """
+    return ("DEATH", "LAPSE", "TRANSFER", "LUMPSUM", "COMMUTATION", "ANNUITY")
 
-    ``"LAPSE"``
-        the *Rückkaufswert* on a *Kündigung*, net of the *Stornoabzug* and gross of the
-        *Rückzahlungsbetrag*.
+
+def benefit_death_pp(t):
+    """The account value paid at the end of the month of death, ``db_pp(proj_year(t))``.
+
+    Gross of the *Rückzahlungsbetrag*.  Zero in payout.
+
+    Override reason: a death pays the contract year's ``db_pp(k)``,
+    products/riester_rente/technical-notes.md:654
+    """
+    return db_pp(proj_year(t))
+
+
+def benefit_lapse_pp(t):
+    """The *Rückkaufswert* on a *Kündigung*, ``cv_pp(proj_year(t))``.
+
+    Net of the *Stornoabzug* and gross of the *Rückzahlungsbetrag*.
+
+    Override reason: a surrender pays the contract year's ``cv_pp(k)``,
+    products/riester_rente/technical-notes.md:655
+    """
+    return cv_pp(proj_year(t))
+
+
+def claims_other(t, kind):
+    """Benefit outgo in month t of the kinds beside death and lapse.
 
     ``"TRANSFER"``
         the *Anbieterwechsel* transfer value, a **separate** decrement from surrender with
@@ -1542,15 +1569,14 @@ def claims(t, kind=None):
         booked twelve of them together at the start of each payout year on that year's
         opening count, which paid a life that died in the first month of a year for the whole
         of it; that approximation is gone.
+
+    Raises ``ValueError`` for any other kind.
+
+    Override reason: the transfer, the lump sum, the commutation and the annuity are paid on
+    their own counts, ``pols_transfer``, ``pols_conv`` and ``pols_annuity_pay``,
+    products/riester_rente/technical-notes.md:656
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE", "TRANSFER",
-                                          "LUMPSUM", "COMMUTATION", "ANNUITY"))
     k = proj_year(t)
-    if kind == "DEATH":
-        return db_pp(k) * pols_death(t)
-    if kind == "LAPSE":
-        return cv_pp(k) * pols_lapse(t)
     if kind == "TRANSFER":
         return transfer_value_pp(k) * pols_transfer(t)
     if kind == "LUMPSUM":

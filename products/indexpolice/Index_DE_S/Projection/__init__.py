@@ -178,6 +178,9 @@ V(k)                       cv_pp(k)                        Surrender value
 (169 Abs. 3)               min_surr_pp(k)                  Minimum surrender value
 (Stornoabzug)              surr_charge_pp(k)               Surrender charge
 M(n-1)                     mat_pp(k)                       Benefit at Rentenbeginn
+D(k)                       benefit_death_pp(t)             db_pp(duration(t))
+V(k)                       benefit_lapse_pp(t)             cv_pp(duration(t))
+M(k)                       benefit_maturity_pp(t)          mat_pp(duration(t))
 claims_death, ...          claims(t, kind)                 Benefit outgo by kind
 (released)                 av_released(k)                  Account taken out by the exits
 E(t)                       expenses(t)                     Insurer expense outgo
@@ -1234,39 +1237,46 @@ def mat_pp(k):
     return max(av_pp(proj_len_y()), guar_cap_pp(proj_len_y()))
 
 
-def claims(t, kind=None):
-    """Benefit outgo in **month** t, by kind; the total when kind is omitted.
+def benefit_death_pp(t):
+    """D(k): what a death in **month** t pays, ``db_pp(duration(t))``.
 
     The **counts are monthly and the amounts are annual**, which is the shape of this
-    conversion in one cells: a claim is recognised in the month it happens, and what it is
-    paid is the policy year's own amount — because the account this product pays out of is
-    defined at anniversaries and the *Indexjahr* is settled only at the year end.
+    conversion: a claim is recognised in the month it happens, and what it is paid is the
+    policy year's own amount — because the account this product pays out of is defined at
+    anniversaries and the *Indexjahr* is settled only at the year end.  The account before
+    the year's credits with the *Mindesttodesfallschutz* floor.  All three exits fall at the
+    **end** of the month; two exits at the same instant take different amounts — the
+    maturity includes the year's *Indexjahr* and the other two do not — and that is the
+    product's own rule.
 
-    ``"DEATH"``
-        ``D(k) x pols_death(t)``, the account before the year's credits with
-        the *Mindesttodesfallschutz* floor.
-
-    ``"LAPSE"``
-        ``V(k) x pols_lapse(t)``, the § 169 Abs. 3-floored reserve less the
-        *Stornoabzug*.  Zero through the final policy year by construction.
-
-    ``"MATURITY"``
-        ``M(n - 1) x pols_maturity(12n - 1)``, the capital falling due at
-        *Rentenbeginn*, and zero in every other month.
-
-    All three fall at the **end** of the month.  Two exits at the same instant take
-    different amounts — the maturity includes the year's *Indexjahr* and the other two do
-    not — and that is the product's own rule.
+    Override reason: the death benefit is the policy year's account with the death floor,
+    products/indexpolice/technical-notes.md:577
     """
-    if kind is None:
-        return sum(claims(t, j) for j in ("DEATH", "LAPSE", "MATURITY"))
-    if kind == "DEATH":
-        return db_pp(duration(t)) * pols_death(t)
-    if kind == "LAPSE":
-        return cv_pp(duration(t)) * pols_lapse(t)
-    if kind == "MATURITY":
-        return mat_pp(duration(t)) * pols_maturity(t)
-    raise ValueError("invalid kind")
+    return db_pp(duration(t))
+
+
+def benefit_lapse_pp(t):
+    """V(k): what a surrender in **month** t pays, ``cv_pp(duration(t))``.
+
+    The § 169 Abs. 3-floored reserve less the *Stornoabzug*; the lapses are zero through the
+    final policy year by construction.
+
+    Override reason: the surrender value is the policy year's floored reserve less the
+    *Stornoabzug*, products/indexpolice/technical-notes.md:578
+    """
+    return cv_pp(duration(t))
+
+
+def benefit_maturity_pp(t):
+    """M(n - 1): the capital falling due at *Rentenbeginn*, ``mat_pp(duration(t))``.
+
+    Read in every month and weighted by ``pols_maturity(t)``, which is zero but at
+    ``t = 12n - 1``.
+
+    Override reason: the maturity benefit is the capital at *Rentenbeginn*, the account or
+    the guarantee, products/indexpolice/technical-notes.md:579
+    """
+    return mat_pp(duration(t))
 
 
 def rentenfaktor():

@@ -666,3 +666,63 @@ def premiums(t):
     month, so a policy that leaves in it has already paid what fell due at its start.
     """
     return prem_inst_pp(t) * pols_prem(t)                            # noqa: F821
+
+
+def claim_kinds():
+    """The benefit kinds of :func:`claims`, in the order of its total: death, lapse, maturity.
+
+    A product with other kinds overrides the tuple; a kind outside death, lapse and maturity
+    is computed by :func:`claims_other`.
+    """
+    return ("DEATH", "LAPSE", "MATURITY")
+
+
+def benefit_death_pp(t):
+    """What a death in month t pays per claim; 0, no death benefit."""
+    return 0.0
+
+
+def benefit_lapse_pp(t):
+    """What a surrender in month t pays per lapsing policy; 0, no surrender value."""
+    return 0.0
+
+
+def benefit_maturity_pp(t):
+    """What the end of the term pays per maturing policy in month t; 0, no survival benefit."""
+    return 0.0
+
+
+def claims_other(t, kind):
+    """The outgo of a benefit kind other than death, lapse and maturity in month t.
+
+    None in the core: raises ``ValueError`` for any kind.  A product with further kinds
+    overrides it with their outgo and keeps the ``ValueError`` for an unknown kind.
+    """
+    raise ValueError("invalid kind")
+
+
+def claims(t, kind=None):
+    """Benefit outgo in month t, by kind; the total over ``claim_kinds()`` when kind is omitted.
+
+    ``"DEATH"``
+        ``benefit_death_pp(t) x pols_death(t)``.
+
+    ``"LAPSE"``
+        ``benefit_lapse_pp(t) x pols_lapse(t)``.
+
+    ``"MATURITY"``
+        ``benefit_maturity_pp(t) x pols_maturity(t)``.
+
+    Every other kind is :func:`claims_other`, which raises ``ValueError`` for an unknown
+    one.  A kind whose per-policy amount is 0 is exactly 0, a published zero rather than a
+    missing column.
+    """
+    if kind is None:
+        return sum(claims(t, k) for k in claim_kinds())              # noqa: F821
+    if kind == "DEATH":
+        return benefit_death_pp(t) * pols_death(t)                  # noqa: F821
+    if kind == "LAPSE":
+        return benefit_lapse_pp(t) * pols_lapse(t)                   # noqa: F821
+    if kind == "MATURITY":
+        return benefit_maturity_pp(t) * pols_maturity(t)             # noqa: F821
+    return claims_other(t, kind)                                     # noqa: F821

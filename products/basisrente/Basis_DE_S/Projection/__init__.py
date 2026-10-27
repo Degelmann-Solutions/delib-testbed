@@ -163,6 +163,7 @@ a(k)                       ann_pp(k)                       Annual annuity per an
 a(k) / 12                  ann_mth_pp(t)                   The monthly Rente instalment
 (none)                     db_pp(k)                        Reserve released per paying death
 (none)                     db_pu_pp(k)                     Reserve released per paid-up death
+(none)                     claim_kinds()                   DEATH / ANNUITY / SURVIVOR
 claims_death, _annuity,    claims(t, kind)                 Benefit outgo by kind
 claims_survivor
 E(t)                       expenses(t)                     Insurer expense outgo
@@ -1444,6 +1445,15 @@ def db_pu_pp(k):
     return av_pu_at(k, "AFT_INT") / pols_paidup(12 * k)
 
 
+def claim_kinds():
+    """The three benefit kinds of :func:`claims`: death, annuity and survivor.
+
+    Override reason: the claim kinds are death, annuity and the *Rentengarantiezeit*
+    survivor stream, products/basisrente/technical-notes.md:613
+    """
+    return ("DEATH", "ANNUITY", "SURVIVOR")
+
+
 def claims(t, kind=None):
     """Benefit outgo in projection month t, by kind; the total when kind is omitted.
 
@@ -1477,9 +1487,13 @@ def claims(t, kind=None):
     There is no fourth kind, and there can be none: no surrender value, no capital option,
     no partial capital payment and no commutation exist on this product.
     :func:`check_no_capital` asserts that the total is exactly the sum of these three.
+
+    Override reason: the death benefit releases the reserve of two cohorts, the paying and
+    the paid-up, weighted by the survivor's eligibility, and the annuity kinds are no
+    per-policy amount times a decrement, products/basisrente/technical-notes.md:604
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "ANNUITY", "SURVIVOR"))
+        return sum(claims(t, k) for k in claim_kinds())
     if kind == "DEATH":
         if float(model_point()["surv_annuity_rate"]) <= 0.0:
             return 0.0

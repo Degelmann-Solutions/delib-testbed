@@ -205,6 +205,10 @@ Rbar(k)                     cv_tariff_pp(k)                 Tariff surrender val
 Runder(k)                   cv_floor_pp(k)                  Sec. 169(3) floor
 R(k)                        cv_pp(k)                        Surrender value paid
 K                           capital_conv_pp()               Conversion capital
+D(k)                        benefit_death_pp(t)             db_pp(duration(t))
+R(k)                        benefit_lapse_pp(t)             cv_pp(duration(t))
+(none)                      claim_kinds()                   DEATH / LAPSE / COMMUTATION
+K x commuters               claims_other(t, kind)           COMMUTATION outgo
 f_g                         annuity_rate_guar()             Garantierter Rentenfaktor
 f_c                         annuity_rate_curr()             Aktueller Rentenfaktor
 f                           annuity_rate_appl()             max(f_g, f_c)
@@ -1620,38 +1624,55 @@ def annuity_due_factor():
 # Claims, expenses and the cash flow statement
 
 
-def claims(t, kind=None):
-    """Benefit outgo in **month** t, by kind; the total when kind is omitted.
-
-    The **counts are monthly and the amounts are annual**, which is the whole shape of this
-    conversion in one cells: a claim is recognised in the month it happens, and what it is paid
-    is the value struck at the end of that *Versicherungsperiode* — § 169 Abs. 3 VVG's *zum
-    Schluss der laufenden Versicherungsperiode*, the year for this tariff, and the year the
-    *Beitrag* was paid in advance for.
-
-    ``"DEATH"``
-        ``db_pp(duration(t)) x pols_death(t)``.  **Zero after the *Rentenbeginn***, where
-        ``db_pp`` is zero.
-
-    ``"LAPSE"``
-        ``cv_pp(duration(t)) x pols_lapse(t)``, the surrender value on the survivors of the
-        month's deaths.  Zero in the payout phase, where there is no surrender.
-
-    ``"COMMUTATION"``
-        ``capital_conv_pp() x pols_commutation(t)``, the *Kapitalabfindung* under the
-        *Kapitalwahlrecht*, paid in the last accumulation month ``12n - 1`` and in no other.
-        The commuters receive the same capital the annuitants convert, *Bewertungsreserven*
-        included.
+def claim_kinds():
+    """The benefit kinds of :func:`claims`: death, lapse and the *Kapitalabfindung*.
 
     The annuity itself is **not** a claim kind: it is a recurring benefit with its own
     weighting rule and is published as :func:`annuity_payments`.
+
+    Override reason: the claims are death, lapse and commutation, and the annuity is a
+    column of its own, products/klassische_rentenversicherung/technical-notes.md:678
     """
-    if kind is None:
-        return sum(claims(t, j) for j in ("DEATH", "LAPSE", "COMMUTATION"))
-    if kind == "DEATH":
-        return db_pp(duration(t)) * pols_death(t)
-    if kind == "LAPSE":
-        return cv_pp(duration(t)) * pols_lapse(t)
+    return ("DEATH", "LAPSE", "COMMUTATION")
+
+
+def benefit_death_pp(t):
+    """D(k): what a death in **month** t pays, ``db_pp(duration(t))``.
+
+    The **counts are monthly and the amounts are annual**: a claim is recognised in the
+    month it happens, and what it is paid is the value struck at the end of that
+    *Versicherungsperiode* — § 169 Abs. 3 VVG's *zum Schluss der laufenden
+    Versicherungsperiode*, the year for this tariff, and the year the *Beitrag* was paid in
+    advance for.  **Zero after the *Rentenbeginn***, where ``db_pp`` is zero.
+
+    Override reason: the death benefit is the policy year's ``D(duration(t))``,
+    products/klassische_rentenversicherung/technical-notes.md:587
+    """
+    return db_pp(duration(t))
+
+
+def benefit_lapse_pp(t):
+    """R(k): what a surrender in **month** t pays, ``cv_pp(duration(t))``.
+
+    Paid on the survivors of the month's deaths; zero in the payout phase, where there is no
+    surrender.
+
+    Override reason: the surrender value is the policy year's ``R(duration(t))``,
+    products/klassische_rentenversicherung/technical-notes.md:588
+    """
+    return cv_pp(duration(t))
+
+
+def claims_other(t, kind):
+    """The *Kapitalabfindung*, kind ``"COMMUTATION"``: ``capital_conv_pp() x pols_commutation(t)``.
+
+    Paid under the *Kapitalwahlrecht* in the last accumulation month ``12n - 1`` and in no
+    other.  The commuters receive the same capital the annuitants convert,
+    *Bewertungsreserven* included.  Raises ``ValueError`` for any other kind.
+
+    Override reason: the commuters receive the conversion capital ``K``,
+    products/klassische_rentenversicherung/technical-notes.md:620
+    """
     if kind == "COMMUTATION":
         return capital_conv_pp() * pols_commutation(t)
     raise ValueError("invalid kind")

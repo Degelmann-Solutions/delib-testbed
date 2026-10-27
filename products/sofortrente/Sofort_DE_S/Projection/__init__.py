@@ -106,6 +106,8 @@ SP               prem_inst_pp(t)                       The Einmalbeitrag, at t =
 (none)           premiums(t)                           The Einmalbeitrag, at t = 0 only
 (none)           annuity_payments(t, kind)             ANNUITANT / SURVIVOR instalments
 (none)           claims(t, kind)                       GUARANTEE / REFUND death outgo
+(none)           claim_kinds()                         GUARANTEE / REFUND
+(none)           claims_other(t, kind)                 Their outgo
 (none)           infl_factor(t)                        Expense inflation factor
 c_e, c_p, pi     expenses(t)                           Maintenance, per-instalment, acquisition
 liability_cf(t)  liability_cf(t)                       The stream, outgo positive
@@ -1035,8 +1037,21 @@ def annuity_payments(t, kind=None):
     raise ValueError("invalid kind")
 
 
-def claims(t, kind=None):
-    """Death outgo in month ``t``, by kind; the total when ``kind`` is omitted.
+def claim_kinds():
+    """The two death benefit kinds of :func:`claims`: ``GUARANTEE`` and ``REFUND``.
+
+    There is no ``"LAPSE"`` or ``"SURRENDER"`` kind, at any duration, and no
+    surrender-value cells anywhere in this model: once the *Rentenbezug* has begun the
+    contract cannot be terminated, so § 169 VVG is displaced and there is nothing to pay.
+
+    Override reason: the claim columns are the guarantee and the refund,
+    products/sofortrente/technical-notes.md:636
+    """
+    return ("GUARANTEE", "REFUND")
+
+
+def claims_other(t, kind):
+    """Death outgo in month ``t`` of the kinds ``"GUARANTEE"`` and ``"REFUND"``.
 
     ``"GUARANTEE"``
         the instalment paid to the beneficiaries of an annuitant who has died inside the
@@ -1049,12 +1064,12 @@ def claims(t, kind=None):
         the *Kapital-* / *Beitragsrückgewähr*, ``pols_if_init x K(t) x d_a(t)``, settled on
         deaths **during** month ``t`` and already net of the instalment paid at its start.
 
-    There is no ``"LAPSE"`` or ``"SURRENDER"`` kind, at any duration, and no
-    surrender-value cells anywhere in this model: once the *Rentenbezug* has begun the
-    contract cannot be terminated, so § 169 VVG is displaced and there is nothing to pay.
+    Raises ``ValueError`` for any other kind.
+
+    Override reason: the guarantee instalment and the refund are paid on the survival
+    probabilities of the annuitant, not on a count of deaths,
+    products/sofortrente/technical-notes.md:599
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("GUARANTEE", "REFUND"))
     if kind == "GUARANTEE":
         if not is_payment_mth(t):
             return 0.0

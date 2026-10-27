@@ -182,6 +182,8 @@ l(t)                pols_if(t)                             In force at the start
 (none)              benefit_full_pp(t)                     Full death benefit before 161
 (none)              benefit_death_pp(t)                    What a death claim pays
 (none)              benefit_maturity_pp(t)                 What the Ablauf pays
+RK(t)               benefit_lapse_pp(t)                    surr_value_pp(t), per lapse
+(none)              claim_kinds()                          DEATH / MATURITY / LAPSE
 claims_*            claims(t, kind)                        DEATH / MATURITY / LAPSE
 (none)              inflation_factor(k)                    Expense inflation factor
 (none)              claim_expenses(t)                      Claim handling expense
@@ -1505,6 +1507,9 @@ def benefit_death_pp(t):
     ``suicide_share = 0.02`` **[std]** stands for "about one death in fifty inside the window
     is an excluded suicide"; no source gives a suicide share of deaths at any age.  Setting it
     to zero is a defensible variant.  Paying **nil** on the excluded share is not.
+
+    Override reason: a death pays the full benefit, with the *Rückkaufswert* on the suicide
+    share in the first three years, products/kapitallebensversicherung/technical-notes.md:620
     """
     if duration(t) < 3:
         return ((1.0 - suicide_share) * benefit_full_pp(t)            # noqa: F821
@@ -1528,6 +1533,9 @@ def benefit_maturity_pp(t):
     reasoning is visible and reversible.
 
     A *beitragsfrei* contract matures on ``bfz_si_pp()`` in place of :func:`sum_assured`.
+
+    Override reason: the *Ablauf* pays the sum assured plus the surplus balances,
+    products/kapitallebensversicherung/technical-notes.md:623
     """
     if t != proj_len() - 1:
         return 0.0
@@ -1561,34 +1569,26 @@ def surr_value_pp(t):
             + term_surr_share * term_bonus_close_pp(t))               # noqa: F821
 
 
-def claims(t, kind=None):
-    """Benefit outgo in month t, by kind; the total when kind is omitted.
+def claim_kinds():
+    """The benefit kinds of :func:`claims` in the order of its total: death, maturity, lapse.
 
-    ``"DEATH"``
-        ``pols_death(t) * benefit_death_pp(t)``: the guaranteed *Todesfallleistung*
-        plus the surplus balances standing at the end of the month, with the § 161 VVG
-        substitution of the *Rückkaufswert* on the suicide share in the first
-        thirty-six months.
-
-    ``"MATURITY"``
-        ``pols_maturity(t) * benefit_maturity_pp(t)``, nil except at
-        ``t = proj_len() - 1``: the *Erlebensfallleistung* plus the surplus balances.
-
-    ``"LAPSE"``
-        ``pols_lapse(t) * surr_value_pp(t)``: the *Rückkaufswert*.  Unlike a
-        *Risikolebensversicherung*, where a lapse pays nothing, this is a real and
-        often large outflow, and in the last month the distinction between it and a
-        maturity decides a payment rather than only a label.
+    Override reason: the claim columns are death, maturity and lapse in that order,
+    products/kapitallebensversicherung/technical-notes.md:654
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "MATURITY", "LAPSE"))
-    if kind == "DEATH":
-        return pols_death(t) * benefit_death_pp(t)
-    if kind == "MATURITY":
-        return pols_maturity(t) * benefit_maturity_pp(t)
-    if kind == "LAPSE":
-        return pols_lapse(t) * surr_value_pp(t)
-    raise ValueError("invalid kind")
+    return ("DEATH", "MATURITY", "LAPSE")
+
+
+def benefit_lapse_pp(t):
+    """What a surrender in month t pays, the *Rückkaufswert* :func:`surr_value_pp`.
+
+    Unlike a *Risikolebensversicherung*, where a lapse pays nothing, this is a real and
+    often large outflow, and in the last month the distinction between it and a maturity
+    decides a payment rather than only a label.
+
+    Override reason: a lapse pays the *Rückkaufswert*,
+    products/kapitallebensversicherung/technical-notes.md:630
+    """
+    return surr_value_pp(t)
 
 
 # --- expenses and commission -----------------------------------------------

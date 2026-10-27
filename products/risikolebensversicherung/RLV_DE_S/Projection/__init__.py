@@ -145,12 +145,18 @@ pols_maturity(t)           pols_maturity(t)                Expiring survivors, l
 premiums(t)                premiums(t)                     Zahlbeitrag income, billed
 prem_gross(t)              prem_gross(t)                   Bruttobeitrag, guaranteed
 prem_rebate(t)             prem_rebate(t)                  Beitragsverrechnung, in force
+(none)                     benefit_death_pp(t)             benefit_paid_pp(t)
 claims_death               claims(t, kind)                 Benefit outgo by kind
 z k G                      acq_cost_pp()                   Acquisition cost at issue
 c0 k G                     comm_init_pp()                  Initial Abschlussprovision
 (1 + pi)^duration(t)       inflation_factor(t)             Expense inflation factor
 maint(t)                   maint_pp(t)                     Admin plus collection cost
+(acq_pp - comm_pp)         expenses_acq(t)                 Acquisition net of commission
+maint(t) l(t)              expenses_maint(t)               Maintenance on the in-force
+ec pols_death(t)           expenses_claim(t)               Claim expense per death
 expenses(t)                expenses(t)                     Total expense, ex commission
+comm_pp                    comm_init(t)                    comm_init_pp() at issue
+(none)                     comm_renew(t)                   Bestandspflegeprovision
 commissions(t)             commissions(t)                  Commission outgo
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
 liability_cf(t)            liability_cf(t)                 The same stream, outgo positive
@@ -1052,6 +1058,9 @@ def prem_inst_pp(t):
     has already lost lives, so the premium-cessation rule finally bites where an annual
     grid could not express it — and the *Ratenzahlungszuschlag* is at last charging for
     something the model does.
+
+    Override reason: the *Zahlbeitrag* instalment is the gross instalment less the rebate,
+    products/risikolebensversicherung/technical-notes.md:614
     """
     return prem_gross_inst_pp(t) - prem_rebate_inst_pp(t)
 
@@ -1139,23 +1148,6 @@ def res_zill_pp_at(y, timing):
 # Cash flows
 
 
-def premiums(t):
-    """*Zahlbeitrag* income at the **beginning** of month t, an inflow.
-
-    ``prem_inst_pp(t) l(t)``: the instalment the elected *Zahlweise* makes due this month,
-    weighted by the in-force entering it.  **The billed stream, and the one inside**
-    :func:`net_cf`.  An annual payer contributes the whole year's *Zahlbeitrag* in the
-    first month of the policy year and nothing in the other eleven; a monthly payer
-    contributes a twelfth each month on a block that has already lost lives, which is
-    where § 168's *Versicherungsperiode* finally bites.
-
-    Not further multiplied by ``(1 - q2m)``: claims fall at the end of the month, so a
-    claimant has already paid that month's instalment, and applying the premium-cessation
-    rule again here charges it twice.
-    """
-    return prem_inst_pp(t) * pols_if(t)
-
-
 def prem_gross(t):
     """*Bruttobeitrag* instalments on the in-force cohort — the **guaranteed** stream.
 
@@ -1180,41 +1172,23 @@ def prem_rebate(t):
     return prem_rebate_inst_pp(t) * pols_if(t)
 
 
-def claims(t, kind=None):
-    """Benefit outgo in period t, by kind; the total when kind is omitted.
+def benefit_death_pp(t):
+    """The *Todesfallleistung* per death in period t, :func:`benefit_paid_pp`.
 
-    ``"DEATH"``
-        the *Todesfallleistung* at the end of the period of death,
-        ``benefit_paid_pp(t) x pols_death(t)`` — the sum insured after the § 161 switch.
-        The only kind that is ever non-zero.
+    Paid at the end of the period of death: the sum insured after the § 161 switch.  The
+    only benefit that is ever non-zero.  The lapse and maturity benefits keep the core's
+    neutral 0, so ``claims(t, "LAPSE")`` and ``claims(t, "MATURITY")`` are **zero, always**:
+    § 169 Abs. 1 VVG confines the surrender-value duty to a life insurance whose insured
+    event is certain to occur and a term assurance's is not, § 165's
+    *Beitragsfreistellung* and § 166's paid-up conversion both collapse into the same nil
+    through the minimum-benefit test, and a term contract pays nothing at expiry.  Both
+    zeros are published as columns rather than dropped, and :func:`check_no_cash_value`
+    asserts them on every model point.
 
-    ``"LAPSE"``
-        **zero, always.**  § 169 Abs. 1 VVG confines the surrender-value duty to a life
-        insurance whose insured event is certain to occur and a term assurance's is not,
-        and § 165's *Beitragsfreistellung* and § 166's paid-up conversion both collapse
-        into the same nil through the minimum-benefit test.  The kind exists so that the
-        zero is stated rather than inferred.
-
-    ``"MATURITY"``
-        **zero, always.**  A term contract pays nothing at expiry: no
-        *Erlebensfallleistung*, no maturity value, no return of premium.  The
-        *Risikolebensversicherung mit Beitragsrückgewähr*, which does return premiums on
-        survival, has a savings element by construction and is a different product.
-
-    Both zeros are published as columns rather than dropped, and
-    :func:`check_no_cash_value` asserts them on every model point: a reader arriving from
-    a model with cash surrender values will wire one in, and every total in the frame will
-    still look plausible.
+    Override reason: a death pays the sum insured after the § 161 switch,
+    products/risikolebensversicherung/technical-notes.md:228
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE", "MATURITY"))
-    if kind == "DEATH":
-        return benefit_paid_pp(t) * pols_death(t)
-    if kind == "LAPSE":
-        return 0.0
-    if kind == "MATURITY":
-        return 0.0
-    raise ValueError("invalid kind")
+    return benefit_paid_pp(t)
 
 
 def acq_cost_pp():
@@ -1289,68 +1263,67 @@ def maint_pp(t):
             + maint_prem_pct * prem_inst_pp(t))                      # noqa: F821
 
 
-def expenses(t):
-    """Total expense outgo in month t, **excluding** commission.
+def expenses_acq(t):
+    """The acquisition cost net of the initial commission, at issue, or zero.
 
-    Acquisition cost net of the initial commission in month ``t = 0`` and only where
-    ``duration_init = 0`` — a single amount at issue, not an annualised loading and not a
-    twelfth of one; maintenance and collection on the opening in-force; and the claim
-    expense on the month's deaths, 250 € each **[std]**.
+    A single amount in month ``t = 0`` and only where ``duration_init = 0`` — not an
+    annualised loading and not a twelfth of one.  Commission is **not** in the expenses.  It
+    is :func:`commissions`, its own column, and :func:`net_cf` subtracts the two separately
+    — the opposite convention from ``frlib.TD_FR_S``, whose notes fold commission into the
+    expense total.  The two libraries' columns look alike and do not mean the same thing,
+    so the identity is written down in :func:`check_net_cf` rather than left to a reader's
+    assumption.
 
-    Commission is **not** in here.  It is :func:`commissions`, its own column, and
-    :func:`net_cf` subtracts the two separately — the opposite convention from
-    ``frlib.TD_FR_S``, whose notes fold commission into the expense total.  The two
-    libraries' columns look alike and do not mean the same thing, so the identity is
-    written down in :func:`check_net_cf` rather than left to a reader's assumption.
+    Override reason: the acquisition cost less the initial commission falls at issue on new
+    business only, products/risikolebensversicherung/technical-notes.md:606
     """
-    acq = (acq_cost_pp() - comm_init_pp()) if (t == 0 and duration_init() == 0) else 0.0
-    return (acq + maint_pp(t) * pols_if(t)
-            + claim_expense * pols_death(t))                        # noqa: F821
+    return (acq_cost_pp() - comm_init_pp()) if (t == 0 and duration_init() == 0) else 0.0
 
 
-def commissions(t):
-    """Commission outgo in month t.
+def expenses_maint(t):
+    """Maintenance and collection on the opening in-force, ``maint_pp(t) x pols_if(t)``.
 
-    The initial *Abschlussprovision* at issue — in month ``t = 0`` and only where
-    ``duration_init = 0``, because on an in-force point it is sunk — plus the
-    *Bestandspflegeprovision* at 1,0 % of each *Zahlbeitrag* instalment from
-    ``duration(t) >= 1``, which is policy year 2.  Both **[std]**.
-
-    The **rate** is a policy-year rate and steps on the anniversary; the **base** is the
-    instalment actually collected, so a fractionated payer earns the renewal commission in
-    instalments too.  On an annual-mode point that reproduces the annual model's
-    commission exactly, both the rate and the collection sitting on the anniversary.
+    Override reason: maintenance is a per-policy amount on the opening in-force,
+    products/risikolebensversicherung/technical-notes.md:607
     """
-    init = comm_init_pp() if (t == 0 and duration_init() == 0) else 0.0
-    renew = (comm_rate_renew * prem_inst_pp(t) * pols_if(t)          # noqa: F821
-             if duration(t) >= 1 else 0.0)
-    return init + renew
+    return maint_pp(t) * pols_if(t)
 
 
-def net_cf(t):
-    """Net liability cash flow in period t, **income positive**.
+def expenses_claim(t):
+    """The claim expense on the month's deaths, 250 € each **[std]**.
 
-    ``premiums(t) - claims(t) - expenses(t) - commissions(t)`` — the *billed* premium, not
-    the guaranteed one.  This is the library-wide sign, so ``result_cf()["net_cf"]`` can be
-    compared and summed across delib without checking which product it came from; the
-    outgo-positive orientation is :func:`liability_cf`.
-
-    Undiscounted, and deliberately so: this library publishes gross best-estimate-style
-    liability cash flows and leaves discounting, the *Deckungsrückstellung*, Solvency II
-    technical provisions and the SCR to a layer that consumes them.
+    Override reason: the claim expense is an amount per death claim,
+    products/risikolebensversicherung/technical-notes.md:400
     """
-    return premiums(t) - claims(t) - expenses(t) - commissions(t)
+    return claim_expense * pols_death(t)                             # noqa: F821
 
 
-def liability_cf(t):
-    """The same stream, outgo positive: ``-net_cf(t)`` exactly.
+def comm_init(t):
+    """The initial *Abschlussprovision* at issue, :func:`comm_init_pp`, or zero **[std]**.
 
-    Published so that a best-estimate liability is ``sum v(t) liability_cf(t)`` over
-    whatever discount curve the valuation layer supplies, without a sign flip a reader has
-    to remember.  Both orientations are columns of :func:`result_cf`, so the identity is
-    verifiable in the frame.
+    In month ``t = 0`` and only where ``duration_init = 0``, because on an in-force point it
+    is sunk.
+
+    Override reason: the initial commission is the per-policy ``comm_pp`` at issue on new
+    business, products/risikolebensversicherung/technical-notes.md:608
     """
-    return -net_cf(t)
+    return comm_init_pp() if (t == 0 and duration_init() == 0) else 0.0
+
+
+def comm_renew(t):
+    """The *Bestandspflegeprovision*, 1,0 % of each *Zahlbeitrag* instalment **[std]**.
+
+    From ``duration(t) >= 1``, which is policy year 2.  The **rate** is a policy-year rate
+    and steps on the anniversary; the **base** is the instalment actually collected, so a
+    fractionated payer earns the renewal commission in instalments too.  On an annual-mode
+    point that reproduces the annual model's commission exactly, both the rate and the
+    collection sitting on the anniversary.
+
+    Override reason: the renewal commission is a rate on each *Zahlbeitrag* instalment from
+    policy year 2, products/risikolebensversicherung/technical-notes.md:397
+    """
+    return (comm_rate_renew * prem_inst_pp(t) * pols_if(t)           # noqa: F821
+            if duration(t) >= 1 else 0.0)
 
 
 # ==========================================================================

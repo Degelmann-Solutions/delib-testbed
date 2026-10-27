@@ -101,10 +101,17 @@ C(t)             cum_annuity_guar_pp(t)                Guaranteed instalments pa
 K(t)             refund_pp(t)                          max(SP - C(t), 0)
 F(t)             payment_factor(t)                     Expected instalments payable at t
 (none)           pols_if(t)                            Probability an obligation remains
+SP               prem_inst_pp(t)                       The Einmalbeitrag, at t = 0 only
+(none)           pols_prem(t)                          pols_if_init(), its weight
 (none)           premiums(t)                           The Einmalbeitrag, at t = 0 only
 (none)           annuity_payments(t, kind)             ANNUITANT / SURVIVOR instalments
 (none)           claims(t, kind)                       GUARANTEE / REFUND death outgo
+(none)           claim_kinds()                         GUARANTEE / REFUND
+(none)           claims_other(t, kind)                 Their outgo
 (none)           infl_factor(t)                        Expense inflation factor
+pi               expenses_acq(t)                       Acquisition at t = 0
+c_e              expenses_maint(t)                     Maintenance, a twelfth a month
+c_p              expenses_claim(t)                     Per-instalment payment run
 c_e, c_p, pi     expenses(t)                           Maintenance, per-instalment, acquisition
 liability_cf(t)  liability_cf(t)                       The stream, outgo positive
 net_cf(t)        net_cf(t)                             The same stream, income positive
@@ -974,19 +981,31 @@ def pols_if(t):
     return pols_if_init() * min(1.0, x)
 
 
-def premiums(t):
-    """The *Einmalbeitrag*, an inflow at the start of month 0 and nowhere else.
+def prem_inst_pp(t):
+    """The *Einmalbeitrag* per policy, at the start of month 0 and nowhere else.
 
-    ``single_prem() x pols_if_init()`` at ``t = 0``.  An in-force model point's frame does
-    not contain ``t = 0``, so it collects nothing: the premium was paid before the
-    valuation date and counting it again is a listed pitfall.
+    ``single_prem()`` at ``t = 0``; the core's :func:`premiums` weights it by
+    :func:`pols_prem`.  An in-force model point's frame does not contain ``t = 0``, so it
+    collects nothing: the premium was paid before the valuation date and counting it again
+    is a listed pitfall.
 
     There is no premium stream, no *Beitragsdynamik* and no *Ratenzahlungszuschlag* on this
     product — the whole consideration is paid once.
+
+    Override reason: the *Einmalbeitrag* is paid once, at ``t = 0``,
+    products/sofortrente/technical-notes.md:592
     """
-    if t == 0:
-        return single_prem() * pols_if_init()
-    return 0.0
+    return single_prem() if t == 0 else 0.0
+
+
+def pols_prem(t):
+    """The count the *Einmalbeitrag* is paid by, ``pols_if_init()``.
+
+    Override reason: ``pols_if`` is the probability that a payment obligation remains, not
+    a count, so the premium is weighted by the count the point stands for,
+    products/sofortrente/technical-notes.md:193
+    """
+    return pols_if_init()
 
 
 def annuity_payments(t, kind=None):
@@ -1021,8 +1040,21 @@ def annuity_payments(t, kind=None):
     raise ValueError("invalid kind")
 
 
-def claims(t, kind=None):
-    """Death outgo in month ``t``, by kind; the total when ``kind`` is omitted.
+def claim_kinds():
+    """The two death benefit kinds of :func:`claims`: ``GUARANTEE`` and ``REFUND``.
+
+    There is no ``"LAPSE"`` or ``"SURRENDER"`` kind, at any duration, and no
+    surrender-value cells anywhere in this model: once the *Rentenbezug* has begun the
+    contract cannot be terminated, so § 169 VVG is displaced and there is nothing to pay.
+
+    Override reason: the claim columns are the guarantee and the refund,
+    products/sofortrente/technical-notes.md:636
+    """
+    return ("GUARANTEE", "REFUND")
+
+
+def claims_other(t, kind):
+    """Death outgo in month ``t`` of the kinds ``"GUARANTEE"`` and ``"REFUND"``.
 
     ``"GUARANTEE"``
         the instalment paid to the beneficiaries of an annuitant who has died inside the
@@ -1035,12 +1067,12 @@ def claims(t, kind=None):
         the *Kapital-* / *Beitragsrückgewähr*, ``pols_if_init x K(t) x d_a(t)``, settled on
         deaths **during** month ``t`` and already net of the instalment paid at its start.
 
-    There is no ``"LAPSE"`` or ``"SURRENDER"`` kind, at any duration, and no
-    surrender-value cells anywhere in this model: once the *Rentenbezug* has begun the
-    contract cannot be terminated, so § 169 VVG is displaced and there is nothing to pay.
+    Raises ``ValueError`` for any other kind.
+
+    Override reason: the guarantee instalment, products/sofortrente/technical-notes.md:599,
+    and the refund, products/sofortrente/technical-notes.md:613, are paid on the survival
+    probabilities of the annuitant, not on a count of deaths
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("GUARANTEE", "REFUND"))
     if kind == "GUARANTEE":
         if not is_payment_mth(t):
             return 0.0
@@ -1060,36 +1092,50 @@ def infl_factor(t):
     return (1.0 + expense_infl) ** (t // 12)                         # noqa: F821
 
 
-def expenses(t):
-    """Insurer expense in month ``t``: acquisition, maintenance and the payment run.
-
-    Three terms, all **[std]** — no expense parameter was established at any carrier::
-
-        1{t = 0} pols_if_init (expense_acq_rate SP + expense_acq_fixed)
-      + (expense_maint_pp / 12) infl_factor(t) pols_if(t)
-      + 1{payment month} expense_pay_pp infl_factor(t) pols_if_init payment_factor(t)
+def expenses_acq(t):
+    """The acquisition expense at ``t = 0`` only, ``pols_if_init (expense_acq_rate SP + c)``.
 
     The acquisition term appears at ``t = 0`` only, and therefore not at all on an in-force
-    point.  The per-instalment term is weighted by :func:`payment_factor` rather than by
-    :func:`pols_if`, and that is not a slip: a survivor's annuity in payment is a **second**
-    payment run, and inside the guarantee the beneficiary's instalment costs the same to
-    pay as the annuitant's.
+    point.  All three expense terms are **[std]** — no expense parameter was established at
+    any carrier.  These are the expenses *incurred*.  The two tariff *loadings* —
+    ``expense_load_alpha`` and ``expense_load_beta`` — are pricing parameters and appear
+    only in the equivalence.  Keeping them apart is the point of the split: the gap between
+    them is the modelled *Kostenüberschuss*, and a user replacing one set must replace the
+    other with it or the modelled profit moves silently.
 
-    These are the expenses *incurred*.  The two tariff *loadings* — ``expense_load_alpha``
-    and ``expense_load_beta`` — are pricing parameters and appear only in the equivalence.
-    Keeping them apart is the point of the split: the gap between them is the modelled
-    *Kostenüberschuss*, and a user replacing one set must replace the other with it or the
-    modelled profit moves silently.
+    Override reason: the acquisition expense is a rate on the single premium plus a fixed
+    amount at ``t = 0``, products/sofortrente/technical-notes.md:617
     """
-    e = 0.0
     if t == 0:
-        e = e + pols_if_init() * (expense_acq_rate * single_prem()   # noqa: F821
-                                  + expense_acq_fixed)               # noqa: F821
-    e = e + (expense_maint_pp / 12.0) * infl_factor(t) * pols_if(t)  # noqa: F821
+        return pols_if_init() * (expense_acq_rate * single_prem()   # noqa: F821
+                                 + expense_acq_fixed)               # noqa: F821
+    return 0.0
+
+
+def expenses_maint(t):
+    """The maintenance expense, ``(expense_maint_pp / 12) infl_factor(t) pols_if(t)``.
+
+    Override reason: maintenance is a twelfth of the annual amount, inflated, on the
+    obligation weight, products/sofortrente/technical-notes.md:618
+    """
+    return (expense_maint_pp / 12.0) * infl_factor(t) * pols_if(t)   # noqa: F821
+
+
+def expenses_claim(t):
+    """The payment run, ``expense_pay_pp infl_factor(t) pols_if_init payment_factor(t)``.
+
+    In a payment month, zero in the others.  The per-instalment term is weighted by
+    :func:`payment_factor` rather than by :func:`pols_if`, and that is not a slip: a
+    survivor's annuity in payment is a **second** payment run, and inside the guarantee the
+    beneficiary's instalment costs the same to pay as the annuitant's.
+
+    Override reason: the payment expense falls per instalment paid, weighted by the
+    payment factor, products/sofortrente/technical-notes.md:619
+    """
     if is_payment_mth(t):
-        e = e + (expense_pay_pp * infl_factor(t)                     # noqa: F821
-                 * pols_if_init() * payment_factor(t))
-    return e
+        return (expense_pay_pp * infl_factor(t)                      # noqa: F821
+                * pols_if_init() * payment_factor(t))
+    return 0.0
 
 
 def liability_cf(t):
@@ -1100,6 +1146,9 @@ def liability_cf(t):
     over the relevant risk-free term structure, plus a risk margin.  Published as a column
     beside :func:`net_cf` so the sign convention is verifiable in the frame rather than
     only in prose.
+
+    Override reason: the liability cash flow is the notes' outgo-positive stream, annuity
+    payments, claims and expenses less the premium, products/sofortrente/technical-notes.md:629
     """
     return annuity_payments(t) + claims(t) + expenses(t) - premiums(t)
 
@@ -1112,6 +1161,9 @@ def net_cf(t):
     at ``t = 0`` — the whole *Einmalbeitrag* against one instalment and the acquisition
     expense — and a long negative tail decaying with survival.  The tail is what a
     *Deckungsrückstellung* is held against; this model does not compute one.
+
+    Override reason: the net cash flow is the negative of the outgo-positive liability cash
+    flow, products/sofortrente/technical-notes.md:630
     """
     return -liability_cf(t)
 

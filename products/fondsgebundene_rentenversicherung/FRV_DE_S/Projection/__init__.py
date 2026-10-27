@@ -77,6 +77,7 @@ x(t)                       age(t)                           Attained age in mont
 S                          beitragssumme()                  Sum of premiums payable
 B(t)                       prem_pp(t)                       Gross Beitrag due in month t
 Z(t)                       topup_pp(t)                      Zuzahlung in month t
+B(t) + Z(t)                prem_inst_pp(t)                  Premium per policy in month t
 d(t)                       dynamik_factor(t)                Beitragsdynamik factor
 alpha(t)                   charge_acq_pp(t)                 Acquisition instalment
 (ledger)                   cum_charge_acq_pp(t)             Acquisition charge to date
@@ -1356,16 +1357,20 @@ def pols_if_at(t, timing):
 
 # ----------------------------------------  cash flows
 
-def premiums(t):
-    """Gross premium income in month t, including any *Zuzahlung*.
+def prem_inst_pp(t):
+    """The gross premium per policy in month t, including any *Zuzahlung*.
 
-    ``(prem_pp(t) + topup_pp(t)) x pols_if(t)``.  It is published because the reader needs
-    it, and it is **excluded from** :func:`net_cf`: almost all of it is the *Anlagebeitrag*,
-    which is the policyholder's money passing into the unit fund.  What the insurer keeps
-    out of it is :func:`charge_acq` and :func:`charge_admin_prem`, and
-    :func:`check_prem_split` asserts that the three account for the whole premium.
+    ``prem_pp(t) + topup_pp(t)``; the core's :func:`premiums` weights it by ``pols_if(t)``.
+    The premium column is published because the reader needs it, and it is **excluded
+    from** :func:`net_cf`: almost all of it is the *Anlagebeitrag*, which is the
+    policyholder's money passing into the unit fund.  What the insurer keeps out of it is
+    :func:`charge_acq` and :func:`charge_admin_prem`, and :func:`check_prem_split` asserts
+    that the three account for the whole premium.
+
+    Override reason: the premium is the regular *Beitrag* plus the *Zuzahlung*,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:532
     """
-    return (prem_pp(t) + topup_pp(t)) * pols_if(t)
+    return prem_pp(t) + topup_pp(t)
 
 
 def prem_to_av(t):
@@ -1448,6 +1453,11 @@ def claims(t, kind):
     All three are funded from the unit fund and are therefore **outside** :func:`net_cf`;
     only the death benefit's net-amount-at-risk component, published separately as
     :func:`death_strain`, is an insurer cost.
+
+    Override reason: the surrender value is the *Fondsguthaben* less the *Stornoabzug*,
+    formed as count times fund times ``(1 - sigma)``, another float order than an amount
+    times a count, and there is no total over the kinds,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:519
     """
     if kind == "DEATH":
         return pols_death(t) * db_pp(t)
@@ -1550,6 +1560,11 @@ def expenses(t):
     convention, and the opposite of the frlib chassis, where commission sits inside the
     expense total.  Folding it back in while leaving the ``commissions`` column in the
     frame would charge it twice.
+
+    Override reason: five expenses are added left to right, the issue and maintenance
+    expense and the per-event expenses of a death, a surrender and an annuitisation,
+    products/fondsgebundene_rentenversicherung/model.md:400, a sum the core's three terms
+    would reassociate
     """
     return (expense_acq_pp(t) * pols_if(t)
             + expense_maint_pp(t) * pols_if(t)
@@ -1558,17 +1573,27 @@ def expenses(t):
             + expense_annuitisation * pols_maturity(t))              # noqa: F821
 
 
-def commissions(t):
-    """Commission outgo in month t, published beside :func:`expenses`.
+def comm_init(t):
+    """The *Abschlussprovision* at ``t = 0``, :func:`comm_acq_pp` on the count in force **[std]**.
 
-    The *Abschlussprovision* at ``t = 0`` — :func:`comm_acq_pp` on the count in force in
-    that month, and nil on an in-force model point whose frame opens later, the commission
-    being sunk — plus the *Bestandsprovision* ``comm_renew_rate x prem_pp(t)`` on every
-    gross *Beitrag* collected.  Both **[std]**: no German unit-linked commission scale was
-    established.
+    Nil on an in-force model point whose frame opens later, the commission being sunk.  No
+    German unit-linked commission scale was established.  The commissions are published
+    beside :func:`expenses`.
+
+    Override reason: the initial commission is ``comm_acq_rate`` of the *Beitragssumme* on
+    the count in force at ``t = 0``,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:540
     """
-    return (comm_acq_pp(t) * pols_if(t)
-            + comm_renew_rate * prem_pp(t) * pols_if(t))             # noqa: F821
+    return comm_acq_pp(t) * pols_if(t)
+
+
+def comm_renew(t):
+    """The *Bestandsprovision* ``comm_renew_rate x prem_pp(t)`` on every gross *Beitrag* **[std]**.
+
+    Override reason: the renewal commission is a rate on each gross premium,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:541
+    """
+    return comm_renew_rate * prem_pp(t) * pols_if(t)                 # noqa: F821
 
 
 def net_cf(t):
@@ -1583,21 +1608,14 @@ def net_cf(t):
     commission and the issue expense both fall there while the acquisition charge that
     funds them arrives over sixty months — after which the margin turns positive and grows
     with the fund.
+
+    Override reason: the non-unit cash flow is the charges and the *Stornoabzug* less
+    expenses, commissions and the death strain; the premium and the benefits pass through the
+    unit fund, products/fondsgebundene_rentenversicherung/technical-notes.md:543
     """
     return (charge_acq(t) + charge_admin_prem(t) + charge_admin_fund(t)
             + charge_policy_fee(t) + charge_risk(t) + stornoabzug(t)
             - expenses(t) - commissions(t) - death_strain(t))
-
-
-def liability_cf(t):
-    """The same stream outgo positive, ``-net_cf(t)`` exactly.
-
-    The orientation a valuation layer consumes: the non-unit best estimate is
-    ``sum v(t) x liability_cf(t)`` over whatever discount curve it supplies, with the unit
-    liability — the *Fondsguthaben* itself, backed one-for-one by the *Anlagestock* —
-    added at market value.  This model discounts nothing.
-    """
-    return -net_cf(t)
 
 
 # ----------------------------------------  Rentenbeginn and the reduction in yield

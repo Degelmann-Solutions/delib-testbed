@@ -639,3 +639,184 @@ def prem_net_level_pp():
     pricing quantity, never a cash flow.
     """
     return tariff_benefit_pv() / tariff_annuity()                    # noqa: F821
+
+
+def prem_inst_pp(t):
+    """The premium collected per policy at the start of month t; 0, no premium.
+
+    A product with a premium overrides it with its own per-policy amount, zero in a month
+    in which nothing falls due.
+    """
+    return 0.0
+
+
+def pols_prem(t):
+    """The count the premium is collected from at the start of month t, ``pols_if(t)``.
+
+    A product whose premium is paid by a part of the in-force only (a premium-paying ledger,
+    a waiver of premium) overrides it.
+    """
+    return pols_if(t)                                                # noqa: F821
+
+
+def premiums(t):
+    """Premium income at the **start** of month t, an inflow: ``prem_inst_pp(t) x pols_prem(t)``.
+
+    Not further multiplied by a survival factor: the decrements fall at the end of the
+    month, so a policy that leaves in it has already paid what fell due at its start.
+    """
+    return prem_inst_pp(t) * pols_prem(t)                            # noqa: F821
+
+
+def claim_kinds():
+    """The benefit kinds of :func:`claims`, in the order of its total: death, lapse, maturity.
+
+    A product with other kinds overrides the tuple; a kind outside death, lapse and maturity
+    is computed by :func:`claims_other`.
+    """
+    return ("DEATH", "LAPSE", "MATURITY")
+
+
+def benefit_death_pp(t):
+    """What a death in month t pays per claim; 0, no death benefit."""
+    return 0.0
+
+
+def benefit_lapse_pp(t):
+    """What a surrender in month t pays per lapsing policy; 0, no surrender value."""
+    return 0.0
+
+
+def benefit_maturity_pp(t):
+    """What the end of the term pays per maturing policy in month t; 0, no survival benefit."""
+    return 0.0
+
+
+def claims_other(t, kind):
+    """The outgo of a benefit kind other than death, lapse and maturity in month t.
+
+    None in the core: raises ``ValueError`` for any kind.  A product with further kinds
+    overrides it with their outgo and keeps the ``ValueError`` for an unknown kind.
+    """
+    raise ValueError("invalid kind")
+
+
+def claims(t, kind=None):
+    """Benefit outgo in month t, by kind; the total over ``claim_kinds()`` when kind is omitted.
+
+    ``"DEATH"``
+        ``benefit_death_pp(t) x pols_death(t)``.
+
+    ``"LAPSE"``
+        ``benefit_lapse_pp(t) x pols_lapse(t)``.
+
+    ``"MATURITY"``
+        ``benefit_maturity_pp(t) x pols_maturity(t)``.
+
+    Every other kind is :func:`claims_other`, which raises ``ValueError`` for an unknown
+    one.  A kind whose per-policy amount is 0 is exactly 0, a published zero rather than a
+    missing column.
+    """
+    if kind is None:
+        return sum(claims(t, k) for k in claim_kinds())              # noqa: F821
+    if kind == "DEATH":
+        return benefit_death_pp(t) * pols_death(t)                  # noqa: F821
+    if kind == "LAPSE":
+        return benefit_lapse_pp(t) * pols_lapse(t)                   # noqa: F821
+    if kind == "MATURITY":
+        return benefit_maturity_pp(t) * pols_maturity(t)             # noqa: F821
+    return claims_other(t, kind)                                     # noqa: F821
+
+
+def expenses_acq(t):
+    """The acquisition expense in month t; 0, none."""
+    return 0.0
+
+
+def expenses_maint(t):
+    """The maintenance (administration) expense in month t; 0, none."""
+    return 0.0
+
+
+def expenses_claim(t):
+    """The claim handling (per-event) expense in month t; 0, none."""
+    return 0.0
+
+
+def expenses(t):
+    """The insurer's own expense outgo in month t, **excluding commission**.
+
+    ``expenses_acq(t) + expenses_maint(t) + expenses_claim(t)``: the acquisition expense,
+    the maintenance expense on the policies in force and the expense on the month's claims.
+    :func:`commissions` is a line of its own, and :func:`net_cf` subtracts each once.
+    """
+    return expenses_acq(t) + expenses_maint(t) + expenses_claim(t)   # noqa: F821
+
+
+def comm_init_rate():
+    """The initial commission as a rate on the *Beitragssumme*; 0, no initial commission."""
+    return 0.0
+
+
+def comm_init(t):
+    """The initial commission (*Abschlussprovision*) in month t.
+
+    ``comm_init_rate() x beitragssumme() x pols_if(t)`` in the frame's first month on a
+    new-business point (``duration_init() == 0``), and 0 otherwise: on an in-force point it
+    was paid at conclusion, before the frame opens.  0 without reading the *Beitragssumme*
+    where the rate is 0.
+    """
+    rate = comm_init_rate()                                          # noqa: F821
+    if rate == 0.0 or t != t_start() or duration_init() != 0:        # noqa: F821
+        return 0.0
+    return rate * beitragssumme() * pols_if(t)                       # noqa: F821
+
+
+def comm_renew(t):
+    """The renewal commission (*Bestandsprovision*) in month t; 0, none."""
+    return 0.0
+
+
+def commissions(t):
+    """Commission outgo in month t, ``comm_init(t) + comm_renew(t)``.
+
+    A line of its own beside :func:`expenses`, which excludes it; :func:`net_cf` subtracts
+    each once.
+    """
+    return comm_init(t) + comm_renew(t)                              # noqa: F821
+
+
+def income_other(t):
+    """Income in month t beside the premium (a top-up, a subsidy); 0, none."""
+    return 0.0
+
+
+def annuity_outgo(t):
+    """Annuity outgo in month t that is not a kind of :func:`claims`; 0, none."""
+    return 0.0
+
+
+def net_cf(t):
+    """The net liability cash flow of month t, **income positive**.
+
+    ``premiums(t) + income_other(t)``, less ``claims(t, kind)`` for each kind of
+    ``claim_kinds()`` in turn, less ``annuity_outgo(t)``, ``expenses(t)`` and
+    ``commissions(t)``: each outgo subtracted exactly once, the commission apart from the
+    expenses.  The library-wide sign; :func:`liability_cf` publishes the same stream
+    outgo-positive.
+    """
+    out = premiums(t) + income_other(t)                              # noqa: F821
+    for kind in claim_kinds():                                       # noqa: F821
+        out = out - claims(t, kind)                                  # noqa: F821
+    return out - annuity_outgo(t) - expenses(t) - commissions(t)     # noqa: F821
+
+
+def liability_cf(t):
+    """The same stream as :func:`net_cf`, outgo positive: ``-net_cf(t)`` exactly.
+
+    The orientation a valuation layer consumes: a best-estimate liability is
+    ``sum v(t) liability_cf(t)`` over whatever discount curve it supplies.  Published beside
+    :func:`net_cf` so the sign convention is verifiable in the frame rather than only in
+    prose.
+    """
+    return -net_cf(t)                                                # noqa: F821

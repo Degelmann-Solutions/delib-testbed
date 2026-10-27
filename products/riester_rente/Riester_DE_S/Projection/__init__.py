@@ -198,12 +198,23 @@ a(k)                       annuity_pp(k)                   Annual annuity, 12 in
 (none)                     cv_pp(k)                        Rueckkaufswert, gross
 (none)                     transfer_value_pp(k)            Anbieterwechsel transfer value
 (none)                     exit_charge_pp(t)               Stornoabzug + transfer charge
+(none)                     prem_inst_pp(t)                 Contribution due per policy
 (none)                     premiums(t)                     Eigenbeitrag income
 (none)                     zulagen(t)                      Zulage income, SEPARATE column
 (none)                     int_credited(k)                 Interest credited, REPORTED
+(none)                     claim_kinds()                   The six kinds of claims
+(none)                     benefit_death_pp(t)             db_pp(proj_year(t))
+(none)                     benefit_lapse_pp(t)             cv_pp(proj_year(t))
+(none)                     claims_other(t, kind)           TRANSFER, LUMPSUM, ...
 (none)                     claims(t, kind)                 Benefit outgo by kind
+(none)                     expenses_acq(t)                 Acquisition at issue
+(none)                     expenses_maint(t)               Maintenance + annuity expense
+(none)                     expenses_claim(t)               Per death, surrender, transfer
 (none)                     expenses(t)                     Expense outgo
+(none)                     comm_init_rate()                comm_rate_init
+(none)                     comm_renew(t)                   Renewal on the contributions
 (none)                     commissions(t)                  Commission outgo
+(none)                     income_other(t)                 zulagen(t), in net_cf
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
 liability_cf(t)            liability_cf(t)                 The same stream, outgo positive
 =========================  ==============================  ==========================
@@ -1506,21 +1517,44 @@ def exit_charge_pp(t):
             + min(transfer_charge, a) * pols_transfer(t))            # noqa: F821
 
 
-def claims(t, kind=None):
-    """Benefit outgo in month t, by kind; the total over all six kinds when kind is omitted.
+def claim_kinds():
+    """The six benefit kinds of :func:`claims`, in the order of its total.
 
     Every kind is paid in the **month** it falls; the per-policy amounts behind three of
     them are **annual**, struck at the end of the contract year, because that is where the
     account is struck.  So the month decides when a benefit is paid and not how much, and a
     contract year's exits release exactly what the annual-step model released.
 
-    ``"DEATH"``
-        the account value paid at the end of the month of death, gross of the
-        *Rückzahlungsbetrag*.  Zero in payout.
+    Override reason: the claims are death, lapse, transfer, lump sum, commutation and
+    annuity, products/riester_rente/technical-notes.md:163
+    """
+    return ("DEATH", "LAPSE", "TRANSFER", "LUMPSUM", "COMMUTATION", "ANNUITY")
 
-    ``"LAPSE"``
-        the *Rückkaufswert* on a *Kündigung*, net of the *Stornoabzug* and gross of the
-        *Rückzahlungsbetrag*.
+
+def benefit_death_pp(t):
+    """The account value paid at the end of the month of death, ``db_pp(proj_year(t))``.
+
+    Gross of the *Rückzahlungsbetrag*.  Zero in payout.
+
+    Override reason: a death pays the contract year's ``db_pp(k)``,
+    products/riester_rente/technical-notes.md:654
+    """
+    return db_pp(proj_year(t))
+
+
+def benefit_lapse_pp(t):
+    """The *Rückkaufswert* on a *Kündigung*, ``cv_pp(proj_year(t))``.
+
+    Net of the *Stornoabzug* and gross of the *Rückzahlungsbetrag*.
+
+    Override reason: a surrender pays the contract year's ``cv_pp(k)``,
+    products/riester_rente/technical-notes.md:655
+    """
+    return cv_pp(proj_year(t))
+
+
+def claims_other(t, kind):
+    """Benefit outgo in month t of the kinds beside death and lapse.
 
     ``"TRANSFER"``
         the *Anbieterwechsel* transfer value, a **separate** decrement from surrender with
@@ -1541,15 +1575,14 @@ def claims(t, kind=None):
         booked twelve of them together at the start of each payout year on that year's
         opening count, which paid a life that died in the first month of a year for the whole
         of it; that approximation is gone.
+
+    Raises ``ValueError`` for any other kind.
+
+    Override reason: the transfer, the lump sum, the commutation and the annuity are paid on
+    their own counts, ``pols_transfer``, ``pols_conv`` and ``pols_annuity_pay``,
+    products/riester_rente/technical-notes.md:656, :657, :658 and :659
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "LAPSE", "TRANSFER",
-                                          "LUMPSUM", "COMMUTATION", "ANNUITY"))
     k = proj_year(t)
-    if kind == "DEATH":
-        return db_pp(k) * pols_death(t)
-    if kind == "LAPSE":
-        return cv_pp(k) * pols_lapse(t)
     if kind == "TRANSFER":
         return transfer_value_pp(k) * pols_transfer(t)
     if kind == "LUMPSUM":
@@ -1561,28 +1594,31 @@ def claims(t, kind=None):
     raise ValueError("invalid kind")
 
 
-def premiums(t):
-    """The saver's own contribution income in month t, an inflow.
+def prem_inst_pp(t):
+    """The saver's own contribution per policy in month t, or zero.
 
-    ``(eigenbeitrag_paid_pp(k) + contrib_extra_pp) x l(t)`` in the month the year's
-    contribution falls due and zero in the other eleven: the *Eigenbeitrag* **after**
-    the *Ratenzuschlag*, plus any unsubsidised contribution.  It excludes the Zulagen,
-    which are :func:`zulagen`, and it excludes ``rider_prem_pp``, which is the biometric
-    rider's premium and belongs to the rider's own liability rather than to this one.
+    ``eigenbeitrag_paid_pp(k) + contrib_extra_pp`` in the month the year's contribution
+    falls due and zero in the other eleven: the *Eigenbeitrag* **after** the
+    *Ratenzuschlag*, plus any unsubsidised contribution.  It excludes the Zulagen, which
+    are :func:`zulagen`, and it excludes ``rider_prem_pp``, which is the biometric rider's
+    premium and belongs to the rider's own liability rather than to this one.
 
     **The contribution keeps the annual grid, and the *Ratenzuschlag* is the reason.** A
     fractionated payment mode is priced by loading the amount — that is what
     :func:`prem_freq_load` is — rather than by moving the contribution year, and the account
-    the contribution is credited to is struck per year.  The weight is therefore the count
-    at the start of the projection year, which is the annual-step model's own ``l(k)``, and
-    this column sums over a year to that model's premium income exactly.
+    the contribution is credited to is struck per year.  The core's :func:`premiums` weights
+    it by the count at the start of the projection year, which is the annual-step model's
+    own ``l(k)``, and that column sums over a year to that model's premium income exactly.
+
+    Override reason: the contribution is the *Eigenbeitrag* after the *Ratenzuschlag* plus
+    the unsubsidised extra, due once a year, products/riester_rente/technical-notes.md:661
     """
     if not prem_due(t):
         return 0.0
     k = proj_year(t)
     extra = (contrib_extra_pp() if (is_accum_y(k) and not
                                     (bfs_year() >= 0 and k >= bfs_year())) else 0.0)
-    return (eigenbeitrag_paid_pp(k) + extra) * pols_if(t)
+    return eigenbeitrag_paid_pp(k) + extra
 
 
 def zulagen(t):
@@ -1617,89 +1653,100 @@ def int_credited(k):
     return int_credited_pp(k) * pols_if(12 * k)
 
 
-def expenses(t):
-    """Total expense outgo in month t, excluding commission.
+def expenses_acq(t):
+    """The acquisition expense ``expense_acq + expense_acq_rate x beitragssumme()`` at issue.
 
-    Four components, all **[std]** because no German insurer publishes a unit cost.  The
-    acquisition expense ``expense_acq + expense_acq_rate x beitragssumme()`` at issue, only
-    on a point with ``duration_init() == 0``.  A **twelfth** of the annual per-policy
-    maintenance ``expense_maint``, inflating at ``expense_infl`` on **contract** duration and
-    stepping on the anniversary, on the in-force, in accumulation only.  A twelfth of
-    ``expense_annuity`` per annuitant actually paid, in payout.  And ``expense_claim`` per
-    death, surrender or transfer, which is a per-**event** cost and so falls whole in the
-    month of the event.  The maintenance figure carries the
-    Zulage administration — the *Dauerzulageantrag*, the annual data exchange with the ZfA
-    and the *Leistungsmitteilung* — which is a real and product-specific cost.
+    Only on a point with ``duration_init() == 0``.  All expense components are **[std]**
+    because no German insurer publishes a unit cost; the commission is excluded.
 
-    A policy that exits in the fourth month of a contract year now bears four twelfths of
-    that year's maintenance rather than the whole of it.
-    """
-    total = 0.0
-    if t == 0 and duration_init() == 0:
-        total += (expense_acq + expense_acq_rate                     # noqa: F821
-                  * beitragssumme()) * pols_if(0)
-    if is_accum(t):
-        total += (expense_maint / 12.0                                # noqa: F821
-                  * (1.0 + expense_infl) ** duration(t)              # noqa: F821
-                  * pols_if(t))
-    total += expense_annuity / 12.0 * pols_annuity_pay(t)            # noqa: F821
-    total += expense_claim * (pols_death(t) + pols_lapse(t)          # noqa: F821
-                              + pols_transfer(t))
-    return total
-
-
-def commissions(t):
-    """Commission outgo in month t **[std]**, published beside :func:`expenses`.
-
-    ``comm_rate_init x beitragssumme()`` at issue on a point written at the valuation date,
-    otherwise ``comm_rate_renew`` of the contributions credited — the *Eigenbeitrag* and
-    the Zulagen alike, because the provider is remunerated on what it administers.  The
-    renewal commission is a percentage of a contribution, so it falls in the month the
-    contribution does and in no other.  The initial rate sits at the *Höchstzillmersatz*;
-    **the cash leaves at issue while the charge is recovered over five years**, and that gap
-    is the new-business strain the insurer carries.  Zero from *Rentenbeginn*.  It is a
-    **separate** column from :func:`expenses` and :func:`net_cf` subtracts each exactly once.
+    Override reason: the acquisition expense is a fixed amount plus a rate on the
+    *Beitragssumme* at issue, products/riester_rente/technical-notes.md:422
     """
     if t == 0 and duration_init() == 0:
-        return comm_rate_init * beitragssumme() * pols_if(0)         # noqa: F821
+        return (expense_acq + expense_acq_rate                       # noqa: F821
+                * beitragssumme()) * pols_if(0)
+    return 0.0
+
+
+def expenses_maint(t):
+    """Maintenance in accumulation plus the annuity expense in payout, in month t.
+
+    A **twelfth** of the annual per-policy maintenance ``expense_maint``, inflating at
+    ``expense_infl`` on **contract** duration and stepping on the anniversary, on the
+    in-force, in accumulation only; and a twelfth of ``expense_annuity`` per annuitant
+    actually paid, in payout.  The maintenance figure carries the Zulage administration —
+    the *Dauerzulageantrag*, the annual data exchange with the ZfA and the
+    *Leistungsmitteilung* — which is a real and product-specific cost.  A policy that exits
+    in the fourth month of a contract year now bears four twelfths of that year's
+    maintenance rather than the whole of it.
+
+    Override reason: maintenance falls on the in-force in accumulation,
+    products/riester_rente/technical-notes.md:664, and the annuity expense on the
+    annuitants paid, products/riester_rente/technical-notes.md:665
+    """
+    maint = (expense_maint / 12.0                                    # noqa: F821
+             * (1.0 + expense_infl) ** duration(t)                   # noqa: F821
+             * pols_if(t)) if is_accum(t) else 0.0
+    return maint + expense_annuity / 12.0 * pols_annuity_pay(t)      # noqa: F821
+
+
+def expenses_claim(t):
+    """``expense_claim`` per death, surrender or transfer, whole in the month of the event.
+
+    Override reason: the claim expense is an amount per death, surrender or transfer,
+    products/riester_rente/technical-notes.md:666
+    """
+    return expense_claim * (pols_death(t) + pols_lapse(t)            # noqa: F821
+                            + pols_transfer(t))
+
+
+def comm_init_rate():
+    """``comm_rate_init``, the initial commission rate on the *Beitragssumme* **[std]**.
+
+    Paid at issue on a point written at the valuation date.  The initial rate sits at the
+    *Höchstzillmersatz*; **the cash leaves at issue while the charge is recovered over five
+    years**, and that gap is the new-business strain the insurer carries.  The commission
+    is a **separate** column from :func:`expenses` and :func:`net_cf` subtracts each exactly
+    once.
+
+    Override reason: the initial commission is ``comm_rate_init`` of the *Beitragssumme* at
+    issue, products/riester_rente/technical-notes.md:667
+    """
+    return comm_rate_init                                            # noqa: F821
+
+
+def comm_renew(t):
+    """``comm_rate_renew`` of the contributions credited in month t **[std]**.
+
+    The *Eigenbeitrag* and the Zulagen alike, because the provider is remunerated on what it
+    administers.  The renewal commission is a percentage of a contribution, so it falls in
+    the month the contribution does and in no other; zero from *Rentenbeginn*, and zero in
+    the month of the initial commission, which is paid instead of it.
+
+    Override reason: the renewal commission is a rate on the *Eigenbeitrag* and the Zulagen
+    in the month they fall, products/riester_rente/technical-notes.md:668
+    """
+    if t == 0 and duration_init() == 0:
+        return 0.0
     if not is_accum(t) or not prem_due(t):
         return 0.0
     k = proj_year(t)
     return comm_rate_renew * (eigenbeitrag_pp(k) + zulage_pp(k)) * pols_if(t)  # noqa: F821
 
 
-def net_cf(t):
-    """The net liability cash flow of month t, **income positive**.
+def income_other(t):
+    """The Zulagen of month t, :func:`zulagen`, income beside the saver's own contribution.
 
-    Contributions and Zulagen in, the six kinds of benefit out, expenses and commission
-    out.  ``int_credited`` is **not** in it: interest moves money inside the account rather
-    than across the insurer's boundary, and it is not even a column of this frame.  The
-    notes' own sign and the library-wide one.
+    With it the net cash flow is the contributions and Zulagen in, the six kinds of benefit
+    out, expenses and commission out.  ``int_credited`` is **not** in it: interest moves
+    money inside the account rather than across the insurer's boundary.  The shape to expect
+    on the monthly frame is a saw-tooth: the whole year's contribution and Zulage land in
+    the first month of a projection year.
 
-    The shape to expect on the monthly frame is a saw-tooth: the whole year's contribution
-    and Zulage land in the first month of a projection year and nothing else does, so that
-    month is strongly positive and the other eleven carry a twelfth of the maintenance
-    expense and the month's exits.  Summed into years by :func:`result_cf_annual` the
-    familiar shape returns: a modest positive in accumulation, a very large negative in the
-    conversion year as the *Teilkapitalauszahlung* or the *Abfindung* leaves in one payment,
-    then a long thin negative tail of monthly annuity instalments.
+    Override reason: the Zulagen are income beside the contributions,
+    products/riester_rente/technical-notes.md:670
     """
-    return (premiums(t) + zulagen(t)
-            - claims(t, "DEATH") - claims(t, "LAPSE") - claims(t, "TRANSFER")
-            - claims(t, "LUMPSUM") - claims(t, "COMMUTATION")
-            - claims(t, "ANNUITY")
-            - expenses(t) - commissions(t))
-
-
-def liability_cf(t):
-    """The same stream as :func:`net_cf`, outgo positive: ``-net_cf(t)`` exactly.
-
-    The orientation a valuation layer consumes: a Solvency II best estimate is
-    ``sum v(t) liability_cf(t)`` over the relevant risk-free term structure, plus a risk
-    margin.  Published as a column beside :func:`net_cf` so the sign convention is
-    verifiable in the frame rather than only in prose.
-    """
-    return -net_cf(t)
+    return zulagen(t)
 
 
 # === the check identities

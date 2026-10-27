@@ -22,6 +22,11 @@
   Index close at exactly zero; the end-of-month count is the next month's opening count and
   an unknown timing is rejected; the survivors mature in the last month; KLV's lapses are
   taken from the survivors of the month's deaths.
+- The cash flows: KLV's premium is the instalment times the in-force; RLV's claim total is its
+  death claim and its lapse and maturity claims are exactly zero; RV's commutation is a further
+  kind and an unknown kind is rejected; Index and RV pay exactly zero commission; KLV's net
+  cash flow subtracts its claims kind by kind; RLV's liability cash flow is its net cash flow
+  negated.
 """
 from __future__ import annotations
 
@@ -604,6 +609,137 @@ CORE_CELLS = {
                     "riester_rente": "override",
                     "risikolebensversicherung": "derived",
                     "sofortrente": "override"},
+        "prem_inst_pp": dict.fromkeys(MODELS, "override"),
+        "pols_prem": {"basisrente": "override",
+                      "berufsunfaehigkeit": "override",
+                      "fondsgebundene_rentenversicherung": "derived",
+                      "indexpolice": "derived",
+                      "kapitallebensversicherung": "derived",
+                      "klassische_rentenversicherung": "derived",
+                      "pflegerentenversicherung": "override",
+                      "riester_rente": "derived",
+                      "risikolebensversicherung": "derived",
+                      "sofortrente": "override"},
+        "premiums": dict.fromkeys(MODELS, "derived"),
+        "claim_kinds": {"basisrente": "override",
+                        "berufsunfaehigkeit": "override",
+                        "indexpolice": "derived",
+                        "kapitallebensversicherung": "override",
+                        "klassische_rentenversicherung": "override",
+                        "riester_rente": "override",
+                        "risikolebensversicherung": "derived",
+                        "sofortrente": "override"},
+        "benefit_death_pp": {"indexpolice": "override",
+                             "kapitallebensversicherung": "override",
+                             "klassische_rentenversicherung": "override",
+                             "riester_rente": "override",
+                             "risikolebensversicherung": "override"},
+        "benefit_lapse_pp": {"berufsunfaehigkeit": "derived",
+                             "indexpolice": "override",
+                             "kapitallebensversicherung": "override",
+                             "klassische_rentenversicherung": "override",
+                             "riester_rente": "override",
+                             "risikolebensversicherung": "derived"},
+        "benefit_maturity_pp": {"indexpolice": "override",
+                                "kapitallebensversicherung": "override",
+                                "risikolebensversicherung": "derived"},
+        "claims_other": {"berufsunfaehigkeit": "override",
+                         "klassische_rentenversicherung": "override",
+                         "riester_rente": "override",
+                         "sofortrente": "override"},
+        "claims": {"basisrente": "override",
+                   "berufsunfaehigkeit": "derived",
+                   "fondsgebundene_rentenversicherung": "override",
+                   "indexpolice": "derived",
+                   "kapitallebensversicherung": "derived",
+                   "klassische_rentenversicherung": "derived",
+                   "pflegerentenversicherung": "override",
+                   "riester_rente": "derived",
+                   "risikolebensversicherung": "derived",
+                   "sofortrente": "derived"},
+        "expenses_acq": {"basisrente": "override",
+                         "indexpolice": "derived",
+                         "kapitallebensversicherung": "derived",
+                         "klassische_rentenversicherung": "override",
+                         "riester_rente": "override",
+                         "risikolebensversicherung": "override",
+                         "sofortrente": "override"},
+        "expenses_maint": {"basisrente": "override",
+                           "indexpolice": "override",
+                           "kapitallebensversicherung": "override",
+                           "klassische_rentenversicherung": "override",
+                           "riester_rente": "override",
+                           "risikolebensversicherung": "override",
+                           "sofortrente": "override"},
+        "expenses_claim": {"basisrente": "derived",
+                           "indexpolice": "derived",
+                           "kapitallebensversicherung": "override",
+                           "klassische_rentenversicherung": "override",
+                           "riester_rente": "override",
+                           "risikolebensversicherung": "override",
+                           "sofortrente": "override"},
+        "expenses": {"basisrente": "derived",
+                     "berufsunfaehigkeit": "override",
+                     "fondsgebundene_rentenversicherung": "override",
+                     "indexpolice": "derived",
+                     "kapitallebensversicherung": "derived",
+                     "klassische_rentenversicherung": "derived",
+                     "pflegerentenversicherung": "override",
+                     "riester_rente": "derived",
+                     "risikolebensversicherung": "derived",
+                     "sofortrente": "derived"},
+        "comm_init_rate": {"basisrente": "override",
+                           "berufsunfaehigkeit": "derived",
+                           "indexpolice": "derived",
+                           "kapitallebensversicherung": "override",
+                           "klassische_rentenversicherung": "derived",
+                           "pflegerentenversicherung": "derived",
+                           "riester_rente": "override",
+                           "sofortrente": "derived"},
+        "comm_init": {"basisrente": "derived",
+                      "berufsunfaehigkeit": "derived",
+                      "fondsgebundene_rentenversicherung": "override",
+                      "indexpolice": "derived",
+                      "kapitallebensversicherung": "derived",
+                      "klassische_rentenversicherung": "derived",
+                      "pflegerentenversicherung": "derived",
+                      "riester_rente": "derived",
+                      "risikolebensversicherung": "override",
+                      "sofortrente": "derived"},
+        "comm_renew": {"basisrente": "override",
+                       "berufsunfaehigkeit": "derived",
+                       "fondsgebundene_rentenversicherung": "override",
+                       "indexpolice": "derived",
+                       "kapitallebensversicherung": "override",
+                       "klassische_rentenversicherung": "derived",
+                       "pflegerentenversicherung": "derived",
+                       "riester_rente": "override",
+                       "risikolebensversicherung": "override",
+                       "sofortrente": "derived"},
+        "commissions": dict.fromkeys(MODELS, "derived"),
+        "income_other": {"basisrente": "override",
+                         "indexpolice": "derived",
+                         "kapitallebensversicherung": "derived",
+                         "klassische_rentenversicherung": "derived",
+                         "riester_rente": "override",
+                         "risikolebensversicherung": "derived"},
+        "annuity_outgo": {"basisrente": "derived",
+                          "indexpolice": "derived",
+                          "kapitallebensversicherung": "derived",
+                          "klassische_rentenversicherung": "override",
+                          "riester_rente": "derived",
+                          "risikolebensversicherung": "derived"},
+        "net_cf": {"basisrente": "derived",
+                   "berufsunfaehigkeit": "override",
+                   "fondsgebundene_rentenversicherung": "override",
+                   "indexpolice": "derived",
+                   "kapitallebensversicherung": "derived",
+                   "klassische_rentenversicherung": "derived",
+                   "pflegerentenversicherung": "override",
+                   "riester_rente": "derived",
+                   "risikolebensversicherung": "derived",
+                   "sofortrente": "override"},
+        "liability_cf": {**dict.fromkeys(MODELS, "derived"), "sofortrente": "override"},
     },
 }
 
@@ -1175,3 +1311,102 @@ def test_the_count_after_the_last_month_is_exactly_positive_zero(product, produc
         closing = item.pols_if(item.proj_len())
         assert closing == 0.0 and math.copysign(1.0, closing) == 1.0, point_id
         assert item.pols_maturity(item.proj_len() - 1) > 0.0, point_id
+
+
+def test_klv_premium_is_the_instalment_times_the_in_force(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.premiums._is_derived()
+    assert projection.pols_prem._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        paying = [t for t in range(item.t_start(), item.proj_len()) if item.premiums(t) > 0.0]
+        assert paying, point_id
+        for t in range(item.t_start(), item.proj_len()):
+            assert item.pols_prem(t) == item.pols_if(t), (point_id, t)
+            assert item.premiums(t) == item.prem_inst_pp(t) * item.pols_prem(t), (point_id, t)
+
+
+def raised_value_error(raised, message: str) -> bool:
+    """Whether a modelx error carries a ``ValueError`` with ``message``.
+
+    modelx re-raises a formula's error as a FormulaError without chaining it, and names the
+    original type in its message.
+    """
+    chain, error = [], raised.value
+    while error is not None and error not in chain:
+        chain.append(error)
+        error = error.__cause__ or error.__context__
+    return (any(isinstance(e, ValueError) for e in chain)
+            or f"ValueError: {message}" in str(raised.value))
+
+
+def test_rlv_claim_total_is_the_death_claim_and_the_cash_values_are_zero(product_models):
+    model = product_models("risikolebensversicherung")
+    projection = model.Projection
+    assert projection.claims._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        assert item.claim_kinds() == ("DEATH", "LAPSE", "MATURITY")
+        for t in range(item.t_start(), item.proj_len()):
+            assert item.claims(t) == item.claims(t, "DEATH"), (point_id, t)
+            for kind in ("LAPSE", "MATURITY"):
+                zero = item.claims(t, kind)
+                assert zero == 0.0 and math.copysign(1.0, zero) == 1.0, (point_id, t, kind)
+
+
+def test_rv_commutation_is_a_further_kind_and_an_unknown_kind_is_rejected(product_models):
+    model = product_models("klassische_rentenversicherung")
+    projection = model.Projection
+    assert projection.claims._is_derived()
+    item = projection[model.Data.model_point_table().index[0]]
+    commuting = [t for t in range(item.t_start(), item.proj_len())
+                 if item.pols_commutation(t) > 0.0]
+    assert commuting, "no month with commutations"
+    for t in commuting:
+        assert (item.claims(t, "COMMUTATION")
+                == item.claims_other(t, "COMMUTATION")
+                == item.capital_conv_pp() * item.pols_commutation(t)), t
+    with pytest.raises(Exception, match="invalid kind") as raised:
+        item.claims(item.t_start(), "ANNUITY")
+    assert raised_value_error(raised, "invalid kind"), raised.value
+
+
+@pytest.mark.parametrize("product", ["indexpolice", "klassische_rentenversicherung"])
+def test_a_product_without_commission_pays_exactly_zero(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.commissions._is_derived()
+    assert projection.comm_init_rate._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        for t in range(item.t_start(), item.proj_len()):
+            zero = item.commissions(t)
+            assert zero == 0.0 and math.copysign(1.0, zero) == 1.0, (point_id, t)
+
+
+def test_klv_net_cf_subtracts_each_claim_kind_in_turn(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.net_cf._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        for t in range(item.t_start(), item.proj_len()):
+            expected = (item.premiums(t) - item.claims(t, "DEATH")
+                        - item.claims(t, "MATURITY") - item.claims(t, "LAPSE")
+                        - item.expenses(t) - item.commissions(t))
+            assert math.copysign(1.0, item.net_cf(t)) == math.copysign(1.0, expected)
+            assert item.net_cf(t) == expected, (point_id, t)
+
+
+def test_rlv_liability_cf_is_the_negated_net_cf(product_models):
+    model = product_models("risikolebensversicherung")
+    projection = model.Projection
+    assert projection.liability_cf._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        for t in range(item.t_start(), item.proj_len()):
+            assert item.liability_cf(t) == -item.net_cf(t), (point_id, t)
+            assert (math.copysign(1.0, item.liability_cf(t))
+                    == -math.copysign(1.0, item.net_cf(t))), (point_id, t)
+

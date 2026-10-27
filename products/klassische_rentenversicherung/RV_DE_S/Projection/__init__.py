@@ -170,6 +170,7 @@ l(t) - D, l(t+1)            pols_if_at(t, timing)           BEF_DECR / AFT_DEATH
 a(t)                        pols_annuity(t)                 Count the instalment is paid on
 P(k)                        prem_pp(k)                      Gross premium in policy year k
 P_sched(k)                  prem_pp_sched(k)                The premium as written at issue
+(none)                      prem_inst_pp(t)                 P(k) in a due month, else 0
 (none)                      prem_due(t)                     Whether P falls due in month t
 phi                         prem_freq_load()                Ratenzahlungszuschlag
 (sum of P_sched)            beitragssumme()                 Zillmer base
@@ -204,12 +205,17 @@ Rbar(k)                     cv_tariff_pp(k)                 Tariff surrender val
 Runder(k)                   cv_floor_pp(k)                  Sec. 169(3) floor
 R(k)                        cv_pp(k)                        Surrender value paid
 K                           capital_conv_pp()               Conversion capital
+D(k)                        benefit_death_pp(t)             db_pp(duration(t))
+R(k)                        benefit_lapse_pp(t)             cv_pp(duration(t))
+(none)                      claim_kinds()                   DEATH / LAPSE / COMMUTATION
+K x commuters               claims_other(t, kind)           COMMUTATION outgo
 f_g                         annuity_rate_guar()             Garantierter Rentenfaktor
 f_c                         annuity_rate_curr()             Aktueller Rentenfaktor
 f                           annuity_rate_appl()             max(f_g, f_c)
 G                           annuity_guar_mth_pp()           Garantierte Rente, monthly
 U(k)                        annuity_sur_mth_pp(k)           Ueberschussrente, monthly
 G + U(k)                    annuity_pp(t)                   The instalment paid in month t
+(none)                      annuity_outgo(t)                annuity_payments(t), in net_cf
 net_cf(t)                   net_cf(t)                       Net cash flow, income positive
 liability_cf(t)             liability_cf(t)                 The same stream, outgo positive
 ==========================  ==============================  ==========================
@@ -598,14 +604,18 @@ def prem_due(t):
     return duration_mth(t) % 12 == 0
 
 
-def premiums(t):
-    """Premium income in month t, an inflow: ``prem_pp(duration(t)) x pols_if(t)``, or zero.
+def prem_inst_pp(t):
+    """P(k): the year's premium per policy in month t, ``prem_pp(duration(t))``, or zero.
 
-    Non-zero only where :func:`prem_due` makes the year's premium payable.  The count is the
-    in-force at the **start of the policy year**, which is ``pols_if(12k)`` — so the premium
-    income of this model is **bit-identical** to the annual-step model it replaced.
+    Non-zero only where :func:`prem_due` makes the year's premium payable.  The core's
+    :func:`premiums` weights it by the in-force at the **start of the policy year**, which
+    is ``pols_if(12k)`` — so the premium income of this model is **bit-identical** to the
+    annual-step model it replaced.
+
+    Override reason: the year's premium falls due whole in the month ``prem_due`` makes it
+    payable, products/klassische_rentenversicherung/technical-notes.md:460
     """
-    return prem_pp(duration(t)) * pols_if(t) if prem_due(t) else 0.0
+    return prem_pp(duration(t)) if prem_due(t) else 0.0
 
 
 # ----------------------------------------
@@ -1615,38 +1625,55 @@ def annuity_due_factor():
 # Claims, expenses and the cash flow statement
 
 
-def claims(t, kind=None):
-    """Benefit outgo in **month** t, by kind; the total when kind is omitted.
-
-    The **counts are monthly and the amounts are annual**, which is the whole shape of this
-    conversion in one cells: a claim is recognised in the month it happens, and what it is paid
-    is the value struck at the end of that *Versicherungsperiode* — § 169 Abs. 3 VVG's *zum
-    Schluss der laufenden Versicherungsperiode*, the year for this tariff, and the year the
-    *Beitrag* was paid in advance for.
-
-    ``"DEATH"``
-        ``db_pp(duration(t)) x pols_death(t)``.  **Zero after the *Rentenbeginn***, where
-        ``db_pp`` is zero.
-
-    ``"LAPSE"``
-        ``cv_pp(duration(t)) x pols_lapse(t)``, the surrender value on the survivors of the
-        month's deaths.  Zero in the payout phase, where there is no surrender.
-
-    ``"COMMUTATION"``
-        ``capital_conv_pp() x pols_commutation(t)``, the *Kapitalabfindung* under the
-        *Kapitalwahlrecht*, paid in the last accumulation month ``12n - 1`` and in no other.
-        The commuters receive the same capital the annuitants convert, *Bewertungsreserven*
-        included.
+def claim_kinds():
+    """The benefit kinds of :func:`claims`: death, lapse and the *Kapitalabfindung*.
 
     The annuity itself is **not** a claim kind: it is a recurring benefit with its own
     weighting rule and is published as :func:`annuity_payments`.
+
+    Override reason: the claims are death, lapse and commutation, and the annuity is a
+    column of its own, products/klassische_rentenversicherung/technical-notes.md:678
     """
-    if kind is None:
-        return sum(claims(t, j) for j in ("DEATH", "LAPSE", "COMMUTATION"))
-    if kind == "DEATH":
-        return db_pp(duration(t)) * pols_death(t)
-    if kind == "LAPSE":
-        return cv_pp(duration(t)) * pols_lapse(t)
+    return ("DEATH", "LAPSE", "COMMUTATION")
+
+
+def benefit_death_pp(t):
+    """D(k): what a death in **month** t pays, ``db_pp(duration(t))``.
+
+    The **counts are monthly and the amounts are annual**: a claim is recognised in the
+    month it happens, and what it is paid is the value struck at the end of that
+    *Versicherungsperiode* — § 169 Abs. 3 VVG's *zum Schluss der laufenden
+    Versicherungsperiode*, the year for this tariff, and the year the *Beitrag* was paid in
+    advance for.  **Zero after the *Rentenbeginn***, where ``db_pp`` is zero.
+
+    Override reason: the death benefit is the policy year's ``D(duration(t))``,
+    products/klassische_rentenversicherung/technical-notes.md:587
+    """
+    return db_pp(duration(t))
+
+
+def benefit_lapse_pp(t):
+    """R(k): what a surrender in **month** t pays, ``cv_pp(duration(t))``.
+
+    Paid on the survivors of the month's deaths; zero in the payout phase, where there is no
+    surrender.
+
+    Override reason: the surrender value is the policy year's ``R(duration(t))``,
+    products/klassische_rentenversicherung/technical-notes.md:588
+    """
+    return cv_pp(duration(t))
+
+
+def claims_other(t, kind):
+    """The *Kapitalabfindung*, kind ``"COMMUTATION"``: ``capital_conv_pp() x pols_commutation(t)``.
+
+    Paid under the *Kapitalwahlrecht* in the last accumulation month ``12n - 1`` and in no
+    other.  The commuters receive the same capital the annuitants convert,
+    *Bewertungsreserven* included.  Raises ``ValueError`` for any other kind.
+
+    Override reason: the commuters receive the conversion capital ``K``,
+    products/klassische_rentenversicherung/technical-notes.md:620
+    """
     if kind == "COMMUTATION":
         return capital_conv_pp() * pols_commutation(t)
     raise ValueError("invalid kind")
@@ -1696,58 +1723,62 @@ def expenses_pp(t):
     return level / 12.0 * (1.0 + expense_infl()) ** duration(t)
 
 
-def expenses(t):
-    """The insurer's own outgo in period t: acquisition, administration and settlement.
+def expenses_acq(t):
+    """The acquisition expense: once, in the frame's first **month**, new business only.
 
-    Acquisition falls once, in the frame's first **month** and only for new business — an
-    in-force model point's acquisition cost was incurred before the valuation date.
-    Administration is per policy per month on the exposed count, which is ``pols_if(t)`` while
-    premiums accumulate and ``pols_annuity(t)`` once the annuity is in payment.  Settlement
-    falls on every death, surrender and commutation, in the month it happens.
-
+    An in-force model point's acquisition cost was incurred before the valuation date.
     **These are expenses, not charges.**  The *Kostenbeiträge* the tariff deducts —
     ``charge_acq_pp``, ``charge_prem_pp``, ``charge_admin_pp``, ``charge_risk_pp`` — move
-    money inside the contract and are not here: ``expenses(t)`` is invariant to ``beta_rate``
-    and ``gamma_rate`` while ``av_pp(t+1)`` is not.  Booking the charges as expenses inflates
-    outgo by the whole charge load and is the commonest way to make a German model look
-    conservative.
+    money inside the contract and are not in :func:`expenses`: it is invariant to
+    ``beta_rate`` and ``gamma_rate`` while ``av_pp(t+1)`` is not.  Booking the charges as
+    expenses inflates outgo by the whole charge load and is the commonest way to make a
+    German model look conservative.
+
+    Override reason: the acquisition expense falls once at the frame's start, new business
+    only, products/klassische_rentenversicherung/technical-notes.md:659
+    """
+    if t == t_start() and k_start() == 0:
+        return expense_acq_pp() * pols_if(t)
+    return 0.0
+
+
+def expenses_maint(t):
+    """Administration per policy per month on the exposed count.
+
+    ``expenses_pp(t)`` on ``pols_if(t)`` while premiums accumulate and on
+    ``pols_annuity(t)`` once the annuity is in payment.
+
+    Override reason: the administration falls on the in-force before *Rentenbeginn* and on
+    the annuitants after it, products/klassische_rentenversicherung/technical-notes.md:658
     """
     mp = model_point()
     n_mth = 12 * int(mp["aufschub_y"])
-    out = 0.0
-    if t == t_start() and k_start() == 0:
-        out = out + expense_acq_pp() * pols_if(t)
-    out = out + expenses_pp(t) * (pols_if(t) if t < n_mth else pols_annuity(t))
-    out = out + expense_claim_pp() * (pols_death(t) + pols_lapse(t)
-                                      + pols_commutation(t))
-    return out
+    return expenses_pp(t) * (pols_if(t) if t < n_mth else pols_annuity(t))
 
 
-def net_cf(t):
-    """The net liability cash flow of period t, **income positive**.
+def expenses_claim(t):
+    """Settlement expense on every death, surrender and commutation, in the month it happens.
 
-    ``premiums - claims_death - claims_lapse - claims_commutation - annuity_payments -
-    expenses``.  The six components are exactly the six that cross the contract boundary; the
-    account movements beside them in :func:`result_cf` — ``prem_to_av``, ``int_credited``,
-    ``bonus_credited`` — are internal and are reported, not summed.
-
-    The shape to expect on the anchor cell is strongly positive in the first month of each
-    accumulation year and mildly negative in the other eleven, a large negative spike at
-    ``t = 203`` where the *Kapitalabfindung* falls, and a long negative annuity tail thereafter.
+    Override reason: settlement is an amount per death, surrender or commutation,
+    products/klassische_rentenversicherung/technical-notes.md:381
     """
-    return (premiums(t) - claims(t, "DEATH") - claims(t, "LAPSE")
-            - claims(t, "COMMUTATION") - annuity_payments(t) - expenses(t))
+    return expense_claim_pp() * (pols_death(t) + pols_lapse(t)
+                                 + pols_commutation(t))
 
 
-def liability_cf(t):
-    """The same stream as :func:`net_cf`, outgo positive: ``-net_cf(t)`` exactly.
+def annuity_outgo(t):
+    """The annuity instalments of month t, :func:`annuity_payments`, subtracted in ``net_cf``.
 
-    The orientation a valuation layer consumes: a Solvency II best estimate is
-    ``sum v(t) liability_cf(t)`` over the relevant risk-free term structure, plus a risk
-    margin.  Published as a column beside :func:`net_cf` so the sign convention is verifiable
-    in the frame rather than only in prose.
+    The annuity is not a kind of :func:`claims`: it is a recurring benefit with its own
+    weighting rule.  With it the six components of the net cash flow are exactly the six
+    that cross the contract boundary; the account movements beside them in
+    :func:`result_cf` — ``prem_to_av``, ``int_credited``, ``bonus_credited`` — are internal
+    and are reported, not summed.
+
+    Override reason: the net cash flow subtracts the annuity payments after the claims,
+    products/klassische_rentenversicherung/technical-notes.md:694
     """
-    return -net_cf(t)
+    return annuity_payments(t)
 
 
 # ----------------------------------------

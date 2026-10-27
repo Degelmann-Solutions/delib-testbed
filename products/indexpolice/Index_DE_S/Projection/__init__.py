@@ -138,6 +138,7 @@ w^m_l(t)                   lapse_rate_mth(t)               The monthly rate appl
 phi                        prem_freq_load()                Ratenzahlungszuschlag
 P_b(k)                     prem_base_pp(k)                 Annual-mode premium due
 P(k)                       prem_gross_pp(k)                Premium actually collected
+(none)                     prem_inst_pp(t)                 P(k) in a due month, else 0
 (none)                     prem_due(t)                     Whether P falls due in month t
 BS                         prem_sum()                      Beitragssumme
 alpha(k)                   prem_charge_acq_pp(k)           Acquisition charge, tariff
@@ -177,8 +178,12 @@ V(k)                       cv_pp(k)                        Surrender value
 (169 Abs. 3)               min_surr_pp(k)                  Minimum surrender value
 (Stornoabzug)              surr_charge_pp(k)               Surrender charge
 M(n-1)                     mat_pp(k)                       Benefit at Rentenbeginn
+D(k)                       benefit_death_pp(t)             db_pp(duration(t))
+V(k)                       benefit_lapse_pp(t)             cv_pp(duration(t))
+M(k)                       benefit_maturity_pp(t)          mat_pp(duration(t))
 claims_death, ...          claims(t, kind)                 Benefit outgo by kind
 (released)                 av_released(k)                  Account taken out by the exits
+(none)                     expenses_maint(t)               (acquisition + maintenance) x l
 E(t)                       expenses(t)                     Insurer expense outgo
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
 liability_cf(t)            liability_cf(t)                 The same stream, outgo positive
@@ -534,16 +539,20 @@ def prem_due(t):
     return duration_mth(t) % 12 == 0
 
 
-def premiums(t):
-    """Premium income in **month** t, an inflow: ``P(k) x l(t)``, or zero.
+def prem_inst_pp(t):
+    """P(k): the year's premium per policy in **month** t, or zero.
 
-    Non-zero only where :func:`prem_due` makes the year's premium payable, so the count is
-    the in-force at the **start of the policy year** and premium income is **bit-identical**
-    to the annual-step model this replaced.  Not further multiplied by ``(1 - q_d)``:
-    decrements fall at the **end** of a month, so a life that dies in the first month of a
-    policy year has paid that year's premium.
+    ``prem_gross_pp(duration(t))`` where :func:`prem_due` makes the year's premium payable,
+    zero in the other eleven months.  The core's :func:`premiums` weights it by the
+    in-force at the **start of the policy year**, so premium income is **bit-identical** to
+    the annual-step model this replaced.  Not further multiplied by ``(1 - q_d)``: decrements
+    fall at the **end** of a month, so a life that dies in the first month of a policy year
+    has paid that year's premium.
+
+    Override reason: the year's premium falls due whole in the month ``prem_due`` makes it
+    payable, products/indexpolice/technical-notes.md:463
     """
-    return prem_gross_pp(duration(t)) * pols_if(t) if prem_due(t) else 0.0
+    return prem_gross_pp(duration(t)) if prem_due(t) else 0.0
 
 
 # --- the surplus, the election and the option budget -------------------------
@@ -1229,39 +1238,46 @@ def mat_pp(k):
     return max(av_pp(proj_len_y()), guar_cap_pp(proj_len_y()))
 
 
-def claims(t, kind=None):
-    """Benefit outgo in **month** t, by kind; the total when kind is omitted.
+def benefit_death_pp(t):
+    """D(k): what a death in **month** t pays, ``db_pp(duration(t))``.
 
     The **counts are monthly and the amounts are annual**, which is the shape of this
-    conversion in one cells: a claim is recognised in the month it happens, and what it is
-    paid is the policy year's own amount — because the account this product pays out of is
-    defined at anniversaries and the *Indexjahr* is settled only at the year end.
+    conversion: a claim is recognised in the month it happens, and what it is paid is the
+    policy year's own amount — because the account this product pays out of is defined at
+    anniversaries and the *Indexjahr* is settled only at the year end.  The account before
+    the year's credits with the *Mindesttodesfallschutz* floor.  All three exits fall at the
+    **end** of the month; two exits at the same instant take different amounts — the
+    maturity includes the year's *Indexjahr* and the other two do not — and that is the
+    product's own rule.
 
-    ``"DEATH"``
-        ``D(k) x pols_death(t)``, the account before the year's credits with
-        the *Mindesttodesfallschutz* floor.
-
-    ``"LAPSE"``
-        ``V(k) x pols_lapse(t)``, the § 169 Abs. 3-floored reserve less the
-        *Stornoabzug*.  Zero through the final policy year by construction.
-
-    ``"MATURITY"``
-        ``M(n - 1) x pols_maturity(12n - 1)``, the capital falling due at
-        *Rentenbeginn*, and zero in every other month.
-
-    All three fall at the **end** of the month.  Two exits at the same instant take
-    different amounts — the maturity includes the year's *Indexjahr* and the other two do
-    not — and that is the product's own rule.
+    Override reason: the death benefit is the policy year's account with the death floor,
+    products/indexpolice/technical-notes.md:577
     """
-    if kind is None:
-        return sum(claims(t, j) for j in ("DEATH", "LAPSE", "MATURITY"))
-    if kind == "DEATH":
-        return db_pp(duration(t)) * pols_death(t)
-    if kind == "LAPSE":
-        return cv_pp(duration(t)) * pols_lapse(t)
-    if kind == "MATURITY":
-        return mat_pp(duration(t)) * pols_maturity(t)
-    raise ValueError("invalid kind")
+    return db_pp(duration(t))
+
+
+def benefit_lapse_pp(t):
+    """V(k): what a surrender in **month** t pays, ``cv_pp(duration(t))``.
+
+    The § 169 Abs. 3-floored reserve less the *Stornoabzug*; the lapses are zero through the
+    final policy year by construction.
+
+    Override reason: the surrender value is the policy year's floored reserve less the
+    *Stornoabzug*, products/indexpolice/technical-notes.md:578
+    """
+    return cv_pp(duration(t))
+
+
+def benefit_maturity_pp(t):
+    """M(n - 1): the capital falling due at *Rentenbeginn*, ``mat_pp(duration(t))``.
+
+    Read in every month and weighted by ``pols_maturity(t)``, which is zero but at
+    ``t = 12n - 1``.
+
+    Override reason: the maturity benefit is the capital at *Rentenbeginn*, the account or
+    the guarantee, products/indexpolice/technical-notes.md:579
+    """
+    return mat_pp(duration(t))
 
 
 def rentenfaktor():
@@ -1321,50 +1337,26 @@ def exp_maint_pp(k):
     return exp_fixed_pp * (1.0 + exp_infl) ** k                      # noqa: F821
 
 
-def expenses(t):
-    """Total insurer expense outgo in **month** t, at the start of it.
+def expenses_maint(t):
+    """The insurer's expense per in-force at the start of **month** t, acquisition included.
 
-    ``(exp_acq_pp(t) + exp_maint_pp(duration(t)) / 12) x l(t)``.  The maintenance level is a
-    twelfth of the year's amount rather than a monthly amount of its own, so a year of it on
-    a closed cohort is exactly the annual-step model's charge; what the finer grid buys is
-    that a policy leaving mid-year bears administration only for the months it was there.
-    No claim expense is modelled: no source gives one and it would be immaterial beside a
-    benefit that is the account value.
+    ``(exp_acq_pp(t) + exp_maint_pp(duration(t)) / 12) x l(t)``: the core's acquisition term
+    keeps its neutral 0, the acquisition expense of the opening month being inside this
+    per-policy rate.  The maintenance level is a twelfth of the year's amount rather than a
+    monthly amount of its own, so a year of it on a closed cohort is exactly the annual-step
+    model's charge; what the finer grid buys is that a policy leaving mid-year bears
+    administration only for the months it was there.  No claim expense is modelled: no
+    source gives one and it would be immaterial beside a benefit that is the account value.
 
-    An **expense**, not a charge: this is the insurer's own cash going out, and it is the
-    only expense line in ``net_cf``.  The deductions from the policyholder's account —
-    ``prem_charge_acq_pp``, ``prem_charge_adm_pp``, ``av_charge_pp`` — are charges and
-    appear nowhere in this cells.
+    An **expense**, not a charge: this is the insurer's own cash going out, and the
+    expenses are the only expense line in ``net_cf``.  The deductions from the
+    policyholder's account — ``prem_charge_acq_pp``, ``prem_charge_adm_pp``,
+    ``av_charge_pp`` — are charges and appear nowhere here.
+
+    Override reason: the acquisition expense and a twelfth of the year's maintenance are one
+    per-policy rate on the in-force, products/indexpolice/technical-notes.md:608
     """
     return (exp_acq_pp(t) + exp_maint_pp(duration(t)) / 12.0) * pols_if(t)
-
-
-def net_cf(t):
-    """The net liability cash flow of period t, **income positive**.
-
-    Premiums less death, surrender and *Rentenbeginn* benefits less expenses — the
-    library's sign convention, applied to every model in it.
-
-    The shape to expect is a large first-**month** strain, the acquisition expense falling
-    in one lump against the year's premium, then thin positive months while the account
-    builds, then a very large negative final month when the whole surviving cohort's capital
-    falls due at once.  ``guar_int``, ``surplus_credit``, ``index_credit`` and ``av`` are
-    reported beside it and are **not** in it: they are movements of the policyholder's
-    account, and they reach the insurer's cash flow only later, through a benefit.
-    """
-    return (premiums(t) - claims(t, "DEATH") - claims(t, "LAPSE")
-            - claims(t, "MATURITY") - expenses(t))
-
-
-def liability_cf(t):
-    """The same stream as :func:`net_cf`, outgo positive: ``-net_cf(t)`` exactly.
-
-    The orientation a valuation layer consumes: a Solvency II best estimate is
-    ``sum v(t) liability_cf(t)`` over the relevant risk-free term structure, plus a risk
-    margin.  Published as a column beside ``net_cf`` so the sign convention is verifiable
-    in the frame rather than only in prose.
-    """
-    return -net_cf(t)
 
 
 # --- the published identities ------------------------------------------------

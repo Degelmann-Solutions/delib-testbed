@@ -129,6 +129,8 @@ alpha(k)                   alpha_amort_pp(k)               Its annual instalment
 alpha_z(k)                 alpha_zuz_pp(k)                 Acquisition charge on a Zuzahlung
 u(k)                       unit_cost_pp(k)                 Stueckkosten, inflating
 N(k)                       prem_to_av_pp(k)                Premium credited after charges
+P(k)                       prem_inst_pp(t)                 Premium due per policy in t
+L^p(t)                     pols_prem(t)                    Weight on it: pols_paying(t)
 premiums(t)                premiums(t)                     Laufende Beitraege, fund level
 zuzahlungen(t)             zuzahlungen(t)                  Zuzahlungen, fund level
 A^p(k, .)                  av_pp_at(k, timing)             Deckungskapital per paying policy
@@ -161,10 +163,16 @@ a(k)                       ann_pp(k)                       Annual annuity per an
 a(k) / 12                  ann_mth_pp(t)                   The monthly Rente instalment
 (none)                     db_pp(k)                        Reserve released per paying death
 (none)                     db_pu_pp(k)                     Reserve released per paid-up death
+(none)                     claim_kinds()                   DEATH / ANNUITY / SURVIVOR
 claims_death, _annuity,    claims(t, kind)                 Benefit outgo by kind
 claims_survivor
+(none)                     expenses_acq(t)                 Acquisition, inception only
+(none)                     expenses_maint(t)               Maintenance, annuity admin
 E(t)                       expenses(t)                     Insurer expense outgo
+(none)                     comm_init_rate()                Abschlussprovision rate
+(none)                     comm_renew(t)                   Bestandsprovision
 C(t)                       commissions(t)                  Commission outgo
+(none)                     income_other(t)                 zuzahlungen(t), in net_cf
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
 liability_cf(t)            liability_cf(t)                 The same stream, outgo positive
 =========================  ==============================  ==============================
@@ -737,22 +745,32 @@ def prem_due(t):
     return t % 12 == 0
 
 
-def premiums(t):
-    """*Laufende Beiträge* collected in month t at fund level, an inflow.
+def prem_inst_pp(t):
+    """P(k): the *Laufender Beitrag* collected per policy in month t, or zero.
 
-    ``prem_pp(proj_year(t)) x pols_paying(t)`` in the month the year's premium falls due
-    and zero in the other eleven, weighted by the **premium-paying** ledger and by the
-    **opening** count: the premium falls at the start of the year and the year's deaths
-    after it, so a policy that dies during the year has already paid for it.  Multiplying
-    by ``(1 - mort_rate(t))`` here applies the death rule twice.
-
-    Because the count at the start of a projection year is the annual-step model's own
-    ``pols_paying(k)``, this column sums over a year to that model's premium income
+    ``prem_pp(proj_year(t))`` in the month the year's premium falls due and zero in the
+    other eleven; the core's :func:`premiums` weights it by :func:`pols_prem`.  Because the
+    count at the start of a projection year is the annual-step model's own
+    ``pols_paying(k)``, the premium column sums over a year to that model's premium income
     exactly.
+
+    Override reason: the year's premium ``prem_pp(proj_year(t))`` falls due whole in the
+    month ``prem_due`` makes it payable, products/basisrente/model.md:213
     """
-    if not prem_due(t):
-        return 0.0
-    return prem_pp(proj_year(t)) * pols_paying(t)
+    return prem_pp(proj_year(t)) if prem_due(t) else 0.0
+
+
+def pols_prem(t):
+    """The weight on the premium: the **premium-paying** ledger ``pols_paying(t)``.
+
+    The **opening** count: the premium falls at the start of the year and the year's deaths
+    after it, so a policy that dies during the year has already paid for it.  Multiplying by
+    ``(1 - mort_rate(t))`` here applies the death rule twice.
+
+    Override reason: the premium is paid by the premium-paying cohort only, the paid-up
+    cohort pays none, products/basisrente/technical-notes.md:647
+    """
+    return pols_paying(t)
 
 
 def zuzahlungen(t):
@@ -1432,6 +1450,15 @@ def db_pu_pp(k):
     return av_pu_at(k, "AFT_INT") / pols_paidup(12 * k)
 
 
+def claim_kinds():
+    """The three benefit kinds of :func:`claims`: death, annuity and survivor.
+
+    Override reason: the claim kinds are death, annuity and the *Rentengarantiezeit*
+    survivor stream, products/basisrente/technical-notes.md:613
+    """
+    return ("DEATH", "ANNUITY", "SURVIVOR")
+
+
 def claims(t, kind=None):
     """Benefit outgo in projection month t, by kind; the total when kind is omitted.
 
@@ -1465,9 +1492,13 @@ def claims(t, kind=None):
     There is no fourth kind, and there can be none: no surrender value, no capital option,
     no partial capital payment and no commutation exist on this product.
     :func:`check_no_capital` asserts that the total is exactly the sum of these three.
+
+    Override reason: the death benefit releases the reserve of two cohorts, the paying and
+    the paid-up, weighted by the survivor's eligibility, and the annuity kinds are no
+    per-policy amount times a decrement, products/basisrente/technical-notes.md:604
     """
     if kind is None:
-        return sum(claims(t, k) for k in ("DEATH", "ANNUITY", "SURVIVOR"))
+        return sum(claims(t, k) for k in claim_kinds())
     if kind == "DEATH":
         if float(model_point()["surv_annuity_rate"]) <= 0.0:
             return 0.0
@@ -1487,11 +1518,33 @@ def claims(t, kind=None):
     raise ValueError("invalid kind")
 
 
-def expenses(t):
-    """E(t): the insurer's own expense outgo in projection month t, fund level.
+def expenses_acq(t):
+    """The acquisition expense, at inception (``t = 0`` and ``duration_init = 0``) only.
 
-    Acquisition expense at inception (``t = 0`` and ``duration_init = 0`` only), then a
-    **twelfth** of the annual maintenance expense per in-force policy in the
+    ``acq_expense_pp x pols_if_init()``, zero outside the frame.  **The commission is not
+    in the expenses.**  It is a separate line of the notes' cash flow statement and a
+    separate column of :func:`result_cf`, and :func:`net_cf` subtracts each once.  Nor are
+    the *charges*: beta, gamma, the *Stückkosten* and the *Zillmerung* amortisation are
+    deductions from the policyholder's account and hence insurer **income**.  The expenses
+    are therefore invariant to ``beta_prem``, ``gamma_av`` and ``zill_rate``, and those
+    three move :func:`net_cf` only through the smaller annuity that a smaller fund buys at
+    *Rentenbeginn*.  Booking a charge as an expense as well is the fourth pitfall.
+
+    Override reason: the acquisition expense falls at inception on new business only,
+    products/basisrente/technical-notes.md:607
+    """
+    if t < 0 or t >= proj_len():
+        return 0.0
+    if t == 0 and duration_init() == 0:
+        row = data.charge_table().loc[model_point()["tariff_id"]]    # noqa: F821
+        return float(row["acq_expense_pp"]) * pols_if_init()
+    return 0.0
+
+
+def expenses_maint(t):
+    """The maintenance expense of projection month t, fund level, inflating.
+
+    A **twelfth** of the annual maintenance expense per in-force policy in the
     *Aufschubphase* and a twelfth of the annual annuity administration per annuitant **and
     per *Rentengarantiezeit* continuation** in the *Rentenphase*, both inflating at
     ``expense_infl`` from the valuation date.  The payout phase is administratively cheaper
@@ -1503,92 +1556,69 @@ def expenses(t):
     third month of a year now bears three twelfths of that year's maintenance rather than
     the whole of it, which is the second thing the finer grid changes on this product.
 
-    **The commission is not in here.**  It is a separate line of the notes' cash flow
-    statement and a separate column of :func:`result_cf`, and :func:`net_cf` subtracts each
-    once.
-
-    Nor are the *charges*: beta, gamma, the *Stückkosten* and the *Zillmerung* amortisation
-    are deductions from the policyholder's account and hence insurer **income**.  This
-    cells is therefore invariant to ``beta_prem``, ``gamma_av`` and ``zill_rate``, and
-    those three move :func:`net_cf` only through the smaller annuity that a smaller fund
-    buys at *Rentenbeginn*.  Booking a charge as an expense as well is the fourth pitfall.
+    Override reason: the maintenance falls per in-force policy before *Rentenbeginn*,
+    products/basisrente/technical-notes.md:608, and per annuitant and guarantee
+    continuation after it, products/basisrente/technical-notes.md:609
     """
     if t < 0 or t >= proj_len():
         return 0.0
     row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
     infl = (1.0 + float(row["expense_infl"])) ** proj_year(t)
-    out = 0.0
-    if t == 0 and duration_init() == 0:
-        out += float(row["acq_expense_pp"]) * pols_if_init()
     if t < t_conv():
-        out += float(row["maint_expense_pp"]) / 12.0 * infl * pols_if(t)
-    else:
-        out += (float(row["annuity_admin_pp"]) / 12.0 * infl
-                * (pols_if(t) + pols_gtd(t)))
-    return out
+        return float(row["maint_expense_pp"]) / 12.0 * infl * pols_if(t)
+    return (float(row["annuity_admin_pp"]) / 12.0 * infl
+            * (pols_if(t) + pols_gtd(t)))
 
 
-def commissions(t):
-    """C(t): commission outgo in projection month t, fund level.
+def comm_init_rate():
+    """The *Abschlussprovision* rate on the *Beitragssumme*, from the charge table **[std]**.
 
-    ``comm_init_rate x beitragssumme() x pols_if_init()`` at inception — the
-    *Abschlussprovision*, sized to the *Zillmerung* cap, which is the German design in
-    which what the insurer pays out is what it may write into the reserve — plus
-    ``comm_renew_rate x (premiums(t) + zuzahlungen(t))`` from ``t = 1``, the
-    *Bestandsprovision*.  Both **[std]**: the corpus's only datum is a 1 575 €
-    *Abschlussprovision* on one specimen quotation, and it is [unverified].
+    Sized to the *Zillmerung* cap, which is the German design in which what the insurer pays
+    out is what it may write into the reserve; the corpus's only datum is a 1 575 €
+    *Abschlussprovision* on one specimen quotation, and it is [unverified].  Paid **only**
+    where the model point is new business (``duration_init = 0``): an in-force point's
+    acquisition commission was paid before the valuation date and is not a projected cash
+    flow.
+
+    Override reason: the initial commission is the tariff's ``comm_init_rate`` of the
+    *Beitragssumme*, products/basisrente/technical-notes.md:610
+    """
+    row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
+    return float(row["comm_init_rate"])
+
+
+def comm_renew(t):
+    """The *Bestandsprovision*, ``comm_renew_rate x (premiums(t) + zuzahlungen(t))``, from ``t = 1``.
 
     The renewal commission is a percentage of a contribution, so it falls in the month the
     contribution does and in no other — the ``t >= 1`` condition excludes the first year's
     premium at ``t = 0`` and admits every later one at ``t = 12, 24, ...``, which is
-    exactly the annual-step model's rule.
+    exactly the annual-step model's rule.  **[std]**.
 
-    Paid **only** where the model point is new business (``duration_init = 0``): an
-    in-force point's acquisition commission was paid before the valuation date and is not a
-    projected cash flow.
+    Override reason: the renewal commission is a rate on the premiums and *Zuzahlungen*
+    from ``t = 1``, products/basisrente/technical-notes.md:611
     """
-    if t < 0 or t >= proj_len():
+    if t < 1 or t >= proj_len():
         return 0.0
     row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
-    out = 0.0
-    if t == 0 and duration_init() == 0:
-        out += float(row["comm_init_rate"]) * beitragssumme() * pols_if_init()
-    if t >= 1:
-        out += float(row["comm_renew_rate"]) * (premiums(t) + zuzahlungen(t))
-    return out
+    return float(row["comm_renew_rate"]) * (premiums(t) + zuzahlungen(t))
 
 
-def net_cf(t):
-    """The net liability cash flow of projection month t, **income positive**.
+def income_other(t):
+    """The *Zuzahlungen* of month t, :func:`zuzahlungen`, income beside the premium.
 
-    ``premiums + zuzahlungen - claims_death - claims_annuity - claims_survivor - expenses
-    - commissions``.  The library-wide sign; :func:`liability_cf` publishes the same stream
-    outgo-positive.
+    With it the net cash flow is ``premiums + zuzahlungen - claims_death - claims_annuity -
+    claims_survivor - expenses - commissions``.  ``expenses`` does **not** include the
+    commission — the two are separate lines and each is subtracted once — and the
+    *Deckungskapital* is a balance rather than a cash flow and enters nothing.
+    ``prem_total_pp`` enters nothing either: the BUZ premium buys a cover this model does
+    not project.  :func:`check_net_cf` reconstructs the net cash flow from
+    :func:`result_cf`'s own published columns.
 
-    ``expenses`` here does **not** include the commission — the two are separate lines and
-    each is subtracted once — and the *Deckungskapital* is a balance rather than a cash
-    flow and enters nothing.  ``prem_total_pp`` enters nothing either: the BUZ premium buys
-    a cover this model does not project.
-
-    :func:`check_net_cf` reconstructs this from :func:`result_cf`'s own published columns,
-    which is delib's first ruling — the headline number of a cash flow model must not be
-    the one quantity nothing checks.
+    Override reason: the *Zuzahlungen* are income beside the premiums,
+    products/basisrente/technical-notes.md:612
     """
-    return (premiums(t) + zuzahlungen(t)
-            - claims(t, "DEATH") - claims(t, "ANNUITY") - claims(t, "SURVIVOR")
-            - expenses(t) - commissions(t))
-
-
-def liability_cf(t):
-    """The same stream as :func:`net_cf`, outgo positive: ``-net_cf(t)`` exactly.
-
-    The orientation the technical notes print and the one a valuation layer consumes: a
-    Solvency II best estimate is ``sum v(t) x liability_cf(t)`` over the relevant risk-free
-    term structure, plus a risk margin.  Published as a column beside :func:`net_cf` so
-    the sign convention is verifiable in the frame rather than only in prose.  This library
-    discounts nothing and computes no reserve.
-    """
-    return -net_cf(t)
+    return zuzahlungen(t)
 
 
 def check_net_cf_resid(t):

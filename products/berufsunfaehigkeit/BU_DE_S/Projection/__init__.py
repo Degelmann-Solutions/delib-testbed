@@ -124,9 +124,12 @@ L_p(t)                     pols_prem(t)                    Premium-paying count
 (none)                     pols_death(t)                   Deaths out of all three ledgers
 (none)                     pols_lapse(t)                   Lapses, from pols_actv only
 (the shadow ledgers)       ``*_first``                      The first-order pricing run
+P_b(t)                     prem_inst_pp(t)                 Bruttobeitrag due per policy
 premiums(t)                premiums(t)                     Gross Bruttobeitrag income
 surplus_credit(t)          surplus_credit(t)               Beitragsverrechnung returned
 claims_bu_rente etc.       claims(t, kind)                 Benefit outgo by kind
+(none)                     claim_kinds()                   BU_RENTE / REINTEGRATION / LAPSE
+(none)                     claims_other(t, kind)           BU_RENTE and REINTEGRATION
 expenses(t)                expenses(t)                     Acquisition and administration
 claim_expenses(t)          claim_expenses(t)               Leistungsbearbeitungskosten
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
@@ -1569,6 +1572,10 @@ def pols_prem(t):
     deletes the *Beitragsbefreiung*, which is core cover rather than an option — the
     classic German BU implementation error.  On the anchor cell, where the *Karenzzeit* is
     zero, this equals :func:`pols_actv` at every ``t``.
+
+    Override reason: lives in claim past the *Karenzzeit* pay no premium (*Beitragsbefreiung*),
+    so the premium-paying count is the *aktiv* ledger plus the disabled inside the
+    *Karenzzeit*, products/berufsunfaehigkeit/technical-notes.md:174
     """
     dis = dis_cohorts(t)[0]
     return pols_actv(t) + sum(dis[:karenz_months()])
@@ -1576,16 +1583,19 @@ def pols_prem(t):
 
 # --- the cash flows ---
 
-def premiums(t):
-    """The **gross** *Bruttobeitrag* income at the start of month t, an inflow.
+def prem_inst_pp(t):
+    """The **gross** *Bruttobeitrag* instalment per policy at the start of month t.
 
-    ``prem_gross_pp(t) x pols_prem(t)``, zero in a month that is not a payment month.
-    This is the gross stream; the *Beitragsverrechnung* returned out of it is
-    :func:`surplus_credit`, and the cash actually collected is the difference.  Publishing
-    both is what keeps the *Ueberschussbeteiligung* a visible line rather than a netting
-    hidden inside the premium.
+    ``prem_gross_pp(t)``, zero in a month that is not a payment month; the core's
+    :func:`premiums` weights it by :func:`pols_prem`.  The premium column is the gross
+    stream; the *Beitragsverrechnung* returned out of it is :func:`surplus_credit`, and the
+    cash actually collected is the difference.  Publishing both is what keeps the
+    *Ueberschussbeteiligung* a visible line rather than a netting hidden inside the premium.
+
+    Override reason: the premium is the *Bruttobeitrag* instalment due in the month,
+    products/berufsunfaehigkeit/technical-notes.md:186
     """
-    return prem_gross_pp(t) * pols_prem(t)
+    return prem_gross_pp(t)
 
 
 def surplus_credit(t):
@@ -1600,8 +1610,17 @@ def surplus_credit(t):
     return surplus_credit_pp(t) * pols_prem(t)
 
 
-def claims(t, kind=None):
-    """Benefit outgo at the start of month t, by kind; the total when kind is omitted.
+def claim_kinds():
+    """The three benefit kinds of :func:`claims`: ``BU_RENTE``, ``REINTEGRATION``, ``LAPSE``.
+
+    Override reason: the claims are the *BU-Rente*, the *Wiedereingliederungshilfe* and the
+    zero lapse benefit, products/berufsunfaehigkeit/technical-notes.md:529
+    """
+    return ("BU_RENTE", "REINTEGRATION", "LAPSE")
+
+
+def claims_other(t, kind):
+    """Benefit outgo at the start of month t of the kinds beside the core's lapse.
 
     ``"BU_RENTE"``
         the monthly annuity, paid in advance to the disabled cohorts past the
@@ -1616,15 +1635,18 @@ def claims(t, kind=None):
         not gated at the *Leistungsendalter*: a life may return to work after
         it while the cover still runs.
 
-    ``"LAPSE"``
-        zero, always.  § 169 VVG through § 176 gives this contract a real
-        *Rueckkaufswert* and § 165 a real *beitragsfreie BU-Rente*, and this
-        model prices neither, because both are the release of a reserve it
-        deliberately does not compute.  The kind exists so that the zero is a
-        published scope statement rather than a missing column.
+    ``"LAPSE"`` is the core's, zero, always: :func:`benefit_lapse_pp` keeps its neutral 0.
+    § 169 VVG through § 176 gives this contract a real *Rueckkaufswert* and § 165 a real
+    *beitragsfreie BU-Rente*, and this model prices neither, because both are the release
+    of a reserve it deliberately does not compute.  The kind exists so that the zero is a
+    published scope statement rather than a missing column.
+
+    Override reason: the *BU-Rente* is paid to the disabled cohorts past the *Karenzzeit*
+    and the run-off slots, products/berufsunfaehigkeit/technical-notes.md:520, the
+    *Wiedereingliederungshilfe* on completed run-offs,
+    products/berufsunfaehigkeit/technical-notes.md:521, no per-policy amount times a
+    decrement
     """
-    if kind is None:
-        return sum(claims(t, k) for k in ("BU_RENTE", "REINTEGRATION", "LAPSE"))
     if kind == "BU_RENTE":
         if age(t) >= benefit_end_age():
             return 0.0
@@ -1636,8 +1658,6 @@ def claims(t, kind=None):
         return (wiedereingliederung_months()
                 * runoff_val(t, runoff_months)                       # noqa: F821
                 * (1.0 - mort_rate_mth(t)))
-    if kind == "LAPSE":
-        return 0.0
     raise ValueError("invalid kind")
 
 
@@ -1662,6 +1682,10 @@ def expenses(t):
     Commission is not a separate line: it sits inside ``acq_rate``, which is the German
     taxonomy.  Claim handling is not here either — it is :func:`claim_expenses`, because
     it scales with claims rather than with policies.
+
+    Override reason: the acquisition charge is added to the proportional administration
+    before the flat administration, ``(acq + prop) + flat``, an order the core's
+    ``acq + maint + claim`` would reassociate, products/berufsunfaehigkeit/technical-notes.md:523
     """
     acq = 0.0
     if t == 0 and duration_mth_init() == 0:
@@ -1707,20 +1731,13 @@ def net_cf(t):
     accelerates from the mid-forties, and turn negative in the last years before the
     *Endalter*, which is exactly the *Deckungsrueckstellung* this model does not compute
     being run down.
+
+    Override reason: the *Beitragsverrechnung* is subtracted before the claim total and the
+    *Leistungsbearbeitungskosten* after the expenses,
+    products/berufsunfaehigkeit/technical-notes.md:556
     """
     return (premiums(t) - surplus_credit(t) - claims(t)
             - expenses(t) - claim_expenses(t))
-
-
-def liability_cf(t):
-    """The same stream as :func:`net_cf`, outgo positive: ``-net_cf(t)`` exactly.
-
-    The orientation a valuation layer consumes: a Solvency II best estimate is
-    ``sum v(t) liability_cf(t)`` over whatever risk-free term structure is supplied, plus
-    a risk margin.  Published as a column beside :func:`net_cf` so the sign convention is
-    verifiable in the frame rather than only in prose.
-    """
-    return -net_cf(t)
 
 
 # --- the published identities ---

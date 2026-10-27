@@ -116,6 +116,7 @@ pols_lapse(t)               pols_lapse(t)                   Surrenders, active s
 (none)                      premium_pp(t)                   The instalment charged
 (none)                      cum_prem_max_pp(t)              Premium payable to date
 (none)                      prem_units_at(t)                The same, in units of P
+(none)                      prem_inst_pp(t)                 premium_pp(t), per unit
 premiums(t)                 premiums(t)                     Beitrag income
 (none)                      rkw_pp(t)                       Rueckkaufswert per policy
 (none)                      brg_pp(t)                       Beitragsrueckgewaehr per policy
@@ -981,6 +982,9 @@ def pols_prem(t):
     premium obligation.  A model whose premium-paying count only ever falls has wired the
     waiver as an absorbing state, which is the single most common way to get this product's
     premium stream wrong.
+
+    Override reason: the paying units are the lives inside the premium term less those whose
+    *Beitrag* is waived in care, products/pflegerentenversicherung/technical-notes.md:540
     """
     return pols_in_term(t) - pols_waived(t)
 
@@ -1099,13 +1103,17 @@ def cum_prem_max_pp(t):
     return premium_mth_pp() * m * (last // m + 1)
 
 
-def premiums(t):
-    """*Beitrag* income in month ``t``: ``premium_pp(t) x pols_prem(t)``.
+def prem_inst_pp(t):
+    """The *Beitrag* per paying unit in month ``t``, :func:`premium_pp`.
 
-    Collected **in advance**, at the start of the month, from the lives then inside the
-    term and not waived.  Income-positive, like every other term of :func:`net_cf`.
+    Collected **in advance**, at the start of the month; the core's :func:`premiums`
+    weights it by :func:`pols_prem`, the lives then inside the term and not waived.
+    Income-positive, like every other term of :func:`net_cf`.
+
+    Override reason: the premium is ``premium_pp(t)``, the monthly *Beitrag* in a month it
+    is due, products/pflegerentenversicherung/technical-notes.md:551
     """
-    return premium_pp(t) * pols_prem(t)
+    return premium_pp(t)
 
 
 def rkw_pp(t):
@@ -1154,6 +1162,10 @@ def claims(t, kind=None):
 
     ``"LAPSE"`` is the *Rückkaufswert* and ``"DEATH"`` the *Beitragsrückgewähr*, both at the
     **end** of the month on the lives that left during it.
+
+    Override reason: the total adds the three kinds left to right, ``A + L + D``, where the
+    core's ``sum`` over the kinds rounds otherwise (compensated summation),
+    products/pflegerentenversicherung/technical-notes.md:570
     """
     if kind is None:
         return (claims(t, "ANNUITY") + claims(t, "LAPSE")
@@ -1244,6 +1256,10 @@ def expenses(t):
     collected, which is where the instalment loading the model does not charge separately
     lives.  Claims-handling cost is **not** here — it is a per-event cost and is published
     as its own column, :func:`claim_expenses`.
+
+    Override reason: the acquisition expense is the *Zillmerung* allowance at ``t = 0``,
+    products/pflegerentenversicherung/technical-notes.md:593, added after the two
+    administration terms, an order the core's sum of its terms would reassociate
     """
     admin_pp = float(data.param_table().at[                          # noqa: F821
         "admin_mth_pp", "value"])
@@ -1290,19 +1306,11 @@ def net_cf(t):
     tail from the seventies onward as the incidence curve overtakes it.  That crossing is
     where the *Deckungskapital* peaks, and it is the whole economic content of an ageing
     reserve carried on a life-assurance chassis.
+
+    Override reason: the claim total is subtracted at once and the claims-handling cost
+    after the expenses, products/pflegerentenversicherung/technical-notes.md:597
     """
     return premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
-
-
-def liability_cf(t):
-    """The same stream as :func:`net_cf`, outgo positive: ``-net_cf(t)`` exactly.
-
-    The orientation a valuation layer consumes: a Solvency II best estimate is
-    ``sum v(t) liability_cf(t)`` over the relevant risk-free term structure, plus a risk
-    margin.  Published as a column beside :func:`net_cf` so the sign convention is
-    verifiable in the frame rather than only in prose.
-    """
-    return -net_cf(t)
 
 
 def tar_mort_rate(t):

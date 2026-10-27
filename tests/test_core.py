@@ -1574,7 +1574,17 @@ def test_rlv_net_cf_resid_rebuilds_net_cf_from_the_frame(product_models):
             assert resid == 0.0, (point_id, t)
 
 
-def test_klv_check_net_cf_closes_to_the_scaled_tolerance(tmp_path, product_models):
+def _resid_just_above_tolerance(t):
+    """A residual a little above the month's scaled tolerance."""
+    return check_net_cf_tol(t) * 1.01                                # noqa: F821
+
+
+def _resid_just_below_tolerance(t):
+    """A residual a little below the month's scaled tolerance."""
+    return -check_net_cf_tol(t) * 0.99                               # noqa: F821
+
+
+def test_klv_check_net_cf_closes_to_the_scaled_tolerance(product_models):
     model = product_models("kapitallebensversicherung")
     projection = model.Projection
     assert projection.check_net_cf._is_derived()
@@ -1586,14 +1596,13 @@ def test_klv_check_net_cf_closes_to_the_scaled_tolerance(tmp_path, product_model
     t = item.t_start()
     assert item.check_net_cf_tol(t) == item.roll_fwd_tol() * max(item.sum_assured(), 1.0)
 
-    # A residual above the tolerance fails the check: a tolerance of -1 is below any |resid|.
-    folder = product_copy(tmp_path, "kapitallebensversicherung")
-    table = folder / "param_table.csv"
-    params = pd.read_csv(table, index_col="item")
-    params.loc["roll_fwd_tol", "value"] = -1.0
-    params.to_csv(table)
-    copy = mx.read_model(folder / MODELS["kapitallebensversicherung"], name="NetCfProbe")
+    # A residual just below roll_fwd_tol() * check_net_cf_scale(t) passes, one just above fails.
+    folder = PRODUCTS_DIR / "kapitallebensversicherung" / MODELS["kapitallebensversicherung"]
+    copy = mx.read_model(folder, name="NetCfProbe")
     try:
+        copy.Projection.check_net_cf_resid.formula = _resid_just_below_tolerance
+        assert copy.Projection[point_id].check_net_cf() is True
+        copy.Projection.check_net_cf_resid.formula = _resid_just_above_tolerance
         assert copy.Projection[point_id].check_net_cf() is False
     finally:
         copy.close()

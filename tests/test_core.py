@@ -27,6 +27,11 @@
   kind and an unknown kind is rejected; Index and RV pay exactly zero commission; KLV's net
   cash flow subtracts its claims kind by kind; RLV's liability cash flow is its net cash flow
   negated.
+- The outputs and checks: every product reads ``roll_fwd_tol`` from its ``param_table.csv``
+  and a missing row raises; KLV's ``result_cf`` is the core's statement from ``t_start()``;
+  RV's annual frame sums the flows and takes its two counts at the year's start; RLV's
+  net-cash-flow residual is rebuilt from its frame's columns; KLV's ``check_net_cf`` closes to
+  the scaled tolerance and fails above it.
 """
 from __future__ import annotations
 

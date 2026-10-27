@@ -2092,6 +2092,9 @@ def result_pols():
     ``mort_rate`` and ``lapse_rate`` are the **annual** rates the notes tabulate; the rates the
     recursion applies are ``mort_rate_mth`` and ``lapse_rate_mth``, which belong to the monthly
     frame and are not printed here.
+
+    Override reason: the frame is the annual state at each anniversary, indexed by the 1-based
+    policy year, products/klassische_rentenversicherung/model.md:42
     """
     ks = list(range(k_start(), proj_len_y()))
     return pd.DataFrame(                                             # noqa: F821

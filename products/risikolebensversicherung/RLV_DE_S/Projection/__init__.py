@@ -1559,8 +1559,10 @@ def result_cf_columns():
     )
 
 
-def result_pols():
-    """Result table of policy counts, rates, per-policy amounts and the reserve, indexed by t.
+def result_pols_columns():
+    """The columns of :func:`result_pols`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of policy counts, rates, per-policy amounts and the reserve by t.
 
     The same 0-based monthly frame as :func:`result_cf`:
     ``t = t_start() ... proj_len() - 1``.  Each **annual** rate is published beside the
@@ -1572,32 +1574,32 @@ def result_pols():
     instalment collected in the month.  ``res_pp`` and ``res_zill_pp`` are the policy
     year's reserves, flat across its twelve rows, the first-order *Deckungskapital* being
     an annual construction.
+
+    Override reason: the frame publishes the decrement, rate, benefit, premium and reserve
+    side beside the cash flows, products/risikolebensversicherung/model.md:62
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "age": [age(t) for t in ts],
-            "policy_year": [policy_year(t) for t in ts],
-            "pols_if": [pols_if(t) for t in ts],
-            "pols_death": [pols_death(t) for t in ts],
-            "pols_lapse": [pols_lapse(t) for t in ts],
-            "pols_maturity": [pols_maturity(t) for t in ts],
-            "mort_rate": [mort_rate(t) for t in ts],
-            "mort_rate_mth": [mort_rate_mth(t) for t in ts],
-            "mort_rate_tar": [mort_rate_tariff(t) for t in ts],
-            "lapse_rate": [lapse_rate(t) for t in ts],
-            "lapse_rate_mth": [lapse_rate_mth(t) for t in ts],
-            "benefit_pp": [benefit_pp(t) for t in ts],
-            "benefit_paid_pp": [benefit_paid_pp(t) for t in ts],
-            "suicide_factor": [suicide_factor(t) for t in ts],
-            "prem_gross_pp": [prem_gross_pp(t) for t in ts],
-            "prem_rebate_pp": [prem_rebate_pp(t) for t in ts],
-            "prem_paid_pp": [prem_paid_pp(t) for t in ts],
-            "prem_inst_pp": [prem_inst_pp(t) for t in ts],
-            "res_pp": [res_pp_at(duration(t), "BEF_PREM") for t in ts],
-            "res_zill_pp": [res_zill_pp_at(duration(t), "BEF_PREM") for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("age", age),                                                # noqa: F821
+        ("policy_year", policy_year),                                # noqa: F821
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("pols_death", pols_death),                                  # noqa: F821
+        ("pols_lapse", pols_lapse),                                  # noqa: F821
+        ("pols_maturity", pols_maturity),                            # noqa: F821
+        ("mort_rate", mort_rate),                                    # noqa: F821
+        ("mort_rate_mth", mort_rate_mth),                            # noqa: F821
+        ("mort_rate_tar", mort_rate_tariff),                         # noqa: F821
+        ("lapse_rate", lapse_rate),                                  # noqa: F821
+        ("lapse_rate_mth", lapse_rate_mth),                          # noqa: F821
+        ("benefit_pp", benefit_pp),                                  # noqa: F821
+        ("benefit_paid_pp", benefit_paid_pp),                        # noqa: F821
+        ("suicide_factor", suicide_factor),                          # noqa: F821
+        ("prem_gross_pp", prem_gross_pp),                            # noqa: F821
+        ("prem_rebate_pp", prem_rebate_pp),                          # noqa: F821
+        ("prem_paid_pp", prem_paid_pp),                              # noqa: F821
+        ("prem_inst_pp", prem_inst_pp),                              # noqa: F821
+        ("res_pp", lambda t: res_pp_at(duration(t), "BEF_PREM")),    # noqa: F821
+        ("res_zill_pp",
+         lambda t: res_zill_pp_at(duration(t), "BEF_PREM")),         # noqa: F821
     )
 
 

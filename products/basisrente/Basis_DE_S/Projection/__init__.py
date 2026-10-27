@@ -1941,6 +1941,9 @@ def result_pols():
 
     ``policy_year`` is the contractual 1-based label, which is ``k + 1`` only for a model
     point projected from issue.
+
+    Override reason: the frame is the annual state, indexed by the projection year k, with the
+    year's deaths and freezes summed over its months, products/basisrente/technical-notes.md:671
     """
     ks = list(range(proj_len_y()))
     return pd.DataFrame(                                             # noqa: F821

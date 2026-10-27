@@ -890,3 +890,25 @@ def result_cf_annual():
     for i, column in enumerate(counts):
         out.insert(i, column, df[column].groupby(years).first())
     return out
+
+
+def result_pols_columns():
+    """The columns of :func:`result_pols` in their order, as ``(label, cell)`` pairs; none.
+
+    A product that publishes its policy counts, rates and per-policy amounts beside the cash
+    flows overrides the tuple; each cell is a function of the month ``t``.
+    """
+    return ()
+
+
+def result_pols():
+    """The table of :func:`result_pols_columns` by policy month t from ``t_start()``.
+
+    The same monthly frame as :func:`result_cf`, one column per pair, in its order.
+    """
+    ts = list(range(t_start(), proj_len()))                          # noqa: F821
+    frame = pd.DataFrame(                                            # noqa: F821
+        {label: [cell(t) for t in ts] for label, cell in result_pols_columns()},  # noqa: F821
+        index=ts)
+    frame.index.name = "t"
+    return frame

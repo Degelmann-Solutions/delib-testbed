@@ -754,6 +754,12 @@ CORE_CELLS = {
                              "klassische_rentenversicherung": "derived",
                              "riester_rente": "override",
                              "risikolebensversicherung": "derived"},
+        "result_pols_columns": {"risikolebensversicherung": "override",
+                                "sofortrente": "override"},
+        "result_pols": {"basisrente": "override",
+                        "klassische_rentenversicherung": "override",
+                        "risikolebensversicherung": "derived",
+                        "sofortrente": "derived"},
     },
 }
 

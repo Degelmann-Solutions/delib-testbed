@@ -1475,29 +1475,30 @@ def result_cf_columns():
     )
 
 
-def result_pols():
-    """Result table of survival, instalments and per-policy amounts, indexed by month ``t``.
+def result_pols_columns():
+    """The columns of :func:`result_pols`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of survival, instalments and per-policy amounts by month ``t``.
 
     The state behind :func:`result_cf`: the two survival paths, the certain floor and the
     payment factor built from them, the three-way split of the instalment into guaranteed
     and surplus parts, and the refund's run-off against the cumulative guaranteed
     instalments.
+
+    Override reason: the frame publishes the two survival paths, the payment factor, the
+    instalment split and the refund run-off, products/sofortrente/technical-notes.md:637
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "lives_if_1": [lives_if(t, 1) for t in ts],
-            "lives_if_2": [lives_if(t, 2) for t in ts],
-            "certain_floor": [certain_floor(t) for t in ts],
-            "payment_factor": [payment_factor(t) for t in ts],
-            "annuity_guar_pp": [annuity_guar_pp(t) for t in ts],
-            "annuity_surp_pp": [annuity_surp_pp(t) for t in ts],
-            "annuity_pp": [annuity_pp(t) for t in ts],
-            "refund_pp": [refund_pp(t) for t in ts],
-            "cum_annuity_guar_pp": [cum_annuity_guar_pp(t) for t in ts],
-            "pols_if": [pols_if(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("lives_if_1", lambda t: lives_if(t, 1)),                    # noqa: F821
+        ("lives_if_2", lambda t: lives_if(t, 2)),                    # noqa: F821
+        ("certain_floor", certain_floor),                            # noqa: F821
+        ("payment_factor", payment_factor),                          # noqa: F821
+        ("annuity_guar_pp", annuity_guar_pp),                        # noqa: F821
+        ("annuity_surp_pp", annuity_surp_pp),                        # noqa: F821
+        ("annuity_pp", annuity_pp),                                  # noqa: F821
+        ("refund_pp", refund_pp),                                    # noqa: F821
+        ("cum_annuity_guar_pp", cum_annuity_guar_pp),                # noqa: F821
+        ("pols_if", pols_if),                                        # noqa: F821
     )
 
 

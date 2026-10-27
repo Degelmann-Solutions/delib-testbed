@@ -2050,7 +2050,7 @@ def result_cf_columns():
 
     Override reason: the statement carries the annuity count, the *Kapitalabfindung* and the
     annuity payments, no commission, and liability_cf before net_cf,
-    products/klassische_rentenversicherung/technical-notes.md:674
+    products/klassische_rentenversicherung/technical-notes.md:675
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821

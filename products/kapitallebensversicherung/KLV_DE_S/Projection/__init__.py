@@ -191,6 +191,8 @@ claims_*            claims(t, kind)                        DEATH / MATURITY / LA
 (none)              expenses_maint(t)                      expenses_pp(t) x pols_if(t)
 (none)              expenses_claim(t)                      claim_expenses(t)
 E(t)                expenses(t)                            Expense outgo, no commission
+(none)              comm_init_rate()                       Initial rate on the Beitragssumme
+(none)              comm_renew(t)                          Bestandsprovision
 (none)              commissions(t)                         Commission outgo
 net_cf(t)           net_cf(t)                              Net cash flow, income positive
 liability_cf(t)     liability_cf(t)                        The same stream, outgo positive
@@ -1668,27 +1670,36 @@ def expenses_claim(t):
     return claim_expenses(t)
 
 
-def commissions(t):
-    """Commission outgo in month t **[std]**, excluded from :func:`expenses`.
+def comm_init_rate():
+    """The initial commission rate on the *Beitragssumme*, from the cost table **[std]**.
 
     2,5 % of the *Beitragssumme* at conclusion - anchored to the 25 ‰ § 4 DeckRV ceiling and
-    to one carrier's reported 25 ‰, a single amount in month ``t_start()`` - plus a 1,5 %
-    *Bestandsprovision* on each *Bruttobeitrag* **instalment** from the second projected
-    policy year.  Neither term applies at ``t_start()`` on an in-force point: it was paid at
-    conclusion, long before the frame opens.
+    to one carrier's reported 25 ‰, a single amount in month ``t_start()``.  It does not
+    apply at ``t_start()`` on an in-force point: it was paid at conclusion, long before the
+    frame opens.  Commission is excluded from :func:`expenses`.
 
-    The **rate** is a policy-year rate and steps on the anniversary; the **base** is the
+    Override reason: the initial commission is the cost table's ``comm_init_rate`` of the
+    *Beitragssumme*, products/kapitallebensversicherung/technical-notes.md:374
+    """
+    return float(data.charge_table().loc[cost_id()]["comm_init_rate"])  # noqa: F821
+
+
+def comm_renew(t):
+    """The 1,5 % *Bestandsprovision* on each *Bruttobeitrag* **instalment** **[std]**.
+
+    From the second projected policy year; not at ``t_start()`` on an in-force point.  The
+    **rate** is a policy-year rate and steps on the anniversary; the **base** is the
     instalment actually charged, so a fractionated payer earns the renewal commission in
     instalments too.  It is charged on :func:`prem_charged_inst_pp` and **not** on
     :func:`prem_inst_pp`: under *Beitragsverrechnung* the intermediary is paid on the tariff
     premium, the surplus offset being a policyholder rebate rather than a price reduction.
+
+    Override reason: the renewal commission is a rate on the charged instalment after the
+    first projected policy year, products/kapitallebensversicherung/technical-notes.md:636
     """
     cost = data.charge_table().loc[cost_id()]                        # noqa: F821
-    init = (float(cost["comm_init_rate"]) * beitragssumme() * pols_if(t)
-            if (t == t_start() and duration_init() == 0) else 0.0)
-    renew = (float(cost["comm_renew_rate"]) * prem_charged_inst_pp(t) * pols_if(t)
-             if duration(t) > k_start() else 0.0)
-    return init + renew
+    return (float(cost["comm_renew_rate"]) * prem_charged_inst_pp(t) * pols_if(t)
+            if duration(t) > k_start() else 0.0)
 
 
 # --- output ----------------------------------------------------------------

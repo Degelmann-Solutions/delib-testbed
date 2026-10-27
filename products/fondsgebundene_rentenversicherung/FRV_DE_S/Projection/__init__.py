@@ -1573,17 +1573,27 @@ def expenses(t):
             + expense_annuitisation * pols_maturity(t))              # noqa: F821
 
 
-def commissions(t):
-    """Commission outgo in month t, published beside :func:`expenses`.
+def comm_init(t):
+    """The *Abschlussprovision* at ``t = 0``, :func:`comm_acq_pp` on the count in force **[std]**.
 
-    The *Abschlussprovision* at ``t = 0`` — :func:`comm_acq_pp` on the count in force in
-    that month, and nil on an in-force model point whose frame opens later, the commission
-    being sunk — plus the *Bestandsprovision* ``comm_renew_rate x prem_pp(t)`` on every
-    gross *Beitrag* collected.  Both **[std]**: no German unit-linked commission scale was
-    established.
+    Nil on an in-force model point whose frame opens later, the commission being sunk.  No
+    German unit-linked commission scale was established.  The commissions are published
+    beside :func:`expenses`.
+
+    Override reason: the initial commission is ``comm_acq_rate`` of the *Beitragssumme* on
+    the count in force at ``t = 0``,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:540
     """
-    return (comm_acq_pp(t) * pols_if(t)
-            + comm_renew_rate * prem_pp(t) * pols_if(t))             # noqa: F821
+    return comm_acq_pp(t) * pols_if(t)
+
+
+def comm_renew(t):
+    """The *Bestandsprovision* ``comm_renew_rate x prem_pp(t)`` on every gross *Beitrag* **[std]**.
+
+    Override reason: the renewal commission is a rate on each gross premium,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:541
+    """
+    return comm_renew_rate * prem_pp(t) * pols_if(t)                 # noqa: F821
 
 
 def net_cf(t):

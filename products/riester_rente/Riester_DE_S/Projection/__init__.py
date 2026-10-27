@@ -211,6 +211,8 @@ a(k)                       annuity_pp(k)                   Annual annuity, 12 in
 (none)                     expenses_maint(t)               Maintenance + annuity expense
 (none)                     expenses_claim(t)               Per death, surrender, transfer
 (none)                     expenses(t)                     Expense outgo
+(none)                     comm_init_rate()                comm_rate_init
+(none)                     comm_renew(t)                   Renewal on the contributions
 (none)                     commissions(t)                  Commission outgo
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
 liability_cf(t)            liability_cf(t)                 The same stream, outgo positive
@@ -1697,20 +1699,34 @@ def expenses_claim(t):
                             + pols_transfer(t))
 
 
-def commissions(t):
-    """Commission outgo in month t **[std]**, published beside :func:`expenses`.
+def comm_init_rate():
+    """``comm_rate_init``, the initial commission rate on the *Beitragssumme* **[std]**.
 
-    ``comm_rate_init x beitragssumme()`` at issue on a point written at the valuation date,
-    otherwise ``comm_rate_renew`` of the contributions credited — the *Eigenbeitrag* and
-    the Zulagen alike, because the provider is remunerated on what it administers.  The
-    renewal commission is a percentage of a contribution, so it falls in the month the
-    contribution does and in no other.  The initial rate sits at the *Höchstzillmersatz*;
-    **the cash leaves at issue while the charge is recovered over five years**, and that gap
-    is the new-business strain the insurer carries.  Zero from *Rentenbeginn*.  It is a
-    **separate** column from :func:`expenses` and :func:`net_cf` subtracts each exactly once.
+    Paid at issue on a point written at the valuation date.  The initial rate sits at the
+    *Höchstzillmersatz*; **the cash leaves at issue while the charge is recovered over five
+    years**, and that gap is the new-business strain the insurer carries.  The commission
+    is a **separate** column from :func:`expenses` and :func:`net_cf` subtracts each exactly
+    once.
+
+    Override reason: the initial commission is ``comm_rate_init`` of the *Beitragssumme* at
+    issue, products/riester_rente/technical-notes.md:667
+    """
+    return comm_rate_init                                            # noqa: F821
+
+
+def comm_renew(t):
+    """``comm_rate_renew`` of the contributions credited in month t **[std]**.
+
+    The *Eigenbeitrag* and the Zulagen alike, because the provider is remunerated on what it
+    administers.  The renewal commission is a percentage of a contribution, so it falls in
+    the month the contribution does and in no other; zero from *Rentenbeginn*, and zero in
+    the month of the initial commission, which is paid instead of it.
+
+    Override reason: the renewal commission is a rate on the *Eigenbeitrag* and the Zulagen
+    in the month they fall, products/riester_rente/technical-notes.md:668
     """
     if t == 0 and duration_init() == 0:
-        return comm_rate_init * beitragssumme() * pols_if(0)         # noqa: F821
+        return 0.0
     if not is_accum(t) or not prem_due(t):
         return 0.0
     k = proj_year(t)

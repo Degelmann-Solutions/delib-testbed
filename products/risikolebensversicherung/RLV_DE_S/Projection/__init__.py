@@ -155,6 +155,8 @@ maint(t)                   maint_pp(t)                     Admin plus collection
 maint(t) l(t)              expenses_maint(t)               Maintenance on the in-force
 ec pols_death(t)           expenses_claim(t)               Claim expense per death
 expenses(t)                expenses(t)                     Total expense, ex commission
+comm_pp                    comm_init(t)                    comm_init_pp() at issue
+(none)                     comm_renew(t)                   Bestandspflegeprovision
 commissions(t)             commissions(t)                  Commission outgo
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
 liability_cf(t)            liability_cf(t)                 The same stream, outgo positive
@@ -1296,23 +1298,32 @@ def expenses_claim(t):
     return claim_expense * pols_death(t)                             # noqa: F821
 
 
-def commissions(t):
-    """Commission outgo in month t.
+def comm_init(t):
+    """The initial *Abschlussprovision* at issue, :func:`comm_init_pp`, or zero **[std]**.
 
-    The initial *Abschlussprovision* at issue — in month ``t = 0`` and only where
-    ``duration_init = 0``, because on an in-force point it is sunk — plus the
-    *Bestandspflegeprovision* at 1,0 % of each *Zahlbeitrag* instalment from
-    ``duration(t) >= 1``, which is policy year 2.  Both **[std]**.
+    In month ``t = 0`` and only where ``duration_init = 0``, because on an in-force point it
+    is sunk.
 
-    The **rate** is a policy-year rate and steps on the anniversary; the **base** is the
-    instalment actually collected, so a fractionated payer earns the renewal commission in
-    instalments too.  On an annual-mode point that reproduces the annual model's
-    commission exactly, both the rate and the collection sitting on the anniversary.
+    Override reason: the initial commission is the per-policy ``comm_pp`` at issue on new
+    business, products/risikolebensversicherung/technical-notes.md:608
     """
-    init = comm_init_pp() if (t == 0 and duration_init() == 0) else 0.0
-    renew = (comm_rate_renew * prem_inst_pp(t) * pols_if(t)          # noqa: F821
-             if duration(t) >= 1 else 0.0)
-    return init + renew
+    return comm_init_pp() if (t == 0 and duration_init() == 0) else 0.0
+
+
+def comm_renew(t):
+    """The *Bestandspflegeprovision*, 1,0 % of each *Zahlbeitrag* instalment **[std]**.
+
+    From ``duration(t) >= 1``, which is policy year 2.  The **rate** is a policy-year rate
+    and steps on the anniversary; the **base** is the instalment actually collected, so a
+    fractionated payer earns the renewal commission in instalments too.  On an annual-mode
+    point that reproduces the annual model's commission exactly, both the rate and the
+    collection sitting on the anniversary.
+
+    Override reason: the renewal commission is a rate on each *Zahlbeitrag* instalment from
+    policy year 2, products/risikolebensversicherung/technical-notes.md:397
+    """
+    return (comm_rate_renew * prem_inst_pp(t) * pols_if(t)           # noqa: F821
+            if duration(t) >= 1 else 0.0)
 
 
 def net_cf(t):

@@ -686,6 +686,35 @@ CORE_CELLS = {
                      "riester_rente": "derived",
                      "risikolebensversicherung": "derived",
                      "sofortrente": "derived"},
+        "comm_init_rate": {"basisrente": "override",
+                           "berufsunfaehigkeit": "derived",
+                           "indexpolice": "derived",
+                           "kapitallebensversicherung": "override",
+                           "klassische_rentenversicherung": "derived",
+                           "pflegerentenversicherung": "derived",
+                           "riester_rente": "override",
+                           "sofortrente": "derived"},
+        "comm_init": {"basisrente": "derived",
+                      "berufsunfaehigkeit": "derived",
+                      "fondsgebundene_rentenversicherung": "override",
+                      "indexpolice": "derived",
+                      "kapitallebensversicherung": "derived",
+                      "klassische_rentenversicherung": "derived",
+                      "pflegerentenversicherung": "derived",
+                      "riester_rente": "derived",
+                      "risikolebensversicherung": "override",
+                      "sofortrente": "derived"},
+        "comm_renew": {"basisrente": "override",
+                       "berufsunfaehigkeit": "derived",
+                       "fondsgebundene_rentenversicherung": "override",
+                       "indexpolice": "derived",
+                       "kapitallebensversicherung": "override",
+                       "klassische_rentenversicherung": "derived",
+                       "pflegerentenversicherung": "derived",
+                       "riester_rente": "override",
+                       "risikolebensversicherung": "override",
+                       "sofortrente": "derived"},
+        "commissions": dict.fromkeys(MODELS, "derived"),
     },
 }
 
@@ -1316,4 +1345,17 @@ def test_rv_commutation_is_a_further_kind_and_an_unknown_kind_is_rejected(produc
     with pytest.raises(Exception, match="invalid kind") as raised:
         item.claims(item.t_start(), "ANNUITY")
     assert raised_value_error(raised, "invalid kind"), raised.value
+
+
+@pytest.mark.parametrize("product", ["indexpolice", "klassische_rentenversicherung"])
+def test_a_product_without_commission_pays_exactly_zero(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.commissions._is_derived()
+    assert projection.comm_init_rate._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        for t in range(item.t_start(), item.proj_len()):
+            zero = item.commissions(t)
+            assert zero == 0.0 and math.copysign(1.0, zero) == 1.0, (point_id, t)
 

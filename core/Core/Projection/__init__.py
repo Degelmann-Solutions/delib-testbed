@@ -751,3 +751,36 @@ def expenses(t):
     :func:`commissions` is a line of its own, and :func:`net_cf` subtracts each once.
     """
     return expenses_acq(t) + expenses_maint(t) + expenses_claim(t)   # noqa: F821
+
+
+def comm_init_rate():
+    """The initial commission as a rate on the *Beitragssumme*; 0, no initial commission."""
+    return 0.0
+
+
+def comm_init(t):
+    """The initial commission (*Abschlussprovision*) in month t.
+
+    ``comm_init_rate() x beitragssumme() x pols_if(t)`` in the frame's first month on a
+    new-business point (``duration_init() == 0``), and 0 otherwise: on an in-force point it
+    was paid at conclusion, before the frame opens.  0 without reading the *Beitragssumme*
+    where the rate is 0.
+    """
+    rate = comm_init_rate()                                          # noqa: F821
+    if rate == 0.0 or t != t_start() or duration_init() != 0:        # noqa: F821
+        return 0.0
+    return rate * beitragssumme() * pols_if(t)                       # noqa: F821
+
+
+def comm_renew(t):
+    """The renewal commission (*Bestandsprovision*) in month t; 0, none."""
+    return 0.0
+
+
+def commissions(t):
+    """Commission outgo in month t, ``comm_init(t) + comm_renew(t)``.
+
+    A line of its own beside :func:`expenses`, which excludes it; :func:`net_cf` subtracts
+    each once.
+    """
+    return comm_init(t) + comm_renew(t)                              # noqa: F821

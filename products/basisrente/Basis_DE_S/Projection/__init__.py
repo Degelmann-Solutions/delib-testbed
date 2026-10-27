@@ -169,6 +169,8 @@ claims_survivor
 (none)                     expenses_acq(t)                 Acquisition, inception only
 (none)                     expenses_maint(t)               Maintenance, annuity admin
 E(t)                       expenses(t)                     Insurer expense outgo
+(none)                     comm_init_rate()                Abschlussprovision rate
+(none)                     comm_renew(t)                   Bestandsprovision
 C(t)                       commissions(t)                  Commission outgo
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
 liability_cf(t)            liability_cf(t)                 The same stream, outgo positive
@@ -1567,34 +1569,38 @@ def expenses_maint(t):
             * (pols_if(t) + pols_gtd(t)))
 
 
-def commissions(t):
-    """C(t): commission outgo in projection month t, fund level.
+def comm_init_rate():
+    """The *Abschlussprovision* rate on the *Beitragssumme*, from the charge table **[std]**.
 
-    ``comm_init_rate x beitragssumme() x pols_if_init()`` at inception — the
-    *Abschlussprovision*, sized to the *Zillmerung* cap, which is the German design in
-    which what the insurer pays out is what it may write into the reserve — plus
-    ``comm_renew_rate x (premiums(t) + zuzahlungen(t))`` from ``t = 1``, the
-    *Bestandsprovision*.  Both **[std]**: the corpus's only datum is a 1 575 €
-    *Abschlussprovision* on one specimen quotation, and it is [unverified].
+    Sized to the *Zillmerung* cap, which is the German design in which what the insurer pays
+    out is what it may write into the reserve; the corpus's only datum is a 1 575 €
+    *Abschlussprovision* on one specimen quotation, and it is [unverified].  Paid **only**
+    where the model point is new business (``duration_init = 0``): an in-force point's
+    acquisition commission was paid before the valuation date and is not a projected cash
+    flow.
+
+    Override reason: the initial commission is the tariff's ``comm_init_rate`` of the
+    *Beitragssumme*, products/basisrente/technical-notes.md:610
+    """
+    row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
+    return float(row["comm_init_rate"])
+
+
+def comm_renew(t):
+    """The *Bestandsprovision*, ``comm_renew_rate x (premiums(t) + zuzahlungen(t))``, from ``t = 1``.
 
     The renewal commission is a percentage of a contribution, so it falls in the month the
     contribution does and in no other — the ``t >= 1`` condition excludes the first year's
     premium at ``t = 0`` and admits every later one at ``t = 12, 24, ...``, which is
-    exactly the annual-step model's rule.
+    exactly the annual-step model's rule.  **[std]**.
 
-    Paid **only** where the model point is new business (``duration_init = 0``): an
-    in-force point's acquisition commission was paid before the valuation date and is not a
-    projected cash flow.
+    Override reason: the renewal commission is a rate on the premiums and *Zuzahlungen*
+    from ``t = 1``, products/basisrente/technical-notes.md:611
     """
-    if t < 0 or t >= proj_len():
+    if t < 1 or t >= proj_len():
         return 0.0
     row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
-    out = 0.0
-    if t == 0 and duration_init() == 0:
-        out += float(row["comm_init_rate"]) * beitragssumme() * pols_if_init()
-    if t >= 1:
-        out += float(row["comm_renew_rate"]) * (premiums(t) + zuzahlungen(t))
-    return out
+    return float(row["comm_renew_rate"]) * (premiums(t) + zuzahlungen(t))
 
 
 def net_cf(t):

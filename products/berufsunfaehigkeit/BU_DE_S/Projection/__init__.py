@@ -130,8 +130,6 @@ surplus_credit(t)          surplus_credit(t)               Beitragsverrechnung r
 claims_bu_rente etc.       claims(t, kind)                 Benefit outgo by kind
 (none)                     claim_kinds()                   BU_RENTE / REINTEGRATION / LAPSE
 (none)                     claims_other(t, kind)           BU_RENTE and REINTEGRATION
-(none)                     expenses_acq(t)                 Acquisition, t = 0, new business
-(none)                     expenses_maint(t)               Proportional plus flat admin
 expenses(t)                expenses(t)                     Acquisition and administration
 claim_expenses(t)          claim_expenses(t)               Leistungsbearbeitungskosten
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
@@ -1661,40 +1659,38 @@ def claims_other(t, kind):
     raise ValueError("invalid kind")
 
 
-def expenses_acq(t):
-    """The acquisition charge ``acq_rate x prem_gross_level_pp() x beitragssumme_unit()`` **[std]**.
+def expenses(t):
+    """Total administration expense at the start of month t **[std]**.
 
-    Levied **once, at t = 0, and only on a new-business point** — an in-force point has
-    already incurred it, and charging it again at the valuation date is a numbered pitfall.
-    At 2.5 % of a 37-year *Beitragssumme* it is the largest single expense item in the model
-    and it dominates the first month's :func:`net_cf`.  Commission is not a separate line:
-    it sits inside ``acq_rate``, which is the German taxonomy.  All expense components are
-    shipped as standardizations because no German insurer publishes a BU charge structure
-    and a pure risk contract carries no *Effektivkosten* disclosure.
+    Three components, all shipped as standardizations because no German insurer publishes
+    a BU charge structure and a pure risk contract carries no *Effektivkosten*
+    disclosure:
 
-    Override reason: the acquisition charge falls once at ``t = 0`` on new business,
-    products/berufsunfaehigkeit/technical-notes.md:523
+    * **acquisition**, ``acq_rate x prem_gross_level_pp() x beitragssumme_unit()``,
+      levied **once, at t = 0, and only on a new-business point** — an in-force point has
+      already incurred it, and charging it again at the valuation date is a numbered
+      pitfall.  At 2.5 % of a 37-year *Beitragssumme* it is the largest single expense
+      item in the model and it dominates the first month's :func:`net_cf`;
+    * **proportional administration**, ``admin_prem_rate x premiums(t)``, in every month a
+      premium is due;
+    * **flat administration**, ``admin_flat_ann / 12`` per in-force policy per month,
+      **uninflated**, because a German *Verwaltungskostenzuschlag* is fixed in the tariff
+      at conclusion.
+
+    Commission is not a separate line: it sits inside ``acq_rate``, which is the German
+    taxonomy.  Claim handling is not here either — it is :func:`claim_expenses`, because
+    it scales with claims rather than with policies.
+
+    Override reason: the acquisition charge is added to the proportional administration
+    before the flat administration, ``(acq + prop) + flat``, an order the core's
+    ``acq + maint + claim`` would reassociate, products/berufsunfaehigkeit/technical-notes.md:523
     """
+    acq = 0.0
     if t == 0 and duration_mth_init() == 0:
-        return acq_rate * prem_gross_level_pp() * beitragssumme_unit()  # noqa: F821
-    return 0.0
-
-
-def expenses_maint(t):
-    """Administration at the start of month t, proportional plus flat **[std]**.
-
-    **Proportional administration**, ``admin_prem_rate x premiums(t)``, in every month a
-    premium is due; **flat administration**, ``admin_flat_ann / 12`` per in-force policy
-    per month, **uninflated**, because a German *Verwaltungskostenzuschlag* is fixed in the
-    tariff at conclusion.  Claim handling is not here — it is :func:`claim_expenses`,
-    because it scales with claims rather than with policies.
-
-    Override reason: administration is a rate on the premium paid plus a flat amount per
-    policy, products/berufsunfaehigkeit/technical-notes.md:576
-    """
+        acq = acq_rate * prem_gross_level_pp() * beitragssumme_unit()  # noqa: F821
     admin_prop = admin_prem_rate * prem_gross_pp(t) * pols_prem(t)   # noqa: F821
     admin_flat = admin_flat_ann / 12.0 * pols_if(t)                  # noqa: F821
-    return admin_prop + admin_flat
+    return acq + admin_prop + admin_flat
 
 
 def claim_expenses(t):

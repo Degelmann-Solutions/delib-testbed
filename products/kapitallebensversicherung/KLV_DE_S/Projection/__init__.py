@@ -185,6 +185,7 @@ l(t)                pols_if(t)                             In force at the start
 RK(t)               benefit_lapse_pp(t)                    surr_value_pp(t), per lapse
 (none)              claim_kinds()                          DEATH / MATURITY / LAPSE
 claims_*            claims(t, kind)                        DEATH / MATURITY / LAPSE
+(none)              expense_infl()                         Its rate, from cost_table.csv
 (none)              inflation_factor(t)                    Expense inflation factor
 (none)              claim_expenses(t)                      Claim handling expense
 (none)              expenses_pp(t)                         Per-policy expense in month t

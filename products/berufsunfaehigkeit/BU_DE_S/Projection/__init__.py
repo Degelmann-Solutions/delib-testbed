@@ -340,8 +340,8 @@ def occ_factor():
     model point three times the anchor's inception rate carries a premium slightly
     **below** three times the anchor's.
     """
-    return float(data.occupation_table().loc[                        # noqa: F821
-        berufsgruppe(), "occ_factor"])
+    return float(data.occupation_table_dict()["occ_factor"][         # noqa: F821
+        berufsgruppe()])
 
 
 def bu_rente_mth():
@@ -424,8 +424,8 @@ def prem_mode_months():
     0, 12, 24, ... and is twelve times as large.  Carrying the frequency as a parameter
     rather than smoothing it is the whole reason this model runs on a monthly grid.
     """
-    return int(data.freq_loading_table().loc[                        # noqa: F821
-        prem_freq(), "prem_mode_months"])
+    return int(data.freq_loading_table_dict()["prem_mode_months"][   # noqa: F821
+        prem_freq()])
 
 
 def gross_prem_ann():
@@ -632,9 +632,8 @@ def inc_rate_at_age(x):
     replacement table already net of declinature must be used with that factor at 1.00 or
     the *Anerkennungsquote* is counted twice.
     """
-    tbl = data.inception_table()                                     # noqa: F821
-    return float(tbl.loc[min(max(x, int(tbl.index.min())),
-                             int(tbl.index.max())), "inc_rate"])
+    lo, hi = data.inception_table_ages()                             # noqa: F821
+    return float(data.inception_table_dict()["inc_rate"][min(max(x, lo), hi)])   # noqa: F821
 
 
 def mort_rate_at_age(x):
@@ -644,9 +643,8 @@ def mort_rate_at_age(x):
     table's range 18-70.  It applies to the *aktiv* ledger **and to the § 174 run-off**,
     whose lives have recovered and are no longer impaired lives.
     """
-    tbl = data.mort_table()                                          # noqa: F821
-    return float(tbl.loc[min(max(x, int(tbl.index.min())),
-                             int(tbl.index.max())), "mort_rate_actv"])
+    lo, hi = data.mort_table_ages()                                  # noqa: F821
+    return float(data.mort_table_dict()["mort_rate_actv"][min(max(x, lo), hi)])   # noqa: F821
 
 
 def mort_rate_dis_at_age(x):
@@ -659,9 +657,8 @@ def mort_rate_dis_at_age(x):
     for both states is a numbered pitfall**, which is why the two live in separate
     columns.
     """
-    tbl = data.mort_table()                                          # noqa: F821
-    return float(tbl.loc[min(max(x, int(tbl.index.min())),
-                             int(tbl.index.max())), "mort_rate_dis"])
+    lo, hi = data.mort_table_ages()                                  # noqa: F821
+    return float(data.mort_table_dict()["mort_rate_dis"][min(max(x, lo), hi)])   # noqa: F821
 
 
 def recov_rates():
@@ -673,8 +670,8 @@ def recov_rates():
     with 445 cohorts is the difference between a lookup and a quarter of a million of
     them.
     """
-    tbl = data.claim_duration_table()                                # noqa: F821
-    return tuple(float(tbl.loc[y, "recov_rate"]) for y in range(1, 12))
+    rates = data.claim_duration_table_dict()["recov_rate"]           # noqa: F821
+    return tuple(float(rates[y]) for y in range(1, 12))
 
 
 def mort_dis_sel_factors():
@@ -683,8 +680,8 @@ def mort_dis_sel_factors():
     3.0 / 2.0 / 1.6 / 1.4 / 1.3 and 1.2 from claim year 6, read once from
     *claim_duration_table.csv*.  See :func:`recov_rates` for why it is a tuple.
     """
-    tbl = data.claim_duration_table()                                # noqa: F821
-    return tuple(float(tbl.loc[y, "mort_dis_sel_factor"]) for y in range(1, 12))
+    factors = data.claim_duration_table_dict()["mort_dis_sel_factor"]   # noqa: F821
+    return tuple(float(factors[y]) for y in range(1, 12))
 
 
 # --- the best-estimate rates as composed ---

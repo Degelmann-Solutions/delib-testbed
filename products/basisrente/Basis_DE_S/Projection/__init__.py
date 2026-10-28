@@ -428,7 +428,7 @@ def omega_age():
     Override reason: the limiting age is read off the mortality table, one above its last
     age, where ``qx = 1.0``, products/basisrente/technical-notes.md:81
     """
-    return int(data.mort_table().index.max()) + 1                    # noqa: F821
+    return int(max(data.mort_table_dict()["qx"])) + 1                # noqa: F821
 
 
 def horizon_age():
@@ -534,8 +534,8 @@ def prem_freq_load():
     """
     if model_point()["prem_form"] == "single":
         return 1.0
-    return float(data.option_table().loc[                            # noqa: F821
-        ("prem_mode", prem_freq()), "factor"])
+    return float(data.option_table_dict()["factor"][                 # noqa: F821
+        ("prem_mode", prem_freq())])
 
 
 def prem_base_pp(k):
@@ -590,10 +590,9 @@ def zuz_take_up(k):
     at all is behavioural; a model that treats the *Zuzahlung* as contractual has quietly
     set this to 1.0.  Nothing in the delib corpus supports any level.
     """
-    tab = data.behaviour_table()                                     # noqa: F821
     key = model_point()["beh_table_id"]
-    d = min(policy_year_y(k), int(tab.loc[key].index.max()))
-    return float(tab.loc[(key, max(d, 1)), "zuz_take_up"])
+    d = min(policy_year_y(k), data.behaviour_table_durs()[key])      # noqa: F821
+    return float(data.behaviour_table_dict()["zuz_take_up"][(key, max(d, 1))])   # noqa: F821
 
 
 def zuz_pp(k):
@@ -650,8 +649,8 @@ def alpha_rate():
     plus the initial commission, and the German design is precisely that what the insurer
     pays out is sized to what it may write into the reserve.
     """
-    return float(data.charge_table().loc[                            # noqa: F821
-        model_point()["tariff_id"], "zill_rate"])
+    return float(data.charge_table_dict()["zill_rate"][              # noqa: F821
+        model_point()["tariff_id"]])
 
 
 def alpha_amort_pp(k):
@@ -690,8 +689,8 @@ def alpha_zuz_pp(k):
     *Zillmerung*; it carries its own single charge instead, which is the normal German
     treatment of a top-up.  Zero where no *Zuzahlung* is paid.
     """
-    return (float(data.charge_table().loc[                           # noqa: F821
-        model_point()["tariff_id"], "alpha_zuz_rate"]) * zuz_pp(k))
+    return (float(data.charge_table_dict()["alpha_zuz_rate"][        # noqa: F821
+        model_point()["tariff_id"]]) * zuz_pp(k))
 
 
 def expense_infl():
@@ -703,8 +702,8 @@ def expense_infl():
     Override reason: the expense inflation is a column of the charge table keyed by
     ``tariff_id``, products/basisrente/technical-notes.md:141
     """
-    return float(data.charge_table().loc[                            # noqa: F821
-        model_point()["tariff_id"], "expense_infl"])
+    return float(data.charge_table_dict()["expense_infl"][           # noqa: F821
+        model_point()["tariff_id"]])
 
 
 def inflation_years(t):
@@ -730,8 +729,8 @@ def unit_cost_pp(k):
     An account deduction, not an expense.  The insurer's own maintenance outgo is
     ``maint_expense_pp`` and is a separate line of :func:`expenses`.
     """
-    return (float(data.charge_table().loc[                           # noqa: F821
-        model_point()["tariff_id"], "unit_cost_pp"])
+    return (float(data.charge_table_dict()["unit_cost_pp"][          # noqa: F821
+        model_point()["tariff_id"]])
         * inflation_factor(12 * k))
 
 
@@ -751,8 +750,8 @@ def prem_to_av_pp(k):
     """
     if k < 0 or k >= k_conv() or k >= proj_len_y():
         return 0.0
-    beta = float(data.charge_table().loc[                            # noqa: F821
-        model_point()["tariff_id"], "beta_prem"])
+    beta = float(data.charge_table_dict()["beta_prem"][              # noqa: F821
+        model_point()["tariff_id"]])
     return ((prem_pp(k) + zuz_pp(k)) * (1.0 - beta)
             - alpha_amort_pp(k) - alpha_zuz_pp(k) - unit_cost_pp(k))
 
@@ -829,9 +828,9 @@ def mort_rate_at_age(x, y):
     First order, so it carries the DAV's prudential margins.  The guaranteed
     *Rentenfaktor* is struck on this basis; the projection runs on :func:`mort_rate`.
     """
-    row = data.mort_table().loc[x]                                   # noqa: F821
-    rate = (float(row["qx"])
-            * (1.0 - float(row["trend"])) ** (y - mort_base_year))   # noqa: F821
+    table = data.mort_table_dict()                                   # noqa: F821
+    rate = (float(table["qx"][x])
+            * (1.0 - float(table["trend"][x])) ** (y - mort_base_year))   # noqa: F821
     return min(max(rate, 0.0), 1.0)
 
 
@@ -856,7 +855,7 @@ def mort_be_factor():
     Override reason: the best estimate is a round 0.85 of the shipped first-order table, a
     tariff parameter in *param_table.csv*, products/basisrente/technical-notes.md:321
     """
-    return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
+    return float(data.param_table_dict()["value"]["mort_be_factor"])   # noqa: F821
 
 
 def mort_rate(t):
@@ -916,10 +915,9 @@ def bf_rate(t):
         return 0.0
     if model_point()["prem_form"] == "single":
         return 0.0
-    tab = data.behaviour_table()                                     # noqa: F821
     key = model_point()["beh_table_id"]
-    d = min(policy_year(t), int(tab.loc[key].index.max()))
-    return float(tab.loc[(key, max(d, 1)), "bf_rate"])
+    d = min(policy_year(t), data.behaviour_table_durs()[key])        # noqa: F821
+    return float(data.behaviour_table_dict()["bf_rate"][(key, max(d, 1))])   # noqa: F821
 
 
 def pols_paying(t):
@@ -1122,10 +1120,9 @@ def decl_rate(k):
     was established anywhere in the delib corpus, and the path is set above the 1,00 %
     *Höchstrechnungszins* by a plausible surplus margin and graded down.
     """
-    tab = data.surplus_table()                                       # noqa: F821
     key = scenario_id()
-    tt = min(max(k, 0), int(tab.loc[key].index.max()))
-    return float(tab.loc[(key, tt), "decl_rate"])
+    tt = min(max(k, 0), data.surplus_table_years()[key])             # noqa: F821
+    return float(data.surplus_table_dict()["decl_rate"][(key, tt)])  # noqa: F821
 
 
 def cred_rate(k):
@@ -1196,8 +1193,8 @@ def av_pp_at(k, timing):
     if timing == "AFT_PREM":
         return av_pp_at(k, "BEF_PREM") + prem_to_av_pp(k)
     if timing == "AFT_INT":
-        gamma = float(data.charge_table().loc[                       # noqa: F821
-            model_point()["tariff_id"], "gamma_av"])
+        gamma = float(data.charge_table_dict()["gamma_av"][          # noqa: F821
+            model_point()["tariff_id"]])
         return av_pp_at(k, "AFT_PREM") * (1.0 + cred_rate(k) - gamma)
     raise ValueError("invalid timing")
 
@@ -1243,8 +1240,8 @@ def av_pu_at(k, timing):
     if timing == "AFT_PREM":
         return av_pu_at(k, "BEF_PREM") - unit_cost_pp(k) * pols_paidup(12 * k)
     if timing == "AFT_INT":
-        gamma = float(data.charge_table().loc[                       # noqa: F821
-            model_point()["tariff_id"], "gamma_av"])
+        gamma = float(data.charge_table_dict()["gamma_av"][          # noqa: F821
+            model_point()["tariff_id"]])
         return av_pu_at(k, "AFT_PREM") * (1.0 + cred_rate(k) - gamma)
     raise ValueError("invalid timing")
 
@@ -1299,8 +1296,8 @@ def rentenfaktor_curr():
     """
     if t_conv() < 0:
         return 0.0
-    return float(data.rentenfaktor_table().loc[                      # noqa: F821
-        (model_point()["rf_scenario_id"], ret_age()), "rf_curr"])
+    return float(data.rentenfaktor_table_dict()["rf_curr"][          # noqa: F821
+        (model_point()["rf_scenario_id"], ret_age())])
 
 
 def rf_option_factor():
@@ -1315,11 +1312,11 @@ def rf_option_factor():
     death benefit, which is why they appear here and not in :func:`claims`.  1,000 on the
     anchor cell, where both options are off.
     """
-    tab = data.option_table()                                        # noqa: F821
+    factor = data.option_table_dict()["factor"]                      # noqa: F821
     g = "%d" % int(model_point()["guarantee_period_y"])
     s = "%.2f" % float(model_point()["surv_annuity_rate"])
-    return (float(tab.loc[("guarantee_period", g), "factor"])
-            * float(tab.loc[("survivor", s), "factor"]))
+    return (float(factor[("guarantee_period", g)])
+            * float(factor[("survivor", s)]))
 
 
 def rentenfaktor_applied():
@@ -1360,8 +1357,8 @@ def fund_at_conv():
     """
     if k_conv() < 0:
         return 0.0
-    sigma = float(data.charge_table().loc[                           # noqa: F821
-        model_point()["tariff_id"], "terminal_bonus_rate"])
+    sigma = float(data.charge_table_dict()["terminal_bonus_rate"][   # noqa: F821
+        model_point()["tariff_id"]])
     return av_at(k_conv(), "BEF_PREM") * (1.0 + sigma)
 
 
@@ -1378,10 +1375,9 @@ def ann_bonus_rate(k):
     lever and ``mort_be_factor`` between them decide the payout phase's whole economics.
     Both are **[std]** independently.
     """
-    tab = data.surplus_table()                                       # noqa: F821
     key = scenario_id()
-    tt = min(max(k, 0), int(tab.loc[key].index.max()))
-    return float(tab.loc[(key, tt), "ann_bonus_rate"])
+    tt = min(max(k, 0), data.surplus_table_years()[key])             # noqa: F821
+    return float(data.surplus_table_dict()["ann_bonus_rate"][(key, tt)])   # noqa: F821
 
 
 def ann_pp(k):
@@ -1562,8 +1558,9 @@ def expenses_acq(t):
     if t < 0 or t >= proj_len():
         return 0.0
     if t == 0 and duration_init() == 0:
-        row = data.charge_table().loc[model_point()["tariff_id"]]    # noqa: F821
-        return float(row["acq_expense_pp"]) * pols_if_init()
+        tariff = model_point()["tariff_id"]
+        return (float(data.charge_table_dict()["acq_expense_pp"][tariff])   # noqa: F821
+                * pols_if_init())
     return 0.0
 
 
@@ -1588,11 +1585,12 @@ def expenses_maint(t):
     """
     if t < 0 or t >= proj_len():
         return 0.0
-    row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
+    charges = data.charge_table_dict()                               # noqa: F821
+    tariff = model_point()["tariff_id"]
     infl = inflation_factor(t)
     if t < t_conv():
-        return float(row["maint_expense_pp"]) / 12.0 * infl * pols_if(t)
-    return (float(row["annuity_admin_pp"]) / 12.0 * infl
+        return float(charges["maint_expense_pp"][tariff]) / 12.0 * infl * pols_if(t)
+    return (float(charges["annuity_admin_pp"][tariff]) / 12.0 * infl
             * (pols_if(t) + pols_gtd(t)))
 
 
@@ -1609,8 +1607,8 @@ def comm_init_rate():
     Override reason: the initial commission is the tariff's ``comm_init_rate`` of the
     *Beitragssumme*, products/basisrente/technical-notes.md:610
     """
-    row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
-    return float(row["comm_init_rate"])
+    return float(data.charge_table_dict()["comm_init_rate"][         # noqa: F821
+        model_point()["tariff_id"]])
 
 
 def comm_renew(t):
@@ -1626,8 +1624,9 @@ def comm_renew(t):
     """
     if t < 1 or t >= proj_len():
         return 0.0
-    row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
-    return float(row["comm_renew_rate"]) * (premiums(t) + zuzahlungen(t))
+    rate = float(data.charge_table_dict()["comm_renew_rate"][        # noqa: F821
+        model_point()["tariff_id"]])
+    return rate * (premiums(t) + zuzahlungen(t))
 
 
 def income_other(t):
@@ -1650,7 +1649,8 @@ def income_other(t):
 def check_net_cf_resid(t):
     """The cash flow statement's residual in projection month t; zero everywhere.
 
-    Reconstructs ``net_cf(t)`` from :func:`result_cf`'s **own published columns** —
+    Reconstructs ``net_cf(t)`` from :func:`result_cf`'s **own published columns**, read
+    through the core's ``result_cf_dict()`` —
 
         ``premiums + zuzahlungen - claims_death - claims_annuity - claims_survivor
         - expenses - commissions - net_cf``
@@ -1664,10 +1664,10 @@ def check_net_cf_resid(t):
     Override reason: the identity adds the *Zuzahlungen* to the premium as income and is
     taken as the rebuilt flow less ``net_cf``, products/basisrente/technical-notes.md:685
     """
-    row = result_cf().loc[t]
-    return float(row["premiums"] + row["zuzahlungen"]
-                 - row["claims_death"] - row["claims_annuity"] - row["claims_survivor"]
-                 - row["expenses"] - row["commissions"] - row["net_cf"])
+    cf = result_cf_dict()
+    return float(cf["premiums"][t] + cf["zuzahlungen"][t]
+                 - cf["claims_death"][t] - cf["claims_annuity"][t] - cf["claims_survivor"][t]
+                 - cf["expenses"][t] - cf["commissions"][t] - cf["net_cf"][t])
 
 
 def check_net_cf():

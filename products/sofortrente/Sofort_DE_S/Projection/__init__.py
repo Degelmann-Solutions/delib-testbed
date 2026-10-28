@@ -505,10 +505,9 @@ def mort_rate_at_age(x, table_sex, basis):
     if table_sex == "U":
         return (mix_male * mort_rate_at_age(x, "M", basis)           # noqa: F821
                 + (1.0 - mix_male) * mort_rate_at_age(x, "F", basis))   # noqa: F821
-    tab = data.mort_table()                                          # noqa: F821
-    ages = tab.index.get_level_values("age")
-    xx = min(max(int(x), int(ages.min())), int(ages.max()))
-    return float(tab.loc[(basis, table_sex, xx), "mort_rate"])
+    lo, hi = data.mort_table_ages()                                  # noqa: F821
+    xx = min(max(int(x), lo), hi)
+    return float(data.mort_table_dict()["mort_rate"][(basis, table_sex, xx)])   # noqa: F821
 
 
 def improve_rate_at_age(x, basis):
@@ -520,10 +519,9 @@ def improve_rate_at_age(x, basis):
     **rate** of improvement as well as its level, because the improvement compounds over a
     forty-year stream, and a proxy reproducing only the level is not a proxy for the table.
     """
-    tab = data.improvement_table()                                   # noqa: F821
-    ages = tab.index.get_level_values("age")
-    xx = min(max(int(x), int(ages.min())), int(ages.max()))
-    return float(tab.loc[(basis, xx), "improve_rate"])
+    lo, hi = data.improvement_table_ages()                           # noqa: F821
+    xx = min(max(int(x), lo), hi)
+    return float(data.improvement_table_dict()["improve_rate"][(basis, xx)])   # noqa: F821
 
 
 def mort_rate_gen(x, table_sex, cohort, basis):
@@ -824,7 +822,7 @@ def surplus_init_pct():
     *Überschussanteilsatz* was established at any carrier for any year.
     """
     return float(
-        data.surplus_scale_table().loc[surplus_form(), "surplus_init_pct"])   # noqa: F821
+        data.surplus_scale_table_dict()["surplus_init_pct"][surplus_form()])   # noqa: F821
 
 
 def surplus_growth():
@@ -834,7 +832,7 @@ def surplus_growth():
     established and no level is.
     """
     return float(
-        data.surplus_scale_table().loc[surplus_form(), "surplus_growth"])   # noqa: F821
+        data.surplus_scale_table_dict()["surplus_growth"][surplus_form()])   # noqa: F821
 
 
 def annuity_guar_pp(t):

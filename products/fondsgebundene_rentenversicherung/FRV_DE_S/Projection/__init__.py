@@ -589,8 +589,12 @@ def horizon_age():
 # ----------------------------------------  the charge scale
 
 def charge_row():
-    """The row of ``charge_table.csv`` for this policy's ``charge_id``."""
-    return data.charge_table().loc[charge_id()]                      # noqa: F821
+    """The row of ``charge_table.csv`` for this policy's ``charge_id``, a dict by column.
+
+    Read through ``data.charge_table_rows()``, built once per model; the row is shared and
+    read-only.
+    """
+    return data.charge_table_rows()[charge_id()]                     # noqa: F821
 
 
 def alpha_rate():
@@ -881,8 +885,8 @@ def fund_return_gross_ann(t):
     ``glide_months`` months with a linear ramp down to ``mmkt_return_ann``, reaching the
     money-market rate exactly in the final month.
     """
-    base = data.fund_scenario_table().loc[                           # noqa: F821
-        (scenario_id(), policy_year(t)), "gross_return_ann"]
+    base = data.fund_scenario_table_dict()["gross_return_ann"][      # noqa: F821
+        (scenario_id(), policy_year(t))]
     base = float(base)
     if not ablauf_flag():
         return base
@@ -902,8 +906,8 @@ def fund_ter_ann(t):
     explicitly double-counts the fund's costs; ignoring it overstates the policyholder's
     return.  0.45 % p.a. on the active composite fund, 0.15 % on the ETF.
     """
-    return float(data.fund_scenario_table().loc[                     # noqa: F821
-        (scenario_id(), policy_year(t)), "ter_ann"])
+    return float(data.fund_scenario_table_dict()["ter_ann"][         # noqa: F821
+        (scenario_id(), policy_year(t))])
 
 
 def fund_return_net_ann(t):
@@ -1175,7 +1179,7 @@ def mort_rate_tariff_at_age(x):
     prices its death charge on a death table and its conversion guarantee on an annuity
     table, and using one for both misprices one of them.
     """
-    return float(data.mort_table().loc[x, "qx_tariff"])              # noqa: F821
+    return float(data.mort_table_dict()["qx_tariff"][x])             # noqa: F821
 
 
 def mort_be_factor():
@@ -1185,7 +1189,7 @@ def mort_be_factor():
     tariff parameter in *param_table.csv* that makes the *Risikoergebnis* a quarter of the
     *Risikobeitrag*, products/fondsgebundene_rentenversicherung/model.md:467
     """
-    return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
+    return float(data.param_table_dict()["value"]["mort_be_factor"])   # noqa: F821
 
 
 def mort_rate_base(t):
@@ -1645,8 +1649,8 @@ def rentenfaktor_guar():
     § 163 VVG with an independent *Treuhänder*'s confirmation is recorded as a model risk
     and not implemented.
     """
-    return float(data.rentenfaktor_table().loc[                      # noqa: F821
-        (rentenfaktor_id(), ret_age()), "rentenfaktor_guar"])
+    return float(data.rentenfaktor_table_dict()["rentenfaktor_guar"][   # noqa: F821
+        (rentenfaktor_id(), ret_age())])
 
 
 def rentenfaktor_curr():
@@ -1656,8 +1660,8 @@ def rentenfaktor_curr():
     injecting an unsourced uplift, and 12 % higher on ``rich_current``, where it visibly
     bites.  Both are **[std]**.
     """
-    return float(data.rentenfaktor_table().loc[                      # noqa: F821
-        (rentenfaktor_id(), ret_age()), "rentenfaktor_curr"])
+    return float(data.rentenfaktor_table_dict()["rentenfaktor_curr"][   # noqa: F821
+        (rentenfaktor_id(), ret_age())])
 
 
 def rentenfaktor_applied():

@@ -573,7 +573,7 @@ def surplus_rate(k):
     rate moves with the investment result, and the feedback from the *Garantieniveau*
     through the asset mix to the declared rate is not modelled at all.
     """
-    return float(data.surplus_rate_table().loc[k, "surplus_rate"])   # noqa: F821
+    return float(data.surplus_rate_table_dict()["surplus_rate"][k])  # noqa: F821
 
 
 def elect_index(k):
@@ -586,8 +586,8 @@ def elect_index(k):
     established, and ``always_index`` is a modelling choice made so that the base run
     demonstrates the index mechanic rather than a claim about behaviour.
     """
-    return float(data.election_table().loc[                          # noqa: F821
-        (elect_id(), k), "w"])
+    return float(data.election_table_dict()["w"][                    # noqa: F821
+        (elect_id(), k)])
 
 
 def index_base_pp(k):
@@ -675,8 +675,8 @@ def index_return(k, m):
     *Indexstichtag* need not fall on the policy anniversary, no carrier's convention was
     established, and an annual-grid model has no other defensible alignment.
     """
-    return float(data.index_return_table().loc[                      # noqa: F821
-        (index_id(), k), "m%02d" % m])
+    return float(data.index_return_table_dict()["m%02d" % m][        # noqa: F821
+        (index_id(), k)])
 
 
 def index_return_mth(t):
@@ -716,8 +716,8 @@ def index_cap(k):
     is why the Cap and :func:`surplus_rate` may not be chosen independently — see
     :func:`index_budget_ratio`.
     """
-    return float(data.index_param_table().loc[                       # noqa: F821
-        (index_id(), k), "cap"])
+    return float(data.index_param_table_dict()["cap"][               # noqa: F821
+        (index_id(), k)])
 
 
 def index_quote(k):
@@ -728,8 +728,8 @@ def index_quote(k):
     same budget buys when the underlying is engineered to be cheap, and it moves the
     give-up from somewhere the purchaser can see to somewhere they cannot.
     """
-    return float(data.index_param_table().loc[                       # noqa: F821
-        (index_id(), k), "quote"])
+    return float(data.index_param_table_dict()["quote"][             # noqa: F821
+        (index_id(), k)])
 
 
 def index_return_capped(k, m):
@@ -1082,7 +1082,7 @@ def mort_rate_at_age(x):
     A lookup into *mort_table.csv* at ``(sex(), x)``; the core's ``mort_rate_base(t)`` reads
     it at ``age(t)``.
     """
-    return float(data.mort_table().loc[(sex(), x), "qx"])            # noqa: F821
+    return float(data.mort_table_dict()["qx"][(sex(), x)])           # noqa: F821
 
 
 def lapse_rate_base(t):
@@ -1100,7 +1100,7 @@ def lapse_rate_base(t):
     Override reason: the table is keyed on the 0-based policy year, read through
     ``duration(t)`` without a cap, products/indexpolice/technical-notes.md:348
     """
-    return float(data.lapse_table().loc[duration(t), "lapse_rate"])  # noqa: F821
+    return float(data.lapse_table_dict()["lapse_rate"][duration(t)])   # noqa: F821
 
 
 def lapse_factor(t):

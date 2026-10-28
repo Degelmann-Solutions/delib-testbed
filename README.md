@@ -19,10 +19,10 @@ The repository serves two purposes:
 |---|---|---|
 | 1 | Import upstream `delib` at a pinned commit: all standard products side by side, unchanged. | Every product runs on its own model points and its results are stored as the per-product baseline. |
 | 2 | Performance at runner level only: process parallelism, per-contract cleanup as a switch, and the like. Model-level fixes wait for phase 3. | The shipped model points of every product run with unchanged output values as fast as is possible at runner level (export engine, per-contract cleanup, process parallelism), measured with the measuring tool at several worker counts. The forecast `N_mutants × N_pool × t_marginal(W)` against one night (about 10 h) is documented per product with its remaining gap; closing that gap is not a condition of this phase. |
-| 3 | Build the common core, largely agent-driven. Layout and commit conventions: [docs/core.md](docs/core.md). | Every product reproduces its phase-2 baseline under DeltaRecon's comparison rules (`decimals`, per-quantity bounds). |
+| 3 | Build the common core for all ten products together, largely agent-driven: one commit unifies one quantity in every product. Then close the night-run gap phase 2 left. Layout and commit conventions: [docs/core.md](docs/core.md). | **Common core: delivered on `main`.** Every product inherits the core and reproduces its phase-2 baseline under DeltaRecon's comparison rules (`decimals`, per-quantity bounds); no baseline deviates from the tag `phase-2-baseline`. Every built-in check is true, the core never branches on product identity, every product override carries a reason, and every product's core quota is at least 20 %. **Night run: open.** All ten products together fit one night (10 h) at M = 500 mutants and P = 10,000 contracts, and the new M is set. |
 | 4 | Add new tariffs, tariff generations and products: public product plans first, own products later. | Open-ended. This is the history the test-set builder measures against. |
 
-[docs/roadmap.md](docs/roadmap.md) holds the measurement method for phase 2, the known facts to start from, and the open questions.
+[docs/roadmap.md](docs/roadmap.md) holds the measurement method for phase 2, the known facts to start from, where phases 2 and 3 stand, and the open questions.
 
 ## Rules for the history
 
@@ -36,12 +36,16 @@ The repository serves two purposes:
 
 ## Layout
 
-- `products/<product>/`: the ten products of upstream `delib`, each a separate model folder (`Basis_DE_S`, `BU_DE_S`, …) with its input tables, `run.py` and upstream's Markdown documents, copied byte for byte. `UPSTREAM.md` records the provenance and the SHA-256 of every copied file; `LICENSE-lifelib.txt` is lifelib's licence notice.
+- `products/<product>/`: the ten products of upstream `delib`, each a separate model folder (`Basis_DE_S`, `BU_DE_S`, …) with its input tables, `run.py` and upstream's Markdown documents, copied byte for byte. `UPSTREAM.md` records the provenance and the SHA-256 of every copied file, and under `## Changed in phase 3` every file phase 3 changed and the symlinks to the core; `LICENSE-lifelib.txt` is lifelib's licence notice.
+- `core/Core/`: the common core of phase 3, a modelx model with the spaces `Data` and `Projection`. Each product's model folder links them as `CoreData` and `CoreProjection` and names them as bases of its own `Data` and `Projection` ([docs/core.md](docs/core.md)).
 - `tools/run_baseline.py`: the runner. It projects every shipped model point of one product, evaluates the product's built-in checks and prints one SHA-256 over all `result_cf` frames; with `--write` it stores them. By default it runs on the model exported by `mx.export_model` into a temporary package (`--engine export`, untraced); `--engine modelx` runs on the traced modelx model, as in phases 2a and 2b. By default it deletes each point's ItemSpace once its results and checks are read (per-contract cleanup); `--no-cleanup` keeps them all, as in phase 2a. `--workers W` runs the points in `W` worker processes forked after a single export (export engine with cleanup only); the parent takes their results in point order. Its first three output lines, `engine: export` or `engine: modelx`, `cleanup: on` or `cleanup: off`, and `workers: W`, name the modes; hash and written bytes are the same in all of them, and the failure lines are the same for every W and cleanup mode (under `--engine modelx` a raising formula reads `FormulaError: …`). It collects the CSV lines only with `--write`.
 - `tools/measure_marginal.py`: the measuring tool of phase 2. It runs the runner in the chosen modes (export engine by default, the traced modelx model under `--engine modelx`; per-contract cleanup by default, without it under `--no-cleanup`) at each worker count of `--workers` (default `1,4,8,12,16,24`) on each product at two sizes, the shipped points and a replicated multiple (default K = 32) in scratch copies, in fresh processes, and derives the fixed cost and the marginal time per contract across all workers, `t_marginal(W)`; it checks that replicated points equal their originals and that the shipped points reproduce the baseline, and prints the night-run forecast per worker count with its assumptions. Reproducing the 2a measurement needs `--factor 2 --engine modelx --no-cleanup`, the 2b measurement `--factor 2 --engine modelx`, the 2c measurement `--factor 2 --workers 1`.
+- `tools/core_quota.py`: the core quota per product, the share of executed formulas under `--engine modelx` that derive from the core; it exits 1 for a product below the lower bound of 20 %.
+- `tools/baseline_deviations.py`: lists every commit since the tag `phase-2-baseline` that changes a product's baseline, with its `Result-Change` trailer; it exits 1 for an unmarked or incompletely marked deviation.
+- `docs/core.md`: the layout of the core, what it holds, the core quota and the commit conventions of phase 3.
 - `docs/performance.md`: the phase-2a reference measurement of all products with the measuring tool and, next to it, the phase-2b measurement with per-contract cleanup, the phase-2c measurement with the export engine and the phase-2d measurement with process parallelism at several worker counts, each with date, machine, commit and command.
 - `baseline/<product>/result_cf.csv`: the baseline of each product, all points, columns `point_id,t,<result_cf columns>`, every value written so that it reads back exactly.
-- `tests/`: provenance against the recorded hashes, the runner on scratch copies, and the baseline with its pinned hashes.
+- `tests/`: provenance against the recorded hashes, the runner on scratch copies, the baseline with its pinned hashes, the core's conventions (grep test, override reasons), the core quota and the baseline deviations.
 
 ## Quick start
 
@@ -55,6 +59,8 @@ uv run python tools/run_baseline.py basisrente --engine modelx  # on the traced 
 uv run python tools/run_baseline.py basisrente --workers 8   # in eight worker processes
 uv run python tools/measure_marginal.py basisrente         # fixed cost, marginal time per contract, forecast, per W
 uv run python tools/measure_marginal.py basisrente --workers 1,8  # at two worker counts only
+uv run python tools/core_quota.py --all                   # core quota of every product
+uv run python tools/baseline_deviations.py                # baseline deviations from phase-2-baseline
 ```
 
 The runner exits 0 when every check of every point is true, 1 when a point raises or a check is false, and 2 on a usage error. A path instead of a product name runs a copy of a product folder.

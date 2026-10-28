@@ -40,6 +40,12 @@ surrender_file             surrender_table()               surrender_table.csv
 param_file                 param_table()                   param_table.csv
 =========================  ==============================  =========================
 
+Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
+dicts by column, built once per model, which the projection's lookups read instead of
+``DataFrame.at``: the core's for ``model_point_table``, ``param_table``, ``mort_table``
+and ``lapse_table``, this space's for ``benefit_scale_table``, ``incidence_table``,
+``care_table`` and ``surrender_table``.
+
 Every file but ``model_point_table.csv`` carries a final ``provenance`` column, one tag
 per row — the library's second ruling, asserted by
 ``tests/test_model_conventions_de.py``. A model point is a *configuration* rather than an
@@ -168,6 +174,42 @@ def surrender_table():
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / surrender_file, index_col="policy_year")       # noqa: F821
+
+
+def benefit_scale_table_dict():
+    """The *Leistungsstaffel* as a dict by column: ``{column: {(staffel_id, grade): pct}}``.
+
+    Built once per model from ``benefit_scale_table()``, keyed by the tuple of its two index
+    columns; ``Projection.benefit_pct`` reads its ``benefit_pct`` column.
+    """
+    return benefit_scale_table().to_dict()
+
+
+def incidence_table_dict():
+    """The incidence table as a dict by column: ``{column: {(sex, age): rate}}``.
+
+    Built once per model from ``incidence_table()``, keyed by the tuple of its two index
+    columns; ``Projection.inc_rate`` and ``tar_inc_rate`` read its ``inc_rate`` column.
+    """
+    return incidence_table().to_dict()
+
+
+def care_table_dict():
+    """The in-care basis as a dict by column: ``{column: {pflegegrad: value}}``.
+
+    Built once per model from ``care_table()``; ``Projection.inc_share``, ``det_rate``,
+    ``rec_rate``, ``mort_force_care`` and ``tar_mort_rate_care`` read its columns.
+    """
+    return care_table().to_dict()
+
+
+def surrender_table_dict():
+    """The *Rückkaufswert* ratios as a dict by column: ``{column: {policy_year: ratio}}``.
+
+    Built once per model from ``surrender_table()``, the policy year **1-based**;
+    ``Projection.rkw_pp`` reads its ``rkw_prem_ratio`` column.
+    """
+    return surrender_table().to_dict()
 
 
 # ---------------------------------------------------------------------------

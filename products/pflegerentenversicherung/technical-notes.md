@@ -793,7 +793,7 @@ The specific ways an implementation of *this* product looks right and is wrong. 
     charged at `t = 0` only, so an in-force point never incurs it.
 14. **Striking the equivalence premium on the projection basis.** Assert `check_prem_equiv()` is
     `True`, that `premium_mth_pp()` is invariant to every value in `lapse_table.csv`, and that
-    `tar_inc_rate(t)` exceeds the **unisex-blended** best-estimate incidence
+    `tar_inc_rate(x)` exceeds the **unisex-blended** best-estimate incidence
     `0.5 i_M(x) + 0.5 i_F(x)` by exactly `inc_margin` at every age below the `inc_cap`. Against the
     anchor cell's own *female* incidence the ratio is 1.128 at age 45 and 1.089 at 85, not 1.25:
     the blend and the margin are two separate operations and only the second is prudence.

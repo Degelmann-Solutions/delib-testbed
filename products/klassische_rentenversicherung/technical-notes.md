@@ -197,7 +197,7 @@ amortised under both treatments, so every in-force point has `duration_init ≥ 
 | `annuity_guar_mth_pp` | *garantierte Rente*, monthly, struck at *Rentenbeginn* | once |
 | `annuity_sur_mth_pp(k)` | *Überschussrente*, monthly, by payout system; steps on the anniversary | annual |
 | `annuity_pp(t)` | The instalment actually paid in month `t`: `G + U(duration(t))` | monthly |
-| `mort_rate_guar(t)`, `mort_rate(t)` | First-order (tariff) and second-order (best-estimate) **annual** mortality, flat across a policy year | lookup |
+| `mort_rate_tariff(t)`, `mort_rate(t)` | First-order (tariff) and second-order (best-estimate) **annual** mortality, flat across a policy year | lookup |
 | `mort_rate_mth(t)`, `lapse_rate_mth(t)` | The **monthly** rates the recursion applies, each `1 − (1 − r)^(1/12)` | derived |
 | `lapse_rate(t)` | **Annual** surrender rate; **0** from *Rentenbeginn* | lookup |
 
@@ -325,7 +325,7 @@ of the Deutsche Aktuarvereinigung, is not public and is **not shipped** [S8] [R1
 a sex-distinct base table `q_base(sex, x)` for base year **2005** — the year DAV 2004 R was intended
 for new business [R13] — and an age-dependent annual improvement rate `improve(x)`, combined as
 
-    mort_rate_guar(t) = q_base(sex, x(t)) × (1 − improve(x(t)))^( calendar_year(t) − 2005 )
+    mort_rate_tariff(t) = q_base(sex, x(t)) × (1 − improve(x(t)))^( calendar_year(t) − 2005 )
 
 which is the generational form the reference library requires of any annuity proxy, built the way it
 recommends: a base table times a cumulative improvement factor, anchored to Destatis's own
@@ -338,7 +338,7 @@ construction actually uses, and documented as one rather than presented as a rep
 
 The second-order (best-estimate) basis is the first-order one loaded:
 
-    mort_rate(t) = mort_rate_guar(t) × mort_be_factor,    mort_be_factor = 1.15  [std]
+    mort_rate(t) = mort_rate_tariff(t) × mort_be_factor,    mort_be_factor = 1.15  [std]
 
 **The factor is above one and that is the whole point.** For an annuity, prudence means assuming
 mortality **lower** than expected, so the first-order table sits below best estimate, and the safety
@@ -441,7 +441,7 @@ instalment stream is therefore in the frame.
 | `i`, `d(k)`, `b(k)` | `rechnungszins`, `decl_rate`, `bonus_rate` | *Rechnungszins*; declared rate; `max(0, d(k) − i)` |
 | `D(k)`, `Ď(k)` | `db_pp`, `db_base_pp` | death benefit paid on a death in policy year `k`; its start-of-year measure, used only for `ρ` |
 | `R(k)`, `R̄(k)`, `R̲(k)` | `cv_pp`, `cv_tariff_pp`, `cv_floor_pp` | surrender value; the tariff value net of the *Stornoabzug*; the § 169 Abs. 3 floor |
-| `q*(t)`, `q(t)`, `w(t)` | `mort_rate_guar`, `mort_rate`, `lapse_rate` | first-order and best-estimate mortality, and the surrender rate — all three **annual**, flat across a policy year |
+| `q*(t)`, `q(t)`, `w(t)` | `mort_rate_tariff`, `mort_rate`, `lapse_rate` | first-order and best-estimate mortality, and the surrender rate — all three **annual**, flat across a policy year |
 | `q^m(t)`, `w^m(t)` | `mort_rate_mth`, `lapse_rate_mth` | the **monthly** rates the recursion applies, each `1 − (1 − r)^(1/12)` |
 | `K`, `f_g`, `f_c`, `f` | `capital_conv_pp`, `annuity_rate_guar`, `annuity_rate_curr`, `annuity_rate_appl` | conversion capital; the two *Rentenfaktoren* and the applied one |
 | `G`, `U(k)` | `annuity_guar_mth_pp`, `annuity_sur_mth_pp` | *garantierte Rente* and *Überschussrente*, monthly amounts stepping once a year |
@@ -751,8 +751,8 @@ The monthly block, for `t = t_start() … N − 1`:
 
 M1. **Open the month.** `duration(t) = t // 12` selects the year's state; the population is
     `pols_if(t)`.
-M2. **Look up the year's rates and twelfth them.** `mort_rate_guar(t)` from the generational surface
-    at `(sex, age(t), calendar_year(t))`, `mort_rate(t) = mort_rate_guar(t) × mort_be_factor`,
+M2. **Look up the year's rates and twelfth them.** `mort_rate_tariff(t)` from the generational surface
+    at `(sex, age(t), calendar_year(t))`, `mort_rate(t) = mort_rate_tariff(t) × mort_be_factor`,
     `lapse_rate(t)` from the duration table at `policy_year(t)` (zero if `duration(t) ≥ n`), then
     `mort_rate_mth(t)` and `lapse_rate_mth(t)`, each `1 − (1 − r)^(1/12)`.
 M3. **Premium, where one is due.** `prem_due(t)` in the first month of the policy year;
@@ -830,15 +830,15 @@ becomes a test in `tests/test_klassische_rentenversicherung_de.py`.
    `stornoabzug_rate` is set.
 9. **Using one mortality basis where the product uses two.** The first-order basis fixes the risk
    charge and the guaranteed benefits; the second-order basis drives the projection [REG-R47].
-   Assert `mort_rate(t) = mort_rate_guar(t) × mort_be_factor` with `mort_be_factor > 1`, that
-   `charge_risk_pp` uses the **annual** `mort_rate_guar` while `pols_death` uses the **monthly**
+   Assert `mort_rate(t) = mort_rate_tariff(t) × mort_be_factor` with `mort_be_factor > 1`, that
+   `charge_risk_pp` uses the **annual** `mort_rate_tariff` while `pols_death` uses the **monthly**
    `mort_rate_mth` derived from `mort_rate`, and that swapping them changes `net_cf`. Assert also
    that `1 − (1 − mort_rate_mth(t))^12 = mort_rate(t)`: the twelfth is geometric, and dividing the
    annual rate by twelve instead would leave `pols_if` above the annual grid's at every anniversary.
 10. **Using a period mortality table.** DAV 2004 R is a *Generationentafel*; a period-table proxy
     priced at an annuitisation decades ahead understates the liability by a margin that dwarfs every
-    other assumption [REG-R49]. Assert `mort_rate_guar` depends on `calendar_year(t)` as well as
-    `age(t)`: on the anchor, `mort_rate_guar` at attained age 67 in 2043 must be **strictly below**
+    other assumption [REG-R49]. Assert `mort_rate_tariff` depends on `calendar_year(t)` as well as
+    `age(t)`: on the anchor, `mort_rate_tariff` at attained age 67 in 2043 must be **strictly below**
     the same age's rate for a life reaching 67 in 2026.
 11. **Charging the risk premium on a zero net amount at risk.** With
     `death_benefit_form = deckungskapital` the death benefit **is** the reserve, so there is nothing
@@ -886,7 +886,7 @@ becomes a test in `tests/test_klassische_rentenversicherung_de.py`.
     account, where it carries no guarantee.
 16. **Letting `sex` reach the tariff.** Unisex has been compulsory since 21 December 2012
     [REG-R34]. Assert that two model points identical but for `sex` produce identical `prem_pp`,
-    identical `charge_*` except through `mort_rate_guar`, and identical `annuity_rate_appl()`.
+    identical `charge_*` except through `mort_rate_tariff`, and identical `annuity_rate_appl()`.
 17. **Amortising the acquisition charge against a shrunken *Beitragssumme*.** The § 4 DeckRV base is
     the sum of all premiums payable under the contract as written [REG-R16], not the premiums a later
     *Beitragsfreistellung* leaves behind. Assert `zillmer_amount` on point 7 is unchanged by
@@ -968,14 +968,14 @@ itself credited at the full 2,55 % **[std]**; the *Bewertungsreserven* crystalli
 which exceeds the guaranteed `28,00 €` and therefore wins the `max()`; and the *Überschussrente*
 under the `konstant` system, `sur_ann_rate = 12 %` of the *garantierte Rente*, level **[std]**.
 *Charges (all levels [std]):* `beta_rate = 4,0 %` of each gross premium; `gamma_rate = 0,20 % p.a.`
-of the *Deckungskapital*; the *Risikobeitrag* `ρ(k) = mort_rate_guar(12k) × max(0, prem_cum_pp(k) +
+of the *Deckungskapital*; the *Risikobeitrag* `ρ(k) = mort_rate_tariff(12k) × max(0, prem_cum_pp(k) +
 prem_pp(k) − av_pp(k))`; `stornoabzug_rate = 2,0 %` of the pre-deduction value, subject to the
 § 169 Abs. 3 floor [R1] [REG-R28]; `annuity_admin_rate = 1,5 %`, recorded and **not applied**
 (pitfall 12). *Behavioural and experience (all [std]):* first-order mortality from the shipped
-generational proxy, `mort_rate_guar(t) = q_base(M, x(t)) × (1 − improve(x(t)))^(τ(t) − 2005)`,
+generational proxy, `mort_rate_tariff(t) = q_base(M, x(t)) × (1 − improve(x(t)))^(τ(t) − 2005)`,
 annual and flat across a policy year, with
 the anchor `q_base(M, 50) = 0,002000` and `improve(x) = 1,5 %` below age 60 grading to 0,5 % at 100
-and to zero at 110; best-estimate mortality `mort_rate(t) = mort_rate_guar(t) × 1,15`; surrender
+and to zero at 110; best-estimate mortality `mort_rate(t) = mort_rate_tariff(t) × 1,15`; surrender
 6,0 % / 5,0 % / 4,5 % / 4,0 % (durations 4–7) / 3,5 % (8–11) / **6,0 % at duration 12** / 3,0 %
 thereafter, and **zero from *Rentenbeginn***; the *Kapitalwahlrecht* take-up 30 %; and expenses of
 400,00 € acquisition at issue, 45,00 € per policy p.a. in the accumulation phase and 30,00 € p.a. in

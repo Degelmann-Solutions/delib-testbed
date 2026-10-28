@@ -191,8 +191,8 @@ Delta(k)                    spread_diff_pp(k)               Vtilde(k) - V(k)
 i                           rechnungszins()                 Rechnungszins
 d(k)                        decl_rate(k)                    Declared laufende Verzinsung
 b(k)                        bonus_rate(k)                   max(0, d(k) - i)
-q*(t)                       mort_rate_guar(t)               First-order mortality, annual
-(base)                      mort_rate_base(t)               mort_rate_guar(t), the base of q
+q*(t)                       mort_rate_tariff(t)             First-order mortality, annual
+(base)                      mort_rate_base(t)               mort_rate_tariff(t), the base of q
 q(t)                        mort_rate(t)                    Best-estimate mortality, annual
 q^m(t)                      mort_rate_mth(t)                The monthly rate applied
 (table)                     mort_rate_at_age(x)             Base-year table rate at age x
@@ -675,21 +675,21 @@ def nar_pp(k):
 
 
 def charge_risk_pp(k):
-    """rho(k): the *Risikobeitrag*, ``mort_rate_guar(k) x nar_pp(k)``, accumulation phase only.
+    """rho(k): the *Risikobeitrag*, ``mort_rate_tariff(k) x nar_pp(k)``, accumulation phase only.
 
     On the **first-order** basis, not the best estimate: the tariff's own mortality fixes the
     risk charge and the guaranteed benefits, while the second-order basis drives the
     projection's decrements.  Using one basis for both is a listed pitfall.  Zero after the
     *Rentenbeginn*, where no death benefit is payable.
 
-    The rate is read at ``mort_rate_guar(12 * k)`` — the first month of policy year ``k``,
-    which is where the monthly clock and the annual one meet.  ``mort_rate_guar`` returns the
+    The rate is read at ``mort_rate_tariff(12 * k)`` — the first month of policy year ``k``,
+    which is where the monthly clock and the annual one meet.  ``mort_rate_tariff`` returns the
     **year's** rate at every month of that year, so the argument selects the year and not a
     month, and the charge is the annual one the tariff strikes.
     """
     if k >= int(model_point()["aufschub_y"]):
         return 0.0
-    return mort_rate_guar(12 * k) * nar_pp(k)
+    return mort_rate_tariff(12 * k) * nar_pp(k)
 
 
 def charge_due_pp(k):
@@ -1013,14 +1013,14 @@ def improve_rate(x):
         (sex(), int(x)), "improve"])
 
 
-def mort_rate_guar(t):
+def mort_rate_tariff(t):
     """q*(t): the **first-order** annual death rate, on the generational surface.
 
     ``q_base(sex, x(t)) x (1 - improve(x(t)))^(tau(t) - mort_base_year)``.
 
     DAV 2004 R is a *Generationentafel*: mortality is indexed by birth cohort and the
     expected future improvement is built into the table rather than applied on top of it.
-    That is why this cells depends on :func:`calendar_year` as well as :func:`age`.  A
+    That is why this cell depends on :func:`calendar_year` as well as :func:`age`.  A
     period-table proxy, priced at an annuitisation decades ahead, understates the liability
     by a margin that dwarfs every other assumption — on the anchor cell the annuitant reaches
     67 in 2043, thirty-eight improvement years after the proxy's 2005 base.
@@ -1033,6 +1033,9 @@ def mort_rate_guar(t):
     name, and the rate the recursion applies is spelled ``_mth``.  Flat across the twelve
     months of a policy year, because both the attained age and the calendar year step on the
     anniversary.
+
+    Override reason: the first-order table is generational, read at the attained age and the
+    calendar year, products/klassische_rentenversicherung/technical-notes.md:328
     """
     x = age(t)
     base_year = int(data.param_table().at["mort_base_year", "value"])  # noqa: F821
@@ -1041,12 +1044,12 @@ def mort_rate_guar(t):
 
 
 def mort_rate_base(t):
-    """The first-order rate the best estimate is loaded on, :func:`mort_rate_guar`.
+    """The first-order rate the best estimate is loaded on, :func:`mort_rate_tariff`.
 
     Override reason: the best estimate is the trend-projected first-order (guaranteed)
     table loaded by the factor, products/klassische_rentenversicherung/technical-notes.md:341
     """
-    return mort_rate_guar(t)
+    return mort_rate_tariff(t)
 
 
 def decl_rate(k):
@@ -2098,7 +2101,7 @@ def result_pols():
     return pd.DataFrame(                                             # noqa: F821
         {
             "pols_if": [pols_if(12 * k) for k in ks],
-            "mort_rate_guar": [mort_rate_guar(12 * k) for k in ks],
+            "mort_rate_guar": [mort_rate_tariff(12 * k) for k in ks],
             "mort_rate": [mort_rate(12 * k) for k in ks],
             "lapse_rate": [lapse_rate(12 * k) for k in ks],
             "prem_pp": [prem_pp(k) for k in ks],

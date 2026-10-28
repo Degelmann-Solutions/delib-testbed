@@ -260,7 +260,7 @@ def issue_age(life=1):
     early.
 
     Override reason: a joint-life contract has two lives; ``life=2`` reads the survivor's
-    ``surv_age``, products/sofortrente/technical-notes.md, section Model point attributes
+    ``surv_age``, products/sofortrente/technical-notes.md:106
     """
     if life == 1:
         return int(model_point()["issue_age"])
@@ -298,7 +298,7 @@ def sex(life=1):
     portfolio sits above the population share.
 
     Override reason: a joint-life contract has two lives; ``life=2`` reads the survivor's
-    ``surv_sex``, products/sofortrente/technical-notes.md, section Model point attributes
+    ``surv_sex``, products/sofortrente/technical-notes.md:108
     """
     if life == 1:
         v = str(model_point()["sex"])

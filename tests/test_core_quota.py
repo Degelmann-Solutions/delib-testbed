@@ -49,7 +49,9 @@ def quotas(tmp_path_factory):
     for product, process in processes.items():
         stdout, stderr = process.communicate(timeout=900)
         assert process.returncode in (0, 1), f"{product}: exit {process.returncode}\n{stderr}"
-        figures.update(json.loads((tmp_path / f"{product}.json").read_text(encoding="utf-8")))
+        written = tmp_path / f"{product}.json"
+        assert written.is_file(), f"{product}: no --json output, exit {process.returncode}\n{stderr}"
+        figures.update(json.loads(written.read_text(encoding="utf-8")))
         assert stdout.startswith(f"{product}: executed "), stdout
     return figures
 

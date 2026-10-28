@@ -24,8 +24,11 @@ _spaces = []
 # Cells
 
 def model_point():
-    """The selected model point as a Series."""
-    return data.model_point_table().loc[point_id]                    # noqa: F821
+    """The selected model point as a dict by column.
+
+    The row is shared with ``data.model_point_table_dict()``, so it is read-only.
+    """
+    return data.model_point_table_dict()[point_id]                   # noqa: F821
 
 
 def policy_id():
@@ -69,21 +72,21 @@ def prem_freq():
     Raises ``ValueError`` for a frequency the table has no row for.
     """
     v = model_point()["prem_freq"]                                   # noqa: F821
-    if v not in data.freq_loading_table().index:                     # noqa: F821
+    if v not in data.freq_loading_table_dict()["prem_freq_load"]:    # noqa: F821
         raise ValueError("no frequency loading for prem_freq " + str(v))
     return v
 
 
 def prem_freq_load():
     """phi: the *Ratenzahlungszuschlag* for ``prem_freq()``, from *freq_loading_table.csv*."""
-    return float(data.freq_loading_table().at[                       # noqa: F821
-        prem_freq(), "prem_freq_load"])                              # noqa: F821
+    return float(data.freq_loading_table_dict()[                     # noqa: F821
+        "prem_freq_load"][prem_freq()])                              # noqa: F821
 
 
 def instalments():
     """The number of premium instalments a year for ``prem_freq()``: 1, 2, 4 or 12."""
-    return int(data.freq_loading_table().at[                         # noqa: F821
-        prem_freq(), "instalments"])                                 # noqa: F821
+    return int(data.freq_loading_table_dict()[                       # noqa: F821
+        "instalments"][prem_freq()])                                 # noqa: F821
 
 
 def issue_age():
@@ -219,7 +222,7 @@ def omega_age():
     The first age nobody reaches: the death rate is 1 at ``omega_age() - 1``, so a
     projection run to it ends with no survivors.
     """
-    return int(data.param_table().at["omega_age", "value"])          # noqa: F821
+    return int(data.param_table_dict()["value"]["omega_age"])        # noqa: F821
 
 
 def ret_age():
@@ -329,9 +332,8 @@ def lapse_rate_base(t):
     Read from the product's *lapse_table.csv* at ``policy_year(t)``, holding the table's
     last row for later policy years, so the twelve months of a year share one rate.
     """
-    tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.at[min(policy_year(t), int(tbl.index.max())),  # noqa: F821
-                        "lapse_rate"])
+    rates = data.lapse_table_dict()["lapse_rate"]                    # noqa: F821
+    return float(rates[min(policy_year(t), int(max(rates)))])        # noqa: F821
 
 
 def lapse_factor(t):
@@ -455,15 +457,15 @@ def rechnungszins():
 def hoechstrechnungszins():
     """The statutory *Höchstrechnungszins* in force at ``issue_year()``, the contract's cap.
 
-    Read from ``data.hoechstrechnungszins_table()`` by the band that covers the year of
+    Read from ``data.hoechstrechnungszins_table_dict()`` by the band that covers the year of
     issue: the cap in force at conclusion stays with the contract for its whole term
     (§ 2 Abs. 2 DeckRV).  Raises ``ValueError`` where no band covers it.
     """
-    tab = data.hoechstrechnungszins_table()                          # noqa: F821
+    tab = data.hoechstrechnungszins_table_dict()                     # noqa: F821
     y = issue_year()                                                 # noqa: F821
-    for year_from in tab.index:
-        if int(year_from) <= y <= int(tab.loc[year_from, "year_to"]):
-            return float(tab.loc[year_from, "max_rate"])
+    for year_from, year_to in tab["year_to"].items():
+        if int(year_from) <= y <= int(year_to):
+            return float(tab["max_rate"][year_from])
     raise ValueError("no Hoechstrechnungszins band covers issue_year")
 
 
@@ -520,7 +522,7 @@ def disc_factor(y):
 
 def unisex_mix_male():
     """The male share of the unisex tariff blend, from the product's *param_table.csv*."""
-    return float(data.param_table().at["unisex_mix_male", "value"])  # noqa: F821
+    return float(data.param_table_dict()["value"]["unisex_mix_male"])  # noqa: F821
 
 
 def unisex_blend(q_m, q_f):
@@ -735,7 +737,7 @@ def expense_infl():
     ``KeyError``.  A product that keys the rate by tariff or cost set overrides the cell with
     its lookup.
     """
-    return float(data.param_table().at["expense_infl", "value"])     # noqa: F821
+    return float(data.param_table_dict()["value"]["expense_infl"])   # noqa: F821
 
 
 def inflation_years(t):
@@ -857,7 +859,7 @@ def roll_fwd_tol():
     A float comparison tolerance, not an actuarial assumption: each check scales it by the
     magnitude of what it compares.  A product without the row raises ``KeyError``.
     """
-    return float(data.param_table().at["roll_fwd_tol", "value"])     # noqa: F821
+    return float(data.param_table_dict()["value"]["roll_fwd_tol"])   # noqa: F821
 
 
 def result_cf_columns():

@@ -41,6 +41,12 @@
 - Pflege's own dict cells equal their readers; its care-grade rates are keyed by attained
   age and grade, not by month, and keep their limiting-age, recovery-damping and grade-5
   values; a missing ``rec_margin`` row raises.
+- RV's and KLV's own dict cells and scenario bounds equal their readers; their
+  decrement-closure residual equals the old sum over the exit cells up to floating-point
+  noise, on a new and an in-force point; their lookups keep their clamps (the declared rate
+  outside the calendar range, the surplus rates and the *Stornoabzug* beyond the last policy year, the DeckRV
+  ceilings outside the issue years), ``echt`` instalments carry no loading, and an unknown
+  scenario raises.
 """
 from __future__ import annotations
 
@@ -1916,6 +1922,168 @@ def test_pflege_rec_margin_without_its_row_raises_key_error(tmp_path):
         point_id = copy.Data.model_point_table().index[0]
         with pytest.raises(Exception, match="rec_margin") as raised:
             copy.Projection[point_id].tar_rec_rate(60, 1)
+        assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+    finally:
+        copy.close()
+
+
+# RV's and KLV's own dict cells, beside the core's: product -> {reader: file Reference}, and
+# the scenario-bounds cell of each MultiIndex table: product -> {bounds cell: (reader, level)}.
+PRODUCT_DICT_READERS = {
+    "klassische_rentenversicherung": {"decl_rate_table": "decl_rate_file"},
+    "kapitallebensversicherung": {
+        "surplus_rate_table": "surplus_rate_file",
+        "deckrv_table": "deckrv_file",
+    },
+}
+PRODUCT_BOUNDS = {
+    "klassische_rentenversicherung": {"decl_rate_years": ("decl_rate_table", "calendar_year")},
+    "kapitallebensversicherung": {"surplus_rate_years": ("surplus_rate_table", "policy_year")},
+}
+
+
+@pytest.mark.parametrize("product", sorted(PRODUCT_DICT_READERS))
+def test_rv_and_klv_product_dict_cells_equal_their_readers(product, product_models):
+    data = product_models(product).Data
+    for reader, ref in PRODUCT_DICT_READERS[product].items():
+        assert ref in data.refs, reader
+        assert data.cells[reader + "_dict"]._is_defined(), reader
+        df = data.cells[reader]()
+        table = data.cells[reader + "_dict"]()
+        assert list(table) == list(df.columns), reader
+        for column, values in table.items():
+            assert list(values) == list(df.index), (reader, column)
+            for key in df.index:
+                assert same_value(values[key], df.at[key, column]), (reader, key, column)
+    for cell, (reader, level) in PRODUCT_BOUNDS[product].items():
+        df = data.cells[reader]()
+        bounds = data.cells[cell]()
+        scenarios = df.index.get_level_values("scenario_id").unique()
+        assert sorted(bounds) == sorted(scenarios), cell
+        for scen in scenarios:
+            years = df.loc[scen].index
+            assert years.name == level
+            assert bounds[scen] == (int(years.min()), int(years.max())), (cell, scen)
+
+
+# product -> (the third exit cell the residual sums, a new point, an in-force point).
+DECREMENT_CLOSURE = {
+    "klassische_rentenversicherung": ("pols_commutation", 1, 6),
+    "kapitallebensversicherung": ("pols_maturity", 1, 10),
+}
+
+
+@pytest.mark.parametrize("product", sorted(DECREMENT_CLOSURE))
+def test_decrement_closure_residual_equals_the_sum_over_the_exit_cells(product, product_models):
+    third, new, in_force = DECREMENT_CLOSURE[product]
+    projection = product_models(product).Projection
+    assert projection.cells["pols_exits_cum"]._is_defined()
+    for point_id in (new, in_force):
+        item = projection[point_id]
+        third_exit = item.cells[third]
+        start = item.t_start()
+        assert (start > 0) == (point_id == in_force), point_id
+        assert item.pols_exits_cum(start - 1) == 0
+        index = list(item.result_cf().index)
+        assert index[0] == start and index[-1] == item.proj_len() - 1
+        # The running total equals the old direct sum up to floating-point noise.
+        noise = 1e-12 * max(item.pols_if_init(), 1.0)
+        for t in index:
+            exits = sum(item.pols_death(s) + item.pols_lapse(s) + third_exit(s)
+                        for s in range(start, t + 1))
+            assert item.pols_exits_cum(t) == pytest.approx(exits, rel=0, abs=noise), (point_id, t)
+            if product == "kapitallebensversicherung":
+                carried = item.pols_if(t + 1) if t < item.proj_len() - 1 else 0.0
+                old = exits + carried - item.pols_if_init()
+            else:
+                old = exits + item.pols_if(t + 1) - item.pols_if_init()
+            assert item.check_decrement_closure_resid(t) == pytest.approx(
+                old, rel=0, abs=noise), (point_id, t)
+        assert item.check_decrement_closure()
+
+
+def test_rv_decl_rate_holds_the_scenario_range(product_models):
+    model = product_models("klassische_rentenversicherung")
+    table = model.Data.decl_rate_table()
+    item = model.Projection[1]
+    scen = item.scenario_id()
+    years = table.loc[scen].index
+    first, last = int(years.min()), int(years.max())
+    assert (first, last) == (2005, 2060)
+    k_late = last - item.issue_year() + 5
+    assert item.calendar_year_y(k_late) > last
+    assert item.decl_rate(k_late) == float(table.at[(scen, last), "decl_rate"])
+    k_early = first - item.issue_year() - 5
+    assert item.calendar_year_y(k_early) < first
+    assert item.decl_rate(k_early) == float(table.at[(scen, first), "decl_rate"])
+
+
+def test_klv_surplus_rates_and_stornoabzug_hold_their_last_policy_year(product_models):
+    model = product_models("kapitallebensversicherung")
+    surplus = model.Data.surplus_rate_table()
+    lapse = model.Data.lapse_table()
+    item = model.Projection[1]
+    scen = item.scenario_id()
+    last = int(surplus.loc[scen].index.max())
+    k = last + 5
+    assert item.policy_year_y(k) > last
+    for cell in ("decl_rate", "term_rate", "ans_rate"):
+        assert item.cells[cell](k) == float(surplus.at[(scen, last), cell]), cell
+    last_lapse = int(lapse.index.max())
+    k = last_lapse + 5
+    assert item.policy_year_y(k) > last_lapse
+    assert item.storno_rate(k) == float(lapse.at[last_lapse, "storno_rate"])
+
+
+def test_klv_echt_instalments_carry_no_loading(product_models):
+    model = product_models("kapitallebensversicherung")
+    loading = model.Data.freq_loading_table()
+    unecht, echt = model.Projection[4], model.Projection[5]
+    assert (unecht.prem_freq(), echt.prem_freq()) == ("monthly", "monthly")
+    assert (unecht.unterjaehrig_form(), echt.unterjaehrig_form()) == ("unecht", "echt")
+    assert unecht.prem_freq_load() == float(loading.at["monthly", "prem_freq_load"]) == 1.05
+    assert echt.prem_freq_load() == 1.0
+
+
+@pytest.mark.parametrize("issue_year", [1950, 2090])
+def test_klv_deckrv_ceilings_clamp_the_issue_year(tmp_path, issue_year):
+    product = "kapitallebensversicherung"
+    folder = product_copy(tmp_path, product)
+    table = folder / "model_point_table.csv"
+    points = pd.read_csv(table, index_col="point_id")
+    point_id = points.index[0]
+    points.loc[point_id, "issue_year"] = issue_year
+    points.to_csv(table)
+    copy = mx.read_model(folder / MODELS[product], name=f"DeckRVProbe{issue_year}")
+    try:
+        deckrv = copy.Data.deckrv_table()
+        assert issue_year not in deckrv.index
+        edge = deckrv.index.min() if issue_year < deckrv.index.min() else deckrv.index.max()
+        item = copy.Projection[point_id]
+        assert item.issue_year() == issue_year
+        assert item.hoechstrechnungszins() == float(deckrv.at[edge, "hoechstrechnungszins"])
+        assert item.zillmer_max() == float(deckrv.at[edge, "hoechstzillmersatz"])
+    finally:
+        copy.close()
+
+
+@pytest.mark.parametrize("product, cell", [
+    ("klassische_rentenversicherung", "decl_rate"),
+    ("kapitallebensversicherung", "decl_rate"),
+    ("kapitallebensversicherung", "term_rate"),
+    ("kapitallebensversicherung", "ans_rate"),
+])
+def test_an_unknown_scenario_raises_key_error(tmp_path, product, cell):
+    folder = product_copy(tmp_path, product)
+    table = folder / "model_point_table.csv"
+    points = pd.read_csv(table, index_col="point_id")
+    point_id = points.index[0]
+    points.loc[point_id, "scenario_id"] = "unbekannt"
+    points.to_csv(table)
+    copy = mx.read_model(folder / MODELS[product], name="ScenProbe")
+    try:
+        with pytest.raises(Exception, match="unbekannt") as raised:
+            copy.Projection[point_id].cells[cell](0)
         assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
     finally:
         copy.close()

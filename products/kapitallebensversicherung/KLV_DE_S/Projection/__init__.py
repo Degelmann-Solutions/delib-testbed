@@ -547,9 +547,9 @@ def mort_rate_tariff_at_age(x):
     property of the Deutsche Aktuarvereinigung, is not public and is not redistributed here;
     see the ``Data`` docstring for what a replacement must preserve.
     """
-    tbl = data.mort_table()                                          # noqa: F821
-    return unisex_blend(float(tbl.loc[("M", int(x)), "mort_rate_1st"]),
-                        float(tbl.loc[("F", int(x)), "mort_rate_1st"]))
+    rates = data.mort_table_dict()["mort_rate_1st"]                  # noqa: F821
+    return unisex_blend(float(rates[("M", int(x))]),
+                        float(rates[("F", int(x))]))
 
 
 def mort_rate_at_age(x):
@@ -566,8 +566,8 @@ def mort_rate_at_age(x):
     particular life must.  ``sex`` therefore reaches the **decrement** and nothing else, and
     ``prem_gross_pp()`` is identical for two model points differing only in it.
     """
-    return float(data.mort_table().loc[                              # noqa: F821
-        (sex(), int(x)), "mort_rate_1st"])
+    return float(data.mort_table_dict()["mort_rate_1st"][            # noqa: F821
+        (sex(), int(x))])
 
 
 def mort_be_factor():
@@ -577,7 +577,7 @@ def mort_be_factor():
     loading and a tariff parameter in *param_table.csv*,
     products/kapitallebensversicherung/model.md:513
     """
-    return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
+    return float(data.param_table_dict()["value"]["mort_be_factor"])  # noqa: F821
 
 
 def hoechstrechnungszins():
@@ -593,9 +593,9 @@ def hoechstrechnungszins():
     clamped to its range, with the split years 1994 and 2000 at the higher rate,
     products/kapitallebensversicherung/technical-notes.md:252
     """
-    tbl = data.deckrv_table()                                        # noqa: F821
-    y = min(max(issue_year(), int(tbl.index.min())), int(tbl.index.max()))
-    return float(tbl.loc[y, "hoechstrechnungszins"])
+    rates = data.deckrv_table_dict()["hoechstrechnungszins"]         # noqa: F821
+    y = min(max(issue_year(), int(min(rates))), int(max(rates)))
+    return float(rates[y])
 
 
 def zillmer_max():
@@ -606,9 +606,9 @@ def zillmer_max():
     which is a floor on the **value**: :func:`check_zillmer_cap` and :func:`check_surr_floor`
     assert the two separately for that reason.
     """
-    tbl = data.deckrv_table()                                        # noqa: F821
-    y = min(max(issue_year(), int(tbl.index.min())), int(tbl.index.max()))
-    return float(tbl.loc[y, "hoechstzillmersatz"])
+    rates = data.deckrv_table_dict()["hoechstzillmersatz"]           # noqa: F821
+    y = min(max(issue_year(), int(min(rates))), int(max(rates)))
+    return float(rates[y])
 
 
 def prem_freq_load():
@@ -625,8 +625,8 @@ def prem_freq_load():
     """
     if unterjaehrig_form() == "echt":
         return 1.0
-    return float(data.freq_loading_table().loc[                      # noqa: F821
-        prem_freq(), "prem_freq_load"])
+    return float(data.freq_loading_table_dict()["prem_freq_load"][   # noqa: F821
+        prem_freq()])
 
 
 def alpha_rate():
@@ -637,7 +637,7 @@ def alpha_rate():
     public.  It is charged in the premium whether or not the contract is zillmered; only
     :func:`zillmer_amount` carries ``zillmer_on``.
     """
-    return float(data.charge_table().loc[cost_id(), "alpha_rate"])   # noqa: F821
+    return float(data.charge_table_dict()["alpha_rate"][cost_id()])  # noqa: F821
 
 
 def beta_rate():
@@ -646,7 +646,7 @@ def beta_rate():
     3,0 % **[std]**.  The *form* - a percentage of the gross premium over the premium-paying
     period - is what the corpus establishes; the level is not.
     """
-    return float(data.charge_table().loc[cost_id(), "beta_rate"])    # noqa: F821
+    return float(data.charge_table_dict()["beta_rate"][cost_id()])   # noqa: F821
 
 
 def gamma_rate():
@@ -658,7 +658,7 @@ def gamma_rate():
     pricing equation funds the running cost and the classical reserve convention assumes the
     ongoing loadings meet it.
     """
-    return float(data.charge_table().loc[cost_id(), "gamma_rate"])   # noqa: F821
+    return float(data.charge_table_dict()["gamma_rate"][cost_id()])  # noqa: F821
 
 
 # --- pricing on the first-order basis --------------------------------------
@@ -1008,9 +1008,9 @@ def decl_rate(k):
     The table is keyed by the **contractual, 1-based** ``policy_year``, so the lookup goes
     through :func:`policy_year`, clamped at the table's last row.
     """
-    tbl = data.surplus_rate_table()                                  # noqa: F821
-    y = min(policy_year_y(k), int(tbl.loc[scenario_id()].index.max()))
-    return float(tbl.loc[(scenario_id(), y), "decl_rate"])
+    hi = data.surplus_rate_years()[scenario_id()][1]                 # noqa: F821
+    y = min(policy_year_y(k), hi)
+    return float(data.surplus_rate_table_dict()["decl_rate"][(scenario_id(), y)])  # noqa: F821
 
 
 def zins_ueberschuss_rate(k):
@@ -1034,9 +1034,9 @@ def term_rate(k):
     surrender unless ``term_surr_share`` is raised.  Keyed by the contractual, 1-based
     ``policy_year``, so the lookup goes through :func:`policy_year`.
     """
-    tbl = data.surplus_rate_table()                                  # noqa: F821
-    y = min(policy_year_y(k), int(tbl.loc[scenario_id()].index.max()))
-    return float(tbl.loc[(scenario_id(), y), "term_rate"])
+    hi = data.surplus_rate_years()[scenario_id()][1]                 # noqa: F821
+    y = min(policy_year_y(k), hi)
+    return float(data.surplus_rate_table_dict()["term_rate"][(scenario_id(), y)])  # noqa: F821
 
 
 def ans_rate(k):
@@ -1049,9 +1049,9 @@ def ans_rate(k):
     Keyed by the contractual, 1-based ``policy_year``, so the lookup goes through
     :func:`policy_year`.
     """
-    tbl = data.surplus_rate_table()                                  # noqa: F821
-    y = min(policy_year_y(k), int(tbl.loc[scenario_id()].index.max()))
-    return float(tbl.loc[(scenario_id(), y), "ans_rate"])
+    hi = data.surplus_rate_years()[scenario_id()][1]                 # noqa: F821
+    y = min(policy_year_y(k), hi)
+    return float(data.surplus_rate_table_dict()["ans_rate"][(scenario_id(), y)])  # noqa: F821
 
 
 def surplus_base_pp(k):
@@ -1366,9 +1366,8 @@ def storno_rate(k):
     five-year spreading denies it.  It bites on the **guaranteed value only**; see
     :func:`surr_value_pp`.
     """
-    tbl = data.lapse_table()                                         # noqa: F821
-    return float(tbl.loc[min(policy_year_y(k), int(tbl.index.max())),
-                         "storno_rate"])
+    rates = data.lapse_table_dict()["storno_rate"]                   # noqa: F821
+    return float(rates[min(policy_year_y(k), int(max(rates)))])
 
 
 def pols_if(t):
@@ -1608,7 +1607,7 @@ def expense_infl():
     Override reason: the expense inflation is a column of the cost table keyed by
     ``cost_id``, products/kapitallebensversicherung/technical-notes.md:214
     """
-    return float(data.charge_table().loc[cost_id(), "expense_infl"])  # noqa: F821
+    return float(data.charge_table_dict()["expense_infl"][cost_id()])  # noqa: F821
 
 
 def claim_expenses(t):
@@ -1618,7 +1617,7 @@ def claim_expenses(t):
     the only expense line that scales with **claims** rather than with policies, and it is
     inside :func:`expenses`.
     """
-    ce = float(data.charge_table().loc[cost_id(), "claim_expense"])  # noqa: F821
+    ce = float(data.charge_table_dict()["claim_expense"][cost_id()])  # noqa: F821
     return ce * (pols_death(t) + pols_lapse(t) + pols_maturity(t))
 
 
@@ -1638,10 +1637,10 @@ def expenses_pp(t):
     modestly exceeds what the *Zillmerung* recovers, so that the anchor cell carries the
     new-business strain a real German endowment carries.
     """
-    cost = data.charge_table().loc[cost_id()]                        # noqa: F821
-    acq = (float(cost["acq_expense"])
+    cost = data.charge_table_dict()                                  # noqa: F821
+    acq = (float(cost["acq_expense"][cost_id()])
            if (t == t_start() and duration_init() == 0) else 0.0)
-    return (acq + float(cost["maint_expense"]) / 12.0
+    return (acq + float(cost["maint_expense"][cost_id()]) / 12.0
             * inflation_factor(t))
 
 
@@ -1683,7 +1682,7 @@ def comm_init_rate():
     Override reason: the initial commission is the cost table's ``comm_init_rate`` of the
     *Beitragssumme*, products/kapitallebensversicherung/technical-notes.md:374
     """
-    return float(data.charge_table().loc[cost_id()]["comm_init_rate"])  # noqa: F821
+    return float(data.charge_table_dict()["comm_init_rate"][cost_id()])  # noqa: F821
 
 
 def comm_renew(t):
@@ -1699,8 +1698,8 @@ def comm_renew(t):
     Override reason: the renewal commission is a rate on the charged instalment after the
     first projected policy year, products/kapitallebensversicherung/technical-notes.md:636
     """
-    cost = data.charge_table().loc[cost_id()]                        # noqa: F821
-    return (float(cost["comm_renew_rate"]) * prem_charged_inst_pp(t) * pols_if(t)
+    cost = data.charge_table_dict()                                  # noqa: F821
+    return (float(cost["comm_renew_rate"][cost_id()]) * prem_charged_inst_pp(t) * pols_if(t)
             if duration(t) > k_start() else 0.0)
 
 
@@ -1751,18 +1750,33 @@ def check_pols_roll_fwd():
                for t in range(t_start(), proj_len()))
 
 
+def pols_exits_cum(t):
+    """The deaths, surrenders and maturities from ``t_start()`` through t; 0 before.
+
+    A running total: each month adds ``pols_death(t) + pols_lapse(t) + pols_maturity(t)`` to
+    the month before, so a month costs one step rather than re-summing the frame.  It equals
+    the direct sum over the exit cells up to floating-point noise (Python's ``sum`` is
+    compensated, this total is not), far inside the tolerance of
+    :func:`check_decrement_closure`.  A recursion over the exit cells only, never over
+    :func:`pols_if`.
+    """
+    if t < t_start():
+        return 0
+    return pols_exits_cum(t - 1) + (pols_death(t) + pols_lapse(t) + pols_maturity(t))
+
+
 def check_decrement_closure_resid(t):
     """The cumulative decrement-closure residual at the end of policy year t; zero.
 
     Deaths plus surrenders plus maturities up to ``t``, plus the survivors carried into
     ``t + 1`` before the *Ablauf*, less the original cohort.  It is built by **direct
-    summation over the exit cells**, with no reference to the recursion that produced
-    :func:`pols_if`, which is what makes it more than the telescope of
-    :func:`check_pols_roll_fwd`: it catches a wrong starting cohort, an exit counted in two
-    places, and a maturity that double-counts the final year's surrenders.
+    summation over the exit cells**, the running total :func:`pols_exits_cum`, with no
+    reference to the recursion that produced :func:`pols_if`, which is what makes it more
+    than the telescope of :func:`check_pols_roll_fwd`: it catches a wrong starting cohort,
+    an exit counted in two places, and a maturity that double-counts the final year's
+    surrenders.
     """
-    exits = sum(pols_death(s) + pols_lapse(s) + pols_maturity(s)
-                for s in range(t_start(), t + 1))
+    exits = pols_exits_cum(t)
     carried = pols_if(t + 1) if t < proj_len() - 1 else 0.0
     return exits + carried - pols_if_init()
 

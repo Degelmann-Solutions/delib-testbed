@@ -39,6 +39,13 @@ freq_loading_file         freq_loading_table()          freq_load_table.csv
 param_file                param_table()                 param_table.csv
 ========================  ============================  ==========================
 
+Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
+dicts by column, built once per model, which the projection's lookups read instead of
+``DataFrame.at``: the core's for ``model_point_table``, ``param_table``, ``mort_table``,
+``rentenfaktor_table``, ``charge_table``, ``lapse_table`` and ``freq_loading_table``, this
+space's ``decl_rate_table_dict`` with ``decl_rate_years``, the calendar range of each
+scenario the declared rate is clamped to.
+
 Every file but ``model_point_table.csv`` carries a per-row ``provenance`` column, this
 library's second ruling: an assumption says on its own row where it came from. The model
 point table is exempt because a model point is a *configuration* — one policy's own terms
@@ -125,6 +132,27 @@ def decl_rate_table():
     return pd.read_csv(                                              # noqa: F821
         input_dir() / decl_rate_file,                                # noqa: F821
         index_col=["scenario_id", "calendar_year"])
+
+
+def decl_rate_table_dict():
+    """The declared rates as a dict by column: ``{column: {(scenario_id, calendar_year): rate}}``.
+
+    Built once per model from ``decl_rate_table()``, keyed by the tuple of its two index
+    columns; ``Projection.decl_rate`` reads its ``decl_rate`` column.
+    """
+    return decl_rate_table().to_dict()
+
+
+def decl_rate_years():
+    """The calendar range of each scenario: ``{scenario_id: (first_year, last_year)}``.
+
+    Built once per model from the index of ``decl_rate_table()``, the bounds
+    ``Projection.decl_rate`` clamps the calendar year to.
+    """
+    years = decl_rate_table().index.to_frame(index=False).groupby(
+        "scenario_id")["calendar_year"]
+    return {scen: (int(lo), int(hi))
+            for scen, lo, hi in zip(years.min().index, years.min(), years.max())}
 
 
 def charge_table_index():

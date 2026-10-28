@@ -375,7 +375,7 @@ frequency-loading invariance is tested.
 | `income_schedule.csv` | Contribution-liable earnings by schedule id and `t`, 0–59 | **[std]** 2 % nominal growth paths plus a `zero` path for the *mittelbar* eligible spouse. It decides when the 2 100 € ceiling binds |
 | `surplus_scenario.csv` | `decl_rate` by scenario id and `t`, 0–89: `base` 2,30 %, `low` 0,50 % | **[std]**, the **largest single lever in the model** and the least supported (gap 12). The rate **includes** the *Rechnungszins* [REG-R53] |
 | `freq_loading.csv` | The *Ratenzuschlag* multiplier by payment frequency | **[std]** 1.0000 / 1.0100 / 1.0200 / 1.0300, a charge and never a credit |
-| `param_table.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.80 | **[std]**, the step from the first-order death table to the best estimate, below it because a death table carries its margin above [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads |
+| `param_table.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.80, `expense_infl` 0.02 | **[std]**, the step from the first-order death table to the best estimate, below it because a death table carries its margin above [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads |
 
 ### How the time-like input columns are keyed
 

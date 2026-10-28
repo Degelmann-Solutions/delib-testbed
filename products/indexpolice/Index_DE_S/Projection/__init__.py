@@ -1329,13 +1329,13 @@ def exp_acq_pp(t):
 def exp_maint_pp(k):
     """Maintenance expense per policy: 36.00 EUR a year inflating at 1.5 % **[std]**.
 
-    *Stückkosten*, ``exp_fixed_pp x (1 + exp_infl)^k``, inflated from **issue** and not
+    *Stückkosten*, ``exp_fixed_pp x (1 + expense_infl())^k``, inflated from **issue** and not
     from the valuation date — ``k`` is the elapsed policy years, so an in-force point
     carries the inflation its duration has already accumulated.  It is the **year's**
     amount; :func:`expenses` charges a twelfth of it each month, and the inflation factor
     steps on the anniversary because it compounds in policy years.
     """
-    return exp_fixed_pp * (1.0 + exp_infl) ** k                      # noqa: F821
+    return exp_fixed_pp * inflation_factor(12 * k)                   # noqa: F821
 
 
 def expenses_maint(t):
@@ -1653,8 +1653,6 @@ exp_prem_rate = 0.03
 exp_av_rate = 0.0025
 
 exp_fixed_pp = 36.0
-
-exp_infl = 0.015
 
 storno_rate = 0.02
 

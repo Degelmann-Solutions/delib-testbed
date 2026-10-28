@@ -37,10 +37,10 @@ So the argument of a cells says which clock it is on:
   :func:`res_pp_at`, :func:`res_guar_pp`, :func:`pu_single_prem`, :func:`is_paid_up`,
   :func:`bfz_uplift_pp`, :func:`decl_rate`, :func:`term_rate`, :func:`ans_rate`,
   :func:`surplus_base_pp`, :func:`surplus_credit_pp`, :func:`av_sur_pp`, :func:`term_bonus_pp`,
-  :func:`bonus_si_pp`, :func:`prem_offset_pp`, :func:`prem_charged_pp`, :func:`prem_paid_pp`,
-  :func:`storno_rate` and :func:`inflation_factor`;
+  :func:`bonus_si_pp`, :func:`prem_offset_pp`, :func:`prem_charged_pp`, :func:`prem_paid_pp`
+  and :func:`storno_rate`;
 * cells that state a **month** take ``t`` — the in force, the claims, the instalments, every
-  ``result_cf()`` column, and the ``*_close_pp`` cells that say what a mid-month exit is paid;
+  ``result_cf()`` column, the expense inflation :func:`inflation_factor`, and the ``*_close_pp`` cells that say what a mid-month exit is paid;
 * the **decrement rates take ``t`` and return the year's annual rate**, which is the
   library-wide convention and is not the same thing as an annual statement.
 
@@ -185,7 +185,8 @@ l(t)                pols_if(t)                             In force at the start
 RK(t)               benefit_lapse_pp(t)                    surr_value_pp(t), per lapse
 (none)              claim_kinds()                          DEATH / MATURITY / LAPSE
 claims_*            claims(t, kind)                        DEATH / MATURITY / LAPSE
-(none)              inflation_factor(k)                    Expense inflation factor
+(none)              expense_infl()                         Its rate, from cost_table.csv
+(none)              inflation_factor(t)                    Expense inflation factor
 (none)              claim_expenses(t)                      Claim handling expense
 (none)              expenses_pp(t)                         Per-policy expense in month t
 (none)              expenses_maint(t)                      expenses_pp(t) x pols_if(t)
@@ -1597,16 +1598,17 @@ def benefit_lapse_pp(t):
 
 # --- expenses and commission -----------------------------------------------
 
-def inflation_factor(k):
-    """The expense inflation factor in policy year k: ``(1 + expense_infl)^k`` **[std]**.
+def expense_infl():
+    """The annual expense inflation rate of this policy's cost set, 1,8 % p.a. **[std]**.
 
-    Measured from **issue**, not from the valuation date, so an in-force model point opens on
-    the inflation its duration has already accumulated - and because ``k`` is the 0-based
-    year from issue, the exponent is ``k`` itself and is 1.0 in the first policy year.
-    1,8 % p.a. is a placeholder.
+    Read from *cost_table.csv* at :func:`cost_id`, beside the expense levels it inflates,
+    rather than from *param_table.csv*: the rate belongs to the cost basis, and a book with
+    two cost sets carries two rates.
+
+    Override reason: the expense inflation is a column of the cost table keyed by
+    ``cost_id``, products/kapitallebensversicherung/technical-notes.md:214
     """
-    infl = float(data.charge_table().loc[cost_id(), "expense_infl"])  # noqa: F821
-    return (1.0 + infl) ** k
+    return float(data.charge_table().loc[cost_id(), "expense_infl"])  # noqa: F821
 
 
 def claim_expenses(t):
@@ -1640,7 +1642,7 @@ def expenses_pp(t):
     acq = (float(cost["acq_expense"])
            if (t == t_start() and duration_init() == 0) else 0.0)
     return (acq + float(cost["maint_expense"]) / 12.0
-            * inflation_factor(duration(t)))
+            * inflation_factor(t))
 
 
 def expenses_maint(t):

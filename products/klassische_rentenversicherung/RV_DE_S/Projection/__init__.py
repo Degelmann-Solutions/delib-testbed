@@ -1690,11 +1690,6 @@ def expense_claim_pp():
     return float(data.param_table().at["expense_claim_pp", "value"])  # noqa: F821
 
 
-def expense_infl():
-    """The annual expense inflation rate: 2,0 % p.a. **[std]**."""
-    return float(data.param_table().at["expense_infl", "value"])     # noqa: F821
-
-
 def expenses_pp(t):
     """The per-policy administration expense in **month** t, inflated: a twelfth of the year's.
 
@@ -1711,7 +1706,7 @@ def expenses_pp(t):
     """
     level = (expense_maint_pp() if duration(t) < int(model_point()["aufschub_y"])
              else expense_annuity_pp())
-    return level / 12.0 * (1.0 + expense_infl()) ** duration(t)
+    return level / 12.0 * inflation_factor(t)
 
 
 def expenses_acq(t):

@@ -124,7 +124,8 @@ claims_annuity, _lapse,     claims(t, kind)                 Benefit outgo by kin
 _death
 alpha x Beitragssumme       zillmer_amount()                Acquisition charge at t = 0
 (none)                      beitragssumme()                 The Zillmerung base
-(1 + f)^(t/12)              expense_infl_factor(t)          Expense inflation factor
+t / 12                      inflation_years(t)              Years of expense inflation
+(1 + f)^(t/12)              inflation_factor(t)             Expense inflation factor
 expenses(t)                 expenses(t)                     Acquisition + administration
 c x annuity payments        claim_expenses(t)               Per-annuity-payment cost
 net_cf(t)                   net_cf(t)                       Net cash flow, income positive
@@ -1236,16 +1237,19 @@ def alpha_rate():
     return permille / 1000.0
 
 
-def expense_infl_factor(t):
-    """The expense inflation factor at month ``t``: ``(1 + expense_infl)**(t/12)``.
+def inflation_years(t):
+    """The years of expense inflation at month ``t``, ``t / 12``: continuous, not stepped.
 
-    Applied to the per-policy administration cost and to the per-annuity-payment claims
-    cost, both of which are euro amounts quoted at ``t = 0`` prices.  Over the anchor cell's
-    sixty-five years it is a factor of about 2.6, which is enough for the per-policy line to
-    decide the viability of a small contract on its own.
+    The core's :func:`inflation_factor` is then ``(1 + expense_infl)**(t/12)``, applied to the
+    per-policy administration cost and to the per-annuity-payment claims cost, both of which
+    are euro amounts quoted at ``t = 0`` prices.  Over the anchor cell's sixty-five years it
+    is a factor of about 2.6, which is enough for the per-policy line to decide the viability
+    of a small contract on its own.
+
+    Override reason: the expense inflation compounds continuously over ``t / 12`` years,
+    products/pflegerentenversicherung/technical-notes.md:591
     """
-    infl = float(data.param_table().at["expense_infl", "value"])     # noqa: F821
-    return (1.0 + infl) ** (t / 12.0)
+    return t / 12.0
 
 
 def expenses(t):
@@ -1265,7 +1269,7 @@ def expenses(t):
         "admin_mth_pp", "value"])
     admin_pct = float(data.param_table().at[                         # noqa: F821
         "admin_prem_pct", "value"])
-    total = admin_pp * expense_infl_factor(t) * pols_if(t)
+    total = admin_pp * inflation_factor(t) * pols_if(t)
     total += admin_pct * premiums(t)
     if t == 0:
         total += zillmer_amount()
@@ -1275,7 +1279,7 @@ def expenses(t):
 def claim_expenses(t):
     """The claims-handling cost of month ``t``, per **annuity payment made**.
 
-    ``claim_expense_pp x expense_infl_factor(t) x sum_{g : waiver_flag(g)} pols_pg(t, g)``,
+    ``claim_expense_pp x inflation_factor(t) x sum_{g : waiver_flag(g)} pols_pg(t, g)``,
     so it is weighted on the paying grades only: a *Pflegegrad* 1 life on ``delib_std``
     generates none, and neither does a life inside its *Karenzzeit*.
 
@@ -1290,7 +1294,7 @@ def claim_expenses(t):
     for g in range(1, 6):
         if waiver_flag(g):
             total += pols_pg(t, g)
-    return per_payment * expense_infl_factor(t) * total
+    return per_payment * inflation_factor(t) * total
 
 
 def net_cf(t):
@@ -1635,7 +1639,7 @@ def epv_admin():
         "admin_mth_pp", "value"])
     total = 0.0
     for t in range(proj_len()):
-        total += disc_factor_mth(t) * admin_pp * expense_infl_factor(t) * tar_pols_if(t)
+        total += disc_factor_mth(t) * admin_pp * inflation_factor(t) * tar_pols_if(t)
     return total
 
 
@@ -1650,7 +1654,7 @@ def epv_claim_expense():
             if waiver_flag(g):
                 row += tar_pols_pg(t, g)
         if row:
-            total += disc_factor_mth(t) * per_payment * expense_infl_factor(t) * row
+            total += disc_factor_mth(t) * per_payment * inflation_factor(t) * row
     return total
 
 
@@ -1919,8 +1923,8 @@ def check_prem_equiv_resid(t):
     if beitragsrueckgewaehr():
         ben_leg += p0 * prem_units_at(t) * tar_pols_death(t)
 
-    exp_leg = (admin_pp * expense_infl_factor(t) * tar_pols_if(t)
-               + per_payment * expense_infl_factor(t) * paying
+    exp_leg = (admin_pp * inflation_factor(t) * tar_pols_if(t)
+               + per_payment * inflation_factor(t) * paying
                + admin_pct * prem_leg)
     if t == 0:
         if m == 0:

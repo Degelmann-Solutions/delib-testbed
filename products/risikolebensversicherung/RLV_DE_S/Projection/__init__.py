@@ -1218,23 +1218,6 @@ def comm_init_pp():
     return comm_rate_init * prem_term() * prem_gross_level_pp()      # noqa: F821
 
 
-def inflation_factor(t):
-    """(1 + pi)^duration(t): expense inflation on the sum-related admin charge only.
-
-    2,0 % a year **[std]**, stepping on the **policy anniversary** and flat across a
-    policy year's twelve months — the form ``Sofort_DE_S`` already uses in this library,
-    and arithmetically the same sequence the annual-step model published, re-indexed.
-    (``FRV_DE_S`` and ``Pflege_DE_S`` inflate continuously at ``(1 + pi)^(t/12)`` instead;
-    the difference is second-order and the anniversary form is what keeps a policy year's
-    charge equal to the annual model's.)  Applied from issue rather than from the start of
-    the projection, so an in-force point carries the inflation its duration has already
-    accrued.  **The tariff's own gamma is level**, so the cost result narrows over a long
-    term and eventually reverses — a real feature of a twenty-five-year contract, and the
-    reason model point 14's forty-year run is worth its place.
-    """
-    return (1.0 + expense_infl) ** duration(t)                       # noqa: F821
-
-
 def maint_pp(t):
     """Maintenance expense per in-force policy at the beginning of month t.
 
@@ -1605,8 +1588,6 @@ gamma_rate = 0.0003
 maint_prem_pct = 0.03
 
 comm_rate_renew = 0.01
-
-expense_infl = 0.02
 
 claim_expense = 250.0
 

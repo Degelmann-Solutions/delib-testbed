@@ -1685,7 +1685,7 @@ def expenses_maint(t):
     annuitants paid, products/riester_rente/technical-notes.md:665
     """
     maint = (expense_maint / 12.0                                    # noqa: F821
-             * (1.0 + expense_infl) ** duration(t)                   # noqa: F821
+             * inflation_factor(t)
              * pols_if(t)) if is_accum(t) else 0.0
     return maint + expense_annuity / 12.0 * pols_annuity_pay(t)      # noqa: F821
 
@@ -2166,8 +2166,6 @@ stornoabzug_rate = 0.02
 transfer_charge = 50.0
 
 expense_maint = 30.0
-
-expense_infl = 0.02
 
 expense_annuity = 24.0
 

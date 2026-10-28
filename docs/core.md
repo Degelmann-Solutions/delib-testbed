@@ -1,6 +1,6 @@
 # The common core of phase 3: layout and conventions
 
-Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates, the policy counts, the cash flows, the outputs and checks and the contract data and charges, and the conventions every core commit follows: commit trailers, the reason on a product override, and how a product's `UPSTREAM.md` names the files phase 3 changed. The tests that enforce the conventions are `tests/test_core.py` and `tests/test_provenance.py`.
+Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates, the policy counts, the cash flows, the expense inflation, the outputs and checks and the contract data and charges, how the core quota is measured and bounded, and the conventions every core commit follows: commit trailers, the reason on a product override, and how a product's `UPSTREAM.md` names the files phase 3 changed. The tests that enforce the conventions are `tests/test_core.py`, `tests/test_provenance.py` and `tests/test_core_quota.py`.
 
 ## Layout
 
@@ -148,9 +148,23 @@ The overrides, each with its reason in the cell's docstring:
 
 A product inherits every term also where it has no use for it: Pflege and FRV inherit `claim_kinds` and the benefits unused, and the core's `claims(t, "DEATH")` on Sofort, which has no deaths of that form, is not evaluated. A kind outside a product's `claim_kinds()` but among the core's three (RV's `"MATURITY"`, Riester's `"MATURITY"`) gives the core's product of a neutral benefit and a count rather than a `ValueError`.
 
-Still in the products: the per-policy amounts named above. The result frames and `check_net_cf` follow in the next section.
+Still in the products: the per-policy amounts named above. The expense inflation the cost terms multiply follows in the next section, the result frames and `check_net_cf` after it.
 
 Open work, each a result-changing commit of its own: Pflege's claim total in the compensated `sum`; FRV's lapse claim as amount times count and its five expenses, and Pflege's expenses, in the core's three terms; BU's expenses in the core's three terms; BU's, Pflege's and FRV's net cash flow from the core's terms (`surplus_credit` and `claim_expenses` as outgo terms, FRV's charges as income); Sofort's `liability_cf` as `-net_cf`.
+
+## The expense inflation
+
+The core's `Projection` holds the expense inflation the cost terms of the cash flows multiply, as a rate and a factor built from one term:
+
+- `expense_infl()`, the annual expense inflation rate, the row `expense_infl` of `param_table.csv` (RV's form); a product without the row raises `KeyError`. RV had the cell and Pflege read the row inline; FRV (0.02), Riester (0.02), RLV (0.02) and Sofort (0.015) had a Reference and got the row, and Index's Reference `exp_infl` (0.015), the same rate under another name, became the row `expense_infl`.
+- `inflation_factor(t) = (1 + expense_infl()) ** inflation_years(t)`, with the term `inflation_years(t) = duration(t)`: the completed policy years, so the factor counts from issue and steps on the policy anniversary, flat across a policy year's twelve months. RLV, Sofort (its `infl_factor`, `t // 12` on the inception clock), RV, Riester, KLV and Index derive both; KLV's `expenses_pp` reads `inflation_factor(t)` where it read its own `inflation_factor(duration(t))`, and Index's year-indexed `exp_maint_pp(k)` reads `inflation_factor(12 k)`, `duration(12 k) == k` on its inception clock.
+
+The overrides, each with its reason in the cell's docstring:
+
+- `expense_infl`: KLV, a column of `cost_table.csv` at `cost_id()`; Basis, a column of `charge_table.csv` at the tariff. The rate belongs to the cost basis there, beside the levels it inflates.
+- `inflation_years`: FRV and Pflege, `t / 12`, inflation compounding continuously from inception (`1.02^(t/12)`, `(1 + f) ** (t / 12)`); Basis, `proj_year(t)`, the projection years from the valuation date, its `t` running on the valuation clock; its year-indexed `unit_cost_pp(k)` reads `inflation_factor(12 k)`, `proj_year(12 k) == k`.
+
+The power is the same subexpression in the same place as in each product's own form, so every product's results are byte-identical. BU has no expense inflation (a German *Verwaltungskostenzuschlag* is fixed in the tariff, `products/berufsunfaehigkeit/technical-notes.md:339`) and inherits the three cells unused.
 
 ## The outputs and checks
 
@@ -178,6 +192,36 @@ A product inherits every frame also where it has none: the core's `result_cf_ann
 Still in the products: the product frames of their own (`result_surplus`, `result_fund`, `result_index`, `result_acct`) and every check but `check_net_cf`, also those two or more products share (`check_pols_roll_fwd`, `check_av_roll_fwd`, `check_prem_split`, `check_decrement_closure`, `check_res_roll_fwd`, `check_equivalence`, `check_annuity_roll_fwd`, `check_conversion`, `check_states`). The runner lists every cell of a product's `Projection` whose name starts with `check_` and that takes no parameter, inherited ones included, so a core `check_pols_roll_fwd` would add a check to Sofort's pinned list, which has `check_lives_roll_fwd` instead; the pinned check lists must not change.
 
 Open work: BU's frames and check derive once its time axis defines `t_start()` (its model point has no `duration_init`); Basis's and Riester's annual frames and `result_pols` of Basis and RV are annual-step views of their own, and the five residuals that cross another boundary stay by design.
+
+## The core quota
+
+The core quota of a product is the share of its executed formulas that come from the core (R8). An executed formula is a cell of the point's `Projection` ItemSpace that holds a value (`len(cell) > 0`) after `result_cf()` and every runner check (`run_baseline.check_names`) for every shipped point, the union over the points, with the model read by `mx.read_model` (the modelx engine, whose cells keep their values). An executed cell counts as core when the product's static `Projection` cell of that name is derived from the core base (`_is_derived()`); an override of a core cell and a product-only cell count as product. `Data` cells, the loaders, are not counted. The quota counts distinct formulas, not calls: a cell evaluated in every month counts once.
+
+The lower bound is 20 % for every product, and a product passes at quota >= 20 % (Moritz, 2026-10-28; epic-common-core Notes). `LOWER_BOUND` in `tools/core_quota.py` holds it, and `tests/test_core_quota.py` fails for any product below it; there is no exception list.
+
+| Product | `18a18fa` (merge base) | after the expense inflation |
+|---|---|---|
+| basisrente | 36 / 106 = 33.96 % | 37 / 109 = 33.94 % |
+| berufsunfaehigkeit | 28 / 140 = 20.00 % | 28 / 140 = 20.00 % |
+| fondsgebundene_rentenversicherung | 32 / 135 = 23.70 % | 34 / 138 = 24.64 % |
+| indexpolice | 47 / 128 = 36.72 % | 50 / 131 = 38.17 % |
+| kapitallebensversicherung | 74 / 166 = 44.58 % | 76 / 168 = 45.24 % |
+| klassische_rentenversicherung | 48 / 150 = 32.00 % | 51 / 152 = 33.55 % |
+| pflegerentenversicherung | 33 / 130 = 25.38 % | 35 / 132 = 26.52 % |
+| riester_rente | 49 / 153 = 32.03 % | 52 / 156 = 33.33 % |
+| risikolebensversicherung | 64 / 122 = 52.46 % | 67 / 124 = 54.03 % |
+| sofortrente | 17 / 89 = 19.10 % | 20 / 91 = 21.98 % |
+
+Sofort was below the bound at the merge base and rises above it with the expense inflation in the core. BU stands exactly at the bound and passes by `>=`; a product override that replaces a derived cell of BU's would put it below.
+
+To measure:
+
+```text
+uv run python tools/core_quota.py risikolebensversicherung
+uv run python tools/core_quota.py --all --json /tmp/quota.json
+```
+
+The tool prints `<product>: executed <n>, from core <c>, quota <q>` per product, writes the figures and the sorted cell names with `--json`, and exits 1 if any product is below the bound (each named on stderr), 2 on a usage error.
 
 ## Contract data and charges
 

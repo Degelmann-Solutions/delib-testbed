@@ -295,7 +295,7 @@ against what must be **paid** — and conflating them is a numbered pitfall [R2]
 
 ## Inputs are external files
 
-The nine input CSVs, `param_table.csv` with `roll_fwd_tol` among them, live **in this directory**, beside `run.py` — not inside the model
+The nine input CSVs, `param_table.csv` with `roll_fwd_tol` and `expense_infl` among them, live **in this directory**, beside `run.py` — not inside the model
 folder. `Index_DE_S/` holds nothing but formulas:
 
 ```

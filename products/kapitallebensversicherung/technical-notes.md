@@ -630,7 +630,7 @@ claims(t, "MATURITY") = pols_maturity(t) · benefit_maturity_pp(t)
 claims(t, "LAPSE")    = pols_lapse(t)    · surr_value_pp(t)
 
 expenses(t)    = acq_expense · 1{t = t_start and duration_init = 0}
-                 + maint_expense/12 · inflation_factor(k) · pols_if(t)
+                 + maint_expense/12 · inflation_factor(t) · pols_if(t)
                  + claim_expense · ( pols_death(t) + pols_lapse(t) + pols_maturity(t) )
 commissions(t) = comm_init_rate · beitragssumme · 1{t = t_start and duration_init = 0}
                  + comm_renew_rate · prem_charged_inst_pp(t) · pols_if(t)   for k > k_start

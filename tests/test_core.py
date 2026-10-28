@@ -32,6 +32,8 @@
   RV's annual frame sums the flows and takes its two counts at the year's start; RLV's
   net-cash-flow residual is rebuilt from its frame's columns; KLV's ``check_net_cf`` closes to
   the scaled tolerance and fails above it.
+- The expense inflation: Sofort's derived factor steps on the policy anniversary, Pflege's
+  compounds continuously over ``t / 12`` years.
 """
 from __future__ import annotations
 
@@ -662,6 +664,33 @@ CORE_CELLS = {
                    "riester_rente": "derived",
                    "risikolebensversicherung": "derived",
                    "sofortrente": "derived"},
+        "expense_infl": {"basisrente": "override",
+                         "fondsgebundene_rentenversicherung": "derived",
+                         "indexpolice": "derived",
+                         "kapitallebensversicherung": "override",
+                         "klassische_rentenversicherung": "derived",
+                         "pflegerentenversicherung": "derived",
+                         "riester_rente": "derived",
+                         "risikolebensversicherung": "derived",
+                         "sofortrente": "derived"},
+        "inflation_years": {"basisrente": "override",
+                            "fondsgebundene_rentenversicherung": "override",
+                            "indexpolice": "derived",
+                            "kapitallebensversicherung": "derived",
+                            "klassische_rentenversicherung": "derived",
+                            "pflegerentenversicherung": "override",
+                            "riester_rente": "derived",
+                            "risikolebensversicherung": "derived",
+                            "sofortrente": "derived"},
+        "inflation_factor": {"basisrente": "derived",
+                             "fondsgebundene_rentenversicherung": "derived",
+                             "indexpolice": "derived",
+                             "kapitallebensversicherung": "derived",
+                             "klassische_rentenversicherung": "derived",
+                             "pflegerentenversicherung": "derived",
+                             "riester_rente": "derived",
+                             "risikolebensversicherung": "derived",
+                             "sofortrente": "derived"},
         "expenses_acq": {"basisrente": "override",
                          "indexpolice": "derived",
                          "kapitallebensversicherung": "derived",
@@ -1606,3 +1635,28 @@ def test_klv_check_net_cf_closes_to_the_scaled_tolerance(product_models):
         assert copy.Projection[point_id].check_net_cf() is False
     finally:
         copy.close()
+
+
+def test_sofort_inflation_factor_steps_on_the_policy_anniversary(product_models):
+    model = product_models("sofortrente")
+    projection = model.Projection
+    assert projection.inflation_factor._is_derived()
+    assert projection.inflation_years._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        assert item.expense_infl() == 0.015
+        for t in range(item.t_start(), item.proj_len()):
+            assert item.inflation_factor(t) == 1.015 ** item.duration(t), (point_id, t)
+            assert item.inflation_factor(t) == 1.015 ** (t // 12), (point_id, t)
+
+
+def test_pflege_inflation_factor_compounds_continuously(product_models):
+    model = product_models("pflegerentenversicherung")
+    projection = model.Projection
+    assert projection.inflation_factor._is_derived()
+    assert projection.inflation_years._is_defined()
+    point_id = model.Data.model_point_table().index[0]
+    item = projection[point_id]
+    assert item.expense_infl() == 0.015
+    assert item.inflation_factor(6) == 1.015 ** 0.5
+    assert item.inflation_factor(0) == 1.0

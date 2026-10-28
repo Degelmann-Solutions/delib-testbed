@@ -728,6 +728,35 @@ def claims(t, kind=None):
     return claims_other(t, kind)                                     # noqa: F821
 
 
+def expense_infl():
+    """The annual expense inflation rate, from *param_table.csv*.
+
+    The row ``expense_infl`` of the product's table; a product without the row raises
+    ``KeyError``.  A product that keys the rate by tariff or cost set overrides the cell with
+    its lookup.
+    """
+    return float(data.param_table().at["expense_infl", "value"])     # noqa: F821
+
+
+def inflation_years(t):
+    """The years the expense inflation has compounded over at month t; ``duration(t)``.
+
+    The completed policy years: the factor counts from issue and steps on the policy
+    anniversary, flat across a policy year's twelve months.  A product that inflates
+    continuously or from the valuation date overrides this term.
+    """
+    return duration(t)                                               # noqa: F821
+
+
+def inflation_factor(t):
+    """The expense inflation factor in month t, ``(1 + expense_infl()) ** inflation_years(t)``.
+
+    1.0 where no year has compounded.  It multiplies an expense level quoted at the prices of
+    the start of the count.
+    """
+    return (1.0 + expense_infl()) ** inflation_years(t)              # noqa: F821
+
+
 def expenses_acq(t):
     """The acquisition expense in month t; 0, none."""
     return 0.0

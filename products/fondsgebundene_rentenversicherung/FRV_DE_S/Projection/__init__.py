@@ -1538,6 +1538,18 @@ def comm_acq_pp(t):
     return comm_acq_rate * beitragssumme()                           # noqa: F821
 
 
+def inflation_years(t):
+    """The years of expense inflation in month t, ``t / 12``: continuous, from inception.
+
+    The core's :func:`inflation_factor` is then ``(1 + expense_infl)^(t/12)``, exactly 1.0
+    in the inception month ``t = 0``, rather than a factor stepping on the anniversary.
+
+    Override reason: the expense inflation is applied as ``1.02^(t/12)``,
+    products/fondsgebundene_rentenversicherung/technical-notes.md:391
+    """
+    return t / 12.0
+
+
 def expense_maint_pp(t):
     """Maintenance expense per policy in month t, inflating from inception.
 
@@ -1546,7 +1558,7 @@ def expense_maint_pp(t):
     rather than the projection's own start, so an in-force cell picks up the inflation its
     elapsed duration has already accrued.
     """
-    return expense_maint_mth * (1.0 + expense_infl) ** (t / 12.0)     # noqa: F821
+    return expense_maint_mth * inflation_factor(t)                   # noqa: F821
 
 
 def expenses(t):
@@ -2040,8 +2052,6 @@ comm_acq_rate = 0.025
 expense_issue = 200.0
 
 expense_maint_mth = 4.0
-
-expense_infl = 0.02
 
 comm_renew_rate = 0.015
 

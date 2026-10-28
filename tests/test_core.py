@@ -34,6 +34,10 @@
   the scaled tolerance and fails above it.
 - The expense inflation: Sofort's derived factor steps on the policy anniversary, Pflege's
   compounds continuously over ``t / 12`` years.
+- The dict cells: every core dict cell of a table a product has equals its reader's
+  DataFrame; the lookups through them keep their clamp and errors (the lapse rate beyond the
+  table, an unknown ``prem_freq``, a missing ``expense_infl`` row, an issue year outside every
+  *Höchstrechnungszins* band), and a table the product lacks is never read.
 """
 from __future__ import annotations
 
@@ -238,6 +242,15 @@ CORE_CELLS = {
                          "kapitallebensversicherung": "derived",
                          "klassische_rentenversicherung": "derived"},
         "hoechstrechnungszins_table": {"sofortrente": "derived"},
+        "model_point_table_dict": dict.fromkeys(MODELS, "derived"),
+        "param_table_dict": dict.fromkeys(MODELS, "derived"),
+        "mort_table_dict": dict.fromkeys(MODELS, "derived"),
+        "lapse_table_dict": dict.fromkeys(MODELS, "derived"),
+        "rentenfaktor_table_dict": dict.fromkeys(MODELS, "derived"),
+        "freq_loading_table_dict": dict.fromkeys(MODELS, "derived"),
+        "surplus_table_dict": dict.fromkeys(MODELS, "derived"),
+        "charge_table_dict": dict.fromkeys(MODELS, "derived"),
+        "hoechstrechnungszins_table_dict": dict.fromkeys(MODELS, "derived"),
     },
     "Projection": {
         "model_point": dict.fromkeys(MODELS, "derived"),
@@ -1111,7 +1124,7 @@ def test_rlv_smoker_reads_its_codes_and_rejects_others(tmp_path, product_models)
     projection = model.Projection
     assert projection.smoker._is_derived()
     assert projection.smoker_codes._is_defined()
-    points = model.Data.model_point_table()
+    points = model.Data.model_point_table().copy()
     smokers = points.index[points["smoker"] == "R"]
     assert len(smokers), "no smoker model point"
     assert projection[smokers[0]].smoker() == "R"
@@ -1131,7 +1144,7 @@ def test_rlv_smoker_reads_its_codes_and_rejects_others(tmp_path, product_models)
 def test_core_prem_term_rejects_a_term_beyond_the_policy_term(tmp_path, product_models):
     model = product_models("risikolebensversicherung")
     assert model.Projection.prem_term._is_derived()
-    points = model.Data.model_point_table()
+    points = model.Data.model_point_table().copy()
     point_id = points.index[0]
     assert model.Projection[point_id].prem_term() <= model.Projection[point_id].policy_term()
 
@@ -1662,3 +1675,112 @@ def test_pflege_inflation_factor_compounds_continuously(product_models):
     assert item.expense_infl() == 0.015
     assert item.inflation_factor(6) == 1.015 ** 0.5
     assert item.inflation_factor(0) == 1.0
+
+
+# The core's dict cells: reader -> the file Reference whose presence says a product has it.
+DICT_READERS = {
+    "model_point_table": "model_point_file",
+    "param_table": "param_file",
+    "mort_table": "mort_file",
+    "lapse_table": "lapse_file",
+    "rentenfaktor_table": "rentenfaktor_file",
+    "freq_loading_table": "freq_loading_file",
+    "surplus_table": "surplus_file",
+    "charge_table": "charge_file",
+    "hoechstrechnungszins_table": "hoechstrechnungszins_file",
+}
+
+
+def same_value(a, b) -> bool:
+    return a == b or (pd.isna(a) and pd.isna(b))
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_every_dict_cell_equals_its_reader(product, product_models):
+    data = product_models(product).Data
+    readers = [r for r, ref in DICT_READERS.items() if ref in data.refs]
+    assert "model_point_table" in readers and "param_table" in readers
+    for reader in readers:
+        df = data.cells[reader]()
+        table = data.cells[reader + "_dict"]()
+        if reader == "model_point_table":
+            assert list(table) == list(df.index), reader
+            rows = table
+        else:
+            assert list(table) == list(df.columns), reader
+            for column, values in table.items():
+                assert list(values) == list(df.index), (reader, column)
+            rows = {k: {c: table[c][k] for c in df.columns} for k in df.index}
+        for key in df.index:
+            for column in df.columns:
+                assert same_value(rows[key][column], df.at[key, column]), (reader, key, column)
+
+
+def test_lapse_rate_beyond_the_table_holds_its_last_row(product_models):
+    model = product_models("risikolebensversicherung")
+    assert model.Projection.lapse_rate_base._is_derived()
+    table = model.Data.lapse_table()
+    last = table.index.max()
+    item = model.Projection[model.Data.model_point_table().index[0]]
+    t = 12 * int(last + 5)
+    assert item.policy_year(t) > last
+    assert item.lapse_rate_base(t) == float(table.at[last, "lapse_rate"])
+
+
+def test_a_prem_freq_without_a_loading_raises(tmp_path):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    table = folder / "model_point_table.csv"
+    points = pd.read_csv(table, index_col="point_id")
+    point_id = points.index[0]
+    points.loc[point_id, "prem_freq"] = "woechentlich"
+    points.to_csv(table)
+    copy = mx.read_model(folder / MODELS["risikolebensversicherung"], name="FreqProbe")
+    try:
+        message = "no frequency loading for prem_freq woechentlich"
+        with pytest.raises(Exception, match=message) as raised:
+            copy.Projection[point_id].prem_freq()
+        assert raised_value_error(raised, message)
+    finally:
+        copy.close()
+
+
+def test_expense_infl_without_its_row_raises_key_error(tmp_path):
+    folder = product_copy(tmp_path, "klassische_rentenversicherung")
+    table = folder / "param_table.csv"
+    params = pd.read_csv(table, index_col="item")
+    params.drop(index="expense_infl").to_csv(table)
+    copy = mx.read_model(folder / MODELS["klassische_rentenversicherung"], name="InflProbe")
+    try:
+        assert copy.Projection.expense_infl._is_derived()
+        point_id = copy.Data.model_point_table().index[0]
+        with pytest.raises(Exception, match="expense_infl") as raised:
+            copy.Projection[point_id].expense_infl()
+        assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+    finally:
+        copy.close()
+
+
+def test_an_issue_year_outside_every_band_raises(tmp_path):
+    folder = product_copy(tmp_path, "sofortrente")
+    table = folder / "model_point_table.csv"
+    points = pd.read_csv(table, index_col="point_id")
+    point_id = points.index[0]
+    points.loc[point_id, "issue_year"] = 1900
+    points.to_csv(table)
+    copy = mx.read_model(folder / MODELS["sofortrente"], name="HrzProbe")
+    try:
+        assert copy.Projection.hoechstrechnungszins._is_derived()
+        message = "no Hoechstrechnungszins band covers issue_year"
+        with pytest.raises(Exception, match=message) as raised:
+            copy.Projection[point_id].hoechstrechnungszins()
+        assert raised_value_error(raised, message)
+    finally:
+        copy.close()
+
+
+def test_a_product_without_a_table_never_builds_its_dict(product_models):
+    model = product_models("risikolebensversicherung")
+    assert "surplus_file" not in model.Data.refs
+    model.Projection[model.Data.model_point_table().index[0]].result_cf()
+    assert len(model.Data.model_point_table_dict) == 1
+    assert len(model.Data.surplus_table_dict) == 0

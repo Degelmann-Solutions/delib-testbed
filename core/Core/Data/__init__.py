@@ -6,7 +6,8 @@
 """The shared input cells; a product's ``Data`` inherits them as ``CoreData``.
 
 Input files stay the product's own: the product's ``Data`` reads them relative to the
-product's model folder.
+product's model folder.  Each reader has a dict cell ``<reader>_dict()`` beside it, the
+same table as plain dicts built once per model, which the projection's lookups read.
 """
 
 from modelx.serialize.jsonvalues import *
@@ -117,3 +118,85 @@ def hoechstrechnungszins_table():
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / hoechstrechnungszins_file, index_col="year_from")   # noqa: F821
+
+
+def model_point_table_dict():
+    """The model point table as a dict by row: ``{point_id: {column: value}}``.
+
+    Built once per model from ``model_point_table()``; ``Projection.model_point`` returns
+    the selected point's row from it.  The values are the table's own, boxed as Python
+    ``int``, ``float``, ``bool`` and ``str`` with the same bits.
+    """
+    return model_point_table().to_dict("index")
+
+
+def param_table_dict():
+    """The parameter table as a dict by column: ``{column: {item: value}}``.
+
+    Built once per model from ``param_table()``; ``Projection.omega_age``,
+    ``unisex_mix_male``, ``expense_infl`` and ``roll_fwd_tol`` read its ``value`` column.
+    """
+    return param_table().to_dict()
+
+
+def mort_table_dict():
+    """The mortality table as a dict by column: ``{column: {key: rate}}``.
+
+    Keyed as ``mort_table()`` is indexed, by the tuple of ``mort_table_index()`` (a scalar
+    for a single index column); the products' lookups read the column they use.
+    """
+    return mort_table().to_dict()
+
+
+def lapse_table_dict():
+    """The lapse table as a dict by column: ``{column: {policy_year: rate}}``.
+
+    Keyed as ``lapse_table()`` is indexed by ``lapse_table_index()``, the policy year
+    **1-based** by default; ``Projection.lapse_rate_base`` reads its ``lapse_rate`` column.
+    """
+    return lapse_table().to_dict()
+
+
+def rentenfaktor_table_dict():
+    """The *Rentenfaktor* table as a dict by column: ``{column: {key: value}}``.
+
+    Keyed as ``rentenfaktor_table()`` is indexed, by the tuple of
+    ``rentenfaktor_table_index()``; the products' lookups read it.
+    """
+    return rentenfaktor_table().to_dict()
+
+
+def freq_loading_table_dict():
+    """The frequency loading table as a dict by column: ``{column: {prem_freq: value}}``.
+
+    ``Projection.prem_freq`` checks the frequency against its keys,
+    ``prem_freq_load`` and ``instalments`` read the columns of their names.
+    """
+    return freq_loading_table().to_dict()
+
+
+def surplus_table_dict():
+    """The surplus table as a dict by column: ``{column: {key: value}}``.
+
+    Keyed as ``surplus_table()`` is indexed, by the tuple of ``surplus_table_index()``;
+    the products' lookups read it.
+    """
+    return surplus_table().to_dict()
+
+
+def charge_table_dict():
+    """The charge table as a dict by column: ``{column: {key: value}}``.
+
+    Keyed as ``charge_table()`` is indexed by ``charge_table_index()``; the products'
+    lookups read it.
+    """
+    return charge_table().to_dict()
+
+
+def hoechstrechnungszins_table_dict():
+    """The *Höchstrechnungszins* bands as a dict by column: ``{column: {year_from: value}}``.
+
+    The keys in the file's order; ``Projection.hoechstrechnungszins`` tries the bands in
+    that order on the ``year_to`` and ``max_rate`` columns.
+    """
+    return hoechstrechnungszins_table().to_dict()

@@ -16,8 +16,9 @@ baseline are two deviations, and a change reverted later is still one. Adding or
 file is a change. The products are every ``baseline/<product>/result_cf.csv`` at the tag, at
 HEAD or touched by a commit in the range.
 
-- A non-merge commit changes a baseline when the file differs from its parent's
-  (``git log --full-history --no-merges``, so no side branch is simplified away).
+- A non-merge commit changes a baseline when the file's blob differs from its parent's
+  (``git log --full-history --no-merges --raw``, so no side branch is simplified away); a
+  mode-only change keeps the blob and is no change.
 - A merge commit changes a baseline only when the file (its blob, absent counting as one
   value) differs from every parent's: content no parent brings (an evil merge). A PR's change
   is listed at its branch commit.
@@ -46,7 +47,8 @@ starting with its check name. With ``--json FILE`` the tool also writes ``{"tag"
 "marked"}], "problems": [...]}``.
 
 Exit status: 0 if every deviation is marked and no problem is found; 1 otherwise; 2 on a usage
-error (no git repository, a tag that does not resolve -- fetch it with ``git fetch --tags``).
+error (no git repository, a tag that does not resolve -- fetch it with ``git fetch --tags``) or
+a failing git call (``error: <message>`` with git's stderr).
 """
 from __future__ import annotations
 
@@ -61,7 +63,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_TAG = "phase-2-baseline"
 BASELINE_RE = re.compile(r"^baseline/([^/]+)/result_cf\.csv$")
 TRAILER_RE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9-]*):[ \t]*(.*)$")
-REQUIRED = (("result-change", "Result-Change"), ("reason", "Reason"), ("checked-by", "Checked-By"))
+REQUIRED = (("reason", "Reason"), ("checked-by", "Checked-By"))
 # Settings a user's git config could set that would change the output parsed here.
 GIT_CONFIG = ["-c", "log.showSignature=false", "-c", "log.follow=false",
               "-c", "core.quotepath=off", "-c", "log.decorate=false"]
@@ -171,14 +173,21 @@ def commits(repo: Path, tag: str, head: str) -> list[dict]:
 def changes(repo: Path, tag: str, head: str, history: list[dict]) -> dict[str, set[str]]:
     """Commit SHA to the products whose baseline it changes (see module docstring)."""
     changed: dict[str, set[str]] = {}
-    out = git(repo, "log", "--full-history", "--no-merges", "--no-renames", "--name-only",
-              "--format=%x1e%H", f"{tag}..{head}", "--", "baseline")
+    out = git(repo, "log", "--full-history", "--no-merges", "--no-renames", "--raw",
+              "--no-abbrev", "--format=%x1e%H", f"{tag}..{head}", "--", "baseline")
     for record in out.split("\x1e"):
         lines = [line for line in record.splitlines() if line.strip()]
         if not lines:
             continue
-        sha, paths = lines[0], lines[1:]
-        products = {m.group(1) for m in map(BASELINE_RE.match, paths) if m}
+        sha, products = lines[0], set()
+        for line in lines[1:]:
+            # :<old mode> <new mode> <old blob> <new blob> <status>\t<path>; an all-zero
+            # blob is absent. A mode-only change keeps the blob and is no change.
+            meta, path = line.split("\t", 1)
+            old_blob, new_blob = meta.split()[2:4]
+            match = BASELINE_RE.match(path)
+            if match and old_blob != new_blob:
+                products.add(match.group(1))
         if products:
             changed.setdefault(sha, set()).update(products)
     trees: dict[str, dict[str, str]] = {}
@@ -282,6 +291,9 @@ def main(argv: list[str] | None = None) -> int:
         listing = collect(args.repo, args.tag)
     except UsageError as exc:
         parser.print_usage(sys.stderr)
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    except RuntimeError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
     if args.json is not None:

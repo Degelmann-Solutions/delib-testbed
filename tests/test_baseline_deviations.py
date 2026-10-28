@@ -7,7 +7,8 @@
   product and SHA; a marker naming a product whose baseline is unchanged exits 1; a marker
   without ``Checked-By`` exits 1; an evil merge exits 1; an added baseline counts as a change;
   a missing tag exits 2 and names ``git fetch --tags``; a clean range prints the no-deviation
-  line.
+  line. A mode-only change is no deviation, an empty ``Result-Change`` is UNMARKED rather than
+  INCOMPLETE, and a failing git call exits 2 with ``error:``.
 - The trailer parser ignores ``Result-Change:`` inside a body sentence and finds trailers in a
   paragraph before a ``Co-Authored-By`` paragraph.
 """
@@ -231,6 +232,35 @@ def test_a_removed_baseline_is_a_change(repo):
     result = repo.run()
     assert result.returncode == 0, result.stderr
     assert f"beta {sha} Remove beta" in result.stdout
+
+
+def test_a_mode_only_change_is_no_deviation(repo):
+    (repo.path / "baseline" / "alpha" / "result_cf.csv").chmod(0o755)
+    repo.commit("Make alpha's baseline executable")
+    assert git(repo.path, "diff", "--name-only", "HEAD~1", "HEAD") == "baseline/alpha/result_cf.csv"
+    result = repo.run()
+    tag = git(repo.path, "rev-parse", TAG)
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0, f"no baseline deviation from {TAG} ({tag})\n", "")
+
+
+def test_an_empty_result_change_is_unmarked_not_incomplete(repo):
+    repo.write("alpha", "t,cf\n0,2.0\n")
+    message = marked("Change alpha", "alpha").replace("Result-Change: alpha", "Result-Change:")
+    sha = repo.commit(message)
+    result = repo.run()
+    assert result.returncode == 1
+    problems = result.stderr.splitlines()
+    assert any(line.startswith(f"UNMARKED: alpha {sha}") for line in problems)
+    assert not any(line.startswith("INCOMPLETE") for line in problems)
+
+
+def test_a_failing_git_call_exits_2_without_a_traceback(repo, monkeypatch, capsys):
+    def fail(*args):
+        raise RuntimeError("git log failed: fatal: bad object")
+    monkeypatch.setattr(baseline_deviations, "commits", fail)
+    assert baseline_deviations.main(["--repo", str(repo.path)]) == 2
+    assert capsys.readouterr().err == "error: git log failed: fatal: bad object\n"
 
 
 def test_a_missing_tag_exits_2(repo):

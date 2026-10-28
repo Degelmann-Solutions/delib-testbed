@@ -793,6 +793,7 @@ CORE_CELLS = {
         "result_cf_columns": {**dict.fromkeys(MODELS, "override"),
                               "kapitallebensversicherung": "derived"},
         "result_cf": {**dict.fromkeys(MODELS, "derived"), "berufsunfaehigkeit": "override"},
+        "result_cf_dict": dict.fromkeys(MODELS, "derived"),
         "result_cf_counts": {"indexpolice": "derived",
                              "kapitallebensversicherung": "derived",
                              "klassische_rentenversicherung": "override",
@@ -1616,6 +1617,27 @@ def test_rlv_net_cf_resid_rebuilds_net_cf_from_the_frame(product_models):
             resid = item.check_net_cf_resid(t)
             assert resid == float(row["net_cf"] - rebuilt), (point_id, t)
             assert resid == 0.0, (point_id, t)
+
+
+@pytest.mark.parametrize("product", [
+    "kapitallebensversicherung", "klassische_rentenversicherung", "riester_rente",
+    "risikolebensversicherung"])
+def test_net_cf_resid_reads_the_frame_through_its_dict(product_models, product):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.check_net_cf_resid._is_derived()
+    assert projection.result_cf_dict._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        frame = item.result_cf()
+        columns = item.result_cf_dict()
+        assert list(columns) == list(frame.columns), point_id
+        for label in frame.columns:
+            assert list(columns[label]) == list(frame.index), (point_id, label)
+            for t in frame.index:
+                assert columns[label][t] == frame.at[t, label], (point_id, label, t)
+        with pytest.raises(Exception, match=f"KeyError: {item.proj_len()}\n"):
+            item.check_net_cf_resid(item.proj_len())
 
 
 def _resid_just_above_tolerance(t):

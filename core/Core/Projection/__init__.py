@@ -719,14 +719,14 @@ def claims(t, kind=None):
     one.  A kind whose per-policy amount is 0 is exactly 0, a published zero rather than a
     missing column.
     """
-    if kind is None:
-        return sum(claims(t, k) for k in claim_kinds())              # noqa: F821
     if kind == "DEATH":
         return benefit_death_pp(t) * pols_death(t)                  # noqa: F821
     if kind == "LAPSE":
         return benefit_lapse_pp(t) * pols_lapse(t)                   # noqa: F821
     if kind == "MATURITY":
         return benefit_maturity_pp(t) * pols_maturity(t)             # noqa: F821
+    if kind is None:
+        return sum(claims(t, k) for k in claim_kinds())              # noqa: F821
     return claims_other(t, kind)                                     # noqa: F821
 
 
@@ -896,6 +896,19 @@ def result_cf():
     return frame
 
 
+def result_cf_dict():
+    """:func:`result_cf` as plain dicts by column, ``{label: {t: value}}``.
+
+    The frame's columns in its order, each keyed by the month ``t`` of the frame's index,
+    the values the frame's own, as Python scalars from ``tolist()``.  Built once per point;
+    :func:`check_net_cf_resid` reads it instead of a pandas row per month.  The frame stays
+    the published output.
+    """
+    frame = result_cf()                                              # noqa: F821
+    ts = frame.index.tolist()
+    return {label: dict(zip(ts, frame[label].tolist())) for label in frame.columns}
+
+
 def result_cf_counts():
     """The count columns of :func:`result_cf` taken at each year's start: ``pols_if``.
 
@@ -994,16 +1007,17 @@ def check_net_cf_resid(t):
     added left to right, less each column of ``net_cf_outgo_columns()`` in turn.  Reading the
     frame is the point: the identity then holds of what the model publishes, so a column
     dropped, renamed or mis-signed on the way into the frame, or a benefit kind missing from
-    the statement, fails here.
+    the statement, fails here.  The columns are read through :func:`result_cf_dict`, the
+    frame's own values, at month t; a month outside the frame raises ``KeyError``.
     """
-    row = result_cf().loc[t]                                         # noqa: F821
+    columns = result_cf_dict()                                       # noqa: F821
     income = net_cf_income_columns()                                 # noqa: F821
-    rebuilt = row[income[0]]
+    rebuilt = columns[income[0]][t]
     for label in income[1:]:
-        rebuilt = rebuilt + row[label]
+        rebuilt = rebuilt + columns[label][t]
     for label in net_cf_outgo_columns():                             # noqa: F821
-        rebuilt = rebuilt - row[label]
-    return float(row["net_cf"] - rebuilt)
+        rebuilt = rebuilt - columns[label][t]
+    return float(columns["net_cf"][t] - rebuilt)
 
 
 def check_net_cf_scale(t):

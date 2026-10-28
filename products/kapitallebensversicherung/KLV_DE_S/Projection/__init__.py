@@ -37,10 +37,10 @@ So the argument of a cells says which clock it is on:
   :func:`res_pp_at`, :func:`res_guar_pp`, :func:`pu_single_prem`, :func:`is_paid_up`,
   :func:`bfz_uplift_pp`, :func:`decl_rate`, :func:`term_rate`, :func:`ans_rate`,
   :func:`surplus_base_pp`, :func:`surplus_credit_pp`, :func:`av_sur_pp`, :func:`term_bonus_pp`,
-  :func:`bonus_si_pp`, :func:`prem_offset_pp`, :func:`prem_charged_pp`, :func:`prem_paid_pp`,
-  :func:`storno_rate` and :func:`inflation_factor`;
+  :func:`bonus_si_pp`, :func:`prem_offset_pp`, :func:`prem_charged_pp`, :func:`prem_paid_pp`
+  and :func:`storno_rate`;
 * cells that state a **month** take ``t`` — the in force, the claims, the instalments, every
-  ``result_cf()`` column, and the ``*_close_pp`` cells that say what a mid-month exit is paid;
+  ``result_cf()`` column, the expense inflation :func:`inflation_factor`, and the ``*_close_pp`` cells that say what a mid-month exit is paid;
 * the **decrement rates take ``t`` and return the year's annual rate**, which is the
   library-wide convention and is not the same thing as an annual statement.
 

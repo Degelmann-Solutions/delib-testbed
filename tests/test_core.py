@@ -38,6 +38,9 @@
   DataFrame; the lookups through them keep their clamp and errors (the lapse rate beyond the
   table, an unknown ``prem_freq``, a missing ``expense_infl`` row, an issue year outside every
   *Höchstrechnungszins* band), and a table the product lacks is never read.
+- Pflege's own dict cells equal their readers; its care-grade rates are keyed by attained
+  age and grade, not by month, and keep their limiting-age, recovery-damping and grade-5
+  values; a missing ``rec_margin`` row raises.
 """
 from __future__ import annotations
 
@@ -1806,3 +1809,113 @@ def test_a_product_without_a_table_never_builds_its_dict(product_models):
     model.Projection[model.Data.model_point_table().index[0]].result_cf()
     assert len(model.Data.model_point_table_dict) == 1
     assert len(model.Data.surplus_table_dict) == 0
+
+
+# Pflege's own dict cells, beside the core's: reader -> the file Reference of its table.
+PFLEGE_DICT_READERS = {
+    "benefit_scale_table": "benefit_scale_file",
+    "incidence_table": "incidence_file",
+    "care_table": "care_file",
+    "surrender_table": "surrender_file",
+}
+
+
+def test_pflege_product_dict_cells_equal_their_readers(product_models):
+    data = product_models("pflegerentenversicherung").Data
+    for reader, ref in PFLEGE_DICT_READERS.items():
+        assert ref in data.refs, reader
+        assert data.cells[reader + "_dict"]._is_defined(), reader
+        df = data.cells[reader]()
+        table = data.cells[reader + "_dict"]()
+        assert list(table) == list(df.columns), reader
+        for column, values in table.items():
+            assert list(values) == list(df.index), (reader, column)
+            for key in df.index:
+                assert same_value(values[key], df.at[key, column]), (reader, key, column)
+
+
+# Pflege's care-grade rates keyed by attained age (and grade), not by month: cell -> whether
+# the cell takes the grade, the age, or both.
+PFLEGE_AGE_KEYED = {
+    "rec_rate": ("x", "g"),
+    "det_force": ("x", "g"),
+    "rec_force": ("x", "g"),
+    "tar_mort_rate_care": ("x", "g"),
+    "tar_rec_rate": ("x", "g"),
+    "tar_p_pg": ("x", "g"),
+    "tar_inc_rate": ("x",),
+    "tar_det_rate": ("g",),
+}
+
+
+def test_pflege_care_grade_rates_are_keyed_by_age():
+    # A model of its own, so that the cells' caches start empty whatever ran before.
+    product = "pflegerentenversicherung"
+    model = mx.read_model(PRODUCTS_DIR / product / MODELS[product], name="AgeKeyProbe")
+    try:
+        item = model.Projection[1]
+        item.result_cf()
+        assert item.premium_mth() == 0.0
+        item.premium_mth_pp()
+        ages = {item.age(t) for t in range(item.proj_len())}
+        bound = {("x", "g"): len(ages) * 5, ("x",): len(ages), ("g",): 5}
+        for name, params in PFLEGE_AGE_KEYED.items():
+            cell = item.cells[name]
+            assert tuple(cell.parameters) == params, name
+            keys = list(cell.keys())
+            assert 0 < len(keys) <= bound[params], (name, len(keys))
+            for key in keys:
+                key = key if isinstance(key, tuple) else (key,)
+                if params[0] == "x":
+                    assert key[0] in ages, (name, key)
+                if params[-1] == "g":
+                    assert 1 <= key[-1] <= 5, (name, key)
+    finally:
+        model.close()
+
+
+def test_pflege_tariff_care_mortality_is_certain_at_the_limiting_age(product_models):
+    item = product_models("pflegerentenversicherung").Projection[1]
+    x = item.omega_age() - 1
+    for g in range(1, 6):
+        assert item.tar_mort_rate_care(x, g) == 1.0
+        stay, death, worse, better = item.tar_p_pg(x, g)
+        assert (worse, better) == (0.0, 0.0)
+        assert stay + death == pytest.approx(1.0, abs=1e-15)
+
+
+def test_pflege_recovery_is_damped_only_above_the_reference_age(product_models):
+    model = product_models("pflegerentenversicherung")
+    item = model.Projection[1]
+    care = model.Data.care_table()
+    ref = item.rec_age_ref()
+    decay = item.rec_age_decay()
+    assert (ref, decay) == (75.0, 0.1)
+    for g in range(1, 6):
+        base = float(care.at[g, "rec_rate"])
+        assert item.rec_rate(60, g) == base
+        assert item.rec_rate(75, g) == base
+        assert item.rec_rate(85, g) == base * math.exp(-decay * (85 - ref))
+
+
+def test_pflege_tariff_deterioration_is_zero_at_grade_5(product_models):
+    item = product_models("pflegerentenversicherung").Projection[1]
+    assert item.det_rate(5) == 0.0
+    assert item.tar_det_rate(5) == 0.0
+    assert item.det_force(60, 5) == 0.0
+    assert item.tar_det_rate(1) == min(1.0 - 1e-12, 1.15 * item.det_rate(1))
+
+
+def test_pflege_rec_margin_without_its_row_raises_key_error(tmp_path):
+    folder = product_copy(tmp_path, "pflegerentenversicherung")
+    table = folder / "param_table.csv"
+    params = pd.read_csv(table, index_col="item")
+    params.drop(index="rec_margin").to_csv(table)
+    copy = mx.read_model(folder / MODELS["pflegerentenversicherung"], name="RecProbe")
+    try:
+        point_id = copy.Data.model_point_table().index[0]
+        with pytest.raises(Exception, match="rec_margin") as raised:
+            copy.Projection[point_id].tar_rec_rate(60, 1)
+        assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+    finally:
+        copy.close()

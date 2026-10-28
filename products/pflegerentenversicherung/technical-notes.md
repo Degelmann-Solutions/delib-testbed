@@ -33,8 +33,8 @@ German terms of art keep their German form in prose.
   layers are referenced under *Valuation and reserve pointers*, never reproduced.
 - **The one place a discount rate appears.** The *Beitrag* is a **priced** quantity, struck by
   equivalence at the *Rechnungszins* on the first-order (*erster Ordnung*) bases [REG-R8] [REG-R47],
-  so the model carries a second, self-contained actuarial-value engine — the `tar_*` cells — whose
-  only output is `premium_mth_pp()`. **That engine discounts; the projection does not.**
+  so the model carries a second, self-contained actuarial-value engine — the `tar_*` cells and
+  `mort_rate_tariff(t)` — whose only output is `premium_mth_pp()`. **That engine discounts; the projection does not.**
 - **Projection frequency.** **Monthly grid.** The *Pflegerente* is a monthly annuity, the *Beitrag* a
   monthly instalment, and the *Pflegegrad* can change in any month, so the monthly grid is the
   contract's own rather than a refinement of an annual one. The `_S` suffix follows lifelib.

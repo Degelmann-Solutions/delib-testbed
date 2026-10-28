@@ -206,8 +206,8 @@ cell is of the order of ``1e-17`` of the original policy.
 
 The library publishes **undiscounted** cash flows. The *Beitrag*, however, is a *priced*
 quantity, so the model carries a second, self-contained actuarial-value engine — the
-``tar_*`` cells — whose only output is :func:`premium_mth_pp`. **That engine discounts;
-the projection does not.**
+``tar_*`` cells and :func:`mort_rate_tariff` — whose only output is
+:func:`premium_mth_pp`. **That engine discounts; the projection does not.**
 
 Where ``premium_mth`` is positive on the model point, that is the premium and the engine
 is not consulted. Where it is ``0.0``, ``P`` is struck by equivalence on the

@@ -195,7 +195,7 @@ because deterioration puts the largest benefit percentages at the end of a spell
 
 The library publishes **undiscounted** cash flows. The *Beitrag* is nevertheless a *priced*
 quantity, so the model carries a second, self-contained actuarial-value engine — the `tar_*` cells
-— whose only output is `premium_mth_pp()`. **That engine discounts; the projection does not**, and
+and `mort_rate_tariff(t)` — whose only output is `premium_mth_pp()`. **That engine discounts; the projection does not**, and
 `rechnungszins()` and `disc_factor_mth(t)` are read by nothing else. Where `premium_mth` is positive on
 the model point that is the premium and the engine is never consulted, which is how model points
 10, 11 and 12 carry the premium they were actually sold at. Where it is `0.0` — a sentinel, not a

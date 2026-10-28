@@ -728,6 +728,16 @@ def claims(t, kind=None):
     return claims_other(t, kind)                                     # noqa: F821
 
 
+def expense_infl():
+    """The annual expense inflation rate, from *param_table.csv*.
+
+    The row ``expense_infl`` of the product's table; a product without the row raises
+    ``KeyError``.  A product that keys the rate by tariff or cost set overrides the cell with
+    its lookup.
+    """
+    return float(data.param_table().at["expense_infl", "value"])     # noqa: F821
+
+
 def expenses_acq(t):
     """The acquisition expense in month t; 0, none."""
     return 0.0

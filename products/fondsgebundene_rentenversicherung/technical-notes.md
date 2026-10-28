@@ -388,7 +388,7 @@ with a PRIIPs performance scenario**.
 | Acquisition commission `comm_acq_rate` | **2.50 % of the *Beitragssumme***, paid at `t = 0` | **[std]** (5) |
 | Issue expense `expense_issue` | 200.00 EUR at `t = 0` | **[std]** (5) |
 | Maintenance expense `expense_maint_mth` | 4.00 EUR per policy per month, inflating at `expense_infl` | **[std]** (5) |
-| Expense inflation `expense_infl` | 2.0 % p.a., applied as `1.02^(t/12)` | **[std]** |
+| Expense inflation `expense_infl` | 2.0 % p.a., a row of `param_table.csv`, applied as `1.02^(t/12)` | **[std]** |
 | Renewal commission `comm_renew_rate` | 1.5 % of each gross premium | **[std]** (5) |
 | Claim expense `expense_claim` | 150.00 EUR per death claim | **[std]** |
 | Surrender expense `expense_surr` | 50.00 EUR per surrender | **[std]** |

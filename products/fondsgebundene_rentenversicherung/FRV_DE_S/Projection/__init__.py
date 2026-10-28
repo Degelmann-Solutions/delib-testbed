@@ -1546,7 +1546,7 @@ def expense_maint_pp(t):
     rather than the projection's own start, so an in-force cell picks up the inflation its
     elapsed duration has already accrued.
     """
-    return expense_maint_mth * (1.0 + expense_infl) ** (t / 12.0)     # noqa: F821
+    return expense_maint_mth * (1.0 + expense_infl()) ** (t / 12.0)   # noqa: F821
 
 
 def expenses(t):
@@ -2040,8 +2040,6 @@ comm_acq_rate = 0.025
 expense_issue = 200.0
 
 expense_maint_mth = 4.0
-
-expense_infl = 0.02
 
 comm_renew_rate = 0.015
 

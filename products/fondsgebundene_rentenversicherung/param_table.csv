@@ -1,3 +1,4 @@
 item,value,provenance
 mort_be_factor,0.75,"[std] [REG-R47] a flat step from the first-order death table to the best estimate, crude and said to be; it makes the Risikoergebnis exactly 25 Prozent of the Risikobeitrag"
 roll_fwd_tol,1e-10,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
+expense_infl,0.02,"[std] 2.0 % p.a. inflation of the monthly maintenance expense, from inception; no source; was a Reference on Projection"

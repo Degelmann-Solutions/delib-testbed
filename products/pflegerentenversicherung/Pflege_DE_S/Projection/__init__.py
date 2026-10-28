@@ -1244,8 +1244,7 @@ def expense_infl_factor(t):
     sixty-five years it is a factor of about 2.6, which is enough for the per-policy line to
     decide the viability of a small contract on its own.
     """
-    infl = float(data.param_table().at["expense_infl", "value"])     # noqa: F821
-    return (1.0 + infl) ** (t / 12.0)
+    return (1.0 + expense_infl()) ** (t / 12.0)
 
 
 def expenses(t):

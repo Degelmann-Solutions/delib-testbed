@@ -1232,7 +1232,7 @@ def inflation_factor(t):
     term and eventually reverses — a real feature of a twenty-five-year contract, and the
     reason model point 14's forty-year run is worth its place.
     """
-    return (1.0 + expense_infl) ** duration(t)                       # noqa: F821
+    return (1.0 + expense_infl()) ** duration(t)                     # noqa: F821
 
 
 def maint_pp(t):
@@ -1605,8 +1605,6 @@ gamma_rate = 0.0003
 maint_prem_pct = 0.03
 
 comm_rate_renew = 0.01
-
-expense_infl = 0.02
 
 claim_expense = 250.0
 

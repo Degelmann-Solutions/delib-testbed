@@ -1089,7 +1089,7 @@ def infl_factor(t):
     It steps at the **policy anniversary**, like everything else in this product, and not
     on a calendar date.
     """
-    return (1.0 + expense_infl) ** (t // 12)                         # noqa: F821
+    return (1.0 + expense_infl()) ** (t // 12)                       # noqa: F821
 
 
 def expenses_acq(t):
@@ -1527,8 +1527,6 @@ expense_acq_fixed = 200.0
 expense_maint_pp = 60.0
 
 expense_pay_pp = 1.5
-
-expense_infl = 0.015
 
 mix_male = 0.45
 

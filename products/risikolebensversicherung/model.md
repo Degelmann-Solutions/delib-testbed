@@ -296,7 +296,7 @@ which is the one thing interleaving the two decrements monthly genuinely changes
 
 ## Inputs are external files
 
-The seven input CSVs, `param_table.csv` with `roll_fwd_tol` among them, live **in this directory**, beside `run.py` — not inside the model
+The seven input CSVs, `param_table.csv` with `roll_fwd_tol` and `expense_infl` among them, live **in this directory**, beside `run.py` — not inside the model
 folder. `RLV_DE_S/` holds nothing but formulas:
 
 ```
@@ -484,7 +484,7 @@ checks, not inputs.
 | `comm_rate_init` | 0.020 of the *Beitragssumme* | Splits the α of the ceiling into commission and other acquisition cost. No German commission scale is public |
 | `beta_tariff`, `gamma_rate` | 0.05 of each *Bruttobeitrag*; 0.00030 of `benefit_pp` a year | **Correction:** German term-life charge levels are *not* "structurally undisclosed". § 2 Abs. 1 Nr. 1 VVG-InfoV requires the *Abschlusskosten* as one total and the other costs as a share of the annual premium, § 2 Abs. 2 requires them **in Euro**, and § 4 Abs. 2 puts them on the *Informationsblatt*; both wordings point the customer there [S1] § 14 Abs. 1, [S3] § 16 Abs. 1 [R17]. What is missing is a **published rate card**. There is no *Effektivkostenquote* — § 2 Abs. 1 Nr. 9 confines that duty to a *gewiss* risk — and no *Basisinformationsblatt*, the product not being a PRIIP. **Observed check**: one specimen gives other annual costs of 48,52 € on a 218,52 € annual *Tarifbeitrag*, i.e. **22,2 %**, of which 35,20 € (**16,1 %**) administration [S2] — far above this composite's 5 % β, because the specimen's figure is a euro amount over a small premium, not a percentage loading. **Not recalibrated** (gap 8) |
 | `maint_prem_pct`, `comm_rate_renew` | 0.03 and 0.010 of each *Zahlbeitrag* | Deliberately different from `beta_tariff`: the gap is the *Kostenüberschuss*, which is **not returned** and emerges in `net_cf` |
-| `expense_infl` | 0.02, on sum-related admin only | The tariff's γ is level while the modelled one inflates, so the cost result narrows over a long term and eventually reverses — a real feature of a 25-year contract |
+| `expense_infl` (a row of `param_table.csv`) | 0.02, on sum-related admin only | The tariff's γ is level while the modelled one inflates, so the cost result narrows over a long term and eventually reverses — a real feature of a 25-year contract |
 | `claim_expense` | 250 € per death claim | No German figure is public; worth 0,16 € in the anchor's first year |
 | `suicide_share` | 0.03 | No German cause-of-death share was retrieved; stands for "about three per cent of deaths at these ages are suicides", argued range 0,01–0,05 [unverified]. The **three-year window itself is sourced** [R1] |
 | `suicide_years` | 3 | The statutory minimum, extendable by *Einzelvereinbarung* [R1] [REG-R26]. A Reference so an extended window can be modelled. **All three retrieved wordings adopt the statutory three and none extends it** [S1] [S3] [S4] |

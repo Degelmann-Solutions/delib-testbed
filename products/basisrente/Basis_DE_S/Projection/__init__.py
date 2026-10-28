@@ -692,6 +692,19 @@ def alpha_zuz_pp(k):
         model_point()["tariff_id"], "alpha_zuz_rate"]) * zuz_pp(k))
 
 
+def expense_infl():
+    """The annual expense inflation rate of this tariff, 1,5 % p.a. **[std]**.
+
+    Read from *charge_table.csv* at the model point's ``tariff_id``, beside the
+    *Stückkosten* and the expense levels it inflates, rather than from *param_table.csv*.
+
+    Override reason: the expense inflation is a column of the charge table keyed by
+    ``tariff_id``, products/basisrente/technical-notes.md:141
+    """
+    return float(data.charge_table().loc[                            # noqa: F821
+        model_point()["tariff_id"], "expense_infl"])
+
+
 def unit_cost_pp(k):
     """u(k): the *Stückkosten* charged to the account in year k, per policy.
 
@@ -705,8 +718,7 @@ def unit_cost_pp(k):
     """
     return (float(data.charge_table().loc[                           # noqa: F821
         model_point()["tariff_id"], "unit_cost_pp"])
-        * (1.0 + float(data.charge_table().loc[                      # noqa: F821
-            model_point()["tariff_id"], "expense_infl"])) ** k)
+        * (1.0 + expense_infl()) ** k)
 
 
 def prem_to_av_pp(k):
@@ -1563,7 +1575,7 @@ def expenses_maint(t):
     if t < 0 or t >= proj_len():
         return 0.0
     row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
-    infl = (1.0 + float(row["expense_infl"])) ** proj_year(t)
+    infl = (1.0 + expense_infl()) ** proj_year(t)
     if t < t_conv():
         return float(row["maint_expense_pp"]) / 12.0 * infl * pols_if(t)
     return (float(row["annuity_admin_pp"]) / 12.0 * infl

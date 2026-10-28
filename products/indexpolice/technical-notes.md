@@ -394,7 +394,7 @@ an expense is the insurer's cash outgo in `net_cf`. All levels **[std]**.
 | Acquisition expense `acq_expense_rate` | 2,5 % of the *Beitragssumme*, incurred **in full at inception** | the *Zillmer* strain: paid out at once, recovered over five years |
 | Premium charge `β` (`exp_prem_rate`) | 3 % of each gross premium collected | *Verwaltungskosten* |
 | Reserve charge `γ` (`exp_av_rate`) | 0,25 % a year of the post-premium balance | *Verwaltungskosten* |
-| Maintenance expense | 36,00 € per policy a year, inflating at `exp_infl = 1,5 %` | *Stückkosten* |
+| Maintenance expense | 36,00 € per policy a year, inflating at `expense_infl` = 1,5 % (`param_table.csv`) | *Stückkosten* |
 | Claim expense | **none** — not modeled | no source, and immaterial beside the benefit |
 
 The charge income (`β` plus `γ` plus the amortised acquisition charge) and the expense outgo are
@@ -604,7 +604,7 @@ Two reported quantities that are not cash flows:
 ### Expenses and the cash flow statement
 
     exp_acq_pp(t)   = acq_expense_rate · BS      at t = t₀ and only if duration_init == 0
-    exp_maint_pp(k) = exp_fixed_pp · (1 + exp_infl)^k          the YEAR's amount
+    exp_maint_pp(k) = exp_fixed_pp · (1 + expense_infl)^k      the YEAR's amount
     expenses(t)     = ( exp_acq_pp(t) + exp_maint_pp(duration(t)) / 12 ) · l(t)
 
     net_cf(t)          = premiums(t) − claims(t,"DEATH") − claims(t,"LAPSE") − claims(t,"MATURITY")
@@ -906,7 +906,7 @@ over `zill_years = 5` premium-paying years at `324,00 €` a year, inside the De
 *Höchstzillmersatz* of 25 ‰ [REG-R16]. Premium charge `β = 3 %` of each gross premium **[std]**, i.e.
 `72,00 €` a year. Reserve charge `γ = 0,25 %` a year of the post-premium balance **[std]**. Acquisition
 expense `acq_expense_rate = 2,5 %` of the *Beitragssumme* **[std]**, `1 620,00 €` incurred in full at
-inception. Maintenance expense `36,00 €` a year inflating at `exp_infl = 1,5 %` **[std]**. *Stornoabzug*
+inception. Maintenance expense `36,00 €` a year inflating at `expense_infl = 1,5 %` **[std]**. *Stornoabzug*
 `storno_rate = 2 %` of the base surrender value **[std]**. *Rentenfaktor* `25,00 €` per 10 000 € per
 month, guaranteed and current equal **[std]**. No claim expense, no *Dynamik*, no *Beitragsfreistellung*,
 no dynamic behaviour module, no discounting.

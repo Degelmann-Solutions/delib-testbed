@@ -349,7 +349,7 @@ three-class split, and confusing them is pitfall 12's neighbour.
 | `expense_acq_rate`, `expense_acq_fixed` — acquisition expense actually incurred at `t = 0` | **2,0 %** of `SP` **plus 200 €** | **[std]** (c1) |
 | `expense_maint_pp` — maintenance expense per annum, per unit of `pols_if` | **60 €**, accrued monthly | **[std]** (c1) |
 | `expense_pay_pp` — cost of running one instalment | **1,50 €** per instalment paid | **[std]** (c1) |
-| `expense_infl` — expense inflation | **1,5 %** p.a., stepping at the policy anniversary | **[std]** (c1) |
+| `expense_infl` — expense inflation | **1,5 %** p.a., a row of `param_table.csv`, stepping at the policy anniversary | **[std]** (c1) |
 | `mix_male` ρ_M | **0.45** | **[std]** |
 | `mort_base_year` | **2025** | **[std]** |
 | `omega_age` ω | **121**, a row of `param_table.csv` | **[std]** |

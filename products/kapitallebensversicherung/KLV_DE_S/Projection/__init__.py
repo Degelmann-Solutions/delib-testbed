@@ -1597,6 +1597,19 @@ def benefit_lapse_pp(t):
 
 # --- expenses and commission -----------------------------------------------
 
+def expense_infl():
+    """The annual expense inflation rate of this policy's cost set, 1,8 % p.a. **[std]**.
+
+    Read from *cost_table.csv* at :func:`cost_id`, beside the expense levels it inflates,
+    rather than from *param_table.csv*: the rate belongs to the cost basis, and a book with
+    two cost sets carries two rates.
+
+    Override reason: the expense inflation is a column of the cost table keyed by
+    ``cost_id``, products/kapitallebensversicherung/technical-notes.md:214
+    """
+    return float(data.charge_table().loc[cost_id(), "expense_infl"])  # noqa: F821
+
+
 def inflation_factor(k):
     """The expense inflation factor in policy year k: ``(1 + expense_infl)^k`` **[std]**.
 
@@ -1605,8 +1618,7 @@ def inflation_factor(k):
     year from issue, the exponent is ``k`` itself and is 1.0 in the first policy year.
     1,8 % p.a. is a placeholder.
     """
-    infl = float(data.charge_table().loc[cost_id(), "expense_infl"])  # noqa: F821
-    return (1.0 + infl) ** k
+    return (1.0 + expense_infl()) ** k
 
 
 def claim_expenses(t):

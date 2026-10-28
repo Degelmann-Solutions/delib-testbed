@@ -1582,9 +1582,8 @@ def claims_other(t, kind):
     their own counts, ``pols_transfer``, ``pols_conv`` and ``pols_annuity_pay``,
     products/riester_rente/technical-notes.md:656, :657, :658 and :659
     """
-    k = proj_year(t)
     if kind == "TRANSFER":
-        return transfer_value_pp(k) * pols_transfer(t)
+        return transfer_value_pp(proj_year(t)) * pols_transfer(t)
     if kind == "LUMPSUM":
         return teilkapital_pp() * pols_conv() if t == t_conv() else 0.0
     if kind == "COMMUTATION":

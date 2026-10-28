@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The eight input CSVs are read here, **once per model**, and referenced from
+The nine input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Index_DE_S.Projection` as ``data``. :mod:`~.Index_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with
 its own cells cache; if the readers lived there, every model point would re-read every
@@ -38,6 +38,7 @@ election_file          election_table()            election_table.csv
 mort_file              mort_table()                mort_table.csv
 lapse_file             lapse_table()               lapse_table.csv
 freq_loading_file      freq_loading_table()        freq_load_table.csv
+param_file             param_table()               param_table.csv
 =====================  ==========================  ==========================
 
 .. rubric:: Every table but the model point table is a [std] construction
@@ -212,5 +213,7 @@ mort_file = "mort_table.csv"
 lapse_file = "lapse_table.csv"
 
 freq_loading_file = "freq_load_table.csv"
+
+param_file = "param_table.csv"
 
 pd = ("Module", "pandas")

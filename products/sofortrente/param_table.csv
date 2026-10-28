@@ -1,2 +1,3 @@
 item,value,provenance
 omega_age,121,"[std] limiting age; the proxy mortality table closes with q = 1 at attained age 120, so the survival path reaches zero inside the horizon"
+roll_fwd_tol,1e-08,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"

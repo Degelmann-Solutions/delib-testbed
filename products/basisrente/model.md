@@ -393,7 +393,7 @@ neither shifts; `issue_year` is a calendar year, and `issue_age` and `ret_age` a
 ## The published checks
 
 Six identities, each a `bool` over the whole projection with a per-period residual companion,
-compared against `roll_fwd_tol = 1e-9` scaled by the run's own magnitude so the tolerance means
+compared against `roll_fwd_tol()` = 1e-9 (`param_table.csv`) scaled by the run's own magnitude so the tolerance means
 the same thing on a 300 € contribution and on a 30 826 € one.
 
 **The residual's argument follows its cells' clock.** Three take a **month** — the cash flow

@@ -1704,36 +1704,22 @@ def comm_renew(t):
 
 # --- output ----------------------------------------------------------------
 
-def check_net_cf_resid(t):
-    """The cash flow statement residual in policy year t; zero everywhere.
+def check_net_cf_scale(t):
+    """The scale of :func:`check_net_cf`'s tolerance in month t: the sum insured, at least 1.
 
-    ``net_cf - (premiums - claims_death - claims_maturity - claims_lapse - expenses
-    - commissions)``, rebuilt **from :func:`result_cf`'s own published columns** rather than
-    from the cells behind them.  Reading the frame is the point: the identity then holds of
-    what the model actually publishes, so a column dropped, renamed or mis-signed on the way
-    into the frame fails here.
-
-    The commission is subtracted **once**: :func:`expenses` excludes it.  A model on the frlib
-    convention, where the expense column carries the commission, must not subtract both.
-    """
-    row = result_cf().loc[t]
-    rebuilt = (row["premiums"] - row["claims_death"] - row["claims_maturity"]
-               - row["claims_lapse"] - row["expenses"] - row["commissions"])
-    return float(row["net_cf"] - rebuilt)
-
-
-def check_net_cf():
-    """True when the cash flow statement reconciles in every projected policy year.
+    :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
+    policy year.
 
     **This library's first ruling**: every model publishes the identity that reconstructs
     ``net_cf(t)`` from its own cash flow statement's published parts, so that the headline
     number of a cash flow model is not the one quantity nothing checks.  No argument, one bool
     over all ``t``; :func:`check_net_cf_resid` gives the signed residual of the year that
     failed.
+
+    Override reason: the statement is checked relative to the sum insured,
+    products/kapitallebensversicherung/technical-notes.md:691
     """
-    tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
-    return all(abs(check_net_cf_resid(t)) <= tol
-               for t in range(t_start(), proj_len()))
+    return max(sum_assured(), 1.0)                                   # noqa: F821
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1758,7 +1744,7 @@ def check_pols_roll_fwd():
     No argument, one bool over all ``t``; :func:`check_pols_roll_fwd_resid` gives the signed
     residual of the year that failed.
     """
-    tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
+    tol = roll_fwd_tol() * max(pols_if_init(), 1.0)                  # noqa: F821
     return all(abs(check_pols_roll_fwd_resid(t)) <= tol
                for t in range(t_start(), proj_len()))
 
@@ -1786,7 +1772,7 @@ def check_decrement_closure():
     signed residual of the year that failed.  At ``t = proj_len() - 1`` it is the notes'
     closure identity: the three exit streams sum to :func:`pols_if_init` exactly.
     """
-    tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
+    tol = roll_fwd_tol() * max(pols_if_init(), 1.0)                  # noqa: F821
     return all(abs(check_decrement_closure_resid(t)) <= tol
                for t in range(t_start(), proj_len()))
 
@@ -1821,7 +1807,7 @@ def check_res_roll_fwd():
     No argument, one bool over all policy years ``k``; :func:`check_res_roll_fwd_resid` gives
     the signed residual of the year that failed.
     """
-    tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
+    tol = roll_fwd_tol() * max(sum_assured(), 1.0)                   # noqa: F821
     return all(abs(check_res_roll_fwd_resid(k)) <= tol
                for k in range(k_start(), proj_len_y()))
 
@@ -1856,7 +1842,7 @@ def check_surplus_roll_fwd():
     No argument, one bool over all policy years ``k``; :func:`check_surplus_roll_fwd_resid`
     gives the signed residual of the year that failed.
     """
-    tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
+    tol = roll_fwd_tol() * max(sum_assured(), 1.0)                   # noqa: F821
     return all(abs(check_surplus_roll_fwd_resid(k)) <= tol
                for k in range(k_start(), proj_len_y()))
 
@@ -1893,7 +1879,7 @@ def check_surr_floor():
     non-negative in **every month** by :func:`check_surr_nonneg`, because the monthly grid
     quotes one in eleven months the annual grid never priced.
     """
-    tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
+    tol = roll_fwd_tol() * max(sum_assured(), 1.0)                   # noqa: F821
     return all(abs(check_surr_floor_resid(k)) <= tol
                for k in range(k_start(), proj_len_y()))
 
@@ -1915,7 +1901,7 @@ def check_surr_nonneg_resid(t):
 
 def check_surr_nonneg():
     """True when the *Rückkaufswert* is non-negative in every projected month."""
-    tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
+    tol = roll_fwd_tol() * max(sum_assured(), 1.0)                   # noqa: F821
     return all(abs(check_surr_nonneg_resid(t)) <= tol
                for t in range(t_start(), proj_len()))
 
@@ -1945,7 +1931,7 @@ def check_equivalence():
     the only check that would fail if the *Beitragssumme* were formed on the loaded
     *Zahlbeitrag* instead of on the *Bruttobeitrag*.
     """
-    tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
+    tol = roll_fwd_tol() * max(sum_assured(), 1.0)                   # noqa: F821
     return all(abs(check_equivalence_resid(t)) <= tol
                for t in range(t_start(), proj_len()))
 
@@ -1966,7 +1952,7 @@ def check_rechnungszins_cap():
 
     No argument, one bool; :func:`check_rechnungszins_cap_resid` gives the signed shortfall.
     """
-    return all(abs(check_rechnungszins_cap_resid(t)) <= roll_fwd_tol  # noqa: F821
+    return all(abs(check_rechnungszins_cap_resid(t)) <= roll_fwd_tol()  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1992,70 +1978,9 @@ def check_zillmer_cap():
 
     No argument, one bool; :func:`check_zillmer_cap_resid` gives the signed shortfall.
     """
-    tol = roll_fwd_tol * max(sum_assured(), 1.0)                     # noqa: F821
+    tol = roll_fwd_tol() * max(sum_assured(), 1.0)                   # noqa: F821
     return all(abs(check_zillmer_cap_resid(t)) <= tol
                for t in range(t_start(), proj_len()))
-
-
-def result_cf():
-    """Result table of cash flows, indexed by the 0-based **policy month** t.
-
-    ``pols_if`` is the **start-of-month** count, which is the weight applied to every cash flow
-    on the same row, and its first value is :func:`pols_if_init` exactly.  ``expenses``
-    **excludes** commission, so the six flow columns
-
-        premiums, claims_death, claims_maturity, claims_lapse, expenses, commissions
-
-    sum to ``net_cf`` with no double count - which is what :func:`check_net_cf` asserts.
-    ``liability_cf`` is ``net_cf`` outgo-positive and is published as the last column so that
-    the sign convention is verifiable in the frame.
-
-    ``premiums`` is the instalment **collected in the month**, so on an annual *Zahlweise*
-    eleven rows in twelve carry a zero there; :func:`result_cf_annual` sums the frame into
-    policy years, which is the view the technical notes' worked example is stated on.
-
-    The frame runs ``t = t_start() ... proj_len() - 1`` contiguously and stops: the *Ablauf*
-    falls at the end of the last month and **there is no ``t = proj_len()`` row**.
-    """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "commissions": [commissions(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
-    )
-
-
-def result_cf_annual():
-    """:func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.
-
-    Every cash flow column is the total of that policy year's twelve months; ``pols_if`` is
-    the count at the **start** of the policy year, ``pols_if(12 k)``, which is the number the
-    annual-step model this replaced carried on the same row and is unchanged by the
-    conversion.  It is the monthly frame **regrouped and never a second projection**, which is
-    what lets the notes' annual worked example stay annual and still be asserted cell by cell.
-
-    ``pols_if`` and the whole annual layer beside it — the three reserves, the § 169 value,
-    the surplus ledgers, the paid-up purchase, the equivalence — are the annual model's own
-    numbers. The cash flow columns are not, and are not meant to be: claims fall in the month
-    of exit and are paid the balances standing at the **last** anniversary, maintenance
-    accrues a twelfth a month on that month's in-force, and a fractionated *Beitrag* is
-    collected on a block that has already lost lives.
-    """
-    df = result_cf()
-    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821
-                     name="policy_year")
-    out = df.drop(columns="pols_if").groupby(years).sum()
-    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
-    return out
 
 
 def result_surplus():
@@ -2117,7 +2042,5 @@ lapse_gap_a = 0.0
 
 ref_rate = 0.03
 
-
-roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")

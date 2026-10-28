@@ -71,6 +71,7 @@ benefit_schedule_file     data.benefit_schedule()            benefit_schedule.cs
 nvg_schedule_file         data.nvg_schedule()                nvg_schedule.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
+param_file                data.param_table()                 param_table.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -548,7 +549,7 @@ def mort_rate_base(t):
 
     Override reason: the table rate is read on sex and smoker status, and for two lives
     combined to the first-death rate before loading,
-    products/risikolebensversicherung/model.md:494
+    products/risikolebensversicherung/model.md:495
     """
     q_a = mort_rate_at_age(sex(), smoker(), age(t))
     if lives() == 1:
@@ -613,7 +614,7 @@ def mort_rate(t):
     :func:`mort_rate_mth`.
 
     Override reason: the second-order rate carries the *Risikozuschlag* and the
-    selective-lapse loading, products/risikolebensversicherung/model.md:495
+    selective-lapse loading, products/risikolebensversicherung/model.md:496
     """
     return (mort_be_factor() * rating_factor()
             * mort_rate_base(t) * sel_lapse_factor(t))
@@ -832,7 +833,7 @@ def lapse_factor(t):
 
     Override reason: the lapse is zero through the whole final policy year, where cover
     expires, and loaded by the premium-shock multiplier elsewhere,
-    products/risikolebensversicherung/technical-notes.md:753
+    products/risikolebensversicherung/technical-notes.md:762
     """
     if duration(t) >= proj_len_y() - 1:
         return 0.0
@@ -1330,46 +1331,20 @@ def comm_renew(t):
 # The published check_* identities
 
 
-def check_net_cf_resid(t):
-    """The cash-flow-statement residual in month t; zero everywhere.
+def check_net_cf_tol(t):
+    """The tolerance of :func:`check_net_cf`: ``val_tol`` times the sum insured, at least 1.
 
-    ``net_cf`` **as published in** :func:`result_cf`, less that same frame's own
-
-        ``premiums - claims_death - claims_lapse - claims_maturity - expenses
-        - commissions``
-
-    — read from the frame rather than from the cells behind it, and reached by a different
-    route from :func:`net_cf`'s own, which subtracts the kind-less ``claims(t)`` subtotal.
-    So the identity crosses two boundaries rather than restating a formula: the
-    cells-to-frame boundary, where a column can be dropped, renamed or mis-signed on the
-    way in, and the ``claims(t, kind)`` dispatch, where a benefit kind can exist in the
-    model and not in the subtotal.
-
-    This is **delib's first ruling**: every model in the library reconstructs its headline
-    number from its own published parts, in code and not only in prose, so that the one
-    quantity a cash flow model exists to produce is not the one quantity nothing checks.
-    What it catches on *this* product is the ambiguity the second premium stream creates —
-    ``prem_gross`` is published beside ``premiums`` and must **not** enter the identity,
-    and ``prem_rebate`` is the difference between them and must not be subtracted a second
-    time — and the commission convention, which is a column of its own here and part of
-    the expense total in ``frlib.TD_FR_S``.
-    """
-    row = result_cf().loc[t]
-    rebuilt = (row["premiums"] - row["claims_death"] - row["claims_lapse"]
-               - row["claims_maturity"] - row["expenses"] - row["commissions"])
-    return float(row["net_cf"] - rebuilt)
-
-
-def check_net_cf():
-    """True when the cash flow statement reconciles in every projected period.
+    :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
+    period.
 
     No argument, one bool over all ``t``, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the period that failed.  The
     tolerance scales with the sum insured, which is the largest number in the statement.
+
+    Override reason: the statement is checked to val_tol relative to the sum insured,
+    products/risikolebensversicherung/model.md:500
     """
-    tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
-    return all(abs(check_net_cf_resid(t)) <= tol
-               for t in range(t_start(), proj_len()))
+    return val_tol * max(sum_assured(), 1.0)                         # noqa: F821
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1395,7 +1370,7 @@ def check_pols_roll_fwd():
     with leaves it through exactly one named door.  On the anchor cell that is
     0,03305608 deaths, 0,53554078 lapses and 0,43140314 expiries.
     """
-    tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
+    tol = roll_fwd_tol() * max(pols_if_init(), 1.0)                  # noqa: F821
     if not all(abs(check_pols_roll_fwd_resid(t)) <= tol
                for t in range(t_start(), proj_len())):
         return False
@@ -1518,8 +1493,10 @@ def check_no_cash_value():
 # Result frames
 
 
-def result_cf():
-    """Result table of cash flows, indexed by the 0-based **policy month** t.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of cash flows, indexed by the 0-based **policy month** t.
 
     ``pols_if`` is the start-of-month count, which is the weight applied to every cash flow
     on the same row.  **Two premium columns**: ``prem_gross`` is the guaranteed
@@ -1537,53 +1514,29 @@ def result_cf():
     The frame runs ``t = 12 duration_init ... proj_len() - 1`` contiguously and stops there:
     cover expires at the end of the last month with nothing payable and no survivors left
     in force.
+
+    Override reason: the guaranteed premium and the *Beitragsverrechnung* published beside
+    the billed premium, products/risikolebensversicherung/technical-notes.md:682-684
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "prem_gross": [prem_gross(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "prem_rebate": [prem_rebate(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "commissions": [commissions(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("prem_gross", prem_gross),                                  # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("prem_rebate", prem_rebate),                                # noqa: F821
+        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
+        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
+        ("claims_maturity", lambda t: claims(t, "MATURITY")),        # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("commissions", commissions),                                # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
     )
 
 
-def result_cf_annual():
-    """:func:`result_cf` summed into policy years, indexed by ``policy_year``.
+def result_pols_columns():
+    """The columns of :func:`result_pols`, ``(label, cell)`` pairs in their order.
 
-    Every cash flow column is the total of that policy year's twelve months; ``pols_if``
-    is the count at the **start** of the policy year, ``pols_if(12 (policy_year - 1))``,
-    which is the number the annual-step model this replaced carried on the same row.  It
-    is the monthly frame **regrouped and never a second projection**, which is what lets
-    the notes' annual worked example stay annual and still be asserted cell by cell.
-
-    On the ten annual-*Zahlweise* model points the two grids agree exactly on four
-    columns — ``pols_if``, ``prem_gross``, ``premiums`` and ``prem_rebate`` — because an
-    annual instalment is collected on the anniversary and weighted by the anniversary
-    in-force under either grid.  They do **not** agree on ``claims_death`` or
-    ``expenses``, which now fall where they happen rather than at the anniversary, and so
-    not on ``net_cf``.  On a fractionated point not even the premium columns agree, and
-    that is the *Ratenzahlungszuschlag* finally being charged for something.
-    """
-    df = result_cf()
-    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821
-                     name="policy_year")
-    out = df.drop(columns="pols_if").groupby(years).sum()
-    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
-    return out
-
-
-def result_pols():
-    """Result table of policy counts, rates, per-policy amounts and the reserve, indexed by t.
+    The frame is the table of policy counts, rates, per-policy amounts and the reserve by t.
 
     The same 0-based monthly frame as :func:`result_cf`:
     ``t = t_start() ... proj_len() - 1``.  Each **annual** rate is published beside the
@@ -1595,32 +1548,32 @@ def result_pols():
     instalment collected in the month.  ``res_pp`` and ``res_zill_pp`` are the policy
     year's reserves, flat across its twelve rows, the first-order *Deckungskapital* being
     an annual construction.
+
+    Override reason: the frame publishes the decrement, rate, benefit, premium and reserve
+    side beside the cash flows, products/risikolebensversicherung/model.md:62
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "age": [age(t) for t in ts],
-            "policy_year": [policy_year(t) for t in ts],
-            "pols_if": [pols_if(t) for t in ts],
-            "pols_death": [pols_death(t) for t in ts],
-            "pols_lapse": [pols_lapse(t) for t in ts],
-            "pols_maturity": [pols_maturity(t) for t in ts],
-            "mort_rate": [mort_rate(t) for t in ts],
-            "mort_rate_mth": [mort_rate_mth(t) for t in ts],
-            "mort_rate_tar": [mort_rate_tariff(t) for t in ts],
-            "lapse_rate": [lapse_rate(t) for t in ts],
-            "lapse_rate_mth": [lapse_rate_mth(t) for t in ts],
-            "benefit_pp": [benefit_pp(t) for t in ts],
-            "benefit_paid_pp": [benefit_paid_pp(t) for t in ts],
-            "suicide_factor": [suicide_factor(t) for t in ts],
-            "prem_gross_pp": [prem_gross_pp(t) for t in ts],
-            "prem_rebate_pp": [prem_rebate_pp(t) for t in ts],
-            "prem_paid_pp": [prem_paid_pp(t) for t in ts],
-            "prem_inst_pp": [prem_inst_pp(t) for t in ts],
-            "res_pp": [res_pp_at(duration(t), "BEF_PREM") for t in ts],
-            "res_zill_pp": [res_zill_pp_at(duration(t), "BEF_PREM") for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("age", age),                                                # noqa: F821
+        ("policy_year", policy_year),                                # noqa: F821
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("pols_death", pols_death),                                  # noqa: F821
+        ("pols_lapse", pols_lapse),                                  # noqa: F821
+        ("pols_maturity", pols_maturity),                            # noqa: F821
+        ("mort_rate", mort_rate),                                    # noqa: F821
+        ("mort_rate_mth", mort_rate_mth),                            # noqa: F821
+        ("mort_rate_tar", mort_rate_tariff),                         # noqa: F821
+        ("lapse_rate", lapse_rate),                                  # noqa: F821
+        ("lapse_rate_mth", lapse_rate_mth),                          # noqa: F821
+        ("benefit_pp", benefit_pp),                                  # noqa: F821
+        ("benefit_paid_pp", benefit_paid_pp),                        # noqa: F821
+        ("suicide_factor", suicide_factor),                          # noqa: F821
+        ("prem_gross_pp", prem_gross_pp),                            # noqa: F821
+        ("prem_rebate_pp", prem_rebate_pp),                          # noqa: F821
+        ("prem_paid_pp", prem_paid_pp),                              # noqa: F821
+        ("prem_inst_pp", prem_inst_pp),                              # noqa: F821
+        ("res_pp", lambda t: res_pp_at(duration(t), "BEF_PREM")),    # noqa: F821
+        ("res_zill_pp",
+         lambda t: res_zill_pp_at(duration(t), "BEF_PREM")),         # noqa: F821
     )
 
 
@@ -1667,7 +1620,6 @@ sel_lapse_lambda = 0.0
 
 sel_lapse_ref = 0.25
 
-roll_fwd_tol = 1e-10
 
 val_tol = 1e-09
 

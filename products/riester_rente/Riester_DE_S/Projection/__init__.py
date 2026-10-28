@@ -1752,8 +1752,10 @@ def income_other(t):
 # === the check identities
 
 
-def check_net_cf_resid(t):
-    """The cash flow statement's own reconciliation residual in month t; zero everywhere.
+def net_cf_income_columns():
+    """The income columns :func:`check_net_cf_resid` adds: ``premiums`` and ``zulagen``.
+
+    The residual is the cash flow statement's own reconciliation in month t, zero everywhere:
 
     ``net_cf`` **as published in** :func:`result_cf`, less that same frame's own
     ``premiums + zulagen`` less its six ``claims_*`` columns less ``expenses`` less
@@ -1767,28 +1769,29 @@ def check_net_cf_resid(t):
     ``pols_if`` and ``pols_annuity_pay`` are counts and are excluded by construction; the
     interest credit is on the annual clock and is not a column of this frame at all, which
     removes the most tempting way to break the identity.
+
+    Override reason: the *Zulagen* are income beside the contribution,
+    products/riester_rente/technical-notes.md:711
     """
-    row = result_cf().loc[t]
-    rebuilt = (row["premiums"] + row["zulagen"]
-               - row["claims_death"] - row["claims_lapse"] - row["claims_transfer"]
-               - row["claims_lumpsum"] - row["claims_commutation"]
-               - row["claims_annuity"]
-               - row["expenses"] - row["commissions"])
-    return float(row["net_cf"] - rebuilt)
+    return ("premiums", "zulagen")
 
 
-def check_net_cf():
-    """True when the cash flow statement reconciles in every projected **month**.
+def check_net_cf_scale(t):
+    """The scale of :func:`check_net_cf`'s tolerance: the guaranteed annuity, at least 1.
+
+    :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
+    **month**.
 
     **delib's first ruling**: every model in this library publishes the identity that
     reconstructs ``net_cf(t)`` from its statement's own published parts, so that the
     headline number of a cash flow model is not the one quantity nothing checks.  No
     argument, one bool over all ``t``; :func:`check_net_cf_resid` gives the signed residual
     of the month that failed.
+
+    Override reason: the statement is checked relative to the guaranteed annuity at
+    Rentenbeginn, products/riester_rente/technical-notes.md:711
     """
-    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol            # noqa: F821
-               * max(1.0, guar_pp(k_conv() + 1))
-               for t in range(proj_len()))
+    return max(1.0, guar_pp(k_conv() + 1))                           # noqa: F821
 
 
 def check_av_roll_fwd_resid(k):
@@ -1825,7 +1828,7 @@ def check_av_roll_fwd_resid(k):
 
 def check_av_roll_fwd():
     """True when the account rolls forward exactly in every projected year."""
-    return all(abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol       # noqa: F821
+    return all(abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol()     # noqa: F821
                * max(1.0, guar_pp(k_conv() + 1))
                for k in range(proj_len_y()))
 
@@ -1862,12 +1865,12 @@ def check_guar_roll_fwd():
     cannot shrink the guarantee further.  Both are stated per projection **year**: the
     accumulator counts contributions, and a contribution is an annual event.
     """
-    ok = all(abs(check_guar_roll_fwd_resid(k)) <= roll_fwd_tol       # noqa: F821
+    ok = all(abs(check_guar_roll_fwd_resid(k)) <= roll_fwd_tol()     # noqa: F821
              * max(1.0, guar_pp(k_conv() + 1))
              for k in range(proj_len_y()))
     cap = all(guar_carve_out_pp(k) <= guar_carve_out_cap             # noqa: F821
               * (eigenbeitrag_pp(k) + zulage_pp(k) + contrib_extra_pp()
-                 + rider_prem_pp()) + roll_fwd_tol                   # noqa: F821
+                 + rider_prem_pp()) + roll_fwd_tol()                 # noqa: F821
               for k in range(k_conv()))
     return bool(ok and cap)
 
@@ -1902,7 +1905,7 @@ def check_pols_roll_fwd():
     the survivor term is exactly zero and the identity is exact rather than approximate.
     """
     n = proj_len()
-    step = all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol     # noqa: F821
+    step = all(abs(check_pols_roll_fwd_resid(t)) <= roll_fwd_tol()   # noqa: F821
                * max(pols_if_init(), 1.0)
                for t in range(n))
     exits = sum(pols_death(s) + pols_lapse(s) + pols_transfer(s)
@@ -1910,7 +1913,7 @@ def check_pols_roll_fwd():
     if is_kleinbetrag():
         exits += pols_conv()
     closure = abs(exits + pols_if(n) - pols_if_init()) <= (
-        roll_fwd_tol * max(pols_if_init(), 1.0))                     # noqa: F821
+        roll_fwd_tol() * max(pols_if_init(), 1.0))                   # noqa: F821
     return bool(step and closure)
 
 
@@ -1949,7 +1952,7 @@ def check_conversion_resid(k):
 
 def check_conversion():
     """True when the conversion at *Rentenbeginn* closes on all four identities."""
-    return all(check_conversion_resid(k) <= roll_fwd_tol             # noqa: F821
+    return all(check_conversion_resid(k) <= roll_fwd_tol()           # noqa: F821
                * max(1.0, guar_pp(k_conv() + 1))
                for k in range(proj_len_y()))
 
@@ -1977,13 +1980,15 @@ def check_zulage_lag_resid(k):
 
 def check_zulage_lag():
     """True when the Zulage is credited one projection year after it is earned, everywhere."""
-    return all(abs(check_zulage_lag_resid(k)) <= roll_fwd_tol        # noqa: F821
+    return all(abs(check_zulage_lag_resid(k)) <= roll_fwd_tol()      # noqa: F821
                * max(1.0, guar_pp(k_conv() + 1))
                for k in range(proj_len_y()))
 
 
-def result_cf():
-    """Result table of cash flows, indexed by projection **month** t, ``0 ... proj_len() - 1``.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of cash flows by projection **month** t, ``0 ... proj_len() - 1``.
 
     ``pols_if`` is the **start**-of-month count, which is the weight applied to every cash
     flow on the same row, and its first value is ``pols_if_init()`` exactly.
@@ -2005,26 +2010,25 @@ def result_cf():
     The frame is uniform across model points and carries ``proj_len()`` rows on every one
     of them, including a contract commuted at *Rentenbeginn*, which then carries zeros to
     the end rather than being truncated.
+
+    Override reason: the statement carries the annuity-paying count, the *Zulagen* and the
+    six claim kinds, products/riester_rente/technical-notes.md:690-692
     """
-    ts = list(range(proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "pols_annuity_pay": [pols_annuity_pay(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "zulagen": [zulagen(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_transfer": [claims(t, "TRANSFER") for t in ts],
-            "claims_lumpsum": [claims(t, "LUMPSUM") for t in ts],
-            "claims_commutation": [claims(t, "COMMUTATION") for t in ts],
-            "claims_annuity": [claims(t, "ANNUITY") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "commissions": [commissions(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("pols_annuity_pay", pols_annuity_pay),                      # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("zulagen", zulagen),                                        # noqa: F821
+        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
+        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
+        ("claims_transfer", lambda t: claims(t, "TRANSFER")),        # noqa: F821
+        ("claims_lumpsum", lambda t: claims(t, "LUMPSUM")),          # noqa: F821
+        ("claims_commutation", lambda t: claims(t, "COMMUTATION")),  # noqa: F821
+        ("claims_annuity", lambda t: claims(t, "ANNUITY")),          # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("commissions", commissions),                                # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
     )
 
 
@@ -2042,6 +2046,10 @@ def result_cf_annual():
     of a year's exits between death, surrender and transfer does not, because the three now
     compete month by month, and the annuity and the expenses do not, because both are now
     paid as the months pass.
+
+    Override reason: indexed by the projection year k of the valuation clock, the
+    annual-step model's own t, and summed over each year's twelve-month slice,
+    products/riester_rente/technical-notes.md:697
     """
     ks = list(range(proj_len_y()))
     flows = ["premiums", "zulagen", "claims_death", "claims_lapse", "claims_transfer",
@@ -2173,6 +2181,5 @@ comm_rate_init = 0.025
 
 comm_rate_renew = 0.015
 
-roll_fwd_tol = 1e-09
 
 pd = ("Module", "pandas")

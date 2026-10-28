@@ -271,7 +271,7 @@ rather than to the payment. The alternative reading is defensible and is named.
 
 ## Inputs are external files
 
-The seven input CSVs live **in this directory**, beside `run.py`, and `BU_DE_S/` holds nothing
+The eight input CSVs, `param_table.csv` with `roll_fwd_tol` among them, live **in this directory**, beside `run.py`, and `BU_DE_S/` holds nothing
 but formulas — `__init__.py`, `_system.json`, `Data/__init__.py` and `Projection/__init__.py`, no
 `_data/`, no IOSpec, no embedded values. This follows lifelib's `annuallife/TradLife_A`, which
 keeps its inputs beside the model; it is the opposite of `basiclife/BasicTerm_S`, which stores
@@ -300,6 +300,7 @@ another same-schema file and the projection follows, with no formula change.
 | `occupation_file` | `occupation_table()` | `occupation_table.csv` | The five *Berufsgruppen* with loadings and labels: BG1 1,00, BG2 1,40, BG3 2,10, BG4 3,00, BG5 4,50. **[std]**, anchored at 1,00 for office and 3,00 for the reference manual class inside the recalled 2×–4× band [S6]. Carrier classifications are **not comparable with one another** |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual *Stornoquote* by policy year 1–5, row 6 the ultimate: 4,0 / 4,0 / 3,5 / 3,0 / 2,5 / 2,0 %. **[std]**, and **low by the standards of every other delib product** — a product fact, not a modelling choice, because cover cannot be replaced once health has changed [S16]. The 30-day *Widerruf* sits inside year 1 [REG-R23] |
 | `freq_loading_file` | `freq_loading_table()` | `freq_loading_table.csv` | `prem_mode_months` (12 / 6 / 3 / 1) and the *Ratenzahlungszuschlag* `prem_freq_load` (1,00 / 1,02 / 1,03 / 1,05). **[std]**: the ladder is the recalled German market convention and no retrieved document confirms it |
+| `param_file` | `param_table()` | `param_table.csv` | The scalar parameters by `item`: `roll_fwd_tol` 1e−10, the tolerance every `check_*` closes to, a float comparison tolerance and not an actuarial assumption. Added in phase 3, when it moved from a Reference on `Projection` into the table the common core reads |
 
 Every file but the model point table carries a **`provenance` column**, one tag per row —
 delib's second ruling, and it is machine-checked.

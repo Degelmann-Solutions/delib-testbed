@@ -1634,6 +1634,9 @@ def check_net_cf_resid(t):
     drifted apart all leave a residual here.  ``pols_if`` and ``pols_paying`` are counts and
     are excluded from the identity by construction; the *Deckungskapital* is a balance on an
     annual clock and is not a column of this frame at all.
+
+    Override reason: the identity adds the *Zuzahlungen* to the premium as income and is
+    taken as the rebuilt flow less ``net_cf``, products/basisrente/technical-notes.md:685
     """
     row = result_cf().loc[t]
     return float(row["premiums"] + row["zuzahlungen"]
@@ -1650,9 +1653,12 @@ def check_net_cf():
 
     The tolerance is ``roll_fwd_tol`` relative to the largest ``|net_cf|`` in the run, so
     it means the same thing on a 300 € contribution and on a 30 826 € one.
+
+    Override reason: one tolerance over the run, roll_fwd_tol() times the largest
+    abs(net_cf) of the run, products/basisrente/model.md:396
     """
     scale = max([1.0] + [abs(net_cf(t)) for t in range(proj_len())])
-    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol * scale     # noqa: F821
+    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol() * scale   # noqa: F821
                for t in range(proj_len()))
 
 
@@ -1684,7 +1690,7 @@ def check_pols_roll_fwd_resid(t):
 def check_pols_roll_fwd():
     """True when both policy-ledger identities close in every projected month."""
     scale = max(pols_if_init(), 1.0)
-    return all(check_pols_roll_fwd_resid(t) <= roll_fwd_tol * scale  # noqa: F821
+    return all(check_pols_roll_fwd_resid(t) <= roll_fwd_tol() * scale  # noqa: F821
                for t in range(proj_len()))
 
 
@@ -1722,7 +1728,7 @@ def check_av_roll_fwd_resid(k):
 def check_av_roll_fwd():
     """True when the *Deckungskapital* rolls forward and is emptied at *Rentenbeginn*."""
     return all(abs(check_av_roll_fwd_resid(k))
-               <= roll_fwd_tol * max(1.0, abs(av_at(k, "AFT_INT")),   # noqa: F821
+               <= roll_fwd_tol() * max(1.0, abs(av_at(k, "AFT_INT")), # noqa: F821
                                      abs(av(k)))
                for k in range(proj_len_y()))
 
@@ -1760,7 +1766,7 @@ def check_conversion_resid(k):
 def check_conversion():
     """True when the whole fund converts exactly once, at *Rentenbeginn*."""
     scale = max(1.0, abs(fund_at_conv()))
-    return all(abs(check_conversion_resid(k)) <= roll_fwd_tol * scale  # noqa: F821
+    return all(abs(check_conversion_resid(k)) <= roll_fwd_tol() * scale  # noqa: F821
                for k in range(proj_len_y()))
 
 
@@ -1798,7 +1804,7 @@ def check_no_capital_resid(t):
 def check_no_capital():
     """True when no payment other than a permitted annuity or survivor benefit is made."""
     scale = max([1.0] + [abs(claims(t)) for t in range(proj_len())])
-    return all(check_no_capital_resid(t) <= roll_fwd_tol * scale      # noqa: F821
+    return all(check_no_capital_resid(t) <= roll_fwd_tol() * scale    # noqa: F821
                for t in range(proj_len()))
 
 
@@ -1837,12 +1843,14 @@ def check_annuity_roll_fwd_resid(k):
 def check_annuity_roll_fwd():
     """True when the annuity compounds and the guarantee window closes on time."""
     scale = max(1.0, abs(ann_pp(max(0, k_conv()))))
-    return all(check_annuity_roll_fwd_resid(k) <= roll_fwd_tol * scale  # noqa: F821
+    return all(check_annuity_roll_fwd_resid(k) <= roll_fwd_tol() * scale  # noqa: F821
                for k in range(proj_len_y()))
 
 
-def result_cf():
-    """Result table of cash flows, indexed by projection **month** t.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of cash flows, indexed by projection **month** t.
 
     ``pols_if`` is the start-of-month count and the weight applied to every cash flow on the
     same row; ``pols_paying`` is the premium-paying subset and the weight on the two premium
@@ -1866,23 +1874,22 @@ def result_cf():
     ``proj_len()``.  At ``t = proj_len() - 1`` the last survivor dies, and there is no tail
     state, no maturity payment and nothing left to pay.  :func:`result_cf_annual` is the
     same stream summed into projection years, which is the view the technical notes print.
+
+    Override reason: the statement carries the premium-paying count, the *Zuzahlungen* and
+    the three claim kinds of a *Basisrente*, products/basisrente/technical-notes.md:646-656
     """
-    ts = list(range(proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "pols_paying": [pols_paying(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "zuzahlungen": [zuzahlungen(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_annuity": [claims(t, "ANNUITY") for t in ts],
-            "claims_survivor": [claims(t, "SURVIVOR") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "commissions": [commissions(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("pols_paying", pols_paying),                                # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("zuzahlungen", zuzahlungen),                                # noqa: F821
+        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
+        ("claims_annuity", lambda t: claims(t, "ANNUITY")),          # noqa: F821
+        ("claims_survivor", lambda t: claims(t, "SURVIVOR")),        # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("commissions", commissions),                                # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
     )
 
 
@@ -1906,6 +1913,10 @@ def result_cf_annual():
     weighted by a count the finer grid does not change.  The annuity rows do not and are not
     meant to: the instalments are monthly now, and a life that dies during a payout year is
     no longer paid the whole of it.
+
+    Override reason: indexed by the projection year k of the valuation clock, the
+    annual-step model's own t, and summed over each year's twelve-month slice,
+    products/basisrente/technical-notes.md:668
     """
     ks = list(range(proj_len_y()))
     flows = ["premiums", "zuzahlungen", "claims_death", "claims_annuity",
@@ -1936,6 +1947,9 @@ def result_pols():
 
     ``policy_year`` is the contractual 1-based label, which is ``k + 1`` only for a model
     point projected from issue.
+
+    Override reason: the frame is the annual state, indexed by the projection year k, with the
+    year's deaths and freezes summed over its months, products/basisrente/technical-notes.md:671
     """
     ks = list(range(proj_len_y()))
     return pd.DataFrame(                                             # noqa: F821
@@ -1982,6 +1996,5 @@ rf_unit = 10000.0
 
 ann_freq = 12
 
-roll_fwd_tol = 1e-9
 
 pd = ("Module", "pandas")

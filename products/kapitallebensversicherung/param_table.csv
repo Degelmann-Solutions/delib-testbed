@@ -1,3 +1,4 @@
 item,value,provenance
 mort_be_factor,0.75,"[std] the step from the first-order table to the best estimate, a 33 Prozent first-order safety loading; the Sicherheitszuschlag level is not established for any German carrier"
 unisex_mix_male,0.5,"[std] the male share of the unisex tariff blend; new business is unisex [REG-R34] and no insurer publishes the portfolio mix behind its own tariff"
+roll_fwd_tol,1e-10,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"

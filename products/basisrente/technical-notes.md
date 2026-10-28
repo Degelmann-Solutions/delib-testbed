@@ -145,7 +145,7 @@ ruling, asserted by the conventions suite.
 
 Scalar assumptions that are single numbers rather than tables are `Projection` References and are
 tagged in *Assumption inputs* below: `elig_surv_prob`, `mort_base_year`,
-`zill_spread_y`, `rf_unit`, `ann_freq`, `roll_fwd_tol`. The exception is `mort_be_factor`, a row
+`zill_spread_y`, `rf_unit`, `ann_freq`. The exceptions are `mort_be_factor` and `roll_fwd_tol`, rows
 of `param_table.csv` since phase 3, read by the common core's loader.
 
 ---
@@ -690,7 +690,7 @@ with the other's index is a category error rather than a rounding question.
 | `check_annuity_roll_fwd()` | year | `ann_pp(k) = ann_pp(k−1) × (1 + ann_bonus_rate(k−1))` for `k > k_conv()`; `12 × ann_mth_pp(t) = ann_pp(k)` across the year's months, so the uplift steps on the anniversary and nowhere else; and `pols_gtd(t) = 0` for `t > gtd_end_t()` |
 
 Each returns a `bool` over the whole projection and has a per-period residual companion
-`check_*_resid`, compared against `roll_fwd_tol = 1e-9`.
+`check_*_resid`, compared against `roll_fwd_tol()` = 1e-9 from `param_table.csv`.
 
 ---
 

@@ -670,6 +670,14 @@ moves once a year, and repeating each value twelve times would invite a reader t
 *Deckungskapital* accrues through the year. What a mid-year surrender is paid is in `result_cf()`, and
 is smaller.
 
+`premiums` is the instalment **collected in the month**, so on an annual *Zahlweise* eleven rows in
+twelve carry a zero there. In `result_cf_annual()`, `pols_if` and the annual layer beside it — the
+three reserves, the § 169 value, the surplus ledgers, the paid-up purchase, the equivalence — are the
+annual model's own numbers; the cash flow columns are not, and are not meant to be: claims fall in the
+month of exit and are paid the balances standing at the **last** anniversary, maintenance accrues a
+twelfth a month on that month's in-force, and a fractionated *Beitrag* is collected on a block that
+has already lost lives.
+
 ### Published identities
 
 Ten `check_*()` cells, each taking no argument, returning a `bool` and carrying a per-argument
@@ -680,7 +688,7 @@ on every model point.
 
 | Identity | What it asserts |
 |---|---|
-| `check_net_cf()` | **delib's first ruling.** `net_cf(t)` equals `premiums − claims_death − claims_maturity − claims_lapse − expenses − commissions`, rebuilt from `result_cf()`'s own published columns |
+| `check_net_cf()` | **delib's first ruling.** `net_cf(t)` equals `premiums − claims_death − claims_maturity − claims_lapse − expenses − commissions`, rebuilt from `result_cf()`'s own published columns, to `roll_fwd_tol()` times `max(sum_assured(), 1)` |
 | `check_pols_roll_fwd()` | `pols_if(t+1) == pols_if(t) − pols_death(t) − pols_lapse(t)` in every **month**, and at `t = 12n − 1` the survivors of that month's mortality are exactly `pols_maturity(12n − 1)` |
 | `check_decrement_closure()` | `Σ_t ( pols_death + pols_lapse + pols_maturity ) == pols_if_init()` |
 | `check_res_roll_fwd()` | The Fackler recursion on the guaranteed *Deckungskapital*, per **policy year**: `( res_pp(k) + prem_zill_charged(k) ) · (1 + i₁) + bfz_uplift_pp(k) == f · q₁(x(k)) · sum_death + (1 − q₁(x(k))) · res_pp(k+1)`, where `q₁` is the unisex tariff rate and the *Risikozuschlag* `f` loads the death term only. This is the strongest single check in the model: it proves the premium, the first-order mortality, the interest and the prospective formula are mutually consistent |

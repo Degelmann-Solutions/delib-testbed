@@ -353,7 +353,7 @@ three-class split, and confusing them is pitfall 12's neighbour.
 | `mix_male` ρ_M | **0.45** | **[std]** |
 | `mort_base_year` | **2025** | **[std]** |
 | `omega_age` ω | **121**, a row of `param_table.csv` | **[std]** |
-| `roll_fwd_tol` | **1e-8**, the tolerance every `check_*` closes to | **[std]** |
+| `roll_fwd_tol` | **1e-8**, a row of `param_table.csv`, the tolerance every `check_*` closes to | **[std]** |
 | `solve_tol`, `solve_max_iter` | **1e-10**, **200** — the bisection controls for the refund solve | **[std]** |
 
 (c1) **No charge or expense parameter was established at any carrier** (research gap 8), so none of
@@ -645,7 +645,7 @@ product's own roll-forward and pricing identities.
 
 | Check | Identity |
 |---|---|
-| `check_net_cf` | `net_cf(t) == premiums(t) − 1{payment month}·pols_if_init·A(t)·payment_factor(t) − claims(t,"REFUND") − expenses(t)`. The instalment term carries the payment-month indicator, because `payment_factor(t)` is defined at every `t` and only some `t` carry an instalment on a quarterly, half-yearly or annual point. **Not a restatement of the definition**: it rebuilds the annuity outgo through the `max()` payment factor rather than through the two published legs, so it asserts that the split into `annuity_payments` and `claims_guarantee` is exhaustive and non-overlapping |
+| `check_net_cf` | `net_cf(t) == premiums(t) − 1{payment month}·pols_if_init·A(t)·payment_factor(t) − claims(t,"REFUND") − expenses(t)`. The instalment term carries the payment-month indicator, because `payment_factor(t)` is defined at every `t` and only some `t` carry an instalment on a quarterly, half-yearly or annual point. **Not a restatement of the definition**: it rebuilds the annuity outgo through the `max()` payment factor rather than through the two published legs, so it asserts that the split into `annuity_payments` and `claims_guarantee` is exhaustive and non-overlapping; to `roll_fwd_tol()` times `max(single_prem() × pols_if_init(), 1)` |
 | `check_lives_roll_fwd` | `lives_if(t + 1, life) == lives_if(t, life)·(1 − mort_rate_mth(t, life))`, and `Σ_t lives_death(t, life) + lives_if(n, life) == lives_if(t₀, life)` for each life in scope |
 | `check_annuity_roll_fwd` | `annuity_surp_pp(t) == annuity_surp_pp(t − 1) · (1 + ψ)^{1 if t % 12 == 0 else 0}` inside the payment phase, and `annuity_pp(t) ≥ annuity_pp(t − 1)` at every `t` — the *Bonusrente* ratchet |
 | `check_refund_run_off` | `refund_pp(t) == max(refund_pp(t − 1) − R·1{payment month}, 0)`, non-increasing and reaching zero at `⌈SP / R⌉` instalments; identically zero where `refund_form == "none"` |
@@ -834,7 +834,7 @@ Rente* and steps up 1 % at each policy anniversary, ratcheting under the *Bonusr
 `60 €` a year accrued monthly on `pols_if(t)` **[std]**; `1,50 €` per instalment paid **[std]**; all
 three inflating at `expense_infl = 1,5 %` p.a., stepping at the policy anniversary **[std]**.
 *Decrements.* Death only — no lapse, no surrender, no paid-up, no option exercise [R1] [R2] [R5].
-*Tolerances.* `roll_fwd_tol = 1e-8`; the refund solve is not exercised on this cell.
+*Tolerances.* `roll_fwd_tol()` = 1e-8 (`param_table.csv`); the refund solve is not exercised on this cell.
 
 All amounts in euros; `pols_if` and the survival probabilities to six decimals, cash flows to the
 cent, and every total summed **at full precision and then rounded** rather than accumulated from

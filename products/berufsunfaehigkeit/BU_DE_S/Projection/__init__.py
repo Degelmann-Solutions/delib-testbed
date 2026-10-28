@@ -47,6 +47,7 @@ mort_file                 data.mort_table()                  mortality_table.csv
 occupation_file           data.occupation_table()            occupation_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
+param_file                data.param_table()                 param_table.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -1527,7 +1528,7 @@ def pols_death(t):
     model.
 
     Override reason: the deaths are the sum of the three ledgers' deaths, active, disabled
-    and run-off, each at its own rate, products/berufsunfaehigkeit/technical-notes.md:496
+    and run-off, each at its own rate, products/berufsunfaehigkeit/technical-notes.md:497
     """
     return pols_death_actv(t) + pols_death_dis(t) + pols_death_runoff(t)
 
@@ -1614,7 +1615,7 @@ def claim_kinds():
     """The three benefit kinds of :func:`claims`: ``BU_RENTE``, ``REINTEGRATION``, ``LAPSE``.
 
     Override reason: the claims are the *BU-Rente*, the *Wiedereingliederungshilfe* and the
-    zero lapse benefit, products/berufsunfaehigkeit/technical-notes.md:529
+    zero lapse benefit, products/berufsunfaehigkeit/technical-notes.md:530
     """
     return ("BU_RENTE", "REINTEGRATION", "LAPSE")
 
@@ -1642,9 +1643,9 @@ def claims_other(t, kind):
     published scope statement rather than a missing column.
 
     Override reason: the *BU-Rente* is paid to the disabled cohorts past the *Karenzzeit*
-    and the run-off slots, products/berufsunfaehigkeit/technical-notes.md:520, the
+    and the run-off slots, products/berufsunfaehigkeit/technical-notes.md:521, the
     *Wiedereingliederungshilfe* on completed run-offs,
-    products/berufsunfaehigkeit/technical-notes.md:521, no per-policy amount times a
+    products/berufsunfaehigkeit/technical-notes.md:522, no per-policy amount times a
     decrement
     """
     if kind == "BU_RENTE":
@@ -1685,7 +1686,7 @@ def expenses(t):
 
     Override reason: the acquisition charge is added to the proportional administration
     before the flat administration, ``(acq + prop) + flat``, an order the core's
-    ``acq + maint + claim`` would reassociate, products/berufsunfaehigkeit/technical-notes.md:523
+    ``acq + maint + claim`` would reassociate, products/berufsunfaehigkeit/technical-notes.md:524
     """
     acq = 0.0
     if t == 0 and duration_mth_init() == 0:
@@ -1734,7 +1735,7 @@ def net_cf(t):
 
     Override reason: the *Beitragsverrechnung* is subtracted before the claim total and the
     *Leistungsbearbeitungskosten* after the expenses,
-    products/berufsunfaehigkeit/technical-notes.md:556
+    products/berufsunfaehigkeit/technical-notes.md:557
     """
     return (premiums(t) - surplus_credit(t) - claims(t)
             - expenses(t) - claim_expenses(t))
@@ -1760,6 +1761,9 @@ def check_net_cf_resid(t):
     weighted by :func:`pols_if` instead of :func:`pols_prem` — which is this product's
     classic implementation error, and one that leaves every total in the frame looking
     plausible.
+
+    Override reason: the premium leg is rebuilt from the *Zahlbeitrag* billed times the
+    paying count, not from the frame, products/berufsunfaehigkeit/model.md:184
     """
     return net_cf(t) - (prem_zahl_pp(t) * pols_prem(t)
                         - claims(t, "BU_RENTE")
@@ -1768,14 +1772,30 @@ def check_net_cf_resid(t):
                         - expenses(t) - claim_expenses(t))
 
 
+def check_net_cf_scale(t):
+    """The scale of :func:`check_net_cf`'s tolerance in month t: the *BU-Rente*, at least 1.
+
+    Override reason: the statement is checked relative to the month's BU-Rente per policy,
+    products/berufsunfaehigkeit/technical-notes.md:557
+    """
+    return max(1.0, abs(bu_rente_pp(t)))                            # noqa: F821
+
+
 def check_net_cf():
     """True when the cash flow statement reconciles in every projected month.
 
     No argument, one bool over all ``t``, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
+
+    The months are ``0 .. proj_len() - 1``, each within ``check_net_cf_tol(t)``.
+
+    The model point carries no ``duration_init``, so the core's ``t_start()`` is not defined
+    here and the months are counted from the valuation month.
+
+    Override reason: the frame is indexed t = 0 ... proj_len() - 1,
+    products/berufsunfaehigkeit/technical-notes.md:60
     """
-    return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol            # noqa: F821
-               * max(1.0, abs(bu_rente_pp(t)))
+    return all(abs(check_net_cf_resid(t)) <= check_net_cf_tol(t)     # noqa: F821
                for t in range(0, proj_len()))
 
 
@@ -1799,7 +1819,7 @@ def check_states_resid(t):
 def check_states():
     """True when the three ledgers account for the whole in-force population at every t."""
     return all(abs(check_states_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
+               <= roll_fwd_tol() * max(pols_if_init(), 1.0)          # noqa: F821
                for t in range(0, proj_len() + 1))
 
 
@@ -1823,7 +1843,7 @@ def check_pols_roll_fwd_resid(t):
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
     return all(abs(check_pols_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
+               <= roll_fwd_tol() * max(pols_if_init(), 1.0)          # noqa: F821
                for t in range(0, proj_len()))
 
 
@@ -1846,7 +1866,7 @@ def check_dis_roll_fwd_resid(t):
 def check_dis_roll_fwd():
     """True when the disabled ledger rolls forward exactly in every projected month."""
     return all(abs(check_dis_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
+               <= roll_fwd_tol() * max(pols_if_init(), 1.0)          # noqa: F821
                for t in range(0, proj_len()))
 
 
@@ -1866,7 +1886,7 @@ def check_runoff_roll_fwd_resid(t):
 def check_runoff_roll_fwd():
     """True when the § 174 run-off ledger rolls forward exactly in every projected month."""
     return all(abs(check_runoff_roll_fwd_resid(t))
-               <= roll_fwd_tol * max(pols_if_init(), 1.0)            # noqa: F821
+               <= roll_fwd_tol() * max(pols_if_init(), 1.0)          # noqa: F821
                for t in range(0, proj_len()))
 
 
@@ -1885,7 +1905,7 @@ def check_prem_split_resid(t):
 
 def check_prem_split():
     """True when the two premium columns reconcile to the *Zahlbeitrag* in every month."""
-    return all(abs(check_prem_split_resid(t)) <= roll_fwd_tol        # noqa: F821
+    return all(abs(check_prem_split_resid(t)) <= roll_fwd_tol()      # noqa: F821
                * max(1.0, abs(prem_gross_ann_pp(t)))
                for t in range(0, proj_len()))
 
@@ -1915,14 +1935,16 @@ def check_cover_end_resid(t):
 
 def check_cover_end():
     """True when benefit and premium both stop exactly at their own contractual ages."""
-    return all(abs(check_cover_end_resid(t)) <= roll_fwd_tol         # noqa: F821
+    return all(abs(check_cover_end_resid(t)) <= roll_fwd_tol()       # noqa: F821
                for t in range(0, proj_len()))
 
 
 # --- the result frames ---
 
-def result_cf():
-    """Result table of cash flows, indexed by policy month t.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of cash flows, indexed by policy month t.
 
     ``pols_if`` is the start-of-month count, which is the weight applied to every cash
     flow on the same row, and its first value is ``pols_if_init()`` exactly.  The three
@@ -1940,31 +1962,50 @@ def result_cf():
     The frame runs ``t = 0 ... proj_len() - 1`` and stops: cover ceases at attained age
     ``cover_end_age()`` with nothing payable, and a claim still in payment at the horizon
     simply stops.
+
+    Override reason: the statement carries the three state counts, the paying count, the
+    *Beitragsverrechnung*, the three claim kinds and the claims-handling cost,
+    products/berufsunfaehigkeit/technical-notes.md:542-544
+    """
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("pols_actv", pols_actv),                                    # noqa: F821
+        ("pols_dis", pols_dis),                                      # noqa: F821
+        ("pols_runoff", pols_runoff),                                # noqa: F821
+        ("pols_prem", pols_prem),                                    # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("surplus_credit", surplus_credit),                          # noqa: F821
+        ("claims_bu_rente", lambda t: claims(t, "BU_RENTE")),        # noqa: F821
+        ("claims_reintegration",
+         lambda t: claims(t, "REINTEGRATION")),                      # noqa: F821
+        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("claim_expenses", claim_expenses),                          # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
+    )
+
+
+def result_cf():
+    """The frame of :func:`result_cf_columns` over ``range(0, proj_len())``.
+
+    The model point carries no ``duration_init``, so the core's ``t_start()`` is not defined
+    here and the months are counted from the valuation month.
+
+    Override reason: the frame is indexed t = 0 ... proj_len() - 1,
+    products/berufsunfaehigkeit/technical-notes.md:60
     """
     ts = list(range(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "pols_actv": [pols_actv(t) for t in ts],
-            "pols_dis": [pols_dis(t) for t in ts],
-            "pols_runoff": [pols_runoff(t) for t in ts],
-            "pols_prem": [pols_prem(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "surplus_credit": [surplus_credit(t) for t in ts],
-            "claims_bu_rente": [claims(t, "BU_RENTE") for t in ts],
-            "claims_reintegration": [claims(t, "REINTEGRATION") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "claim_expenses": [claim_expenses(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-        },
+        {label: [cell(t) for t in ts] for label, cell in result_cf_columns()},
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
 
 
-def result_states():
-    """Result table of transitions, rates and per-policy amounts, indexed by policy month t.
+def result_states_columns():
+    """The columns of :func:`result_states`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of transitions, rates and per-policy amounts by policy month t.
 
     The transition columns are the flows at the **end** of month ``t``, so they are the
     difference between one :func:`result_cf` row's state columns and the next.
@@ -1975,23 +2016,38 @@ def result_states():
     duration 1 in month 0, which is exactly the duration profile laid out along ``t``.
     Read it as the shape of the assumption, not as the rate applied in that month; the
     rate applied to a cohort is ``recov_rate(z)`` and belongs to the cohort.
+
+    Override reason: the frame publishes the transitions, the rates and the per-policy
+    amounts of the three-state ledger, products/berufsunfaehigkeit/technical-notes.md:546
+    """
+    return (
+        ("pols_inception", pols_inception),                          # noqa: F821
+        ("pols_recovery", pols_recovery),                            # noqa: F821
+        ("pols_reactivation", pols_reactivation),                    # noqa: F821
+        ("pols_death", pols_death),                                  # noqa: F821
+        ("pols_lapse", pols_lapse),                                  # noqa: F821
+        ("inc_rate", inc_rate),                                      # noqa: F821
+        ("recov_rate", lambda t: recov_rate(t + 1)),                 # noqa: F821
+        ("mort_rate", mort_rate),                                    # noqa: F821
+        ("lapse_rate", lapse_rate),                                  # noqa: F821
+        ("bu_rente_pp", bu_rente_pp),                                # noqa: F821
+        ("prem_gross_pp", prem_gross_pp),                            # noqa: F821
+        ("prem_zahl_pp", prem_zahl_pp),                              # noqa: F821
+    )
+
+
+def result_states():
+    """The frame of :func:`result_states_columns` over ``range(0, proj_len())``.
+
+    The model point carries no ``duration_init``, so the core's ``t_start()`` is not defined
+    here and the months are counted from the valuation month.
+
+    Override reason: the frame is indexed t = 0 ... proj_len() - 1,
+    products/berufsunfaehigkeit/technical-notes.md:60
     """
     ts = list(range(0, proj_len()))
     return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_inception": [pols_inception(t) for t in ts],
-            "pols_recovery": [pols_recovery(t) for t in ts],
-            "pols_reactivation": [pols_reactivation(t) for t in ts],
-            "pols_death": [pols_death(t) for t in ts],
-            "pols_lapse": [pols_lapse(t) for t in ts],
-            "inc_rate": [inc_rate(t) for t in ts],
-            "recov_rate": [recov_rate(t + 1) for t in ts],
-            "mort_rate": [mort_rate(t) for t in ts],
-            "lapse_rate": [lapse_rate(t) for t in ts],
-            "bu_rente_pp": [bu_rente_pp(t) for t in ts],
-            "prem_gross_pp": [prem_gross_pp(t) for t in ts],
-            "prem_zahl_pp": [prem_zahl_pp(t) for t in ts],
-        },
+        {label: [cell(t) for t in ts] for label, cell in result_states_columns()},
         index=pd.Index(ts, name="t"),                                # noqa: F821
     )
 
@@ -2025,6 +2081,5 @@ claim_maint_cost_mth = 12.0
 
 runoff_months = 3
 
-roll_fwd_tol = 1e-10
 
 pd = ("Module", "pandas")

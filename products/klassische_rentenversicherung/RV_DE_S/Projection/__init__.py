@@ -493,15 +493,6 @@ def mort_be_factor():
     return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
 
 
-def roll_fwd_tol():
-    """The relative tolerance the ``check_*`` identities close to, from *param_table.csv*.
-
-    1e-9, scaled by the magnitude of the quantities being compared.  A float comparison
-    tolerance, not an actuarial assumption.
-    """
-    return float(data.param_table().at["roll_fwd_tol", "value"])     # noqa: F821
-
-
 # ----------------------------------------
 # The premium and the Beitragssumme
 
@@ -1785,20 +1776,20 @@ def annuity_outgo(t):
 # The published identities
 
 
-def check_net_cf_resid(t):
-    """The cash-flow-statement residual in month t; zero everywhere.
+def net_cf_outgo_columns():
+    """The outgo columns :func:`check_net_cf_resid` subtracts, the annuity payments among them.
 
-    ``net_cf`` as published in :func:`result_cf`, less the same frame's own
+    The residual is ``net_cf`` as published in :func:`result_cf`, less the same frame's own
     ``premiums - claims_death - claims_lapse - claims_commutation - annuity_payments -
     expenses``.  It is rebuilt **from the frame** rather than from the cells, so it fails if a
     published column and the headline number ever stop being the same arithmetic — which is
-    the failure the identity exists to catch.
+    the failure the identity exists to catch.  There is no commission column.
+
+    Override reason: the annuity payments are outgo beside the claim kinds and the product
+    pays no commission, products/klassische_rentenversicherung/technical-notes.md:694
     """
-    row = result_cf().loc[t]
-    rebuilt = (row["premiums"] - row["claims_death"] - row["claims_lapse"]
-               - row["claims_commutation"] - row["annuity_payments"]
-               - row["expenses"])
-    return float(row["net_cf"]) - float(rebuilt)
+    return ("claims_death", "claims_lapse", "claims_commutation", "annuity_payments",
+            "expenses")
 
 
 def check_net_cf():
@@ -1808,6 +1799,9 @@ def check_net_cf():
     reconstructs its headline number from the statement's own parts, so that ``net_cf`` is not
     the one quantity nothing checks.  It also asserts ``liability_cf(t) == -net_cf(t)``
     exactly, which is the library-wide sign convention.
+
+    Override reason: the check asserts the statement's identity and also
+    liability_cf(t) = -net_cf(t), products/klassische_rentenversicherung/technical-notes.md:694
     """
     for t in result_cf().index:
         scale = max(1.0, abs(premiums(t)) + abs(claims(t))
@@ -2030,8 +2024,10 @@ def check_annuity_guarantee():
 # Output
 
 
-def result_cf():
-    """Result table of **monthly** cash flows, indexed by the 0-based policy month t.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of **monthly** cash flows, indexed by the 0-based policy month t.
 
     The frame runs from the model point's first projected month — ``t = 0`` for new business,
     ``t = t_start()`` for an in-force point — to ``proj_len() - 1``, contiguously;
@@ -2050,41 +2046,39 @@ def result_cf():
     should not be printed twelve times over, and a cash flow statement whose columns do not all
     sum to its bottom line is one a reader has to know which columns to skip.
     :func:`result_cf_annual` sums this frame into policy years.
+
+    Override reason: the statement carries the annuity count, the *Kapitalabfindung* and the
+    annuity payments, no commission, and liability_cf before net_cf,
+    products/klassische_rentenversicherung/technical-notes.md:678-679
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "pols_annuity": [pols_annuity(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_commutation": [claims(t, "COMMUTATION") for t in ts],
-            "annuity_payments": [annuity_payments(t) for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("pols_annuity", pols_annuity),                              # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
+        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
+        ("claims_commutation", lambda t: claims(t, "COMMUTATION")),  # noqa: F821
+        ("annuity_payments", annuity_payments),                      # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
     )
 
 
-def result_cf_annual():
-    """:func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.
+def result_cf_counts():
+    """``pols_if`` and ``pols_annuity``, the counts taken at each year's start.
 
-    A **regrouping of the monthly frame and never a second projection**: every cash flow column
-    is the sum of that policy year's twelve months, while ``pols_if`` and ``pols_annuity`` are
-    the counts at the year's **start**, which is the only reading under which a count and a
-    flow can share a row.  This is the view the technical notes' worked example is stated on.
+    :func:`result_cf_annual` is :func:`result_cf` summed into policy years, indexed by the
+    1-based ``policy_year``: a **regrouping of the monthly frame and never a second
+    projection**.  Every cash flow column is the sum of that policy year's twelve months, while
+    ``pols_if`` and ``pols_annuity`` are the counts at the year's **start**, which is the only
+    reading under which a count and a flow can share a row.  This is the view the technical
+    notes' worked example is stated on.
+
+    Override reason: the frame carries a second count, ``pols_annuity``, the count the annuity
+    instalment is paid on, products/klassische_rentenversicherung/technical-notes.md:678
     """
-    df = result_cf()
-    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821
-                     name="policy_year")
-    counts = ["pols_if", "pols_annuity"]
-    out = df.drop(columns=counts).groupby(years).sum()
-    for i, column in enumerate(counts):
-        out.insert(i, column, df[column].groupby(years).first())
-    return out
+    return ("pols_if", "pols_annuity")
 
 
 def result_pols():
@@ -2101,6 +2095,9 @@ def result_pols():
     ``mort_rate`` and ``lapse_rate`` are the **annual** rates the notes tabulate; the rates the
     recursion applies are ``mort_rate_mth`` and ``lapse_rate_mth``, which belong to the monthly
     frame and are not printed here.
+
+    Override reason: the frame is the annual state at each anniversary, indexed by the 1-based
+    policy year, products/klassische_rentenversicherung/model.md:42
     """
     ks = list(range(k_start(), proj_len_y()))
     return pd.DataFrame(                                             # noqa: F821

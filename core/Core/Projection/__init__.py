@@ -820,3 +820,180 @@ def liability_cf(t):
     prose.
     """
     return -net_cf(t)                                                # noqa: F821
+
+
+def roll_fwd_tol():
+    """The tolerance the ``check_*`` identities close to, from *param_table.csv*.
+
+    A float comparison tolerance, not an actuarial assumption: each check scales it by the
+    magnitude of what it compares.  A product without the row raises ``KeyError``.
+    """
+    return float(data.param_table().at["roll_fwd_tol", "value"])     # noqa: F821
+
+
+def result_cf_columns():
+    """The columns of :func:`result_cf` in their order, as ``(label, cell)`` pairs.
+
+    Each cell is a function of the month ``t``.  The default is the statement the core's own
+    cells make: ``pols_if``, ``premiums``, one ``claims_<kind>`` column per kind of
+    ``claim_kinds()`` in its order (the kind in lower case), ``expenses``, ``commissions``,
+    ``net_cf`` and ``liability_cf``.  A product whose statement has other lines overrides the
+    tuple; a column that is not a cell of ``t`` alone is a lambda of ``t``.
+    """
+    claim_columns = tuple(("claims_" + kind.lower(),
+                           lambda t, kind=kind: claims(t, kind))     # noqa: F821
+                          for kind in claim_kinds())                 # noqa: F821
+    return (("pols_if", pols_if), ("premiums", premiums)            # noqa: F821
+            ) + claim_columns + (
+            ("expenses", expenses), ("commissions", commissions),    # noqa: F821
+            ("net_cf", net_cf), ("liability_cf", liability_cf))      # noqa: F821
+
+
+def result_cf():
+    """The table of cash flows by policy month t, ``t_start() .. proj_len() - 1``.
+
+    One column per pair of :func:`result_cf_columns`, in its order, each the cell evaluated
+    at every month of the frame; ``pols_if`` is the start-of-month count, the weight on every
+    cash flow of the same row.  The frame runs contiguously and stops: there is no
+    ``t = proj_len()`` row.
+    """
+    ts = list(range(t_start(), proj_len()))                          # noqa: F821
+    frame = pd.DataFrame(                                            # noqa: F821
+        {label: [cell(t) for t in ts] for label, cell in result_cf_columns()},  # noqa: F821
+        index=ts)
+    frame.index.name = "t"
+    return frame
+
+
+def result_cf_counts():
+    """The count columns of :func:`result_cf` taken at each year's start: ``pols_if``.
+
+    :func:`result_cf_annual` takes them at the policy year's start rather than summing them.
+    A product whose frame carries a further count overrides the tuple.
+    """
+    return ("pols_if",)
+
+
+def result_cf_annual():
+    """:func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.
+
+    A regrouping of the monthly frame and never a second projection: every cash flow column
+    is the sum of its policy year's months, while each column of ``result_cf_counts()`` is
+    the count at the year's **start** and stands first, in that order, which is the only
+    reading under which a count and a flow can share a row.
+    """
+    df = result_cf()                                                 # noqa: F821
+    years = pd.Series([duration(t) + 1 for t in df.index],           # noqa: F821
+                      index=df.index, name="policy_year")
+    counts = list(result_cf_counts())                                # noqa: F821
+    out = df.drop(columns=counts).groupby(years).sum()
+    for i, column in enumerate(counts):
+        out.insert(i, column, df[column].groupby(years).first())
+    return out
+
+
+def result_pols_columns():
+    """The columns of :func:`result_pols` in their order, as ``(label, cell)`` pairs; none.
+
+    A product that publishes its policy counts, rates and per-policy amounts beside the cash
+    flows overrides the tuple; each cell is a function of the month ``t``.
+    """
+    return ()
+
+
+def result_pols():
+    """The table of :func:`result_pols_columns` by policy month t from ``t_start()``.
+
+    The same monthly frame as :func:`result_cf`, one column per pair, in its order.
+    """
+    ts = list(range(t_start(), proj_len()))                          # noqa: F821
+    frame = pd.DataFrame(                                            # noqa: F821
+        {label: [cell(t) for t in ts] for label, cell in result_pols_columns()},  # noqa: F821
+        index=ts)
+    frame.index.name = "t"
+    return frame
+
+
+def result_states_columns():
+    """The columns of :func:`result_states` in their order, as ``(label, cell)`` pairs; none.
+
+    A product with a multi-state ledger that publishes its states, transitions and rates
+    beside the cash flows overrides the tuple; each cell is a function of the month ``t``.
+    """
+    return ()
+
+
+def result_states():
+    """The table of :func:`result_states_columns` by policy month t from ``t_start()``.
+
+    The same monthly frame as :func:`result_cf`, one column per pair, in its order.
+    """
+    ts = list(range(t_start(), proj_len()))                          # noqa: F821
+    frame = pd.DataFrame(                                            # noqa: F821
+        {label: [cell(t) for t in ts] for label, cell in result_states_columns()},  # noqa: F821
+        index=ts)
+    frame.index.name = "t"
+    return frame
+
+
+def net_cf_income_columns():
+    """The income columns :func:`check_net_cf_resid` adds from the frame: ``premiums``.
+
+    The first is the start of the rebuilt cash flow and the rest are added to it in order.
+    """
+    return ("premiums",)
+
+
+def net_cf_outgo_columns():
+    """The outgo columns of :func:`result_cf` that :func:`check_net_cf_resid` subtracts.
+
+    One ``claims_<kind>`` column per kind of ``claim_kinds()`` in its order, then
+    ``expenses`` and ``commissions``, each subtracted once: :func:`expenses` excludes the
+    commission.
+    """
+    return tuple("claims_" + kind.lower()                            # noqa: F821
+                 for kind in claim_kinds()) + ("expenses", "commissions")  # noqa: F821
+
+
+def check_net_cf_resid(t):
+    """The cash flow statement's residual in month t; zero everywhere.
+
+    ``net_cf`` less the cash flow rebuilt **from :func:`result_cf`'s own published columns**
+    rather than from the cells behind them: the columns of ``net_cf_income_columns()``
+    added left to right, less each column of ``net_cf_outgo_columns()`` in turn.  Reading the
+    frame is the point: the identity then holds of what the model publishes, so a column
+    dropped, renamed or mis-signed on the way into the frame, or a benefit kind missing from
+    the statement, fails here.
+    """
+    row = result_cf().loc[t]                                         # noqa: F821
+    income = net_cf_income_columns()                                 # noqa: F821
+    rebuilt = row[income[0]]
+    for label in income[1:]:
+        rebuilt = rebuilt + row[label]
+    for label in net_cf_outgo_columns():                             # noqa: F821
+        rebuilt = rebuilt - row[label]
+    return float(row["net_cf"] - rebuilt)
+
+
+def check_net_cf_scale(t):
+    """The magnitude :func:`check_net_cf` scales the tolerance by in month t; 1, absolute."""
+    return 1.0
+
+
+def check_net_cf_tol(t):
+    """The tolerance of :func:`check_net_cf` in month t: ``roll_fwd_tol()`` times the scale."""
+    return roll_fwd_tol() * check_net_cf_scale(t)                    # noqa: F821
+
+
+def check_net_cf():
+    """True when the cash flow statement reconciles in every projected month.
+
+    **The library's first ruling**: every model publishes the identity that reconstructs
+    ``net_cf(t)`` from its own statement's published parts, so that the headline number of a
+    cash flow model is not the one quantity nothing checks.  No argument, one bool over
+    ``t_start() .. proj_len() - 1``, each ``abs(check_net_cf_resid(t))`` within
+    ``check_net_cf_tol(t)``; :func:`check_net_cf_resid` gives the signed residual of the
+    month that failed.
+    """
+    return all(abs(check_net_cf_resid(t)) <= check_net_cf_tol(t)     # noqa: F821
+               for t in range(t_start(), proj_len()))                # noqa: F821

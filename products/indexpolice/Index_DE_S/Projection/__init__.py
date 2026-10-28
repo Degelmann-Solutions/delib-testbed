@@ -94,6 +94,7 @@ election_file          data.election_table()              election_table.csv
 mort_file              data.mort_table()                  mort_table.csv
 lapse_file             data.lapse_table()                 lapse_table.csv
 freq_loading_file      data.freq_loading_table()          freq_load_table.csv
+param_file             data.param_table()                 param_table.csv
 =====================  =================================  ==========================
 
 .. rubric:: Naming
@@ -1378,20 +1379,26 @@ def check_net_cf_resid(t):
 
     delib requires this cells of every model in the library: no model's headline number may
     be reconciled only in prose.
+
+    Override reason: the claims enter as the kind-less total of the cells, not kind by kind
+    from the frame, products/indexpolice/model.md:407
     """
     return net_cf(t) - (premiums(t) - claims(t) - expenses(t))
 
 
-def check_net_cf():
-    """True when the cash flow statement reconciles in every projected month.
+def check_net_cf_scale(t):
+    """The scale of :func:`check_net_cf`'s tolerance in month t: its largest flow, at least 1.
+
+    :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
+    month.
 
     The library-wide form: no argument, one bool over all ``t``;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
+
+    Override reason: the statement is checked relative to the month's largest premium, claim
+    or expense, products/indexpolice/technical-notes.md:651
     """
-    return bool(all(abs(check_net_cf_resid(t)) <= roll_fwd_tol       # noqa: F821
-                    * max(abs(premiums(t)), abs(claims(t)),
-                          abs(expenses(t)), 1.0)
-                    for t in range(t_start(), proj_len())))
+    return max(abs(premiums(t)), abs(claims(t)), abs(expenses(t)), 1.0)  # noqa: F821
 
 
 def check_av_roll_fwd_resid(k):
@@ -1427,7 +1434,7 @@ def check_av_roll_fwd():
     Tolerance is relative to the balance, the account running to five figures while the
     residual should be zero to machine precision.
     """
-    return bool(all(abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol  # noqa: F821
+    return bool(all(abs(check_av_roll_fwd_resid(k)) <= roll_fwd_tol()  # noqa: F821
                     * max(abs(av(k)), 1.0)
                     for k in range(k_start(), proj_len_y())))
 
@@ -1464,7 +1471,7 @@ def check_pols_roll_fwd():
     ts = range(t_start(), proj_len())
     closure = sum(pols_death(t) + pols_lapse(t) + pols_maturity(t)
                   for t in ts) - pols_if_init()
-    tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
+    tol = roll_fwd_tol() * max(pols_if_init(), 1.0)                  # noqa: F821
     return bool(abs(closure) <= tol
                 and all(abs(check_pols_roll_fwd_resid(t)) <= tol for t in ts))
 
@@ -1486,7 +1493,7 @@ def check_surplus_alloc_resid(k):
 
 def check_surplus_alloc():
     """True when the declared surplus is allocated exactly once in every policy year."""
-    return bool(all(abs(check_surplus_alloc_resid(k)) <= roll_fwd_tol  # noqa: F821
+    return bool(all(abs(check_surplus_alloc_resid(k)) <= roll_fwd_tol()  # noqa: F821
                     * max(abs(index_base_pp(k)), 1.0)
                     for k in range(k_start(), proj_len_y())))
 
@@ -1512,7 +1519,7 @@ def check_lock_in_resid(k):
 
 def check_lock_in():
     """True when the guaranteed capital is monotone and no credit is negative."""
-    return bool(all(abs(check_lock_in_resid(k)) <= roll_fwd_tol      # noqa: F821
+    return bool(all(abs(check_lock_in_resid(k)) <= roll_fwd_tol()    # noqa: F821
                     * max(abs(guar_cap_pp(k)), 1.0)
                     for k in range(k_start(), proj_len_y())))
 
@@ -1542,14 +1549,16 @@ def check_index_credit_resid(k):
 
 def check_index_credit():
     """True when the *Indexrendite* is inside its contractual bounds in every policy year."""
-    return bool(all(abs(check_index_credit_resid(k)) <= roll_fwd_tol  # noqa: F821
+    return bool(all(abs(check_index_credit_resid(k)) <= roll_fwd_tol()  # noqa: F821
                     for k in range(k_start(), proj_len_y())))
 
 
 # --- the result table --------------------------------------------------------
 
-def result_cf():
-    """Result table of **monthly** cash flows, indexed by the 0-based policy month t.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of **monthly** cash flows, indexed by the 0-based policy month t.
 
     The frame runs ``t = t_start() ... proj_len() - 1``, contiguous, and stops: month
     ``proj_len() - 1`` is the last month of the last policy year and ends at
@@ -1568,37 +1577,20 @@ def result_cf():
     cash flow only later, through a benefit, and summing them into ``net_cf`` is a numbered
     pitfall that :func:`check_net_cf` catches.  :func:`result_cf_annual` sums this frame
     into policy years.
+
+    Override reason: no commission column, and liability_cf before net_cf,
+    products/indexpolice/technical-notes.md:622-623
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_maturity": [claims(t, "MATURITY") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
+        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
+        ("claims_maturity", lambda t: claims(t, "MATURITY")),        # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
     )
-
-
-def result_cf_annual():
-    """:func:`result_cf` summed into policy years, indexed by the 1-based ``policy_year``.
-
-    A **regrouping of the monthly frame and never a second projection**: every cash flow
-    column is the sum of that policy year's twelve months while ``pols_if`` is the count at
-    the year's **start**, which is the only reading under which a count and a flow can share
-    a row.  This is the view the technical notes' worked example is stated on.
-    """
-    df = result_cf()
-    years = pd.Index([duration(t) + 1 for t in df.index],            # noqa: F821
-                     name="policy_year")
-    out = df.drop(columns="pols_if").groupby(years).sum()
-    out.insert(0, "pols_if", df["pols_if"].groupby(years).first())
-    return out
 
 
 def result_index():
@@ -1670,6 +1662,5 @@ rentenfaktor_guar = 25.0
 
 rentenfaktor_curr = 25.0
 
-roll_fwd_tol = 1e-08
 
 pd = ("Module", "pandas")

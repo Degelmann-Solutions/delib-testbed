@@ -27,6 +27,11 @@
   kind and an unknown kind is rejected; Index and RV pay exactly zero commission; KLV's net
   cash flow subtracts its claims kind by kind; RLV's liability cash flow is its net cash flow
   negated.
+- The outputs and checks: every product reads ``roll_fwd_tol`` from its ``param_table.csv``
+  and a missing row raises; KLV's ``result_cf`` is the core's statement from ``t_start()``;
+  RV's annual frame sums the flows and takes its two counts at the year's start; RLV's
+  net-cash-flow residual is rebuilt from its frame's columns; KLV's ``check_net_cf`` closes to
+  the scaled tolerance and fails above it.
 """
 from __future__ import annotations
 
@@ -740,6 +745,65 @@ CORE_CELLS = {
                    "risikolebensversicherung": "derived",
                    "sofortrente": "override"},
         "liability_cf": {**dict.fromkeys(MODELS, "derived"), "sofortrente": "override"},
+        "roll_fwd_tol": dict.fromkeys(MODELS, "derived"),
+        "result_cf_columns": {**dict.fromkeys(MODELS, "override"),
+                              "kapitallebensversicherung": "derived"},
+        "result_cf": {**dict.fromkeys(MODELS, "derived"), "berufsunfaehigkeit": "override"},
+        "result_cf_counts": {"indexpolice": "derived",
+                             "kapitallebensversicherung": "derived",
+                             "klassische_rentenversicherung": "override",
+                             "risikolebensversicherung": "derived"},
+        "result_cf_annual": {"basisrente": "override",
+                             "indexpolice": "derived",
+                             "kapitallebensversicherung": "derived",
+                             "klassische_rentenversicherung": "derived",
+                             "riester_rente": "override",
+                             "risikolebensversicherung": "derived"},
+        "result_pols_columns": {"risikolebensversicherung": "override",
+                                "sofortrente": "override"},
+        "result_pols": {"basisrente": "override",
+                        "klassische_rentenversicherung": "override",
+                        "risikolebensversicherung": "derived",
+                        "sofortrente": "derived"},
+        "result_states_columns": {"berufsunfaehigkeit": "override",
+                                  "pflegerentenversicherung": "override"},
+        "result_states": {"berufsunfaehigkeit": "override",
+                          "pflegerentenversicherung": "derived"},
+        "net_cf_income_columns": {"kapitallebensversicherung": "derived",
+                                  "klassische_rentenversicherung": "derived",
+                                  "riester_rente": "override",
+                                  "risikolebensversicherung": "derived"},
+        "net_cf_outgo_columns": {"kapitallebensversicherung": "derived",
+                                 "klassische_rentenversicherung": "override",
+                                 "riester_rente": "derived",
+                                 "risikolebensversicherung": "derived"},
+        "check_net_cf_resid": {"basisrente": "override",
+                               "berufsunfaehigkeit": "override",
+                               "fondsgebundene_rentenversicherung": "override",
+                               "indexpolice": "override",
+                               "kapitallebensversicherung": "derived",
+                               "klassische_rentenversicherung": "derived",
+                               "pflegerentenversicherung": "override",
+                               "riester_rente": "derived",
+                               "risikolebensversicherung": "derived",
+                               "sofortrente": "override"},
+        "check_net_cf_scale": {"basisrente": "derived",
+                               "berufsunfaehigkeit": "override",
+                               "fondsgebundene_rentenversicherung": "derived",
+                               "indexpolice": "override",
+                               "kapitallebensversicherung": "override",
+                               "klassische_rentenversicherung": "derived",
+                               "pflegerentenversicherung": "override",
+                               "riester_rente": "override",
+                               "risikolebensversicherung": "derived",
+                               "sofortrente": "override"},
+        "check_net_cf_tol": {**dict.fromkeys(MODELS, "derived"),
+                             "fondsgebundene_rentenversicherung": "override",
+                             "risikolebensversicherung": "override"},
+        "check_net_cf": {**dict.fromkeys(MODELS, "derived"),
+                         "basisrente": "override",
+                         "berufsunfaehigkeit": "override",
+                         "klassische_rentenversicherung": "override"},
     },
 }
 
@@ -1410,3 +1474,135 @@ def test_rlv_liability_cf_is_the_negated_net_cf(product_models):
             assert (math.copysign(1.0, item.liability_cf(t))
                     == -math.copysign(1.0, item.net_cf(t))), (point_id, t)
 
+
+
+ROLL_FWD_TOL = {
+    "basisrente": 1e-09,
+    "berufsunfaehigkeit": 1e-10,
+    "fondsgebundene_rentenversicherung": 1e-10,
+    "indexpolice": 1e-08,
+    "kapitallebensversicherung": 1e-10,
+    "klassische_rentenversicherung": 1e-09,
+    "pflegerentenversicherung": 1e-10,
+    "riester_rente": 1e-09,
+    "risikolebensversicherung": 1e-10,
+    "sofortrente": 1e-08,
+}
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_roll_fwd_tol_is_read_from_param_table(product, product_models):
+    model = product_models(product)
+    projection = model.Projection
+    assert projection.roll_fwd_tol._is_derived()
+    assert "roll_fwd_tol" not in projection.refs
+    point_id = model.Data.model_point_table().index[0]
+    assert projection[point_id].roll_fwd_tol() == ROLL_FWD_TOL[product]
+
+
+def test_roll_fwd_tol_without_its_row_raises_key_error(tmp_path):
+    folder = product_copy(tmp_path, "kapitallebensversicherung")
+    table = folder / "param_table.csv"
+    params = pd.read_csv(table, index_col="item")
+    params.drop(index="roll_fwd_tol").to_csv(table)
+    copy = mx.read_model(folder / MODELS["kapitallebensversicherung"], name="TolProbe")
+    try:
+        point_id = copy.Data.model_point_table().index[0]
+        with pytest.raises(Exception, match="roll_fwd_tol") as raised:
+            copy.Projection[point_id].roll_fwd_tol()
+        assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+    finally:
+        copy.close()
+
+
+def test_klv_result_cf_is_the_core_statement_from_t_start(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.result_cf._is_derived()
+    assert projection.result_cf_columns._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        frame = item.result_cf()
+        assert list(frame.columns) == [
+            "pols_if", "premiums", "claims_death", "claims_maturity", "claims_lapse",
+            "expenses", "commissions", "net_cf", "liability_cf"], point_id
+        assert frame.index.name == "t"
+        assert list(frame.index) == list(range(item.t_start(), item.proj_len())), point_id
+        t = item.t_start()
+        assert frame.loc[t, "claims_lapse"] == item.claims(t, "LAPSE")
+        assert frame.loc[t, "pols_if"] == item.pols_if_init()
+
+
+def test_rv_result_cf_annual_sums_flows_and_takes_counts_at_the_year_start(product_models):
+    model = product_models("klassische_rentenversicherung")
+    projection = model.Projection
+    assert projection.result_cf_annual._is_derived()
+    assert projection.result_cf_counts._is_defined()
+    item = projection[model.Data.model_point_table().index[0]]
+    monthly = item.result_cf()
+    annual = item.result_cf_annual()
+    assert annual.index.name == "policy_year"
+    assert list(annual.columns[:2]) == ["pols_if", "pols_annuity"]
+    assert list(annual.columns[2:]) == [c for c in monthly.columns
+                                        if c not in ("pols_if", "pols_annuity")]
+    for year in annual.index:
+        months = [t for t in monthly.index if item.duration(t) + 1 == year]
+        start = months[0]
+        assert annual.loc[year, "pols_if"] == monthly.loc[start, "pols_if"], year
+        assert annual.loc[year, "pols_annuity"] == monthly.loc[start, "pols_annuity"], year
+        for column in annual.columns[2:]:
+            assert annual.loc[year, column] == pytest.approx(
+                monthly.loc[months, column].sum(), rel=1e-12, abs=1e-9), (year, column)
+
+
+def test_rlv_net_cf_resid_rebuilds_net_cf_from_the_frame(product_models):
+    model = product_models("risikolebensversicherung")
+    projection = model.Projection
+    assert projection.check_net_cf_resid._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        assert item.net_cf_income_columns() == ("premiums",)
+        assert item.net_cf_outgo_columns() == (
+            "claims_death", "claims_lapse", "claims_maturity", "expenses", "commissions")
+        frame = item.result_cf()
+        for t in frame.index:
+            row = frame.loc[t]
+            rebuilt = (row["premiums"] - row["claims_death"] - row["claims_lapse"]
+                       - row["claims_maturity"] - row["expenses"] - row["commissions"])
+            resid = item.check_net_cf_resid(t)
+            assert resid == float(row["net_cf"] - rebuilt), (point_id, t)
+            assert resid == 0.0, (point_id, t)
+
+
+def _resid_just_above_tolerance(t):
+    """A residual a little above the month's scaled tolerance."""
+    return check_net_cf_tol(t) * 1.01                                # noqa: F821
+
+
+def _resid_just_below_tolerance(t):
+    """A residual a little below the month's scaled tolerance."""
+    return -check_net_cf_tol(t) * 0.99                               # noqa: F821
+
+
+def test_klv_check_net_cf_closes_to_the_scaled_tolerance(product_models):
+    model = product_models("kapitallebensversicherung")
+    projection = model.Projection
+    assert projection.check_net_cf._is_derived()
+    assert projection.check_net_cf_tol._is_derived()
+    assert projection.check_net_cf_scale._is_defined()
+    point_id = model.Data.model_point_table().index[0]
+    item = projection[point_id]
+    assert item.check_net_cf() is True
+    t = item.t_start()
+    assert item.check_net_cf_tol(t) == item.roll_fwd_tol() * max(item.sum_assured(), 1.0)
+
+    # A residual just below roll_fwd_tol() * check_net_cf_scale(t) passes, one just above fails.
+    folder = PRODUCTS_DIR / "kapitallebensversicherung" / MODELS["kapitallebensversicherung"]
+    copy = mx.read_model(folder, name="NetCfProbe")
+    try:
+        copy.Projection.check_net_cf_resid.formula = _resid_just_below_tolerance
+        assert copy.Projection[point_id].check_net_cf() is True
+        copy.Projection.check_net_cf_resid.formula = _resid_just_above_tolerance
+        assert copy.Projection[point_id].check_net_cf() is False
+    finally:
+        copy.close()

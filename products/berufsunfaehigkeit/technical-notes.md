@@ -340,7 +340,7 @@ source supplies.
 | Commission | Not a separate line — it sits inside `acq_rate`, which is the German taxonomy | **[std]** |
 | `prem_freq_load` — *Ratenzahlungszuschlag* | annual **1,00**; half-yearly **1,02**; quarterly **1,03**; monthly **1,05** | German market convention `[unverified]`; **[std]** |
 
-**Input files.** Seven CSVs sit beside `run.py`, read once per model by the unparameterized `Data`
+**Input files.** Eight CSVs, `param_table.csv` with `roll_fwd_tol` among them, sit beside `run.py`, read once per model by the unparameterized `Data`
 Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv` carries a
 **`provenance` column**, one tag per row, as delib's second ruling requires.
 
@@ -353,6 +353,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | `occupation_table.csv` | `berufsgruppe` (BG1 – BG5) | `occ_factor`, `label`, `provenance` |
 | `lapse_table.csv` | `policy_year` (1 – 6, the last being ultimate) | `lapse_rate`, `provenance` |
 | `freq_loading_table.csv` | `prem_freq` | `prem_mode_months`, `prem_freq_load`, `provenance` |
+| `param_table.csv` | `item` | `value`, `provenance`: `roll_fwd_tol`, the tolerance of the `check_*` identities |
 
 ---
 
@@ -553,7 +554,7 @@ Seven `check_*()` cells, each returning a single `bool` over all `t` with a per-
 
 | Check | Identity |
 |---|---|
-| **`check_net_cf`** (delib ruling 1) | `net_cf(t) = premiums(t) − surplus_credit(t) − Σ_kind claims(t, kind) − expenses(t) − claim_expenses(t)` |
+| **`check_net_cf`** (delib ruling 1) | `net_cf(t) = premiums(t) − surplus_credit(t) − Σ_kind claims(t, kind) − expenses(t) − claim_expenses(t)`; to `roll_fwd_tol()` times the larger of 1 and the month's `abs(bu_rente_pp(t))` |
 | `check_states` | `pols_if(t) = pols_actv(t) + pols_dis(t) + pols_runoff(t)` |
 | `check_pols_roll_fwd` | `pols_if(t+1) = pols_if(t) − pols_death(t) − pols_lapse(t)` — inception, recovery and reactivation are internal transfers |
 | `check_dis_roll_fwd` | `pols_dis(t+1) = pols_dis(t) − pols_death_dis(t) − pols_recovery(t) + pols_inception(t)` |

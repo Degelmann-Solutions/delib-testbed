@@ -295,7 +295,7 @@ against what must be **paid** — and conflating them is a numbered pitfall [R2]
 
 ## Inputs are external files
 
-The eight input CSVs live **in this directory**, beside `run.py` — not inside the model
+The nine input CSVs, `param_table.csv` with `roll_fwd_tol` among them, live **in this directory**, beside `run.py` — not inside the model
 folder. `Index_DE_S/` holds nothing but formulas:
 
 ```
@@ -308,6 +308,7 @@ products/indexpolice/
   mort_table.csv
   lapse_table.csv
   freq_load_table.csv
+  param_table.csv
   run.py
   model.md
   product-spec.md              <- the documents this model implements
@@ -345,6 +346,7 @@ is checked out.
 | `mort_file` | `mort_table()` | `mort_table.csv` |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` |
 | `freq_loading_file` | `freq_loading_table()` | `freq_load_table.csv` |
+| `param_file` | `param_table()` | `param_table.csv` |
 
 **The trade-off:** the model is not portable on its own. Copy `Index_DE_S/` without the CSVs
 and it will read fine, then fail on first evaluation. What you gain is that a diff of the
@@ -419,7 +421,7 @@ size of the credit — 9 139,74 € over the anchor's projection.
 | `check_lock_in()` | `guar_cap_pp` monotone, `index_credit_pp ≥ 0`, `surplus_credit_pp ≥ 0` |
 | `check_index_credit()` | `0 ≤ index_credit_rate(k) ≤ 12 · index_cap(k)`, or `≤ index_quote(k) · max(Y(k), 0)` |
 
-Tolerance is `roll_fwd_tol = 1e-8`, relative to the balance being checked.
+Tolerance is `roll_fwd_tol()` = 1e-8 from `param_table.csv`, relative to the balance being checked.
 
 ## Modules that are off in the base run
 

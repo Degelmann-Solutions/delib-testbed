@@ -1181,6 +1181,9 @@ def check_net_cf_resid(t):
     payment factor.  So what the identity asserts is that the split into those legs is
     **exhaustive and non-overlapping**: a survivor's annuity paid on top of a guaranteed
     instalment, or a guarantee counted additively, leaves a residual here.
+
+    Override reason: the instalment outgo is rebuilt through the single payment factor, not
+    through the two published legs, products/sofortrente/model.md:324
     """
     if is_payment_mth(t):
         paid = pols_if_init() * annuity_pp(t) * payment_factor(t)
@@ -1189,16 +1192,20 @@ def check_net_cf_resid(t):
     return net_cf(t) - (premiums(t) - paid - claims(t, "REFUND") - expenses(t))
 
 
-def check_net_cf():
-    """True when the cash flow statement reconciles in every projected month.
+def check_net_cf_scale(t):
+    """The scale of :func:`check_net_cf`'s tolerance: the book's single premium, at least 1.
+
+    :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
+    month.
 
     The library's first ruling: every model reconciles its own headline number in code and
     not only in prose.  No argument, one bool over all ``t``;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
+
+    Override reason: the statement is checked relative to the single premium of the book,
+    products/sofortrente/technical-notes.md:648
     """
-    tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
-    return bool(all(abs(check_net_cf_resid(t)) <= tol
-                    for t in range(t_start(), proj_len())))
+    return max(single_prem() * pols_if_init(), 1.0)                  # noqa: F821
 
 
 def check_lives_roll_fwd_resid(t):
@@ -1230,7 +1237,7 @@ def check_lives_roll_fwd():
     paid-up conversion and no option exercise — so this is the whole closure identity, and
     a life that leaves and reappears fails here rather than in a cash flow.
     """
-    tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
+    tol = roll_fwd_tol() * max(pols_if_init(), 1.0)                  # noqa: F821
     if not all(abs(check_lives_roll_fwd_resid(t)) <= tol
                for t in range(t_start(), proj_len())):
         return False
@@ -1270,7 +1277,7 @@ def check_annuity_roll_fwd():
     paid-up annuity, is not taken back off — which is what makes a rising
     *Überschussverwendung* ratchet rather than fluctuate.
     """
-    tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
+    tol = roll_fwd_tol() * max(single_prem() * pols_if_init(), 1.0)  # noqa: F821
     stepped = all(abs(check_annuity_roll_fwd_resid(t)) <= tol
                   for t in range(t_start(), proj_len()))
     ratchet = all(annuity_pp(t) >= annuity_pp(t - 1) - tol
@@ -1303,7 +1310,7 @@ def check_refund_run_off():
     directly.  The last is what catches a refund measured against the *total* annuity: the
     *Überschussrente* would retire the capital sooner and the count would not match.
     """
-    tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
+    tol = roll_fwd_tol() * max(single_prem() * pols_if_init(), 1.0)  # noqa: F821
     if refund_form() == "none":
         return bool(all(refund_pp(t) == 0.0
                         for t in range(t_start(), proj_len())))
@@ -1349,7 +1356,7 @@ def check_payment_factor_resid(t):
 
 def check_payment_factor():
     """True when the instalment splits exactly into its three legs at every month."""
-    tol = roll_fwd_tol * max(single_prem() * pols_if_init(), 1.0)    # noqa: F821
+    tol = roll_fwd_tol() * max(single_prem() * pols_if_init(), 1.0)  # noqa: F821
     return bool(all(abs(check_payment_factor_resid(t)) <= tol
                     for t in range(t_start(), proj_len())))
 
@@ -1374,7 +1381,7 @@ def check_guarantee_certain():
     Vacuously true on a model point with no guarantee period, which is the honest reading:
     there is nothing to be certain about.
     """
-    tol = roll_fwd_tol * max(pols_if_init(), 1.0)                    # noqa: F821
+    tol = roll_fwd_tol() * max(pols_if_init(), 1.0)                  # noqa: F821
     return bool(all(abs(check_guarantee_certain_resid(t)) <= tol
                     for t in range(t_start(), proj_len())))
 
@@ -1410,7 +1417,7 @@ def check_equivalence():
     """
     if annuity_pp_init() > 0.0:
         return True
-    tol = roll_fwd_tol * max(net_single_prem(), 1.0)                 # noqa: F821
+    tol = roll_fwd_tol() * max(net_single_prem(), 1.0)               # noqa: F821
     return bool(abs(check_equivalence_resid()) <= tol)
 
 
@@ -1434,18 +1441,20 @@ def check_death_option_xor():
 def check_tariff_int_rate():
     """True when the tariff *Rechnungszins* is within the cap of the contract's own vintage.
 
-    ``rechnungszins() <= hoechstrechnungszins() + roll_fwd_tol``.  An **inequality**, not
+    ``rechnungszins() <= hoechstrechnungszins() + roll_fwd_tol()``.  An **inequality**, not
     an equality: the *Höchstrechnungszins* binds the reserving rate and, through the VAG,
     the rate a new tariff may be priced at, but a carrier may price below it and one in the
     corpus is observed pricing a guaranteed annuity factor at 0 % while the statutory
     maximum was positive.
     """
     return bool(rechnungszins()
-                <= hoechstrechnungszins() + roll_fwd_tol)             # noqa: F821
+                <= hoechstrechnungszins() + roll_fwd_tol())           # noqa: F821
 
 
-def result_cf():
-    """Result table of cash flows, indexed by month ``t``.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of cash flows, indexed by month ``t``.
 
     ``pols_if`` is the start-of-month obligation weight, which is the weight applied to the
     maintenance expense on the same row.  ``annuity_payments`` is the total of the
@@ -1457,46 +1466,46 @@ def result_cf():
     The frame runs ``t_start() ... proj_len() - 1`` and stops.  There is no maturity payment
     and no tail state: the annuitant's survival has reached zero and the guarantee has
     expired, so nothing remains to be paid.
+
+    Override reason: the statement carries the annuity payments and its two claim kinds, no
+    commission, and liability_cf before net_cf, products/sofortrente/technical-notes.md:635-636
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "annuity_payments": [annuity_payments(t) for t in ts],
-            "claims_guarantee": [claims(t, "GUARANTEE") for t in ts],
-            "claims_refund": [claims(t, "REFUND") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("annuity_payments", annuity_payments),                      # noqa: F821
+        ("claims_guarantee", lambda t: claims(t, "GUARANTEE")),      # noqa: F821
+        ("claims_refund", lambda t: claims(t, "REFUND")),            # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
     )
 
 
-def result_pols():
-    """Result table of survival, instalments and per-policy amounts, indexed by month ``t``.
+def result_pols_columns():
+    """The columns of :func:`result_pols`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of survival, instalments and per-policy amounts by month ``t``.
 
     The state behind :func:`result_cf`: the two survival paths, the certain floor and the
     payment factor built from them, the three-way split of the instalment into guaranteed
     and surplus parts, and the refund's run-off against the cumulative guaranteed
     instalments.
+
+    Override reason: the frame publishes the two survival paths, the payment factor, the
+    instalment split and the refund run-off, products/sofortrente/technical-notes.md:637
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "lives_if_1": [lives_if(t, 1) for t in ts],
-            "lives_if_2": [lives_if(t, 2) for t in ts],
-            "certain_floor": [certain_floor(t) for t in ts],
-            "payment_factor": [payment_factor(t) for t in ts],
-            "annuity_guar_pp": [annuity_guar_pp(t) for t in ts],
-            "annuity_surp_pp": [annuity_surp_pp(t) for t in ts],
-            "annuity_pp": [annuity_pp(t) for t in ts],
-            "refund_pp": [refund_pp(t) for t in ts],
-            "cum_annuity_guar_pp": [cum_annuity_guar_pp(t) for t in ts],
-            "pols_if": [pols_if(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("lives_if_1", lambda t: lives_if(t, 1)),                    # noqa: F821
+        ("lives_if_2", lambda t: lives_if(t, 2)),                    # noqa: F821
+        ("certain_floor", certain_floor),                            # noqa: F821
+        ("payment_factor", payment_factor),                          # noqa: F821
+        ("annuity_guar_pp", annuity_guar_pp),                        # noqa: F821
+        ("annuity_surp_pp", annuity_surp_pp),                        # noqa: F821
+        ("annuity_pp", annuity_pp),                                  # noqa: F821
+        ("refund_pp", refund_pp),                                    # noqa: F821
+        ("cum_annuity_guar_pp", cum_annuity_guar_pp),                # noqa: F821
+        ("pols_if", pols_if),                                        # noqa: F821
     )
 
 
@@ -1526,7 +1535,6 @@ mix_male = 0.45
 mort_base_year = 2025
 
 
-roll_fwd_tol = 1e-08
 
 solve_tol = 1e-10
 

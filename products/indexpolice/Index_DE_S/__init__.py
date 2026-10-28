@@ -48,7 +48,7 @@ in a year that credits nothing, which is why ``check_lock_in()`` asserts monoton
 **Spaces.** The model contains two:
 
 :mod:`~.Index_DE_S.Data`
-    Reads the eight input CSVs and holds their filename References. It takes no
+    Reads the nine input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.Index_DE_S.Projection`

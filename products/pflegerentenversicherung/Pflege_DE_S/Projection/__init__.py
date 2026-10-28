@@ -1736,6 +1736,9 @@ def check_net_cf_resid(t):
     instead of silently changing the answer.  Every model in this library publishes this
     cells and its no-argument companion, so that no model's headline number is the one
     quantity nothing checks.
+
+    Override reason: rebuilt from the cells of the three claim kinds and the claims-handling
+    cost, products/pflegerentenversicherung/model.md:291
     """
     return net_cf(t) - (premiums(t)
                         - claims(t, "ANNUITY")
@@ -1745,16 +1748,19 @@ def check_net_cf_resid(t):
                         - claim_expenses(t))
 
 
-def check_net_cf():
-    """True when the cash flow statement reconciles in every projected month.
+def check_net_cf_scale(t):
+    """The scale of :func:`check_net_cf`'s tolerance: the book's monthly annuity, at least 1.
+
+    :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
+    month.
 
     No argument, one bool over all ``t``, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
+
+    Override reason: the statement is checked relative to the policy count times the monthly
+    Pflegerente, products/pflegerentenversicherung/technical-notes.md:675
     """
-    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
-    scale = max(pols_if_init() * max(rente_mth(), 1.0), 1.0)
-    return all(abs(check_net_cf_resid(t)) <= tol * scale
-               for t in range(t_start(), proj_len()))
+    return max(pols_if_init() * max(rente_mth(), 1.0), 1.0)            # noqa: F821
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1776,7 +1782,7 @@ def check_pols_roll_fwd_resid(t):
 
 def check_pols_roll_fwd():
     """True when the in-force roll-forward closes in every projected month."""
-    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = roll_fwd_tol()
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_pols_roll_fwd_resid(t)) <= tol * scale
                for t in range(t_start(), proj_len()))
@@ -1807,7 +1813,7 @@ def check_states_resid(t):
 
 def check_states():
     """True when the ledgers and the absorbed counts partition the cohort at every month."""
-    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = roll_fwd_tol()
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_states_resid(t)) <= tol * scale
                for t in range(t_start(), proj_len()))
@@ -1833,7 +1839,7 @@ def check_waiver_resid(t):
 
 def check_waiver():
     """True when the waiver splits the in-term population in every projected month."""
-    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = roll_fwd_tol()
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_waiver_resid(t)) <= tol * scale
                for t in range(t_start(), proj_len()))
@@ -1860,7 +1866,7 @@ def check_esc_ledger_resid(t):
 
 def check_esc_ledger():
     """True when the escalation ledger dominates the head count in every projected month."""
-    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = roll_fwd_tol()
     scale = max(pols_if_init(), 1.0)
     return all(abs(check_esc_ledger_resid(t)) <= tol * scale
                for t in range(t_start(), proj_len()))
@@ -1936,7 +1942,7 @@ def check_prem_equiv():
     difference of two large discounted values and an absolute tolerance on it would be a
     statement about the contract's size rather than about the equivalence.
     """
-    tol = float(data.param_table().at["roll_fwd_tol", "value"])      # noqa: F821
+    tol = roll_fwd_tol()
     if premium_mth() > 0.0:
         return True
     scale = max(premium_mth_pp() / rating_factor() * tariff_annuity(), 1.0)
@@ -1944,8 +1950,10 @@ def check_prem_equiv():
     return abs(total) <= tol * scale
 
 
-def result_cf():
-    """Result table of cash flows, indexed by policy month ``t``.
+def result_cf_columns():
+    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of cash flows, indexed by policy month ``t``.
 
     Contiguous from :func:`t_start` to ``proj_len() - 1``.  ``pols_if`` is the
     **start**-of-month count, which is the weight applied to every cash flow on the same
@@ -1959,29 +1967,31 @@ def result_cf():
     dropped so the product facts are stated instead of inferred.  ``net_cf`` is
     ``premiums`` less the three ``claims`` columns, ``expenses`` and ``claim_expenses``;
     ``liability_cf`` is its negative.
+
+    Override reason: the statement carries the state counts and the paying count, its three
+    claim kinds and the claims-handling cost, and no commission,
+    products/pflegerentenversicherung/technical-notes.md:649-660
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_if": [pols_if(t) for t in ts],
-            "pols_act": [pols_act(t) for t in ts],
-            "pols_care": [pols_care(t) for t in ts],
-            "pols_prem": [pols_prem(t) for t in ts],
-            "premiums": [premiums(t) for t in ts],
-            "claims_annuity": [claims(t, "ANNUITY") for t in ts],
-            "claims_lapse": [claims(t, "LAPSE") for t in ts],
-            "claims_death": [claims(t, "DEATH") for t in ts],
-            "expenses": [expenses(t) for t in ts],
-            "claim_expenses": [claim_expenses(t) for t in ts],
-            "net_cf": [net_cf(t) for t in ts],
-            "liability_cf": [liability_cf(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_if", pols_if),                                        # noqa: F821
+        ("pols_act", pols_act),                                      # noqa: F821
+        ("pols_care", pols_care),                                    # noqa: F821
+        ("pols_prem", pols_prem),                                    # noqa: F821
+        ("premiums", premiums),                                      # noqa: F821
+        ("claims_annuity", lambda t: claims(t, "ANNUITY")),          # noqa: F821
+        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
+        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
+        ("expenses", expenses),                                      # noqa: F821
+        ("claim_expenses", claim_expenses),                          # noqa: F821
+        ("net_cf", net_cf),                                          # noqa: F821
+        ("liability_cf", liability_cf),                              # noqa: F821
     )
 
 
-def result_states():
-    """Result table of the state ledgers, flows and rates, indexed by policy month ``t``.
+def result_states_columns():
+    """The columns of :func:`result_states`, ``(label, cell)`` pairs in their order.
+
+    The frame is the table of the state ledgers, flows and rates by policy month ``t``.
 
     The frame a reader needs to follow the multi-state machinery behind
     :func:`result_cf`: the five paying grades, the *Karenz* ledger and the three flows
@@ -1989,30 +1999,33 @@ def result_states():
     projection is built from.  It is not part of the house contract and carries no
     ``check_*``; ``mort_rate_care_pg5`` is published in preference to all five grades'
     because the grade-5 rate is the one that carries the product's central biometric fact.
+
+    Override reason: the frame publishes the Pflegegrad and Karenz ledgers, the flows
+    between them, the two decrements and the four annual rates,
+    products/pflegerentenversicherung/technical-notes.md:662
     """
-    ts = list(range(t_start(), proj_len()))
-    return pd.DataFrame(                                             # noqa: F821
-        {
-            "pols_pg1": [pols_pg(t, 1) for t in ts],
-            "pols_pg2": [pols_pg(t, 2) for t in ts],
-            "pols_pg3": [pols_pg(t, 3) for t in ts],
-            "pols_pg4": [pols_pg(t, 4) for t in ts],
-            "pols_pg5": [pols_pg(t, 5) for t in ts],
-            "pols_karenz": [sum(pols_karenz(t, g, z)
-                                for g in range(1, 6)
-                                for z in range(1, karenz_months() + 1)) for t in ts],
-            "pols_entry": [sum(pols_entry(t, g) for g in range(1, 6)) for t in ts],
-            "pols_grad": [sum(pols_grad(t, g) for g in range(1, 6)) for t in ts],
-            "pols_reactiv": [pols_reactiv(t) for t in ts],
-            "pols_death": [pols_death(t) for t in ts],
-            "pols_lapse": [pols_lapse(t) for t in ts],
-            "mort_rate": [mort_rate(t) for t in ts],
-            "mort_rate_care_pg5": [mort_rate_care(t, 5) for t in ts],
-            "inc_rate": [inc_rate(t) for t in ts],
-            "lapse_rate": [lapse_rate(t) for t in ts],
-            "premium_pp": [premium_pp(t) for t in ts],
-        },
-        index=pd.Index(ts, name="t"),                                # noqa: F821
+    return (
+        ("pols_pg1", lambda t: pols_pg(t, 1)),                       # noqa: F821
+        ("pols_pg2", lambda t: pols_pg(t, 2)),                       # noqa: F821
+        ("pols_pg3", lambda t: pols_pg(t, 3)),                       # noqa: F821
+        ("pols_pg4", lambda t: pols_pg(t, 4)),                       # noqa: F821
+        ("pols_pg5", lambda t: pols_pg(t, 5)),                       # noqa: F821
+        ("pols_karenz",
+         lambda t: sum(pols_karenz(t, g, z)                          # noqa: F821
+                       for g in range(1, 6)
+                       for z in range(1, karenz_months() + 1))),     # noqa: F821
+        ("pols_entry",
+         lambda t: sum(pols_entry(t, g) for g in range(1, 6))),      # noqa: F821
+        ("pols_grad",
+         lambda t: sum(pols_grad(t, g) for g in range(1, 6))),       # noqa: F821
+        ("pols_reactiv", pols_reactiv),                              # noqa: F821
+        ("pols_death", pols_death),                                  # noqa: F821
+        ("pols_lapse", pols_lapse),                                  # noqa: F821
+        ("mort_rate", mort_rate),                                    # noqa: F821
+        ("mort_rate_care_pg5", lambda t: mort_rate_care(t, 5)),      # noqa: F821
+        ("inc_rate", inc_rate),                                      # noqa: F821
+        ("lapse_rate", lapse_rate),                                  # noqa: F821
+        ("premium_pp", premium_pp),                                  # noqa: F821
     )
 
 

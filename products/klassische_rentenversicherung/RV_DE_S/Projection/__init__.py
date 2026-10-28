@@ -490,7 +490,7 @@ def mort_be_factor():
     factor of 1.15 and a tariff parameter in *param_table.csv*,
     products/klassische_rentenversicherung/model.md:513
     """
-    return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
+    return float(data.param_table_dict()["value"]["mort_be_factor"])  # noqa: F821
 
 
 # ----------------------------------------
@@ -554,8 +554,8 @@ def alpha_rate():
     makes the year-one *Sparbeitrag* small and the § 169 Abs. 3 floor bite.  1 275,00 € on
     the anchor cell.
     """
-    return float(data.charge_table().at[                             # noqa: F821
-        (model_point()["charge_id"], "alpha_rate"), "value"])
+    return float(data.charge_table_dict()["value"][                  # noqa: F821
+        (model_point()["charge_id"], "alpha_rate")])
 
 
 def alpha_cum_pp(k):
@@ -632,8 +632,8 @@ def charge_acq_spread_pp(k):
     :func:`spread_diff_pp`, the difference between the tariff *Deckungskapital* and the
     statutory surrender floor.  255,00 € on the anchor cell.
     """
-    years = int(data.charge_table().at[                              # noqa: F821
-        (model_point()["charge_id"], "alpha_spread_years"), "value"])
+    years = int(data.charge_table_dict()["value"][                   # noqa: F821
+        (model_point()["charge_id"], "alpha_spread_years")])
     return zillmer_amount() / years if 0 <= k < years else 0.0
 
 
@@ -643,8 +643,8 @@ def charge_prem_pp(k):
     4,0 % of each gross premium.  An internal deduction, not an expense: it reduces the
     *Sparbeitrag* and produces no cash flow.
     """
-    return float(data.charge_table().at[                             # noqa: F821
-        (model_point()["charge_id"], "beta_rate"), "value"]) * prem_pp(k)
+    return float(data.charge_table_dict()["value"][                  # noqa: F821
+        (model_point()["charge_id"], "beta_rate")]) * prem_pp(k)
 
 
 def charge_admin_pp(k):
@@ -657,8 +657,8 @@ def charge_admin_pp(k):
     balance so the recursion stays acyclic.
     """
     item = "gamma_pup_rate" if paid_up(k) else "gamma_rate"
-    return float(data.charge_table().at[                             # noqa: F821
-        (model_point()["charge_id"], item), "value"]) * av_pp(k)
+    return float(data.charge_table_dict()["value"][                  # noqa: F821
+        (model_point()["charge_id"], item)]) * av_pp(k)
 
 
 def nar_pp(k):
@@ -998,8 +998,8 @@ def mort_rate_at_age(x):
     ``q_base(M, 50) = 0.002000``.  The real basis is DAV 2004 R, which is the property of the
     Deutsche Aktuarvereinigung, is not public and is not redistributed here.
     """
-    return float(data.mort_table().at[                               # noqa: F821
-        (sex(), int(x)), "q_base"])
+    return float(data.mort_table_dict()["q_base"][                   # noqa: F821
+        (sex(), int(x))])
 
 
 def improve_rate(x):
@@ -1009,8 +1009,8 @@ def improve_rate(x):
     deliberate simplification of the *Starttrend* / *Zieltrend* structure the German
     construction uses, documented as one rather than presented as a replication.
     """
-    return float(data.mort_table().at[                               # noqa: F821
-        (sex(), int(x)), "improve"])
+    return float(data.mort_table_dict()["improve"][                  # noqa: F821
+        (sex(), int(x))])
 
 
 def mort_rate_tariff(t):
@@ -1038,7 +1038,7 @@ def mort_rate_tariff(t):
     calendar year, products/klassische_rentenversicherung/technical-notes.md:328
     """
     x = age(t)
-    base_year = int(data.param_table().at["mort_base_year", "value"])  # noqa: F821
+    base_year = int(data.param_table_dict()["value"]["mort_base_year"])  # noqa: F821
     return min(1.0, mort_rate_at_age(x)
                * (1.0 - improve_rate(x)) ** (calendar_year(t) - base_year))
 
@@ -1062,11 +1062,10 @@ def decl_rate(k):
     **The declared rate contains the guarantee.**  It is the *Garantieverzinsung* plus the
     *laufende Zinsüberschussbeteiligung*, never a surplus on top of the guarantee.
     """
-    tbl = data.decl_rate_table()                                     # noqa: F821
     scen = scenario_id()
-    years = tbl.loc[scen].index
-    y = min(max(calendar_year_y(k), int(years.min())), int(years.max()))
-    return float(tbl.at[(scen, y), "decl_rate"])
+    lo, hi = data.decl_rate_years()[scen]                            # noqa: F821
+    y = min(max(calendar_year_y(k), lo), hi)
+    return float(data.decl_rate_table_dict()["decl_rate"][(scen, y)])  # noqa: F821
 
 
 def bonus_rate(k):
@@ -1180,8 +1179,8 @@ def surr_charge_pp(k):
     years would be exactly the void kind.  2,0 % on ``zillmer_25`` and nil on ``zillmer_40``
     **[std]**; whatever it is set to, :func:`cv_pp` cannot fall below :func:`cv_floor_pp`.
     """
-    return (float(data.charge_table().at[                            # noqa: F821
-        (model_point()["charge_id"], "stornoabzug_rate"), "value"])
+    return (float(data.charge_table_dict()["value"][                 # noqa: F821
+        (model_point()["charge_id"], "stornoabzug_rate")])
         * (av_pp_at(k, "AFT_INT") + av_sur_pp_at(k, "AFT_INT")))
 
 
@@ -1259,8 +1258,8 @@ def pup_cashout():
     pup = int(model_point()["pup_year"])
     if pup <= 0:
         return False
-    threshold = float(data.charge_table().at[                        # noqa: F821
-        (model_point()["charge_id"], "min_annuity_mth"), "value"])
+    threshold = float(data.charge_table_dict()["value"][             # noqa: F821
+        (model_point()["charge_id"], "min_annuity_mth")])
     return bool(pup_value_pp() / 10000.0 * annuity_rate_guar() < threshold)
 
 
@@ -1436,7 +1435,7 @@ def val_reserve_pp():
     without dominating.  Policyholders also participate during the payout phase; that
     continuing participation is not modelled.
     """
-    return (float(data.param_table().at["val_reserve_rate", "value"])  # noqa: F821
+    return (float(data.param_table_dict()["value"]["val_reserve_rate"])  # noqa: F821
             * capital_gross_pp())
 
 
@@ -1477,9 +1476,8 @@ def annuity_rate_curr():
     here is **[std]**: no market factor was established for any carrier in any year.
     """
     mp = model_point()
-    return float(data.rentenfaktor_table().at[                       # noqa: F821
-        (mp["rf_scenario_id"], issue_age() + int(mp["aufschub_y"])),
-        "annuity_rate_curr"])
+    return float(data.rentenfaktor_table_dict()["annuity_rate_curr"][  # noqa: F821
+        (mp["rf_scenario_id"], issue_age() + int(mp["aufschub_y"]))])
 
 
 def annuity_rate_appl():
@@ -1534,10 +1532,10 @@ def annuity_sur_mth_pp(k):
     n = int(mp["aufschub_y"])
     if k < n:
         return 0.0
-    par = data.param_table()                                         # noqa: F821
-    rate = float(par.at["sur_ann_rate", "value"])
-    growth = float(par.at["sur_ann_growth", "value"])
-    theta = float(par.at["sur_ann_theta", "value"])
+    par = data.param_table_dict()["value"]                           # noqa: F821
+    rate = float(par["sur_ann_rate"])
+    growth = float(par["sur_ann_growth"])
+    theta = float(par["sur_ann_theta"])
     j = k - n
     system = mp["payout_system"]
     guar = annuity_guar_mth_pp()
@@ -1675,22 +1673,22 @@ def claims_other(t, kind):
 
 def expense_acq_pp():
     """The acquisition expense per policy at issue, from *param_table.csv*: 400,00 € **[std]**."""
-    return float(data.param_table().at["expense_acq_pp", "value"])   # noqa: F821
+    return float(data.param_table_dict()["value"]["expense_acq_pp"])  # noqa: F821
 
 
 def expense_maint_pp():
     """The maintenance expense per policy per year in the accumulation phase: 45,00 € **[std]**."""
-    return float(data.param_table().at["expense_maint_pp", "value"])  # noqa: F821
+    return float(data.param_table_dict()["value"]["expense_maint_pp"])  # noqa: F821
 
 
 def expense_annuity_pp():
     """The administration expense per policy per year in the payout phase: 30,00 € **[std]**."""
-    return float(data.param_table().at["expense_annuity_pp", "value"])  # noqa: F821
+    return float(data.param_table_dict()["value"]["expense_annuity_pp"])  # noqa: F821
 
 
 def expense_claim_pp():
     """The settlement expense per death, surrender or commutation event: 120,00 € **[std]**."""
-    return float(data.param_table().at["expense_claim_pp", "value"])  # noqa: F821
+    return float(data.param_table_dict()["value"]["expense_claim_pp"])  # noqa: F821
 
 
 def expenses_pp(t):
@@ -1835,24 +1833,38 @@ def check_pols_roll_fwd():
     return True
 
 
+def pols_exits_cum(t):
+    """The deaths, surrenders and commutations from ``t_start()`` through t; 0 before.
+
+    A running total: each month adds ``pols_death(t) + pols_lapse(t) +
+    pols_commutation(t)`` to the month before, so a month costs one step rather than
+    re-summing the frame.  It equals the direct sum over the exit cells up to floating-point noise (Python's ``sum`` is
+    compensated, this total is not), far inside the tolerance of
+    :func:`check_decrement_closure`.  A recursion over the exit cells only, never over
+    :func:`pols_if`.
+    """
+    if t < t_start():
+        return 0
+    return pols_exits_cum(t - 1) + (pols_death(t) + pols_lapse(t) + pols_commutation(t))
+
+
 def check_decrement_closure_resid(t):
     """The cumulative decrement-closure residual at the end of period t; zero.
 
     The deaths, surrenders and commutations up to and including ``t``, plus ``pols_if(t+1)``,
-    less the original cohort.  Built by **direct summation over the exit cells**, with no
-    reference to the recursion that produced ``pols_if``, which is what makes it more than the
-    telescope of :func:`check_pols_roll_fwd`: it catches a wrong starting cohort, an exit
-    counted in two places, and a policy that commutes at the *Rentenbeginn* and reappears in
-    the annuity — the arithmetic form of paying the capital twice.
+    less the original cohort.  Built by **direct summation over the exit cells**, the running
+    total :func:`pols_exits_cum`, with no reference to the recursion that produced
+    ``pols_if``, which is what makes it more than the telescope of
+    :func:`check_pols_roll_fwd`: it catches a wrong starting cohort, an exit counted in two
+    places, and a policy that commutes at the *Rentenbeginn* and reappears in the annuity —
+    the arithmetic form of paying the capital twice.
 
     At the last row ``t = proj_len() - 1`` it closes on ``pols_if_init()`` exactly with
     ``pols_if(proj_len()) = 0``, because ``mort_rate`` is 1 in the policy year at attained age
     ``omega_age() - 1``.  A projection truncated before then would fail here rather than
     silently drop the annuity tail.
     """
-    exits = sum(pols_death(s) + pols_lapse(s) + pols_commutation(s)
-                for s in range(t_start(), t + 1))
-    return exits + pols_if(t + 1) - pols_if_init()
+    return pols_exits_cum(t) + pols_if(t + 1) - pols_if_init()
 
 
 def check_decrement_closure():

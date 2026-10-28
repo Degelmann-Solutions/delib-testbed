@@ -39,6 +39,13 @@ deckrv_file               deckrv_table()                deckrv_table.csv
 param_file                param_table()                 param_table.csv
 ========================  ============================  ==========================
 
+Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
+dicts by column, built once per model, which the projection's lookups read instead of
+``DataFrame.loc``: the core's for ``model_point_table``, ``param_table``, ``mort_table``,
+``lapse_table``, ``charge_table`` and ``freq_loading_table``, this space's
+``surplus_rate_table_dict`` with ``surplus_rate_years``, the policy-year range of each
+scenario, and ``deckrv_table_dict``.
+
 Every file but ``model_point_table.csv`` carries a final **``provenance``** column, one tag
 per row — this library's second ruling, and machine-checked. The model point table is the
 single exemption, because a model point is a configuration rather than an assumption.
@@ -167,6 +174,38 @@ def deckrv_table():
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / deckrv_file, index_col="issue_year")           # noqa: F821
+
+
+def surplus_rate_table_dict():
+    """The surplus rates as a dict by column: ``{column: {(scenario_id, policy_year): rate}}``.
+
+    Built once per model from ``surplus_rate_table()``, keyed by the tuple of its two index
+    columns; ``Projection.decl_rate``, ``term_rate`` and ``ans_rate`` read the columns of
+    their names.
+    """
+    return surplus_rate_table().to_dict()
+
+
+def surplus_rate_years():
+    """The policy-year range of each scenario: ``{scenario_id: (first_year, last_year)}``.
+
+    Built once per model from the index of ``surplus_rate_table()``; ``Projection.decl_rate``,
+    ``term_rate`` and ``ans_rate`` clamp the policy year to the last.
+    """
+    years = surplus_rate_table().index.to_frame(index=False).groupby(
+        "scenario_id")["policy_year"]
+    return {scen: (int(lo), int(hi))
+            for scen, lo, hi in zip(years.min().index, years.min(), years.max())}
+
+
+def deckrv_table_dict():
+    """The DeckRV ceilings as a dict by column: ``{column: {issue_year: value}}``.
+
+    Built once per model from ``deckrv_table()``, the keys in the file's order;
+    ``Projection.hoechstrechnungszins`` and ``zillmer_max`` clamp the issue year to the
+    first and last key and read the columns they use.
+    """
+    return deckrv_table().to_dict()
 
 
 # ---------------------------------------------------------------------------

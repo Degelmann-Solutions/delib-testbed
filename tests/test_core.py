@@ -480,6 +480,8 @@ CORE_CELLS = {
                                   "risikolebensversicherung": "override"},
         "mort_rate_tariff": {"fondsgebundene_rentenversicherung": "derived",
                              "kapitallebensversicherung": "derived",
+                             "klassische_rentenversicherung": "override",
+                             "pflegerentenversicherung": "override",
                              "risikolebensversicherung": "derived",
                              "sofortrente": "override"},
         "pols_tariff": {"kapitallebensversicherung": "derived",

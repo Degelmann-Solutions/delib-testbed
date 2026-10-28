@@ -132,7 +132,7 @@ net_cf(t)                   net_cf(t)                       Net cash flow, incom
 -net_cf(t)                  liability_cf(t)                 The same stream, outgo positive
 i                           rechnungszins()                 Technical rate, pricing only
 v**t                        disc_factor_mth(t)              (1 + i)^(-t/12)
-(first order)               tar_mort_rate(t)                Blended, margined active q
+(first order)               mort_rate_tariff(t)             Blended, margined active q
 (first order)               tar_mort_rate_care(t, g)        Blended, margined in-care q
 (first order)               tar_inc_rate(t)                 Blended, margined incidence
 (first order)               tar_det_rate(t, g)              Margined deterioration
@@ -1317,7 +1317,7 @@ def net_cf(t):
     return premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
 
 
-def tar_mort_rate(t):
+def mort_rate_tariff(t):
     """The first-order active-life death rate: blended across the sexes, margined.
 
     ``act_mort_margin x [ mix q_M(x) + (1 - mix) q_F(x) ]``, forced to 1.0 at the limiting
@@ -1334,6 +1334,9 @@ def tar_mort_rate(t):
     the margin is 0.90 and not 1.10.  Only the direction is cited; no German
     *Sicherheitszuschlag* level for a *Pflegetafel* was established, and the responsible
     actuary sets it in practice.
+
+    Override reason: the first-order rate is the table rate times its prudence margin, the
+    sexes blended, products/pflegerentenversicherung/model.md:203
     """
     if age(t) >= omega_age() - 1:
         return 1.0
@@ -1416,7 +1419,7 @@ def tar_p_act(t):
     :func:`check_prem_equiv`, and splitting them would triple the pricing engine's surface
     for no gain.
     """
-    mu_a = -math.log(1.0 - min(tar_mort_rate(t), 1.0 - 1e-12))       # noqa: F821
+    mu_a = -math.log(1.0 - min(mort_rate_tariff(t), 1.0 - 1e-12))    # noqa: F821
     if duration_mth(t) < wartezeit_months() or age(t) >= omega_age() - 1:
         mu_i = 0.0
     else:

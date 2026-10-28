@@ -1,6 +1,6 @@
 # The common core of phase 3: layout and conventions
 
-Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates, the policy counts, the cash flows, the expense inflation, the outputs and checks and the contract data and charges, how the core quota is measured and bounded, and the conventions every core commit follows: commit trailers, the reason on a product override, and how a product's `UPSTREAM.md` names the files phase 3 changed. The tests that enforce the conventions are `tests/test_core.py`, `tests/test_provenance.py` and `tests/test_core_quota.py`.
+Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates, the policy counts, the cash flows, the expense inflation, the outputs and checks and the contract data and charges, how the core quota is measured and bounded, and the conventions every core commit follows: commit trailers, the reason on a product override, and how a product's `UPSTREAM.md` names the files phase 3 changed. The tests that enforce the conventions are `tests/test_core.py`, `tests/test_provenance.py`, `tests/test_core_quota.py` and `tests/test_baseline_deviations.py` (with the tool `tools/baseline_deviations.py`).
 
 ## Layout
 
@@ -247,6 +247,15 @@ Every commit that touches the core or a product model follows these rules from t
   ```
 
   `Reason` points to the document and place that justify the change (product docs, a decision); `Checked-By` names the agent that checked the change and its verdict. The same commit updates the affected baselines and their pins. Every deviation from the tag `phase-2-baseline` leads to exactly one such commit.
+
+  The listing of every deviation:
+
+  ```bash
+  uv run python tools/baseline_deviations.py
+  uv run python tools/baseline_deviations.py --json /tmp/deviations.json
+  ```
+
+  The tool reads git only. A deviation is a commit in `phase-2-baseline..HEAD` that changes the content of a product's `baseline/<product>/result_cf.csv` (a mode-only change does not count), adding or removing it included: two commits that change one product's baseline are two deviations, and a change reverted later is still one. A merge counts only for content no parent brings (an evil merge); a PR's change is listed at its branch commit. The tool lists every marked deviation (product, commit, subject, `Reason`), prints `no baseline deviation from phase-2-baseline (<sha>)` when there is none, and exits 1 with each problem on stderr: a deviation whose `Result-Change` does not name the product (`UNMARKED`), a `Result-Change` without a non-empty `Reason` or `Checked-By` (`INCOMPLETE`), a `Result-Change` naming a product whose baseline that commit does not change (`NO CHANGE`). It reads the trailers from the trailing paragraphs of the message that consist only of `Key: value` lines, the result trailers' paragraph before the `Co-Authored-By` paragraph included. A missing tag exits 2; fetch it with `git fetch --tags`. A failing git call also exits 2, with `error:` and git's message on stderr. `tests/test_baseline_deviations.py` runs the tool on the repository, so `pytest` fails on an unmarked deviation, and checks every case on a throwaway repository.
 - **Performance commit** (epic-night-run): `Performance: byte-identical`. Results stay byte-identical; the trailer marks the commit as a speed-up rather than a refactor.
 - **Fix forward**: a commit that repairs an earlier commit is not a revert; it names the repaired commit with its full SHA:
 

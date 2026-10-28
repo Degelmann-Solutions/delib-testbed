@@ -13,7 +13,7 @@ Import upstream `delib` with all standard products at a pinned commit. Then run 
 - Measure the **marginal** time per contract (the slope), not the average. Run each product at two sizes, for example all shipped points and a replicated multiple, so that fixed costs (model load, export) separate from the per-contract cost.
 - State these assumptions with the estimate: the projected number of mutants (from the operator list, scaled to the code size after phase 3) and the pool size. A linear extrapolation without trace-pruning is conservative.
 - Mutants exist only after phase 4, so the night-run criterion is a forecast, not a measurement.
-- Rough order of magnitude, an estimate only: the term life product alone yields about 500 code mutants with the chosen operators, without parameter cells. 500 mutants × 10,000 contracts in 10 h needs about 7 ms per contract-run across all workers. Today a run takes about 230 ms per contract (82 s for 350 points).
+- Rough order of magnitude, an estimate only: the term life product alone yields about 500 code mutants with the chosen operators, without parameter cells. 500 mutants × 10,000 contracts in 10 h needs about 7 ms per contract-run across all workers. Today a run takes about 230 ms per contract (82 s for 350 points). Replaced on 2026-10-28 by the new M counted on the code base after the core, M = 5,300 for all ten products (section "The new M" below).
 
 ## Known facts to start from
 
@@ -32,13 +32,192 @@ Speed stays a goal beyond phase 2: faster is always better, and phase 3, which m
 
 The common core of phase 3 is delivered on `main` (PRs #7 and #9 to #19; layout and conventions in [core.md](core.md)). All ten products inherit `core/Core/` through modelx `bases` and override only what is their own, each override with its reason; the groups moved in the dependency order of the RLV graph, from the contract data through the time axis, the tariff basis and present values, the decrement rates, the policy counts and the cash flows to the outputs and checks. `uv run python tools/baseline_deviations.py` finds no baseline deviation from the tag `phase-2-baseline` (`73c7c75`): every product's results are byte-identical to phase 2, and every built-in check is true. The core quota is at least 20 % in every product, from 20.0 % (`berufsunfaehigkeit`, at the bound) and 22.0 % (`sofortrente`) to 54.0 % (`risikolebensversicherung`). Shared quantities whose unification would change results (the gross premium, reserves and annuity present values as one formula, among others) are not unified yet; [core.md](core.md) lists them as open work, each a result-changing commit of its own.
 
-The night run is open (epic-night-run): all ten products together in one 10 h night at M = 500 and P = 10,000 contracts, 1,000 per product, and the new M. Measured with the core on 2026-10-28 (export engine, per-contract cleanup, W = 24, `tools/measure_marginal.py --all --workers 24`), `t_marginal` is 2.5 to 14.1 ms per contract, and 72.0 ms for `pflegerentenversicherung` (91.6 ms in phase 2d); the sum over the ten products is 137.8 ms (171 ms in phase 2d). All ten together, 1,000 contracts each, take 500 × 1,000 × 137.8 ms ≈ 19.1 h and miss the night by a factor of about 1.9 (2.4 in phase 2d); with the fixed cost per mutant, `M × (Σ fixed(W) + 1,000 × Σ t_marginal(W))` with Σ fixed = 20.3 s, it is about 22.0 h, a factor of 2.2. `pflegerentenversicherung` alone is half of the marginal time.
+The night run is open (epic-night-run): all ten products together in one 10 h night at M = 500 and P = 10,000 contracts, 1,000 per product, and the new M. Measured with the core on 2026-10-28 (export engine, per-contract cleanup, W = 24, `tools/measure_marginal.py --all --workers 24`), `t_marginal` is 2.5 to 14.1 ms per contract, and 72.0 ms for `pflegerentenversicherung` (91.6 ms in phase 2d); the sum over the ten products is 137.8 ms (171 ms in phase 2d). All ten together, 1,000 contracts each, take 500 × 1,000 × 137.8 ms ≈ 19.1 h and miss the night by a factor of about 1.9 (2.4 in phase 2d); with the fixed cost per mutant, `M × (Σ fixed(W) + 1,000 × Σ t_marginal(W))` with Σ fixed = 20.3 s, it is about 22.0 h, a factor of 2.2. `pflegerentenversicherung` alone is half of the marginal time. M = 500 is replaced by the new M (next section): M = 5,300, split into core and product mutants, gives about 36.2 h with the fixed cost and sets the target Σ t_marginal ≈ 25.6 ms.
+
+## The new M
+
+M = 500 was an estimate for term life alone from phase 1 (above, "Phase 2: how to measure"). The new M is counted on the code base after the core, commit `f07f0036f775e1a797004ae90cf5ac533f7889d2` (merge of PR #20), split by where each mutant sits: a mutant in the core runs all ten products, a mutant in a product only that product (epic-night-run, decision of 2026-10-28). It replaces M = 500 and sets the target speed every later optimisation reports against.
+
+**What is counted.** The operators O1–O6 of the operator list (P-013, sections 2 and 4), without O7 (parameter cells), per node of the Python AST:
+
+- O1 `<` `<=` `>` `>=`: 3 mutants, O2 `==` `!=`: 2, each per operator in a comparison (a chained comparison counts every operator).
+- O3 only `+` `-` `*` `/`, in binary operations and augmented assignments: 1 each; `//` `%` `**` none.
+- O4 `and`/`or`: one fewer than the operands of each boolean operation.
+- O5 calls of the bare names `max`/`min` with at least two positional arguments: 2 each; methods (`.max()`) not.
+- O6 numeric literals, judged without sign (`-1` is `1`): the values `0`, `1`, `0.0`, `1.0` and `True`/`False` are excluded, and so is any literal anywhere inside a subscript's index or an argument of `range(...)` (operators there still count for O1–O5); an `int` gives 2 mutants (±1), a `float` 1 (×(1+δ)).
+- Not counted: `in`, `not in`, `is`, `is not`, unary operators, strings and docstrings.
+
+**Where.** Only formula cells: the module-level `def`s and non-underscore `name = lambda` assignments in a `Projection/__init__.py`, each walked whole (nested lambdas, comprehensions, defaults). The built-in checks (`check_*`) and comparisons guarding a `raise` count like any other code. Not counted: module-level references (`name = 175.0`, parameters as in O7), the `Data` spaces (loaders, paths) and the product-level `__init__.py`. Core cells count once, in `core/Core/Projection`; a product counts only the cells its own `Projection` defines, overrides and product-only cells alike. A core cell that a product overrides still counts as a core mutant.
+
+**Forecast.** With P = 1,000 contracts per product and, per product `p`, `f_p = fixed(W)` and `t_p = t_marginal(W)` at W = 24, in seconds:
+
+    T = M_core · (Σ_p f_p + 1,000 · Σ_p t_p) + Σ_p M_p · (f_p + 1,000 · t_p),   M = M_core + Σ_p M_p
+
+The coverage filter is ignored: every mutant runs all 1,000 contracts of each of its products, a conservative assumption. The target speed is one factor `s` on every `t_p` with the fixed costs as measured, `s` solving T = 10 h = 36,000 s:
+
+    s = 1,000 · (M_core · Σ_p t_p + Σ_p M_p · t_p) / (36,000 − M_core · Σ_p f_p − Σ_p M_p · f_p)
+
+If the denominator is not positive, the fixed-cost terms alone exceed 10 h and the fixed cost is the binding target. `f_p` and `t_p` are those of `tools/measure_marginal.py --all --workers 24` of 2026-10-28 (Σ fixed 20.3 s, Σ t 137.8 ms), to 3 decimals; the command holds the same figures, so it and this section cannot disagree.
+
+**Command.** Run from the repository root; it reads only and is deterministic. At the commit above it prints the output below it. The counts drift as later entries of epic-night-run change cells; this section records them at that commit.
+
+```sh
+uv run python - <<'EOF'
+import ast
+from pathlib import Path
+
+CMP3 = (ast.Lt, ast.LtE, ast.Gt, ast.GtE)                 # O1: 3 mutants each
+CMP2 = (ast.Eq, ast.NotEq)                                 # O2: 2 mutants each
+ARITH = (ast.Add, ast.Sub, ast.Mult, ast.Div)              # O3: 1 mutant each
+
+def cells(path):
+    """The formula cells of a Projection: module-level defs and non-underscore name = lambda."""
+    for node in ast.parse(path.read_text()).body:
+        if isinstance(node, ast.FunctionDef):
+            yield node
+        elif (isinstance(node, ast.Assign) and isinstance(node.value, ast.Lambda)
+              and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+              and not node.targets[0].id.startswith("_")):
+            yield node.value
+
+def count(cell):
+    """Mutants per operator O1..O6 in one cell, walked whole."""
+    nodes = list(ast.walk(cell))
+    skip = set()                                           # literals in slices and range(...) args
+    for n in nodes:
+        if isinstance(n, ast.Subscript):
+            skip |= {id(m) for m in ast.walk(n.slice)}
+        elif isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "range":
+            for a in n.args + [k.value for k in n.keywords]:
+                skip |= {id(m) for m in ast.walk(a)}
+    o = [0] * 6
+    for n in nodes:
+        if isinstance(n, ast.Compare):
+            o[0] += 3 * sum(isinstance(op, CMP3) for op in n.ops)
+            o[1] += 2 * sum(isinstance(op, CMP2) for op in n.ops)
+        elif isinstance(n, (ast.BinOp, ast.AugAssign)) and isinstance(n.op, ARITH):
+            o[2] += 1
+        elif isinstance(n, ast.BoolOp):
+            o[3] += len(n.values) - 1
+        elif (isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+              and n.func.id in ("max", "min") and len(n.args) >= 2):
+            o[4] += 2
+        elif (isinstance(n, ast.Constant) and type(n.value) in (int, float)
+              and abs(n.value) not in (0, 1) and id(n) not in skip):
+            o[5] += 2 if type(n.value) is int else 1
+    return o
+
+def space(path):
+    o = [0] * 6
+    for c in cells(path):
+        o = [a + b for a, b in zip(o, count(c))]
+    return o
+
+# f_p in s, t_p in ms: tools/measure_marginal.py --all --workers 24, 2026-10-28
+FT = {
+    "basisrente": (1.886, 9.383),
+    "berufsunfaehigkeit": (1.993, 10.031),
+    "fondsgebundene_rentenversicherung": (1.969, 8.431),
+    "indexpolice": (1.842, 4.515),
+    "kapitallebensversicherung": (1.908, 5.659),
+    "klassische_rentenversicherung": (2.080, 14.063),
+    "pflegerentenversicherung": (2.970, 72.018),
+    "riester_rente": (2.007, 4.298),
+    "risikolebensversicherung": (1.778, 2.522),
+    "sofortrente": (1.861, 6.836),
+}
+P, NIGHT = 1000, 36000.0
+
+rows = [("core", space(Path("core/Core/Projection/__init__.py")))]
+for path in sorted(Path("products").glob("*/*/Projection/__init__.py")):
+    rows.append((path.parts[1], space(path)))
+assert [r[0] for r in rows[1:]] == sorted(FT)
+
+print(f"{'space':<34}" + "".join(f"{'O%d' % i:>6}" for i in range(1, 7)) + f"{'total':>7}")
+for name, o in rows:
+    print(f"{name:<34}" + "".join(f"{x:>6}" for x in o) + f"{sum(o):>7}")
+m_core = sum(rows[0][1])
+m_p = {name: sum(o) for name, o in rows[1:]}
+print(f"M_core = {m_core:,}   sum M_p = {sum(m_p.values()):,}   M = {m_core + sum(m_p.values()):,}")
+
+def night(scale):
+    """T in seconds with every t_p divided by scale."""
+    sf = sum(f for f, _ in FT.values())
+    st = sum(t for _, t in FT.values()) / 1000 / scale
+    return (m_core * (sf + P * st)
+            + sum(m_p[p] * (f + P * t / 1000 / scale) for p, (f, t) in FT.items()))
+
+fixed = m_core * sum(f for f, _ in FT.values()) + sum(m_p[p] * f for p, (f, _) in FT.items())
+var = P * (m_core * sum(t for _, t in FT.values()) + sum(m_p[p] * t for p, (_, t) in FT.items())) / 1000
+print(f"sum f_p = {sum(f for f, _ in FT.values()):.3f} s   sum t_p = {sum(t for _, t in FT.values()):.3f} ms")
+print(f"T today = {night(1.0):,.0f} s = {night(1.0) / 3600:.2f} h   fixed terms = {fixed:,.0f} s = {fixed / 3600:.2f} h")
+if fixed >= NIGHT:
+    print("fixed terms alone exceed 10 h: no speed-up of t_p reaches the night; the fixed cost is binding")
+else:
+    s = var / (NIGHT - fixed)
+    print(f"s = {s:.3f}   target sum t_p / s = {sum(t for _, t in FT.values()) / s:.3f} ms   "
+          f"T at target = {night(s):,.2f} s = {night(s) / 3600:.4f} h")
+    for p, (f, t) in FT.items():
+        print(f"  {p:<34} t_p = {t:7.3f} ms   target t_p / s = {t / s:6.3f} ms")
+EOF
+```
+
+Output at `f07f003`:
+
+```text
+space                                 O1    O2    O3    O4    O5    O6  total
+core                                  30    26    95     4     4    27    186
+basisrente                           240    74   184    34    56    42    630
+berufsunfaehigkeit                   117    30   299     5    42    57    550
+fondsgebundene_rentenversicherung     87    64   204     5    36    32    428
+indexpolice                           72    60   131     8    46    29    346
+kapitallebensversicherung             93    42   189    10    66    18    418
+klassische_rentenversicherung        159    64   216    13    54    76    582
+pflegerentenversicherung             189    62   396     6    76    53    782
+riester_rente                        186    58   243    34    44    33    598
+risikolebensversicherung              78    40   134     8    16    19    295
+sofortrente                          123    66   182     8    48    58    485
+M_core = 186   sum M_p = 5,114   M = 5,300
+sum f_p = 20.294 s   sum t_p = 137.756 ms
+T today = 130,216 s = 36.17 h   fixed terms = 14,497 s = 4.03 h
+s = 5.382   target sum t_p / s = 25.598 ms   T at target = 36,000.00 s = 10.0000 h
+  basisrente                         t_p =   9.383 ms   target t_p / s =  1.744 ms
+  berufsunfaehigkeit                 t_p =  10.031 ms   target t_p / s =  1.864 ms
+  fondsgebundene_rentenversicherung  t_p =   8.431 ms   target t_p / s =  1.567 ms
+  indexpolice                        t_p =   4.515 ms   target t_p / s =  0.839 ms
+  kapitallebensversicherung          t_p =   5.659 ms   target t_p / s =  1.052 ms
+  klassische_rentenversicherung      t_p =  14.063 ms   target t_p / s =  2.613 ms
+  pflegerentenversicherung           t_p =  72.018 ms   target t_p / s = 13.382 ms
+  riester_rente                      t_p =   4.298 ms   target t_p / s =  0.799 ms
+  risikolebensversicherung           t_p =   2.522 ms   target t_p / s =  0.469 ms
+  sofortrente                        t_p =   6.836 ms   target t_p / s =  1.270 ms
+```
+
+**Result.** M_core = 186, Σ M_p = 5,114, M = 5,300, more than ten times the 500 of phase 1. At today's speed all ten products take T ≈ 130,216 s ≈ 36.2 h, a factor of 3.6 over the night; the fixed-cost terms are 14,497 s ≈ 4.0 h of it, below 10 h, so the night is reachable by the per-contract time alone. The target is `s` ≈ 5.38: Σ t_p from 137.8 ms down to 25.6 ms at W = 24, with the fixed cost unchanged; T at the targets is 36,000 s.
+
+| Product | M_p | f_p (s) | t_p (ms) | target t_p / s (ms) |
+|---|---:|---:|---:|---:|
+| core (runs all ten) | 186 | | | |
+| `basisrente` | 630 | 1.886 | 9.383 | 1.744 |
+| `berufsunfaehigkeit` | 550 | 1.993 | 10.031 | 1.864 |
+| `fondsgebundene_rentenversicherung` | 428 | 1.969 | 8.431 | 1.567 |
+| `indexpolice` | 346 | 1.842 | 4.515 | 0.839 |
+| `kapitallebensversicherung` | 418 | 1.908 | 5.659 | 1.052 |
+| `klassische_rentenversicherung` | 582 | 2.080 | 14.063 | 2.613 |
+| `pflegerentenversicherung` | 782 | 2.970 | 72.018 | 13.382 |
+| `riester_rente` | 598 | 2.007 | 4.298 | 0.799 |
+| `risikolebensversicherung` | 295 | 1.778 | 2.522 | 0.469 |
+| `sofortrente` | 485 | 1.861 | 6.836 | 1.270 |
+| Σ | 5,114 | 20.294 | 137.756 | 25.598 |
+
+One factor `s` for every product is the bookkeeping of the target, not a plan: a product that gets faster than its `t_p / s` buys time for one that stays slower, as long as T stays at or below 10 h. `pflegerentenversicherung` is about half of Σ t_p and the largest lever.
 
 ## Decisions
 
 - Phase 3 goes through all ten products together, not product by product: one commit unifies one quantity in every product, and one PR is one group of quantities (2026-10-25, reported to the strategist the same day). It replaces the product order of 2026-10-24, which started with `risikolebensversicherung` and ended with `pflegerentenversicherung`; `risikolebensversicherung` stayed the probe for the first core cell.
 - Lower bound of the core quota: 20 % for every product, no exception (2026-10-28).
 - Contract pool for the night-run criterion: P = 10,000 contracts for now; in phase 2 per product, in phase 3 for all ten products together, 1,000 each.
+- Counting the new M (2026-10-28, section "The new M"): numeric literals by Python type, an `int` 2 mutants and a `float` 1, with `0`, `1`, `0.0`, `1.0` excluded by value (F3); the built-in checks and comparisons guarding a `raise` are counted like any other code; the coverage filter is ignored, every mutant runs all 1,000 contracts of its products (conservative); the target speed is one factor `s` on every product's `t_marginal`, with the fixed costs as measured.
 
 ## Open questions
 

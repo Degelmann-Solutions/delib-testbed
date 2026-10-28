@@ -1,11 +1,11 @@
 """Measure the marginal time per contract of one or more products.
 
     uv run python tools/measure_marginal.py risikolebensversicherung
-    uv run python tools/measure_marginal.py --all --json /tmp/phase2d.json
+    uv run python tools/measure_marginal.py --all --json /tmp/phase2d.json --mutants 500
     uv run python tools/measure_marginal.py basisrente --workers 1,4,8 --repeats 5 --pool 20000
-    uv run python tools/measure_marginal.py --all --factor 2 --workers 1           # phase 2c
-    uv run python tools/measure_marginal.py --all --factor 2 --engine modelx       # phase 2b
-    uv run python tools/measure_marginal.py --all --factor 2 --engine modelx --no-cleanup  # 2a
+    uv run python tools/measure_marginal.py --all --factor 2 --workers 1 --mutants 500           # phase 2c
+    uv run python tools/measure_marginal.py --all --factor 2 --engine modelx --mutants 500       # phase 2b
+    uv run python tools/measure_marginal.py --all --factor 2 --engine modelx --no-cleanup --mutants 500  # 2a
 
 What is measured
 ----------------
@@ -15,7 +15,7 @@ the export engine), ``result_cf``, every built-in check and the hashing, for eve
 exported model, ``modelx`` on the traced modelx model. By default the runner deletes each
 point's ItemSpace after reading it (per-contract cleanup); ``--no-cleanup`` passes the
 runner's switch through. Reproducing phase 2a needs ``--engine modelx --no-cleanup``,
-phase 2b ``--engine modelx``, each with ``--factor 2``. ``--workers`` is a list of worker
+phase 2b ``--engine modelx``, each with ``--factor 2 --mutants 500``. ``--workers`` is a list of worker
 counts (default ``1,4,8,12,16,24``); the runner runs at each of them (``--workers W``) and
 every product is measured at every ``W``. Under ``--engine modelx`` or ``--no-cleanup`` the
 runner has no workers, so the list defaults to ``1`` there and anything above 1 is a usage
@@ -73,6 +73,22 @@ exist only after phase 4. At ``W`` = 1 the memory line extrapolates ``MB/contrac
 for one process and warns when it exceeds the machine's total RAM; the warning does not
 change the exit status. At ``W`` > 1 it gives the measured ``mem(K·n)``.
 
+After the per-product lines comes one combined line per ``W`` for all measured products
+together, with the formula of the new M (``docs/roadmap.md``, "The new M"): a mutant in the
+core runs every measured product, a mutant in a product only that product, each run with its
+fixed cost and ``P_p = P / N`` contracts per product (``P`` = ``--pool``, ``N`` the number of
+products under ``products/``, ten today; the per-product lines keep ``P``)::
+
+    T(W) = M_core·(Σ_p f_p + P_p·Σ_p t_p) + Σ_p M_p·(f_p + P_p·t_p)
+
+with ``f_p = fixed(W)``, ``t_p = t_marginal(W)`` and the sums over the measured products
+only (``--all`` gives the roadmap's formula exactly), in hours against the 10 h night. The
+counts ``M_CORE`` and ``M_PRODUCT`` are the roadmap's at commit ``f07f003``, held here as
+constants (the count itself is the roadmap's command); ``--mutants`` defaults to their sum,
+5,300, and any other value scales ``M_core`` and every ``M_p`` by ``M / 5,300``. The coverage
+filter is ignored. If a measured product is not ``ok`` at a ``W``, that ``W`` gets no
+combined forecast. The combined line never changes the exit status.
+
 Exit status: 0 if every (product, W) is ``ok``; 1 if one failed a check, its child crashed
 or its slope is not positive (``unreliable``); 2 on a usage error. Every product is
 measured at every ``W`` and the worst status is returned.
@@ -97,6 +113,24 @@ THIS = Path(__file__).resolve()
 TABLE = "model_point_table.csv"
 NIGHT_HOURS = 10.0
 DEFAULT_WORKERS = (1, 4, 8, 12, 16, 24)
+
+# The new M, counted by where each mutant sits: docs/roadmap.md, section "The new M", at commit
+# f07f003 (merge of PR #20). The counts drift as cells change; recounting is the roadmap's
+# command, not this tool's.
+M_CORE = 186
+M_PRODUCT = {
+    "basisrente": 630,
+    "berufsunfaehigkeit": 550,
+    "fondsgebundene_rentenversicherung": 428,
+    "indexpolice": 346,
+    "kapitallebensversicherung": 418,
+    "klassische_rentenversicherung": 582,
+    "pflegerentenversicherung": 782,
+    "riester_rente": 598,
+    "risikolebensversicherung": 295,
+    "sofortrente": 485,
+}
+M_NEW = M_CORE + sum(M_PRODUCT.values())
 
 
 class UsageError(Exception):
@@ -230,7 +264,60 @@ def forecast_lines(product: str, fc: dict) -> list[str]:
     return lines
 
 
-def assumption_lines(mutants: int, pool: int, workers: list[int], factor: int) -> list[str]:
+def _num(value: float) -> str:
+    """A count with thousands separators; two decimals only if it is not whole."""
+    return f"{value:,.0f}" if float(value).is_integer() else f"{value:,.2f}"
+
+
+def combined_forecast(records: list[dict], mutants: int, pool: int, n_products: int) -> dict:
+    """The forecast for the measured products together at one ``W`` (see module docstring).
+
+    ``records`` are the records of the measured products at that ``W``. ``hours`` is
+    ``None`` if one of them is not ``ok``; ``not_ok`` then names each with its status.
+    """
+    scale = mutants / M_NEW
+    pool_per_product = pool / n_products
+    m_core = M_CORE * scale
+    m_products = {r["product"]: M_PRODUCT[r["product"]] * scale for r in records}
+    fc = {"workers": records[0]["workers"], "products": [r["product"] for r in records],
+          "mutants": mutants, "m_core": m_core, "m_products": m_products,
+          "pool_per_product": pool_per_product}
+    not_ok = {r["product"]: r["status"] for r in records
+              if r["status"] != "ok" or r.get("derived") is None}
+    if not_ok:
+        return {**fc, "hours": None, "fits_night": None, "not_ok": not_ok}
+    f = {r["product"]: r["derived"]["fixed_s"] for r in records}
+    t = {r["product"]: r["derived"]["t_marginal_s"] for r in records}
+    core_s = m_core * (sum(f.values()) + pool_per_product * sum(t.values()))
+    product_s = sum(m_products[p] * (f[p] + pool_per_product * t[p]) for p in f)
+    hours = (core_s + product_s) / 3600
+    return {**fc, "sum_fixed_s": sum(f.values()), "sum_t_marginal_s": sum(t.values()),
+            "core_hours": core_s / 3600, "product_hours": product_s / 3600,
+            "hours": hours, "fits_night": hours <= NIGHT_HOURS}
+
+
+def combined_lines(fc: dict, n_products: int) -> list[str]:
+    k, w = len(fc["products"]), fc["workers"]
+    label = (f"all {k} products together" if k == n_products
+             else f"{k} of {n_products} products together ({', '.join(fc['products'])})")
+    if fc["hours"] is None:
+        failing = ", ".join(f"{p}: {s}" for p, s in fc["not_ok"].items())
+        return [f"{label}, W = {w}: no combined forecast ({failing})"]
+    m_core, m_sum, p = fc["m_core"], sum(fc["m_products"].values()), fc["pool_per_product"]
+    verdict = "fits" if fc["fits_night"] else "does not fit"
+    return [
+        f"{label}, W = {w}: M_core·(Σ f + P·Σ t) + Σ M_p·(f_p + P·t_p) = "
+        f"{_num(m_core)}·({fc['sum_fixed_s']:.2f} s + {_num(p)}·{fc['sum_t_marginal_s'] * 1000:.1f} ms)"
+        f" + Σ M_p·(…) = {fc['core_hours']:.1f} h + {fc['product_hours']:.1f} h = "
+        f"{fc['hours']:.1f} h ({verdict} the {NIGHT_HOURS:.0f} h night), "
+        f"M = {_num(fc['mutants'])} (M_core = {_num(m_core)}, Σ M_p = {_num(m_sum)}), "
+        f"P = {_num(p)} per product, fixed cost included",
+    ]
+
+
+def assumption_lines(mutants: int, pool: int, workers: list[int], factor: int,
+                     n_products: int | None = None) -> list[str]:
+    n_products = len(product_names()) if n_products is None else n_products
     return [
         f"Assumptions: M = {mutants:,} mutants, P = {pool:,} contracts, "
         f"W = {','.join(map(str, workers))} worker(s);",
@@ -239,6 +326,10 @@ def assumption_lines(mutants: int, pool: int, workers: list[int], factor: int) -
         f"{factor}·n), so linearity is assumed, not tested.",
         "  A linear extrapolation without trace pruning, and a forecast: mutants exist only "
         "after phase 4.",
+        "  Combined: a core mutant runs every measured product, a product mutant only its own, "
+        f"each with its fixed cost and P/{n_products} = {_num(pool / n_products)} contracts per "
+        "product; the coverage filter is ignored; M_core and M_p are the counts of docs/roadmap.md, "
+        f"\"The new M\", at f07f003, scaled by M / {M_NEW:,}.",
     ]
 
 
@@ -420,7 +511,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--all", action="store_true", help="measure every product, in name order")
     parser.add_argument("--factor", type=positive_int(2), default=32, help="K, the size multiple (default 32)")
     parser.add_argument("--repeats", type=positive_int(1), default=3, help="R, runs per size (default 3)")
-    parser.add_argument("--mutants", type=positive_int(1), default=500, help="M for the forecast (default 500)")
+    parser.add_argument("--mutants", type=positive_int(1), default=M_NEW,
+                        help=f"M for the forecast (default {M_NEW}, the new M of docs/roadmap.md)")
     parser.add_argument("--pool", type=positive_int(1), default=10000, help="P for the forecast (default 10000)")
     parser.add_argument("--workers", type=worker_list, metavar="W,W,...",
                         help="worker counts to measure at (default 1,4,8,12,16,24; "
@@ -478,7 +570,8 @@ def main(argv: list[str] | None = None) -> int:
     for line in table_lines(records):
         print(line)
     print()
-    for line in assumption_lines(args.mutants, args.pool, args.workers, args.factor):
+    n_products = len(names)
+    for line in assumption_lines(args.mutants, args.pool, args.workers, args.factor, n_products):
         print(line)
     for r in records:
         if r.get("forecast"):
@@ -486,13 +579,19 @@ def main(argv: list[str] | None = None) -> int:
                 print(line)
         else:
             print(f"{r['product']}, W = {r['workers']}: no forecast ({r['status']})")
+    combined = [combined_forecast([r for r in records if r["workers"] == w], args.mutants,
+                                  args.pool, n_products) for w in args.workers]
+    for fc in combined:
+        for line in combined_lines(fc, n_products):
+            print(line)
     if args.json is not None:
         args.json.write_text(json.dumps({"factor": args.factor, "repeats": args.repeats,
                                          "cleanup": not args.no_cleanup,
                                          "engine": args.engine,
                                          "mutants": args.mutants, "pool": args.pool,
                                          "workers": args.workers, "total_ram_mb": ram_mb,
-                                         "products": records}, indent=2) + "\n")
+                                         "products": records, "combined": combined},
+                                        indent=2) + "\n")
     return 0 if all(r["status"] == "ok" for r in records) else 1
 
 

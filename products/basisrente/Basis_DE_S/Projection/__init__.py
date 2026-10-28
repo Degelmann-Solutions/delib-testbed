@@ -128,6 +128,7 @@ zill_rate x S              zillmer_amount()                Zillmerised acquisiti
 alpha(k)                   alpha_amort_pp(k)               Its annual instalment
 alpha_z(k)                 alpha_zuz_pp(k)                 Acquisition charge on a Zuzahlung
 (none)                     expense_infl()                  Expense inflation, charge table
+k                          inflation_years(t)              proj_year(t), from valuation
 u(k)                       unit_cost_pp(k)                 Stueckkosten, inflating
 N(k)                       prem_to_av_pp(k)                Premium credited after charges
 P(k)                       prem_inst_pp(t)                 Premium due per policy in t

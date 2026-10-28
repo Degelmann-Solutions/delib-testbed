@@ -588,12 +588,12 @@ relative to the market-standard form — is stated rather than hidden, and pitfa
 
 ### Expenses and net cash flow
 
-    expense_infl_factor(t) = (1 + f) ** (t / 12)
+    inflation_factor(t)    = (1 + f) ** (t / 12)
     zillmer_amount()       = α * beitragssumme()
     expenses(t)            = zillmer_amount() * 1{t = 0}
-                           + γ * expense_infl_factor(t) * pols_if(t)
+                           + γ * inflation_factor(t) * pols_if(t)
                            + β * premiums(t)
-    claim_expenses(t)      = c * expense_infl_factor(t) * Σ_{g : π_g > 0} ℓ_g(t)
+    claim_expenses(t)      = c * inflation_factor(t) * Σ_{g : π_g > 0} ℓ_g(t)
     net_cf(t)              = premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
     liability_cf(t)        = -net_cf(t)
 
@@ -616,8 +616,8 @@ over `t = 0 … n − 1` on the tariff ledgers:
 
     A  = Σ_t v**t * R * Σ_g π_g * tar_esc_pg(t, g)                  EPV of the annuity
     U  = Σ_{t : premium_due(t)} v**t * m * tar_pols_prem(t)         EPV of premium in units of P
-    G  = Σ_t v**t * γ * expense_infl_factor(t) * tar_pols_if(t)     EPV of per-policy admin
-    C  = Σ_t v**t * c * expense_infl_factor(t) * Σ_{g:π_g>0} tar_pols_pg(t, g)
+    G  = Σ_t v**t * γ * inflation_factor(t) * tar_pols_if(t)        EPV of per-policy admin
+    C  = Σ_t v**t * c * inflation_factor(t) * Σ_{g:π_g>0} tar_pols_pg(t, g)
     D1 = Σ_t v**t * (premium-months elapsed at t) * tar_pols_death(t)    (0 unless BRG)
     a1 = α * 12 * (min(prem_end_age, beitragssumme_cap_age) - issue_age)
 

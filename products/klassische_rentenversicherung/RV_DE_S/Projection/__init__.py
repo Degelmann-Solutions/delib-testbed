@@ -1706,7 +1706,7 @@ def expenses_pp(t):
     """
     level = (expense_maint_pp() if duration(t) < int(model_point()["aufschub_y"])
              else expense_annuity_pp())
-    return level / 12.0 * (1.0 + expense_infl()) ** duration(t)
+    return level / 12.0 * inflation_factor(t)
 
 
 def expenses_acq(t):

@@ -1335,7 +1335,7 @@ def exp_maint_pp(k):
     amount; :func:`expenses` charges a twelfth of it each month, and the inflation factor
     steps on the anniversary because it compounds in policy years.
     """
-    return exp_fixed_pp * (1.0 + expense_infl()) ** k                # noqa: F821
+    return exp_fixed_pp * inflation_factor(12 * k)                   # noqa: F821
 
 
 def expenses_maint(t):

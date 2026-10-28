@@ -182,7 +182,7 @@ the in-force annuity is a round figure of the right order for a 2012 tariff at 1
 | `cum_annuity_guar_pp(t)` | Cumulative **guaranteed** instalments paid to and including month `t` | recursion |
 | `refund_pp(t)` | `max(SP − cum_annuity_guar_pp(t), 0)` where the refund is elected, else 0 | monthly |
 | `payment_factor(t)` | `max(certain_floor, l_a) + δ (1 − l_a) l_s (1 − certain_floor)` at the payment instant | monthly |
-| `infl_factor(t)` | `(1 + expense_infl)^(t // 12)` **[std]**, stepping at the policy anniversary | monthly |
+| `inflation_factor(t)` | `(1 + expense_infl)^(t // 12)`, the core's factor at `inflation_years(t) = duration(t)` **[std]**, stepping at the policy anniversary | monthly |
 | `pols_if(t)` | Probability that any payment obligation remains at the start of month `t` | monthly |
 
 There is **no account value, no surrender-value, no paid-up and no lapse state variable**, and no
@@ -615,8 +615,8 @@ buried in a total.
 **Expenses.**
 
     expenses(t) = 1{t = 0} · pols_if_init · ( expense_acq_rate · SP + expense_acq_fixed )
-                + ( c_e / 12 ) · infl_factor(t) · pols_if(t)
-                + 1{payment month} · c_p · infl_factor(t) · pols_if_init · payment_factor(t)
+                + ( c_e / 12 ) · inflation_factor(t) · pols_if(t)
+                + 1{payment month} · c_p · inflation_factor(t) · pols_if_init · payment_factor(t)
 
 The acquisition term appears only at `t = 0` and therefore only on a new-business point. The
 per-instalment term is weighted by `payment_factor(t)`, not by `pols_if(t)`: a survivor's annuity in

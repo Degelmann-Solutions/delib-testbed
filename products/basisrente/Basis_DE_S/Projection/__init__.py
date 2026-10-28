@@ -705,6 +705,18 @@ def expense_infl():
         model_point()["tariff_id"], "expense_infl"])
 
 
+def inflation_years(t):
+    """The years of expense inflation in month t, ``proj_year(t)``: from the valuation date.
+
+    The core's :func:`inflation_factor` is then ``(1 + expense_infl)^k`` in projection year
+    ``k``, stepping on the anniversary; ``inflation_factor(12 k)`` is the factor of year ``k``.
+
+    Override reason: the expense inflation compounds over the projection years ``k``,
+    products/basisrente/technical-notes.md:608
+    """
+    return proj_year(t)                                              # noqa: F821
+
+
 def unit_cost_pp(k):
     """u(k): the *Stückkosten* charged to the account in year k, per policy.
 
@@ -718,7 +730,7 @@ def unit_cost_pp(k):
     """
     return (float(data.charge_table().loc[                           # noqa: F821
         model_point()["tariff_id"], "unit_cost_pp"])
-        * (1.0 + expense_infl()) ** k)
+        * inflation_factor(12 * k))
 
 
 def prem_to_av_pp(k):
@@ -1575,7 +1587,7 @@ def expenses_maint(t):
     if t < 0 or t >= proj_len():
         return 0.0
     row = data.charge_table().loc[model_point()["tariff_id"]]        # noqa: F821
-    infl = (1.0 + expense_infl()) ** proj_year(t)
+    infl = inflation_factor(t)
     if t < t_conv():
         return float(row["maint_expense_pp"]) / 12.0 * infl * pols_if(t)
     return (float(row["annuity_admin_pp"]) / 12.0 * infl

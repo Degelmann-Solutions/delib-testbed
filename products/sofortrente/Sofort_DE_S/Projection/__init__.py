@@ -108,7 +108,7 @@ SP               prem_inst_pp(t)                       The Einmalbeitrag, at t =
 (none)           claims(t, kind)                       GUARANTEE / REFUND death outgo
 (none)           claim_kinds()                         GUARANTEE / REFUND
 (none)           claims_other(t, kind)                 Their outgo
-(none)           infl_factor(t)                        Expense inflation factor
+(none)           inflation_factor(t)                   Expense inflation factor
 pi               expenses_acq(t)                       Acquisition at t = 0
 c_e              expenses_maint(t)                     Maintenance, a twelfth a month
 c_p              expenses_claim(t)                     Per-instalment payment run
@@ -1083,15 +1083,6 @@ def claims_other(t, kind):
     raise ValueError("invalid kind")
 
 
-def infl_factor(t):
-    """The expense inflation factor in month ``t``: ``(1 + expense_infl)^(t // 12)`` **[std]**.
-
-    It steps at the **policy anniversary**, like everything else in this product, and not
-    on a calendar date.
-    """
-    return (1.0 + expense_infl()) ** (t // 12)                       # noqa: F821
-
-
 def expenses_acq(t):
     """The acquisition expense at ``t = 0`` only, ``pols_if_init (expense_acq_rate SP + c)``.
 
@@ -1113,16 +1104,16 @@ def expenses_acq(t):
 
 
 def expenses_maint(t):
-    """The maintenance expense, ``(expense_maint_pp / 12) infl_factor(t) pols_if(t)``.
+    """The maintenance expense, ``(expense_maint_pp / 12) inflation_factor(t) pols_if(t)``.
 
     Override reason: maintenance is a twelfth of the annual amount, inflated, on the
     obligation weight, products/sofortrente/technical-notes.md:618
     """
-    return (expense_maint_pp / 12.0) * infl_factor(t) * pols_if(t)   # noqa: F821
+    return (expense_maint_pp / 12.0) * inflation_factor(t) * pols_if(t)  # noqa: F821
 
 
 def expenses_claim(t):
-    """The payment run, ``expense_pay_pp infl_factor(t) pols_if_init payment_factor(t)``.
+    """The payment run, ``expense_pay_pp inflation_factor(t) pols_if_init payment_factor(t)``.
 
     In a payment month, zero in the others.  The per-instalment term is weighted by
     :func:`payment_factor` rather than by :func:`pols_if`, and that is not a slip: a
@@ -1133,7 +1124,7 @@ def expenses_claim(t):
     payment factor, products/sofortrente/technical-notes.md:619
     """
     if is_payment_mth(t):
-        return (expense_pay_pp * infl_factor(t)                      # noqa: F821
+        return (expense_pay_pp * inflation_factor(t)                 # noqa: F821
                 * pols_if_init() * payment_factor(t))
     return 0.0
 

@@ -185,7 +185,7 @@ l(t)                pols_if(t)                             In force at the start
 RK(t)               benefit_lapse_pp(t)                    surr_value_pp(t), per lapse
 (none)              claim_kinds()                          DEATH / MATURITY / LAPSE
 claims_*            claims(t, kind)                        DEATH / MATURITY / LAPSE
-(none)              inflation_factor(k)                    Expense inflation factor
+(none)              inflation_factor(t)                    Expense inflation factor
 (none)              claim_expenses(t)                      Claim handling expense
 (none)              expenses_pp(t)                         Per-policy expense in month t
 (none)              expenses_maint(t)                      expenses_pp(t) x pols_if(t)
@@ -1610,17 +1610,6 @@ def expense_infl():
     return float(data.charge_table().loc[cost_id(), "expense_infl"])  # noqa: F821
 
 
-def inflation_factor(k):
-    """The expense inflation factor in policy year k: ``(1 + expense_infl)^k`` **[std]**.
-
-    Measured from **issue**, not from the valuation date, so an in-force model point opens on
-    the inflation its duration has already accumulated - and because ``k`` is the 0-based
-    year from issue, the exponent is ``k`` itself and is 1.0 in the first policy year.
-    1,8 % p.a. is a placeholder.
-    """
-    return (1.0 + expense_infl()) ** k
-
-
 def claim_expenses(t):
     """The claim handling expense on the month's exits **[std]**.
 
@@ -1652,7 +1641,7 @@ def expenses_pp(t):
     acq = (float(cost["acq_expense"])
            if (t == t_start() and duration_init() == 0) else 0.0)
     return (acq + float(cost["maint_expense"]) / 12.0
-            * inflation_factor(duration(t)))
+            * inflation_factor(t))
 
 
 def expenses_maint(t):

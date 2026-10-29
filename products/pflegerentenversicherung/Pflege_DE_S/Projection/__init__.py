@@ -890,7 +890,7 @@ def pols_entry(t, g):
     because it is not uniformly at the lowest one, and the split is one of the four
     properties a replacement basis must preserve.
     """
-    return pols_act(t) * p_act_care(t) * inc_share(g)
+    return pols_ledger(t)[0] * p_act_care(t) * inc_share(g)
 
 
 def pols_karenz(t, g, z):
@@ -937,7 +937,7 @@ def pols_grad(t, g):
         return pols_entry(t, g)
     total = 0.0
     for h in range(max(1, g - 1), min(5, g + 1) + 1):
-        w = pols_karenz(t, h, k)
+        w = pols_ledger(t)[3][h - 1][k - 1]
         if w == 0.0:
             continue
         if h == g:
@@ -958,9 +958,10 @@ def pols_reactiv(t):
     again in the same month, which is why the term appears inside :func:`pols_act`'s lapse
     bracket rather than beside it.
     """
-    total = pols_pg(t, 1)
+    state = pols_ledger(t)
+    total = state[1][0]
     for z in range(1, karenz_months() + 1):
-        total += pols_karenz(t, 1, z)
+        total += state[3][0][z - 1]
     return total * p_pg(t, 1)[3]
 
 
@@ -1009,12 +1010,13 @@ def pols_care(t):
     its *Karenzzeit* is here and is paid nothing, and a life at *Pflegegrad* 1 on the
     ``delib_std`` grid is here, is paid nothing and keeps paying.
     """
+    state = pols_ledger(t)
     total = 0.0
     for g in range(1, 6):
-        total += pols_pg(t, g)
+        total += state[1][g - 1]
     for g in range(1, 6):
         for z in range(1, karenz_months() + 1):
-            total += pols_karenz(t, g, z)
+            total += state[3][g - 1][z - 1]
     return total
 
 
@@ -1033,7 +1035,7 @@ def pols_if(t):
     *Pflegegrad* transition internal to it,
     products/pflegerentenversicherung/technical-notes.md:203
     """
-    return pols_act(t) + pols_care(t)
+    return pols_ledger(t)[0] + pols_care(t)
 
 
 def pols_in_term(t):
@@ -1062,7 +1064,7 @@ def pols_waived(t):
     total = 0.0
     for g in range(1, 6):
         if waiver_flag(g):
-            total += pols_pg(t, g)
+            total += pols_ledger(t)[1][g - 1]
     return total
 
 
@@ -1093,11 +1095,12 @@ def pols_death(t):
     Override reason: the deaths come from every state, the active state and each *Pflegegrad*
     at its own rate, products/pflegerentenversicherung/technical-notes.md:207
     """
-    total = pols_act(t) * p_act_death(t)
+    state = pols_ledger(t)
+    total = state[0] * p_act_death(t)
     for g in range(1, 6):
-        in_grade = pols_pg(t, g)
+        in_grade = state[1][g - 1]
         for z in range(1, karenz_months() + 1):
-            in_grade += pols_karenz(t, g, z)
+            in_grade += state[3][g - 1][z - 1]
         total += in_grade * p_pg(t, g)[1]
     return total
 
@@ -1116,7 +1119,7 @@ def pols_lapse(t):
     insured decrements together with the month's reactivations,
     products/pflegerentenversicherung/technical-notes.md:491
     """
-    survivors = pols_act(t) * p_act_stay(t) + pols_reactiv(t)
+    survivors = pols_ledger(t)[0] * p_act_stay(t) + pols_reactiv(t)
     return survivors * lapse_rate_mth(t)
 
 
@@ -1267,7 +1270,7 @@ def claims(t, kind=None):
         for g in range(1, 6):
             pct = benefit_pct(g)
             if pct > 0.0:
-                total += pct * esc_pg(t, g)
+                total += pct * pols_ledger(t)[2][g - 1]
         return rente_mth() * total
     elif kind == "LAPSE":
         return rkw_pp(t) * pols_lapse(t)
@@ -1384,7 +1387,7 @@ def claim_expenses(t):
     total = 0.0
     for g in range(1, 6):
         if waiver_flag(g):
-            total += pols_pg(t, g)
+            total += pols_ledger(t)[1][g - 1]
     return per_payment * inflation_factor(t) * total
 
 
@@ -1700,12 +1703,13 @@ def tar_pols_karenz(t, g, z):
 
 def tar_pols_grad(t, g):
     """First-order graduations into *Pflegegrad* ``g``; the entrants themselves when K = 0."""
+    state = tar_ledger(t)
     k = karenz_months()
     if k <= 0:
-        return tar_pols_act(t) * tar_p_act(t)[2] * inc_share(g)
+        return state[0] * tar_p_act(t)[2] * inc_share(g)
     total = 0.0
     for h in range(max(1, g - 1), min(5, g + 1) + 1):
-        w = tar_pols_karenz(t, h, k)
+        w = state[3][h - 1][k - 1]
         if w == 0.0:
             continue
         p = tar_p_pg(age(t), h)
@@ -1735,11 +1739,12 @@ def tar_esc_pg(t, g):
 
 def tar_pols_if(t):
     """The first-order in-force count: active, deferred and paying together."""
-    total = tar_pols_act(t)
+    state = tar_ledger(t)
+    total = state[0]
     for g in range(1, 6):
-        total += tar_pols_pg(t, g)
+        total += state[1][g - 1]
         for z in range(1, karenz_months() + 1):
-            total += tar_pols_karenz(t, g, z)
+            total += state[3][g - 1][z - 1]
     return total
 
 
@@ -1757,7 +1762,7 @@ def tar_pols_prem(t):
     total = tar_pols_if(t)
     for g in range(1, 6):
         if waiver_flag(g):
-            total -= tar_pols_pg(t, g)
+            total -= tar_ledger(t)[1][g - 1]
     return total
 
 
@@ -1767,11 +1772,12 @@ def tar_pols_death(t):
     Read only by the *Beitragsrückgewähr* leg of the equivalence: a death benefit written
     into a *Pflegerente* is a death cover and has to be priced as one.
     """
-    total = tar_pols_act(t) * tar_p_act(t)[1]
+    state = tar_ledger(t)
+    total = state[0] * tar_p_act(t)[1]
     for g in range(1, 6):
-        in_grade = tar_pols_pg(t, g)
+        in_grade = state[1][g - 1]
         for z in range(1, karenz_months() + 1):
-            in_grade += tar_pols_karenz(t, g, z)
+            in_grade += state[3][g - 1][z - 1]
         total += in_grade * tar_p_pg(age(t), g)[1]
     return total
 
@@ -1793,7 +1799,7 @@ def tariff_benefit_pv():
         for g in range(1, 6):
             pct = benefit_pct(g)
             if pct > 0.0:
-                row += pct * tar_esc_pg(t, g)
+                row += pct * tar_ledger(t)[2][g - 1]
         if row:
             total += disc_factor_mth(t) * rente_mth() * row
     return total
@@ -1838,7 +1844,7 @@ def epv_claim_expense():
         row = 0.0
         for g in range(1, 6):
             if waiver_flag(g):
-                row += tar_pols_pg(t, g)
+                row += tar_ledger(t)[1][g - 1]
         if row:
             total += disc_factor_mth(t) * per_payment * inflation_factor(t) * row
     return total
@@ -1993,11 +1999,12 @@ def check_states_resid(t):
     1 at the limiting age, it also closes at the far end: the decrements account for the
     whole policy rather than leaving a truncation residue.
     """
-    total = pols_act(t) + pols_dead_cum(t) + pols_lapse_cum(t)
+    state = pols_ledger(t)
+    total = state[0] + pols_dead_cum(t) + pols_lapse_cum(t)
     for g in range(1, 6):
-        total += pols_pg(t, g)
+        total += state[1][g - 1]
         for z in range(1, karenz_months() + 1):
-            total += pols_karenz(t, g, z)
+            total += state[3][g - 1][z - 1]
     return total - pols_if_init()
 
 
@@ -2049,9 +2056,10 @@ def check_esc_ledger_resid(t):
     escalated before rather than after the transition — the benefit would be understated and
     no total in the frame would look wrong.
     """
+    state = pols_ledger(t)
     if leistungsdynamik() == 0.0:
-        return sum(esc_pg(t, g) - pols_pg(t, g) for g in range(1, 6))
-    return sum(min(0.0, esc_pg(t, g) - pols_pg(t, g)) for g in range(1, 6))
+        return sum(state[2][g - 1] - state[1][g - 1] for g in range(1, 6))
+    return sum(min(0.0, state[2][g - 1] - state[1][g - 1]) for g in range(1, 6))
 
 
 def check_esc_ledger():
@@ -2098,13 +2106,14 @@ def check_prem_equiv_resid(t):
 
     prem_leg = p0 * mult * tar_pols_prem(t) if premium_due(t) else 0.0
 
+    state = tar_ledger(t)
     ben_leg = 0.0
     paying = 0.0
     for g in range(1, 6):
         pct = benefit_pct(g)
         if pct > 0.0:
-            ben_leg += pct * tar_esc_pg(t, g)
-            paying += tar_pols_pg(t, g)
+            ben_leg += pct * state[2][g - 1]
+            paying += state[1][g - 1]
     ben_leg = rente_mth() * ben_leg
     if beitragsrueckgewaehr():
         ben_leg += p0 * prem_units_at(t) * tar_pols_death(t)

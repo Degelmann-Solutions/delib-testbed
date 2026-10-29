@@ -27,7 +27,8 @@ modelx's per-cell trace and dependency graph. The exported model's ``path`` is s
 model folder, so the product's input tables are read from the product folder as under
 modelx. The temporary folder, its entry on ``sys.path`` and the imported modules are
 removed afterwards. With ``--workers`` > 1 the export transforms the formulas of the
-top-level spaces in up to ``W`` forked processes and assembles them with modelx's own code,
+top-level spaces in up to ``W`` forked processes, a large space's source cut between its
+functions into pieces of about 12,000 characters, and assembles them with modelx's own code,
 so the exported package is the same text as from ``mx.export_model`` alone (see "Workers").
 An exception from the export or the import is the failure ``export raised ...``; no point
 runs and there is no fallback to modelx.
@@ -107,6 +108,7 @@ line ends. Two runs give identical bytes. The runner collects the CSV lines only
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import importlib
 import multiprocessing
@@ -280,6 +282,38 @@ def _transform(inputs: tuple):
     return trans.func_attrs, trans.transformed.code
 
 
+# A space's formula source is cut into pieces of about this many characters, each piece
+# transformed in its own child (see _chunks).
+_CHUNK_CHARS = 12000
+
+
+def _chunks(source: str) -> list[str]:
+    """``source`` cut between its top-level functions into pieces of about ``_CHUNK_CHARS``.
+
+    Each piece repeats the statements before the first function (the exporter's dummy
+    reference assignments), so every piece binds the same module-level names; the pieces'
+    transformed code joined with ``"\n"`` is the whole source's (checked against the serial
+    export in tests/test_runner.py). A source that is short, has no function or has a
+    statement between its functions is one piece.
+    """
+    if len(source) <= _CHUNK_CHARS:
+        return [source]
+    body = ast.parse(source).body
+    funcs = [n for n in body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    if not funcs or any(not isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                        and n.lineno > funcs[0].lineno for n in body):
+        return [source]
+    lines = source.split("\n")
+    starts = [f.lineno - 1 - len(f.decorator_list) for f in funcs]
+    header = "\n".join(lines[:starts[0]])
+    pieces, begin = [], starts[0]
+    for start in starts[1:] + [len(lines)]:
+        if len("\n".join(lines[begin:start])) >= _CHUNK_CHARS or start == len(lines):
+            pieces.append(header + "\n" + "\n".join(lines[begin:start]))
+            begin = start
+    return pieces
+
+
 def _modelx_exporter():
     """modelx's exporter module, or ``None`` if the internals the parallel export uses are
     missing (then the export runs serially)."""
@@ -325,14 +359,24 @@ def _parallel_class_defs(exporter, original, workers: int):
         finally:
             exporter.FormulaTransformer = transformer
 
-        # The transforms, in forked children.
+        # The transforms, in forked children, each space's source cut into pieces.
+        jobs, owner = [], []
+        for i, (source, cells, cacheless) in enumerate(inputs):
+            for piece in _chunks(source):
+                jobs.append((piece, cells, cacheless))
+                owner.append(i)
         _TRANSFORMER = transformer
         try:
-            with ProcessPoolExecutor(max_workers=min(workers, len(inputs)),
+            with ProcessPoolExecutor(max_workers=min(workers, len(jobs)),
                                      mp_context=multiprocessing.get_context("fork")) as pool:
-                results = list(pool.map(_transform, inputs))
+                done = list(pool.map(_transform, jobs))
         finally:
             _TRANSFORMER = None
+        merged = [({}, []) for _ in inputs]
+        for i, (func_attrs, code) in zip(owner, done):
+            merged[i][0].update(func_attrs)
+            merged[i][1].append(code)
+        results = [(func_attrs, "\n".join(codes)) for func_attrs, codes in merged]
 
         # Pass 2: _get_class_def per space, in order, on the children's results.
         pending = iter(zip(inputs, results))

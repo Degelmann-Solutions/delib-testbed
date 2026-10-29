@@ -59,6 +59,7 @@ import subprocess
 from pathlib import Path
 
 import modelx as mx
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -2280,6 +2281,150 @@ def test_bu_ages_outside_the_tables_hold_their_ends(product_models):
                          ("mort_rate_dis_at_age", "mort_rate_dis")):
         assert item.cells[cell](10) == float(mort.at[18, column]), cell
         assert item.cells[cell](80) == float(mort.at[70, column]), cell
+
+
+def _bu_roll_reference(qy, ry, g, ppols, pval, n):
+    """The disabled ledger's roll before story 2.14: a Python loop over lists."""
+    pols = [0.0] * n
+    val = [0.0] * n
+    for i in range(min(len(ppols), n - 1)):
+        cy = min(i // 12, 10)
+        keep = (1.0 - qy[cy]) * (1.0 - ry[cy])
+        step = g if (i + 1) % 12 == 0 else 1.0
+        pols[i + 1] = ppols[i] * keep
+        val[i + 1] = pval[i] * keep * step
+    return pols, val
+
+
+def _bu_exits_reference(qy, ry, pols, val):
+    """The disabled ledger's exits before story 2.14: three totals added left to right."""
+    deaths = rec = recval = 0.0
+    for i in range(len(pols)):
+        cy = min(i // 12, 10)
+        q, r = qy[cy], ry[cy]
+        deaths += pols[i] * q
+        rec += pols[i] * (1.0 - q) * r
+        recval += val[i] * (1.0 - q) * r
+    return deaths, rec, recval
+
+
+def _bu_ledger_cells(item, first):
+    """The cells of one of BU's two disabled ledgers, the best-estimate or the first-order one."""
+    if first:
+        return (item.first_len(), item.dis_cohorts_first, item.dis_exits_first,
+                item.cohort_len_first, item.age_first, item.mort_rate_dis_first_mth_year,
+                item.recov_rate_first_mth_year(), item.pols_inception_first,
+                item.bu_rente_pp_first)
+    return (item.proj_len(), item.dis_cohorts, item.dis_exits, item.cohort_len, item.age,
+            item.mort_rate_dis_mth_year, item.recov_rate_mth_year(), item.pols_inception,
+            item.bu_rente_pp)
+
+
+@pytest.mark.parametrize("first", [False, True], ids=["best_estimate", "first_order"])
+def test_bu_cohort_arrays_equal_the_list_recursion(product_models, first):
+    """``dis_cohorts*`` and ``dis_exits*`` give the old loop's bits, as arrays and floats."""
+    model = product_models("berufsunfaehigkeit")
+    for point_id in model.Data.model_point_table().index:
+        item = model.Projection[point_id]
+        end, cohorts, exits, length, age, mort_year, ry, inception, rente = (
+            _bu_ledger_cells(item, first))
+        g = 1.0 + item.leistungsdyn_rate()
+        months = {0, 1, 13, 121, end}
+        ref = None
+        for t in range(end + 1):
+            pols, val = cohorts(t)
+            if t == 0:
+                n = length(0)
+                ref = ([0.0] * n, [0.0] * n)
+                z0 = 0 if first else item.seed_claim_dur()
+                if z0 and z0 <= n:
+                    ref[0][z0 - 1] = item.pols_if_init()
+                    ref[1][z0 - 1] = item.pols_if_init() * item.rente_pay_pp(0, z0)
+            else:
+                ref = _bu_roll_reference(mort_year(age(t - 1)), ry, g, *ref, length(t))
+                ref[0][0] = inception(t - 1)
+                ref[1][0] = ref[0][0] * rente(t - 1)
+            if t not in months:
+                continue
+            assert isinstance(pols, np.ndarray) and isinstance(val, np.ndarray), (point_id, t)
+            assert pols.tolist() == ref[0], (point_id, t)
+            assert val.tolist() == ref[1], (point_id, t)
+            got = exits(t)
+            assert all(type(x) is float for x in got), (point_id, t)
+            assert got == _bu_exits_reference(mort_year(age(t)), ry, ref[0], ref[1]), (
+                point_id, t)
+
+
+def test_bu_rate_tuples_by_age_equal_the_cells_by_claim_year(product_models):
+    """The tuples keyed by attained age hold ``mort_rate_dis_mth`` and its first-order twin."""
+    model = product_models("berufsunfaehigkeit")
+    for point_id in model.Data.model_point_table().index:
+        item = model.Projection[point_id]
+        for t in sorted({0, 1, 13, 121, item.proj_len() - 1}):
+            year = item.mort_rate_dis_mth_year(item.age(t))
+            assert len(year) == 11
+            assert year == tuple(item.mort_rate_dis_mth(t, 12 * cy + 1)
+                                 for cy in range(11)), (point_id, t)
+        for s in sorted({0, 1, 13, 121, item.first_len() - 1}):
+            year = item.mort_rate_dis_first_mth_year(item.age_first(s))
+            assert year == tuple(item.mort_rate_dis_first_mth(s, 12 * cy + 1)
+                                 for cy in range(11)), (point_id, s)
+    mort = model.Data.mort_table()
+    item = model.Projection[model.Data.model_point_table().index[0]]
+    assert (int(mort.index.min()), int(mort.index.max())) == (18, 70)
+    assert item.mort_rate_dis_mth_year(10) == item.mort_rate_dis_mth_year(18)
+    assert item.mort_rate_dis_mth_year(80) == item.mort_rate_dis_mth_year(70)
+    assert item.mort_rate_dis_first_mth_year(10) == item.mort_rate_dis_first_mth_year(18)
+    assert item.mort_rate_dis_first_mth_year(80) == item.mort_rate_dis_first_mth_year(70)
+
+
+def test_bu_cohort_arrays_seed_age_and_step(product_models):
+    """The seeded state, claim year 11, the onset anniversary, the full length, ``pols_dis_dur``."""
+    model = product_models("berufsunfaehigkeit")
+    points = model.Data.model_point_table()
+    aktiv = model.Projection[points.index[points["status"] == "aktiv"][0]]
+    pols, val = aktiv.dis_cohorts(0)
+    assert aktiv.seed_claim_dur() == 0
+    assert pols.tolist() == [0.0] and val.tolist() == [0.0]
+    leistung = points.index[points["status"] == "leistung"]
+    assert len(leistung), "no in-claim model point"
+    item = model.Projection[leistung[0]]
+    z0 = item.seed_claim_dur()
+    assert 1 <= z0 <= item.cohort_len(0)
+    pols, val = item.dis_cohorts(0)
+    assert pols[z0 - 1] == item.pols_if_init()
+    assert val[z0 - 1] == item.pols_if_init() * item.rente_pay_pp(0, z0)
+    assert np.count_nonzero(pols) == 1 and np.count_nonzero(val) == 1
+
+    keep = [(1.0 - q) * (1.0 - r) for q, r in zip(item.mort_rate_dis_mth_year(item.age(130)),
+                                                  item.recov_rate_mth_year())]
+    g = 1.0 + item.leistungsdyn_rate()
+    assert g != 1.0
+    ppols, pval = item.dis_cohorts(130)
+    pols, val = item.dis_cohorts(131)
+    for i in (119, 120, 125, len(ppols) - 1):
+        cy = min(i // 12, 10)
+        assert cy == (10 if i >= 120 else 9)
+        step = g if (i + 1) % 12 == 0 else 1.0
+        assert pols[i + 1] == ppols[i] * keep[cy], i
+        assert val[i + 1] == pval[i] * keep[cy] * step, i
+    assert val[120] != pval[119] * keep[9]
+
+    end = item.proj_len()
+    assert item.cohort_len(end) == item.max_claim_dur()
+    pols, val = item.dis_cohorts(end)
+    assert len(pols) == item.max_claim_dur()
+    assert pols[-1] == 0.0 and val[-1] == 0.0
+    assert item.check_dis_roll_fwd()
+
+    for dur, cohorts, length, t in ((item.pols_dis_dur, item.dis_cohorts, item.cohort_len, 13),
+                                    (item.pols_dis_dur_first, item.dis_cohorts_first,
+                                     item.cohort_len_first, 13)):
+        n = length(t)
+        assert dur(t, 0) == 0.0 and dur(t, n + 1) == 0.0
+        assert type(dur(t, 1)) is float and dur(t, 1) == cohorts(t)[0][0]
+        assert type(dur(t, n)) is float
+    assert type(item.pols_dis(13)) is float and type(item.pols_dis_first(13)) is float
 
 
 def test_index_lapse_beyond_the_table_raises_key_error():

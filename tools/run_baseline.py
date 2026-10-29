@@ -75,7 +75,7 @@ Transform cache
 ---------------
 With ``--transform-cache DIR`` (``W`` > 1 only) the parallel export looks every piece of
 formula source up in ``DIR`` before transforming it: one file per piece, named by the SHA-256
-of the piece, its cell names and its cacheless names, salted with the modelx and libcst
+of the piece, its cell names and its cacheless names, salted with the Python, modelx and libcst
 versions and the hashes of modelx's ``exporter.py`` and ``transformer.py``. A hit is used
 as the child's result would be; only the misses are transformed, in forked children, and
 written to ``DIR`` (atomically, via a temporary file and ``os.replace``, so concurrent runs
@@ -343,10 +343,11 @@ def _cache_key(job: tuple, salt: str) -> str:
 
 
 def _transformer_salt(exporter) -> str:
-    """The versions and the source of modelx's transformer the cached results depend on."""
+    """The Python, modelx and libcst versions and the source of modelx's transformer the cached
+    results depend on."""
     import libcst
     import modelx.export.transformer as transformer_module
-    return "|".join([mx.__version__, getattr(libcst, "__version__", "?"),
+    return "|".join([sys.version, mx.__version__, getattr(libcst, "__version__", "?"),
                      hashlib.sha256(Path(transformer_module.__file__).read_bytes()).hexdigest(),
                      hashlib.sha256(Path(exporter.__file__).read_bytes()).hexdigest()])
 

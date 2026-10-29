@@ -103,10 +103,11 @@ keeps the *BU-Rente* it was on at the *Nachprüfung* date and receives no furthe
 case — which removes a second duration dimension at no measurable cost. The disabled ledger
 carries a value vector for the same reason: the month's benefit is one sum over a slice.
 
-`dis_cohorts(t)` and `runoff_cohorts(t)` are **list-valued cells**, a cost decision: a
+`dis_cohorts(t)` holds **numpy arrays** and `runoff_cohorts(t)` lists, a cost decision: a
 two-argument recursion over `(t, z)` would be nearly two hundred thousand separate cells on the
-anchor cell where this is one per month with a loop inside, and the notes' two-dimensional
-objects stay addressable as `pols_dis_dur(t, z)`, `pols_runoff_slot(t, k)` and `runoff_val(t, k)`.
+anchor cell where this is one per month, rolling its arrays with vector operations, and the
+notes' two-dimensional objects stay addressable as `pols_dis_dur(t, z)`, `pols_runoff_slot(t, k)`
+and `runoff_val(t, k)`.
 
 Two things this deliberately does **not** do. It does not separate recovery from *konkrete
 Verweisung* — both end the benefit through the same *Nachprüfung* with the same run-off and no

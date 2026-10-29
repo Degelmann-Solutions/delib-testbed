@@ -92,7 +92,8 @@ rho_g(x)                    rec_force(x, g)                 Force of recovery
 (table)                     lapse_rate(t)                   Annual lapse, active state
 (gate)                      lapse_factor(t)                 0 after the premium term
 w(t)                        lapse_rate_mth(t)               Monthly lapse probability
-(allocation)                p_act_stay/death/care(t)        Active-state month transitions
+(allocation)                p_act_age(x, waiting)           Active-state month transitions
+(allocation)                p_act_stay/death/care(t)        The same at age(t)
 (allocation)                p_pg_age(x, g), p_pg(t, g)      Grade-g month transitions,
                                                             one tuple, keyed by age
 (allocation)                p_pg_stay/death/worse/better    Its four components
@@ -595,9 +596,19 @@ def inc_force(t):
     """
     if duration_mth(t) < wartezeit_months():
         return 0.0
-    if age(t) >= omega_age() - 1:
+    return inc_force_age(age(t))
+
+
+def inc_force_age(x):
+    """The force of incidence at attained age ``x`` outside the *Wartezeit*.
+
+    ``-ln(1 - inc_rate)`` at the age, zero at the limiting age.  Keyed by age: the
+    incidence rate depends on the month only through ``age(t)``; it is read at
+    :func:`age_month`.  :func:`inc_force` applies the *Wartezeit* gate on top.
+    """
+    if x >= omega_age() - 1:
         return 0.0
-    return -math.log(1.0 - min(inc_rate(t), 1.0 - 1e-12))            # noqa: F821
+    return -math.log(1.0 - min(inc_rate(age_month(x)), 1.0 - 1e-12))  # noqa: F821
 
 
 def inc_share(g):
@@ -699,13 +710,30 @@ def lapse_factor(t):
     return 1.0
 
 
+def p_act_age(x, waiting):
+    """The active-state month transitions at attained age ``x``, as ``(stay, death, care)``.
+
+    ``waiting`` is whether the month lies inside the *Wartezeit*, where the incidence force
+    is zero.  The force of mortality :func:`mort_force` is read at :func:`age_month` and
+    the incidence force is :func:`inc_force_age`; ``stay = exp(-(mu_A + iota)/12)`` and
+    each exit its force's share of ``1 - stay``.  Keyed by age and the gate, so it is
+    evaluated about once per year of age; :func:`p_act_stay`, :func:`p_act_death`,
+    :func:`p_act_care`, the ledger and the decrement counts read it at ``age(t)``.
+    """
+    mu = mort_force(age_month(x))
+    iota = 0.0 if waiting else inc_force_age(x)
+    stay = math.exp(-(mu + iota) / 12.0)                             # noqa: F821
+    total = mu + iota
+    return (stay, mu / total * (1.0 - stay), iota / total * (1.0 - stay))
+
+
 def p_act_stay(t):
     """The probability that an active life is still active at the end of month ``t``.
 
     ``exp(-(mu_A + iota)/12)``, the constant-force survival of the two competing
     decrements.  With :func:`p_act_death` and :func:`p_act_care` it sums to exactly 1.
     """
-    return math.exp(-(mort_force(t) + inc_force(t)) / 12.0)          # noqa: F821
+    return p_act_age(age(t), duration_mth(t) < wartezeit_months())[0]
 
 
 def p_act_death(t):
@@ -716,8 +744,7 @@ def p_act_death(t):
     three active-state probabilities sum to 1 exactly; adding monthly rates instead, or
     dividing an annual rate by twelve, does not.
     """
-    total = mort_force(t) + inc_force(t)
-    return mort_force(t) / total * (1.0 - p_act_stay(t))
+    return p_act_age(age(t), duration_mth(t) < wartezeit_months())[1]
 
 
 def p_act_care(t):
@@ -726,8 +753,7 @@ def p_act_care(t):
     ``(iota / (mu_A + iota)) (1 - p_stay)``, and zero inside the *Wartezeit*, where the
     incidence force is zero.  The grade entered is then split by :func:`inc_share`.
     """
-    total = mort_force(t) + inc_force(t)
-    return inc_force(t) / total * (1.0 - p_act_stay(t))
+    return p_act_age(age(t), duration_mth(t) < wartezeit_months())[2]
 
 
 def p_pg(t, g):
@@ -832,7 +858,8 @@ def pols_ledger(t):
     act0, pg0, esc0, kar0 = pols_ledger(t - 1)
     x = age(t - 1)
     p = tuple(p_pg_age(x, g) for g in range(1, 6))
-    care = act0 * p_act_care(t - 1)
+    pa = p_act_age(age(t - 1), duration_mth(t - 1) < wartezeit_months())
+    care = act0 * pa[2]
     entry = tuple(care * inc_share(g) for g in range(1, 6))
     if k <= 0:
         grad = entry
@@ -873,7 +900,7 @@ def pols_ledger(t):
     for z in range(1, k + 1):
         reactiv += kar0[0][z - 1]
     reactiv = reactiv * p[0][3]
-    act = (act0 * p_act_stay(t - 1) + reactiv) * (1.0 - lapse_rate_mth(t - 1))
+    act = (act0 * pa[0] + reactiv) * (1.0 - lapse_rate_mth(t - 1))
     factor = (1.0 + leistungsdynamik()) ** (1.0 / 12.0)
     pg = []
     esc = []
@@ -913,7 +940,8 @@ def pols_entry(t, g):
     because it is not uniformly at the lowest one, and the split is one of the four
     properties a replacement basis must preserve.
     """
-    return pols_ledger(t)[0] * p_act_care(t) * inc_share(g)
+    return (pols_ledger(t)[0] * p_act_age(age(t), duration_mth(t) < wartezeit_months())[2]
+            * inc_share(g))
 
 
 def pols_karenz(t, g, z):
@@ -1119,7 +1147,7 @@ def pols_death(t):
     at its own rate, products/pflegerentenversicherung/technical-notes.md:207
     """
     state = pols_ledger(t)
-    total = state[0] * p_act_death(t)
+    total = state[0] * p_act_age(age(t), duration_mth(t) < wartezeit_months())[1]
     for g in range(1, 6):
         in_grade = state[1][g - 1]
         for z in range(1, karenz_months() + 1):
@@ -1142,7 +1170,8 @@ def pols_lapse(t):
     insured decrements together with the month's reactivations,
     products/pflegerentenversicherung/technical-notes.md:491
     """
-    survivors = pols_ledger(t)[0] * p_act_stay(t) + pols_reactiv(t)
+    survivors = (pols_ledger(t)[0] * p_act_age(age(t), duration_mth(t) < wartezeit_months())[0]
+                 + pols_reactiv(t))
     return survivors * lapse_rate_mth(t)
 
 

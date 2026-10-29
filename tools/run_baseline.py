@@ -26,8 +26,11 @@ the points and checks on the exported model, which computes the same formulas wi
 modelx's per-cell trace and dependency graph. The exported model's ``path`` is set to the
 model folder, so the product's input tables are read from the product folder as under
 modelx. The temporary folder, its entry on ``sys.path`` and the imported modules are
-removed afterwards. An exception from the export or the import is the failure
-``export raised ...``; no point runs and there is no fallback to modelx.
+removed afterwards. With ``--workers`` > 1 the export transforms the formulas of the
+top-level spaces in up to ``W`` forked processes and assembles them with modelx's own code,
+so the exported package is the same text as from ``mx.export_model`` alone (see "Workers").
+An exception from the export or the import is the failure ``export raised ...``; no point
+runs and there is no fallback to modelx.
 
 ``--engine modelx`` runs on the modelx model itself, as in phases 2a and 2b; it is the
 traced engine, for tracing a contract and for reproducing those measurements. The results,
@@ -50,10 +53,14 @@ written bytes are the same in both modes; how cells are computed and traced is u
 Workers
 -------
 ``--workers W`` (default 1) splits the points of one run over ``W`` worker processes. The
-parent reads and exports the model once, as above, and forks the workers from it, so each
-worker starts with the exported model already imported; each worker runs one point at a
-time, with cleanup, and sends back its hash bytes, columns, CSV lines (only those the run
-keeps) and failures. The parent takes the results in ascending ``point_id`` order and does
+parent reads and exports the model once, as above; for the export it runs modelx's formula
+transform of each top-level space (``CoreData``, ``CoreProjection``, ``Data``,
+``Projection``) in up to ``W`` processes forked for the export alone, and the exported code
+is the same as at ``W`` = 1. If anything in that parallel export raises, the partial package
+is removed and the export runs again serially, so a failing export fails as at ``W`` = 1.
+The parent then forks the workers from the exported model, so each worker starts with it
+already imported; each worker runs one point at a time, with cleanup, and sends back its
+hash bytes, columns, CSV lines (only those the run keeps) and failures. The parent takes the results in ascending ``point_id`` order and does
 what the single process does with them, so the hash, the written bytes and the failure
 lines, in their order, are the same for every ``W``. If a worker dies (a crash, the
 out-of-memory killer), the run has the single failure ``worker crashed: ...``: exit 1,
@@ -104,6 +111,7 @@ import hashlib
 import importlib
 import multiprocessing
 import os
+import shutil
 import sys
 import tempfile
 import time
@@ -247,6 +255,132 @@ def run_point(space_model, point_id: int, checks: list[str], keep_lines: bool | 
             del space_model.Projection[point_id]
 
 
+class _TransformInputs(Exception):
+    """Raised by the recorder in place of modelx's ``FormulaTransformer``; carries its
+    arguments ``(source, cells, cacheless)``."""
+
+
+class _Transformed:
+    """Stands in for a ``FormulaTransformer`` whose result was computed in a child: the
+    only two attributes ``SpaceTranslator._get_class_def`` reads."""
+
+    def __init__(self, func_attrs, code: str):
+        self.func_attrs = func_attrs
+        self.transformed = type("_Module", (), {"code": code})()
+
+
+# modelx's FormulaTransformer the forked children run; set while the parallel class_defs
+# runs its pool.
+_TRANSFORMER = None
+
+
+def _transform(inputs: tuple):
+    """Run modelx's ``FormulaTransformer`` on one space's inputs (in a forked child)."""
+    trans = _TRANSFORMER(*inputs)
+    return trans.func_attrs, trans.transformed.code
+
+
+def _modelx_exporter():
+    """modelx's exporter module, or ``None`` if the internals the parallel export uses are
+    missing (then the export runs serially)."""
+    try:
+        from modelx.export import exporter
+    except ImportError:
+        return None
+    translator = getattr(exporter, "SpaceTranslator", None)
+    if (translator is None or not hasattr(translator, "_get_class_def")
+            or "class_defs" not in vars(translator)
+            or getattr(exporter, "FormulaTransformer", None) is None):
+        return None
+    return exporter
+
+
+def _parallel_class_defs(exporter, original, workers: int):
+    """A ``SpaceTranslator.class_defs`` that runs the child spaces' ``FormulaTransformer``
+    in up to ``workers`` forked processes and assembles the class definitions with modelx's
+    own ``_get_class_def``, so the code is that of ``original``."""
+    transformer = exporter.FormulaTransformer
+
+    def class_defs(self):
+        global _TRANSFORMER
+        spaces = list(self.parent.spaces.values())
+        if len(spaces) < 2:
+            return original.__get__(self, type(self))
+
+        def record(*args):
+            raise _TransformInputs(args)
+
+        # Pass 1: the inputs of every child's transform. The code before the transform
+        # has no side effects; the recorder stops _get_class_def there.
+        inputs = []
+        exporter.FormulaTransformer = record
+        try:
+            for space in spaces:
+                try:
+                    self._get_class_def(space)
+                except _TransformInputs as stop:
+                    inputs.append(stop.args[0])
+                else:
+                    raise RuntimeError(f"no transform recorded for {space.fullname}")
+        finally:
+            exporter.FormulaTransformer = transformer
+
+        # The transforms, in forked children.
+        _TRANSFORMER = transformer
+        try:
+            with ProcessPoolExecutor(max_workers=min(workers, len(inputs)),
+                                     mp_context=multiprocessing.get_context("fork")) as pool:
+                results = list(pool.map(_transform, inputs))
+        finally:
+            _TRANSFORMER = None
+
+        # Pass 2: _get_class_def per space, in order, on the children's results.
+        pending = iter(zip(inputs, results))
+
+        def replay(*args):
+            recorded, (func_attrs, code) = next(pending)
+            if args != recorded:
+                raise RuntimeError("transform inputs changed between the two passes")
+            return _Transformed(func_attrs, code)
+
+        exporter.FormulaTransformer = replay
+        try:
+            return "\n".join(self._get_class_def(space) for space in spaces)
+        finally:
+            exporter.FormulaTransformer = transformer
+
+    return property(class_defs)
+
+
+def export_model(model, path: Path, workers: int = 1) -> None:
+    """Export ``model`` into ``path`` with modelx's exporter.
+
+    At ``workers`` = 1 this is modelx's export as it stands. With ``workers`` > 1 the
+    top-level spaces' formulas are transformed in up to ``workers`` forked processes (see
+    module docstring, "Workers"); the exported code is the same. If anything in the
+    parallel path raises, the partial output is removed and the export runs again serially,
+    so a failing export raises what the serial one raises.
+    """
+    exporter = _modelx_exporter() if workers > 1 else None
+    if exporter is None:
+        mx.export_model(model, path)
+        return
+    translator = exporter.SpaceTranslator
+    original = vars(translator)["class_defs"]
+    transformer = exporter.FormulaTransformer
+    translator.class_defs = _parallel_class_defs(exporter, original, workers)
+    try:
+        mx.export_model(model, path)
+        return
+    except Exception:
+        pass
+    finally:
+        translator.class_defs = original
+        exporter.FormulaTransformer = transformer
+    shutil.rmtree(path, ignore_errors=True)
+    mx.export_model(model, path)
+
+
 # The state a forked worker runs its points on: the exported model, the checks, keep_lines,
 # cleanup and whether to report Pss. Set in the parent before the workers fork, cleared when
 # the pool is done.
@@ -319,7 +453,7 @@ def run_product(folder: Path, cleanup: bool = True, engine: str = "export",
             if engine == "export":
                 pkg = f"_delib_export_{uuid.uuid4().hex}"
                 try:
-                    mx.export_model(model, Path(tmp) / pkg)
+                    export_model(model, Path(tmp) / pkg, workers)
                     model.close()
                     model = None
                     sys.path.insert(0, tmp)

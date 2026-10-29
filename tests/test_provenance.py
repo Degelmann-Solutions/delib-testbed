@@ -173,8 +173,12 @@ def test_product_files_are_lf(product):
 
 
 # The one allowed writer call: the runner's export engine (phase 2c) exports the model into
-# a package under a ``tempfile.TemporaryDirectory()``, never into the product folder.
-EXPORT_CALL = "mx.export_model(model, Path(tmp) / pkg)"
+# a package under a ``tempfile.TemporaryDirectory()``, never into the product folder. It goes
+# through the runner's ``export_model`` helper (story 2.10), whose only writes are modelx's
+# own ``mx.export_model`` into the path it is given.
+EXPORT_CALL = "export_model(model, Path(tmp) / pkg, workers)"
+HELPER_DEF = "def export_model(model, path: Path, workers: int = 1) -> None:"
+HELPER_CALL = "mx.export_model(model, path)"
 
 
 def test_no_modelx_writer_is_mentioned_in_tools():
@@ -187,8 +191,9 @@ def test_no_modelx_writer_is_mentioned_in_tools():
         if path == tools / "run_baseline.py":
             assert source.count(EXPORT_CALL) == 1, "the runner's export call changed"
             assert "with tempfile.TemporaryDirectory(" in source
-            calls = [line for line in source.splitlines() if "export_model(" in line]
-            assert [line.strip() for line in calls] == [EXPORT_CALL]
+            calls = [line.strip() for line in source.splitlines() if "export_model(" in line]
+            assert calls.count(EXPORT_CALL) == 1 and calls.count(HELPER_DEF) == 1
+            assert set(calls) == {EXPORT_CALL, HELPER_DEF, HELPER_CALL}
             source = source.replace("export_model", "")
         for writer in WRITERS:
             assert writer not in source, f"{path.relative_to(ROOT)} mentions {writer}"

@@ -71,6 +71,19 @@ BLAS/OpenMP thread (``OPENBLAS_NUM_THREADS``, ``OMP_NUM_THREADS``, ``MKL_NUM_THR
 default to 1), also at ``W`` = 1. The third output line names the count, ``workers: W``.
 The wall time is that of the whole run across all workers.
 
+Transform cache
+---------------
+With ``--transform-cache DIR`` (``W`` > 1 only) the parallel export looks every piece of
+formula source up in ``DIR`` before transforming it: one file per piece, named by the SHA-256
+of the piece, its cell names and its cacheless names, salted with the modelx and libcst
+versions and the hashes of modelx's ``exporter.py`` and ``transformer.py``. A hit is used
+as the child's result would be; only the misses are transformed, in forked children, and
+written to ``DIR`` (atomically, via a temporary file and ``os.replace``, so concurrent runs
+can share it). The exported package is the same text with or without the cache
+(``tests/test_runner.py``). A mutant changes the source of the piece holding the mutated cell,
+so only that piece misses; the cache is never cleaned and grows by the pieces of every
+mutant. Without the option nothing is cached.
+
 Checks
 ------
 The checks are the cells of the ``Projection`` space whose name starts with ``check_``,
@@ -112,6 +125,7 @@ import ast
 import hashlib
 import importlib
 import multiprocessing
+import pickle
 import os
 import shutil
 import sys
@@ -314,6 +328,50 @@ def _chunks(source: str) -> list[str]:
     return pieces
 
 
+def _cache_key(job: tuple, salt: str) -> str:
+    """The cache file name of one transform job: SHA-256 over ``salt`` and the job's inputs.
+
+    ``job`` is ``(source, cells, cacheless)``; the sets enter sorted. ``salt`` names the
+    transformer (``_transformer_salt``), so another modelx or libcst never reads an entry.
+    """
+    source, cells, cacheless = job
+    digest = hashlib.sha256()
+    for part in (salt, source, "\0".join(sorted(cells)), "\0".join(sorted(cacheless))):
+        digest.update(part.encode("utf-8"))
+        digest.update(b"\1")
+    return digest.hexdigest()
+
+
+def _transformer_salt(exporter) -> str:
+    """The versions and the source of modelx's transformer the cached results depend on."""
+    import libcst
+    import modelx.export.transformer as transformer_module
+    return "|".join([mx.__version__, getattr(libcst, "__version__", "?"),
+                     hashlib.sha256(Path(transformer_module.__file__).read_bytes()).hexdigest(),
+                     hashlib.sha256(Path(exporter.__file__).read_bytes()).hexdigest()])
+
+
+def _cache_get(cache: Path, key: str):
+    """The cached ``(func_attrs, code)`` of ``key``, or ``None`` (missing or unreadable)."""
+    try:
+        with open(cache / key, "rb") as f:
+            return pickle.load(f)
+    except Exception:
+        return None
+
+
+def _cache_put(cache: Path, key: str, result) -> None:
+    """Store ``result`` under ``key`` atomically; a failure to write is ignored."""
+    try:
+        cache.mkdir(parents=True, exist_ok=True)
+        tmp = cache / f".{key}.{os.getpid()}.tmp"
+        with open(tmp, "wb") as f:
+            pickle.dump(result, f, protocol=pickle.HIGHEST_PROTOCOL)
+        os.replace(tmp, cache / key)
+    except Exception:
+        pass
+
+
 def _modelx_exporter():
     """modelx's exporter module, or ``None`` if the internals the parallel export uses are
     missing (then the export runs serially)."""
@@ -329,7 +387,7 @@ def _modelx_exporter():
     return exporter
 
 
-def _parallel_class_defs(exporter, original, workers: int):
+def _parallel_class_defs(exporter, original, workers: int, cache: Path | None = None):
     """A ``SpaceTranslator.class_defs`` that runs the child spaces' ``FormulaTransformer``
     in up to ``workers`` forked processes and assembles the class definitions with modelx's
     own ``_get_class_def``, so the code is that of ``original``."""
@@ -365,13 +423,24 @@ def _parallel_class_defs(exporter, original, workers: int):
             for piece in _chunks(source):
                 jobs.append((piece, cells, cacheless))
                 owner.append(i)
-        _TRANSFORMER = transformer
-        try:
-            with ProcessPoolExecutor(max_workers=min(workers, len(jobs)),
-                                     mp_context=multiprocessing.get_context("fork")) as pool:
-                done = list(pool.map(_transform, jobs))
-        finally:
-            _TRANSFORMER = None
+        done: list = [None] * len(jobs)
+        keys = None
+        if cache is not None:
+            salt = _transformer_salt(exporter)
+            keys = [_cache_key(job, salt) for job in jobs]
+            done = [_cache_get(cache, key) for key in keys]
+        missing = [i for i, result in enumerate(done) if result is None]
+        if missing:
+            _TRANSFORMER = transformer
+            try:
+                with ProcessPoolExecutor(max_workers=min(workers, len(missing)),
+                                         mp_context=multiprocessing.get_context("fork")) as pool:
+                    for i, result in zip(missing, pool.map(_transform, [jobs[i] for i in missing])):
+                        done[i] = result
+                        if keys is not None:
+                            _cache_put(cache, keys[i], result)
+            finally:
+                _TRANSFORMER = None
         merged = [({}, []) for _ in inputs]
         for i, (func_attrs, code) in zip(owner, done):
             merged[i][0].update(func_attrs)
@@ -396,7 +465,7 @@ def _parallel_class_defs(exporter, original, workers: int):
     return property(class_defs)
 
 
-def export_model(model, path: Path, workers: int = 1) -> None:
+def export_model(model, path: Path, workers: int = 1, cache: Path | None = None) -> None:
     """Export ``model`` into ``path`` with modelx's exporter.
 
     At ``workers`` = 1 this is modelx's export as it stands. With ``workers`` > 1 the
@@ -404,6 +473,9 @@ def export_model(model, path: Path, workers: int = 1) -> None:
     module docstring, "Workers"); the exported code is the same. If anything in the
     parallel path raises, the partial output is removed and the export runs again serially,
     so a failing export raises what the serial one raises.
+
+    ``cache`` (``W`` > 1 only) is a folder of transformed pieces keyed by their input (see
+    module docstring, "Transform cache"); ``None`` transforms every piece.
     """
     exporter = _modelx_exporter() if workers > 1 else None
     if exporter is None:
@@ -412,7 +484,7 @@ def export_model(model, path: Path, workers: int = 1) -> None:
     translator = exporter.SpaceTranslator
     original = vars(translator)["class_defs"]
     transformer = exporter.FormulaTransformer
-    translator.class_defs = _parallel_class_defs(exporter, original, workers)
+    translator.class_defs = _parallel_class_defs(exporter, original, workers, cache)
     try:
         mx.export_model(model, path)
         return
@@ -454,6 +526,7 @@ def worker_point(point_id: int):
 def run_product(folder: Path, cleanup: bool = True, engine: str = "export",
                 keep_lines: bool | int = True, workers: int = 1,
                 worker_pss: dict[int, int] | None = None,
+                transform_cache: Path | None = None,
                 ) -> tuple[int, list[str], str, list[str], list[str], dict[int, str]]:
     """Run all points. Return the point count, the checks, the SHA-256, the failures, the CSV
     lines and the per-point digests.
@@ -497,7 +570,7 @@ def run_product(folder: Path, cleanup: bool = True, engine: str = "export",
             if engine == "export":
                 pkg = f"_delib_export_{uuid.uuid4().hex}"
                 try:
-                    export_model(model, Path(tmp) / pkg, workers)
+                    export_model(model, Path(tmp) / pkg, workers, transform_cache)
                     model.close()
                     model = None
                     sys.path.insert(0, tmp)
@@ -570,6 +643,9 @@ def main(argv: list[str] | None = None) -> int:
                              "modelx: run on the traced modelx model (phases 2a and 2b)")
     parser.add_argument("--workers", type=int, default=1, metavar="W",
                         help="run the points in W forked worker processes (default 1)")
+    parser.add_argument("--transform-cache", type=Path, metavar="DIR",
+                        help="with --workers > 1: reuse transformed formula pieces from DIR "
+                             "and store new ones there (see 'Transform cache')")
     args = parser.parse_args(argv)
     if args.out is not None and not args.write:
         parser.error("--out needs --write")
@@ -579,6 +655,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--workers > 1 needs the export engine, not --engine modelx")
     if args.workers > 1 and args.no_cleanup:
         parser.error("--workers > 1 needs per-contract cleanup, not --no-cleanup")
+    if args.transform_cache is not None and args.workers < 2:
+        parser.error("--transform-cache needs --workers > 1")
     if args.write and args.out is None and is_path(args.product):
         parser.error("--write with a path needs --out; only a product name writes to baseline/")
     try:
@@ -591,7 +669,8 @@ def main(argv: list[str] | None = None) -> int:
 
     cleanup = not args.no_cleanup
     count, checks, sha256, failures, lines, _digests = run_product(
-        folder, cleanup=cleanup, engine=args.engine, keep_lines=args.write, workers=args.workers)
+        folder, cleanup=cleanup, engine=args.engine, keep_lines=args.write, workers=args.workers,
+        transform_cache=args.transform_cache)
     elapsed = time.perf_counter() - _PROCESS_START
     print(f"engine: {args.engine}")
     print(f"cleanup: {'on' if cleanup else 'off'}")

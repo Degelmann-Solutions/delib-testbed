@@ -175,9 +175,10 @@ def test_product_files_are_lf(product):
 # The one allowed writer call: the runner's export engine (phase 2c) exports the model into
 # a package under a ``tempfile.TemporaryDirectory()``, never into the product folder. It goes
 # through the runner's ``export_model`` helper (story 2.10), whose only writes are modelx's
-# own ``mx.export_model`` into the path it is given.
-EXPORT_CALL = "export_model(model, Path(tmp) / pkg, workers)"
-HELPER_DEF = "def export_model(model, path: Path, workers: int = 1) -> None:"
+# own ``mx.export_model`` into the path it is given (the transform cache writes only pickled
+# transform results into its own folder, never a model file).
+EXPORT_CALL = "export_model(model, Path(tmp) / pkg, workers, transform_cache)"
+HELPER_DEF = "def export_model(model, path: Path, workers: int = 1, cache: Path | None = None) -> None:"
 HELPER_CALL = "mx.export_model(model, path)"
 
 

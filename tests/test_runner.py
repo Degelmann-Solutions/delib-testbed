@@ -396,3 +396,110 @@ def test_a_worker_that_dies_is_one_failure_and_main_writes_nothing(tmp_path, mon
     assert not out.exists()
     assert not [k for k in sys.modules if k.startswith("_delib_export_")]
     assert not [p for p in sys.path if "delib-export-" in p]
+
+
+def exported_sources(path: Path) -> dict[str, bytes]:
+    return {str(p.relative_to(path)): p.read_bytes() for p in sorted(path.rglob("*.py"))}
+
+
+def counting_export(runner, monkeypatch) -> list:
+    """Count the calls of ``mx.export_model``: one for a parallel export that succeeded,
+    two when it fell back to the serial export."""
+    calls = []
+    export = runner.mx.export_model
+
+    def counted(*args, **kwargs):
+        calls.append(args)
+        return export(*args, **kwargs)
+
+    monkeypatch.setattr(runner.mx, "export_model", counted)
+    return calls
+
+
+@pytest.mark.parametrize("product", load_runner().product_names())
+def test_parallel_export_writes_the_same_package(tmp_path, monkeypatch, product):
+    runner = load_runner()
+    # The pool pickles its function by module name, so the module must be findable.
+    monkeypatch.setitem(sys.modules, "run_baseline", runner)
+    model = runner.mx.read_model(runner.model_dir(runner.PRODUCTS_DIR / product))
+    try:
+        runner.export_model(model, tmp_path / "serial", 1)
+        calls = counting_export(runner, monkeypatch)
+        runner.export_model(model, tmp_path / "parallel", 24)
+    finally:
+        model.close()
+    assert len(calls) == 1  # the parallel path ran, no fallback
+    serial = exported_sources(tmp_path / "serial")
+    assert serial and exported_sources(tmp_path / "parallel") == serial
+
+
+def originals(runner):
+    from modelx.export import exporter
+    return vars(exporter.SpaceTranslator)["class_defs"], exporter.FormulaTransformer
+
+
+def test_one_worker_exports_without_replacing_class_defs(monkeypatch):
+    runner = load_runner()
+    from modelx.export import exporter
+    class_defs, _ = originals(runner)
+    seen = []
+    export = runner.mx.export_model
+
+    def watched(*args, **kwargs):
+        seen.append(vars(exporter.SpaceTranslator)["class_defs"])
+        return export(*args, **kwargs)
+
+    monkeypatch.setattr(runner.mx, "export_model", watched)
+    failures = runner.run_product(FOLDER, workers=1)[3]
+    assert failures == [] and seen == [class_defs]
+
+
+def test_parallel_export_restores_modelx_also_when_it_raises(tmp_path, monkeypatch):
+    runner = load_runner()
+    monkeypatch.setitem(sys.modules, "run_baseline", runner)
+    before = originals(runner)
+    model = runner.mx.read_model(runner.model_dir(FOLDER))
+    try:
+        runner.export_model(model, tmp_path / "ok", 4)
+        assert originals(runner) == before
+
+        def boom(*args, **kwargs):
+            raise RuntimeError("cannot export this model")
+
+        monkeypatch.setattr(runner.mx, "export_model", boom)
+        with pytest.raises(RuntimeError, match="cannot export this model"):
+            runner.export_model(model, tmp_path / "raises", 4)
+        assert originals(runner) == before
+    finally:
+        model.close()
+
+
+def test_a_transform_raising_in_a_child_falls_back_to_the_serial_export(tmp_path, monkeypatch):
+    import os
+
+    runner = load_runner()
+    monkeypatch.setitem(sys.modules, "run_baseline", runner)
+    from modelx.export import exporter
+    transformer = exporter.FormulaTransformer
+    parent = os.getpid()
+
+    def raises_in_a_child(*args):
+        if os.getpid() != parent:
+            raise RuntimeError("transform failed in a child")
+        return transformer(*args)
+
+    model = runner.mx.read_model(runner.model_dir(FOLDER))
+    try:
+        runner.export_model(model, tmp_path / "serial", 1)
+        monkeypatch.setattr(exporter, "FormulaTransformer", raises_in_a_child)
+        calls = counting_export(runner, monkeypatch)
+        class_defs = vars(exporter.SpaceTranslator)["class_defs"]
+        runner.export_model(model, tmp_path / "fallback", 4)
+        assert exporter.FormulaTransformer is raises_in_a_child
+        assert vars(exporter.SpaceTranslator)["class_defs"] is class_defs
+    finally:
+        model.close()
+    assert len(calls) == 2  # the parallel export, then the serial one
+    assert exported_sources(tmp_path / "fallback") == exported_sources(tmp_path / "serial")
+    _count, _checks, sha, failures, _lines, _digests = runner.run_product(FOLDER, workers=4)
+    assert failures == [] and sha == runner.run_product(FOLDER)[2]

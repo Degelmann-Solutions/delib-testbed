@@ -1955,6 +1955,15 @@ PRODUCT_DICT_READERS = {
         "claim_duration_table": "claim_duration_file",
         "occupation_table": "occupation_file",
     },
+    "riester_rente": {
+        "annuity_mort_table": "annuity_mort_file",
+        "zulage_schedule": "zulage_file",
+        "income_schedule": "income_file",
+    },
+    "risikolebensversicherung": {
+        "benefit_schedule": "benefit_schedule_file",
+        "nvg_schedule": "nvg_schedule_file",
+    },
 }
 PRODUCT_BOUNDS = {
     "klassische_rentenversicherung": {
@@ -2439,6 +2448,96 @@ def test_index_lapse_beyond_the_table_raises_key_error():
             copy.Data.lapse_table().at[last, "lapse_rate"])
         with pytest.raises(Exception, match=f"KeyError: {last + 1}") as raised:
             item.lapse_rate_base(t)
+        assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+    finally:
+        copy.close()
+
+
+def test_riester_ages_from_omega_minus_one_read_no_table(product_models):
+    model = product_models("riester_rente")
+    item = model.Projection[1]
+    assert item.omega_age() == int(model.Data.mort_table().index.max()) + 1 == 111
+    # 115 is in neither table, so a lookup there would raise.
+    assert 115 not in model.Data.mort_table().index
+    assert 115 not in model.Data.annuity_mort_table().index
+    for x in (110, 115):
+        assert item.mort_rate_at_age(x) == 1.0, x
+        assert item.annuity_mort_rate(x, 2050) == 1.0, x
+    assert item.mort_rate_at_age(109) == float(model.Data.mort_table().at[109, "qx"])
+
+
+def test_riester_after_conversion_reads_no_schedule(product_models):
+    model = product_models("riester_rente")
+    item = model.Projection[1]
+    k = item.k_conv()
+    assert k > 0
+    for k_after in (k, k + 100):
+        assert not item.is_accum_y(k_after)
+        assert not item.is_accum(12 * k_after)
+        assert item.transfer_rate(12 * k_after) == 0.0, k_after
+        assert item.income_ref(k_after) == 0.0, k_after
+        assert item.zulage_entitlement_pp(k_after) == 0.0, k_after
+        assert item.decl_rate(k_after) == 0.0, k_after
+
+
+def test_riester_income_ref_at_zero_is_the_initial_income(product_models):
+    model = product_models("riester_rente")
+    table = model.Data.income_schedule()
+    for point_id in model.Data.model_point_table().index:
+        item = model.Projection[point_id]
+        if not item.is_accum_y(0):
+            continue
+        assert item.income_ref(0) == item.income_init(), point_id
+        if item.is_accum_y(1):
+            assert item.income_ref(1) == float(
+                table.at[(item.income_id(), 0), "income"]), point_id
+
+
+@pytest.mark.parametrize("product, column, cell, arg", [
+    ("riester_rente", "zulage_id", "zulage_entitlement_pp", 0),
+    ("riester_rente", "income_id", "income_ref", 1),
+    ("risikolebensversicherung", "benefit_schedule_id", "benefit_factor", 0),
+    ("risikolebensversicherung", "nvg_schedule_id", "sum_uplift_y", 0),
+])
+def test_an_unknown_schedule_id_raises_key_error(tmp_path, product, column, cell, arg):
+    folder = product_copy(tmp_path, product)
+    table = folder / "model_point_table.csv"
+    points = pd.read_csv(table, index_col="point_id")
+    point_id = points.index[0]
+    points.loc[point_id, column] = "unbekannt"
+    points.to_csv(table)
+    copy = mx.read_model(folder / MODELS[product], name="ScheduleProbe")
+    try:
+        with pytest.raises(Exception, match="unbekannt") as raised:
+            copy.Projection[point_id].cells[cell](arg)
+        assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+    finally:
+        copy.close()
+
+
+def test_rlv_schedules_beyond_their_last_year_raise_key_error():
+    product = "risikolebensversicherung"
+    copy = mx.read_model(PRODUCTS_DIR / product / MODELS[product], name="RlvScheduleProbe")
+    try:
+        item = copy.Projection[copy.Data.model_point_table().index[0]]
+        benefit = copy.Data.benefit_schedule()
+        sched = item.benefit_schedule_id()
+        last = int(benefit.loc[sched].index.max())
+        t = 12 * last
+        assert item.policy_year(t) == last + 1
+        assert item.benefit_factor(t - 12) == float(
+            benefit.at[(sched, last), "benefit_factor"])
+        with pytest.raises(Exception, match=re.escape(f"KeyError: ('{sched}', {last + 1})")) \
+                as raised:
+            item.benefit_factor(t)
+        assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+        nvg = copy.Data.nvg_schedule()
+        nvg_id = item.nvg_schedule_id()
+        last = int(nvg.loc[nvg_id].index.max())
+        assert item.sum_uplift_y(last - 1) == float(nvg.at[(nvg_id, last), "sum_uplift"])
+        with pytest.raises(Exception, match=re.escape(f"KeyError: ('{nvg_id}', {last + 1})")) \
+                as raised:
+            item.sum_uplift_y(last)
         assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
     finally:
         copy.close()

@@ -39,6 +39,11 @@ freq_loading_file         freq_loading_table()          freq_loading_table.csv
 param_file                param_table()                 param_table.csv
 ========================  ============================  ==========================
 
+Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
+dicts by column, built once per model, which the projection's lookups read instead of
+``DataFrame.at``: the core's for ``mort_table``, this space's ``benefit_schedule_dict``
+and ``nvg_schedule_dict``.
+
 **Every file but the model point table carries a per-row ``provenance`` column.** That is
 this library's second ruling and it is machine-checked in
 ``tests/test_model_conventions_de.py``: a number in a shipped input file says where it
@@ -190,6 +195,24 @@ def nvg_schedule():
     return pd.read_csv(                                              # noqa: F821
         input_dir() / nvg_schedule_file,                             # noqa: F821
         index_col=["nvg_id", "policy_year"])
+
+
+def benefit_schedule_dict():
+    """The benefit schedule as a dict by column: ``{column: {(schedule_id, policy_year): value}}``.
+
+    Built once per model from ``benefit_schedule()``; ``Projection.benefit_factor`` reads
+    its ``benefit_factor`` column.
+    """
+    return benefit_schedule().to_dict()
+
+
+def nvg_schedule_dict():
+    """The NVG schedule as a dict by column: ``{column: {(nvg_id, policy_year): value}}``.
+
+    Built once per model from ``nvg_schedule()``; ``Projection.sum_uplift_y`` reads its
+    ``sum_uplift`` column.
+    """
+    return nvg_schedule().to_dict()
 
 
 # ---------------------------------------------------------------------------

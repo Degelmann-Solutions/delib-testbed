@@ -93,7 +93,9 @@ rho_g(x)                    rec_force(x, g)                 Force of recovery
 (gate)                      lapse_factor(t)                 0 after the premium term
 w(t)                        lapse_rate_mth(t)               Monthly lapse probability
 (allocation)                p_act_stay/death/care(t)        Active-state month transitions
-(allocation)                p_pg_stay/death/worse/better    Grade-g month transitions
+(allocation)                p_pg(t, g)                      Grade-g month transitions,
+                                                            one tuple
+(allocation)                p_pg_stay/death/worse/better    Its four components
 l_A(t)                      pols_act(t)                     Active at the start of month t
 W_{g,z}(t)                  pols_karenz(t, g, z)            In the Karenz ledger
 l_g(t)                      pols_pg(t, g)                   In a paying Pflegegrad
@@ -726,6 +728,25 @@ def p_act_care(t):
     return inc_force(t) / total * (1.0 - p_act_stay(t))
 
 
+def p_pg(t, g):
+    """The grade-``g`` month transitions in month ``t``, as ``(stay, death, worse, better)``.
+
+    The three competing forces out of a paying state, ``mu_g``, ``delta_g`` and ``rho_g``,
+    are read once and the month's exits allocated in proportion to them: ``stay`` is
+    ``exp(-(mu_g + delta_g + rho_g)/12)`` and each exit its force's share of ``1 - stay``.
+    The four published cells :func:`p_pg_stay`, :func:`p_pg_death`, :func:`p_pg_worse` and
+    :func:`p_pg_better` read it; the ledgers read the tuple directly, one evaluation per
+    month and grade instead of four.
+    """
+    mu = mort_force_care(t, g)
+    delta = det_force(age(t), g)
+    rho = rec_force(age(t), g)
+    total = mu + delta + rho
+    stay = math.exp(-total / 12.0)                                   # noqa: F821
+    rest = 1.0 - stay
+    return (stay, mu / total * rest, delta / total * rest, rho / total * rest)
+
+
 def p_pg_stay(t, g):
     """The probability that a life in *Pflegegrad* ``g`` is still there at month end.
 
@@ -735,14 +756,12 @@ def p_pg_stay(t, g):
     absorbing**.  A model that lets it be exited only by death overstates the liability; one
     that treats every downgrade as a termination understates it.
     """
-    total = mort_force_care(t, g) + det_force(age(t), g) + rec_force(age(t), g)
-    return math.exp(-total / 12.0)                                   # noqa: F821
+    return p_pg(t, g)[0]
 
 
 def p_pg_death(t, g):
     """The probability that a life in *Pflegegrad* ``g`` dies during month ``t``."""
-    total = mort_force_care(t, g) + det_force(age(t), g) + rec_force(age(t), g)
-    return mort_force_care(t, g) / total * (1.0 - p_pg_stay(t, g))
+    return p_pg(t, g)[1]
 
 
 def p_pg_worse(t, g):
@@ -752,8 +771,7 @@ def p_pg_worse(t, g):
     re-assessed by the *Medizinischer Dienst* or MEDICPROOF, so grade change is a biometric
     transition here rather than a claims-management outcome.
     """
-    total = mort_force_care(t, g) + det_force(age(t), g) + rec_force(age(t), g)
-    return det_force(age(t), g) / total * (1.0 - p_pg_stay(t, g))
+    return p_pg(t, g)[2]
 
 
 def p_pg_better(t, g):
@@ -766,8 +784,7 @@ def p_pg_better(t, g):
     annuity and revives the premium.  All three cases fall out of the same recursion; none
     of them is a claim decision.
     """
-    total = mort_force_care(t, g) + det_force(age(t), g) + rec_force(age(t), g)
-    return rec_force(age(t), g) / total * (1.0 - p_pg_stay(t, g))
+    return p_pg(t, g)[3]
 
 
 def pols_act(t):
@@ -828,11 +845,11 @@ def pols_karenz(t, g, z):
         if w == 0.0:
             continue
         if h == g:
-            total += w * p_pg_stay(t - 1, h)
+            total += w * p_pg(t - 1, h)[0]
         elif g == h + 1:
-            total += w * p_pg_worse(t - 1, h)
+            total += w * p_pg(t - 1, h)[2]
         else:
-            total += w * p_pg_better(t - 1, h)
+            total += w * p_pg(t - 1, h)[3]
     return total
 
 
@@ -859,11 +876,11 @@ def pols_grad(t, g):
         if w == 0.0:
             continue
         if h == g:
-            total += w * p_pg_stay(t, h)
+            total += w * p_pg(t, h)[0]
         elif g == h + 1:
-            total += w * p_pg_worse(t, h)
+            total += w * p_pg(t, h)[2]
         else:
-            total += w * p_pg_better(t, h)
+            total += w * p_pg(t, h)[3]
     return total
 
 
@@ -879,7 +896,7 @@ def pols_reactiv(t):
     total = pols_pg(t, 1)
     for z in range(1, karenz_months() + 1):
         total += pols_karenz(t, 1, z)
-    return total * p_pg_better(t, 1)
+    return total * p_pg(t, 1)[3]
 
 
 def pols_pg(t, g):
@@ -897,11 +914,11 @@ def pols_pg(t, g):
     """
     if t <= t_start():
         return pols_if_init() if status_init() == "pg%d" % g else 0.0
-    total = pols_pg(t - 1, g) * p_pg_stay(t - 1, g) + pols_grad(t - 1, g)
+    total = pols_pg(t - 1, g) * p_pg(t - 1, g)[0] + pols_grad(t - 1, g)
     if g > 1:
-        total += pols_pg(t - 1, g - 1) * p_pg_worse(t - 1, g - 1)
+        total += pols_pg(t - 1, g - 1) * p_pg(t - 1, g - 1)[2]
     if g < 5:
-        total += pols_pg(t - 1, g + 1) * p_pg_better(t - 1, g + 1)
+        total += pols_pg(t - 1, g + 1) * p_pg(t - 1, g + 1)[3]
     return total
 
 
@@ -926,11 +943,11 @@ def esc_pg(t, g):
     if t <= t_start():
         return pols_pg(t, g)
     factor = (1.0 + leistungsdynamik()) ** (1.0 / 12.0)
-    carried = esc_pg(t - 1, g) * p_pg_stay(t - 1, g)
+    carried = esc_pg(t - 1, g) * p_pg(t - 1, g)[0]
     if g > 1:
-        carried += esc_pg(t - 1, g - 1) * p_pg_worse(t - 1, g - 1)
+        carried += esc_pg(t - 1, g - 1) * p_pg(t - 1, g - 1)[2]
     if g < 5:
-        carried += esc_pg(t - 1, g + 1) * p_pg_better(t - 1, g + 1)
+        carried += esc_pg(t - 1, g + 1) * p_pg(t - 1, g + 1)[3]
     return factor * carried + pols_grad(t - 1, g)
 
 
@@ -1031,7 +1048,7 @@ def pols_death(t):
         in_grade = pols_pg(t, g)
         for z in range(1, karenz_months() + 1):
             in_grade += pols_karenz(t, g, z)
-        total += in_grade * p_pg_death(t, g)
+        total += in_grade * p_pg(t, g)[1]
     return total
 
 

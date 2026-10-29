@@ -530,8 +530,8 @@ def mort_rate_at_age(sex_code, smoker_code, x):
     unsourced mortality level to a single number.  A **[std]** proxy for DAV 2008 T; see
     the ``Data`` docstring for the anchors a replacement must preserve.
     """
-    return float(data.mort_table().at[                               # noqa: F821
-        (mort_table_id(), sex_code, smoker_code, int(x)), "mort_rate"])
+    return float(data.mort_table_dict()["mort_rate"][                # noqa: F821
+        (mort_table_id(), sex_code, smoker_code, int(x))])
 
 
 def mort_rate_base(t):
@@ -672,8 +672,8 @@ def benefit_factor(t):
     contractual schedule parameter fixed at issue; it does not follow the borrower's loan
     if that is refinanced, repaid early or rolled onto a new fixed rate.
     """
-    return float(data.benefit_schedule().at[                         # noqa: F821
-        (benefit_schedule_id(), policy_year(t)), "benefit_factor"])
+    return float(data.benefit_schedule_dict()["benefit_factor"][     # noqa: F821
+        (benefit_schedule_id(), policy_year(t))])
 
 
 def sum_uplift_y(y):
@@ -695,8 +695,8 @@ def sum_uplift_y(y):
     decision.  What the model does *with* an increase is not exogenous — see
     :func:`benefit_paid_pp`.
     """
-    return float(data.nvg_schedule().at[                             # noqa: F821
-        (nvg_schedule_id(), int(y) + 1), "sum_uplift"])
+    return float(data.nvg_schedule_dict()["sum_uplift"][             # noqa: F821
+        (nvg_schedule_id(), int(y) + 1)])
 
 
 def sum_uplift(t):

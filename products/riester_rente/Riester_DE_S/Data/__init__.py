@@ -41,6 +41,12 @@ freq_loading_file          freq_loading_table()            freq_loading.csv
 param_file                 param_table()                   param_table.csv
 =========================  ==============================  ==========================
 
+Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
+dicts by column, built once per model, which the projection's lookups read instead of
+``DataFrame.at`` and ``.loc``: the core's for ``mort_table``, ``param_table``,
+``lapse_table`` and ``surplus_table``, this space's ``annuity_mort_table_dict``,
+``zulage_schedule_dict`` and ``income_schedule_dict``.
+
 **Every file but ``model_point_table.csv`` carries a per-row ``provenance`` column**,
 which is delib's second ruling: a model point is a *configuration*, every other row is an
 *assumption* and says on the row where its number came from. The tags are the same
@@ -156,6 +162,34 @@ def income_schedule():
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / income_file, index_col=["income_id", "t"])     # noqa: F821
+
+
+def annuity_mort_table_dict():
+    """The annuitant table as a dict by column: ``{column: {age: value}}``.
+
+    Built once per model from ``annuity_mort_table()``; ``Projection.annuity_mort_rate``
+    reads its ``qx_base`` and ``improvement`` columns.
+    """
+    return annuity_mort_table().to_dict()
+
+
+def zulage_schedule_dict():
+    """The Zulage drivers as a dict by column: ``{column: {(zulage_id, t): value}}``.
+
+    Built once per model from ``zulage_schedule()``; ``Projection.zulage_entitlement_pp``
+    reads its ``unmittelbar``, ``n_kinder_pre2008``, ``n_kinder_post2008`` and ``bonus``
+    columns.
+    """
+    return zulage_schedule().to_dict()
+
+
+def income_schedule_dict():
+    """The earnings schedule as a dict by column: ``{column: {(income_id, t): income}}``.
+
+    Built once per model from ``income_schedule()``; ``Projection.income_ref`` reads its
+    ``income`` column.
+    """
+    return income_schedule().to_dict()
 
 
 # ---------------------------------------------------------------------------

@@ -614,7 +614,7 @@ def omega_age():
     Override reason: the limiting age is read off the mortality table, one above its last
     age 110, where ``q = 1``, products/riester_rente/technical-notes.md:60
     """
-    return int(data.mort_table().index.max()) + 1                    # noqa: F821
+    return int(max(data.mort_table_dict()["qx"])) + 1                # noqa: F821
 
 
 def mort_rate_at_age(x):
@@ -626,7 +626,7 @@ def mort_rate_at_age(x):
     """
     if x >= omega_age() - 1:
         return 1.0
-    return float(data.mort_table().at[x, "qx"])                      # noqa: F821
+    return float(data.mort_table_dict()["qx"][x])                    # noqa: F821
 
 
 def annuity_mort_rate(x, tau):
@@ -641,9 +641,9 @@ def annuity_mort_rate(x, tau):
     """
     if x >= omega_age() - 1:
         return 1.0
-    tab = data.annuity_mort_table()                                  # noqa: F821
-    qb = float(tab.at[x, "qx_base"])
-    im = float(tab.at[x, "improvement"])
+    tab = data.annuity_mort_table_dict()                             # noqa: F821
+    qb = float(tab["qx_base"][x])
+    im = float(tab["improvement"][x])
     return qb * (1.0 - im) ** (tau - annuity_base_year)              # noqa: F821
 
 
@@ -657,7 +657,7 @@ def mort_be_factor():
     it because the direction of prudence forks by product, a tariff parameter in
     *param_table.csv*, products/riester_rente/technical-notes.md:415
     """
-    return float(data.param_table().at["mort_be_factor", "value"])   # noqa: F821
+    return float(data.param_table_dict()["value"]["mort_be_factor"])  # noqa: F821
 
 
 def mort_rate(t):
@@ -710,8 +710,8 @@ def transfer_rate(t):
     """
     if not is_accum(t):
         return 0.0
-    return float(data.lapse_table().at[policy_year(t),                # noqa: F821
-                                       "transfer_rate"])
+    return float(data.lapse_table_dict()["transfer_rate"][           # noqa: F821
+        policy_year(t)])
 
 
 def transfer_rate_mth(t):
@@ -834,7 +834,8 @@ def income_ref(k):
         return 0.0
     if k == 0:
         return income_init()
-    return float(data.income_schedule().at[(income_id(), k - 1), "income"])  # noqa: F821
+    return float(data.income_schedule_dict()["income"][              # noqa: F821
+        (income_id(), k - 1)])
 
 
 def zulage_entitlement_pp(k):
@@ -849,11 +850,12 @@ def zulage_entitlement_pp(k):
     """
     if not is_accum_y(k):
         return 0.0
-    row = data.zulage_schedule().loc[(zulage_id(), k)]               # noqa: F821
-    return (grundzulage * float(row["unmittelbar"])                  # noqa: F821
-            + kinderzulage_pre2008 * float(row["n_kinder_pre2008"])  # noqa: F821
-            + kinderzulage_post2008 * float(row["n_kinder_post2008"])  # noqa: F821
-            + berufseinsteiger_bonus * float(row["bonus"]))          # noqa: F821
+    tab = data.zulage_schedule_dict()                                # noqa: F821
+    key = (zulage_id(), k)
+    return (grundzulage * float(tab["unmittelbar"][key])             # noqa: F821
+            + kinderzulage_pre2008 * float(tab["n_kinder_pre2008"][key])  # noqa: F821
+            + kinderzulage_post2008 * float(tab["n_kinder_post2008"][key])  # noqa: F821
+            + berufseinsteiger_bonus * float(tab["bonus"][key]))     # noqa: F821
 
 
 def mindesteigenbeitrag_pp(k):
@@ -1044,8 +1046,8 @@ def decl_rate(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return float(data.surplus_table().at[(scenario_id(), k),         # noqa: F821
-                                         "decl_rate"])
+    return float(data.surplus_table_dict()["decl_rate"][             # noqa: F821
+        (scenario_id(), k)])
 
 
 def int_guar_pp(k):

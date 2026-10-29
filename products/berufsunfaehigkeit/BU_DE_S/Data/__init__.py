@@ -39,6 +39,13 @@ freq_loading_file         freq_loading_table()          freq_loading_table.csv
 param_file                param_table()                 param_table.csv
 ========================  ============================  ==========================
 
+Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
+dicts by column, built once per model, which the projection's lookups read instead of
+``DataFrame.loc``: the core's for ``model_point_table``, ``param_table``, ``mort_table``,
+``lapse_table`` and ``freq_loading_table``, this space's ``inception_table_dict``,
+``claim_duration_table_dict`` and ``occupation_table_dict``, with ``inception_table_ages``
+and ``mort_table_ages``, the age range the lookups clamp to.
+
 Every file but ``model_point_table.csv`` carries a per-row ``provenance`` column, which
 is delib's second ruling: the citation discipline reaches the data files and is
 machine-checked rather than merely practised. The model point table is the single
@@ -158,6 +165,53 @@ def occupation_table():
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / occupation_file, index_col="berufsgruppe")     # noqa: F821
+
+
+def inception_table_dict():
+    """The inception rates as a dict by column: ``{column: {age: rate}}``.
+
+    Built once per model from ``inception_table()``; ``Projection.inc_rate_at_age`` reads its
+    ``inc_rate`` column.
+    """
+    return inception_table().to_dict()
+
+
+def claim_duration_table_dict():
+    """The claim-duration table as a dict by column: ``{column: {dur_year: value}}``.
+
+    Built once per model from ``claim_duration_table()``; ``Projection.recov_rates`` and
+    ``mort_dis_sel_factors`` read its ``recov_rate`` and ``mort_dis_sel_factor`` columns.
+    """
+    return claim_duration_table().to_dict()
+
+
+def occupation_table_dict():
+    """The occupational loadings as a dict by column: ``{column: {berufsgruppe: value}}``.
+
+    Built once per model from ``occupation_table()``; ``Projection.occ_factor`` reads its
+    ``occ_factor`` column.
+    """
+    return occupation_table().to_dict()
+
+
+def inception_table_ages():
+    """The age range of ``inception_table()``: ``(first_age, last_age)``, 18 and 66.
+
+    Built once per model from its index; the bounds ``Projection.inc_rate_at_age`` clamps
+    the attained age to.
+    """
+    ages = inception_table().index
+    return (int(ages.min()), int(ages.max()))
+
+
+def mort_table_ages():
+    """The age range of the core's ``mort_table()``: ``(first_age, last_age)``, 18 and 70.
+
+    Built once per model from its index; the bounds ``Projection.mort_rate_at_age`` and
+    ``mort_rate_dis_at_age`` clamp the attained age to.
+    """
+    ages = mort_table().index
+    return (int(ages.min()), int(ages.max()))
 
 
 # ---------------------------------------------------------------------------

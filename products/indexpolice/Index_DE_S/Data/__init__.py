@@ -41,6 +41,12 @@ freq_loading_file      freq_loading_table()        freq_load_table.csv
 param_file             param_table()               param_table.csv
 =====================  ==========================  ==========================
 
+Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
+dicts by column, built once per model, which the projection's lookups read instead of
+``DataFrame.loc``: the core's for ``model_point_table``, ``param_table``, ``mort_table``,
+``lapse_table`` and ``freq_loading_table``, this space's ``index_return_table_dict``,
+``index_param_table_dict``, ``surplus_rate_table_dict`` and ``election_table_dict``.
+
 .. rubric:: Every table but the model point table is a [std] construction
 
 Nothing about an *Indexpolice* — no Cap level, no *Partizipationsquote*, no declared
@@ -177,6 +183,42 @@ def election_table():
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / election_file, index_col=["elect_id", "t"])    # noqa: F821
+
+
+def index_return_table_dict():
+    """The monthly index returns as a dict by column: ``{"m01" ... "m12": {(index_id, t): r}}``.
+
+    Built once per model from ``index_return_table()``, keyed by the tuple of its two index
+    columns; ``Projection.index_return`` reads the column of the month.
+    """
+    return index_return_table().to_dict()
+
+
+def index_param_table_dict():
+    """The Cap and the *Partizipationsquote* as a dict by column: ``{column: {(index_id, t): v}}``.
+
+    Built once per model from ``index_param_table()``; ``Projection.index_cap`` and
+    ``index_quote`` read its ``cap`` and ``quote`` columns.
+    """
+    return index_param_table().to_dict()
+
+
+def surplus_rate_table_dict():
+    """The declared rates as a dict by column: ``{column: {t: rate}}``.
+
+    Built once per model from ``surplus_rate_table()``; ``Projection.surplus_rate`` reads
+    its ``surplus_rate`` column.
+    """
+    return surplus_rate_table().to_dict()
+
+
+def election_table_dict():
+    """The election paths as a dict by column: ``{column: {(elect_id, t): w}}``.
+
+    Built once per model from ``election_table()``; ``Projection.elect_index`` reads its
+    ``w`` column.
+    """
+    return election_table().to_dict()
 
 
 def lapse_table_index():

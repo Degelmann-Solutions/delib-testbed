@@ -41,6 +41,14 @@ option_file                option_table()                  option_table.csv
 param_file                 param_table()                   param_table.csv
 =========================  ==============================  ==========================
 
+Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
+dicts by column, built once per model, which the projection's lookups read instead of
+``DataFrame.loc``: the core's for ``model_point_table``, ``param_table``, ``mort_table``,
+``surplus_table``, ``rentenfaktor_table`` and ``charge_table``, this space's
+``behaviour_table_dict`` and ``option_table_dict``, with ``behaviour_table_durs`` and
+``surplus_table_years``, the last row of each behaviour table and surplus scenario the
+lookups clamp to.
+
 **Every file but ``model_point_table.csv`` carries a final ``provenance`` column**, one
 tag per row — delib's second ruling, asserted by the conventions suite. A model point is
 a *configuration* rather than an assumption, which is why it is the single exemption.
@@ -181,6 +189,45 @@ def option_table():
     return pd.read_csv(                                              # noqa: F821
         input_dir() / option_file,                                   # noqa: F821
         index_col=["option_id", "option_key"])
+
+
+def behaviour_table_dict():
+    """The behavioural assumptions as a dict by column: ``{column: {(beh_table_id, dur): rate}}``.
+
+    Built once per model from ``behaviour_table()``, keyed by the tuple of its two index
+    columns; ``Projection.bf_rate`` and ``zuz_take_up`` read the columns of their names.
+    """
+    return behaviour_table().to_dict()
+
+
+def behaviour_table_durs():
+    """The last policy year of each behaviour table: ``{beh_table_id: last_dur}``.
+
+    Built once per model from the index of ``behaviour_table()``, the bound
+    ``Projection.bf_rate`` and ``zuz_take_up`` clamp the policy year to.
+    """
+    durs = behaviour_table().index.to_frame(index=False).groupby("beh_table_id")["dur"].max()
+    return {key: int(hi) for key, hi in zip(durs.index, durs)}
+
+
+def option_table_dict():
+    """The option factors as a dict by column: ``{column: {(option_id, option_key): factor}}``.
+
+    Built once per model from ``option_table()``, keyed by the tuple of its two index
+    columns; ``Projection.prem_freq_load`` and ``rf_option_factor`` read its ``factor``
+    column.
+    """
+    return option_table().to_dict()
+
+
+def surplus_table_years():
+    """The last projection year of each surplus scenario: ``{scenario_id: last_t}``.
+
+    Built once per model from the index of the core's ``surplus_table()``, the bound
+    ``Projection.decl_rate`` and ``ann_bonus_rate`` clamp ``k`` to.
+    """
+    years = surplus_table().index.to_frame(index=False).groupby("scenario_id")["t"].max()
+    return {key: int(hi) for key, hi in zip(years.index, years)}
 
 
 # ---------------------------------------------------------------------------

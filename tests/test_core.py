@@ -1927,23 +1927,64 @@ def test_pflege_rec_margin_without_its_row_raises_key_error(tmp_path):
         copy.close()
 
 
-# RV's and KLV's own dict cells, beside the core's: product -> {reader: file Reference}, and
-# the scenario-bounds cell of each MultiIndex table: product -> {bounds cell: (reader, level)}.
+# The products' own dict cells, beside the core's: product -> {reader: file Reference}; the
+# bounds cell of a table a lookup clamps to: product -> {bounds cell: (reader, group level or
+# None, bounded level, "range" for (first, last) or "last" for the last key alone)}; and the
+# by-row cells: product -> {rows cell: reader}.
 PRODUCT_DICT_READERS = {
     "klassische_rentenversicherung": {"decl_rate_table": "decl_rate_file"},
     "kapitallebensversicherung": {
         "surplus_rate_table": "surplus_rate_file",
         "deckrv_table": "deckrv_file",
     },
+    "basisrente": {"behaviour_table": "behaviour_file", "option_table": "option_file"},
+    "fondsgebundene_rentenversicherung": {"fund_scenario_table": "fund_scenario_file"},
+    "indexpolice": {
+        "index_return_table": "index_return_file",
+        "index_param_table": "index_param_file",
+        "surplus_rate_table": "surplus_rate_file",
+        "election_table": "election_file",
+    },
+    "sofortrente": {
+        "improvement_table": "improvement_file",
+        "surplus_scale_table": "surplus_scale_file",
+    },
+    "berufsunfaehigkeit": {
+        "inception_table": "inception_file",
+        "claim_duration_table": "claim_duration_file",
+        "occupation_table": "occupation_file",
+    },
 }
 PRODUCT_BOUNDS = {
-    "klassische_rentenversicherung": {"decl_rate_years": ("decl_rate_table", "calendar_year")},
-    "kapitallebensversicherung": {"surplus_rate_years": ("surplus_rate_table", "policy_year")},
+    "klassische_rentenversicherung": {
+        "decl_rate_years": ("decl_rate_table", "scenario_id", "calendar_year", "range")},
+    "kapitallebensversicherung": {
+        "surplus_rate_years": ("surplus_rate_table", "scenario_id", "policy_year", "range")},
+    "basisrente": {
+        "behaviour_table_durs": ("behaviour_table", "beh_table_id", "dur", "last"),
+        "surplus_table_years": ("surplus_table", "scenario_id", "t", "last"),
+    },
+    "sofortrente": {
+        "mort_table_ages": ("mort_table", None, "age", "range"),
+        "improvement_table_ages": ("improvement_table", None, "age", "range"),
+    },
+    "berufsunfaehigkeit": {
+        "inception_table_ages": ("inception_table", None, "age", "range"),
+        "mort_table_ages": ("mort_table", None, "age", "range"),
+    },
 }
+PRODUCT_ROWS = {"fondsgebundene_rentenversicherung": {"charge_table_rows": "charge_table"}}
+
+
+def _expected_bound(values, shape):
+    """The bound of an index level's values: ``(first, last)`` or the last alone, as ints."""
+    if shape == "range":
+        return (int(values.min()), int(values.max()))
+    return int(values.max())
 
 
 @pytest.mark.parametrize("product", sorted(PRODUCT_DICT_READERS))
-def test_rv_and_klv_product_dict_cells_equal_their_readers(product, product_models):
+def test_product_dict_cells_equal_their_readers(product, product_models):
     data = product_models(product).Data
     for reader, ref in PRODUCT_DICT_READERS[product].items():
         assert ref in data.refs, reader
@@ -1955,15 +1996,32 @@ def test_rv_and_klv_product_dict_cells_equal_their_readers(product, product_mode
             assert list(values) == list(df.index), (reader, column)
             for key in df.index:
                 assert same_value(values[key], df.at[key, column]), (reader, key, column)
-    for cell, (reader, level) in PRODUCT_BOUNDS[product].items():
+    for cell, (reader, group, level, shape) in PRODUCT_BOUNDS.get(product, {}).items():
+        assert data.cells[cell]._is_defined(), cell
         df = data.cells[reader]()
         bounds = data.cells[cell]()
-        scenarios = df.index.get_level_values("scenario_id").unique()
-        assert sorted(bounds) == sorted(scenarios), cell
-        for scen in scenarios:
-            years = df.loc[scen].index
-            assert years.name == level
-            assert bounds[scen] == (int(years.min()), int(years.max())), (cell, scen)
+        if group is None:
+            expected = _expected_bound(df.index.get_level_values(level), shape)
+            assert bounds == expected, cell
+            assert all(type(b) is int for b in (bounds if shape == "range" else (bounds,))), cell
+            continue
+        groups = df.index.get_level_values(group).unique()
+        assert sorted(bounds) == sorted(groups), cell
+        for key in groups:
+            values = df.loc[key].index
+            assert values.name == level
+            assert bounds[key] == _expected_bound(values, shape), (cell, key)
+            assert all(type(b) is int for b in (
+                bounds[key] if shape == "range" else (bounds[key],))), (cell, key)
+    for cell, reader in PRODUCT_ROWS.get(product, {}).items():
+        assert data.cells[cell]._is_defined(), cell
+        df = data.cells[reader]()
+        rows = data.cells[cell]()
+        assert list(rows) == list(df.index), cell
+        for key in df.index:
+            assert list(rows[key]) == list(df.columns), (cell, key)
+            for column in df.columns:
+                assert same_value(rows[key][column], df.at[key, column]), (cell, key, column)
 
 
 # product -> (the third exit cell the residual sums, a new point, an in-force point).
@@ -2072,6 +2130,8 @@ def test_klv_deckrv_ceilings_clamp_the_issue_year(tmp_path, issue_year):
     ("kapitallebensversicherung", "decl_rate"),
     ("kapitallebensversicherung", "term_rate"),
     ("kapitallebensversicherung", "ans_rate"),
+    ("basisrente", "decl_rate"),
+    ("basisrente", "ann_bonus_rate"),
 ])
 def test_an_unknown_scenario_raises_key_error(tmp_path, product, cell):
     folder = product_copy(tmp_path, product)
@@ -2087,3 +2147,178 @@ def test_an_unknown_scenario_raises_key_error(tmp_path, product, cell):
         assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
     finally:
         copy.close()
+
+
+def test_basis_behaviour_holds_its_first_and_last_policy_year(product_models):
+    model = product_models("basisrente")
+    table = model.Data.behaviour_table()
+    item = model.Projection[1]
+    key = item.model_point()["beh_table_id"]
+    last = int(table.loc[key].index.max())
+    k_late = last + 5
+    assert item.policy_year_y(k_late) > last
+    assert item.zuz_take_up(k_late) == float(table.at[(key, last), "zuz_take_up"])
+    k_early = -item.duration_init() - 5
+    assert item.policy_year_y(k_early) < 1
+    assert item.zuz_take_up(k_early) == float(table.at[(key, 1), "zuz_take_up"])
+
+
+def test_basis_bf_rate_holds_the_last_row_of_a_short_table(tmp_path):
+    folder = product_copy(tmp_path, "basisrente")
+    path = folder / "behaviour_table.csv"
+    table = pd.read_csv(path, index_col=["beh_table_id", "dur"])
+    table = table[table.index.get_level_values("dur") <= 7]
+    table.to_csv(path)
+    copy = mx.read_model(folder / MODELS["basisrente"], name="BfProbe")
+    try:
+        item = copy.Projection[1]
+        key = item.model_point()["beh_table_id"]
+        assert copy.Data.behaviour_table_durs()[key] == 7
+        t = 12 * 9
+        assert item.policy_year(t) == 10 and t < min(item.t_conv(), item.proj_len())
+        assert item.bf_rate(t) == float(table.at[(key, 7), "bf_rate"])
+        assert item.zuz_take_up(9) == float(table.at[(key, 7), "zuz_take_up"])
+    finally:
+        copy.close()
+
+
+def test_basis_unknown_behaviour_table_raises_key_error(tmp_path):
+    folder = product_copy(tmp_path, "basisrente")
+    table = folder / "model_point_table.csv"
+    points = pd.read_csv(table, index_col="point_id")
+    point_id = points.index[0]
+    points.loc[point_id, "beh_table_id"] = "unbekannt"
+    points.to_csv(table)
+    copy = mx.read_model(folder / MODELS["basisrente"], name="BehProbe")
+    try:
+        for cell in ("zuz_take_up", "bf_rate"):
+            with pytest.raises(Exception, match="unbekannt") as raised:
+                copy.Projection[point_id].cells[cell](0)
+            assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+    finally:
+        copy.close()
+
+
+def test_basis_surplus_holds_its_first_and_last_year(product_models):
+    model = product_models("basisrente")
+    table = model.Data.surplus_table()
+    item = model.Projection[1]
+    scen = item.scenario_id()
+    last = int(table.loc[scen].index.max())
+    for cell in ("decl_rate", "ann_bonus_rate"):
+        assert item.cells[cell](last + 5) == float(table.at[(scen, last), cell]), cell
+        assert item.cells[cell](-3) == float(table.at[(scen, 0), cell]), cell
+
+
+def test_basis_unknown_surplus_scenario_raises_key_error(tmp_path):
+    folder = product_copy(tmp_path, "basisrente")
+    table = folder / "model_point_table.csv"
+    points = pd.read_csv(table, index_col="point_id")
+    point_id = points.index[0]
+    points.loc[point_id, "scenario_id"] = "unbekannt"
+    points.to_csv(table)
+    copy = mx.read_model(folder / MODELS["basisrente"], name="SurplusProbe")
+    try:
+        for cell in ("decl_rate", "ann_bonus_rate"):
+            with pytest.raises(Exception, match="unbekannt") as raised:
+                copy.Projection[point_id].cells[cell](0)
+            assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+    finally:
+        copy.close()
+
+
+def test_basis_single_premium_reads_no_loading(tmp_path):
+    folder = product_copy(tmp_path, "basisrente")
+    table = folder / "option_table.csv"
+    options = pd.read_csv(table, index_col=["option_id", "option_key"])
+    options.drop(index="prem_mode", level="option_id").to_csv(table)
+    copy = mx.read_model(folder / MODELS["basisrente"], name="LoadProbe")
+    try:
+        points = copy.Data.model_point_table()
+        single = points.index[points["prem_form"] == "single"][0]
+        regular = points.index[points["prem_form"] == "regular"][0]
+        assert copy.Projection[single].prem_freq_load() == 1.0
+        with pytest.raises(Exception, match="prem_mode") as raised:
+            copy.Projection[regular].prem_freq_load()
+        assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+    finally:
+        copy.close()
+
+
+def test_sofort_ages_outside_the_tables_hold_their_ends(product_models):
+    model = product_models("sofortrente")
+    mort = model.Data.mort_table()
+    improve = model.Data.improvement_table()
+    item = model.Projection[model.Data.model_point_table().index[0]]
+    ages = mort.index.get_level_values("age")
+    lo, hi = int(ages.min()), int(ages.max())
+    for basis in ("FIRST", "SECOND"):
+        for sex in ("M", "F"):
+            assert item.mort_rate_at_age(lo - 5, sex, basis) == float(
+                mort.at[(basis, sex, lo), "mort_rate"]), (basis, sex)
+            assert item.mort_rate_at_age(hi + 5, sex, basis) == float(
+                mort.at[(basis, sex, hi), "mort_rate"]), (basis, sex)
+    ages = improve.index.get_level_values("age")
+    lo, hi = int(ages.min()), int(ages.max())
+    for basis in ("FIRST", "SECOND"):
+        assert item.improve_rate_at_age(lo - 5, basis) == float(
+            improve.at[(basis, lo), "improve_rate"]), basis
+        assert item.improve_rate_at_age(hi + 5.5, basis) == float(
+            improve.at[(basis, hi), "improve_rate"]), basis
+
+
+def test_bu_ages_outside_the_tables_hold_their_ends(product_models):
+    model = product_models("berufsunfaehigkeit")
+    inception = model.Data.inception_table()
+    mort = model.Data.mort_table()
+    item = model.Projection[model.Data.model_point_table().index[0]]
+    assert (int(inception.index.min()), int(inception.index.max())) == (18, 66)
+    assert (int(mort.index.min()), int(mort.index.max())) == (18, 70)
+    assert item.inc_rate_at_age(10) == float(inception.at[18, "inc_rate"])
+    assert item.inc_rate_at_age(80) == float(inception.at[66, "inc_rate"])
+    for cell, column in (("mort_rate_at_age", "mort_rate_actv"),
+                         ("mort_rate_dis_at_age", "mort_rate_dis")):
+        assert item.cells[cell](10) == float(mort.at[18, column]), cell
+        assert item.cells[cell](80) == float(mort.at[70, column]), cell
+
+
+def test_index_lapse_beyond_the_table_raises_key_error():
+    folder = PRODUCTS_DIR / "indexpolice" / MODELS["indexpolice"]
+    copy = mx.read_model(folder, name="IndexLapseProbe")
+    try:
+        last = int(copy.Data.lapse_table().index.max())
+        item = copy.Projection[copy.Data.model_point_table().index[0]]
+        t = 12 * (last + 1)
+        assert item.duration(t) == last + 1
+        assert item.lapse_rate_base(12 * last) == float(
+            copy.Data.lapse_table().at[last, "lapse_rate"])
+        with pytest.raises(Exception, match=f"KeyError: {last + 1}") as raised:
+            item.lapse_rate_base(t)
+        assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+    finally:
+        copy.close()
+
+
+def test_basis_net_cf_resid_reads_the_frame_through_its_dict(product_models):
+    model = product_models("basisrente")
+    projection = model.Projection
+    assert projection.check_net_cf_resid._is_defined()
+    assert projection.result_cf_dict._is_derived()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        frame = item.result_cf()
+        columns = item.result_cf_dict()
+        assert list(columns) == list(frame.columns), point_id
+        for label in frame.columns:
+            assert list(columns[label]) == list(frame.index), (point_id, label)
+            for t in frame.index:
+                assert columns[label][t] == frame.at[t, label], (point_id, label, t)
+        for t in frame.index:
+            row = frame.loc[t]
+            expected = float(row["premiums"] + row["zuzahlungen"]
+                             - row["claims_death"] - row["claims_annuity"]
+                             - row["claims_survivor"] - row["expenses"]
+                             - row["commissions"] - row["net_cf"])
+            assert item.check_net_cf_resid(t) == expected, (point_id, t)
+        with pytest.raises(Exception, match=f"KeyError: {item.proj_len()}\n"):
+            item.check_net_cf_resid(item.proj_len())

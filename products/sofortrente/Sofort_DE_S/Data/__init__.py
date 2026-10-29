@@ -38,6 +38,13 @@ hoechstrechnungszins_file     hoechstrechnungszins_table()    hoechstrechnungszi
 param_file                    param_table()                   param_table.csv
 ============================  ==============================  ================================
 
+Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
+dicts by column, built once per model, which the projection's lookups read instead of
+``DataFrame.loc``: the core's for ``model_point_table``, ``param_table``, ``mort_table`` and
+``hoechstrechnungszins_table``, this space's ``improvement_table_dict`` and
+``surplus_scale_table_dict``, with ``mort_table_ages`` and ``improvement_table_ages``, the
+age range the lookups clamp to.
+
 Every file but ``model_point_table.csv`` carries a final ``provenance`` column, one tag
 per row, per the library's second ruling. A model point is a *configuration* rather than
 an assumption, and that is the only exemption.
@@ -159,6 +166,44 @@ def surplus_scale_table():
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / surplus_scale_file, index_col="surplus_form")  # noqa: F821
+
+
+def improvement_table_dict():
+    """The improvement rates as a dict by column: ``{column: {(basis, age): rate}}``.
+
+    Built once per model from ``improvement_table()``, keyed by the tuple of its two index
+    columns; ``Projection.improve_rate_at_age`` reads its ``improve_rate`` column.
+    """
+    return improvement_table().to_dict()
+
+
+def surplus_scale_table_dict():
+    """The *Überschussverwendung* scale as a dict by column: ``{column: {surplus_form: value}}``.
+
+    Built once per model from ``surplus_scale_table()``; ``Projection.surplus_init_pct`` and
+    ``surplus_growth`` read the columns of their names.
+    """
+    return surplus_scale_table().to_dict()
+
+
+def mort_table_ages():
+    """The age range of the core's ``mort_table()``: ``(first_age, last_age)``.
+
+    Over the whole index, every basis and sex together, built once per model; the bounds
+    ``Projection.mort_rate_at_age`` clamps the attained age to.
+    """
+    ages = mort_table().index.get_level_values("age")
+    return (int(ages.min()), int(ages.max()))
+
+
+def improvement_table_ages():
+    """The age range of ``improvement_table()``: ``(first_age, last_age)``.
+
+    Over the whole index, both bases together, built once per model; the bounds
+    ``Projection.improve_rate_at_age`` clamps the attained age to.
+    """
+    ages = improvement_table().index.get_level_values("age")
+    return (int(ages.min()), int(ages.max()))
 
 
 # ---------------------------------------------------------------------------

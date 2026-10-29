@@ -39,6 +39,12 @@ rentenfaktor_file         rentenfaktor_table()          rentenfaktor_table.csv
 param_file                param_table()                 param_table.csv
 ========================  ============================  ==========================
 
+Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
+dicts by column, built once per model, which the projection's lookups read instead of
+``DataFrame.loc``: the core's for ``model_point_table``, ``param_table``, ``mort_table``,
+``lapse_table`` and ``rentenfaktor_table``, this space's ``fund_scenario_table_dict``, and
+``charge_table_rows``, the charge table by row.
+
 **Every file but ``model_point_table.csv`` carries a ``provenance`` column**, one tag per
 row, and the library's conventions suite asserts it. That is this library's second
 ruling: the citation discipline reaches the data files rather than stopping at the prose.
@@ -153,6 +159,26 @@ def rentenfaktor_table_index():
     and ``annuity_age``, products/fondsgebundene_rentenversicherung/model.md:364
     """
     return ["factor_id", "annuity_age"]
+
+
+def fund_scenario_table_dict():
+    """The fund paths as a dict by column: ``{column: {(scenario_id, policy_year): rate}}``.
+
+    Built once per model from ``fund_scenario_table()``, keyed by the tuple of its two index
+    columns; ``Projection.fund_return_gross_ann`` and ``fund_ter_ann`` read the columns they
+    use.
+    """
+    return fund_scenario_table().to_dict()
+
+
+def charge_table_rows():
+    """The core's ``charge_table()`` as a dict by row: ``{charge_id: {column: value}}``.
+
+    Built once per model, like the core's ``model_point_table_dict``; ``Projection.charge_row``
+    returns the row of the policy's ``charge_id``, which its callers index by column.  The
+    row is shared and read-only.
+    """
+    return charge_table().to_dict("index")
 
 
 # ---------------------------------------------------------------------------

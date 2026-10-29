@@ -93,8 +93,8 @@ rho_g(x)                    rec_force(x, g)                 Force of recovery
 (gate)                      lapse_factor(t)                 0 after the premium term
 w(t)                        lapse_rate_mth(t)               Monthly lapse probability
 (allocation)                p_act_stay/death/care(t)        Active-state month transitions
-(allocation)                p_pg(t, g)                      Grade-g month transitions,
-                                                            one tuple
+(allocation)                p_pg_age(x, g), p_pg(t, g)      Grade-g month transitions,
+                                                            one tuple, keyed by age
 (allocation)                p_pg_stay/death/worse/better    Its four components
 l_A(t)                      pols_act(t)                     Active at the start of month t
 W_{g,z}(t)                  pols_karenz(t, g, z)            In the Karenz ledger
@@ -737,12 +737,34 @@ def p_pg(t, g):
     are read once and the month's exits allocated in proportion to them: ``stay`` is
     ``exp(-(mu_g + delta_g + rho_g)/12)`` and each exit its force's share of ``1 - stay``.
     The four published cells :func:`p_pg_stay`, :func:`p_pg_death`, :func:`p_pg_worse` and
-    :func:`p_pg_better` read it; the ledgers read the tuple directly, one evaluation per
-    month and grade instead of four.
+    :func:`p_pg_better` read it.  It is :func:`p_pg_age` at the attained age ``age(t)``.
     """
-    mu = mort_force_care(t, g)
-    delta = det_force(age(t), g)
-    rho = rec_force(age(t), g)
+    return p_pg_age(age(t), g)
+
+
+def age_month(x):
+    """The first month ``t`` on the projection clock at which the attained age is ``x``.
+
+    ``12 (x - issue_age()) - clock_offset_mth()``, so that ``age(age_month(x)) == x``
+    exactly.  The month at which the age-keyed transitions read the month-keyed forces.
+    """
+    return 12 * (x - issue_age()) - clock_offset_mth()
+
+
+def p_pg_age(x, g):
+    """The grade-``g`` month transitions at attained age ``x``, ``(stay, death, worse, better)``.
+
+    Keyed by age, not by month: the care-grade force of mortality :func:`mort_force_care`
+    depends on the month only through ``age(t)`` (the core's ``mort_rate(t)`` reads the
+    table at the attained age), and :func:`det_force` and :func:`rec_force` are keyed by
+    age already, so the transitions are the same in every month of a year of age.  The
+    force is read at :func:`age_month`, the first month of that age.  If the core's
+    ``mort_rate`` ever depends on the month beyond the age, this keying is wrong and has to
+    go back to ``t`` (Moritz, 2026-10-29, lifting story 2.7's choice to keep ``t``).
+    """
+    mu = mort_force_care(age_month(x), g)
+    delta = det_force(x, g)
+    rho = rec_force(x, g)
     total = mu + delta + rho
     stay = math.exp(-total / 12.0)                                   # noqa: F821
     rest = 1.0 - stay
@@ -808,7 +830,8 @@ def pols_ledger(t):
         pg = tuple(pols_if_init() if status == "pg%d" % g else 0.0 for g in range(1, 6))
         return (act, pg, pg, tuple((0.0,) * k for g in range(1, 6)))
     act0, pg0, esc0, kar0 = pols_ledger(t - 1)
-    p = tuple(p_pg(t - 1, g) for g in range(1, 6))
+    x = age(t - 1)
+    p = tuple(p_pg_age(x, g) for g in range(1, 6))
     care = act0 * p_act_care(t - 1)
     entry = tuple(care * inc_share(g) for g in range(1, 6))
     if k <= 0:
@@ -962,7 +985,7 @@ def pols_reactiv(t):
     total = state[1][0]
     for z in range(1, karenz_months() + 1):
         total += state[3][0][z - 1]
-    return total * p_pg(t, 1)[3]
+    return total * p_pg_age(age(t), 1)[3]
 
 
 def pols_pg(t, g):
@@ -1101,7 +1124,7 @@ def pols_death(t):
         in_grade = state[1][g - 1]
         for z in range(1, karenz_months() + 1):
             in_grade += state[3][g - 1][z - 1]
-        total += in_grade * p_pg(t, g)[1]
+        total += in_grade * p_pg_age(age(t), g)[1]
     return total
 
 

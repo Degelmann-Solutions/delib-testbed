@@ -100,6 +100,7 @@ l_A(t)                      pols_act(t)                     Active at the start 
 W_{g,z}(t)                  pols_karenz(t, g, z)            In the Karenz ledger
 l_g(t)                      pols_pg(t, g)                   In a paying Pflegegrad
 E_g(t)                      esc_pg(t, g)                    Escalation-weighted l_g
+(none)                      pols_ledger(t)                  The four ledgers as one state
 (none)                      pols_care(t)                    Everyone in care
 l(t)                        pols_if(t)                      In force at the start of t
 l(t+1)                      pols_if_at(t, timing)           BEF_DECR / AFT_DECR
@@ -145,6 +146,7 @@ v**t                        disc_factor_mth(t)              (1 + i)^(-t/12)
 (first order)               tar_pols_grad(t, g)             Tariff Karenz graduations
 (first order)               tar_pols_pg(t, g)               Tariff paying ledger
 (first order)               tar_esc_pg(t, g)                Tariff escalation ledger
+(first order)               tar_ledger(t)                   Tariff ledgers as one state
 (first order)               tar_pols_if(t)                  Tariff in force
 (first order)               tar_pols_prem(t)                Tariff premium-paying units
 (first order)               tar_pols_death(t)               Tariff deaths
@@ -787,6 +789,85 @@ def p_pg_better(t, g):
     return p_pg(t, g)[3]
 
 
+def pols_ledger(t):
+    """The second-order ledgers at the start of month ``t``, as one state.
+
+    ``(act, pg, esc, karenz)``: :func:`pols_act`, :func:`pols_pg` and :func:`esc_pg` for
+    ``g = 1 .. 5`` and :func:`pols_karenz` for ``g = 1 .. 5`` and ``z = 1 ..
+    karenz_months()``, rolled forward from the state at ``t - 1`` by the recursions those
+    cells state, with the same operations in the same order: the month's entrants
+    (:func:`pols_entry`), graduations (:func:`pols_grad`) and reactivations
+    (:func:`pols_reactiv`) are formed inline from the previous state.  One evaluation per
+    month instead of one per month, grade and clock; the published cells read their
+    component.
+    """
+    k = karenz_months()
+    if t <= t_start():
+        status = status_init()
+        act = pols_if_init() if status == "aktiv" else 0.0
+        pg = tuple(pols_if_init() if status == "pg%d" % g else 0.0 for g in range(1, 6))
+        return (act, pg, pg, tuple((0.0,) * k for g in range(1, 6)))
+    act0, pg0, esc0, kar0 = pols_ledger(t - 1)
+    p = tuple(p_pg(t - 1, g) for g in range(1, 6))
+    care = act0 * p_act_care(t - 1)
+    entry = tuple(care * inc_share(g) for g in range(1, 6))
+    if k <= 0:
+        grad = entry
+        kar = kar0
+    else:
+        grad = []
+        kar = []
+        for g in range(1, 6):
+            total = 0.0
+            for h in range(max(1, g - 1), min(5, g + 1) + 1):
+                w = kar0[h - 1][k - 1]
+                if w == 0.0:
+                    continue
+                if h == g:
+                    total += w * p[h - 1][0]
+                elif g == h + 1:
+                    total += w * p[h - 1][2]
+                else:
+                    total += w * p[h - 1][3]
+            grad.append(total)
+            row = [entry[g - 1]]
+            for z in range(2, k + 1):
+                total = 0.0
+                for h in range(max(1, g - 1), min(5, g + 1) + 1):
+                    w = kar0[h - 1][z - 2]
+                    if w == 0.0:
+                        continue
+                    if h == g:
+                        total += w * p[h - 1][0]
+                    elif g == h + 1:
+                        total += w * p[h - 1][2]
+                    else:
+                        total += w * p[h - 1][3]
+                row.append(total)
+            kar.append(tuple(row))
+        kar = tuple(kar)
+    reactiv = pg0[0]
+    for z in range(1, k + 1):
+        reactiv += kar0[0][z - 1]
+    reactiv = reactiv * p[0][3]
+    act = (act0 * p_act_stay(t - 1) + reactiv) * (1.0 - lapse_rate_mth(t - 1))
+    factor = (1.0 + leistungsdynamik()) ** (1.0 / 12.0)
+    pg = []
+    esc = []
+    for g in range(1, 6):
+        total = pg0[g - 1] * p[g - 1][0] + grad[g - 1]
+        carried = esc0[g - 1] * p[g - 1][0]
+        if g > 1:
+            total += pg0[g - 2] * p[g - 2][2]
+            carried += esc0[g - 2] * p[g - 2][2]
+        if g < 5:
+            total += pg0[g] * p[g][3]
+            carried += esc0[g] * p[g][3]
+        pg.append(total)
+        esc.append(factor * carried + grad[g - 1])
+    return (act, tuple(pg), tuple(esc), kar)
+
+
 def pols_act(t):
     """l_A(t): lives in the **active** state at the start of month ``t``.
 
@@ -799,10 +880,7 @@ def pols_act(t):
     inflow**; the alternatives give different answers and this ordering is the one the
     notes' processing order states.
     """
-    if t <= t_start():
-        return pols_if_init() if status_init() == "aktiv" else 0.0
-    survivors = pols_act(t - 1) * p_act_stay(t - 1) + pols_reactiv(t - 1)
-    return survivors * (1.0 - lapse_rate_mth(t - 1))
+    return pols_ledger(t)[0]
 
 
 def pols_entry(t, g):
@@ -837,20 +915,7 @@ def pols_karenz(t, g, z):
         return 0.0
     if t <= t_start():
         return 0.0
-    if z == 1:
-        return pols_entry(t - 1, g)
-    total = 0.0
-    for h in range(max(1, g - 1), min(5, g + 1) + 1):
-        w = pols_karenz(t - 1, h, z - 1)
-        if w == 0.0:
-            continue
-        if h == g:
-            total += w * p_pg(t - 1, h)[0]
-        elif g == h + 1:
-            total += w * p_pg(t - 1, h)[2]
-        else:
-            total += w * p_pg(t - 1, h)[3]
-    return total
+    return pols_ledger(t)[3][g - 1][z - 1]
 
 
 def pols_grad(t, g):
@@ -912,14 +977,7 @@ def pols_pg(t, g):
     deterioration term absent.  Every one of those moves is **internal** to the in-force
     population, which is why :func:`check_pols_roll_fwd` sees only deaths and lapses.
     """
-    if t <= t_start():
-        return pols_if_init() if status_init() == "pg%d" % g else 0.0
-    total = pols_pg(t - 1, g) * p_pg(t - 1, g)[0] + pols_grad(t - 1, g)
-    if g > 1:
-        total += pols_pg(t - 1, g - 1) * p_pg(t - 1, g - 1)[2]
-    if g < 5:
-        total += pols_pg(t - 1, g + 1) * p_pg(t - 1, g + 1)[3]
-    return total
+    return pols_ledger(t)[1][g - 1]
 
 
 def esc_pg(t, g):
@@ -940,15 +998,7 @@ def esc_pg(t, g):
     head count would silently drop the escalation on every model point that carries one,
     and no total in the frame would look wrong.
     """
-    if t <= t_start():
-        return pols_pg(t, g)
-    factor = (1.0 + leistungsdynamik()) ** (1.0 / 12.0)
-    carried = esc_pg(t - 1, g) * p_pg(t - 1, g)[0]
-    if g > 1:
-        carried += esc_pg(t - 1, g - 1) * p_pg(t - 1, g - 1)[2]
-    if g < 5:
-        carried += esc_pg(t - 1, g + 1) * p_pg(t - 1, g + 1)[3]
-    return factor * carried + pols_grad(t - 1, g)
+    return pols_ledger(t)[2][g - 1]
 
 
 def pols_care(t):
@@ -1546,6 +1596,81 @@ def tar_p_pg(x, g):
     return (stay, mu_g / total * rest, mu_d / total * rest, mu_r / total * rest)
 
 
+def tar_ledger(t):
+    """The first-order ledgers at the start of month ``t``, as one state.
+
+    ``(act, pg, esc, karenz)``: :func:`tar_pols_act`, :func:`tar_pols_pg` and
+    :func:`tar_esc_pg` for ``g = 1 .. 5`` and :func:`tar_pols_karenz` for ``g = 1 .. 5``
+    and ``z = 1 .. karenz_months()``, rolled forward from the state at ``t - 1`` by the
+    recursions those cells state, with the same operations in the same order: the month's
+    entrants and graduations (:func:`tar_pols_grad`) are formed inline from the previous
+    state.  One evaluation per month instead of one per month, grade and clock; the
+    published cells read their component.
+    """
+    k = karenz_months()
+    if t <= 0:
+        zero = (0.0,) * 5
+        return (1.0, zero, zero, tuple((0.0,) * k for g in range(1, 6)))
+    act0, pg0, esc0, kar0 = tar_ledger(t - 1)
+    x = age(t - 1)
+    p = tuple(tar_p_pg(x, g) for g in range(1, 6))
+    pa = tar_p_act(t - 1)
+    if k <= 0:
+        grad = tuple(act0 * pa[2] * inc_share(g) for g in range(1, 6))
+        kar = kar0
+    else:
+        grad = []
+        kar = []
+        for g in range(1, 6):
+            total = 0.0
+            for h in range(max(1, g - 1), min(5, g + 1) + 1):
+                w = kar0[h - 1][k - 1]
+                if w == 0.0:
+                    continue
+                if h == g:
+                    total += w * p[h - 1][0]
+                elif g == h + 1:
+                    total += w * p[h - 1][2]
+                else:
+                    total += w * p[h - 1][3]
+            grad.append(total)
+            row = [act0 * pa[2] * inc_share(g)]
+            for z in range(2, k + 1):
+                total = 0.0
+                for h in range(max(1, g - 1), min(5, g + 1) + 1):
+                    w = kar0[h - 1][z - 2]
+                    if w == 0.0:
+                        continue
+                    if h == g:
+                        total += w * p[h - 1][0]
+                    elif g == h + 1:
+                        total += w * p[h - 1][2]
+                    else:
+                        total += w * p[h - 1][3]
+                row.append(total)
+            kar.append(tuple(row))
+        kar = tuple(kar)
+    reactiv = pg0[0]
+    for z in range(1, k + 1):
+        reactiv += kar0[0][z - 1]
+    act = act0 * pa[0] + reactiv * p[0][3]
+    factor = (1.0 + leistungsdynamik()) ** (1.0 / 12.0)
+    pg = []
+    esc = []
+    for g in range(1, 6):
+        total = pg0[g - 1] * p[g - 1][0] + grad[g - 1]
+        carried = esc0[g - 1] * p[g - 1][0]
+        if g > 1:
+            total += pg0[g - 2] * p[g - 2][2]
+            carried += esc0[g - 2] * p[g - 2][2]
+        if g < 5:
+            total += pg0[g] * p[g][3]
+            carried += esc0[g] * p[g][3]
+        pg.append(total)
+        esc.append(factor * carried + grad[g - 1])
+    return (act, tuple(pg), tuple(esc), kar)
+
+
 def tar_pols_act(t):
     """The first-order active ledger, from one policy at issue.
 
@@ -1556,13 +1681,7 @@ def tar_pols_act(t):
     acyclic: a pricing quantity must not depend on a behavioural assumption that depends on
     the path that depends on the premium.
     """
-    if t <= 0:
-        return 1.0
-    stay = tar_p_act(t - 1)[0]
-    reactiv = tar_pols_pg(t - 1, 1)
-    for z in range(1, karenz_months() + 1):
-        reactiv += tar_pols_karenz(t - 1, 1, z)
-    return tar_pols_act(t - 1) * stay + reactiv * tar_p_pg(age(t - 1), 1)[3]
+    return tar_ledger(t)[0]
 
 
 def tar_pols_karenz(t, g, z):
@@ -1576,22 +1695,7 @@ def tar_pols_karenz(t, g, z):
     k = karenz_months()
     if k <= 0 or z < 1 or z > k or t <= 0:
         return 0.0
-    if z == 1:
-        prev = tar_pols_act(t - 1) * tar_p_act(t - 1)[2] * inc_share(g)
-        return prev
-    total = 0.0
-    for h in range(max(1, g - 1), min(5, g + 1) + 1):
-        w = tar_pols_karenz(t - 1, h, z - 1)
-        if w == 0.0:
-            continue
-        p = tar_p_pg(age(t - 1), h)
-        if h == g:
-            total += w * p[0]
-        elif g == h + 1:
-            total += w * p[2]
-        else:
-            total += w * p[3]
-    return total
+    return tar_ledger(t)[3][g - 1][z - 1]
 
 
 def tar_pols_grad(t, g):
@@ -1616,15 +1720,7 @@ def tar_pols_grad(t, g):
 
 def tar_pols_pg(t, g):
     """The first-order paying ledger at *Pflegegrad* ``g``."""
-    if t <= 0:
-        return 0.0
-    p_g = tar_p_pg(age(t - 1), g)
-    total = tar_pols_pg(t - 1, g) * p_g[0] + tar_pols_grad(t - 1, g)
-    if g > 1:
-        total += tar_pols_pg(t - 1, g - 1) * tar_p_pg(age(t - 1), g - 1)[2]
-    if g < 5:
-        total += tar_pols_pg(t - 1, g + 1) * tar_p_pg(age(t - 1), g + 1)[3]
-    return total
+    return tar_ledger(t)[1][g - 1]
 
 
 def tar_esc_pg(t, g):
@@ -1634,15 +1730,7 @@ def tar_esc_pg(t, g):
     *Leistungsdynamik* is priced with one.  With the dynamic off it equals
     :func:`tar_pols_pg` at every ``t`` and ``g``.
     """
-    if t <= 0:
-        return 0.0
-    factor = (1.0 + leistungsdynamik()) ** (1.0 / 12.0)
-    carried = tar_esc_pg(t - 1, g) * tar_p_pg(age(t - 1), g)[0]
-    if g > 1:
-        carried += tar_esc_pg(t - 1, g - 1) * tar_p_pg(age(t - 1), g - 1)[2]
-    if g < 5:
-        carried += tar_esc_pg(t - 1, g + 1) * tar_p_pg(age(t - 1), g + 1)[3]
-    return factor * carried + tar_pols_grad(t - 1, g)
+    return tar_ledger(t)[2][g - 1]
 
 
 def tar_pols_if(t):

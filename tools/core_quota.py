@@ -25,8 +25,12 @@ Each point's ItemSpace is deleted once it has been read, so the points do not ac
 
 Lower bound
 -----------
-``LOWER_BOUND`` = 0.20 for every product, and a product passes at ``quota >= LOWER_BOUND``
-(Moritz, 2026-10-28, epic-common-core Notes). ``tests/test_core_quota.py`` enforces it.
+``LOWER_BOUND`` = 0.20 for every product (Moritz, 2026-10-28, epic-common-core Notes) but
+those in ``PRODUCT_BOUNDS``, which carry their own bound at their measured quota (BU, 28 of
+142: Moritz, 2026-10-29, epic-night-run Notes, variant c, as recorded in ``3ab6cbc``;
+applied when BU's cohort index and *Leistungsdynamik* step became ``Projection`` cells and
+took it below 20 %). A product passes at ``quota >= bound_for(product)``;
+``tests/test_core_quota.py`` enforces it.
 
 Output
 ------
@@ -35,8 +39,8 @@ core and the quota, ``<product>: executed <n>, from core <c>, quota <q>``. With 
 the tool also writes ``{product: {"executed": n, "core": c, "quota": q, "executed_cells":
 [...], "core_cells": [...]}}``, the cell names sorted.
 
-Exit status: 0 if every quota is at or above ``LOWER_BOUND``; 1 if any is below (each such
-product is printed on stderr with its figures); 2 on a usage error.
+Exit status: 0 if every quota is at or above its bound, ``bound_for(product)``; 1 if any is
+below (each such product is printed on stderr with its bound and figures); 2 on a usage error.
 """
 from __future__ import annotations
 
@@ -52,7 +56,16 @@ from run_baseline import UsageError, check_names, model_dir, product_names, reso
 
 import modelx as mx  # noqa: E402
 
-LOWER_BOUND = 0.20  # Moritz, 2026-10-28: one bound for all products, passed at >=
+# Moritz, 2026-10-28: the bound for every product without its own, passed at >=
+LOWER_BOUND = 0.20
+# Moritz, 2026-10-29 (epic-night-run Notes, variant c, as recorded in 3ab6cbc): BU's own
+# bound at its measured quota.
+PRODUCT_BOUNDS = {"berufsunfaehigkeit": 28 / 142}
+
+
+def bound_for(product: str) -> float:
+    """The lower bound a product's quota is held to: its own, else ``LOWER_BOUND``."""
+    return PRODUCT_BOUNDS.get(product, LOWER_BOUND)
 
 
 def measure(folder: Path) -> dict:
@@ -84,9 +97,10 @@ def measure(folder: Path) -> dict:
     }
 
 
-def below(quotas: dict, bound: float) -> list[str]:
-    """The products whose quota is below ``bound``, in the order of ``quotas``."""
-    return [product for product, figures in quotas.items() if figures["quota"] < bound]
+def below(quotas: dict, bound: float | None = None) -> list[str]:
+    """The products whose quota is below ``bound`` (each its own ``bound_for`` if omitted)."""
+    return [product for product, figures in quotas.items()
+            if figures["quota"] < (bound_for(product) if bound is None else bound)]
 
 
 def line(product: str, figures: dict) -> str:
@@ -94,13 +108,14 @@ def line(product: str, figures: dict) -> str:
             f"quota {figures['quota']:.4f}")
 
 
-def report(quotas: dict, bound: float = LOWER_BOUND) -> int:
+def report(quotas: dict, bound: float | None = None) -> int:
     """Print one line per product and every product below ``bound`` on stderr; the exit code."""
     for product, figures in quotas.items():
         print(line(product, figures))
     failing = below(quotas, bound)
     for product in failing:
-        print(f"BELOW {bound:g}: {line(product, quotas[product])}", file=sys.stderr)
+        limit = bound_for(product) if bound is None else bound
+        print(f"BELOW {limit:g}: {line(product, quotas[product])}", file=sys.stderr)
     return 1 if failing else 0
 
 

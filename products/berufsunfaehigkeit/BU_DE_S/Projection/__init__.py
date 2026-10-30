@@ -622,6 +622,32 @@ def cohort_len_first(s):
     return min(first_len() + 1, s + 1)
 
 
+def cohort_year_idx(n):
+    """The claim-year index of the first ``n`` claim-duration cohorts, capped at 10.
+
+    ``np.minimum(np.arange(n) // 12, 10)``: cohort ``z = 1 .. n`` reads the rate of its
+    claim year, the eleventh standing for every later one.  The disabled ledgers of both
+    orders and their exits read it at their full length, :func:`max_claim_dur` and
+    ``first_len() + 1``, and slice it to the month's vector, ``[:m]``, which is the array
+    ``np.minimum(np.arange(m) // 12, 10)``; keyed by the full length rather than by ``m``,
+    it is built once per contract and order rather than once per month.  Read-only: no
+    reader may mutate the array.
+    """
+    return np.minimum(np.arange(n) // 12, 10)
+
+
+def cohort_anniv_step(n):
+    """The *Leistungsdynamik* step of the first ``n`` cohorts as they age one month.
+
+    ``np.where(np.arange(1, n + 1) % 12 == 0, 1.0 + leistungsdyn_rate(), 1.0)``: the value
+    of a cohort moving into slot ``z + 1`` steps up by ``1 + leistungsdyn_rate()`` where
+    ``z + 1`` is a claim anniversary.  Read at the full length and sliced like
+    :func:`cohort_year_idx`, and read-only like it.
+    """
+    return np.where(np.arange(1, n + 1) % 12 == 0,
+                    1.0 + leistungsdyn_rate(), 1.0)
+
+
 # --- the rate tables, keyed by age ---
 
 def inc_rate_at_age(x):
@@ -1068,8 +1094,8 @@ def dis_cohorts_first(s):
     ry = recov_rate_first_mth_year()
     m = min(len(ppols), n - 1)
     keep = np.array([(1.0 - q) * (1.0 - r) for q, r in zip(qy, ry)])[
-        np.minimum(np.arange(m) // 12, 10)]
-    step = np.where(np.arange(1, m + 1) % 12 == 0, 1.0 + leistungsdyn_rate(), 1.0)
+        cohort_year_idx(first_len() + 1)[:m]]
+    step = cohort_anniv_step(first_len() + 1)[:m]
     pols[1:m + 1] = ppols[:m] * keep
     val[1:m + 1] = pval[:m] * keep * step
     inc = pols_inception_first(s - 1)
@@ -1087,7 +1113,7 @@ def dis_exits_first(s):
     slot 1 as a value.
     """
     pols, val = dis_cohorts_first(s)
-    idx = np.minimum(np.arange(len(pols)) // 12, 10)
+    idx = cohort_year_idx(first_len() + 1)[:len(pols)]
     q = np.array(mort_rate_dis_first_mth_year(age_first(s)))[idx]
     r = np.array(recov_rate_first_mth_year())[idx]
     surv = 1.0 - q
@@ -1347,8 +1373,8 @@ def dis_cohorts(t):
     ry = recov_rate_mth_year()
     m = min(len(ppols), n - 1)
     keep = np.array([(1.0 - q) * (1.0 - r) for q, r in zip(qy, ry)])[
-        np.minimum(np.arange(m) // 12, 10)]
-    step = np.where(np.arange(1, m + 1) % 12 == 0, 1.0 + leistungsdyn_rate(), 1.0)
+        cohort_year_idx(max_claim_dur())[:m]]
+    step = cohort_anniv_step(max_claim_dur())[:m]
     pols[1:m + 1] = ppols[:m] * keep
     val[1:m + 1] = pval[:m] * keep * step
     inc = pols_inception(t - 1)
@@ -1370,7 +1396,7 @@ def dis_exits(t):
     :func:`dis_cohorts` would otherwise have to be walked three times a month.
     """
     pols, val = dis_cohorts(t)
-    idx = np.minimum(np.arange(len(pols)) // 12, 10)
+    idx = cohort_year_idx(max_claim_dur())[:len(pols)]
     q = np.array(mort_rate_dis_mth_year(age(t)))[idx]
     r = np.array(recov_rate_mth_year())[idx]
     surv = 1.0 - q

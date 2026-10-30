@@ -2436,6 +2436,33 @@ def test_bu_cohort_arrays_seed_age_and_step(product_models):
     assert type(item.pols_dis(13)) is float and type(item.pols_dis_first(13)) is float
 
 
+def test_bu_cohort_index_and_step_sliced_equal_the_vectors_by_month(product_models):
+    """``cohort_year_idx`` and ``cohort_anniv_step`` at full length, sliced, are the old vectors.
+
+    Both orders: the best estimate at ``max_claim_dur()``, the first order at
+    ``first_len() + 1``; every slice ``[:m]`` with ``m <= n``, the empty one included, equals
+    the array the ledgers built for that month.
+    """
+    model = product_models("berufsunfaehigkeit")
+    for point_id in model.Data.model_point_table().index:
+        item = model.Projection[point_id]
+        g = 1.0 + item.leistungsdyn_rate()
+        for n in (item.max_claim_dur(), item.first_len() + 1):
+            idx, step = item.cohort_year_idx(n), item.cohort_anniv_step(n)
+            assert len(idx) == len(step) == n
+            for m in sorted({0, 1, 11, 12, 13, 120, 121, n - 1, n}):
+                ref_idx = np.minimum(np.arange(m) // 12, 10)
+                ref_step = np.where(np.arange(1, m + 1) % 12 == 0, g, 1.0)
+                assert idx[:m].dtype == ref_idx.dtype
+                assert idx[:m].tolist() == ref_idx.tolist(), (point_id, n, m)
+                assert step[:m].tolist() == ref_step.tolist(), (point_id, n, m)
+        item.result_cf()
+        for n in (item.max_claim_dur(), item.first_len() + 1):
+            assert item.cohort_year_idx(n).tolist() == np.minimum(np.arange(n) // 12, 10).tolist()
+            assert item.cohort_anniv_step(n).tolist() == np.where(
+                np.arange(1, n + 1) % 12 == 0, g, 1.0).tolist(), "a reader mutated the cache"
+
+
 def test_index_lapse_beyond_the_table_raises_key_error():
     folder = PRODUCTS_DIR / "indexpolice" / MODELS["indexpolice"]
     copy = mx.read_model(folder, name="IndexLapseProbe")

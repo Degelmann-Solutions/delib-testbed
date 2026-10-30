@@ -503,3 +503,90 @@ def test_a_transform_raising_in_a_child_falls_back_to_the_serial_export(tmp_path
     assert exported_sources(tmp_path / "fallback") == exported_sources(tmp_path / "serial")
     _count, _checks, sha, failures, _lines, _digests = runner.run_product(FOLDER, workers=4)
     assert failures == [] and sha == runner.run_product(FOLDER)[2]
+
+
+def no_pool(runner, monkeypatch) -> None:
+    """Make any process pool raise, so an export that needs a transform fails loudly."""
+    class NoPool:
+        def __init__(self, *args, **kwargs):
+            raise AssertionError("a transform ran although every piece was cached")
+
+    monkeypatch.setattr(runner, "ProcessPoolExecutor", NoPool)
+
+
+@pytest.mark.parametrize("product", load_runner().product_names())
+def test_cached_export_writes_the_same_package_cold_and_warm(tmp_path, monkeypatch, product):
+    runner = load_runner()
+    monkeypatch.setitem(sys.modules, "run_baseline", runner)
+    cache = tmp_path / "cache"
+    model = runner.mx.read_model(runner.model_dir(runner.PRODUCTS_DIR / product))
+    try:
+        runner.export_model(model, tmp_path / "serial", 1)
+        calls = counting_export(runner, monkeypatch)
+        runner.export_model(model, tmp_path / "cold", 24, cache)
+        assert len(calls) == 1  # the parallel path ran, no fallback
+        assert any(cache.iterdir())
+        no_pool(runner, monkeypatch)
+        runner.export_model(model, tmp_path / "warm", 24, cache)
+        assert len(calls) == 2
+    finally:
+        model.close()
+    serial = exported_sources(tmp_path / "serial")
+    assert serial and exported_sources(tmp_path / "cold") == serial
+    assert exported_sources(tmp_path / "warm") == serial
+
+
+def test_a_mutated_cell_misses_only_its_own_piece(tmp_path, monkeypatch):
+    runner = load_runner()
+    monkeypatch.setitem(sys.modules, "run_baseline", runner)
+    cache = tmp_path / "cache"
+    model = runner.mx.read_model(runner.model_dir(FOLDER))
+    try:
+        runner.export_model(model, tmp_path / "original", 24, cache)
+        before = set(cache.iterdir())
+        cell = model.Projection.cells["mort_rate_mth"]
+        cell.formula = cell.formula.source.replace("1.0 / 12.0", "1.0 / 13.0")
+        runner.export_model(model, tmp_path / "mutant_serial", 1)
+        runner.export_model(model, tmp_path / "mutant", 24, cache)
+    finally:
+        model.close()
+    assert len(set(cache.iterdir()) - before) == 1  # one new piece, every other one a hit
+    assert exported_sources(tmp_path / "mutant") == exported_sources(tmp_path / "mutant_serial")
+    assert exported_sources(tmp_path / "mutant") != exported_sources(tmp_path / "original")
+
+
+def test_an_unreadable_cache_entry_is_a_miss(tmp_path, monkeypatch):
+    runner = load_runner()
+    monkeypatch.setitem(sys.modules, "run_baseline", runner)
+    cache = tmp_path / "cache"
+    model = runner.mx.read_model(runner.model_dir(FOLDER))
+    try:
+        runner.export_model(model, tmp_path / "serial", 1)
+        runner.export_model(model, tmp_path / "cold", 24, cache)
+        entries = sorted(cache.iterdir())
+        entries[0].write_bytes(b"not a pickle")
+        runner.export_model(model, tmp_path / "repaired", 24, cache)
+    finally:
+        model.close()
+    assert exported_sources(tmp_path / "repaired") == exported_sources(tmp_path / "serial")
+    assert sorted(cache.iterdir()) == entries
+    runner._cache_get(cache, entries[0].name)  # rewritten: readable again
+    assert runner._cache_get(cache, entries[0].name) is not None
+
+
+def test_run_product_with_a_transform_cache_gives_the_same_hash(tmp_path, monkeypatch):
+    runner = load_runner()
+    monkeypatch.setitem(sys.modules, "run_baseline", runner)
+    sha = runner.run_product(FOLDER)[2]
+    for _ in range(2):  # cold, then warm
+        _count, _checks, cached, failures, _lines, _digests = runner.run_product(
+            FOLDER, workers=4, transform_cache=tmp_path / "cache")
+        assert failures == [] and cached == sha
+
+
+def test_transform_cache_needs_workers(tmp_path, capsys):
+    runner = load_runner()
+    with pytest.raises(SystemExit) as exc:
+        runner.main([PRODUCT, "--transform-cache", str(tmp_path)])
+    assert exc.value.code == 2
+    assert "--transform-cache needs --workers > 1" in capsys.readouterr().err

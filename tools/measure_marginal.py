@@ -52,6 +52,17 @@ RSS, plus each worker's share in its Pss), so at ``W`` > 1 ``mem`` overstates by
 parent's shared footprint (about 100 MB).
 ``MB/contract`` is given at ``W`` = 1 only, where ``mem`` is the peak RSS of one process.
 
+Transform cache
+---------------
+``--transform-cache off`` (the default) runs the runner without its transform cache, as
+before. ``--transform-cache mutant`` (every ``W`` > 1) measures the fixed cost a mutant pays
+with the night run's cache: before the timed runs of a product and ``W`` one untimed child
+warms a cache on the shipped model (verified like a timed run); every timed run then gets
+its own copy of it with the largest entry removed (``mutant_cache``), so its export
+transforms exactly one piece, the most expensive one, as a mutant whose cell sits in it
+would. The marginal time is unaffected; the fixed cost is that of the worst-placed mutant.
+The header line and the JSON (``transform_cache``) state the mode.
+
 Verification
 ------------
 Every run is checked by the parent, and a failed check is an error (exit 1, no slope):
@@ -340,7 +351,7 @@ def total_ram_mb() -> float:
 # --------------------------------------------------------------------------- child
 
 def child(folder: Path, originals: int, cleanup: bool = True, engine: str = "export",
-          workers: int = 1) -> int:
+          workers: int = 1, transform_cache: Path | None = None) -> int:
     """Run ``run_product`` once and print the measurement as JSON on the last stdout line."""
     import resource
 
@@ -349,9 +360,10 @@ def child(folder: Path, originals: int, cleanup: bool = True, engine: str = "exp
     import_s = time.perf_counter() - start
     start = time.perf_counter()
     worker_pss: dict[int, int] = {}
+    extra = {} if transform_cache is None else {"transform_cache": transform_cache}
     count, _checks, _sha, failures, lines, digests = run_baseline.run_product(
         folder, cleanup=cleanup, engine=engine, keep_lines=originals, workers=workers,
-        worker_pss=worker_pss)
+        worker_pss=worker_pss, **extra)
     run_s = time.perf_counter() - start
     maxrss_kib = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     worker_pss_kib = sum(worker_pss.values())
@@ -369,10 +381,12 @@ def child(folder: Path, originals: int, cleanup: bool = True, engine: str = "exp
 
 
 def run_child(folder: Path, originals: int, cleanup: bool, engine: str = "export",
-              workers: int = 1) -> dict:
+              workers: int = 1, transform_cache: Path | None = None) -> dict:
     """One fresh child process; raises ``VerificationError`` on a crash or missing JSON."""
     command = [sys.executable, str(THIS), "--child", str(folder), "--originals", str(originals),
                "--workers", str(workers), "--engine", engine]
+    if transform_cache is not None:
+        command += ["--child-cache", str(transform_cache)]
     if not cleanup:
         command.append("--no-cleanup")
     proc = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
@@ -388,6 +402,20 @@ def run_child(folder: Path, originals: int, cleanup: bool, engine: str = "export
 
 
 # --------------------------------------------------------------------------- parent
+
+def mutant_cache(warm: Path, target: Path) -> Path:
+    """A copy of the warm transform cache ``warm`` at ``target`` without its largest entry.
+
+    A mutant changes one cell, so its export misses the one piece that holds the cell and
+    hits every other one. Dropping the largest entry (the piece with the most transformed
+    code) makes every timed run miss one piece, and the most expensive one: the fixed cost of
+    a mutant at its worst.
+    """
+    shutil.copytree(warm, target)
+    entries = [p for p in target.iterdir() if p.is_file() and not p.name.startswith(".")]
+    max(entries, key=lambda p: p.stat().st_size).unlink()
+    return target
+
 
 def measure(product: str, args, ram_mb: float, workers: int = 1) -> dict:
     """Measure one product at one ``W``. The record has ``status`` ok, unreliable or failed."""
@@ -422,12 +450,28 @@ def measure(product: str, args, ram_mb: float, workers: int = 1) -> dict:
                 (folder_kn / TABLE).write_bytes(replicate_table(table, factor).encode("ascii"))
             except ValueError as exc:
                 return fail(f"cannot replicate {TABLE}: {exc}")
+        warm = None
+        if getattr(args, "transform_cache", "off") == "mutant":
+            warm = root / "cache-warm"
+            print(f"{product}, W = {workers}: warming the transform cache ...",
+                  file=sys.stderr, flush=True)
+            try:
+                result = run_child(folder_n, n, cleanup, engine, workers, warm)
+            except VerificationError as exc:
+                return fail(f"warming the transform cache: {exc}")
+            problems = verify_run(result, n, n, baseline)
+            if problems:
+                return fail(f"warming the transform cache: {problems[0]}")
         for repeat in range(1, repeats + 1):
             for label, folder, size in (("n", folder_n, n), ("K·n", folder_kn, size_kn)):
                 print(f"{product}, W = {workers}: run {repeat}/{repeats}, {label} = {size} points ...",
                       file=sys.stderr, flush=True)
+                cache = None
+                if warm is not None:
+                    cache = mutant_cache(warm, root / f"cache-{repeat}-{size}")
                 try:
-                    result = run_child(folder, n, cleanup, engine, workers)
+                    result = (run_child(folder, n, cleanup, engine, workers) if cache is None
+                              else run_child(folder, n, cleanup, engine, workers, cache))
                 except VerificationError as exc:
                     return fail(f"size {size} ({label}), run {repeat}: {exc}")
                 problems = verify_run(result, size, n, baseline)
@@ -522,7 +566,12 @@ def main(argv: list[str] | None = None) -> int:
                         help="run the runner without per-contract cleanup (phase-2a behaviour)")
     parser.add_argument("--engine", choices=("export", "modelx"), default="export",
                         help="the runner's engine: export (default) or modelx (phases 2a and 2b)")
+    parser.add_argument("--transform-cache", choices=("off", "mutant"), default="off",
+                        help="off (default): every run transforms every formula piece; mutant: "
+                             "each run gets the runner's transform cache warmed on the product "
+                             "with its largest piece dropped, as a mutant's export would")
     parser.add_argument("--child", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--child-cache", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--originals", type=positive_int(1), help=argparse.SUPPRESS)
     parser.add_argument("--prepared", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
@@ -534,7 +583,8 @@ def main(argv: list[str] | None = None) -> int:
         if len(args.workers) != 1:
             parser.error("--child needs exactly one --workers")
         return child(args.child.resolve(), args.originals or 0, cleanup=not args.no_cleanup,
-                     engine=args.engine, workers=args.workers[0])
+                     engine=args.engine, workers=args.workers[0],
+                     transform_cache=args.child_cache)
 
     names = product_names()
     if args.all and args.products:
@@ -556,6 +606,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--workers above 1 needs the export engine, not --engine modelx")
     if max(args.workers) > 1 and args.no_cleanup:
         parser.error("--workers above 1 needs per-contract cleanup, not --no-cleanup")
+    if args.transform_cache == "mutant" and min(args.workers) < 2:
+        parser.error("--transform-cache mutant needs every --workers above 1")
     if args.json is not None and not args.json.resolve().parent.is_dir():
         parser.error(f"--json: no directory {str(args.json.parent)!r}")
 
@@ -566,7 +618,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"factor K = {args.factor}, repeats R = {args.repeats}, "
           f"workers W = {','.join(map(str, args.workers))}; times are medians of "
           "run_product, import is the median modelx import, mem is peak RSS plus the workers' "
-          f"largest Pss after a point, cleanup {'off' if args.no_cleanup else 'on'}, engine {args.engine}")
+          f"largest Pss after a point, cleanup {'off' if args.no_cleanup else 'on'}, engine {args.engine}"
+          + (", transform cache mutant" if args.transform_cache == "mutant" else ""))
     for line in table_lines(records):
         print(line)
     print()
@@ -588,6 +641,7 @@ def main(argv: list[str] | None = None) -> int:
         args.json.write_text(json.dumps({"factor": args.factor, "repeats": args.repeats,
                                          "cleanup": not args.no_cleanup,
                                          "engine": args.engine,
+                                         "transform_cache": args.transform_cache,
                                          "mutants": args.mutants, "pool": args.pool,
                                          "workers": args.workers, "total_ram_mb": ram_mb,
                                          "products": records, "combined": combined},

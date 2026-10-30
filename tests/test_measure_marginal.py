@@ -562,9 +562,46 @@ def test_defaults_are_factor_32_and_the_worker_counts(monkeypatch, capsys):
                                   [PRODUCT, "--repeats", "two"],
                                   [PRODUCT, "--factor", "1.5"], [], [PRODUCT, "--all"],
                                   [PRODUCT, "--json", "/nonexistent-dir/x.json"],
-                                  [PRODUCT, "--engine", "foo"]])
+                                  [PRODUCT, "--engine", "foo"],
+                                  [PRODUCT, "--transform-cache", "mutant"],
+                                  [PRODUCT, "--workers", "1,24", "--transform-cache", "mutant"],
+                                  [PRODUCT, "--transform-cache", "warm"]])
 def test_more_usage_errors_exit_2(argv, capsys):
     with pytest.raises(SystemExit) as exc:
         mm.main(argv)
     assert exc.value.code == 2
     assert capsys.readouterr().err.startswith("usage: measure_marginal.py")
+
+
+def test_mutant_cache_drops_only_the_largest_entry(tmp_path):
+    warm = tmp_path / "warm"
+    warm.mkdir()
+    for name, size in (("a", 10), ("b", 300), ("c", 20)):
+        (warm / name).write_bytes(b"x" * size)
+    copy = mm.mutant_cache(warm, tmp_path / "copy")
+    assert sorted(p.name for p in copy.iterdir()) == ["a", "c"]
+    assert sorted(p.name for p in warm.iterdir()) == ["a", "b", "c"]
+
+
+def test_transform_cache_mutant_warms_once_and_misses_one_piece_per_run(tmp_path, monkeypatch):
+    calls = []
+
+    def fake_run_child(folder, originals, cleanup, engine="export", workers=1, cache=None):
+        calls.append(cache)
+        if cache is not None and cache.name == "cache-warm":
+            cache.mkdir()
+            for name, size in (("small", 10), ("big", 100)):
+                (cache / name).write_bytes(b"x" * size)
+            return {}
+        else:
+            assert cache is not None and sorted(p.name for p in cache.iterdir()) == ["small"]
+        raise mm.VerificationError("stop after the check")
+
+    monkeypatch.setattr(mm, "run_child", fake_run_child)
+    monkeypatch.setattr(mm, "verify_run", lambda *a: [])
+    args = mm.argparse.Namespace(factor=2, repeats=1, no_cleanup=False, engine="export",
+                                 prepared=None, transform_cache="mutant", mutants=mm.M_NEW,
+                                 pool=10000)
+    record = mm.measure(PRODUCT, args, 64000.0, 24)
+    assert record["status"] == "failed"
+    assert [c.name for c in calls] == ["cache-warm", f"cache-1-{record['n']}"]

@@ -1231,8 +1231,11 @@ def pv_claim_cost_first():
     for s in range(0, first_len()):
         total += disc_factor_mth(s) * claim_assess_cost * pols_inception_first(s)  # noqa: F821
         if age_first(s) < benefit_end_age():
-            pols = dis_cohorts_first(s)[0]
-            paying = sum(pols[karenz_months():].tolist()) + pols_runoff_first(s)
+            if karenz_months() == 0:
+                in_payment = pols_dis_first(s)
+            else:
+                in_payment = sum(dis_cohorts_first(s)[0][karenz_months():].tolist())
+            paying = in_payment + pols_runoff_first(s)
             total += disc_factor_mth(s) * claim_maint_cost_mth * paying   # noqa: F821
     return total
 
@@ -1701,8 +1704,11 @@ def claim_expenses(t):
     assess = claim_assess_cost * pols_inception(t)                   # noqa: F821
     maint = 0.0
     if age(t) < benefit_end_age():
-        pols = dis_cohorts(t)[0]
-        paying = sum(pols[karenz_months():].tolist()) + pols_runoff(t)
+        if karenz_months() == 0:
+            in_payment = pols_dis(t)
+        else:
+            in_payment = sum(dis_cohorts(t)[0][karenz_months():].tolist())
+        paying = in_payment + pols_runoff(t)
         maint = claim_maint_cost_mth * paying                        # noqa: F821
     return assess + maint
 

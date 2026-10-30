@@ -27,10 +27,10 @@ Lower bound
 -----------
 ``LOWER_BOUND`` = 0.20 for every product (Moritz, 2026-10-28, epic-common-core Notes) but
 those in ``PRODUCT_BOUNDS``, which carry their own bound at their measured quota (BU, 28 of
-142: Moritz, 2026-10-29, epic-night-run Notes, variant c, as recorded in ``3ab6cbc``;
+148: Moritz, 2026-10-29, epic-night-run Notes, variant c, as recorded in ``3ab6cbc``;
 applied when BU's cohort index and *Leistungsdynamik* step became ``Projection`` cells and
-took it below 20 %). A product passes at ``quota >= bound_for(product)``;
-``tests/test_core_quota.py`` enforces it.
+took it below 20 %, moved with its per-claim-year rate arrays). A product passes at
+``quota >= bound_for(product)``; ``tests/test_core_quota.py`` enforces it.
 
 Output
 ------
@@ -60,7 +60,7 @@ import modelx as mx  # noqa: E402
 LOWER_BOUND = 0.20
 # Moritz, 2026-10-29 (epic-night-run Notes, variant c, as recorded in 3ab6cbc): BU's own
 # bound at its measured quota.
-PRODUCT_BOUNDS = {"berufsunfaehigkeit": 28 / 142}
+PRODUCT_BOUNDS = {"berufsunfaehigkeit": 28 / 148}
 
 
 def bound_for(product: str) -> float:

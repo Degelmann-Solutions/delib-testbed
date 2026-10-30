@@ -1071,6 +1071,47 @@ def pols_inception_first(s):
     return surv * inc_rate_first_mth(s)
 
 
+def dis_keep_year(x):
+    """The eleven monthly stay-in-claim factors ``(1 - q)(1 - r)`` at age x, by claim year.
+
+    :func:`mort_rate_dis_mth_year` and :func:`recov_rate_mth_year` paired by claim year,
+    as an array that :func:`dis_cohorts` indexes by cohort.  Keyed by age like its inputs,
+    so it is formed once per year of age rather than once per month.  Read-only.
+    """
+    return np.array([(1.0 - q) * (1.0 - r)
+                     for q, r in zip(mort_rate_dis_mth_year(x), recov_rate_mth_year())])
+
+
+def dis_q_year(x):
+    """:func:`mort_rate_dis_mth_year` at age x as an array, read by :func:`dis_exits`."""
+    return np.array(mort_rate_dis_mth_year(x))
+
+
+def recov_year():
+    """:func:`recov_rate_mth_year` as an array, read by :func:`dis_exits`."""
+    return np.array(recov_rate_mth_year())
+
+
+def dis_keep_year_first(x):
+    """The first-order counterpart of :func:`dis_keep_year`, read by :func:`dis_cohorts_first`."""
+    return np.array([(1.0 - q) * (1.0 - r)
+                     for q, r in zip(mort_rate_dis_first_mth_year(x),
+                                     recov_rate_first_mth_year())])
+
+
+def dis_q_year_first(x):
+    """:func:`mort_rate_dis_first_mth_year` at age x as an array.
+
+    Read by :func:`dis_exits_first`.
+    """
+    return np.array(mort_rate_dis_first_mth_year(x))
+
+
+def recov_year_first():
+    """:func:`recov_rate_first_mth_year` as an array, read by :func:`dis_exits_first`."""
+    return np.array(recov_rate_first_mth_year())
+
+
 def dis_cohorts_first(s):
     """The first-order disabled ledger at the start of month s: ``(populations, values)``.
 
@@ -1090,11 +1131,8 @@ def dis_cohorts_first(s):
     if s <= 0:
         return pols, val
     ppols, pval = dis_cohorts_first(s - 1)
-    qy = mort_rate_dis_first_mth_year(age_first(s - 1))
-    ry = recov_rate_first_mth_year()
     m = min(len(ppols), n - 1)
-    keep = np.array([(1.0 - q) * (1.0 - r) for q, r in zip(qy, ry)])[
-        cohort_year_idx(first_len() + 1)[:m]]
+    keep = dis_keep_year_first(age_first(s - 1))[cohort_year_idx(first_len() + 1)[:m]]
     step = cohort_anniv_step(first_len() + 1)[:m]
     pols[1:m + 1] = ppols[:m] * keep
     val[1:m + 1] = pval[:m] * keep * step
@@ -1114,8 +1152,8 @@ def dis_exits_first(s):
     """
     pols, val = dis_cohorts_first(s)
     idx = cohort_year_idx(first_len() + 1)[:len(pols)]
-    q = np.array(mort_rate_dis_first_mth_year(age_first(s)))[idx]
-    r = np.array(recov_rate_first_mth_year())[idx]
+    q = dis_q_year_first(age_first(s))[idx]
+    r = recov_year_first()[idx]
     surv = 1.0 - q
     return (float(np.cumsum(pols * q)[-1]),
             float(np.cumsum(pols * surv * r)[-1]),
@@ -1369,11 +1407,8 @@ def dis_cohorts(t):
             val[z0 - 1] = pols_if_init() * rente_pay_pp(t, z0)
         return pols, val
     ppols, pval = dis_cohorts(t - 1)
-    qy = mort_rate_dis_mth_year(age(t - 1))
-    ry = recov_rate_mth_year()
     m = min(len(ppols), n - 1)
-    keep = np.array([(1.0 - q) * (1.0 - r) for q, r in zip(qy, ry)])[
-        cohort_year_idx(max_claim_dur())[:m]]
+    keep = dis_keep_year(age(t - 1))[cohort_year_idx(max_claim_dur())[:m]]
     step = cohort_anniv_step(max_claim_dur())[:m]
     pols[1:m + 1] = ppols[:m] * keep
     val[1:m + 1] = pval[:m] * keep * step
@@ -1397,8 +1432,8 @@ def dis_exits(t):
     """
     pols, val = dis_cohorts(t)
     idx = cohort_year_idx(max_claim_dur())[:len(pols)]
-    q = np.array(mort_rate_dis_mth_year(age(t)))[idx]
-    r = np.array(recov_rate_mth_year())[idx]
+    q = dis_q_year(age(t))[idx]
+    r = recov_year()[idx]
     surv = 1.0 - q
     return (float(np.cumsum(pols * q)[-1]),
             float(np.cumsum(pols * surv * r)[-1]),

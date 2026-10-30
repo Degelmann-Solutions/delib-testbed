@@ -2463,6 +2463,33 @@ def test_bu_cohort_index_and_step_sliced_equal_the_vectors_by_month(product_mode
                 np.arange(1, n + 1) % 12 == 0, g, 1.0).tolist(), "a reader mutated the cache"
 
 
+def test_bu_rate_arrays_by_age_equal_the_tuples(product_models):
+    """``dis_keep_year*``, ``dis_q_year*`` and ``recov_year*`` hold the tuples' values as arrays.
+
+    The keep factor is ``(1 - q)(1 - r)`` of the tuples at ``x``, element for element; the
+    arrays survive a full run unmutated.
+    """
+    model = product_models("berufsunfaehigkeit")
+    for point_id in model.Data.model_point_table().index:
+        item = model.Projection[point_id]
+        item.result_cf()
+        ages = {item.age(t) for t in range(item.proj_len() + 1)}
+        ages_first = {item.age_first(s) for s in range(item.first_len() + 1)}
+        for x in sorted(ages):
+            qy, ry = item.mort_rate_dis_mth_year(x), item.recov_rate_mth_year()
+            keep = item.dis_keep_year(x)
+            assert isinstance(keep, np.ndarray) and len(keep) == 11
+            assert keep.tolist() == [(1.0 - q) * (1.0 - r) for q, r in zip(qy, ry)], (point_id, x)
+            assert item.dis_q_year(x).tolist() == list(qy), (point_id, x)
+        assert item.recov_year().tolist() == list(item.recov_rate_mth_year())
+        for x in sorted(ages_first):
+            qy, ry = item.mort_rate_dis_first_mth_year(x), item.recov_rate_first_mth_year()
+            assert item.dis_keep_year_first(x).tolist() == [
+                (1.0 - q) * (1.0 - r) for q, r in zip(qy, ry)], (point_id, x)
+            assert item.dis_q_year_first(x).tolist() == list(qy), (point_id, x)
+        assert item.recov_year_first().tolist() == list(item.recov_rate_first_mth_year())
+
+
 def test_index_lapse_beyond_the_table_raises_key_error():
     folder = PRODUCTS_DIR / "indexpolice" / MODELS["indexpolice"]
     copy = mx.read_model(folder, name="IndexLapseProbe")

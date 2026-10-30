@@ -62,8 +62,8 @@ def test_the_lower_bound_is_twenty_percent():
 
 
 def test_only_bu_has_its_own_bound_at_its_measured_quota():
-    assert core_quota.PRODUCT_BOUNDS == {"berufsunfaehigkeit": 28 / 142}
-    assert core_quota.bound_for("berufsunfaehigkeit") == 28 / 142
+    assert core_quota.PRODUCT_BOUNDS == {"berufsunfaehigkeit": 28 / 148}
+    assert core_quota.bound_for("berufsunfaehigkeit") == 28 / 148
     assert core_quota.bound_for("risikolebensversicherung") == core_quota.LOWER_BOUND
 
 

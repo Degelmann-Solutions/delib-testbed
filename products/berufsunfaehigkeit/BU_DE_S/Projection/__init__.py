@@ -1146,18 +1146,17 @@ def dis_exits_first(s):
     """The first-order disabled ledger's month-end exits: ``(deaths, recoveries, value)``.
 
     One pass over the cohort arrays at month ``s``, taking deaths first and terminations
-    on the survivors, each total added left to right (``np.cumsum``).  The third element
-    is the recoveries **times the *BU-Rente* they were on**, which is what enters run-off
-    slot 1 as a value.
+    on the survivors, each total added left to right (``np.add.accumulate`` along the
+    cohorts, the three rows in one call).  The third element is the recoveries **times the
+    *BU-Rente* they were on**, which is what enters run-off slot 1 as a value.
     """
     pols, val = dis_cohorts_first(s)
     idx = cohort_year_idx(first_len() + 1)[:len(pols)]
     q = dis_q_year_first(age_first(s))[idx]
     r = recov_year_first()[idx]
     surv = 1.0 - q
-    return (float(np.cumsum(pols * q)[-1]),
-            float(np.cumsum(pols * surv * r)[-1]),
-            float(np.cumsum(val * surv * r)[-1]))
+    totals = np.add.accumulate(np.array([pols * q, pols * surv * r, val * surv * r]), axis=1)
+    return (float(totals[0, -1]), float(totals[1, -1]), float(totals[2, -1]))
 
 
 def runoff_cohorts_first(s):
@@ -1423,9 +1422,10 @@ def dis_exits(t):
 
     One pass over the cohort arrays, taking deaths at :func:`mort_rate_dis_mth_year` first
     and terminations at :func:`recov_rate_mth_year` on the survivors, which is the model's
-    stated processing order; each total is added left to right (``np.cumsum``).  The
-    third element is the terminations **times the *BU-Rente* they were on**: that amount
-    is frozen at the *Nachpruefung* date and is what the run-off goes on paying.
+    stated processing order; each total is added left to right (``np.add.accumulate``
+    along the cohorts, the three rows in one call).  The third element is the terminations
+    **times the *BU-Rente* they were on**: that amount is frozen at the *Nachpruefung* date
+    and is what the run-off goes on paying.
 
     Published as one cells because the three totals come from the same pass and because
     :func:`dis_cohorts` would otherwise have to be walked three times a month.
@@ -1435,9 +1435,8 @@ def dis_exits(t):
     q = dis_q_year(age(t))[idx]
     r = recov_year()[idx]
     surv = 1.0 - q
-    return (float(np.cumsum(pols * q)[-1]),
-            float(np.cumsum(pols * surv * r)[-1]),
-            float(np.cumsum(val * surv * r)[-1]))
+    totals = np.add.accumulate(np.array([pols * q, pols * surv * r, val * surv * r]), axis=1)
+    return (float(totals[0, -1]), float(totals[1, -1]), float(totals[2, -1]))
 
 
 def runoff_cohorts(t):

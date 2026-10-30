@@ -622,6 +622,32 @@ def cohort_len_first(s):
     return min(first_len() + 1, s + 1)
 
 
+def cohort_year_idx(n):
+    """The claim-year index of the first ``n`` claim-duration cohorts, capped at 10.
+
+    ``np.minimum(np.arange(n) // 12, 10)``: cohort ``z = 1 .. n`` reads the rate of its
+    claim year, the eleventh standing for every later one.  The disabled ledgers of both
+    orders and their exits read it at their full length, :func:`max_claim_dur` and
+    ``first_len() + 1``, and slice it to the month's vector, ``[:m]``, which is the array
+    ``np.minimum(np.arange(m) // 12, 10)``; keyed by the full length rather than by ``m``,
+    it is built once per contract and order rather than once per month.  Read-only: no
+    reader may mutate the array.
+    """
+    return np.minimum(np.arange(n) // 12, 10)
+
+
+def cohort_anniv_step(n):
+    """The *Leistungsdynamik* step of the first ``n`` cohorts as they age one month.
+
+    ``np.where(np.arange(1, n + 1) % 12 == 0, 1.0 + leistungsdyn_rate(), 1.0)``: the value
+    of a cohort moving into slot ``z + 1`` steps up by ``1 + leistungsdyn_rate()`` where
+    ``z + 1`` is a claim anniversary.  Read at the full length and sliced like
+    :func:`cohort_year_idx`, and read-only like it.
+    """
+    return np.where(np.arange(1, n + 1) % 12 == 0,
+                    1.0 + leistungsdyn_rate(), 1.0)
+
+
 # --- the rate tables, keyed by age ---
 
 def inc_rate_at_age(x):
@@ -1045,6 +1071,47 @@ def pols_inception_first(s):
     return surv * inc_rate_first_mth(s)
 
 
+def dis_keep_year(x):
+    """The eleven monthly stay-in-claim factors ``(1 - q)(1 - r)`` at age x, by claim year.
+
+    :func:`mort_rate_dis_mth_year` and :func:`recov_rate_mth_year` paired by claim year,
+    as an array that :func:`dis_cohorts` indexes by cohort.  Keyed by age like its inputs,
+    so it is formed once per year of age rather than once per month.  Read-only.
+    """
+    return np.array([(1.0 - q) * (1.0 - r)
+                     for q, r in zip(mort_rate_dis_mth_year(x), recov_rate_mth_year())])
+
+
+def dis_q_year(x):
+    """:func:`mort_rate_dis_mth_year` at age x as an array, read by :func:`dis_exits`."""
+    return np.array(mort_rate_dis_mth_year(x))
+
+
+def recov_year():
+    """:func:`recov_rate_mth_year` as an array, read by :func:`dis_exits`."""
+    return np.array(recov_rate_mth_year())
+
+
+def dis_keep_year_first(x):
+    """The first-order counterpart of :func:`dis_keep_year`, read by :func:`dis_cohorts_first`."""
+    return np.array([(1.0 - q) * (1.0 - r)
+                     for q, r in zip(mort_rate_dis_first_mth_year(x),
+                                     recov_rate_first_mth_year())])
+
+
+def dis_q_year_first(x):
+    """:func:`mort_rate_dis_first_mth_year` at age x as an array.
+
+    Read by :func:`dis_exits_first`.
+    """
+    return np.array(mort_rate_dis_first_mth_year(x))
+
+
+def recov_year_first():
+    """:func:`recov_rate_first_mth_year` as an array, read by :func:`dis_exits_first`."""
+    return np.array(recov_rate_first_mth_year())
+
+
 def dis_cohorts_first(s):
     """The first-order disabled ledger at the start of month s: ``(populations, values)``.
 
@@ -1064,12 +1131,9 @@ def dis_cohorts_first(s):
     if s <= 0:
         return pols, val
     ppols, pval = dis_cohorts_first(s - 1)
-    qy = mort_rate_dis_first_mth_year(age_first(s - 1))
-    ry = recov_rate_first_mth_year()
     m = min(len(ppols), n - 1)
-    keep = np.array([(1.0 - q) * (1.0 - r) for q, r in zip(qy, ry)])[
-        np.minimum(np.arange(m) // 12, 10)]
-    step = np.where(np.arange(1, m + 1) % 12 == 0, 1.0 + leistungsdyn_rate(), 1.0)
+    keep = dis_keep_year_first(age_first(s - 1))[cohort_year_idx(first_len() + 1)[:m]]
+    step = cohort_anniv_step(first_len() + 1)[:m]
     pols[1:m + 1] = ppols[:m] * keep
     val[1:m + 1] = pval[:m] * keep * step
     inc = pols_inception_first(s - 1)
@@ -1082,18 +1146,17 @@ def dis_exits_first(s):
     """The first-order disabled ledger's month-end exits: ``(deaths, recoveries, value)``.
 
     One pass over the cohort arrays at month ``s``, taking deaths first and terminations
-    on the survivors, each total added left to right (``np.cumsum``).  The third element
-    is the recoveries **times the *BU-Rente* they were on**, which is what enters run-off
-    slot 1 as a value.
+    on the survivors, each total added left to right (``np.add.accumulate`` along the
+    cohorts, the three rows in one call).  The third element is the recoveries **times the
+    *BU-Rente* they were on**, which is what enters run-off slot 1 as a value.
     """
     pols, val = dis_cohorts_first(s)
-    idx = np.minimum(np.arange(len(pols)) // 12, 10)
-    q = np.array(mort_rate_dis_first_mth_year(age_first(s)))[idx]
-    r = np.array(recov_rate_first_mth_year())[idx]
+    idx = cohort_year_idx(first_len() + 1)[:len(pols)]
+    q = dis_q_year_first(age_first(s))[idx]
+    r = recov_year_first()[idx]
     surv = 1.0 - q
-    return (float(np.cumsum(pols * q)[-1]),
-            float(np.cumsum(pols * surv * r)[-1]),
-            float(np.cumsum(val * surv * r)[-1]))
+    totals = np.add.accumulate(np.array([pols * q, pols * surv * r, val * surv * r]), axis=1)
+    return (float(totals[0, -1]), float(totals[1, -1]), float(totals[2, -1]))
 
 
 def runoff_cohorts_first(s):
@@ -1343,12 +1406,9 @@ def dis_cohorts(t):
             val[z0 - 1] = pols_if_init() * rente_pay_pp(t, z0)
         return pols, val
     ppols, pval = dis_cohorts(t - 1)
-    qy = mort_rate_dis_mth_year(age(t - 1))
-    ry = recov_rate_mth_year()
     m = min(len(ppols), n - 1)
-    keep = np.array([(1.0 - q) * (1.0 - r) for q, r in zip(qy, ry)])[
-        np.minimum(np.arange(m) // 12, 10)]
-    step = np.where(np.arange(1, m + 1) % 12 == 0, 1.0 + leistungsdyn_rate(), 1.0)
+    keep = dis_keep_year(age(t - 1))[cohort_year_idx(max_claim_dur())[:m]]
+    step = cohort_anniv_step(max_claim_dur())[:m]
     pols[1:m + 1] = ppols[:m] * keep
     val[1:m + 1] = pval[:m] * keep * step
     inc = pols_inception(t - 1)
@@ -1362,21 +1422,21 @@ def dis_exits(t):
 
     One pass over the cohort arrays, taking deaths at :func:`mort_rate_dis_mth_year` first
     and terminations at :func:`recov_rate_mth_year` on the survivors, which is the model's
-    stated processing order; each total is added left to right (``np.cumsum``).  The
-    third element is the terminations **times the *BU-Rente* they were on**: that amount
-    is frozen at the *Nachpruefung* date and is what the run-off goes on paying.
+    stated processing order; each total is added left to right (``np.add.accumulate``
+    along the cohorts, the three rows in one call).  The third element is the terminations
+    **times the *BU-Rente* they were on**: that amount is frozen at the *Nachpruefung* date
+    and is what the run-off goes on paying.
 
     Published as one cells because the three totals come from the same pass and because
     :func:`dis_cohorts` would otherwise have to be walked three times a month.
     """
     pols, val = dis_cohorts(t)
-    idx = np.minimum(np.arange(len(pols)) // 12, 10)
-    q = np.array(mort_rate_dis_mth_year(age(t)))[idx]
-    r = np.array(recov_rate_mth_year())[idx]
+    idx = cohort_year_idx(max_claim_dur())[:len(pols)]
+    q = dis_q_year(age(t))[idx]
+    r = recov_year()[idx]
     surv = 1.0 - q
-    return (float(np.cumsum(pols * q)[-1]),
-            float(np.cumsum(pols * surv * r)[-1]),
-            float(np.cumsum(val * surv * r)[-1]))
+    totals = np.add.accumulate(np.array([pols * q, pols * surv * r, val * surv * r]), axis=1)
+    return (float(totals[0, -1]), float(totals[1, -1]), float(totals[2, -1]))
 
 
 def runoff_cohorts(t):

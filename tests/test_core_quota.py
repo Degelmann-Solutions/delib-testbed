@@ -4,9 +4,10 @@ The tool runs once per product in separate processes started together in a sessi
 each writing its figures with ``--json``; the tests read those figures and call the tool's
 ``below`` and ``report`` on them, with no second run.
 
-- Every product's quota is at or above ``LOWER_BOUND`` (20 %, Moritz, 2026-10-28).
-- A bound just above the lowest measured quota leaves a product below it; at ``LOWER_BOUND``
-  none is.
+- Every product's quota is at or above its bound, ``bound_for(product)``: ``LOWER_BOUND``
+  (20 %, Moritz, 2026-10-28), BU its own at its measured quota (epic-night-run, variant c).
+- A bound just above the lowest measured quota leaves a product below it; at each product's
+  own bound none is.
 - A quota exactly at the bound passes (``>=``).
 - RLV's executed set holds ``model_point`` and ``result_cf``, both from the core.
 - A bound above a measured quota makes the report exit 1 and name the product on stderr.
@@ -60,6 +61,12 @@ def test_the_lower_bound_is_twenty_percent():
     assert core_quota.LOWER_BOUND == 0.20
 
 
+def test_only_bu_has_its_own_bound_at_its_measured_quota():
+    assert core_quota.PRODUCT_BOUNDS == {"berufsunfaehigkeit": 28 / 148}
+    assert core_quota.bound_for("berufsunfaehigkeit") == 28 / 148
+    assert core_quota.bound_for("risikolebensversicherung") == core_quota.LOWER_BOUND
+
+
 @pytest.mark.parametrize("product", PRODUCTS)
 def test_every_product_is_at_or_above_the_lower_bound(product, quotas):
     figures = quotas[product]
@@ -67,14 +74,14 @@ def test_every_product_is_at_or_above_the_lower_bound(product, quotas):
     assert figures["core"] == len(figures["core_cells"])
     assert set(figures["core_cells"]) <= set(figures["executed_cells"])
     assert figures["quota"] == figures["core"] / figures["executed"]
-    assert figures["quota"] >= core_quota.LOWER_BOUND, (
+    assert figures["quota"] >= core_quota.bound_for(product), (
         f"{product}: {figures['core']} of {figures['executed']} = {figures['quota']:.4f}")
 
 
 def test_a_bound_above_the_lowest_quota_leaves_a_product_below(quotas):
     lowest = min(figures["quota"] for figures in quotas.values())
     assert core_quota.below(quotas, lowest + 0.001)
-    assert core_quota.below(quotas, core_quota.LOWER_BOUND) == []
+    assert core_quota.below(quotas) == []
 
 
 def test_a_quota_exactly_at_the_bound_passes():

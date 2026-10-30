@@ -2436,6 +2436,60 @@ def test_bu_cohort_arrays_seed_age_and_step(product_models):
     assert type(item.pols_dis(13)) is float and type(item.pols_dis_first(13)) is float
 
 
+def test_bu_cohort_index_and_step_sliced_equal_the_vectors_by_month(product_models):
+    """``cohort_year_idx`` and ``cohort_anniv_step`` at full length, sliced, are the old vectors.
+
+    Both orders: the best estimate at ``max_claim_dur()``, the first order at
+    ``first_len() + 1``; every slice ``[:m]`` with ``m <= n``, the empty one included, equals
+    the array the ledgers built for that month.
+    """
+    model = product_models("berufsunfaehigkeit")
+    for point_id in model.Data.model_point_table().index:
+        item = model.Projection[point_id]
+        g = 1.0 + item.leistungsdyn_rate()
+        for n in (item.max_claim_dur(), item.first_len() + 1):
+            idx, step = item.cohort_year_idx(n), item.cohort_anniv_step(n)
+            assert len(idx) == len(step) == n
+            for m in sorted({0, 1, 11, 12, 13, 120, 121, n - 1, n}):
+                ref_idx = np.minimum(np.arange(m) // 12, 10)
+                ref_step = np.where(np.arange(1, m + 1) % 12 == 0, g, 1.0)
+                assert idx[:m].dtype == ref_idx.dtype
+                assert idx[:m].tolist() == ref_idx.tolist(), (point_id, n, m)
+                assert step[:m].tolist() == ref_step.tolist(), (point_id, n, m)
+        item.result_cf()
+        for n in (item.max_claim_dur(), item.first_len() + 1):
+            assert item.cohort_year_idx(n).tolist() == np.minimum(np.arange(n) // 12, 10).tolist()
+            assert item.cohort_anniv_step(n).tolist() == np.where(
+                np.arange(1, n + 1) % 12 == 0, g, 1.0).tolist(), "a reader mutated the cache"
+
+
+def test_bu_rate_arrays_by_age_equal_the_tuples(product_models):
+    """``dis_keep_year*``, ``dis_q_year*`` and ``recov_year*`` hold the tuples' values as arrays.
+
+    The keep factor is ``(1 - q)(1 - r)`` of the tuples at ``x``, element for element; the
+    arrays survive a full run unmutated.
+    """
+    model = product_models("berufsunfaehigkeit")
+    for point_id in model.Data.model_point_table().index:
+        item = model.Projection[point_id]
+        item.result_cf()
+        ages = {item.age(t) for t in range(item.proj_len() + 1)}
+        ages_first = {item.age_first(s) for s in range(item.first_len() + 1)}
+        for x in sorted(ages):
+            qy, ry = item.mort_rate_dis_mth_year(x), item.recov_rate_mth_year()
+            keep = item.dis_keep_year(x)
+            assert isinstance(keep, np.ndarray) and len(keep) == 11
+            assert keep.tolist() == [(1.0 - q) * (1.0 - r) for q, r in zip(qy, ry)], (point_id, x)
+            assert item.dis_q_year(x).tolist() == list(qy), (point_id, x)
+        assert item.recov_year().tolist() == list(item.recov_rate_mth_year())
+        for x in sorted(ages_first):
+            qy, ry = item.mort_rate_dis_first_mth_year(x), item.recov_rate_first_mth_year()
+            assert item.dis_keep_year_first(x).tolist() == [
+                (1.0 - q) * (1.0 - r) for q, r in zip(qy, ry)], (point_id, x)
+            assert item.dis_q_year_first(x).tolist() == list(qy), (point_id, x)
+        assert item.recov_year_first().tolist() == list(item.recov_rate_first_mth_year())
+
+
 def test_index_lapse_beyond_the_table_raises_key_error():
     folder = PRODUCTS_DIR / "indexpolice" / MODELS["indexpolice"]
     copy = mx.read_model(folder, name="IndexLapseProbe")

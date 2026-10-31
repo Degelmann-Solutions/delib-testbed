@@ -7,7 +7,8 @@
 
 The space is parameterized by ``point_id``, like the product's ``Projection``. Its cells use
 the names the product's ``Projection`` defines: ``data`` for the product's ``Data`` and
-``point_id`` for the selected model point.
+``point_id`` for the selected model point. Its one Reference, the Module ``types``, is
+inherited by every product's ``Projection``.
 """
 
 from modelx.serialize.jsonvalues import *
@@ -26,9 +27,12 @@ _spaces = []
 def model_point():
     """The selected model point as a dict by column.
 
-    The row is shared with ``data.model_point_table_dict()``, so it is read-only.
+    The row is shared with ``data.model_point_table_dict()``, so it is returned read-only, as
+    a ``types.MappingProxyType``: a cell that assigned into it would change the point for
+    every later read, and raises ``TypeError`` instead.
     """
-    return data.model_point_table_dict()[point_id]                   # noqa: F821
+    return types.MappingProxyType(                                   # noqa: F821
+        data.model_point_table_dict()[point_id])                     # noqa: F821
 
 
 def policy_id():
@@ -1042,3 +1046,9 @@ def check_net_cf():
     """
     return all(abs(check_net_cf_resid(t)) <= check_net_cf_tol(t)     # noqa: F821
                for t in range(t_start(), proj_len()))                # noqa: F821
+
+
+# ---------------------------------------------------------------------------
+# References
+
+types = ("Module", "types")

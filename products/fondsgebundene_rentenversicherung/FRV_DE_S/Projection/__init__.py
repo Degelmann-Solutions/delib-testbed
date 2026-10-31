@@ -591,10 +591,12 @@ def horizon_age():
 def charge_row():
     """The row of ``charge_table.csv`` for this policy's ``charge_id``, a dict by column.
 
-    Read through ``data.charge_table_rows()``, built once per model; the row is shared and
-    read-only.
+    Read through ``data.charge_table_rows()``, built once per model; the row is shared, so it
+    is returned read-only, as a ``types.MappingProxyType`` (the core's Module reference),
+    and an assignment into it raises ``TypeError``.
     """
-    return data.charge_table_rows()[charge_id()]                     # noqa: F821
+    return types.MappingProxyType(                                   # noqa: F821
+        data.charge_table_rows()[charge_id()])                       # noqa: F821
 
 
 def alpha_rate():

@@ -43,6 +43,8 @@
   values; a missing ``rec_margin`` row raises; its entrants and graduations are the ledger's
   own and equal the formulas they had beside it; its month-keyed rates depend on the month only
   through the attained age, as the age-keyed transitions assume.
+- The shared caches are read-only: every product's ``model_point()``, FRV's ``charge_row()``
+  and BU's cohort index and step arrays, their slices included, raise on a write.
 - RV's and KLV's own dict cells and scenario bounds equal their readers; their
   decrement-closure residual equals the old sum over the exit cells up to floating-point
   noise, on a new and an in-force point; their lookups keep their clamps (the declared rate
@@ -1761,6 +1763,34 @@ def test_lapse_rate_beyond_the_table_holds_its_last_row(product_models):
     assert item.lapse_rate_base(t) == float(table.at[last, "lapse_rate"])
 
 
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_model_point_is_read_only(product, product_models):
+    """``model_point()`` is the shared row of ``model_point_table_dict()``, read-only."""
+    model = product_models(product)
+    point_id = model.Data.model_point_table().index[0]
+    row = model.Projection[point_id].model_point()
+    shared = model.Data.model_point_table_dict()[point_id]
+    before = dict(shared)
+    column = "sex" if "sex" in row else next(iter(row))
+    with pytest.raises(TypeError):
+        row[column] = "M"
+    with pytest.raises(TypeError):
+        del row[column]
+    assert shared == before and dict(row) == before
+
+
+def test_frv_charge_row_is_read_only(product_models):
+    """FRV's ``charge_row()`` is the shared row of ``charge_table_rows()``, read-only."""
+    model = product_models("fondsgebundene_rentenversicherung")
+    item = model.Projection[model.Data.model_point_table().index[0]]
+    row = item.charge_row()
+    shared = model.Data.charge_table_rows()[item.charge_id()]
+    before = dict(shared)
+    column = next(iter(row))
+    with pytest.raises(TypeError):
+        row[column] = 5
+    assert shared == before and dict(row) == before
+
 def test_a_prem_freq_without_a_loading_raises(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     table = folder / "model_point_table.csv"
@@ -2525,6 +2555,22 @@ def test_bu_cohort_index_and_step_sliced_equal_the_vectors_by_month(product_mode
             assert item.cohort_anniv_step(n).tolist() == np.where(
                 np.arange(1, n + 1) % 12 == 0, g, 1.0).tolist(), "a reader mutated the cache"
 
+
+def test_bu_cohort_index_and_step_are_read_only(product_models):
+    """A write into ``cohort_year_idx`` or ``cohort_anniv_step``, or a slice of it, raises."""
+    model = product_models("berufsunfaehigkeit")
+    item = model.Projection[model.Data.model_point_table().index[0]]
+    for n in (item.max_claim_dur(), item.first_len() + 1):
+        for array in (item.cohort_year_idx(n), item.cohort_anniv_step(n)):
+            before = array.tolist()
+            with pytest.raises(ValueError):
+                array[0] = 5
+            with pytest.raises(ValueError):
+                array[:13][0] = 5
+            with pytest.raises(ValueError):
+                array[:13] *= 2
+            assert array.tolist() == before
+    assert item.cohort_year_idx(item.max_claim_dur())[0] == 0
 
 def test_bu_rate_arrays_by_age_equal_the_tuples(product_models):
     """``dis_keep_year*``, ``dis_q_year*`` and ``recov_year*`` hold the tuples' values as arrays.

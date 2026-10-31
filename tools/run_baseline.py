@@ -46,7 +46,9 @@ Per-contract cleanup
 By default the runner deletes each point's ItemSpace (``del Projection[point_id]`` on the
 model being run, the modelx or the exported one) once its ``result_cf`` bytes, its CSV
 lines and all its checks have been read, also when the point raised, so the ItemSpaces of
-earlier points do not accumulate. ``--no-cleanup`` keeps every ItemSpace alive until
+earlier points do not accumulate. Under the export engine it first breaks the item's
+reference cycles (``release_item``), so the deleted item is freed at once and not only at
+the next full garbage collection. ``--no-cleanup`` keeps every ItemSpace alive until
 ``run_product`` returns, as in phase 2a. The second output
 line names the mode, ``cleanup: on`` or ``cleanup: off``. The results, the hash and the
 written bytes are the same in both modes; how cells are computed and traced is unchanged.
@@ -268,7 +270,26 @@ def run_point(space_model, point_id: int, checks: list[str], keep_lines: bool | 
         return point_id, data, columns, lines, failures
     finally:
         if cleanup:
+            release_item(projection)
             del space_model.Projection[point_id]
+
+
+def release_item(projection) -> None:
+    """Break the reference cycles of an exported point's ItemSpace, so that deleting it frees
+    it at once rather than at the next full garbage collection.
+
+    The modelx exporter's item refers to itself through ``_space`` and its own ``_mx_roots``
+    list, and the cached ``*_columns`` cells hold bound cells and lambdas over the item. A
+    ``Projection`` item of the modelx engine has no ``_mx_roots`` and is left as it is.
+    """
+    if not isinstance(getattr(projection, "_mx_roots", None), list):
+        return
+    for cls in type(projection).__mro__:
+        for name in getattr(cls, "__slots__", ()):
+            if name.startswith("_v_") and name.endswith("_columns"):
+                setattr(projection, name, None)
+    projection._space = None
+    projection._mx_roots.clear()
 
 
 class _TransformInputs(Exception):

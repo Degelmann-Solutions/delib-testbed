@@ -1130,7 +1130,7 @@ def dis_cohorts_first(s):
     the same construction on the best-estimate basis, which this mirrors exactly but for
     the loaded rates and the absent lapse.
     """
-    n = max(cohort_len_first(s), 0)
+    n = cohort_len_first(s)
     pols = np.zeros(n)
     val = np.zeros(n)
     if s <= 0:
@@ -1401,7 +1401,7 @@ def dis_cohorts(t):
     each step rather than the previous ones mutated, so holding a returned array cannot
     corrupt the cache.
     """
-    n = max(cohort_len(t), 0)
+    n = cohort_len(t)
     pols = np.zeros(n)
     val = np.zeros(n)
     if t <= 0:

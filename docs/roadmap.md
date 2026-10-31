@@ -227,5 +227,6 @@ The forecast keeps the assumptions of "The new M": a linear extrapolation withou
 
 ## Open questions
 
+- Equivalent-mutant sites left in BU for phase 4: the `karenz_months() == 0` branches of `pv_claim_cost_first` and `claim_expenses` read the whole disabled ledger (`pols_dis_first(s)`, `pols_dis(t)`) where the general path sums the same array from slot `karenz_months() + 1` on, which at K = 0 gives the same bits. A mutant that makes the branch take the general path at K = 0 (the condition dropped or its literal changed to a value no shipped point carries) is therefore equivalent and survives. The branches stay because they are the speed: `pols_dis` and `pols_dis_first` are evaluated in every month anyway, so the general path adds one more sum over the cohort vector per month and order; with the branches removed, BU's `t_marginal` at W = 24 rose from 2.53 to 2.64 ms, by more than `main`'s own spread of 0.03 ms (`measure_marginal berufsunfaehigkeit --workers 24 --repeats 5`, four alternating runs each against `main`, 2026-10-31, story "Mutation domain of Pflege and BU before phase 4"). Phase 4 has to mark them as equivalent or exclude them from the mutant count.
 - Visibility of this repository: private for now. The licence is MIT, like upstream lifelib and delib-history.
 - Contract pool for the night-run criterion: the generator.

@@ -95,14 +95,17 @@ w(t)                        lapse_rate_mth(t)               Monthly lapse probab
 (allocation)                p_act_age(x, waiting)           Active-state month transitions
                                                             (stay, death, care), keyed by
                                                             age and the Wartezeit gate
-(allocation)                p_pg_age(x, g), p_pg(t, g)      Grade-g month transitions
+(allocation)                p_pg_age(x, g)                  Grade-g month transitions
                                                             (stay, death, worse, better),
                                                             keyed by age
 l_A(t)                      pols_act(t)                     Active at the start of month t
 W_{g,z}(t)                  pols_karenz(t, g, z)            In the Karenz ledger
 l_g(t)                      pols_pg(t, g)                   In a paying Pflegegrad
 E_g(t)                      esc_pg(t, g)                    Escalation-weighted l_g
-(none)                      pols_ledger(t)                  The four ledgers as one state
+(none)                      pols_ledger(t)                  The four ledgers as one
+                                                            state, with the previous
+                                                            month's entries and
+                                                            graduations
 (none)                      pols_care(t)                    Everyone in care
 l(t)                        pols_if(t)                      In force at the start of t
 l(t+1)                      pols_if_at(t, timing)           BEF_DECR / AFT_DECR
@@ -721,25 +724,14 @@ def p_act_age(x, waiting):
     proportion to the forces is what makes the three components sum to 1 exactly; adding
     monthly rates instead, or dividing an annual rate by twelve, does not.  ``care`` is zero
     inside the *Wartezeit*; the grade entered is then split by :func:`inc_share`.  Keyed by
-    age and the gate, so it is evaluated about once per year of age; the ledger,
-    :func:`pols_entry` and the decrement counts read it at ``age(t)``.
+    age and the gate, so it is evaluated about once per year of age; the ledger and the
+    decrement counts read it at ``age(t)``.
     """
     mu = mort_force(age_month(x))
     iota = 0.0 if waiting else inc_force_age(x)
     stay = math.exp(-(mu + iota) / 12.0)                             # noqa: F821
     total = mu + iota
     return (stay, mu / total * (1.0 - stay), iota / total * (1.0 - stay))
-
-
-def p_pg(t, g):
-    """The grade-``g`` month transitions in month ``t``, as ``(stay, death, worse, better)``.
-
-    The three competing forces out of a paying state, ``mu_g``, ``delta_g`` and ``rho_g``,
-    are read once and the month's exits allocated in proportion to them: ``stay`` is
-    ``exp(-(mu_g + delta_g + rho_g)/12)`` and each exit its force's share of ``1 - stay``.
-    It is :func:`p_pg_age` at the attained age ``age(t)``, read by :func:`pols_grad`.
-    """
-    return p_pg_age(age(t), g)
 
 
 def age_month(x):
@@ -790,13 +782,15 @@ def p_pg_age(x, g):
 def pols_ledger(t):
     """The second-order ledgers at the start of month ``t``, as one state.
 
-    ``(act, pg, esc, karenz)``: :func:`pols_act`, :func:`pols_pg` and :func:`esc_pg` for
-    ``g = 1 .. 5`` and :func:`pols_karenz` for ``g = 1 .. 5`` and ``z = 1 ..
-    karenz_months()``, rolled forward from the state at ``t - 1`` by the recursions those
-    cells state, with the same operations in the same order: the month's entrants
-    (:func:`pols_entry`), graduations (:func:`pols_grad`) and reactivations
-    (:func:`pols_reactiv`) are formed inline from the previous state.  One evaluation per
-    month instead of one per month, grade and clock; the published cells read their
+    ``(act, pg, esc, karenz, entry, grad)``: :func:`pols_act`, :func:`pols_pg` and
+    :func:`esc_pg` for ``g = 1 .. 5`` and :func:`pols_karenz` for ``g = 1 .. 5`` and
+    ``z = 1 .. karenz_months()``, rolled forward from the state at ``t - 1`` by the
+    recursions those cells state, with the same operations in the same order.  ``entry``
+    and ``grad`` are month ``t - 1``'s entrants into *Pflegegrad* ``g`` and graduations out
+    of the *Karenz* ledger into it, ``g = 1 .. 5``, which the roll forward forms from the
+    previous state together with the month's reactivations (:func:`pols_reactiv`); zeros
+    at ``t_start()``.  One evaluation per month instead of one per month, grade and clock;
+    the published cells, :func:`pols_entry` and :func:`pols_grad` among them, read their
     component.
     """
     k = karenz_months()
@@ -804,8 +798,9 @@ def pols_ledger(t):
         status = status_init()
         act = pols_if_init() if status == "aktiv" else 0.0
         pg = tuple(pols_if_init() if status == "pg%d" % g else 0.0 for g in range(1, 6))
-        return (act, pg, pg, tuple((0.0,) * k for g in range(1, 6)))
-    act0, pg0, esc0, kar0 = pols_ledger(t - 1)
+        none = (0.0,) * 5
+        return (act, pg, pg, tuple((0.0,) * k for g in range(1, 6)), none, none)
+    act0, pg0, esc0, kar0, _, _ = pols_ledger(t - 1)
     x = age(t - 1)
     p = tuple(p_pg_age(x, g) for g in range(1, 6))
     pa = p_act_age(age(t - 1), duration_mth(t - 1) < wartezeit_months())
@@ -865,7 +860,7 @@ def pols_ledger(t):
             carried += esc0[g] * p[g][3]
         pg.append(total)
         esc.append(factor * carried + grad[g - 1])
-    return (act, tuple(pg), tuple(esc), kar)
+    return (act, tuple(pg), tuple(esc), kar, entry, tuple(grad))
 
 
 def pols_act(t):
@@ -888,12 +883,12 @@ def pols_entry(t, g):
     """Lives entering *Pflegegrad* ``g`` from the active state during month ``t``.
 
     ``pols_act(t) x p_care(t) x inc_share(g)``, with ``p_care(t)`` the ``care`` component of
-    :func:`p_act_age` at ``age(t)``.  Entry is split across the grades
-    because it is not uniformly at the lowest one, and the split is one of the four
-    properties a replacement basis must preserve.
+    :func:`p_act_age` at ``age(t)``.  Entry is split across the grades because it is not
+    uniformly at the lowest one, and the split is one of the four properties a replacement
+    basis must preserve.  The ledger forms it when it rolls month ``t`` forward, so this
+    reads it from :func:`pols_ledger` at ``t + 1`` rather than computing it a second time.
     """
-    return (pols_ledger(t)[0] * p_act_age(age(t), duration_mth(t) < wartezeit_months())[2]
-            * inc_share(g))
+    return pols_ledger(t + 1)[4][g - 1]
 
 
 def pols_karenz(t, g, z):
@@ -934,22 +929,12 @@ def pols_grad(t, g):
     immediately after onset, that shortfall is larger than the length of the deferral
     suggests — a deferred period on a population with elevated mortality removes
     disproportionately more claims than the same period would on a healthy population.
+
+    The ledger forms the graduations when it rolls month ``t`` forward, from the ``z = K``
+    cohort of :func:`pols_karenz` and the grade transitions of :func:`p_pg_age` at
+    ``age(t)``, so this reads them from :func:`pols_ledger` at ``t + 1``.
     """
-    k = karenz_months()
-    if k <= 0:
-        return pols_entry(t, g)
-    total = 0.0
-    for h in range(max(1, g - 1), min(5, g + 1) + 1):
-        w = pols_ledger(t)[3][h - 1][k - 1]
-        if w == 0.0:
-            continue
-        if h == g:
-            total += w * p_pg(t, h)[0]
-        elif g == h + 1:
-            total += w * p_pg(t, h)[2]
-        else:
-            total += w * p_pg(t, h)[3]
-    return total
+    return pols_ledger(t + 1)[5][g - 1]
 
 
 def pols_reactiv(t):

@@ -40,7 +40,8 @@
   *Höchstrechnungszins* band), and a table the product lacks is never read.
 - Pflege's own dict cells equal their readers; its care-grade rates are keyed by attained
   age and grade, not by month, and keep their limiting-age, recovery-damping and grade-5
-  values; a missing ``rec_margin`` row raises.
+  values; a missing ``rec_margin`` row raises; its entrants and graduations are the ledger's
+  own and equal the formulas they had beside it.
 - RV's and KLV's own dict cells and scenario bounds equal their readers; their
   decrement-closure residual equals the old sum over the exit cells up to floating-point
   noise, on a new and an in-force point; their lookups keep their clamps (the declared rate
@@ -1880,6 +1881,41 @@ def test_pflege_care_grade_rates_are_keyed_by_age():
     finally:
         model.close()
 
+
+def test_pflege_entries_and_graduations_are_the_ledgers_own(product_models):
+    """``pols_entry`` and ``pols_grad`` read the ledger and equal the formulas they had beside it.
+
+    On every point and every month of the frame, the last one included, whose flows the
+    ledger forms at ``proj_len()``: the entrants are ``pols_act(t)`` times the ``care``
+    component of ``p_act_age`` times ``inc_share(g)``; the graduations equal the entrants
+    where ``karenz_months() == 0`` and are the ``z = K`` cohort carried one month through
+    ``p_pg_age`` at ``age(t)`` where it is positive (point 7).
+    """
+    model = product_models("pflegerentenversicherung")
+    seen = set()
+    for point_id in model.Data.model_point_table().index:
+        item = model.Projection[point_id]
+        k = item.karenz_months()
+        seen.add(k > 0)
+        for t in range(item.t_start(), item.proj_len()):
+            state = item.pols_ledger(t)
+            waiting = item.duration_mth(t) < item.wartezeit_months()
+            care = item.p_act_age(item.age(t), waiting)[2]
+            for g in range(1, 6):
+                entry = state[0] * care * item.inc_share(g)
+                assert item.pols_entry(t, g) == entry, (point_id, t, g)
+                if k <= 0:
+                    assert item.pols_grad(t, g) == item.pols_entry(t, g), (point_id, t, g)
+                    continue
+                grad = 0.0
+                for h in range(max(1, g - 1), min(5, g + 1) + 1):
+                    w = state[3][h - 1][k - 1]
+                    if w == 0.0:
+                        continue
+                    p = item.p_pg_age(item.age(t), h)
+                    grad += w * (p[0] if h == g else p[2] if g == h + 1 else p[3])
+                assert item.pols_grad(t, g) == grad, (point_id, t, g)
+    assert seen == {False, True}
 
 def test_pflege_tariff_care_mortality_is_certain_at_the_limiting_age(product_models):
     item = product_models("pflegerentenversicherung").Projection[1]

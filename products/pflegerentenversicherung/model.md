@@ -104,10 +104,11 @@ which is why the tests assert the **flow** and never a non-monotone stock.
 with **forces held constant over the month**, the competing transitions sharing one survival
 probability in proportion to their forces — `p_stay = exp(−Σμ/12)` and
 `p_j = (μ_j / Σμ) × (1 − p_stay)` — so `p_stay + Σ p_j = 1` **exactly, by construction**. That is
-what makes `check_states()` an identity rather than an approximation, and why `p_pg_stay`,
-`p_pg_death`, `p_pg_worse` and `p_pg_better` are four published cells rather than folded into the
-recursion. Adding monthly rates, or applying `q/12`, differs wherever the forces are large — which
-on this product is exactly where the money is.
+what makes `check_states()` an identity rather than an approximation, and why
+`p_act_age(x, waiting)` and `p_pg_age(x, g)` return every exit of a state together,
+`(stay, death, care)` and `(stay, death, worse, better)`, from one sum of forces. Adding monthly
+rates, or applying `q/12`, differs wherever the forces are large — which on this product is
+exactly where the money is.
 
 ## Grade and mortality are correlated, and the highest-paying state is the shortest-lived
 

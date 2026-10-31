@@ -41,7 +41,8 @@
 - Pflege's own dict cells equal their readers; its care-grade rates are keyed by attained
   age and grade, not by month, and keep their limiting-age, recovery-damping and grade-5
   values; a missing ``rec_margin`` row raises; its entrants and graduations are the ledger's
-  own and equal the formulas they had beside it.
+  own and equal the formulas they had beside it; its month-keyed rates depend on the month only
+  through the attained age, as the age-keyed transitions assume.
 - RV's and KLV's own dict cells and scenario bounds equal their readers; their
   decrement-closure residual equals the old sum over the exit cells up to floating-point
   noise, on a new and an in-force point; their lookups keep their clamps (the declared rate
@@ -1916,6 +1917,32 @@ def test_pflege_entries_and_graduations_are_the_ledgers_own(product_models):
                     grad += w * (p[0] if h == g else p[2] if g == h + 1 else p[3])
                 assert item.pols_grad(t, g) == grad, (point_id, t, g)
     assert seen == {False, True}
+
+def test_pflege_month_keyed_rates_depend_on_the_month_only_through_the_age(product_models):
+    """The age-keyed transitions read the month-keyed rates at ``age_month(age(t))``.
+
+    ``p_act_age`` and ``p_pg_age`` are keyed by attained age and read ``inc_rate``,
+    ``mort_force`` and ``mort_force_care`` at the first month of the age; that is right only
+    while those rates take the same value in every month of a year of age. On every point
+    and every month of the frame: ``age_month`` maps back to the age, the three rates equal
+    their values at it, and ``inc_force`` is 0 in the *Wartezeit* and else
+    ``inc_force_age`` at the age.
+    """
+    model = product_models("pflegerentenversicherung")
+    for point_id in model.Data.model_point_table().index:
+        item = model.Projection[point_id]
+        for t in range(item.t_start(), item.proj_len()):
+            x = item.age(t)
+            m = item.age_month(x)
+            assert item.age(m) == x, (point_id, t)
+            assert item.inc_rate(t) == item.inc_rate(m), (point_id, t)
+            assert item.mort_force(t) == item.mort_force(m), (point_id, t)
+            for g in range(1, 6):
+                assert item.mort_force_care(t, g) == item.mort_force_care(m, g), (point_id, t, g)
+            if item.duration_mth(t) < item.wartezeit_months():
+                assert item.inc_force(t) == 0.0, (point_id, t)
+            else:
+                assert item.inc_force(t) == item.inc_force_age(x), (point_id, t)
 
 def test_pflege_tariff_care_mortality_is_certain_at_the_limiting_age(product_models):
     item = product_models("pflegerentenversicherung").Projection[1]

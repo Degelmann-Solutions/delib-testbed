@@ -1791,6 +1791,7 @@ def test_frv_charge_row_is_read_only(product_models):
         row[column] = 5
     assert shared == before and dict(row) == before
 
+
 def test_a_prem_freq_without_a_loading_raises(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     table = folder / "model_point_table.csv"
@@ -1948,6 +1949,7 @@ def test_pflege_entries_and_graduations_are_the_ledgers_own(product_models):
                 assert item.pols_grad(t, g) == grad, (point_id, t, g)
     assert seen == {False, True}
 
+
 def test_pflege_month_keyed_rates_depend_on_the_month_only_through_the_age(product_models):
     """The age-keyed transitions read the month-keyed rates at ``age_month(age(t))``.
 
@@ -1973,6 +1975,7 @@ def test_pflege_month_keyed_rates_depend_on_the_month_only_through_the_age(produ
                 assert item.inc_force(t) == 0.0, (point_id, t)
             else:
                 assert item.inc_force(t) == item.inc_force_age(x), (point_id, t)
+
 
 def test_pflege_tariff_care_mortality_is_certain_at_the_limiting_age(product_models):
     item = product_models("pflegerentenversicherung").Projection[1]
@@ -2571,6 +2574,7 @@ def test_bu_cohort_index_and_step_are_read_only(product_models):
                 array[:13] *= 2
             assert array.tolist() == before
     assert item.cohort_year_idx(item.max_claim_dur())[0] == 0
+
 
 def test_bu_rate_arrays_by_age_equal_the_tuples(product_models):
     """``dis_keep_year*``, ``dis_q_year*`` and ``recov_year*`` hold the tuples' values as arrays.

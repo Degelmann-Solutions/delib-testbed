@@ -293,6 +293,59 @@ def test_cleanup_deletes_every_itemspace_also_of_raising_points(tmp_path, monkey
     assert not [p for p in sys.path if "delib-export-" in p]
 
 
+def test_cleanup_frees_every_exported_itemspace_without_garbage_collection(tmp_path, monkeypatch):
+    """With the collector off, no deleted point's item survives its ``del``: the runner broke
+    the item's reference cycles first. Points 2 and 13 raise, so their release runs too."""
+    import gc
+    import importlib
+
+    raises = scratch_copy(tmp_path, "raises")
+    edit_point(raises, 2, benefit_schedule_id="nosuch")
+    edit_point(raises, 13, benefit_schedule_id="nosuch")
+    deleted, keys = {}, []
+
+    def spy_on(cls):
+        original = cls.__delitem__
+
+        def spy(self, key):
+            item = self._mx_itemspaces[key]
+            deleted[id(item)] = (key, type(item))
+            keys.append(key)
+            del item
+            original(self, key)
+
+        monkeypatch.setattr(cls, "__delitem__", spy)
+
+    import_module = importlib.import_module
+
+    def spying_import(name, *args, **kwargs):
+        module = import_module(name, *args, **kwargs)
+        if name.startswith("_delib_export_"):
+            spy_on(type(module.mx_model.Projection))
+        return module
+
+    monkeypatch.setattr(importlib, "import_module", spying_import)
+    runner = load_runner()
+    gc.collect()
+    gc.disable()
+    try:
+        count, _checks, _sha, failures, _lines, _digests = runner.run_product(raises)
+        survivors = [deleted[id(o)][0] for o in gc.get_objects()
+                     if id(o) in deleted and type(o) is deleted[id(o)][1]]
+    finally:
+        gc.enable()
+    assert count == N_POINTS and len(failures) == 2
+    assert keys == list(range(1, N_POINTS + 1))
+    assert survivors == []
+
+
+def test_release_leaves_an_item_without_export_internals_alone():
+    runner = load_runner()
+    item = type("Item", (), {"_space": "kept", "_v_result_cf_columns": "kept"})()
+    runner.release_item(item)
+    assert item._space == "kept" and item._v_result_cf_columns == "kept"
+
+
 def test_failing_export_is_one_failure_and_main_writes_nothing(tmp_path, monkeypatch, capsys):
     runner = load_runner()
 

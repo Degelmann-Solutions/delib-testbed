@@ -1,8 +1,8 @@
-# Performance: reference measurement of phase 2a, the phase-2b, phase-2c and phase-2d measurements next to it, and the phase-3 per-cell profile
+# Performance: reference measurement of phase 2a, the phase-2b, phase-2c and phase-2d measurements next to it, the phase-3 per-cell profile and the phase-3 night measurement
 
 The marginal time per contract of every product, measured with `tools/measure_marginal.py` on the unchanged phase-1 runner. Later phase-2 changes are measured with the same tool against this table.
 
-The 2a reference was measured at `10c2ad8`, before the runner had per-contract cleanup. Since phase 2b the runner cleans up by default, since phase 2c it runs on the exported model by default, and since phase 2d it can run the points in worker processes and the tool measures at several worker counts with K = 32 by default; reproducing the 2a table with the current tool needs `--factor 2 --engine modelx --no-cleanup`, the 2b table `--factor 2 --engine modelx`, the 2c table `--factor 2 --workers 1`. The phase-2b, phase-2c and phase-2d measurements and the phase-3 per-cell profile follow in their own sections below.
+The 2a reference was measured at `10c2ad8`, before the runner had per-contract cleanup. Since phase 2b the runner cleans up by default, since phase 2c it runs on the exported model by default, and since phase 2d it can run the points in worker processes and the tool measures at several worker counts with K = 32 by default; reproducing the 2a table with the current tool needs `--factor 2 --engine modelx --no-cleanup`, the 2b table `--factor 2 --engine modelx`, the 2c table `--factor 2 --workers 1`. The phase-2b, phase-2c and phase-2d measurements, the phase-3 per-cell profile (of the phase-2 state, before the core) and the phase-3 night measurement (the final code of epic-night-run, with a fresh profile) follow in their own sections below.
 
 **Timings depend on the machine.** They compare changes on one machine; they are not a property of the model.
 
@@ -574,3 +574,83 @@ Ten rows reach 76.2 %, thirteen 81.1 %. The point is dominated by the care-grade
 - **Python loops elsewhere.** `berufsunfaehigkeit` is the one product without a dominant lookup: its disability cohorts (`dis_cohorts*`, `dis_exits*`, `mort_rate_dis_first_mth_year`) are list and tuple loops in Python, together 52 % of the point, spread over many cells (10 rows reach 72.0 %).
 - **`result_cf` itself** (building the DataFrame from per-month lists) is 2 to 7 % of most products and 12.5 % of `riester_rente`, the cheapest point.
 - **Shared across products, candidates for the core:** `mort_rate_at_age` is in the top cells of six products (`basisrente`, `kapitallebensversicherung`, `klassische_rentenversicherung`, `riester_rente`, `risikolebensversicherung`, `sofortrente`), `check_net_cf_resid` of five, a `lapse_rate` or `lapse_rate_base` of seven, `result_cf` of seven, `claims` of six, `decl_rate` of two (`basisrente`, `kapitallebensversicherung`), `check_decrement_closure_resid` of two. The same name is not the same formula: `mort_rate_at_age` is an `.at` on `(sex, age)` in `klassische_rentenversicherung`, on `(table, sex, smoker, age)` in `risikolebensversicherung`, a clamped `.loc` on `(basis, sex, age)` in `sofortrente` and a row `.loc` with a trend factor in `basisrente`. A fast table lookup and a cheaper net-cash-flow check built once in the core would reach most products; `pflegerentenversicherung`, which is 91.6 of the 171 ms of the W = 24 forecast sum, needs its own care-grade rates made cheap first.
+
+# Phase 3: night measurement
+
+The closing measurement of epic-night-run on its final code: after the core (epic-common-core), the performance commits of entries 2.3 to 2.10 and 2.14 to 2.16, the harvest of the four-hour experiment (PR #32) and the refactor sweep (PR #34). It gives the combined forecast for all ten products at the new M (`docs/roadmap.md`, "The new M"), a fresh per-cell profile and the trace check under `--engine modelx`. Read-only: no model, runner, tool or test changed.
+
+- Date: 2026-10-31
+- Commit: `94294d6fd387348a4c8a6f85aaa125da42973111` (merge of PR #34), clean tree
+- Machine: the same as for 2a to 2d (12th Gen Intel Core i7-12800HX, 24 logical CPUs, 62.8 GiB RAM, Linux 6.6 under WSL2; Python 3.12.13, modelx 0.33.0, pandas 3.1.0, numpy 2.5.4); load average about 1 at the start
+- Commands, one after the other on the otherwise idle machine:
+  - `uv run python tools/measure_marginal.py --all --workers 24 --json /tmp/night311.json` (defaults: engine export, cleanup on, transform cache off, factor K = 32, repeats R = 3, M = 5,300, P = 10,000); exit 0, every run verified, wall time 2 min
+  - `for p in $(ls products); do uv run python tools/run_baseline.py $p --engine modelx > /tmp/trace-$p.txt || echo FAIL $p; done`; no `FAIL`, so exit 0 for each of the ten
+  - the profile script of the phase-3 per-cell profile above, unchanged; exit 0, `all ok`, wall time 34 s
+
+## Result at W = 24
+
+| Product | n | K·n | T(n) s | T(K·n) s | fixed s | t_marginal ms | mem(K·n) MB | status |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| basisrente | 13 | 416 | 1.00 | 1.59 | 1.07 | 1.47 | 570 | ok |
+| berufsunfaehigkeit | 13 | 416 | 1.13 | 2.31 | 1.20 | 2.93 | 699 | ok |
+| fondsgebundene_rentenversicherung | 13 | 416 | 0.99 | 1.40 | 1.08 | 1.01 | 525 | ok |
+| indexpolice | 13 | 416 | 1.01 | 1.21 | 1.10 | 0.50 | 482 | ok |
+| kapitallebensversicherung | 14 | 448 | 0.97 | 1.45 | 1.05 | 1.11 | 485 | ok |
+| klassische_rentenversicherung | 14 | 448 | 1.12 | 1.80 | 1.19 | 1.56 | 593 | ok |
+| pflegerentenversicherung | 14 | 448 | 1.25 | 2.76 | 1.29 | 3.47 | 953 | ok |
+| riester_rente | 13 | 416 | 1.07 | 1.66 | 1.14 | 1.46 | 594 | ok |
+| risikolebensversicherung | 14 | 448 | 0.94 | 1.31 | 1.02 | 0.86 | 513 | ok |
+| sofortrente | 14 | 448 | 1.00 | 1.56 | 1.07 | 1.27 | 529 | ok |
+
+Status `ok` for all ten: replicas equal their originals by digest and points `1 … n` reproduce `baseline/` byte for byte. Σ t_marginal = 15.7 ms and Σ fixed = 11.21 s, against 137.8 ms and 20.3 s with the core on 2026-10-28 (`docs/roadmap.md`, "Where the common core stands") and 171 ms in phase 2d: `t_marginal` fell by a factor of about 9, the fixed cost by about 1.8. `pflegerentenversicherung` is no longer half of the marginal time but 3.47 of 15.7 ms (72.0 ms on 2026-10-28). `mem(K·n)` is 0.5 to 1.0 GB, against 1.2 to 4.4 GB in phase 2d.
+
+## Forecast and the R9 verdict
+
+The combined line of the command, verbatim:
+
+> all 10 products together, W = 24: M_core·(Σ f + P·Σ t) + Σ M_p·(f_p + P·t_p) = 186·(11.21 s + 1,000·15.7 ms) + Σ M_p·(…) = 1.4 h + 4.1 h = 5.5 h (fits the 10 h night), M = 5,300 (M_core = 186, Σ M_p = 5,114), P = 1,000 per product, fixed cost included
+
+All ten products together, at the new M = 5,300, P = 10,000 (1,000 per product), W = 24, fixed cost included, are forecast at **5.5 h, within the 10 h night** (36.2 h on 2026-10-28; the target Σ t_marginal ≈ 25.6 ms of "The new M" is met at 15.7 ms). R9 holds; no decision on the trace rule or the criterion is needed (epic-night-run, N6). The assumptions of the command apply: a linear extrapolation without trace pruning, the coverage filter ignored, `M_core` and `M_p` the counts at `f07f003`, a forecast, not a measurement.
+
+Run-to-run spread: the same command on the same code content, in the description of PR #34 (2026-10-31, before its merge), gave Σ t 12.9 ms, Σ fixed 10.25 s and 4.7 h. This run is 22 % higher in Σ t, with eight of ten products up, most `kapitallebensversicherung` (0.41 → 1.11 ms), `pflegerentenversicherung` (2.90 → 3.47), `berufsunfaehigkeit` (2.41 → 2.93), `risikolebensversicherung` (0.57 → 0.86) and `indexpolice` (0.34 → 0.50); only `fondsgebundene_rentenversicherung` and `sofortrente` came down. The cause is not established: this run started at load average about 1, and no code changed between the two. The figure recorded here is the higher, conservative one; both lie well within the night.
+
+## Trace check under `--engine modelx`
+
+Each product runs on the modelx engine, point by point with its own ItemSpace, so the trace per contract stays available (epic-night-run, N5):
+
+| Product | points | check cells | checks | sha256 equal to the pin in `tests/test_baseline.py` | wall time s |
+|---|---:|---:|---|---|---:|
+| basisrente | 13 | 6 | all true | yes | 6.6 |
+| berufsunfaehigkeit | 13 | 7 | all true | yes | 6.5 |
+| fondsgebundene_rentenversicherung | 13 | 7 | all true | yes | 5.6 |
+| indexpolice | 13 | 6 | all true | yes | 2.0 |
+| kapitallebensversicherung | 14 | 10 | all true | yes | 2.8 |
+| klassische_rentenversicherung | 14 | 9 | all true | yes | 8.6 |
+| pflegerentenversicherung | 14 | 6 | all true | yes | 10.8 |
+| riester_rente | 13 | 6 | all true | yes | 6.7 |
+| risikolebensversicherung | 14 | 5 | all true | yes | 4.7 |
+| sofortrente | 14 | 9 | all true | yes | 5.7 |
+
+## Fresh per-cell profile
+
+The script and method of the phase-3 per-cell profile above, on this commit: W = 1, export engine with cleanup, one unprofiled and one profiled run per product, exclusive time per cell. Below are the summary and the three top cells per product; shares are of the per-point cell time.
+
+| Product | point loop ms/pt, unprofiled | point loop ms/pt, profiled | per-point cells ms/pt | calls/pt | top cells (share) |
+|---|---:|---:|---:|---:|---|
+| pflegerentenversicherung | 29.0 | 45.9 | 41.0 | 38,132 | `pols_ledger` 19.4 %, `result_cf` 9.3 %, `tar_ledger` 7.0 % |
+| basisrente | 19.2 | 28.2 | 24.2 | 37,720 | `result_cf` 16.6 %, `claims` 8.1 %, `net_cf` 4.7 % |
+| berufsunfaehigkeit | 20.9 | 34.2 | 31.0 | 28,596 | `dis_exits` 8.3 %, `dis_exits_first` 8.1 %, `result_cf` 6.9 % |
+| fondsgebundene_rentenversicherung | 8.8 | 26.1 | 23.3 | 28,998 | `pols_maturity` 21.7 %, `result_cf` 13.2 %, `av_pp_at` 5.7 % |
+| indexpolice | 4.5 | 10.0 | 8.2 | 13,528 | `result_cf` 13.9 %, `claims` 8.1 %, `net_cf` 5.5 % |
+| kapitallebensversicherung | 5.2 | 12.5 | 10.7 | 17,088 | `result_cf` 12.9 %, `claims` 6.2 %, `net_cf` 3.5 % |
+| klassische_rentenversicherung | 18.9 | 33.8 | 29.8 | 45,987 | `result_cf` 12.6 %, `claims` 7.8 %, `net_cf` 4.9 % |
+| riester_rente | 12.4 | 28.2 | 24.2 | 39,077 | `result_cf` 19.2 %, `claims` 10.8 %, `net_cf` 5.1 % |
+| risikolebensversicherung | 7.1 | 13.9 | 12.2 | 16,109 | `lapse_cum` 14.1 %, `result_cf` 12.7 %, `benefit_paid_pp` 4.1 % |
+| sofortrente | 15.0 | 27.6 | 24.9 | 30,257 | `mort_rate_tariff_mth` 20.0 %, `result_cf` 10.0 %, `annuity_payments` 6.8 % |
+
+Observations:
+
+- **No dominant lookup is left.** The scalar `DataFrame.at`/`.loc` lookups that were 23 to 74 % of seven products in the pre-core profile no longer appear among the top cells; ten rows now cover only 40 to 58 % of the point (Pflege 61 % with fifteen rows), so the time is spread over many cheap cells. The unprofiled point loop is 4.5 to 29.0 ms per point, against 18.1 to 554.7 ms pre-core.
+- **What remains is the core's frame.** `result_cf` (building the result DataFrame, once per point) is among the top three cells of all ten products, `claims` and `net_cf` of five each (Basis, Index, KLV, RV, Riester); they are the next common lever, in the core.
+- **Product-specific remainders:** Pflege's ledgers (`pols_ledger`, `tar_ledger`, 26 %), FRV's `pols_maturity` (21.7 %), Sofort's `mort_rate_tariff_mth` (20.0 %), RLV's `lapse_cum` (14.1 %) and BU's disability exits and cohorts (`dis_exits*`, `dis_cohorts*`, together 27 %).
+- **The overhead caveat is larger now.** The profiled point loop is 47 to 197 % slower than the unprofiled one (+12 to +49 % pre-core): with lookups gone, a point is many cells of about 1 µs, where the timer's 0.3 to 0.8 µs per evaluation weighs most. Shares of cheap cells with many callees are overstated accordingly; single runs, indicative only.

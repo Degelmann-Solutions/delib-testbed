@@ -527,7 +527,8 @@ def test_parallel_export_restores_modelx_also_when_it_raises(tmp_path, monkeypat
         model.close()
 
 
-def test_a_transform_raising_in_a_child_falls_back_to_the_serial_export(tmp_path, monkeypatch):
+def test_a_transform_raising_in_a_child_falls_back_to_the_serial_export(tmp_path, monkeypatch,
+                                                                         capsys):
     import os
 
     runner = load_runner()
@@ -544,6 +545,8 @@ def test_a_transform_raising_in_a_child_falls_back_to_the_serial_export(tmp_path
     model = runner.mx.read_model(runner.model_dir(FOLDER))
     try:
         runner.export_model(model, tmp_path / "serial", 1)
+        runner.export_model(model, tmp_path / "parallel", 4)
+        assert capsys.readouterr().err == ""  # a parallel export that succeeds prints nothing
         monkeypatch.setattr(exporter, "FormulaTransformer", raises_in_a_child)
         calls = counting_export(runner, monkeypatch)
         class_defs = vars(exporter.SpaceTranslator)["class_defs"]
@@ -553,6 +556,8 @@ def test_a_transform_raising_in_a_child_falls_back_to_the_serial_export(tmp_path
     finally:
         model.close()
     assert len(calls) == 2  # the parallel export, then the serial one
+    assert capsys.readouterr().err.splitlines() == [
+        "parallel export raised RuntimeError: transform failed in a child; exporting serially"]
     assert exported_sources(tmp_path / "fallback") == exported_sources(tmp_path / "serial")
     _count, _checks, sha, failures, _lines, _digests = runner.run_product(FOLDER, workers=4)
     assert failures == [] and sha == runner.run_product(FOLDER)[2]
@@ -625,6 +630,46 @@ def test_an_unreadable_cache_entry_is_a_miss(tmp_path, monkeypatch):
     assert sorted(cache.iterdir()) == entries
     runner._cache_get(cache, entries[0].name)  # rewritten: readable again
     assert runner._cache_get(cache, entries[0].name) is not None
+
+
+@pytest.mark.parametrize("entry", [None, ("code",), ({}, "a", "b"), ("not a dict", "code"),
+                                   ({}, b"bytes"), [{}, "code"]])
+def test_a_cache_entry_of_the_wrong_shape_is_a_miss_and_rewritten(tmp_path, monkeypatch, entry):
+    import pickle
+
+    runner = load_runner()
+    monkeypatch.setitem(sys.modules, "run_baseline", runner)
+    cache = tmp_path / "cache"
+    model = runner.mx.read_model(runner.model_dir(FOLDER))
+    try:
+        runner.export_model(model, tmp_path / "serial", 1)
+        runner.export_model(model, tmp_path / "cold", 24, cache)
+        entries = sorted(cache.iterdir())
+        good = runner._cache_get(cache, entries[0].name)
+        entries[0].write_bytes(pickle.dumps(entry))
+        assert runner._cache_get(cache, entries[0].name) is None
+        runner.export_model(model, tmp_path / "repaired", 24, cache)
+    finally:
+        model.close()
+    assert exported_sources(tmp_path / "repaired") == exported_sources(tmp_path / "serial")
+    assert sorted(cache.iterdir()) == entries
+    assert runner._cache_get(cache, entries[0].name) == good
+
+
+@pytest.mark.parametrize("fails", ["dump", "replace"])
+def test_a_failed_cache_write_leaves_no_temporary_file(tmp_path, monkeypatch, fails):
+    runner = load_runner()
+    cache = tmp_path / "cache"
+
+    def boom(*args, **kwargs):
+        raise OSError("disk full")
+
+    if fails == "dump":
+        monkeypatch.setattr(runner.pickle, "dump", boom)
+    else:
+        monkeypatch.setattr(runner.os, "replace", boom)
+    runner._cache_put(cache, "k" * 64, ({"f": None}, "code"))
+    assert list(cache.iterdir()) == []
 
 
 def test_run_product_with_a_transform_cache_gives_the_same_hash(tmp_path, monkeypatch):

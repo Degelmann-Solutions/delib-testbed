@@ -59,10 +59,11 @@ Workers
 parent reads and exports the model once, as above; for the export it runs modelx's formula
 transform of each top-level space (``CoreData``, ``CoreProjection``, ``Data``,
 ``Projection``) in up to ``W`` processes forked for the export alone, and the exported code
-is the same as at ``W`` = 1. If anything in that parallel export raises, the partial package
-is removed and the export runs again serially, so a failing export fails as at ``W`` = 1.
-The parent then forks the workers from the exported model, so each worker starts with it
-already imported; each worker runs one point at a time, with cleanup, and sends back its
+is the same as at ``W`` = 1. If anything in that parallel export raises, the runner prints
+one line on stderr, ``parallel export raised <type>: <message>; exporting serially``, removes
+the partial package and runs the export again serially, so a failing export fails as at
+``W`` = 1. The parent then forks the workers from the exported model, so each worker starts
+with it already imported; each worker runs one point at a time, with cleanup, and sends back its
 hash bytes, columns, CSV lines (only those the run keeps) and failures. The parent takes the results in ascending ``point_id`` order and does
 what the single process does with them, so the hash, the written bytes and the failure
 lines, in their order, are the same for every ``W``. If a worker dies (a crash, the
@@ -79,11 +80,13 @@ With ``--transform-cache DIR`` (``W`` > 1 only) the parallel export looks every 
 formula source up in ``DIR`` before transforming it: one file per piece, named by the SHA-256
 of the piece, its cell names and its cacheless names, salted with the Python, modelx and libcst
 versions (libcst's from ``importlib.metadata``, as it has no ``__version__``) and the hashes
-of modelx's ``exporter.py`` and ``transformer.py``. A hit is used as the child's result would be; only the misses are transformed, in forked children, and
-written to ``DIR`` (atomically, via a temporary file and ``os.replace``, so concurrent runs
-can share it). The exported package is the same text with or without the cache
-(``tests/test_runner.py``). A mutant changes the source of the piece holding the mutated cell,
-so only that piece misses; the cache is never cleaned and grows by the pieces of every
+of modelx's ``exporter.py`` and ``transformer.py``. A hit is used as the child's result would
+be; an entry that does not unpickle to a pair of a ``dict`` and a ``str`` is a miss. Only the
+misses are transformed, in forked children, and written to ``DIR`` (atomically, via a
+temporary file and ``os.replace``, so concurrent runs can share it; a failed write is ignored
+and its temporary file removed). The exported package is the same text with or without the
+cache (``tests/test_runner.py``). A mutant changes the source of the piece holding the mutated
+cell, so only that piece misses; the cache is never cleaned and grows by the pieces of every
 mutant. Without the option nothing is cached.
 
 Checks
@@ -375,24 +378,33 @@ def _transformer_salt(exporter) -> str:
 
 
 def _cache_get(cache: Path, key: str):
-    """The cached ``(func_attrs, code)`` of ``key``, or ``None`` (missing or unreadable)."""
+    """The cached ``(func_attrs, code)`` of ``key``, or ``None`` (missing, unreadable, or not a
+    pair of a ``dict`` and a ``str``)."""
     try:
         with open(cache / key, "rb") as f:
-            return pickle.load(f)
+            result = pickle.load(f)
     except Exception:
         return None
+    if (isinstance(result, tuple) and len(result) == 2
+            and isinstance(result[0], dict) and isinstance(result[1], str)):
+        return result
+    return None
 
 
 def _cache_put(cache: Path, key: str, result) -> None:
-    """Store ``result`` under ``key`` atomically; a failure to write is ignored."""
+    """Store ``result`` under ``key`` atomically; a failure to write is ignored and leaves no
+    temporary file behind."""
+    tmp = cache / f".{key}.{os.getpid()}.tmp"
     try:
         cache.mkdir(parents=True, exist_ok=True)
-        tmp = cache / f".{key}.{os.getpid()}.tmp"
         with open(tmp, "wb") as f:
             pickle.dump(result, f, protocol=pickle.HIGHEST_PROTOCOL)
         os.replace(tmp, cache / key)
     except Exception:
-        pass
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def _modelx_exporter():
@@ -494,8 +506,8 @@ def export_model(model, path: Path, workers: int = 1, cache: Path | None = None)
     At ``workers`` = 1 this is modelx's export as it stands. With ``workers`` > 1 the
     top-level spaces' formulas are transformed in up to ``workers`` forked processes (see
     module docstring, "Workers"); the exported code is the same. If anything in the
-    parallel path raises, the partial output is removed and the export runs again serially,
-    so a failing export raises what the serial one raises.
+    parallel path raises, one line on stderr names the cause, the partial output is removed
+    and the export runs again serially, so a failing export raises what the serial one raises.
 
     ``cache`` (``W`` > 1 only) is a folder of transformed pieces keyed by their input (see
     module docstring, "Transform cache"); ``None`` transforms every piece.
@@ -511,11 +523,12 @@ def export_model(model, path: Path, workers: int = 1, cache: Path | None = None)
     try:
         mx.export_model(model, path)
         return
-    except Exception:
-        pass
+    except Exception as exc:
+        cause = describe(exc)
     finally:
         translator.class_defs = original
         exporter.FormulaTransformer = transformer
+    print(f"parallel export raised {cause}; exporting serially", file=sys.stderr, flush=True)
     shutil.rmtree(path, ignore_errors=True)
     mx.export_model(model, path)
 

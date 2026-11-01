@@ -58,10 +58,17 @@ Transform cache
 before. ``--transform-cache mutant`` (every ``W`` > 1) measures the fixed cost a mutant pays
 with the night run's cache: before the timed runs of a product and ``W`` one untimed child
 warms a cache on the shipped model (verified like a timed run); every timed run then gets
-its own copy of it with the largest entry removed (``mutant_cache``), so its export
-transforms exactly one piece, the most expensive one, as a mutant whose cell sits in it
-would. The marginal time is unaffected; the fixed cost is that of the worst-placed mutant.
-The header line and the JSON (``transform_cache``) state the mode.
+its own copy of it without the entries of the worst-placed mutant (``mutant_cache``). A
+mutant misses every piece holding its cell, one for a product cell and two for a core cell
+(its piece of ``CoreProjection`` and the piece of ``Projection`` that inherits it); the cells
+are found by name in the cached entries, and the worst-placed one is the cell whose pieces
+are largest together. Since the runner cuts pieces of similar size, that is a core cell, so
+``fixed(W)`` is a core mutant's; it is used for the product mutants too, for whom it is
+slightly high. A source change that shifts a later cut between pieces, which would make the
+later pieces of that space miss as well, is not modelled; this is stated, not corrected. If
+the warmed cache has no entries (its parallel export fell back to the serial one), one note
+goes to stderr and every timed run gets an empty cache. The marginal time is unaffected. The
+header line and the JSON (``transform_cache``) state the mode.
 
 Verification
 ------------
@@ -109,6 +116,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import pickle
 import shutil
 import statistics
 import subprocess
@@ -403,17 +411,47 @@ def run_child(folder: Path, originals: int, cleanup: bool, engine: str = "export
 
 # --------------------------------------------------------------------------- parent
 
-def mutant_cache(warm: Path, target: Path) -> Path:
-    """A copy of the warm transform cache ``warm`` at ``target`` without its largest entry.
+def cache_entries(warm: Path) -> list[Path]:
+    """The entries of the transform cache ``warm`` (not its temporary files); none if it is
+    missing."""
+    if not warm.is_dir():
+        return []
+    return sorted(p for p in warm.iterdir() if p.is_file() and not p.name.startswith("."))
 
-    A mutant changes one cell, so its export misses the one piece that holds the cell and
-    hits every other one. Dropping the largest entry (the piece with the most transformed
-    code) makes every timed run miss one piece, and the most expensive one: the fixed cost of
-    a mutant at its worst.
+
+def mutant_cache(warm: Path, target: Path) -> Path:
+    """A copy of the warm transform cache ``warm`` at ``target`` without the entries of the
+    worst-placed mutant.
+
+    An entry is the pickled ``(func_attrs, code)`` of one piece, ``func_attrs`` keyed by the
+    piece's cell names. A mutant changes one cell, so its export misses every piece that
+    holds the cell and hits every other one: one piece for a product cell, two for a core
+    cell (its piece of ``CoreProjection`` and the piece of ``Projection`` that inherits it).
+    The worst-placed cell is the name whose entries have the largest summed file size; all
+    its entries are dropped, so every timed run transforms what the most expensive mutant
+    would. Entries that do not unpickle to a dict and a code string are copied but not
+    chosen from. A missing or empty ``warm`` gives an empty ``target``.
     """
-    shutil.copytree(warm, target)
-    entries = [p for p in target.iterdir() if p.is_file() and not p.name.startswith(".")]
-    max(entries, key=lambda p: p.stat().st_size).unlink()
+    target.mkdir(parents=True)
+    entries = cache_entries(warm)
+    holders: dict[str, list[Path]] = {}
+    for entry in entries:
+        try:
+            with open(entry, "rb") as f:
+                func_attrs, code = pickle.load(f)
+        except Exception:
+            continue
+        if not isinstance(func_attrs, dict) or not isinstance(code, str):
+            continue
+        for name in func_attrs:
+            holders.setdefault(name, []).append(entry)
+    drop: set[Path] = set()
+    if holders:
+        worst = max(sorted(holders), key=lambda name: sum(p.stat().st_size for p in holders[name]))
+        drop = set(holders[worst])
+    for entry in entries:
+        if entry not in drop:
+            shutil.copy2(entry, target / entry.name)
     return target
 
 
@@ -462,6 +500,9 @@ def measure(product: str, args, ram_mb: float, workers: int = 1) -> dict:
             problems = verify_run(result, n, n, baseline)
             if problems:
                 return fail(f"warming the transform cache: {problems[0]}")
+            if not cache_entries(warm):
+                print(f"NOTE {product}, W = {workers}: the warmed transform cache has no entries; "
+                      "every timed run transforms every piece", file=sys.stderr, flush=True)
         for repeat in range(1, repeats + 1):
             for label, folder, size in (("n", folder_n, n), ("K·n", folder_kn, size_kn)):
                 print(f"{product}, W = {workers}: run {repeat}/{repeats}, {label} = {size} points ...",
@@ -569,7 +610,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--transform-cache", choices=("off", "mutant"), default="off",
                         help="off (default): every run transforms every formula piece; mutant: "
                              "each run gets the runner's transform cache warmed on the product "
-                             "with its largest piece dropped, as a mutant's export would")
+                             "without the pieces of the worst-placed mutant, as its export would")
     parser.add_argument("--child", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--child-cache", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--originals", type=positive_int(1), help=argparse.SUPPRESS)

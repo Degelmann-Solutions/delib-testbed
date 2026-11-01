@@ -602,14 +602,65 @@ def test_more_usage_errors_exit_2(argv, capsys):
     assert capsys.readouterr().err.startswith("usage: measure_marginal.py")
 
 
-def test_mutant_cache_drops_only_the_largest_entry(tmp_path):
+def write_entries(cache: Path, entries: dict[str, tuple[list[str], int]]) -> None:
+    """Fake cache entries: each a pickled ``({cell: None, ...}, code)`` of the given size."""
+    import pickle
+
+    cache.mkdir()
+    for name, (cells, size) in entries.items():
+        (cache / name).write_bytes(pickle.dumps(({cell: None for cell in cells}, "x" * size)))
+
+
+def test_mutant_cache_drops_every_entry_of_the_worst_placed_cell(tmp_path):
     warm = tmp_path / "warm"
-    warm.mkdir()
-    for name, size in (("a", 10), ("b", 300), ("c", 20)):
-        (warm / name).write_bytes(b"x" * size)
+    # "core" sits in two pieces of 200 together; "big" in one piece of 300, which also holds
+    # "other"; the pieces holding "core" are larger together than the one holding "big".
+    write_entries(warm, {"a": (["core", "a1"], 150), "b": (["big", "other"], 300),
+                         "c": (["core", "c1"], 160), "d": (["d1"], 20)})
+    (warm / "e").write_bytes(b"not a pickle")
+    (warm / ".tmp-entry").write_bytes(b"x" * 10000)
     copy = mm.mutant_cache(warm, tmp_path / "copy")
-    assert sorted(p.name for p in copy.iterdir()) == ["a", "c"]
-    assert sorted(p.name for p in warm.iterdir()) == ["a", "b", "c"]
+    assert sorted(p.name for p in copy.iterdir()) == ["b", "d", "e"]
+    assert (copy / "b").read_bytes() == (warm / "b").read_bytes()
+    assert sorted(p.name for p in warm.iterdir()) == [".tmp-entry", "a", "b", "c", "d", "e"]
+
+
+@pytest.mark.parametrize("state", ["missing", "empty", "unreadable"])
+def test_mutant_cache_of_an_empty_or_missing_warm_cache(tmp_path, state):
+    warm = tmp_path / "warm"
+    if state != "missing":
+        warm.mkdir()
+    if state == "unreadable":
+        (warm / "a").write_bytes(b"not a pickle")
+    copy = mm.mutant_cache(warm, tmp_path / "copy")
+    assert copy.is_dir()
+    assert sorted(p.name for p in copy.iterdir()) == (["a"] if state == "unreadable" else [])
+
+
+def test_mutant_cache_of_bu_drops_the_two_entries_of_one_core_cell(tmp_path, monkeypatch):
+    import pickle
+
+    spec = importlib.util.spec_from_file_location("run_baseline", ROOT / "tools" / "run_baseline.py")
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+    monkeypatch.setitem(sys.modules, "run_baseline", runner)
+    warm = tmp_path / "warm"
+    folder = ROOT / "products" / "berufsunfaehigkeit"
+    model = runner.mx.read_model(runner.model_dir(folder))
+    try:
+        core_cells = set(model.CoreProjection.cells) | set(model.CoreData.cells)
+        runner.export_model(model, tmp_path / "export", 24, warm)
+    finally:
+        model.close()
+    copy = mm.mutant_cache(warm, tmp_path / "copy")
+    dropped = sorted(set(p.name for p in warm.iterdir()) - set(p.name for p in copy.iterdir()))
+    assert len(dropped) == 2
+    held = [set(pickle.loads((warm / name).read_bytes())[0]) for name in dropped]
+    common = held[0] & held[1] & core_cells
+    assert common
+    holders = {name for name in (p.name for p in warm.iterdir())
+               if common & set(pickle.loads((warm / name).read_bytes())[0])}
+    assert holders == set(dropped)
 
 
 def test_transform_cache_mutant_warms_once_and_misses_one_piece_per_run(tmp_path, monkeypatch):
@@ -618,9 +669,7 @@ def test_transform_cache_mutant_warms_once_and_misses_one_piece_per_run(tmp_path
     def fake_run_child(folder, originals, cleanup, engine="export", workers=1, cache=None):
         calls.append(cache)
         if cache is not None and cache.name == "cache-warm":
-            cache.mkdir()
-            for name, size in (("small", 10), ("big", 100)):
-                (cache / name).write_bytes(b"x" * size)
+            write_entries(cache, {"small": (["a"], 10), "big": (["b"], 100)})
             return {}
         else:
             assert cache is not None and sorted(p.name for p in cache.iterdir()) == ["small"]
@@ -634,3 +683,29 @@ def test_transform_cache_mutant_warms_once_and_misses_one_piece_per_run(tmp_path
     record = mm.measure(PRODUCT, args, 64000.0, 24)
     assert record["status"] == "failed"
     assert [c.name for c in calls] == ["cache-warm", f"cache-1-{record['n']}"]
+
+
+def test_transform_cache_mutant_without_warm_entries_measures_with_an_empty_cache(
+        tmp_path, monkeypatch, capsys):
+    header, points = _baseline_points()
+    calls = []
+
+    def fake_run_child(folder, originals, cleanup, engine="export", workers=1, cache=None):
+        calls.append(cache)
+        size = mm.count_points((folder / mm.TABLE).read_bytes().decode("ascii"))
+        if cache.name != "cache-warm":
+            assert cache.is_dir() and list(cache.iterdir()) == []
+        return {"n": size, "failures": [], "header": header, "points": points,
+                "digests": {str(p): _digest(points[str(mm.original_of(p, originals))])
+                            for p in range(1, size + 1)},
+                "import_s": 0.1, "run_s": 1.0 + size / 100, "maxrss_kib": 1024,
+                "worker_pss_kib": 0, "mem_kib": 1024}
+
+    monkeypatch.setattr(mm, "run_child", fake_run_child)
+    assert mm.main([PRODUCT, "--repeats", "1", "--factor", "2", "--workers", "24",
+                    "--transform-cache", "mutant"]) == 0
+    assert [c.name for c in calls] == ["cache-warm", f"cache-1-{N_POINTS}",
+                                       f"cache-1-{2 * N_POINTS}"]
+    notes = [line for line in capsys.readouterr().err.splitlines() if line.startswith("NOTE ")]
+    assert notes == [f"NOTE {PRODUCT}, W = 24: the warmed transform cache has no entries; "
+                     "every timed run transforms every piece"]

@@ -85,9 +85,10 @@ be; an entry that does not unpickle to a pair of a ``dict`` and a ``str`` is a m
 misses are transformed, in forked children, and written to ``DIR`` (atomically, via a
 temporary file and ``os.replace``, so concurrent runs can share it; a failed write is ignored
 and its temporary file removed). The exported package is the same text with or without the
-cache (``tests/test_runner.py``). A mutant changes the source of the piece holding the mutated
-cell, so only that piece misses; the cache is never cleaned and grows by the pieces of every
-mutant. Without the option nothing is cached.
+cache (``tests/test_runner.py``). A mutant changes the source of the pieces holding the
+mutated cell, so only they miss: one for a product cell, two for a core cell (its piece of
+``CoreProjection`` and the piece of ``Projection`` that inherits it); the cache is never
+cleaned and grows by the pieces of every mutant. Without the option nothing is cached.
 
 Checks
 ------

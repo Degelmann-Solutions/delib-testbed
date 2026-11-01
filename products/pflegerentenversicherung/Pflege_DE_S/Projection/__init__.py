@@ -93,15 +93,19 @@ rho_g(x)                    rec_force(x, g)                 Force of recovery
 (gate)                      lapse_factor(t)                 0 after the premium term
 w(t)                        lapse_rate_mth(t)               Monthly lapse probability
 (allocation)                p_act_age(x, waiting)           Active-state month transitions
-(allocation)                p_act_stay/death/care(t)        The same at age(t)
-(allocation)                p_pg_age(x, g), p_pg(t, g)      Grade-g month transitions,
-                                                            one tuple, keyed by age
-(allocation)                p_pg_stay/death/worse/better    Its four components
+                                                            (stay, death, care), keyed by
+                                                            age and the Wartezeit gate
+(allocation)                p_pg_age(x, g)                  Grade-g month transitions
+                                                            (stay, death, worse, better),
+                                                            keyed by age
 l_A(t)                      pols_act(t)                     Active at the start of month t
 W_{g,z}(t)                  pols_karenz(t, g, z)            In the Karenz ledger
 l_g(t)                      pols_pg(t, g)                   In a paying Pflegegrad
 E_g(t)                      esc_pg(t, g)                    Escalation-weighted l_g
-(none)                      pols_ledger(t)                  The four ledgers as one state
+(none)                      pols_ledger(t)                  The four ledgers as one
+                                                            state, with the previous
+                                                            month's entries and
+                                                            graduations
 (none)                      pols_care(t)                    Everyone in care
 l(t)                        pols_if(t)                      In force at the start of t
 l(t+1)                      pols_if_at(t, timing)           BEF_DECR / AFT_DECR
@@ -194,8 +198,8 @@ probability in proportion to their forces. Writing ``q`` for an annual rate, the
 
     p_stay = exp(-(mu_1 + ... + mu_k) / 12)      p_j = (mu_j / sum mu) (1 - p_stay)
 
-so ``p_stay + sum p_j = 1`` exactly, by construction, which is what
-:func:`p_act_stay` … :func:`p_pg_better` publish and what makes :func:`check_states` an
+so ``p_stay + sum p_j = 1`` exactly, by construction, which is what the components of
+:func:`p_act_age` and :func:`p_pg_age` hold and what makes :func:`check_states` an
 identity rather than an approximation. Adding monthly rates instead, or applying ``q/12``,
 gives different answers wherever the forces are large — which on this product is exactly
 where the money is.
@@ -716,56 +720,18 @@ def p_act_age(x, waiting):
     ``waiting`` is whether the month lies inside the *Wartezeit*, where the incidence force
     is zero.  The force of mortality :func:`mort_force` is read at :func:`age_month` and
     the incidence force is :func:`inc_force_age`; ``stay = exp(-(mu_A + iota)/12)`` and
-    each exit its force's share of ``1 - stay``.  Keyed by age and the gate, so it is
-    evaluated about once per year of age; :func:`p_act_stay`, :func:`p_act_death`,
-    :func:`p_act_care`, the ledger and the decrement counts read it at ``age(t)``.
+    each exit its force's share of ``1 - stay``.  Allocating the one survival probability in
+    proportion to the forces is what makes the three components sum to 1 exactly; adding
+    monthly rates instead, or dividing an annual rate by twelve, does not.  ``care`` is zero
+    inside the *Wartezeit*; the grade entered is then split by :func:`inc_share`.  Keyed by
+    age and the gate, so it is evaluated about once per year of age; the ledger and the
+    decrement counts read it at ``age(t)``.
     """
     mu = mort_force(age_month(x))
     iota = 0.0 if waiting else inc_force_age(x)
     stay = math.exp(-(mu + iota) / 12.0)                             # noqa: F821
     total = mu + iota
     return (stay, mu / total * (1.0 - stay), iota / total * (1.0 - stay))
-
-
-def p_act_stay(t):
-    """The probability that an active life is still active at the end of month ``t``.
-
-    ``exp(-(mu_A + iota)/12)``, the constant-force survival of the two competing
-    decrements.  With :func:`p_act_death` and :func:`p_act_care` it sums to exactly 1.
-    """
-    return p_act_age(age(t), duration_mth(t) < wartezeit_months())[0]
-
-
-def p_act_death(t):
-    """The probability that an active life dies during month ``t``.
-
-    The death force's share of the month's exits: ``(mu_A / (mu_A + iota)) (1 - p_stay)``.
-    Allocating the one survival probability in proportion to the forces is what makes the
-    three active-state probabilities sum to 1 exactly; adding monthly rates instead, or
-    dividing an annual rate by twelve, does not.
-    """
-    return p_act_age(age(t), duration_mth(t) < wartezeit_months())[1]
-
-
-def p_act_care(t):
-    """The probability that an active life enters care during month ``t``.
-
-    ``(iota / (mu_A + iota)) (1 - p_stay)``, and zero inside the *Wartezeit*, where the
-    incidence force is zero.  The grade entered is then split by :func:`inc_share`.
-    """
-    return p_act_age(age(t), duration_mth(t) < wartezeit_months())[2]
-
-
-def p_pg(t, g):
-    """The grade-``g`` month transitions in month ``t``, as ``(stay, death, worse, better)``.
-
-    The three competing forces out of a paying state, ``mu_g``, ``delta_g`` and ``rho_g``,
-    are read once and the month's exits allocated in proportion to them: ``stay`` is
-    ``exp(-(mu_g + delta_g + rho_g)/12)`` and each exit its force's share of ``1 - stay``.
-    The four published cells :func:`p_pg_stay`, :func:`p_pg_death`, :func:`p_pg_worse` and
-    :func:`p_pg_better` read it.  It is :func:`p_pg_age` at the attained age ``age(t)``.
-    """
-    return p_pg_age(age(t), g)
 
 
 def age_month(x):
@@ -787,6 +753,22 @@ def p_pg_age(x, g):
     force is read at :func:`age_month`, the first month of that age.  If the core's
     ``mort_rate`` ever depends on the month beyond the age, this keying is wrong and has to
     go back to ``t`` (Moritz, 2026-10-29, lifting story 2.7's choice to keep ``t``).
+
+    Three forces compete out of a paying state, not one — death, deterioration and
+    recovery — which is the arithmetic form of the product's central structural fact: **the
+    paying state has three exits and only death is absorbing**.  A model that lets it be
+    exited only by death overstates the liability; one that treats every downgrade as a
+    termination understates it.  ``death`` is grade-increasing because the mortality
+    multiple is.  ``worse`` is the *Höherstufung* to ``g + 1``, zero at grade 5; the insured
+    does not elect it: it is applied for and re-assessed by the *Medizinischer Dienst* or
+    MEDICPROOF, so grade change is a biometric transition here rather than a
+    claims-management outcome.  ``better`` is the *Herabstufung* to ``g - 1``: out of grade 1
+    it leads to the **active** state — *Reaktivierung* — where the life starts paying its
+    *Beitrag* again and becomes exposed to lapse once more; out of the higher grades it moves
+    the life down one step of the *Leistungsstaffel*, which reduces the annuity without
+    ending it, and out of the lowest **insured** grade it stops the annuity and revives the
+    premium.  All three cases fall out of the same recursion; none of them is a claim
+    decision.
     """
     mu = mort_force_care(age_month(x), g)
     delta = det_force(x, g)
@@ -797,56 +779,18 @@ def p_pg_age(x, g):
     return (stay, mu / total * rest, delta / total * rest, rho / total * rest)
 
 
-def p_pg_stay(t, g):
-    """The probability that a life in *Pflegegrad* ``g`` is still there at month end.
-
-    ``exp(-(mu_g + delta_g + rho_g)/12)``.  Three forces compete out of a paying state, not
-    one — death, deterioration and recovery — which is the arithmetic form of the product's
-    central structural fact: **the paying state has three exits and only death is
-    absorbing**.  A model that lets it be exited only by death overstates the liability; one
-    that treats every downgrade as a termination understates it.
-    """
-    return p_pg(t, g)[0]
-
-
-def p_pg_death(t, g):
-    """The probability that a life in *Pflegegrad* ``g`` dies during month ``t``."""
-    return p_pg(t, g)[1]
-
-
-def p_pg_worse(t, g):
-    """The probability of a *Höherstufung* from grade ``g`` to ``g + 1`` in month ``t``.
-
-    Zero at grade 5.  The insured does not elect this: a *Höherstufung* is applied for and
-    re-assessed by the *Medizinischer Dienst* or MEDICPROOF, so grade change is a biometric
-    transition here rather than a claims-management outcome.
-    """
-    return p_pg(t, g)[2]
-
-
-def p_pg_better(t, g):
-    """The probability of a *Herabstufung* from grade ``g`` to ``g - 1`` in month ``t``.
-
-    Out of grade 1 it leads to the **active** state — *Reaktivierung* — where the life
-    starts paying its *Beitrag* again and becomes exposed to lapse once more.  Out of the
-    higher grades it moves the life down one step of the *Leistungsstaffel*, which reduces
-    the annuity without ending it, and out of the lowest **insured** grade it stops the
-    annuity and revives the premium.  All three cases fall out of the same recursion; none
-    of them is a claim decision.
-    """
-    return p_pg(t, g)[3]
-
-
 def pols_ledger(t):
     """The second-order ledgers at the start of month ``t``, as one state.
 
-    ``(act, pg, esc, karenz)``: :func:`pols_act`, :func:`pols_pg` and :func:`esc_pg` for
-    ``g = 1 .. 5`` and :func:`pols_karenz` for ``g = 1 .. 5`` and ``z = 1 ..
-    karenz_months()``, rolled forward from the state at ``t - 1`` by the recursions those
-    cells state, with the same operations in the same order: the month's entrants
-    (:func:`pols_entry`), graduations (:func:`pols_grad`) and reactivations
-    (:func:`pols_reactiv`) are formed inline from the previous state.  One evaluation per
-    month instead of one per month, grade and clock; the published cells read their
+    ``(act, pg, esc, karenz, entry, grad)``: :func:`pols_act`, :func:`pols_pg` and
+    :func:`esc_pg` for ``g = 1 .. 5`` and :func:`pols_karenz` for ``g = 1 .. 5`` and
+    ``z = 1 .. karenz_months()``, rolled forward from the state at ``t - 1`` by the
+    recursions those cells state, with the same operations in the same order.  ``entry``
+    and ``grad`` are month ``t - 1``'s entrants into *Pflegegrad* ``g`` and graduations out
+    of the *Karenz* ledger into it, ``g = 1 .. 5``, which the roll forward forms from the
+    previous state together with the month's reactivations (:func:`pols_reactiv`); zeros
+    at ``t_start()``.  One evaluation per month instead of one per month, grade and clock;
+    the published cells, :func:`pols_entry` and :func:`pols_grad` among them, read their
     component.
     """
     k = karenz_months()
@@ -854,8 +798,9 @@ def pols_ledger(t):
         status = status_init()
         act = pols_if_init() if status == "aktiv" else 0.0
         pg = tuple(pols_if_init() if status == "pg%d" % g else 0.0 for g in range(1, 6))
-        return (act, pg, pg, tuple((0.0,) * k for g in range(1, 6)))
-    act0, pg0, esc0, kar0 = pols_ledger(t - 1)
+        none = (0.0,) * 5
+        return (act, pg, pg, tuple((0.0,) * k for g in range(1, 6)), none, none)
+    act0, pg0, esc0, kar0, _, _ = pols_ledger(t - 1)
     x = age(t - 1)
     p = tuple(p_pg_age(x, g) for g in range(1, 6))
     pa = p_act_age(age(t - 1), duration_mth(t - 1) < wartezeit_months())
@@ -915,7 +860,7 @@ def pols_ledger(t):
             carried += esc0[g] * p[g][3]
         pg.append(total)
         esc.append(factor * carried + grad[g - 1])
-    return (act, tuple(pg), tuple(esc), kar)
+    return (act, tuple(pg), tuple(esc), kar, entry, tuple(grad))
 
 
 def pols_act(t):
@@ -923,10 +868,11 @@ def pols_act(t):
 
     Seeded at ``t_start()`` from :func:`status_init` and rolled forward as
 
-        l_A(t+1) = [ l_A(t) p_act_stay(t) + pols_reactiv(t) ] (1 - w(t))
+        l_A(t+1) = [ l_A(t) p_stay(t) + pols_reactiv(t) ] (1 - w(t))
 
-    — survivors of both insured decrements, plus the month's *Reaktivierungen*, then
-    exposed to lapse.  **Lapse acts after the insured decrements and after the reactivation
+    with ``p_stay(t)`` the ``stay`` component of :func:`p_act_age` at ``age(t)`` — survivors
+    of both insured decrements, plus the month's *Reaktivierungen*, then exposed to lapse.
+    **Lapse acts after the insured decrements and after the reactivation
     inflow**; the alternatives give different answers and this ordering is the one the
     notes' processing order states.
     """
@@ -936,12 +882,13 @@ def pols_act(t):
 def pols_entry(t, g):
     """Lives entering *Pflegegrad* ``g`` from the active state during month ``t``.
 
-    ``pols_act(t) x p_act_care(t) x inc_share(g)``.  Entry is split across the grades
-    because it is not uniformly at the lowest one, and the split is one of the four
-    properties a replacement basis must preserve.
+    ``pols_act(t) x p_care(t) x inc_share(g)``, with ``p_care(t)`` the ``care`` component of
+    :func:`p_act_age` at ``age(t)``.  Entry is split across the grades because it is not
+    uniformly at the lowest one, and the split is one of the four properties a replacement
+    basis must preserve.  The ledger forms it when it rolls month ``t`` forward, so this
+    reads it from :func:`pols_ledger` at ``t + 1`` rather than computing it a second time.
     """
-    return (pols_ledger(t)[0] * p_act_age(age(t), duration_mth(t) < wartezeit_months())[2]
-            * inc_share(g))
+    return pols_ledger(t + 1)[4][g - 1]
 
 
 def pols_karenz(t, g, z):
@@ -982,22 +929,12 @@ def pols_grad(t, g):
     immediately after onset, that shortfall is larger than the length of the deferral
     suggests — a deferred period on a population with elevated mortality removes
     disproportionately more claims than the same period would on a healthy population.
+
+    The ledger forms the graduations when it rolls month ``t`` forward, from the ``z = K``
+    cohort of :func:`pols_karenz` and the grade transitions of :func:`p_pg_age` at
+    ``age(t)``, so this reads them from :func:`pols_ledger` at ``t + 1``.
     """
-    k = karenz_months()
-    if k <= 0:
-        return pols_entry(t, g)
-    total = 0.0
-    for h in range(max(1, g - 1), min(5, g + 1) + 1):
-        w = pols_ledger(t)[3][h - 1][k - 1]
-        if w == 0.0:
-            continue
-        if h == g:
-            total += w * p_pg(t, h)[0]
-        elif g == h + 1:
-            total += w * p_pg(t, h)[2]
-        else:
-            total += w * p_pg(t, h)[3]
-    return total
+    return pols_ledger(t + 1)[5][g - 1]
 
 
 def pols_reactiv(t):
@@ -1137,11 +1074,11 @@ def pols_prem(t):
 def pols_death(t):
     """Deaths during month ``t``, from **every** state.
 
-    The active state at ``p_act_death``, and each *Pflegegrad* — in the paying ledger and
-    in the *Karenz* ledger alike — at ``p_pg_death(t, g)``, which is grade-increasing
-    because the mortality multiple is.  Aggregating the care ledgers into one average death
-    rate is the arithmetic form of forgetting that the highest-paying state is also the
-    shortest-lived.
+    The active state at the ``death`` component of :func:`p_act_age`, and each *Pflegegrad*
+    — in the paying ledger and in the *Karenz* ledger alike — at that of :func:`p_pg_age`,
+    which is grade-increasing because the mortality multiple is.  Aggregating the care
+    ledgers into one average death rate is the arithmetic form of forgetting that the
+    highest-paying state is also the shortest-lived.
 
     Override reason: the deaths come from every state, the active state and each *Pflegegrad*
     at its own rate, products/pflegerentenversicherung/technical-notes.md:207
@@ -1159,7 +1096,8 @@ def pols_death(t):
 def pols_lapse(t):
     """Surrenders during month ``t``, from the **active state only**.
 
-    ``[ pols_act(t) p_act_stay(t) + pols_reactiv(t) ] w(t)`` — the survivors of the insured
+    ``[ pols_act(t) p_stay(t) + pols_reactiv(t) ] w(t)``, with ``p_stay(t)`` the ``stay``
+    component of :func:`p_act_age` at ``age(t)`` — the survivors of the insured
     decrements together with the month's reactivations, exposed to lapse after both.
     Nothing in care lapses: a claimant with a waived premium has no premium to default on
     and a live annuity to forfeit.  A *Pflegegrad* 1 life on ``delib_std`` does still pay
@@ -1608,9 +1546,9 @@ def tar_rec_rate(x, g):
 def tar_p_act(t):
     """The first-order active-state month transitions, as ``(stay, death, care)``.
 
-    The same constant-force, proportional-allocation step as :func:`p_act_stay` and its
-    companions, on the first-order rates and with the *Wartezeit* gate applied to the
-    incidence force.  Returned as one tuple rather than three cells because the tariff
+    The same constant-force, proportional-allocation step as :func:`p_act_age`, on the
+    first-order rates and with the *Wartezeit* gate applied to the incidence force.
+    Returned as one tuple rather than three cells because the tariff
     ledgers are an internal engine: they have no reader outside :func:`premium_mth_pp` and
     :func:`check_prem_equiv`, and splitting them would triple the pricing engine's surface
     for no gain.
@@ -1628,7 +1566,7 @@ def tar_p_act(t):
 def tar_p_pg(x, g):
     """The first-order grade-``g`` month transitions, as ``(stay, death, worse, better)``.
 
-    The same allocation as :func:`p_pg_stay` and its companions, on the first-order rates.
+    The same allocation as :func:`p_pg_age`, on the first-order rates.
     The four components sum to exactly 1 by construction, which is what makes the tariff
     ledgers a closed system and :func:`check_prem_equiv` a real identity.
 

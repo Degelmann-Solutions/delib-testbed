@@ -630,10 +630,13 @@ def cohort_year_idx(n):
     orders and their exits read it at their full length, :func:`max_claim_dur` and
     ``first_len() + 1``, and slice it to the month's vector, ``[:m]``, which is the array
     ``np.minimum(np.arange(m) // 12, 10)``; keyed by the full length rather than by ``m``,
-    it is built once per contract and order rather than once per month.  Read-only: no
-    reader may mutate the array.
+    it is built once per contract and order rather than once per month.  Read-only: the
+    array is shared by every reader, so it is returned with ``setflags(write=False)`` and a
+    write into it or into a slice raises ``ValueError``.
     """
-    return np.minimum(np.arange(n) // 12, 10)
+    idx = np.minimum(np.arange(n) // 12, 10)
+    idx.setflags(write=False)
+    return idx
 
 
 def cohort_anniv_step(n):
@@ -642,10 +645,12 @@ def cohort_anniv_step(n):
     ``np.where(np.arange(1, n + 1) % 12 == 0, 1.0 + leistungsdyn_rate(), 1.0)``: the value
     of a cohort moving into slot ``z + 1`` steps up by ``1 + leistungsdyn_rate()`` where
     ``z + 1`` is a claim anniversary.  Read at the full length and sliced like
-    :func:`cohort_year_idx`, and read-only like it.
+    :func:`cohort_year_idx`, and read-only like it (``setflags(write=False)``).
     """
-    return np.where(np.arange(1, n + 1) % 12 == 0,
+    step = np.where(np.arange(1, n + 1) % 12 == 0,
                     1.0 + leistungsdyn_rate(), 1.0)
+    step.setflags(write=False)
+    return step
 
 
 # --- the rate tables, keyed by age ---
@@ -1125,7 +1130,7 @@ def dis_cohorts_first(s):
     the same construction on the best-estimate basis, which this mirrors exactly but for
     the loaded rates and the absent lapse.
     """
-    n = max(cohort_len_first(s), 0)
+    n = cohort_len_first(s)
     pols = np.zeros(n)
     val = np.zeros(n)
     if s <= 0:
@@ -1396,7 +1401,7 @@ def dis_cohorts(t):
     each step rather than the previous ones mutated, so holding a returned array cannot
     corrupt the cache.
     """
-    n = max(cohort_len(t), 0)
+    n = cohort_len(t)
     pols = np.zeros(n)
     val = np.zeros(n)
     if t <= 0:

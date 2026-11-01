@@ -67,7 +67,8 @@ are largest together. Since the runner cuts pieces of similar size, that is a co
 slightly high. A source change that shifts a later cut between pieces, which would make the
 later pieces of that space miss as well, is not modelled; this is stated, not corrected. If
 the warmed cache has no entries (its parallel export fell back to the serial one), one note
-goes to stderr and every timed run gets an empty cache. The marginal time is unaffected. The
+goes to stderr and every timed run gets an empty cache; a child's runner line
+``parallel export raised …`` is passed on to stderr. The marginal time is unaffected. The
 header line and the JSON (``transform_cache``) state the mode.
 
 Verification
@@ -401,6 +402,9 @@ def run_child(folder: Path, originals: int, cleanup: bool, engine: str = "export
     tail = "\n".join(proc.stderr.strip().splitlines()[-5:])
     if proc.returncode != 0:
         raise VerificationError(f"child exited {proc.returncode}; stderr tail:\n{tail}")
+    for line in proc.stderr.splitlines():
+        if line.startswith("parallel export raised"):
+            print(line, file=sys.stderr, flush=True)
     out = proc.stdout.strip().splitlines()
     try:
         result = json.loads(out[-1])

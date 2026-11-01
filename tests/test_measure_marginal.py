@@ -437,6 +437,14 @@ def test_the_child_cache_goes_on_the_command_only_when_given(monkeypatch, tmp_pa
     assert "--child-cache" not in calls[1]
 
 
+def test_a_successful_child_passes_on_the_runners_fallback_line(monkeypatch, capsys):
+    line = "parallel export raised RuntimeError: boom; exporting serially"
+    monkeypatch.setattr(mm.subprocess, "run", lambda command, **k: subprocess.CompletedProcess(
+        command, 0, "{}\n", f"something else\n{line}\nmore\n"))
+    assert mm.run_child(FOLDER, N_POINTS, cleanup=True, workers=24) == {}
+    assert capsys.readouterr().err.splitlines() == [line]
+
+
 def test_the_child_hands_its_cache_to_the_runner(monkeypatch, capsys, tmp_path):
     seen = []
 

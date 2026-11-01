@@ -643,3 +643,31 @@ def test_transform_cache_needs_workers(tmp_path, capsys):
         runner.main([PRODUCT, "--transform-cache", str(tmp_path)])
     assert exc.value.code == 2
     assert "--transform-cache needs --workers > 1" in capsys.readouterr().err
+
+
+def test_the_cache_key_changes_with_every_input_and_ignores_set_order():
+    runner = load_runner()
+    job = ("def f():\n    return 1\n", {"f", "g"}, {"h"})
+    key = runner._cache_key(job, "salt")
+    assert runner._cache_key(("def f():\n    return 1\n", {"g", "f"}, {"h"}), "salt") == key
+    assert runner._cache_key(("def f():\n    return 2\n", job[1], job[2]), "salt") != key
+    assert runner._cache_key((job[0], {"f"}, job[2]), "salt") != key
+    assert runner._cache_key((job[0], job[1], {"h", "i"}), "salt") != key
+    assert runner._cache_key(job, "other salt") != key
+
+
+def test_the_salt_names_the_installed_libcst(monkeypatch):
+    import importlib.metadata
+
+    from modelx.export import exporter
+
+    runner = load_runner()
+    version = importlib.metadata.version("libcst")
+    salt = runner._transformer_salt(exporter)
+    assert version in salt.split("|") and "?" not in salt.split("|")
+    monkeypatch.setattr(importlib.metadata, "version",
+                        lambda name: "0.0.0" if name == "libcst" else version)
+    other = runner._transformer_salt(exporter)
+    assert "0.0.0" in other.split("|") and other != salt
+    job = ("x = 1\n", set(), set())
+    assert runner._cache_key(job, other) != runner._cache_key(job, salt)

@@ -293,15 +293,12 @@ def test_cleanup_deletes_every_itemspace_also_of_raising_points(tmp_path, monkey
     assert not [p for p in sys.path if "delib-export-" in p]
 
 
-def test_cleanup_frees_every_exported_itemspace_without_garbage_collection(tmp_path, monkeypatch):
-    """With the collector off, no deleted point's item survives its ``del``: the runner broke
-    the item's reference cycles first. Points 2 and 13 raise, so their release runs too."""
+def run_without_garbage_collection(folder: Path, monkeypatch):
+    """Run ``folder`` with the collector off. Return the run's count and failures, the keys
+    deleted from ``Projection`` in order, and the keys of the deleted items still alive."""
     import gc
     import importlib
 
-    raises = scratch_copy(tmp_path, "raises")
-    edit_point(raises, 2, benefit_schedule_id="nosuch")
-    edit_point(raises, 13, benefit_schedule_id="nosuch")
     deleted, keys = {}, []
 
     def spy_on(cls):
@@ -329,13 +326,32 @@ def test_cleanup_frees_every_exported_itemspace_without_garbage_collection(tmp_p
     gc.collect()
     gc.disable()
     try:
-        count, _checks, _sha, failures, _lines, _digests = runner.run_product(raises)
+        count, _checks, _sha, failures, _lines, _digests = runner.run_product(folder)
         survivors = [deleted[id(o)][0] for o in gc.get_objects()
                      if id(o) in deleted and type(o) is deleted[id(o)][1]]
     finally:
         gc.enable()
+    return count, failures, keys, survivors
+
+
+def test_cleanup_frees_every_exported_itemspace_without_garbage_collection(tmp_path, monkeypatch):
+    """With the collector off, no deleted point's item survives its ``del``: the runner broke
+    the item's reference cycles first. Points 2 and 13 raise, so their release runs too."""
+    raises = scratch_copy(tmp_path, "raises")
+    edit_point(raises, 2, benefit_schedule_id="nosuch")
+    edit_point(raises, 13, benefit_schedule_id="nosuch")
+    count, failures, keys, survivors = run_without_garbage_collection(raises, monkeypatch)
     assert count == N_POINTS and len(failures) == 2
     assert keys == list(range(1, N_POINTS + 1))
+    assert survivors == []
+
+
+@pytest.mark.parametrize("product", load_runner().product_names())
+def test_cleanup_frees_every_exported_itemspace_of_every_product(monkeypatch, product):
+    folder = ROOT / "products" / product
+    count, failures, keys, survivors = run_without_garbage_collection(folder, monkeypatch)
+    assert failures == []
+    assert keys == list(range(1, count + 1)) and count > 0
     assert survivors == []
 
 
@@ -716,3 +732,30 @@ def test_the_salt_names_the_installed_libcst(monkeypatch):
     assert "0.0.0" in other.split("|") and other != salt
     job = ("x = 1\n", set(), set())
     assert runner._cache_key(job, other) != runner._cache_key(job, salt)
+
+
+@pytest.fixture(scope="session")
+def modelx_runs(tmp_path_factory):
+    """Every product run by name with ``--engine modelx --write``, in parallel processes."""
+    out = tmp_path_factory.mktemp("modelx_runs")
+    processes = {
+        product: subprocess.Popen(
+            [sys.executable, str(RUNNER), product, "--engine", "modelx", "--write",
+             "--out", str(out / product)],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        for product in load_runner().product_names()}
+    results = {}
+    for product, process in processes.items():
+        stdout, stderr = process.communicate(timeout=1800)
+        results[product] = (process.returncode, parse_output(stdout), stderr)
+    return out, results
+
+
+@pytest.mark.parametrize("product", load_runner().product_names())
+def test_the_modelx_engine_writes_every_products_baseline(modelx_runs, product):
+    out, results = modelx_runs
+    code, output, stderr = results[product]
+    assert code == 0, stderr
+    assert output["engine"] == "modelx" and output["checks"] == "all true"
+    assert (out / product / "result_cf.csv").read_bytes() == (
+        ROOT / "baseline" / product / "result_cf.csv").read_bytes()

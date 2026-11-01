@@ -426,6 +426,35 @@ def test_the_child_runs_the_runner_in_the_chosen_mode(monkeypatch, capsys, argv,
     assert result["mem_kib"] == result["maxrss_kib"] + result["worker_pss_kib"]
 
 
+def test_the_child_cache_goes_on_the_command_only_when_given(monkeypatch, tmp_path):
+    calls = []
+    monkeypatch.setattr(mm.subprocess, "run", lambda command, **k: calls.append(command) or
+                        subprocess.CompletedProcess(command, 0, "{}\n", ""))
+    mm.run_child(FOLDER, N_POINTS, cleanup=True, workers=24, transform_cache=tmp_path / "cache")
+    mm.run_child(FOLDER, N_POINTS, cleanup=True, workers=24)
+    i = calls[0].index("--child-cache")
+    assert calls[0][i + 1] == str(tmp_path / "cache")
+    assert "--child-cache" not in calls[1]
+
+
+def test_the_child_hands_its_cache_to_the_runner(monkeypatch, capsys, tmp_path):
+    seen = []
+
+    def run_product(folder, cleanup=True, engine="export", keep_lines=True, workers=1,
+                    worker_pss=None, transform_cache=None):
+        seen.append(transform_cache)
+        return 0, [], "", [], [], {}
+
+    fake = type(sys)("run_baseline")
+    fake.run_product = run_product
+    monkeypatch.setitem(sys.modules, "run_baseline", fake)
+    cache = tmp_path / "cache"
+    assert mm.main(["--child", str(FOLDER), "--originals", str(N_POINTS), "--workers", "24",
+                    "--child-cache", str(cache)]) == 0
+    assert mm.main(["--child", str(FOLDER), "--originals", str(N_POINTS), "--workers", "24"]) == 0
+    assert seen == [cache, None]
+
+
 def test_a_differing_replica_exits_1_and_names_the_point(runs):
     code, stdout, stderr = runs["replica"]
     assert code == 1

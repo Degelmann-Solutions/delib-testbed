@@ -116,7 +116,7 @@ def test_assumptions_are_stated():
     text = "\n".join(mm.assumption_lines(500, 10000, [1, 4], 2))
     for phrase in ("500 mutants", "10,000 contracts", "W = 1,4 worker(s)", "does not divide by W",
                    "shipped point mix", "assumed, not tested", "without trace pruning",
-                   "forecast", "phase 4"):
+                   "forecast", "test-set repository"):
         assert phrase in text
 
 

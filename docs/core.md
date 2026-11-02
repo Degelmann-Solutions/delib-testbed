@@ -1,6 +1,6 @@
 # The common core of phase 3: layout and conventions
 
-Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates, the policy counts, the cash flows, the expense inflation, the outputs and checks and the contract data and charges, how the core quota is measured and bounded, and the conventions every core commit follows: commit trailers, the reason on a product override, and how a product's `UPSTREAM.md` names the files phase 3 changed. The tests that enforce the conventions are `tests/test_core.py`, `tests/test_provenance.py`, `tests/test_core_quota.py` and `tests/test_baseline_deviations.py` (with the tool `tools/baseline_deviations.py`).
+Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates, the policy counts, the cash flows, the expense inflation, the outputs and checks and the contract data and charges, how the core quota is measured and bounded, and the conventions every core commit follows: commit trailers, the rules for measuring speed, the reason on a product override, and how a product's `UPSTREAM.md` names the files phase 3 changed. The tests that enforce the conventions are `tests/test_core.py`, `tests/test_provenance.py`, `tests/test_core_quota.py` and `tests/test_baseline_deviations.py` (with the tool `tools/baseline_deviations.py`).
 
 ## Layout
 
@@ -267,6 +267,16 @@ Every commit that touches the core or a product model follows these rules from t
   ```
 
   The repaired commit stays in the history, as the README's rules for the history require.
+
+## Measuring rules
+
+Rules for a story or experiment that measures speed (`tools/measure_marginal.py`), learnt in epic-night-run:
+
+- **A rise above 10 % is reasoned with a control.** If a product's `t_marginal` on the branch lies more than 10 % above `main` (epic-night-run, N4), the rise is explained only with alternating runs of a `main` control in the same session: a worktree of `main` (`git worktree add /tmp/<story>-main main`), the same command run in turn on the branch and in the worktree, at least three times each, `uptime` before every run. The plan records the figures of every run and the load average they ran at. A rise that stays within the control's own spread is noise; one beyond it has a cause to name before the commit lands.
+- **Every measured figure carries its load average**, the `uptime` taken just before the run; a figure without one cannot reason a rise (N4); older figures without one are compared only with that caveat stated.
+- **A failing test is recorded with its name** in the plan, and whether it passed on rerun; "one flaky test" is not a record.
+- **Measure again after a review patch that touches a timed path.** A figure stands only for the code it was measured on; a patch to a cell, the runner or the export after the measurement makes the figure stale, and the measurement is repeated on the patched code before it is recorded.
+- **A commit harvested from an experiment gets a story's checks.** A commit carried over from a time-boxed experiment branch passes the same mutation-domain check as a story's commit: no business logic moves out of `Projection` (epic-night-run, N1), where mutants could no longer reach it. The harvested commit is cited by its SHA on `main`, not by its SHA on the experiment branch, which other clones do not have.
 
 ## Override reason
 

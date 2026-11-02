@@ -654,3 +654,56 @@ Observations:
 - **What remains is the core's frame.** `result_cf` (building the result DataFrame, once per point) is among the top three cells of all ten products, `claims` and `net_cf` of five each (Basis, Index, KLV, RV, Riester); they are the next common lever, in the core.
 - **Product-specific remainders:** Pflege's ledgers (`pols_ledger`, `tar_ledger`, 26 %), FRV's `pols_maturity` (21.7 %), Sofort's `mort_rate_tariff_mth` (20.0 %), RLV's `lapse_cum` (14.1 %) and BU's disability exits and cohorts (`dis_exits*`, `dis_cohorts*`, together 27 %).
 - **The overhead caveat is larger now.** The profiled point loop is 47 to 197 % slower than the unprofiled one (+12 to +49 % pre-core): with lookups gone, a point is many cells of about 1 µs, where the timer's 0.3 to 0.8 µs per evaluation weighs most. Shares of cheap cells with many callees are overstated accordingly; single runs, indicative only.
+
+# Phase 3: night forecast remeasured
+
+The night forecast of "Phase 3: night measurement" (above) used the mutant counts of `f07f003`, and its Σ t was 22 % above the same command on the same code in PR #34 without a known cause (epic-night-run retrospective). This measurement repeats the command at the recounted M (`docs/roadmap.md`, "The new M": M = 5,305, M_core = 186, Σ M_p = 5,119, counted at `790706b`), alternating with a control on `main` in the same session. The branch changes no timed path (no file under `core/`, `products/` or `tools/run_baseline.py`; only the counts `tools/measure_marginal.py` holds, its tests and docs), so both sides measure the same model and their runs give the run-to-run spread directly. Read-only: no model or runner changed for it.
+
+- Date: 2026-11-02, 11:58 to 12:08
+- Commits: branch `a49940c` (phase-3-night-run-new-m-remeasure, after the recount on `790706b`), clean tree; the runs were on an earlier version of the same branch that differed from it in `docs/` only; control `790706b` (`main`, merge of PR #38) in the worktree `/tmp/s219-main`, the same installed packages
+- Machine: the same as for 2a to 2d (12th Gen Intel Core i7-12800HX, 24 logical CPUs, 62.8 GiB RAM, Linux 6.6 under WSL2; Python 3.12.13, modelx 0.33.0, pandas 3.1.0, numpy 2.5.4)
+- Commands, six runs one after the other, branch and control in turn, `uptime` before each:
+  - `uv run python tools/measure_marginal.py --all --workers 24 --json /tmp/s219-<side>-<i>.json` (defaults: engine export, cleanup on, transform cache off, factor K = 32, repeats R = 3, P = 10,000; M = 5,305 on the branch, 5,300 on `main`); exit 0 and status `ok` for all ten products in every run, wall time 89 to 93 s each
+- Load: the 1-minute load average before each run is that of the run before it, since the runs followed each other directly: 2.98 before the first, 8.6 to 9.5 before the other five.
+
+## The six runs at W = 24
+
+| Run | Side | Commit | load (1 min) | Σ t_marginal ms | Σ fixed s | forecast h |
+|---|---|---|---:|---:|---:|---:|
+| 1 | branch | `a49940c` | 2.98 | 14.61 | 9.78 | 5.01 |
+| 2 | `main` | `790706b` | 9.48 | 14.63 | 9.83 | 5.02 |
+| 3 | branch | `a49940c` | 9.30 | 14.81 | 9.77 | 5.04 |
+| 4 | `main` | `790706b` | 8.59 | 14.86 | 9.90 | 5.09 |
+| 5 | branch | `a49940c` | 8.98 | 14.99 | 9.94 | 5.11 |
+| 6 | `main` | `790706b` | 9.48 | 15.70 | 9.93 | 5.26 |
+
+The forecast on the branch is at M = 5,305, on `main` at M = 5,300 (0.1 % less, below the spread).
+
+`t_marginal` per product in ms, runs 1 to 6 in the order above, and each side's mean:
+
+| Product | 1 b | 2 m | 3 b | 4 m | 5 b | 6 m | branch mean | `main` mean |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| basisrente | 1.42 | 1.32 | 1.45 | 1.33 | 1.38 | 1.36 | 1.42 | 1.34 |
+| berufsunfaehigkeit | 2.58 | 2.73 | 2.61 | 2.57 | 2.52 | 2.68 | 2.57 | 2.66 |
+| fondsgebundene_rentenversicherung | 0.94 | 0.96 | 1.02 | 1.08 | 0.97 | 1.16 | 0.98 | 1.07 |
+| indexpolice | 0.52 | 0.59 | 0.53 | 0.54 | 0.47 | 0.63 | 0.51 | 0.59 |
+| kapitallebensversicherung | 0.71 | 0.65 | 0.67 | 0.61 | 0.62 | 0.63 | 0.67 | 0.63 |
+| klassische_rentenversicherung | 1.70 | 1.58 | 1.67 | 1.66 | 1.79 | 1.83 | 1.72 | 1.69 |
+| pflegerentenversicherung | 3.28 | 3.39 | 3.29 | 3.55 | 3.42 | 3.61 | 3.33 | 3.52 |
+| riester_rente | 1.40 | 1.38 | 1.28 | 1.27 | 1.33 | 1.40 | 1.34 | 1.35 |
+| risikolebensversicherung | 0.86 | 0.79 | 0.87 | 0.83 | 1.01 | 0.81 | 0.91 | 0.81 |
+| sofortrente | 1.21 | 1.24 | 1.41 | 1.41 | 1.48 | 1.59 | 1.37 | 1.41 |
+
+One product's branch mean lies more than 10 % above its control (N4): `risikolebensversicherung`, 0.91 against 0.81 ms (+12 %), its highest run 1.01 ms at load 8.98. The code is the same on both sides, so the rise is noise: the same session shows per-product spreads of that size on one side alone (`sofortrente` 1.24 to 1.59 ms and `fondsgebundene_rentenversicherung` 0.96 to 1.16 ms on `main`, `sofortrente` 1.21 to 1.48 ms on the branch), and in the other direction `indexpolice` and `fondsgebundene_rentenversicherung` are 13 % and 8 % lower on the branch.
+
+## Forecast
+
+The combined line of branch run 1, verbatim:
+
+> all 10 products together, W = 24: M_core·(Σ f + P·Σ t) + Σ M_p·(f_p + P·t_p) = 186·(9.78 s + 1,000·14.6 ms) + Σ M_p·(…) = 1.3 h + 3.8 h = 5.0 h (fits the 10 h night), M = 5,305 (M_core = 186, Σ M_p = 5,119), P = 1,000 per product, fixed cost included
+
+All ten products together, at the recounted M = 5,305, P = 10,000 (1,000 per product), W = 24, fixed cost included, are forecast at **5.1 h** (branch mean 5.06 h, min–max 5.01 to 5.11 h over three runs), within the 10 h night; the `main` control on the same code gave 5.02 to 5.26 h at M = 5,300, so the session's same-code spread is 5.0 to 5.3 h. Σ t_marginal is 14.8 ms (14.61 to 14.99), below the recounted target of 25.0 ms (`s` ≈ 5.51 over 2026-10-28), Σ fixed 9.83 s (9.77 to 9.94). R9 holds as before. The assumptions of the command apply: a linear extrapolation without trace pruning, the coverage filter ignored, `M_core` and `M_p` the counts at `790706b`, a forecast, not a measurement.
+
+## The +22 % of the night measurement
+
+Within this session the same code (`790706b`, branch and `main` control) gave Σ t from 14.61 to 15.70 ms over six runs, a spread of 7.5 % (2.6 % on the branch alone), at load averages from 3 to 9.5. The two earlier figures were measured on the content of `94294d6`, not on this code: PRs #37 and #38 changed timed code since (the core's `Projection`, BU, FRV, Pflege and `tools/run_baseline.py`), so this measurement does not repeat them. Those two, 12.9 ms (PR #34, before its merge; its description gives load ≈ 4.5 for its alternating runs) and 15.7 ms (night measurement, load about 1), lie 22 % apart, more than the 7.5 % spread on `790706b`, so in-session noise of that size does not account for the gap. The load at the start does not order the figures: 12.9 ms at about 4.5, 15.7 ms at about 1, 14.6 to 15.7 ms here at 3 to 9.5. The cause of the 22 % stays open; this measurement cannot separate a change in the code from a condition that differs between sessions. The higher figures stay the recorded ones; at every figure measured the forecast lies within the night.

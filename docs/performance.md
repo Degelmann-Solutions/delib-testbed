@@ -45,7 +45,7 @@ Observations:
 
 ## Forecast
 
-Assumptions: M = 500 mutants, P = 10,000 contracts, W = 1 worker, for each product on its own; the slope is taken from each product's shipped point mix; two sizes only, so linearity is assumed, not tested. This is a linear extrapolation without trace pruning, and a forecast, not a measurement: mutants exist only after phase 4. The night is 10 h, the exit criterion of phase 2 in the README; it needs `t_marginal ≤ 7.2 ms` at W = 1.
+Assumptions: M = 500 mutants, P = 10,000 contracts, W = 1 worker, for each product on its own; the slope is taken from each product's shipped point mix; two sizes only, so linearity is assumed, not tested. This is a linear extrapolation without trace pruning, and a forecast, not a measurement: mutants exist only once the separate test-set repository generates them. The night is 10 h, the exit criterion of phase 2 in the README; it needs `t_marginal ≤ 7.2 ms` at W = 1.
 
 | Product | M·P·t_marginal/W | M·(fixed + P·t_marginal)/W | MB/contract × P, one process |
 |---|---:|---:|---:|

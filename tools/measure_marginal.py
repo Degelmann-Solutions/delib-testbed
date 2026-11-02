@@ -88,9 +88,9 @@ shipped point mix): ``M·P·t_marginal(W)`` in hours against the 10 h night, and
 ``M·(fixed(W) + P·t_marginal(W))``, since every mutant pays its own import, ``read_model``
 and export. Neither divides by ``W`` again: ``t_marginal(W)`` is measured with ``W``
 workers. Both are linear extrapolations without trace pruning, and forecasts: mutants
-exist only after phase 4. At ``W`` = 1 the memory line extrapolates ``MB/contract × P``
-for one process and warns when it exceeds the machine's total RAM; the warning does not
-change the exit status. At ``W`` > 1 it gives the measured ``mem(K·n)``.
+exist only once the separate test-set repository generates them. At ``W`` = 1 the memory
+line extrapolates ``MB/contract × P`` for one process and warns when it exceeds the
+machine's total RAM; the warning does not change the exit status. At ``W`` > 1 it gives the measured ``mem(K·n)``.
 
 After the per-product lines comes one combined line per ``W`` for all measured products
 together, with the formula of the new M (``docs/roadmap.md``, "The new M"): a mutant in the
@@ -346,7 +346,7 @@ def assumption_lines(mutants: int, pool: int, workers: list[int], factor: int,
         "  slope from each product's shipped point mix; two sizes (n and "
         f"{factor}·n), so linearity is assumed, not tested.",
         "  A linear extrapolation without trace pruning, and a forecast: mutants exist only "
-        "after phase 4.",
+        "once the separate test-set repository generates them.",
         "  Combined: a core mutant runs every measured product, a product mutant only its own, "
         f"each with its fixed cost and P/{n_products} = {_num(pool / n_products)} contracts per "
         "product; the coverage filter is ignored; M_core and M_p are the counts of docs/roadmap.md, "

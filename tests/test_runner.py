@@ -293,15 +293,12 @@ def test_cleanup_deletes_every_itemspace_also_of_raising_points(tmp_path, monkey
     assert not [p for p in sys.path if "delib-export-" in p]
 
 
-def test_cleanup_frees_every_exported_itemspace_without_garbage_collection(tmp_path, monkeypatch):
-    """With the collector off, no deleted point's item survives its ``del``: the runner broke
-    the item's reference cycles first. Points 2 and 13 raise, so their release runs too."""
+def run_without_garbage_collection(folder: Path, monkeypatch):
+    """Run ``folder`` with the collector off. Return the run's count and failures, the keys
+    deleted from ``Projection`` in order, and the keys of the deleted items still alive."""
     import gc
     import importlib
 
-    raises = scratch_copy(tmp_path, "raises")
-    edit_point(raises, 2, benefit_schedule_id="nosuch")
-    edit_point(raises, 13, benefit_schedule_id="nosuch")
     deleted, keys = {}, []
 
     def spy_on(cls):
@@ -329,13 +326,32 @@ def test_cleanup_frees_every_exported_itemspace_without_garbage_collection(tmp_p
     gc.collect()
     gc.disable()
     try:
-        count, _checks, _sha, failures, _lines, _digests = runner.run_product(raises)
+        count, _checks, _sha, failures, _lines, _digests = runner.run_product(folder)
         survivors = [deleted[id(o)][0] for o in gc.get_objects()
                      if id(o) in deleted and type(o) is deleted[id(o)][1]]
     finally:
         gc.enable()
+    return count, failures, keys, survivors
+
+
+def test_cleanup_frees_every_exported_itemspace_without_garbage_collection(tmp_path, monkeypatch):
+    """With the collector off, no deleted point's item survives its ``del``: the runner broke
+    the item's reference cycles first. Points 2 and 13 raise, so their release runs too."""
+    raises = scratch_copy(tmp_path, "raises")
+    edit_point(raises, 2, benefit_schedule_id="nosuch")
+    edit_point(raises, 13, benefit_schedule_id="nosuch")
+    count, failures, keys, survivors = run_without_garbage_collection(raises, monkeypatch)
     assert count == N_POINTS and len(failures) == 2
     assert keys == list(range(1, N_POINTS + 1))
+    assert survivors == []
+
+
+@pytest.mark.parametrize("product", load_runner().product_names())
+def test_cleanup_frees_every_exported_itemspace_of_every_product(monkeypatch, product):
+    folder = ROOT / "products" / product
+    count, failures, keys, survivors = run_without_garbage_collection(folder, monkeypatch)
+    assert failures == []
+    assert keys == list(range(1, count + 1)) and count > 0
     assert survivors == []
 
 
@@ -527,7 +543,8 @@ def test_parallel_export_restores_modelx_also_when_it_raises(tmp_path, monkeypat
         model.close()
 
 
-def test_a_transform_raising_in_a_child_falls_back_to_the_serial_export(tmp_path, monkeypatch):
+def test_a_transform_raising_in_a_child_falls_back_to_the_serial_export(tmp_path, monkeypatch,
+                                                                         capsys):
     import os
 
     runner = load_runner()
@@ -544,6 +561,8 @@ def test_a_transform_raising_in_a_child_falls_back_to_the_serial_export(tmp_path
     model = runner.mx.read_model(runner.model_dir(FOLDER))
     try:
         runner.export_model(model, tmp_path / "serial", 1)
+        runner.export_model(model, tmp_path / "parallel", 4)
+        assert capsys.readouterr().err == ""  # a parallel export that succeeds prints nothing
         monkeypatch.setattr(exporter, "FormulaTransformer", raises_in_a_child)
         calls = counting_export(runner, monkeypatch)
         class_defs = vars(exporter.SpaceTranslator)["class_defs"]
@@ -553,6 +572,8 @@ def test_a_transform_raising_in_a_child_falls_back_to_the_serial_export(tmp_path
     finally:
         model.close()
     assert len(calls) == 2  # the parallel export, then the serial one
+    assert capsys.readouterr().err.splitlines() == [
+        "parallel export raised RuntimeError: transform failed in a child; exporting serially"]
     assert exported_sources(tmp_path / "fallback") == exported_sources(tmp_path / "serial")
     _count, _checks, sha, failures, _lines, _digests = runner.run_product(FOLDER, workers=4)
     assert failures == [] and sha == runner.run_product(FOLDER)[2]
@@ -627,6 +648,46 @@ def test_an_unreadable_cache_entry_is_a_miss(tmp_path, monkeypatch):
     assert runner._cache_get(cache, entries[0].name) is not None
 
 
+@pytest.mark.parametrize("entry", [None, ("code",), ({}, "a", "b"), ("not a dict", "code"),
+                                   ({}, b"bytes"), [{}, "code"]])
+def test_a_cache_entry_of_the_wrong_shape_is_a_miss_and_rewritten(tmp_path, monkeypatch, entry):
+    import pickle
+
+    runner = load_runner()
+    monkeypatch.setitem(sys.modules, "run_baseline", runner)
+    cache = tmp_path / "cache"
+    model = runner.mx.read_model(runner.model_dir(FOLDER))
+    try:
+        runner.export_model(model, tmp_path / "serial", 1)
+        runner.export_model(model, tmp_path / "cold", 24, cache)
+        entries = sorted(cache.iterdir())
+        good = runner._cache_get(cache, entries[0].name)
+        entries[0].write_bytes(pickle.dumps(entry))
+        assert runner._cache_get(cache, entries[0].name) is None
+        runner.export_model(model, tmp_path / "repaired", 24, cache)
+    finally:
+        model.close()
+    assert exported_sources(tmp_path / "repaired") == exported_sources(tmp_path / "serial")
+    assert sorted(cache.iterdir()) == entries
+    assert runner._cache_get(cache, entries[0].name) == good
+
+
+@pytest.mark.parametrize("fails", ["dump", "replace"])
+def test_a_failed_cache_write_leaves_no_temporary_file(tmp_path, monkeypatch, fails):
+    runner = load_runner()
+    cache = tmp_path / "cache"
+
+    def boom(*args, **kwargs):
+        raise OSError("disk full")
+
+    if fails == "dump":
+        monkeypatch.setattr(runner.pickle, "dump", boom)
+    else:
+        monkeypatch.setattr(runner.os, "replace", boom)
+    runner._cache_put(cache, "k" * 64, ({"f": None}, "code"))
+    assert list(cache.iterdir()) == []
+
+
 def test_run_product_with_a_transform_cache_gives_the_same_hash(tmp_path, monkeypatch):
     runner = load_runner()
     monkeypatch.setitem(sys.modules, "run_baseline", runner)
@@ -643,3 +704,58 @@ def test_transform_cache_needs_workers(tmp_path, capsys):
         runner.main([PRODUCT, "--transform-cache", str(tmp_path)])
     assert exc.value.code == 2
     assert "--transform-cache needs --workers > 1" in capsys.readouterr().err
+
+
+def test_the_cache_key_changes_with_every_input_and_ignores_set_order():
+    runner = load_runner()
+    job = ("def f():\n    return 1\n", {"f", "g"}, {"h"})
+    key = runner._cache_key(job, "salt")
+    assert runner._cache_key(("def f():\n    return 1\n", {"g", "f"}, {"h"}), "salt") == key
+    assert runner._cache_key(("def f():\n    return 2\n", job[1], job[2]), "salt") != key
+    assert runner._cache_key((job[0], {"f"}, job[2]), "salt") != key
+    assert runner._cache_key((job[0], job[1], {"h", "i"}), "salt") != key
+    assert runner._cache_key(job, "other salt") != key
+
+
+def test_the_salt_names_the_installed_libcst(monkeypatch):
+    import importlib.metadata
+
+    from modelx.export import exporter
+
+    runner = load_runner()
+    version = importlib.metadata.version("libcst")
+    salt = runner._transformer_salt(exporter)
+    assert version in salt.split("|") and "?" not in salt.split("|")
+    monkeypatch.setattr(importlib.metadata, "version",
+                        lambda name: "0.0.0" if name == "libcst" else version)
+    other = runner._transformer_salt(exporter)
+    assert "0.0.0" in other.split("|") and other != salt
+    job = ("x = 1\n", set(), set())
+    assert runner._cache_key(job, other) != runner._cache_key(job, salt)
+
+
+@pytest.fixture(scope="session")
+def modelx_runs(tmp_path_factory):
+    """Every product run by name with ``--engine modelx --write``, in parallel processes."""
+    out = tmp_path_factory.mktemp("modelx_runs")
+    processes = {
+        product: subprocess.Popen(
+            [sys.executable, str(RUNNER), product, "--engine", "modelx", "--write",
+             "--out", str(out / product)],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        for product in load_runner().product_names()}
+    results = {}
+    for product, process in processes.items():
+        stdout, stderr = process.communicate(timeout=1800)
+        results[product] = (process.returncode, parse_output(stdout), stderr)
+    return out, results
+
+
+@pytest.mark.parametrize("product", load_runner().product_names())
+def test_the_modelx_engine_writes_every_products_baseline(modelx_runs, product):
+    out, results = modelx_runs
+    code, output, stderr = results[product]
+    assert code == 0, stderr
+    assert output["engine"] == "modelx" and output["checks"] == "all true"
+    assert (out / product / "result_cf.csv").read_bytes() == (
+        ROOT / "baseline" / product / "result_cf.csv").read_bytes()

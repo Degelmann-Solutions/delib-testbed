@@ -102,9 +102,9 @@ products under ``products/``, ten today; the per-product lines keep ``P``)::
 
 with ``f_p = fixed(W)``, ``t_p = t_marginal(W)`` and the sums over the measured products
 only (``--all`` gives the roadmap's formula exactly), in hours against the 10 h night. The
-counts ``M_CORE`` and ``M_PRODUCT`` are the roadmap's at commit ``f07f003``, held here as
+counts ``M_CORE`` and ``M_PRODUCT`` are the roadmap's at commit ``790706b``, held here as
 constants (the count itself is the roadmap's command); ``--mutants`` defaults to their sum,
-5,300, and any other value scales ``M_core`` and every ``M_p`` by ``M / 5,300``. The coverage
+5,305, and any other value scales ``M_core`` and every ``M_p`` by ``M / 5,305``. The coverage
 filter is ignored. If a measured product is not ``ok`` at a ``W``, that ``W`` gets no
 combined forecast. The combined line never changes the exit status.
 
@@ -135,17 +135,18 @@ NIGHT_HOURS = 10.0
 DEFAULT_WORKERS = (1, 4, 8, 12, 16, 24)
 
 # The new M, counted by where each mutant sits: docs/roadmap.md, section "The new M", at commit
-# f07f003 (merge of PR #20). The counts drift as cells change; recounting is the roadmap's
-# command, not this tool's.
+# 790706b (merge of PR #38, after entries 17 and 18 of epic-night-run; first counted at f07f003,
+# the merge of PR #20). The counts drift as cells change; recounting is the roadmap's command,
+# not this tool's, and tests/test_measure_marginal.py runs it against these constants.
 M_CORE = 186
 M_PRODUCT = {
     "basisrente": 630,
-    "berufsunfaehigkeit": 550,
+    "berufsunfaehigkeit": 507,
     "fondsgebundene_rentenversicherung": 428,
     "indexpolice": 346,
-    "kapitallebensversicherung": 418,
-    "klassische_rentenversicherung": 582,
-    "pflegerentenversicherung": 782,
+    "kapitallebensversicherung": 422,
+    "klassische_rentenversicherung": 586,
+    "pflegerentenversicherung": 822,
     "riester_rente": 598,
     "risikolebensversicherung": 295,
     "sofortrente": 485,
@@ -349,7 +350,7 @@ def assumption_lines(mutants: int, pool: int, workers: list[int], factor: int,
         "  Combined: a core mutant runs every measured product, a product mutant only its own, "
         f"each with its fixed cost and P/{n_products} = {_num(pool / n_products)} contracts per "
         "product; the coverage filter is ignored; M_core and M_p are the counts of docs/roadmap.md, "
-        f"\"The new M\", at f07f003, scaled by M / {M_NEW:,}.",
+        f"\"The new M\", at 790706b, scaled by M / {M_NEW:,}.",
     ]
 
 

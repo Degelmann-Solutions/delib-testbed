@@ -121,9 +121,9 @@ def test_assumptions_are_stated():
 
 
 def test_assumptions_state_the_combined_forecast():
-    text = "\n".join(mm.assumption_lines(5300, 10000, [24], 32, 10))
+    text = "\n".join(mm.assumption_lines(5305, 10000, [24], 32, 10))
     for phrase in ("core mutant runs every measured product", "product mutant only its own",
-                   "1,000 contracts per product", "coverage filter is ignored", "f07f003"):
+                   "1,000 contracts per product", "coverage filter is ignored", "790706b"):
         assert phrase in text
 
 
@@ -153,19 +153,35 @@ def _roadmap_records():
 
 def test_the_counts_cover_every_product_and_sum_to_the_new_m():
     assert sorted(mm.M_PRODUCT) == mm.product_names()
-    assert mm.M_CORE == 186 and mm.M_NEW == 5300
+    assert mm.M_CORE == 186 and mm.M_NEW == 5305
     assert mm.M_NEW == mm.M_CORE + sum(mm.M_PRODUCT.values())
+
+
+def test_the_counts_equal_the_roadmaps_counting_command():
+    roadmap = (ROOT / "docs" / "roadmap.md").read_text()
+    section = roadmap[roadmap.index("\n## The new M\n"):roadmap.index("\n## Where phase 3 ended\n")]
+    script = section[section.index("\n```sh\n") + len("\n```sh\n"):]
+    script = script[:script.index("\n```\n") + 1]
+    proc = subprocess.run(["bash", "-c", script], cwd=ROOT, capture_output=True, text=True, timeout=300)
+    assert proc.returncode == 0, proc.stderr
+    totals = {}
+    for line in proc.stdout.splitlines():
+        fields = line.split()
+        if len(fields) == 8 and all(f.isdigit() for f in fields[1:]):
+            totals[fields[0]] = int(fields[7])
+    assert totals.pop("core") == mm.M_CORE
+    assert totals == mm.M_PRODUCT
 
 
 def test_combined_forecast_reproduces_the_roadmap():
     fc = mm.combined_forecast(_roadmap_records(), mm.M_NEW, 10000, 10)
     assert fc["pool_per_product"] == 1000
-    assert fc["hours"] * 3600 == pytest.approx(130216, abs=1)
+    assert fc["hours"] * 3600 == pytest.approx(132794, abs=1)
     assert fc["fits_night"] is False
     (line,) = mm.combined_lines(fc, 10)
     assert line.startswith("all 10 products together, W = 24: ")
-    for phrase in ("= 36.2 h (does not fit the 10 h night)", "M = 5,300", "M_core = 186",
-                   "Σ M_p = 5,114", "P = 1,000 per product", "fixed cost included"):
+    for phrase in ("= 36.9 h (does not fit the 10 h night)", "M = 5,305", "M_core = 186",
+                   "Σ M_p = 5,119", "P = 1,000 per product", "fixed cost included"):
         assert phrase in line
 
 
@@ -178,10 +194,10 @@ def test_combined_forecast_of_a_subset_counts_only_the_measured_products():
 
 def test_another_m_scales_core_and_product_counts():
     base = mm.combined_forecast(_roadmap_records(), mm.M_NEW, 10000, 10)
-    double = mm.combined_forecast(_roadmap_records(), 10600, 10000, 10)
+    double = mm.combined_forecast(_roadmap_records(), 10610, 10000, 10)
     assert double["hours"] == pytest.approx(2 * base["hours"])
-    assert double["m_core"] == pytest.approx(372) and sum(double["m_products"].values()) == pytest.approx(10228)
-    assert "M = 10,600 (M_core = 372, Σ M_p = 10,228)" in mm.combined_lines(double, 10)[0]
+    assert double["m_core"] == pytest.approx(372) and sum(double["m_products"].values()) == pytest.approx(10238)
+    assert "M = 10,610 (M_core = 372, Σ M_p = 10,238)" in mm.combined_lines(double, 10)[0]
 
 
 def test_no_combined_forecast_if_a_product_is_not_ok():
@@ -312,7 +328,7 @@ def test_one_product_prints_a_row_per_worker_count_and_the_forecast(runs):
         [w, str(N_POINTS), str(FACTOR * N_POINTS)] for w in ("1", "2")]
     assert all(row.endswith(" ok") for row in rows)
     assert rows[0].split()[-2] != "-" and rows[1].split()[-2] == "-"   # MB/contract at W = 1 only
-    assert "Assumptions: M = 5,300 mutants, P = 10,000 contracts, W = 1,2 worker(s);" in stdout
+    assert "Assumptions: M = 5,305 mutants, P = 10,000 contracts, W = 1,2 worker(s);" in stdout
     for w in (1, 2):
         assert f"{PRODUCT}, W = {w}: M·P·t_marginal(W) = " in stdout
         assert f"{PRODUCT}, W = {w}: with fixed cost per mutant, M·(fixed(W) + P·t_marginal(W)) = " in stdout
@@ -320,7 +336,7 @@ def test_one_product_prints_a_row_per_worker_count_and_the_forecast(runs):
     combined = [f"1 of 10 products together ({PRODUCT}), W = {w}: " for w in (1, 2)]
     assert [line[:len(c)] for line, c in zip(lines[-2:], combined)] == combined
     for line in lines[-2:]:
-        assert "M = 5,300 (M_core = 186, Σ M_p = 295)" in line
+        assert "M = 5,305 (M_core = 186, Σ M_p = 295)" in line
         assert "P = 1,000 per product, fixed cost included" in line
     assert "FAILED" not in stderr
 
@@ -329,7 +345,7 @@ def test_json_holds_inputs_runs_medians_derived_and_forecast_per_worker_count(ru
     data = runs["json"]
     assert data is not None
     assert (data["factor"], data["repeats"], data["cleanup"], data["engine"], data["mutants"],
-            data["pool"], data["workers"]) == (FACTOR, 1, True, "export", 5300, 10000, [1, 2])
+            data["pool"], data["workers"]) == (FACTOR, 1, True, "export", 5305, 10000, [1, 2])
     assert [(r["product"], r["workers"]) for r in data["products"]] == [(PRODUCT, 1), (PRODUCT, 2)]
     for record in data["products"]:
         assert record["status"] == "ok"
@@ -341,7 +357,7 @@ def test_json_holds_inputs_runs_medians_derived_and_forecast_per_worker_count(ru
         m = record["medians"]
         assert d["t_marginal_s"] == pytest.approx((m["run_s_kn"] - m["run_s_n"]) / ((FACTOR - 1) * N_POINTS))
         assert d["fixed_s"] == pytest.approx(m["import_s"] + m["run_s_n"] - N_POINTS * d["t_marginal_s"])
-        assert record["forecast"]["hours"] == pytest.approx(5300 * 10000 * d["t_marginal_s"] / 3600)
+        assert record["forecast"]["hours"] == pytest.approx(5305 * 10000 * d["t_marginal_s"] / 3600)
         for run in record["runs"]:
             assert run["mem_kib"] == run["maxrss_kib"] + run["worker_pss_kib"]
             assert (run["worker_pss_kib"] > 0) == (record["workers"] > 1)
@@ -350,7 +366,7 @@ def test_json_holds_inputs_runs_medians_derived_and_forecast_per_worker_count(ru
     assert [c["workers"] for c in data["combined"]] == [1, 2]
     for c, record in zip(data["combined"], data["products"]):
         assert (c["products"], c["mutants"], c["m_core"], c["m_products"], c["pool_per_product"]) == (
-            [PRODUCT], 5300, 186, {PRODUCT: 295}, 1000)
+            [PRODUCT], 5305, 186, {PRODUCT: 295}, 1000)
         d = record["derived"]
         assert c["hours"] == pytest.approx((186 + 295) * (d["fixed_s"] + 1000 * d["t_marginal_s"]) / 3600)
         assert c["fits_night"] == (c["hours"] <= 10)

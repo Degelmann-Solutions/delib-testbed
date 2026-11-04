@@ -39,6 +39,9 @@
   ``param_table_dict()`` value of every product's every item, and no source reads
   ``param_table_dict()["value"]`` any more; every product's ``param_file`` is its
   ``param_tariff_type.csv`` with the layer columns, and no ``param_table.csv`` is left.
+  Riester's 32 former numeric References are rows of its tariff-type file with their
+  literals' types and values, and no numeric Reference but ``point_id`` is left on its
+  ``Projection``.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -1684,6 +1687,68 @@ def test_rlv_claim_expense_is_a_tariff_type_row(product_models):
     item = model.Projection[model.Data.model_point_table().index[0]]
     for t in range(item.t_start(), item.t_start() + 24):
         assert item.expenses_claim(t) == 250.0 * item.pols_death(t), t
+
+
+# The 32 numeric References Riester's ``Projection`` held, as their former Python literals.
+RIESTER_MOVED_REFERENCES = {
+    "valuation_year": 2027,
+    "grundzulage": 175.0,
+    "kinderzulage_pre2008": 185.0,
+    "kinderzulage_post2008": 300.0,
+    "berufseinsteiger_bonus": 200.0,
+    "mindest_rate": 0.04,
+    "foerder_ceiling": 2100.0,
+    "sockelbeitrag": 60.0,
+    "zulage_lag": 1,
+    "acq_charge_rate": 0.025,
+    "acq_charge_years": 5,
+    "admin_charge_prem_rate": 0.04,
+    "admin_charge_fixed": 12.0,
+    "guar_carve_out_cap": 0.2,
+    "slueb_rate": 0.02,
+    "bewres_rate": 0.01,
+    "teilkapital_cap": 0.3,
+    "kleinbetrag_threshold_mth": 39.55,
+    "rentenfaktor_margin": 0.3,
+    "annuity_rechnungszins": 0.01,
+    "woolhouse": 0.4583333333333333,
+    "annuity_mort_be_factor": 1.15,
+    "annuity_base_year": 2027,
+    "stornoabzug_rate": 0.02,
+    "transfer_charge": 50.0,
+    "expense_maint": 30.0,
+    "expense_annuity": 24.0,
+    "expense_claim": 80.0,
+    "expense_acq": 150.0,
+    "expense_acq_rate": 0.02,
+    "comm_rate_init": 0.025,
+    "comm_rate_renew": 0.015,
+}
+
+# The products whose numeric References have all moved into their parameter files.
+REFERENCES_MOVED = ("riester_rente",)
+
+
+def test_riester_references_are_tariff_type_rows(product_models):
+    model = product_models("riester_rente")
+    data = model.Data
+    layer = data.param_layers()["tariff_type"]
+    assert len(RIESTER_MOVED_REFERENCES) == 32
+    for item, literal in RIESTER_MOVED_REFERENCES.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+        assert item not in model.Projection.refs, item
+
+
+@pytest.mark.parametrize("product", REFERENCES_MOVED)
+def test_no_numeric_projection_reference_remains(product, product_models):
+    refs = product_models(product).Projection.refs
+    numeric = {
+        name: value for name, value in refs.items()
+        if name != "point_id" and isinstance(value, (int, float)) and not isinstance(value, bool)
+    }
+    assert numeric == {}
 
 
 def _add_params(path: Path, values: dict[str, str]) -> None:

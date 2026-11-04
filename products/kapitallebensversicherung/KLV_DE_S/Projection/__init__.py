@@ -331,8 +331,8 @@ premium, the surplus offset being a policyholder rebate.
 
 .. rubric:: Modules that are off in the base run
 
-Two dynamic lapse constructions ship switched off, so the base run reproduces the worked
-example while the machinery stays visible. **Premium-shock lapse**, ``beta_shock = 0``:
+Two dynamic lapse constructions are specified and not built, so the base run reproduces the
+worked example; their unread switches are removed. **Premium-shock lapse**, ``beta_shock = 0``:
 ``1 + beta_shock * max(0, prem_paid_pp(k)/prem_paid_pp(k-1) - 1 - 0.05)`` on the **annual**
 *Zahlbeitrag* of consecutive policy years, inert on a level *Bruttobeitrag* but live under
 *Beitragsverrechnung*, where a fall in the declared rate raises the *Zahlbeitrag*.
@@ -340,7 +340,7 @@ example while the machinery stays visible. **Premium-shock lapse**, ``beta_shock
 ``lapse_gap_a * max(0, ref_rate - decl_rate(k) - 0.005)``, keyed on the gap between the
 declared rate and what is available elsewhere. Both compare **annual** declarations, which is
 what they are about; neither becomes a monthly comparison. **No German calibration of any of these numbers
-exists**, which is why both ship off. ``bwr_rate = 0`` likewise switches off the
+exists**, which is why neither is built. ``bwr_rate = 0`` switches off the
 *Beteiligung an den Bewertungsreserven*, on the reasoning that the *Sicherungsbedarf* has
 routinely exhausted the half share.
 
@@ -2051,12 +2051,5 @@ bfz_min_si = 2500.0
 term_surr_share = 0.0
 
 bwr_rate = 0.0
-
-beta_shock = 0.0
-
-lapse_gap_a = 0.0
-
-ref_rate = 0.03
-
 
 pd = ("Module", "pandas")

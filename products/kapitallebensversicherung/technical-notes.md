@@ -221,8 +221,8 @@ assumptions on the same row**, because the difference between them *is* the *Kos
 `deckrv_table.csv` carries both DeckRV ceilings — § 2's *Höchstrechnungszins* and § 4's
 *Höchstzillmersatz* — keyed by `issue_year`, both being cohort facts that travel with the contract
 [REG-R14] [REG-R15] [REG-R16]. The scalars that are not tables — `suicide_share`,
-`bfz_min_si`, `term_surr_share`, `bwr_rate` and the two behaviour-module switches — are `Projection`
-References, and their values and tags are in this section; `mort_be_factor` and `unisex_mix_male` are rows of
+`bfz_min_si`, `term_surr_share` and `bwr_rate` — are `Projection` References (the two behaviour
+modules are not built, their unread switches removed), and their values and tags are in this section; `mort_be_factor` and `unisex_mix_male` are rows of
 `param_tariff_type.csv` since phase 3, read by the common core's loader.
 
 Three classes. Class (a) is contractual or statutory and is cited; class (b) is the insurer's current
@@ -899,16 +899,16 @@ All formulas are **[std]**; no German calibration evidence exists for any of the
   Modelling it as a scheduled election keeps the unsourced number out of the base run; what that costs
   is stated — a real book converts a material, duration-dependent share to *beitragsfrei*, and this
   model shows that path only where a model point elects it.
-- **Two dynamic modules, both [std] and both off in the base run.** *Premium-shock lapse* is inert on
+- **Two dynamic modules, both [std], specified and not built.** *Premium-shock lapse* would be inert on
   the base contract, whose *Bruttobeitrag* is level, but live under *Beitragsverrechnung*, where a fall
   in the declared rate raises the *Zahlbeitrag*: `M_shock(k) = 1 + β_shock · max(0,
   prem_paid_pp(k)/prem_paid_pp(k−1) − 1 − g0)` on the **annual** *Zahlbeitrag* of consecutive policy
   years, `g0 = 0.05`, `β_shock = 1.5`, base run `β_shock = 0`.
   *Rate-gap lapse* keys on the gap between the declared rate and what is available elsewhere:
-  `lapse_add(k) = a · max(0, ref_rate − decl_rate(k) − tol)`, `a = 3.0`, `tol = 0.5 pp`, `ref_rate` a
-  model Reference, base run `a = 0`. Both compare **annual** declarations, which is what they are
+  `lapse_add(k) = a · max(0, ref_rate − decl_rate(k) − tol)`, `a = 3.0`, `tol = 0.5 pp`, `ref_rate = 0.03`,
+  base run `a = 0`. Both compare **annual** declarations, which is what they are
   about; neither becomes a monthly comparison. **No German calibration of any of these numbers exists in the
-  corpus**, which is why both ship off. **Selective lapsation is not modelled** either: surrenders on
+  corpus**, which is why neither is built. **Selective lapsation is not modelled** either: surrenders on
   an endowment are wealth- and tax-driven rather than health-driven.
 - **What the model deliberately does not do.** No premium-default path (§§ 37/38 VVG unresearched, gap
   20); no *Widerruf* decrement (§ 152 VVG unresearched); no dynamic *Beitragsverrechnung* take-up; and

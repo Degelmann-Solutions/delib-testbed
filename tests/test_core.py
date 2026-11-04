@@ -42,7 +42,9 @@
   Riester's 32 former numeric References are rows of its tariff-type file with their
   literals' types and values, and no numeric Reference but ``point_id`` is left on its
   ``Projection``. RLV's 17 likewise, and its premium-shock test switches the module on
-  through a row of a scratch copy's tariff-type file.
+  through a row of a scratch copy's tariff-type file. KLV's three References of the
+  lapse modules that were never built, read by no cell, are in neither its ``Projection``
+  nor its parameter files.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -1778,6 +1780,18 @@ def test_rlv_references_are_tariff_type_rows(product_models):
         assert type(value) is type(literal) and value == literal, item
         assert item in layer, item
         assert item not in model.Projection.refs, item
+
+
+# KLV's switches of two lapse modules that were specified and never built, read by no cell.
+KLV_UNREAD_REFERENCES = ("beta_shock", "lapse_gap_a", "ref_rate")
+
+
+def test_klv_unread_references_are_removed(product_models):
+    model = product_models("kapitallebensversicherung")
+    items = model.Data.param_dict()
+    for name in KLV_UNREAD_REFERENCES:
+        assert name not in model.Projection.refs, name
+        assert name not in items, name
 
 
 @pytest.mark.parametrize("product", REFERENCES_MOVED)

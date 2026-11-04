@@ -432,23 +432,23 @@ the acquisition cost is spread for the surrender floor — a floor on the *value
 
 ## Modules that are off in the base run
 
-Three constructions are implemented and switched off, so the base run reproduces the worked
-example while the machinery stays visible and testable.
+One construction is implemented and switched off, and two lapse modules are specified and not
+built, so the base run reproduces the worked example; the formulas below are their specification.
 
 | Module | Switch | Off value | What it does |
 |---|---|---|---|
-| Premium-shock lapse | `beta_shock` | `0.0` | `1 + β·max(0, prem_paid_pp(k)/prem_paid_pp(k−1) − 1 − 0.05)`. Inert on a level *Bruttobeitrag*, but live under *Beitragsverrechnung*, where a fall in the declared rate raises the *Zahlbeitrag* |
-| Rate-gap lapse | `lapse_gap_a` | `0.0` | `a·max(0, ref_rate − decl_rate(k) − 0.005)` on `ref_rate = 0.03`, keyed on the gap between the declared rate and what is available elsewhere |
+| Premium-shock lapse, not built | `beta_shock`, an unread Reference, removed | `0.0` | `1 + β·max(0, prem_paid_pp(k)/prem_paid_pp(k−1) − 1 − 0.05)`. Inert on a level *Bruttobeitrag*, but live under *Beitragsverrechnung*, where a fall in the declared rate raises the *Zahlbeitrag* |
+| Rate-gap lapse, not built | `lapse_gap_a`, an unread Reference, removed | `0.0` | `a·max(0, ref_rate − decl_rate(k) − 0.005)` on `ref_rate = 0.03` (unread too, removed), keyed on the gap between the declared rate and what is available elsewhere |
 | *Beteiligung an den Bewertungsreserven* | `bwr_rate` | `0.0` | Adds `bwr_rate × res_guar_pp(n − 1)` to the maturity benefit. § 153 Abs. 3 VVG allocates half the reserves determined on termination [R1], but § 139 VAG permits participation only to the extent they exceed the *Sicherungsbedarf* [R8], and that need has routinely exhausted them |
 
-All three enter through **annual** quantities, and both lapse modules move `lapse_rate`, the
+`bwr_rate` enters and the two specified lapse modules would enter through **annual** quantities, and both would move `lapse_rate`, the
 year's rate, rather than `lapse_rate_mth` — a shock to a decrement is a statement about the year
 and the geometric split then carries it into the months on its own.
 
-`term_surr_share = 0` is a fourth switch of the same kind: the accrued
+`term_surr_share = 0` is a second shipped switch of the same kind, with `bwr_rate`: the accrued
 *Schlussüberschussanteil* is not paid on surrender in the base run, and raising it is what
 a user who reads a carrier's wording differently would do first. **No German calibration of
-any of these numbers exists in the corpus**, which is why all four ship off.
+any of these numbers exists in the corpus**, which is why both ship off while the two lapse modules are not built.
 
 Also not implemented, and stated rather than left to be discovered: no premium-default path
 (§§ 37 and 38 VVG were never researched, gap 20), no *Widerruf* decrement (§ 152 VVG,
@@ -530,7 +530,7 @@ quantitative parameter is either source-tagged or marked here.
 | Surplus *Wartezeit* = none | — | The wordings give three answers: none [S9], one year [S18], three years [S7] tariff group A and [S3]. The model takes the shortest |
 | DeckRV split years | 1994 and 2000 take the **higher** rate; 2027+ hold 1,00 % | The published history splits both years mid-year and a year-keyed table cannot [REG-R15], so `check_rechnungszins_cap()` is permissive in exactly those two years |
 | `prem_freq_load` values | 1,000 / 1,020 / 1,030 / 1,050 | The 2 / 3 / 5 % market range is cited [R28]; **no carrier publishes its own scale** |
-| Behaviour modules off | `beta_shock = 0`, `lapse_gap_a = 0` | No German calibration of either exists |
+| Behaviour modules not built | `beta_shock = 0`, `lapse_gap_a = 0`, their specified off values; the unread References removed | No German calibration of either exists |
 | The fourteen model points | — | No entry age, premium level or sum-insured band was established (gap 21); the anchor is a construction from the term band plus the twelve-year tax minimum |
 
 The quantities that are **not** standardizations are the two DeckRV ceilings [R7]

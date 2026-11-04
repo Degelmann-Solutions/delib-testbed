@@ -855,7 +855,7 @@ def mort_be_factor():
     Override reason: the best estimate is a round 0.85 of the shipped first-order table, a
     tariff parameter in *param_table.csv*, products/basisrente/technical-notes.md:321
     """
-    return float(data.param_table_dict()["value"]["mort_be_factor"])   # noqa: F821
+    return float(data.param("mort_be_factor"))                       # noqa: F821
 
 
 def mort_rate(t):

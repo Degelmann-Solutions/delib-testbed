@@ -490,7 +490,7 @@ def mort_be_factor():
     factor of 1.15 and a tariff parameter in *param_table.csv*,
     products/klassische_rentenversicherung/model.md:513
     """
-    return float(data.param_table_dict()["value"]["mort_be_factor"])  # noqa: F821
+    return float(data.param("mort_be_factor"))                       # noqa: F821
 
 
 # ----------------------------------------
@@ -1038,7 +1038,7 @@ def mort_rate_tariff(t):
     calendar year, products/klassische_rentenversicherung/technical-notes.md:328
     """
     x = age(t)
-    base_year = int(data.param_table_dict()["value"]["mort_base_year"])  # noqa: F821
+    base_year = int(data.param("mort_base_year"))                    # noqa: F821
     return min(1.0, mort_rate_at_age(x)
                * (1.0 - improve_rate(x)) ** (calendar_year(t) - base_year))
 
@@ -1435,7 +1435,7 @@ def val_reserve_pp():
     without dominating.  Policyholders also participate during the payout phase; that
     continuing participation is not modelled.
     """
-    return (float(data.param_table_dict()["value"]["val_reserve_rate"])  # noqa: F821
+    return (float(data.param("val_reserve_rate"))                    # noqa: F821
             * capital_gross_pp())
 
 
@@ -1532,10 +1532,9 @@ def annuity_sur_mth_pp(k):
     n = int(mp["aufschub_y"])
     if k < n:
         return 0.0
-    par = data.param_table_dict()["value"]                           # noqa: F821
-    rate = float(par["sur_ann_rate"])
-    growth = float(par["sur_ann_growth"])
-    theta = float(par["sur_ann_theta"])
+    rate = float(data.param("sur_ann_rate"))                         # noqa: F821
+    growth = float(data.param("sur_ann_growth"))                     # noqa: F821
+    theta = float(data.param("sur_ann_theta"))                       # noqa: F821
     j = k - n
     system = mp["payout_system"]
     guar = annuity_guar_mth_pp()
@@ -1673,22 +1672,22 @@ def claims_other(t, kind):
 
 def expense_acq_pp():
     """The acquisition expense per policy at issue, from *param_table.csv*: 400,00 € **[std]**."""
-    return float(data.param_table_dict()["value"]["expense_acq_pp"])  # noqa: F821
+    return float(data.param("expense_acq_pp"))                       # noqa: F821
 
 
 def expense_maint_pp():
     """The maintenance expense per policy per year in the accumulation phase: 45,00 € **[std]**."""
-    return float(data.param_table_dict()["value"]["expense_maint_pp"])  # noqa: F821
+    return float(data.param("expense_maint_pp"))                     # noqa: F821
 
 
 def expense_annuity_pp():
     """The administration expense per policy per year in the payout phase: 30,00 € **[std]**."""
-    return float(data.param_table_dict()["value"]["expense_annuity_pp"])  # noqa: F821
+    return float(data.param("expense_annuity_pp"))                   # noqa: F821
 
 
 def expense_claim_pp():
     """The settlement expense per death, surrender or commutation event: 120,00 € **[std]**."""
-    return float(data.param_table_dict()["value"]["expense_claim_pp"])  # noqa: F821
+    return float(data.param("expense_claim_pp"))                     # noqa: F821
 
 
 def expenses_pp(t):

@@ -1191,7 +1191,7 @@ def mort_be_factor():
     tariff parameter in *param_table.csv* that makes the *Risikoergebnis* a quarter of the
     *Risikobeitrag*, products/fondsgebundene_rentenversicherung/model.md:467
     """
-    return float(data.param_table_dict()["value"]["mort_be_factor"])   # noqa: F821
+    return float(data.param("mort_be_factor"))                       # noqa: F821
 
 
 def mort_rate_base(t):

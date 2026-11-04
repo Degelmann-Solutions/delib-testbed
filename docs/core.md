@@ -248,7 +248,7 @@ Every layer file has the columns `item`, `value`, `basis` and `provenance`. `pro
 
 The core file lives beside the core's loaders rather than at `core/param_core.csv`, and `param_core_path()` finds it as `_model.path / "CoreData" / "param_core.csv"`, through the product's `CoreData` symlink: `param_file` resolves against `input_dir()`, the product folder, and a scratch copy of a product folder (tests, `tools/measure_marginal.py`) copies the `CoreData` folder through the symlink and with it the core file, so a copy reads its own core file and a test can give it a fixture item without touching the core (Moritz, 2026-11-04). `mx.read_model` ignores a CSV file in a space folder, and `tests/test_provenance.py` does not descend into the symlinked folder, so the file adds no cell and no product file.
 
-The core's parameter cells `omega_age`, `unisex_mix_male`, `expense_infl` and `roll_fwd_tol` read `data.param("<item>")`, each in the `int` or `float` it had; the products' own reads `param_table_dict()["value"][<item>]` still read the tariff-type file through `param_table()`.
+Every parameter read goes through `param`: the core's parameter cells `omega_age`, `unisex_mix_male`, `expense_infl` and `roll_fwd_tol` and the products' own reads (RV, Pflege, Basis, FRV, KLV, Riester) call `data.param("<item>")`, each in the `int` or `float` wrapper it had; `tests/test_core.py` fails on a source that still reads `param_table_dict()["value"]`. `param_table()` and `param_table_dict()` remain the DataFrame and dict readers of `param_file`, without a formula reading them.
 
 ## Commit trailers
 

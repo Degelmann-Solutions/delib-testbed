@@ -658,7 +658,7 @@ def rec_age_ref():
 
     A shape parameter of the recovery basis; :func:`rec_rate` reads it.
     """
-    return float(data.param_table_dict()["value"]["rec_age_ref"])    # noqa: F821
+    return float(data.param("rec_age_ref"))                          # noqa: F821
 
 
 def rec_age_decay():
@@ -666,7 +666,7 @@ def rec_age_decay():
 
     A shape parameter of the recovery basis; :func:`rec_rate` reads it.
     """
-    return float(data.param_table_dict()["value"]["rec_age_decay"])  # noqa: F821
+    return float(data.param("rec_age_decay"))                        # noqa: F821
 
 
 def rec_rate(x, g):
@@ -1297,8 +1297,7 @@ def beitragssumme_years():
     """
     if prem_mode_months() == 0:
         return 1
-    cap = int(data.param_table_dict()["value"][                      # noqa: F821
-        "beitragssumme_cap_age"])
+    cap = int(data.param("beitragssumme_cap_age"))                   # noqa: F821
     return max(0, min(prem_end_age(), cap) - issue_age())
 
 
@@ -1316,8 +1315,7 @@ def alpha_rate():
     date.  That is correct, and it is worth knowing before comparing an in-force point's
     first row with a new-business point's.
     """
-    permille = float(data.param_table_dict()["value"][               # noqa: F821
-        "acq_permille"])
+    permille = float(data.param("acq_permille"))                     # noqa: F821
     return permille / 1000.0
 
 
@@ -1349,10 +1347,8 @@ def expenses(t):
     products/pflegerentenversicherung/technical-notes.md:593, added after the two
     administration terms, an order the core's sum of its terms would reassociate
     """
-    admin_pp = float(data.param_table_dict()["value"][               # noqa: F821
-        "admin_mth_pp"])
-    admin_pct = float(data.param_table_dict()["value"][              # noqa: F821
-        "admin_prem_pct"])
+    admin_pp = float(data.param("admin_mth_pp"))                     # noqa: F821
+    admin_pct = float(data.param("admin_prem_pct"))                  # noqa: F821
     total = admin_pp * inflation_factor(t) * pols_if(t)
     total += admin_pct * premiums(t)
     if t == 0:
@@ -1372,8 +1368,7 @@ def claim_expenses(t):
     by the insurer, so the *Nachprüfung* is a documentation exercise rather than the
     adversarial re-assessment that drives a *Berufsunfähigkeitsrente*'s claims cost.
     """
-    per_payment = float(data.param_table_dict()["value"][            # noqa: F821
-        "claim_expense_pp"])
+    per_payment = float(data.param("claim_expense_pp"))              # noqa: F821
     total = 0.0
     for g in range(1, 6):
         if waiver_flag(g):
@@ -1406,7 +1401,7 @@ def act_mort_margin():
 
     Read by :func:`mort_rate_tariff`.
     """
-    return float(data.param_table_dict()["value"]["act_mort_margin"])  # noqa: F821
+    return float(data.param("act_mort_margin"))                      # noqa: F821
 
 
 def care_mort_margin():
@@ -1414,7 +1409,7 @@ def care_mort_margin():
 
     Read by :func:`tar_mort_rate_care`.
     """
-    return float(data.param_table_dict()["value"]["care_mort_margin"])  # noqa: F821
+    return float(data.param("care_mort_margin"))                     # noqa: F821
 
 
 def inc_margin():
@@ -1422,7 +1417,7 @@ def inc_margin():
 
     Read by :func:`tar_inc_rate`.
     """
-    return float(data.param_table_dict()["value"]["inc_margin"])     # noqa: F821
+    return float(data.param("inc_margin"))                           # noqa: F821
 
 
 def inc_cap():
@@ -1430,7 +1425,7 @@ def inc_cap():
 
     Read by :func:`tar_inc_rate`.
     """
-    return float(data.param_table_dict()["value"]["inc_cap"])        # noqa: F821
+    return float(data.param("inc_cap"))                              # noqa: F821
 
 
 def det_margin():
@@ -1438,7 +1433,7 @@ def det_margin():
 
     Read by :func:`tar_det_rate`.
     """
-    return float(data.param_table_dict()["value"]["det_margin"])     # noqa: F821
+    return float(data.param("det_margin"))                           # noqa: F821
 
 
 def rec_margin():
@@ -1446,7 +1441,7 @@ def rec_margin():
 
     Read by :func:`tar_rec_rate`.
     """
-    return float(data.param_table_dict()["value"]["rec_margin"])     # noqa: F821
+    return float(data.param("rec_margin"))                           # noqa: F821
 
 
 def mort_rate_tariff(t):
@@ -1817,8 +1812,7 @@ def tariff_annuity():
 
 def epv_admin():
     """G: the expected present value of the per-policy administration cost, first order."""
-    admin_pp = float(data.param_table_dict()["value"][               # noqa: F821
-        "admin_mth_pp"])
+    admin_pp = float(data.param("admin_mth_pp"))                     # noqa: F821
     total = 0.0
     for t in range(proj_len()):
         total += disc_factor_mth(t) * admin_pp * inflation_factor(t) * tar_pols_if(t)
@@ -1827,8 +1821,7 @@ def epv_admin():
 
 def epv_claim_expense():
     """C: the expected present value of the per-annuity-payment claims cost, first order."""
-    per_payment = float(data.param_table_dict()["value"][            # noqa: F821
-        "claim_expense_pp"])
+    per_payment = float(data.param("claim_expense_pp"))              # noqa: F821
     total = 0.0
     for t in range(proj_len()):
         row = 0.0
@@ -1871,16 +1864,13 @@ def premium_mth_pp():
     """
     if premium_mth() > 0.0:
         return premium_mth()
-    permille = float(data.param_table_dict()["value"][               # noqa: F821
-        "acq_permille"]) / 1000.0
-    admin_pct = float(data.param_table_dict()["value"][              # noqa: F821
-        "admin_prem_pct"])
+    permille = float(data.param("acq_permille")) / 1000.0            # noqa: F821
+    admin_pct = float(data.param("admin_prem_pct"))                  # noqa: F821
     m = prem_mode_months()
     if m == 0:
         a1 = permille
     else:
-        cap = int(data.param_table_dict()["value"][                  # noqa: F821
-            "beitragssumme_cap_age"])
+        cap = int(data.param("beitragssumme_cap_age"))               # noqa: F821
         years = max(0, min(prem_end_age(), cap) - issue_age())
         a1 = permille * 12.0 * years
     d1 = 0.0
@@ -2085,14 +2075,10 @@ def check_prem_equiv_resid(t):
     p0 = premium_mth_pp() / rating_factor()
     m = prem_mode_months()
     mult = m if m > 0 else 1
-    admin_pct = float(data.param_table_dict()["value"][              # noqa: F821
-        "admin_prem_pct"])
-    admin_pp = float(data.param_table_dict()["value"][               # noqa: F821
-        "admin_mth_pp"])
-    per_payment = float(data.param_table_dict()["value"][            # noqa: F821
-        "claim_expense_pp"])
-    permille = float(data.param_table_dict()["value"][               # noqa: F821
-        "acq_permille"]) / 1000.0
+    admin_pct = float(data.param("admin_prem_pct"))                  # noqa: F821
+    admin_pp = float(data.param("admin_mth_pp"))                     # noqa: F821
+    per_payment = float(data.param("claim_expense_pp"))              # noqa: F821
+    permille = float(data.param("acq_permille")) / 1000.0            # noqa: F821
 
     prem_leg = p0 * mult * tar_pols_prem(t) if premium_due(t) else 0.0
 
@@ -2115,8 +2101,7 @@ def check_prem_equiv_resid(t):
         if m == 0:
             exp_leg += p0 * permille
         else:
-            cap = int(data.param_table_dict()["value"][              # noqa: F821
-                "beitragssumme_cap_age"])
+            cap = int(data.param("beitragssumme_cap_age"))           # noqa: F821
             years = max(0, min(prem_end_age(), cap) - issue_age())
             exp_leg += p0 * permille * 12.0 * years
 

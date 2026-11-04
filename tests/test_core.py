@@ -1600,7 +1600,8 @@ PARAM_TABLE_DICT_READ = 'param_table_dict()["value"]'
 
 def test_no_param_table_dict_read_remains():
     """Every parameter is read through ``param("<item>")``; no source reads the old path."""
-    sources = sorted(p for p in CORE_DIR.rglob("*.py") if "__pycache__" not in p.parts)
+    sources = sorted(p for folder in (CORE_DIR, PRODUCTS_DIR) for p in folder.rglob("*.py")
+                     if "__pycache__" not in p.parts)
     assert sources
     hits = [f"{path.relative_to(ROOT)}:{number}"
             for path in sources

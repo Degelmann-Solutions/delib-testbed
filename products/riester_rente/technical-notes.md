@@ -127,7 +127,7 @@ reaches it through a `data` Reference and holds no `*_file` Reference and no `in
 | `income_schedule.csv` | `income_id`, `t` | `income`, `provenance` |
 | `surplus_scenario.csv` | `scenario_id`, `t` | `decl_rate`, `provenance` |
 | `freq_loading.csv` | `prem_freq` | `prem_freq_load`, `provenance` |
-| `param_table.csv` | `item` | `value` (`mort_be_factor`, `expense_infl`), `provenance` |
+| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`, `expense_infl`), `basis`, `provenance` |
 
 **Every file except `model_point_table.csv` carries a per-row `provenance` column**, delib's second
 ruling: a model point is a configuration, every other row is an assumption and says where its number
@@ -419,7 +419,7 @@ not from data.
 | Income growth | **2,0 %** p.a. on the anchor's `income_schedule` path | A round real-plus-inflation number; it decides when the 2 100 € ceiling binds and so the shape of the contribution stream |
 | Commutation take-up | **Computed, not assumed** — the model tests the annuity against the threshold | The one behavioural quantity here that does not need a rate |
 | *Teilkapitalauszahlung* take-up | **30 %** on the anchor, 0 % on model point 12 | German commentary reports the lump sum as usual `[unverified]`; **gap 10 records that this rests on nothing** |
-| Expenses `expense_maint`, `expense_annuity`, `expense_claim`, `expense_acq` | **30.00** p.a. per in-force policy inflating at **2,0 %** (`expense_infl`, a row of `param_table.csv`); **24.00** p.a. per annuitant; **80.00** per claim; **150.00 + 2,0 %** of `beitragssumme` at issue | No German insurer publishes a unit cost. The per-policy maintenance figure carries the Zulage administration — the *Dauerzulageantrag* (§ 89 Abs. 1a), the annual data transmission (§ 89 Abs. 3), the quarterly reclaim remittance (§ 90 Abs. 3), the *Leistungsmitteilung* (§ 22 Nr. 5 Satz 7, due on first receipt and on change rather than annually) and the separate annual information duty of AltZertG § 7a [R4] [R11] [R12] — which is a real and product-specific cost |
+| Expenses `expense_maint`, `expense_annuity`, `expense_claim`, `expense_acq` | **30.00** p.a. per in-force policy inflating at **2,0 %** (`expense_infl`, a row of `param_tariff_type.csv`); **24.00** p.a. per annuitant; **80.00** per claim; **150.00 + 2,0 %** of `beitragssumme` at issue | No German insurer publishes a unit cost. The per-policy maintenance figure carries the Zulage administration — the *Dauerzulageantrag* (§ 89 Abs. 1a), the annual data transmission (§ 89 Abs. 3), the quarterly reclaim remittance (§ 90 Abs. 3), the *Leistungsmitteilung* (§ 22 Nr. 5 Satz 7, due on first receipt and on change rather than annually) and the separate annual information duty of AltZertG § 7a [R4] [R11] [R12] — which is a real and product-specific cost |
 | Commission | **2,5 %** of `beitragssumme` at issue, **1,5 %** of contributions thereafter | The initial rate is set at the *Höchstzillmersatz* [REG-R16] [REG-R20]. **The cash leaves at issue while the charge is recovered over five years** [R1]; that gap is the new-business strain and it is carried by the insurer |
 
 9. ***Beitragsfreistellung* is the German Riester book's dominant exit** [R25], and the model

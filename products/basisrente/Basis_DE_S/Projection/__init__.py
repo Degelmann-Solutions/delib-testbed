@@ -82,7 +82,7 @@ rentenfaktor_file          data.rentenfaktor_table()            rentenfaktor_tab
 charge_file                data.charge_table()                  charge_table.csv
 behaviour_file             data.behaviour_table()               behaviour_table.csv
 option_file                data.option_table()                  option_table.csv
-param_file                 data.param_table()                   param_table.csv
+param_file                 data.param_table()                   param_tariff_type.csv
 =========================  ===================================  ==========================
 
 .. rubric:: Naming
@@ -697,7 +697,7 @@ def expense_infl():
     """The annual expense inflation rate of this tariff, 1,5 % p.a. **[std]**.
 
     Read from *charge_table.csv* at the model point's ``tariff_id``, beside the
-    *Stückkosten* and the expense levels it inflates, rather than from *param_table.csv*.
+    *Stückkosten* and the expense levels it inflates, rather than from *param_tariff_type.csv*.
 
     Override reason: the expense inflation is a column of the charge table keyed by
     ``tariff_id``, products/basisrente/technical-notes.md:141
@@ -850,10 +850,10 @@ def mort_rate_base(t):
 
 
 def mort_be_factor():
-    """The step from the first-order table to the best estimate, 0.85, from *param_table.csv*.
+    """The step from the first-order table to the best estimate, 0.85, from *param_tariff_type.csv*.
 
     Override reason: the best estimate is a round 0.85 of the shipped first-order table, a
-    tariff parameter in *param_table.csv*, products/basisrente/technical-notes.md:321
+    tariff parameter in *param_tariff_type.csv*, products/basisrente/technical-notes.md:321
     """
     return float(data.param("mort_be_factor"))                       # noqa: F821
 

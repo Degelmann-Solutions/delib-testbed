@@ -38,7 +38,7 @@ rentenfaktor_file          rentenfaktor_table()            rentenfaktor_table.cs
 charge_file                charge_table()                  charge_table.csv
 behaviour_file             behaviour_table()               behaviour_table.csv
 option_file                option_table()                  option_table.csv
-param_file                 param_table()                   param_table.csv
+param_file                 param_table()                   param_tariff_type.csv
 =========================  ==============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
@@ -247,6 +247,6 @@ behaviour_file = "behaviour_table.csv"
 
 option_file = "option_table.csv"
 
-param_file = "param_table.csv"
+param_file = "param_tariff_type.csv"
 
 pd = ("Module", "pandas")

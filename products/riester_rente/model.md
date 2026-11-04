@@ -330,7 +330,7 @@ folder. `Riester_DE_S/` holds nothing but formulas:
 products/riester_rente/
   model_point_table.csv  mort_table_accum.csv  annuity_mort_table.csv   <- inputs live here
   lapse_table.csv  zulage_schedule.csv  income_schedule.csv
-  surplus_scenario.csv  freq_loading.csv  param_table.csv
+  surplus_scenario.csv  freq_loading.csv  param_tariff_type.csv
   run.py  model.md  product-spec.md  technical-notes.md  sources.md
   Riester_DE_S/                <- formulas only
     __init__.py  _system.json
@@ -375,7 +375,7 @@ frequency-loading invariance is tested.
 | `income_schedule.csv` | Contribution-liable earnings by schedule id and `t`, 0–59 | **[std]** 2 % nominal growth paths plus a `zero` path for the *mittelbar* eligible spouse. It decides when the 2 100 € ceiling binds |
 | `surplus_scenario.csv` | `decl_rate` by scenario id and `t`, 0–89: `base` 2,30 %, `low` 0,50 % | **[std]**, the **largest single lever in the model** and the least supported (gap 12). The rate **includes** the *Rechnungszins* [REG-R53] |
 | `freq_loading.csv` | The *Ratenzuschlag* multiplier by payment frequency | **[std]** 1.0000 / 1.0100 / 1.0200 / 1.0300, a charge and never a credit |
-| `param_table.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.80, `expense_infl` 0.02 | **[std]**, the step from the first-order death table to the best estimate, below it because a death table carries its margin above [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads |
+| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.80, `expense_infl` 0.02 | **[std]**, the step from the first-order death table to the best estimate, below it because a death table carries its margin above [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads |
 
 ### How the time-like input columns are keyed
 
@@ -449,7 +449,7 @@ Two parameters are worth naming because a user will want to move them: the Refer
 which is the statutory timing rather than a convention — §§ 88 to 90 EStG put the credit in the
 following year and AltvPIBV § 9 Abs. 3 dates it to **15 May** of that year [R5] [R11], closing
 gap 6, so what `zulage_lag` standardizes is only the annual-grid compression; and
-`mort_be_factor = 0.80` (in `param_table.csv`) beside `annuity_mort_be_factor = 1.15`, which run in **opposite**
+`mort_be_factor = 0.80` (in `param_tariff_type.csv`) beside `annuity_mort_be_factor = 1.15`, which run in **opposite**
 directions because the direction of prudence forks by product — a first-order death table
 assumes mortality higher than expected, a first-order annuity table lower [REG-R47].
 

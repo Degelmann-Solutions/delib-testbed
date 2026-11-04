@@ -27,7 +27,7 @@
   kind and an unknown kind is rejected; Index and RV pay exactly zero commission; KLV's net
   cash flow subtracts its claims kind by kind; RLV's liability cash flow is its net cash flow
   negated.
-- The outputs and checks: every product reads ``roll_fwd_tol`` from its ``param_table.csv``
+- The outputs and checks: every product reads ``roll_fwd_tol`` from its ``param_tariff_type.csv``
   and a missing row raises; KLV's ``result_cf`` is the core's statement from ``t_start()``;
   RV's annual frame sums the flows and takes its two counts at the year's start; RLV's
   net-cash-flow residual is rebuilt from its frame's columns; KLV's ``check_net_cf`` closes to
@@ -37,7 +37,8 @@
   keeps an integer literal ``int``, reads a fixture core item and a tariff item in a scratch
   copy, and raises on an unknown item and on a missing core file; it equals the
   ``param_table_dict()`` value of every product's every item, and no source reads
-  ``param_table_dict()["value"]`` any more.
+  ``param_table_dict()["value"]`` any more; every product's ``param_file`` is its
+  ``param_tariff_type.csv`` with the layer columns, and no ``param_table.csv`` is left.
 - The expense inflation: Sofort's derived factor steps on the policy anniversary, Pflege's
   compounds continuously over ``t / 12`` years.
 - The dict cells: every core dict cell of a table a product has equals its reader's
@@ -968,7 +969,7 @@ def test_a_module_reference_cannot_shadow_a_core_cell(tmp_path):
 
     modelx reads the assignment as an input value of the derived cell in the static space;
     an item space computes the core formula, so the value is silently ignored there.  Hence
-    a parameter that was a Reference becomes a ``param_table.csv`` row, not a Reference of
+    a parameter that was a Reference becomes a ``param_tariff_type.csv`` row, not a Reference of
     the core cell's name.
     """
     model = mx.new_model("ShadowProbe")
@@ -1032,8 +1033,9 @@ def test_pflege_param_table_holds_the_two_merged_tables(product_models):
     for item in moved:
         assert (points[item] == basis.at[item, "value"]).all(), item
     basis = basis.drop(moved)
-    assert list(merged.columns) == ["value", "unit", "provenance"]
+    assert list(merged.columns) == ["value", "unit", "basis", "provenance"]
     assert list(merged.index) == list(basis.index) + list(expense.index)
+    assert merged["basis"].isna().all()
     for item in basis.index:
         assert merged.at[item, "value"] == basis.at[item, "value"], item
         assert pd.isna(merged.at[item, "unit"]), item
@@ -1571,7 +1573,7 @@ def test_roll_fwd_tol_is_read_from_param_table(product, product_models):
 
 def test_roll_fwd_tol_without_its_row_raises_key_error(tmp_path):
     folder = product_copy(tmp_path, "kapitallebensversicherung")
-    table = folder / "param_table.csv"
+    table = folder / "param_tariff_type.csv"
     params = pd.read_csv(table, index_col="item")
     params.drop(index="roll_fwd_tol").to_csv(table)
     copy = mx.read_model(folder / MODELS["kapitallebensversicherung"], name="TolProbe")
@@ -1618,6 +1620,19 @@ def test_param_equals_the_param_table_dict_value(product, product_models):
     assert values
     for item, value in values.items():
         assert data.param(item) == value, item
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_every_product_reads_its_tariff_type_file(product, product_models):
+    """``param_file`` is ``param_tariff_type.csv``, in the layer columns, and no
+    ``param_table.csv`` is left; Pflege keeps its ``unit`` column before ``basis``."""
+    assert product_models(product).Data.param_file == "param_tariff_type.csv"
+    folder = PRODUCTS_DIR / product
+    assert not (folder / "param_table.csv").exists()
+    header = (folder / "param_tariff_type.csv").read_text(encoding="utf-8").splitlines()[0]
+    expected = ("item,value,unit,basis,provenance" if product == "pflegerentenversicherung"
+                else "item,value,basis,provenance")
+    assert header == expected
 
 
 def test_rlv_claim_expense_is_a_tariff_type_row(product_models):
@@ -1937,7 +1952,7 @@ def test_a_prem_freq_without_a_loading_raises(tmp_path):
 
 def test_expense_infl_without_its_row_raises_key_error(tmp_path):
     folder = product_copy(tmp_path, "klassische_rentenversicherung")
-    table = folder / "param_table.csv"
+    table = folder / "param_tariff_type.csv"
     params = pd.read_csv(table, index_col="item")
     params.drop(index="expense_infl").to_csv(table)
     copy = mx.read_model(folder / MODELS["klassische_rentenversicherung"], name="InflProbe")
@@ -2137,7 +2152,7 @@ def test_pflege_tariff_deterioration_is_zero_at_grade_5(product_models):
 
 def test_pflege_rec_margin_without_its_row_raises_key_error(tmp_path):
     folder = product_copy(tmp_path, "pflegerentenversicherung")
-    table = folder / "param_table.csv"
+    table = folder / "param_tariff_type.csv"
     params = pd.read_csv(table, index_col="item")
     params.drop(index="rec_margin").to_csv(table)
     copy = mx.read_model(folder / MODELS["pflegerentenversicherung"], name="RecProbe")

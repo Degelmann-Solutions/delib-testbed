@@ -47,7 +47,7 @@ incidence_file             data.incidence_table()               incidence_table.
 care_file                  data.care_table()                    care_table.csv
 lapse_file                 data.lapse_table()                   lapse_table.csv
 surrender_file             data.surrender_table()               surrender_table.csv
-param_file                 data.param_table()                   param_table.csv
+param_file                 data.param_table()                   param_tariff_type.csv
 =========================  ===================================  =========================
 
 .. rubric:: Naming
@@ -654,7 +654,7 @@ def det_force(x, g):
 
 
 def rec_age_ref():
-    """The attained age above which recovery is damped, from *param_table.csv*.
+    """The attained age above which recovery is damped, from *param_tariff_type.csv*.
 
     A shape parameter of the recovery basis; :func:`rec_rate` reads it.
     """
@@ -662,7 +662,7 @@ def rec_age_ref():
 
 
 def rec_age_decay():
-    """The recovery damping per year of age above ``rec_age_ref``, from *param_table.csv*.
+    """The recovery damping per year of age above ``rec_age_ref``, from *param_tariff_type.csv*.
 
     A shape parameter of the recovery basis; :func:`rec_rate` reads it.
     """
@@ -1397,7 +1397,7 @@ def net_cf(t):
 
 
 def act_mort_margin():
-    """The first-order prudence margin on active mortality, from *param_table.csv*.
+    """The first-order prudence margin on active mortality, from *param_tariff_type.csv*.
 
     Read by :func:`mort_rate_tariff`.
     """
@@ -1405,7 +1405,7 @@ def act_mort_margin():
 
 
 def care_mort_margin():
-    """The first-order prudence margin on in-care mortality, from *param_table.csv*.
+    """The first-order prudence margin on in-care mortality, from *param_tariff_type.csv*.
 
     Read by :func:`tar_mort_rate_care`.
     """
@@ -1413,7 +1413,7 @@ def care_mort_margin():
 
 
 def inc_margin():
-    """The first-order prudence margin on incidence, from *param_table.csv*.
+    """The first-order prudence margin on incidence, from *param_tariff_type.csv*.
 
     Read by :func:`tar_inc_rate`.
     """
@@ -1421,7 +1421,7 @@ def inc_margin():
 
 
 def inc_cap():
-    """The cap on the first-order incidence rate, a shape parameter of *param_table.csv*.
+    """The cap on the first-order incidence rate, a shape parameter of *param_tariff_type.csv*.
 
     Read by :func:`tar_inc_rate`.
     """
@@ -1429,7 +1429,7 @@ def inc_cap():
 
 
 def det_margin():
-    """The first-order prudence margin on deterioration, from *param_table.csv*.
+    """The first-order prudence margin on deterioration, from *param_tariff_type.csv*.
 
     Read by :func:`tar_det_rate`.
     """
@@ -1437,7 +1437,7 @@ def det_margin():
 
 
 def rec_margin():
-    """The first-order prudence margin on recovery, from *param_table.csv*.
+    """The first-order prudence margin on recovery, from *param_tariff_type.csv*.
 
     Read by :func:`tar_rec_rate`.
     """

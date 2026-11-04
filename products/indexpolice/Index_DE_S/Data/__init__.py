@@ -38,7 +38,7 @@ election_file          election_table()            election_table.csv
 mort_file              mort_table()                mort_table.csv
 lapse_file             lapse_table()               lapse_table.csv
 freq_loading_file      freq_loading_table()        freq_load_table.csv
-param_file             param_table()               param_table.csv
+param_file             param_table()               param_tariff_type.csv
 =====================  ==========================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
@@ -256,6 +256,6 @@ lapse_file = "lapse_table.csv"
 
 freq_loading_file = "freq_load_table.csv"
 
-param_file = "param_table.csv"
+param_file = "param_tariff_type.csv"
 
 pd = ("Module", "pandas")

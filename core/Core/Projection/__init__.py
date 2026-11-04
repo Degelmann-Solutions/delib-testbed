@@ -221,7 +221,7 @@ def age(t):
 
 
 def omega_age():
-    """omega: the limiting age, from the product's *param_table.csv*.
+    """omega: the limiting age, from the product's *param_tariff_type.csv*.
 
     The first age nobody reaches: the death rate is 1 at ``omega_age() - 1``, so a
     projection run to it ends with no survivors.
@@ -291,7 +291,7 @@ def mort_be_factor():
     """The step from the product's mortality table to the best estimate; 1, neutral.
 
     A product whose best estimate is a multiple of its table overrides it with its own
-    value, a tariff parameter in its *param_table.csv*.
+    value, a tariff parameter in its *param_tariff_type.csv*.
     """
     return 1.0
 
@@ -525,7 +525,7 @@ def disc_factor(y):
 
 
 def unisex_mix_male():
-    """The male share of the unisex tariff blend, from the product's *param_table.csv*."""
+    """The male share of the unisex tariff blend, from the product's *param_tariff_type.csv*."""
     return float(data.param("unisex_mix_male"))                      # noqa: F821
 
 
@@ -735,7 +735,7 @@ def claims(t, kind=None):
 
 
 def expense_infl():
-    """The annual expense inflation rate, from *param_table.csv*.
+    """The annual expense inflation rate, from *param_tariff_type.csv*.
 
     The row ``expense_infl`` of the product's table; a product without the row raises
     ``KeyError``.  A product that keys the rate by tariff or cost set overrides the cell with
@@ -858,7 +858,7 @@ def liability_cf(t):
 
 
 def roll_fwd_tol():
-    """The tolerance the ``check_*`` identities close to, from *param_table.csv*.
+    """The tolerance the ``check_*`` identities close to, from *param_tariff_type.csv*.
 
     A float comparison tolerance, not an actuarial assumption: each check scales it by the
     magnitude of what it compares.  A product without the row raises ``KeyError``.

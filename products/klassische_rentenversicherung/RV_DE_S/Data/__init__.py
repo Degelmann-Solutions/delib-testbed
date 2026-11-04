@@ -36,7 +36,7 @@ rentenfaktor_file         rentenfaktor_table()          rentenfaktor_table.csv
 charge_file               charge_table()                charge_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
 freq_loading_file         freq_loading_table()          freq_load_table.csv
-param_file                param_table()                 param_table.csv
+param_file                param_table()                 param_tariff_type.csv
 ========================  ============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
@@ -97,7 +97,7 @@ is a scenario, not a forecast. It covers calendar years 2005 to 2060 and the rea
 :mod:`~.RV_DE_S.Projection` clamps to that range, so a projection running past 2060 holds
 the last declared year flat.
 
-``charge_table.csv``, ``lapse_table.csv``, ``freq_load_table.csv`` and ``param_table.csv``
+``charge_table.csv``, ``lapse_table.csv``, ``freq_load_table.csv`` and ``param_tariff_type.csv``
 carry levels that are **[std] throughout** with two exceptions that are cited rather than
 chosen: the *Höchstzillmersatz* of 25 ‰ of the *Beitragssumme* (40 ‰ before 1 January
 2015), and the five-year spread of acquisition costs that § 169 Abs. 3 VVG imposes on the
@@ -195,6 +195,6 @@ lapse_file = "lapse_table.csv"
 
 freq_loading_file = "freq_load_table.csv"
 
-param_file = "param_table.csv"
+param_file = "param_tariff_type.csv"
 
 pd = ("Module", "pandas")

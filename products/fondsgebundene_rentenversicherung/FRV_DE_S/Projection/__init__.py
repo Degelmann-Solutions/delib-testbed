@@ -48,7 +48,7 @@ lapse_file                data.lapse_table()                 lapse_table.csv
 charge_file               data.charge_table()                charge_table.csv
 fund_scenario_file        data.fund_scenario_table()         fund_scenario_table.csv
 rentenfaktor_file         data.rentenfaktor_table()          rentenfaktor_table.csv
-param_file                data.param_table()                 param_table.csv
+param_file                data.param_table()                 param_tariff_type.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -1188,7 +1188,7 @@ def mort_be_factor():
     """The step from the first-order death table to the best estimate, 0.75.
 
     Override reason: the best estimate is a flat 0.75 of the first-order death table, a
-    tariff parameter in *param_table.csv* that makes the *Risikoergebnis* a quarter of the
+    tariff parameter in *param_tariff_type.csv* that makes the *Risikoergebnis* a quarter of the
     *Risikobeitrag*, products/fondsgebundene_rentenversicherung/model.md:467
     """
     return float(data.param("mort_be_factor"))                       # noqa: F821

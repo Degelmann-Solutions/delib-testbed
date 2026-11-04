@@ -349,11 +349,11 @@ three-class split, and confusing them is pitfall 12's neighbour.
 | `expense_acq_rate`, `expense_acq_fixed` — acquisition expense actually incurred at `t = 0` | **2,0 %** of `SP` **plus 200 €** | **[std]** (c1) |
 | `expense_maint_pp` — maintenance expense per annum, per unit of `pols_if` | **60 €**, accrued monthly | **[std]** (c1) |
 | `expense_pay_pp` — cost of running one instalment | **1,50 €** per instalment paid | **[std]** (c1) |
-| `expense_infl` — expense inflation | **1,5 %** p.a., a row of `param_table.csv`, stepping at the policy anniversary | **[std]** (c1) |
+| `expense_infl` — expense inflation | **1,5 %** p.a., a row of `param_tariff_type.csv`, stepping at the policy anniversary | **[std]** (c1) |
 | `mix_male` ρ_M | **0.45** | **[std]** |
 | `mort_base_year` | **2025** | **[std]** |
-| `omega_age` ω | **121**, a row of `param_table.csv` | **[std]** |
-| `roll_fwd_tol` | **1e-8**, a row of `param_table.csv`, the tolerance every `check_*` closes to | **[std]** |
+| `omega_age` ω | **121**, a row of `param_tariff_type.csv` | **[std]** |
+| `roll_fwd_tol` | **1e-8**, a row of `param_tariff_type.csv`, the tolerance every `check_*` closes to | **[std]** |
 | `solve_tol`, `solve_max_iter` | **1e-10**, **200** — the bisection controls for the refund solve | **[std]** |
 
 (c1) **No charge or expense parameter was established at any carrier** (research gap 8), so none of
@@ -377,7 +377,7 @@ Inputs are **external CSVs in the model folder's parent**, read once per model b
 | `improvement_table.csv` | `basis`, `age` | `improve_rate` | `Data.improvement_table()` |
 | `surplus_scale_table.csv` | `surplus_form` | `surplus_init_pct`, `surplus_growth` | `Data.surplus_scale_table()` |
 | `hoechstrechnungszins_table.csv` | `year_from` | `year_to`, `max_rate` | `Data.hoechstrechnungszins_table()` |
-| `param_table.csv` | `item` | `value` | `Data.param_table()`, the core's loader |
+| `param_tariff_type.csv` | `item` | `value` | `Data.param_table()`, the core's loader |
 
 `basis` takes `FIRST` or `SECOND`, `sex` takes `M` or `F` — the unisex blend is a model construction,
 not a table row, so the CSV never carries a rate no real table would. Every file **except**
@@ -834,7 +834,7 @@ Rente* and steps up 1 % at each policy anniversary, ratcheting under the *Bonusr
 `60 €` a year accrued monthly on `pols_if(t)` **[std]**; `1,50 €` per instalment paid **[std]**; all
 three inflating at `expense_infl = 1,5 %` p.a., stepping at the policy anniversary **[std]**.
 *Decrements.* Death only — no lapse, no surrender, no paid-up, no option exercise [R1] [R2] [R5].
-*Tolerances.* `roll_fwd_tol()` = 1e-8 (`param_table.csv`); the refund solve is not exercised on this cell.
+*Tolerances.* `roll_fwd_tol()` = 1e-8 (`param_tariff_type.csv`); the refund solve is not exercised on this cell.
 
 All amounts in euros; `pols_if` and the survival probabilities to six decimals, cash flows to the
 cent, and every total summed **at full precision and then rounded** rather than accumulated from

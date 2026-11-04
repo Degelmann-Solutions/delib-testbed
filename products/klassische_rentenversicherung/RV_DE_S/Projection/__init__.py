@@ -133,7 +133,7 @@ rentenfaktor_file         data.rentenfaktor_table()          rentenfaktor_table.
 charge_file               data.charge_table()                charge_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 freq_loading_file         data.freq_loading_table()          freq_load_table.csv
-param_file                data.param_table()                 param_table.csv
+param_file                data.param_table()                 param_tariff_type.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -478,7 +478,7 @@ def horizon_age():
 
 
 def mort_be_factor():
-    """The loading from the first-order table to the best estimate, from *param_table.csv*.
+    """The loading from the first-order table to the best estimate, from *param_tariff_type.csv*.
 
     1.15 **[std]**, and **above one on purpose**.  For an annuity, prudence means assuming
     mortality *lower* than expected, so the first-order (tariff) table sits below best
@@ -487,7 +487,7 @@ def mort_be_factor():
     reproduced here.
 
     Override reason: for an annuity the best estimate sits above the first-order table, a
-    factor of 1.15 and a tariff parameter in *param_table.csv*,
+    factor of 1.15 and a tariff parameter in *param_tariff_type.csv*,
     products/klassische_rentenversicherung/model.md:513
     """
     return float(data.param("mort_be_factor"))                       # noqa: F821
@@ -1671,7 +1671,7 @@ def claims_other(t, kind):
 
 
 def expense_acq_pp():
-    """The acquisition expense per policy at issue, from *param_table.csv*: 400,00 € **[std]**."""
+    """The acquisition expense per policy at issue, *param_tariff_type.csv*: 400,00 € **[std]**."""
     return float(data.param("expense_acq_pp"))                       # noqa: F821
 
 

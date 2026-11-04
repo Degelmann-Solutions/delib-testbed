@@ -33,6 +33,7 @@
   net-cash-flow residual is rebuilt from its frame's columns; KLV's ``check_net_cf`` closes to
   the scaled tolerance and fails above it.
 - The parameter files: ``param(item)`` reads RLV's tariff-type file without a tariff file,
+  ``claim_expense`` among it and no longer a Reference of its ``Projection``,
   keeps an integer literal ``int``, reads a fixture core item and a tariff item in a scratch
   copy, and raises on an unknown item and on a missing core file.
 - The expense inflation: Sofort's derived factor steps on the policy anniversary, Pflege's
@@ -1590,6 +1591,18 @@ def test_param_reads_the_tariff_type_layer(product_models):
     for item in ("roll_fwd_tol", "expense_infl"):
         value = data.param(item)
         assert type(value) is float and value == data.param_table_dict()["value"][item], item
+
+
+def test_rlv_claim_expense_is_a_tariff_type_row(product_models):
+    model = product_models("risikolebensversicherung")
+    data = model.Data
+    assert data.param_file == "param_tariff_type.csv"
+    value = data.param("claim_expense")
+    assert type(value) is float and value == 250.0
+    assert "claim_expense" not in model.Projection.refs
+    item = model.Projection[model.Data.model_point_table().index[0]]
+    for t in range(item.t_start(), item.t_start() + 24):
+        assert item.expenses_claim(t) == 250.0 * item.pols_death(t), t
 
 
 def _add_params(path: Path, values: dict[str, str]) -> None:

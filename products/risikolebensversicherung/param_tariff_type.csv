@@ -1,3 +1,4 @@
 item,value,basis,provenance
 roll_fwd_tol,1e-10,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
 expense_infl,0.02,,"[std] 2.0 % a year on the sum-related admin only, stepping on the anniversary; the tariff gamma is level; was a Reference on Projection"
+claim_expense,250.0,,"[std] 250 EUR per death claim; no German claim-expense figure is public (technical-notes.md, note 4), worth 0.16 EUR in the anchor's first year; was a Reference on Projection"

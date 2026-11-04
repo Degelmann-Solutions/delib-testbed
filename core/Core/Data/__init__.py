@@ -41,11 +41,53 @@ def model_point_table():
 def param_table():
     """The product's scalar parameters by ``item``, read from its ``param_file``.
 
-    Columns ``value`` and ``provenance``, and an optional ``unit``.  The values are read
-    with pandas' default float parsing, which round-trips the decimal literals.
+    Columns ``value`` and ``provenance``, and an optional ``unit``; a tariff-type file
+    renamed to ``param_tariff_type.csv`` also has ``basis`` (``docs/core.md``, "The
+    parameter files").  The values are read with pandas' default float parsing, which
+    round-trips the decimal literals.
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / param_file, index_col="item")                  # noqa: F821
+
+
+def param_core_path():
+    """The core parameter file, ``param_core.csv`` beside the core's loaders.
+
+    Found through the product's ``CoreData`` space folder, so a scratch copy of a product
+    folder, which copies that folder with the file in it, reads its own copy.
+    """
+    return _model.path / "CoreData" / "param_core.csv"               # noqa: F821
+
+
+def param_tariff_path():
+    """The optional tariff parameter file, ``param_tariff.csv`` in the product folder."""
+    return input_dir() / "param_tariff.csv"
+
+
+def param_dict():
+    """Every parameter of the tariff by ``item``: ``{item: value}``, built once per model.
+
+    The layers are read in turn, the core file ``param_core_path()``, the tariff-type file
+    ``param_file`` and, where it exists, the tariff file ``param_tariff_path()``; each has
+    the columns ``item``, ``value``, ``basis`` and ``provenance``, and the layers are
+    disjoint.  A value whose text is an integer literal is a Python ``int``, any other a
+    Python ``float``, the value the same literal has in Python.
+    """
+    paths = [param_core_path(), input_dir() / param_file]            # noqa: F821
+    if param_tariff_path().is_file():
+        paths.append(param_tariff_path())
+    values = {}
+    for path in paths:
+        table = pd.read_csv(path, dtype=str, keep_default_na=False)  # noqa: F821
+        for item, text in zip(table["item"], table["value"]):
+            text = text.strip()
+            values[item] = int(text) if text.lstrip("+-").isdigit() else float(text)
+    return values
+
+
+def param(item):
+    """The parameter ``item`` from ``param_dict()``; an unknown item raises ``KeyError``."""
+    return param_dict()[item]
 
 
 def mort_table_index():

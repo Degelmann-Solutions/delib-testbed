@@ -32,6 +32,9 @@
   RV's annual frame sums the flows and takes its two counts at the year's start; RLV's
   net-cash-flow residual is rebuilt from its frame's columns; KLV's ``check_net_cf`` closes to
   the scaled tolerance and fails above it.
+- The parameter files: ``param(item)`` reads RLV's tariff-type file without a tariff file,
+  keeps an integer literal ``int``, reads a fixture core item and a tariff item in a scratch
+  copy, and raises on an unknown item and on a missing core file.
 - The expense inflation: Sofort's derived factor steps on the policy anniversary, Pflege's
   compounds continuously over ``t / 12`` years.
 - The dict cells: every core dict cell of a table a product has equals its reader's
@@ -258,6 +261,10 @@ CORE_CELLS = {
         "hoechstrechnungszins_table": {"sofortrente": "derived"},
         "model_point_table_dict": dict.fromkeys(MODELS, "derived"),
         "param_table_dict": dict.fromkeys(MODELS, "derived"),
+        "param_core_path": dict.fromkeys(MODELS, "derived"),
+        "param_tariff_path": dict.fromkeys(MODELS, "derived"),
+        "param_dict": dict.fromkeys(MODELS, "derived"),
+        "param": dict.fromkeys(MODELS, "derived"),
         "mort_table_dict": dict.fromkeys(MODELS, "derived"),
         "lapse_table_dict": dict.fromkeys(MODELS, "derived"),
         "rentenfaktor_table_dict": dict.fromkeys(MODELS, "derived"),
@@ -1570,6 +1577,85 @@ def test_roll_fwd_tol_without_its_row_raises_key_error(tmp_path):
         with pytest.raises(Exception, match="roll_fwd_tol") as raised:
             copy.Projection[point_id].roll_fwd_tol()
         assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+    finally:
+        copy.close()
+
+
+def test_param_reads_the_tariff_type_layer(product_models):
+    data = product_models("risikolebensversicherung").Data
+    assert data.param._is_derived() and data.param_dict._is_derived()
+    assert not data.param_tariff_path().exists()
+    assert data.param_core_path() == data.model.path / "CoreData" / "param_core.csv"
+    assert data.param_core_path().is_file()
+    for item in ("roll_fwd_tol", "expense_infl"):
+        value = data.param(item)
+        assert type(value) is float and value == data.param_table_dict()["value"][item], item
+
+
+def _add_params(path: Path, values: dict[str, str]) -> None:
+    """Append one row per item to a parameter file, its value as text, in the file's columns.
+
+    A file that does not exist is created with the columns of the layer files.
+    """
+    text = (path.read_text(encoding="utf-8") if path.exists()
+            else "item,value,basis,provenance\n")
+    columns = text.splitlines()[0].split(",")
+    for item, value in values.items():
+        row = {"item": item, "value": value, "provenance": "[std] test fixture"}
+        text += ",".join(row.get(column, "") for column in columns) + "\n"
+    path.write_text(text, encoding="utf-8")
+
+
+def test_param_keeps_an_integer_literal_int(tmp_path, product_models):
+    param_file = product_models("risikolebensversicherung").Data.param_file
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    _add_params(folder / param_file,
+                {"probe_int": "3", "probe_neg": "-2", "probe_float": "3.0",
+                 "probe_pad": " 3 "})
+    copy = mx.read_model(folder / MODELS["risikolebensversicherung"], name="IntProbe")
+    try:
+        data = copy.Data
+        assert data.param("probe_int") == 3 and type(data.param("probe_int")) is int
+        assert data.param("probe_neg") == -2 and type(data.param("probe_neg")) is int
+        assert type(data.param("probe_float")) is float
+        assert data.param("probe_pad") == 3 and type(data.param("probe_pad")) is int
+    finally:
+        copy.close()
+
+
+def test_param_reads_a_core_item_and_a_tariff_item(tmp_path):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    model_dir = folder / MODELS["risikolebensversicherung"]
+    core_file = model_dir / "CoreData" / "param_core.csv"
+    assert not core_file.is_symlink()
+    _add_params(core_file, {"probe_core": "0.125"})
+    _add_params(folder / "param_tariff.csv", {"probe_tariff": "7"})
+    copy = mx.read_model(model_dir, name="CoreItemProbe")
+    try:
+        assert copy.Data.param("probe_core") == 0.125
+        assert copy.Data.param("probe_tariff") == 7
+        assert copy.Data.param("roll_fwd_tol") == 1e-10
+    finally:
+        copy.close()
+    assert (CORE_MODEL / "Data" / "param_core.csv").read_text(encoding="utf-8") \
+        == "item,value,basis,provenance\n"
+
+
+def test_param_rejects_an_unknown_item(product_models):
+    data = product_models("risikolebensversicherung").Data
+    with pytest.raises(Exception, match="nope") as raised:
+        data.param("nope")
+    assert "KeyError: 'nope'" in str(raised.value) or isinstance(raised.value, KeyError)
+
+
+def test_param_without_the_core_file_raises(tmp_path):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    model_dir = folder / MODELS["risikolebensversicherung"]
+    (model_dir / "CoreData" / "param_core.csv").unlink()
+    copy = mx.read_model(model_dir, name="NoCoreProbe")
+    try:
+        with pytest.raises(Exception, match="param_core.csv"):
+            copy.Data.param("roll_fwd_tol")
     finally:
         copy.close()
 

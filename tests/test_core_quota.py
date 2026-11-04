@@ -11,6 +11,8 @@ each writing its figures with ``--json``; the tests read those figures and call 
 - A quota exactly at the bound passes (``>=``).
 - RLV's executed set holds ``model_point`` and ``result_cf``, both from the core.
 - A bound above a measured quota makes the report exit 1 and name the product on stderr.
+- The static usage scan ``core/param_usage.py`` reaches every executed cell of every product,
+  so its reachability over-approximates a run.
 """
 from __future__ import annotations
 
@@ -20,6 +22,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import modelx as mx
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -27,14 +30,15 @@ TOOL = ROOT / "tools" / "core_quota.py"
 PRODUCTS = sorted(p.name for p in (ROOT / "products").iterdir() if p.is_dir())
 
 
-def load_tool():
-    spec = importlib.util.spec_from_file_location("core_quota", TOOL)
+def load_tool(name: str = "core_quota", path: Path = TOOL):
+    spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
 core_quota = load_tool()
+param_usage = load_tool("param_usage", ROOT / "core" / "param_usage.py")
 
 
 @pytest.fixture(scope="session")
@@ -107,3 +111,20 @@ def test_a_bound_above_a_quota_exits_1_and_names_the_product(quotas, capsys):
     assert core_quota.report(quotas) == 0
     _out, err = capsys.readouterr()
     assert err == ""
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_the_usage_scan_reaches_every_executed_cell(product, quotas):
+    """Every cell a run executes is reachable in the static usage scan, so an item the scan
+    reports unused is read by no run."""
+    folder = ROOT / "products" / product
+    model_dir = next(p for p in sorted(folder.iterdir())
+                     if p.is_dir() and (p / "_system.json").is_file())
+    model = mx.read_model(model_dir)
+    try:
+        reachable = param_usage.scan(model).reachable
+    finally:
+        model.close()
+    executed = set(quotas[product]["executed_cells"])
+    assert executed
+    assert sorted(executed - reachable) == []

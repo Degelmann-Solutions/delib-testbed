@@ -568,7 +568,7 @@ def mort_rate_blend(t):
     sex-distinct.  The mixing ratio is proprietary at every carrier and the 50/50 here is
     **[std]**.
     """
-    w_m = sex_mix_male                                               # noqa: F821
+    w_m = data.param("sex_mix_male")                                 # noqa: F821
     q_a = (w_m * mort_rate_at_age("M", smoker(), age(t))
            + (1.0 - w_m) * mort_rate_at_age("F", smoker(), age(t)))
     if lives() == 1:
@@ -590,8 +590,8 @@ def sel_lapse_factor(t):
     :func:`lapse_cum`, which is built from the lapse rates alone and never from
     :func:`pols_if`, so switching it on does not make the projection circular.
     """
-    return 1.0 + sel_lapse_lambda * max(                             # noqa: F821
-        0.0, lapse_cum(t) - sel_lapse_ref)                           # noqa: F821
+    return 1.0 + data.param("sel_lapse_lambda") * max(               # noqa: F821
+        0.0, lapse_cum(t) - data.param("sel_lapse_ref"))             # noqa: F821
 
 
 def mort_rate(t):
@@ -640,7 +640,7 @@ def mort_load_tariff(t):
     Override reason: the tariff rate is the unisex blend loaded by ``1 + m`` and the rating
     factor, products/risikolebensversicherung/technical-notes.md:231
     """
-    return (1.0 + sicherheitszuschlag_m) * rating_factor()           # noqa: F821
+    return (1.0 + data.param("sicherheitszuschlag_m")) * rating_factor()  # noqa: F821
 
 
 def mort_rate_tariff_base(t):
@@ -760,8 +760,8 @@ def benefit_paid_pp(t):
         delta = sum_uplift_y(s) - (sum_uplift_y(s - 1) if s > 0 else 0.0)
         if delta == 0.0:
             continue
-        sigma = ((1.0 - suicide_share)                               # noqa: F821
-                 if duration(t) < s + suicide_years else 1.0)        # noqa: F821
+        sigma = ((1.0 - data.param("suicide_share"))                 # noqa: F821
+                 if duration(t) < s + data.param("suicide_years") else 1.0)  # noqa: F821
         total += delta * sigma
     return sum_assured() * benefit_factor(t) * total
 
@@ -806,12 +806,12 @@ def shock_lapse_factor(t):
     *Zahlweise* rather than on the declaration, and on an annual payer it would divide by
     a zero bill in eleven months of twelve.
     """
-    if shock_lapse_lambda == 0.0 or duration(t) <= 0:                # noqa: F821
+    if data.param("shock_lapse_lambda") == 0.0 or duration(t) <= 0:  # noqa: F821
         return 1.0
     prev = prem_paid_pp(t - 12)
     if prev <= 0.0:
         return 1.0
-    return 1.0 + shock_lapse_lambda * max(                           # noqa: F821
+    return 1.0 + data.param("shock_lapse_lambda") * max(             # noqa: F821
         0.0, prem_paid_pp(t) / prev - 1.0)
 
 
@@ -909,10 +909,12 @@ def prem_gross_level_pp():
     **This is the guaranteed premium** — the maximum the policyholder can ever be required
     to pay, unchanged for the term.  It is not what is billed.
     """
-    denom = (1.0 - beta_tariff) * tariff_annuity() - zillmer_rate * prem_term()  # noqa: F821
+    denom = ((1.0 - data.param("beta_tariff")) * tariff_annuity()    # noqa: F821
+             - data.param("zillmer_rate") * prem_term())             # noqa: F821
     if denom <= 0.0:
         raise ValueError("degenerate premium equivalence: loadings exceed the annuity")
-    return (tariff_benefit_pv() + gamma_rate * tariff_term_annuity()) / denom  # noqa: F821
+    return (tariff_benefit_pv()
+            + data.param("gamma_rate") * tariff_term_annuity()) / denom  # noqa: F821
 
 
 def beitragsverrechnung_rate():
@@ -940,11 +942,11 @@ def beitragsverrechnung_rate():
     """
     if surplus_form() == "keine":
         return 0.0
-    m = sicherheitszuschlag_m                                        # noqa: F821
-    raw = (decl_scale * surplus_share * (m / (1.0 + m))              # noqa: F821
+    m = data.param("sicherheitszuschlag_m")                          # noqa: F821
+    raw = (data.param("decl_scale") * data.param("surplus_share") * (m / (1.0 + m))  # noqa: F821
            * tariff_benefit_pv()
            / (prem_gross_level_pp() * tariff_annuity()))
-    return min(v_max, raw)                                           # noqa: F821
+    return min(data.param("v_max"), raw)                             # noqa: F821
 
 
 # ==========================================================================
@@ -1136,7 +1138,7 @@ def res_zill_pp_at(y, timing):
     p_y = pols_tariff(y) if y < proj_len_y() else 1.0
     remaining = sum(disc_factor(u - y) * (pols_tariff(u) / p_y)
                     for u in range(max(y, 0), prem_term()))
-    zill = (zillmer_rate * prem_term() * prem_gross_level_pp()       # noqa: F821
+    zill = (data.param("zillmer_rate") * prem_term() * prem_gross_level_pp()  # noqa: F821
             * remaining / tariff_annuity())
     return res_pp_at(y, timing) - zill
 
@@ -1202,7 +1204,7 @@ def acq_cost_pp():
     is the economic reason an early lapse hurts on a product with no surrender value to
     forfeit.  On an **in-force** model point it is sunk and is not incurred at all.
     """
-    return zillmer_rate * prem_term() * prem_gross_level_pp()        # noqa: F821
+    return data.param("zillmer_rate") * prem_term() * prem_gross_level_pp()  # noqa: F821
 
 
 def comm_init_pp():
@@ -1215,7 +1217,7 @@ def comm_init_pp():
     *Bruttobeitrag* available for *Beitragsverrechnung*.  **[std]**: no German scale is
     public.
     """
-    return comm_rate_init * prem_term() * prem_gross_level_pp()      # noqa: F821
+    return data.param("comm_rate_init") * prem_term() * prem_gross_level_pp()  # noqa: F821
 
 
 def maint_pp(t):
@@ -1243,8 +1245,8 @@ def maint_pp(t):
     invariant to ``maint_prem_pct`` and ``comm_rate_renew`` while ``net_cf`` is not — and
     not an oversight.
     """
-    return (gamma_rate * benefit_pp(t) * inflation_factor(t) / 12.0  # noqa: F821
-            + maint_prem_pct * prem_inst_pp(t))                      # noqa: F821
+    return (data.param("gamma_rate") * benefit_pp(t) * inflation_factor(t) / 12.0  # noqa: F821
+            + data.param("maint_prem_pct") * prem_inst_pp(t))        # noqa: F821
 
 
 def expenses_acq(t):
@@ -1307,7 +1309,7 @@ def comm_renew(t):
     Override reason: the renewal commission is a rate on each *Zahlbeitrag* instalment from
     policy year 2, products/risikolebensversicherung/technical-notes.md:397
     """
-    return (comm_rate_renew * prem_inst_pp(t) * pols_if(t)           # noqa: F821
+    return (data.param("comm_rate_renew") * prem_inst_pp(t) * pols_if(t)  # noqa: F821
             if duration(t) >= 1 else 0.0)
 
 
@@ -1328,7 +1330,7 @@ def check_net_cf_tol(t):
     Override reason: the statement is checked to val_tol relative to the sum insured,
     products/risikolebensversicherung/model.md:500
     """
-    return val_tol * max(sum_assured(), 1.0)                         # noqa: F821
+    return data.param("val_tol") * max(sum_assured(), 1.0)           # noqa: F821
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1396,7 +1398,7 @@ def check_prem_split():
     multiplies the annual billed amount once and the division into instalments is applied
     to all three terms alike.
     """
-    tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
+    tol = data.param("val_tol") * max(sum_assured(), 1.0)            # noqa: F821
     for t in range(t_start(), proj_len()):
         if abs(check_prem_split_resid(t)) > tol:
             return False
@@ -1443,7 +1445,7 @@ def check_res_roll_fwd():
     modelling error — concluding from the absence of a *Sparanteil* that there is no
     reserve, and building a projection that cannot close.
     """
-    tol = val_tol * max(sum_assured(), 1.0)                          # noqa: F821
+    tol = data.param("val_tol") * max(sum_assured(), 1.0)            # noqa: F821
     if abs(res_pp_at(0, "BEF_PREM")) > tol:
         return False
     if abs(res_pp_at(proj_len_y(), "BEF_PREM")) > tol:
@@ -1469,7 +1471,7 @@ def check_no_cash_value_resid(t):
 
 def check_no_cash_value():
     """True when a lapse and an expiry both pay nothing in every projected month."""
-    return all(abs(check_no_cash_value_resid(t)) <= val_tol          # noqa: F821
+    return all(abs(check_no_cash_value_resid(t)) <= data.param("val_tol")  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1567,40 +1569,5 @@ def result_pols_columns():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-sicherheitszuschlag_m = 1.25
-
-sex_mix_male = 0.5
-
-surplus_share = 0.9
-
-decl_scale = 1.0
-
-v_max = 0.95
-
-zillmer_rate = 0.025
-
-comm_rate_init = 0.02
-
-beta_tariff = 0.05
-
-gamma_rate = 0.0003
-
-maint_prem_pct = 0.03
-
-comm_rate_renew = 0.01
-
-suicide_share = 0.03
-
-suicide_years = 3
-
-shock_lapse_lambda = 0.0
-
-sel_lapse_lambda = 0.0
-
-sel_lapse_ref = 0.25
-
-
-val_tol = 1e-09
 
 pd = ("Module", "pandas")

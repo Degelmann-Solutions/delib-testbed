@@ -145,8 +145,8 @@ carries a per-row `provenance` column**, which is delib's second ruling and is m
 
 Six files, no orphans: the conventions suite asserts that every CSV beside the model backs a
 filename Reference in `Data` and that the set read by a full sweep is exactly the set registered in
-`tests/de_registry.py`. Scalar assumptions are **References on `Projection`**, not rows in a table,
-following `TradLife_A`; their values and tags are the assumption tables below. The exceptions are
+`tests/de_registry.py`. Scalar assumptions are **rows of `param_tariff_type.csv`**, read by `data.param`,
+not References on `Projection` as in `TradLife_A`; their values and tags are the assumption tables below. The exceptions are
 `rechnungszins`, a model-point column since phase 3, and `mort_be_factor`, the core's neutral 1.00.
 
 ---
@@ -282,10 +282,10 @@ Thin, but decisive — on this product the discretion **is** the customer's bill
 
 | Input | Snapshot value | Basis |
 |---|---|---|
-| Declaration scaling `decl_scale` | **1.00**, i.e. the insurer declares exactly the MindZV minimum | **[std]** (1) |
-| Surplus share `surplus_share` | **0.90** of the tariff mortality margin | [R9] [REG-R18]; choice of the minimum **[std]** (1) |
+| Declaration scaling `decl_scale` | **1.00**, a row of `param_tariff_type.csv`, i.e. the insurer declares exactly the MindZV minimum | **[std]** (1) |
+| Surplus share `surplus_share` | **0.90** of the tariff mortality margin, a row of `param_tariff_type.csv` | [R9] [REG-R18]; choice of the minimum **[std]** (1) |
 | Resulting `v_decl` (*Beitragsverrechnungssatz*) | **Derived, not assumed** — see the recursion section. Lands at about 0.43 on the anchor, so `Zahl / Brutto ≈ 0.57` | derived; inputs **[std]** |
-| Cap on the declared rate `v_max` | **0.95** — a rebate may not exceed the premium | **[std]** (2) |
+| Cap on the declared rate `v_max` | **0.95**, a row of `param_tariff_type.csv` — a rebate may not exceed the premium | **[std]** (2) |
 | *Kostenüberschuss* | **Not returned.** The tariff's β is 5,0 % and the modelled collection cost 3,0 %, so a cost result emerges in `net_cf` and stays there | **[std]** (3) |
 | *Summenzuwachs*, *verzinsliche Ansammlung*, *Todesfallbonus* | **Off.** Only *Beitragsverrechnung* is implemented | mechanic 6; **[std]** |
 | § 163 premium adjustment | **Off.** The *Bruttobeitrag* is fixed for the term — [S3]: "bleibt Ihre Absicherung sowie der vereinbarte Bruttobeitrag über die gesamte Versicherungsdauer unverändert" | [R6] [REG-R27] [S3]; non-use in practice still [unverified] |
@@ -341,7 +341,7 @@ selection adjustment overstates claims by a wide margin at issue ages 25–45 [R
                        × rating_factor
 
 with the *Sicherheitszuschlag* `m = 1.25` **[std]** and the unisex mix `ω = sex_mix_male = 0.50`
-**[std]**. So `q1 = 2.25 × q2` **for the tariff's own unisex life**, and for a real policy the ratio
+**[std]**, both rows of `param_tariff_type.csv`. So `q1 = 2.25 × q2` **for the tariff's own unisex life**, and for a real policy the ratio
 is `2.25 × (unisex blend / own-sex rate)`. On the shipped proxy the blend is `0.75 × q̃(M)`, so the
 ratio is **1.6875 for a male and 3.375 for a female**. That asymmetry is the unisex cross-subsidy, and it is a product fact, not a modelling
 artefact. `m` is the single parameter that sets the *Brutto*/*Zahlbeitrag* spread; **its level is not
@@ -377,7 +377,7 @@ rather than a silent choice.
 inside three years, substituting a *Rückkaufswert* that is nil here [R1] [R2]. The model applies
 
     suicide_factor(t) = 1 − suicide_share   for the first three periods of a cover tranche
-                      = 1                   thereafter,           suicide_share = 0.03  **[std]**
+                      = 1                   thereafter,           suicide_share = 0.03  **[std]**, a row of `param_tariff_type.csv`
 
 to **death claims only**. No German cause-of-death share was retrieved, and none is asserted; 0,03
 stands for "about three per cent of deaths at these ages are suicides", with an argued range of
@@ -389,13 +389,13 @@ rather than buried.
 
 | Input | Value | Basis |
 |---|---|---|
-| Acquisition cost, total | `zillmer_rate × prem_term × G` = **25 ‰ of the *Beitragssumme***, at issue | ceiling [R10] [REG-R16]; level **[std]** (4) |
-| — of which initial commission `comm_rate_init` | **20 ‰ of the *Beitragssumme*** | **[std]** (4) |
+| Acquisition cost, total | `zillmer_rate × prem_term × G` = **25 ‰ of the *Beitragssumme***, at issue, `zillmer_rate` a row of `param_tariff_type.csv` | ceiling [R10] [REG-R16]; level **[std]** (4) |
+| — of which initial commission `comm_rate_init` | **20 ‰ of the *Beitragssumme***, a row of `param_tariff_type.csv` | **[std]** (4) |
 | — of which other acquisition cost | **5 ‰ of the *Beitragssumme*** | **[std]** (4) |
-| Tariff premium loading `beta_tariff` | **5,0 %** of each *Bruttobeitrag*, inside the equivalence | **[std]** (4) |
-| Modelled collection cost `maint_prem_pct` | **3,0 %** of each *Zahlbeitrag* | **[std]** (4) |
-| Renewal commission `comm_rate_renew` | **1,0 %** of each *Zahlbeitrag* from policy year 2 | **[std]** (4) |
-| Sum-related admin `gamma_rate` | **0,30 ‰** of `benefit_pp(t)` a year | **[std]** (4) |
+| Tariff premium loading `beta_tariff` | **5,0 %** of each *Bruttobeitrag*, a row of `param_tariff_type.csv`, inside the equivalence | **[std]** (4) |
+| Modelled collection cost `maint_prem_pct` | **3,0 %** of each *Zahlbeitrag*, a row of `param_tariff_type.csv` | **[std]** (4) |
+| Renewal commission `comm_rate_renew` | **1,0 %** of each *Zahlbeitrag* from policy year 2, a row of `param_tariff_type.csv` | **[std]** (4) |
+| Sum-related admin `gamma_rate` | **0,30 ‰** of `benefit_pp(t)` a year, a row of `param_tariff_type.csv` | **[std]** (4) |
 | Expense inflation `expense_infl` | **2,0 %** a year, a row of `param_tariff_type.csv`, on the sum-related admin only; the tariff's γ is level | **[std]** (5) |
 | Claim expense `claim_expense` | **250 €** per death claim, a row of `param_tariff_type.csv` | **[std]** (4) |
 | Best-estimate mortality factor `mort_be_factor` | **1.00** | **[std]** (6) |
@@ -1176,7 +1176,7 @@ is `premiums`, 12 243,75 € → 21 303,65 €, a **74,0 % increase in the custo
 whatever in cover**, and with it the two flows that scale with the billed premium: `expenses`
 +271,80 € (collection at 3 %) and `commissions` +85,18 € (renewal at 1 %). `net_cf` goes from
 −644,78 € to +8 058,16 €. **No § 163 procedure, no *Treuhänder*, no right of objection**, because no
-guaranteed term has moved — and it is a one-Reference change. The stress runs with the
+guaranteed term has moved — and it is a one-row change in `param_tariff_type.csv`. The stress runs with the
 premium-shock lapse module **off**, so the table shows the mechanical effect alone; switching
 `shock_lapse_lambda` on is what a stress of this shape should carry, and its omission is why the
 base run's `λ_s = 0` is stated rather than assumed.

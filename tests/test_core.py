@@ -41,7 +41,8 @@
   ``param_tariff_type.csv`` with the layer columns, and no ``param_table.csv`` is left.
   Riester's 32 former numeric References are rows of its tariff-type file with their
   literals' types and values, and no numeric Reference but ``point_id`` is left on its
-  ``Projection``.
+  ``Projection``. RLV's 17 likewise, and its premium-shock test switches the module on
+  through a row of a scratch copy's tariff-type file.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -1331,16 +1332,21 @@ def _rebate_cut_from_policy_year_4(t):
     return 0.0 if duration(t) >= 3 else prem_rebate_level_pp(t)      # noqa: F821
 
 
-def test_rlv_lapse_rate_is_the_table_rate_times_the_shock_factor():
+def test_rlv_lapse_rate_is_the_table_rate_times_the_shock_factor(tmp_path):
     """With the premium-shock module on and the declaration cut in year 4, the shock fires."""
-    model = mx.read_model(PRODUCTS_DIR / "risikolebensversicherung"
-                          / MODELS["risikolebensversicherung"], name="ShockProbe")
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    param_file = folder / "param_tariff_type.csv"
+    text = param_file.read_text(encoding="utf-8")
+    assert text.count("\nshock_lapse_lambda,0.0,") == 1
+    param_file.write_text(text.replace("\nshock_lapse_lambda,0.0,", "\nshock_lapse_lambda,2.0,"),
+                          encoding="utf-8")
+    model = mx.read_model(folder / MODELS["risikolebensversicherung"], name="ShockProbe")
     try:
         projection = model.Projection
         assert projection.lapse_rate._is_derived()
+        assert model.Data.param("shock_lapse_lambda") == 2.0
         projection.new_cells("prem_rebate_level_pp", formula=projection.prem_rebate_pp.formula)
         projection.prem_rebate_pp.formula = _rebate_cut_from_policy_year_4
-        projection.shock_lapse_lambda = 2.0
         item = projection[model.Data.model_point_table().index[0]]
         final = 12 * (item.proj_len_y() - 1)
         shocked = [t for t in range(item.t_start(), final) if item.shock_lapse_factor(t) > 1.0]
@@ -1725,8 +1731,29 @@ RIESTER_MOVED_REFERENCES = {
     "comm_rate_renew": 0.015,
 }
 
+# The 17 numeric References RLV's ``Projection`` held, as their former Python literals.
+RLV_MOVED_REFERENCES = {
+    "sicherheitszuschlag_m": 1.25,
+    "sex_mix_male": 0.5,
+    "surplus_share": 0.9,
+    "decl_scale": 1.0,
+    "v_max": 0.95,
+    "zillmer_rate": 0.025,
+    "comm_rate_init": 0.02,
+    "beta_tariff": 0.05,
+    "gamma_rate": 0.0003,
+    "maint_prem_pct": 0.03,
+    "comm_rate_renew": 0.01,
+    "suicide_share": 0.03,
+    "suicide_years": 3,
+    "shock_lapse_lambda": 0.0,
+    "sel_lapse_lambda": 0.0,
+    "sel_lapse_ref": 0.25,
+    "val_tol": 1e-09,
+}
+
 # The products whose numeric References have all moved into their parameter files.
-REFERENCES_MOVED = ("riester_rente",)
+REFERENCES_MOVED = ("riester_rente", "risikolebensversicherung")
 
 
 def test_riester_references_are_tariff_type_rows(product_models):
@@ -1735,6 +1762,18 @@ def test_riester_references_are_tariff_type_rows(product_models):
     layer = data.param_layers()["tariff_type"]
     assert len(RIESTER_MOVED_REFERENCES) == 32
     for item, literal in RIESTER_MOVED_REFERENCES.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+        assert item not in model.Projection.refs, item
+
+
+def test_rlv_references_are_tariff_type_rows(product_models):
+    model = product_models("risikolebensversicherung")
+    data = model.Data
+    layer = data.param_layers()["tariff_type"]
+    assert len(RLV_MOVED_REFERENCES) == 17
+    for item, literal in RLV_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
         assert item in layer, item

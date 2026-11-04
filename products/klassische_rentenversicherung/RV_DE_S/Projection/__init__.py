@@ -1671,7 +1671,7 @@ def claims_other(t, kind):
 
 
 def expense_acq_pp():
-    """The acquisition expense per policy at issue, *param_tariff_type.csv*: 400,00 € **[std]**."""
+    """The acquisition expense at issue, from *param_tariff_type.csv*: 400,00 € **[std]**."""
     return float(data.param("expense_acq_pp"))                       # noqa: F821
 
 

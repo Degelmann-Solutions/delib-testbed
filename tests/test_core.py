@@ -1597,18 +1597,28 @@ def test_param_reads_the_tariff_type_layer(product_models):
         assert type(value) is float and value == data.param_table_dict()["value"][item], item
 
 
-PARAM_TABLE_DICT_READ = 'param_table_dict()["value"]'
+PARAM_TABLE_DICT_RE = re.compile(r"(?<!\w)param_table_dict\(")
+PARAM_TABLE_DICT_DEF = "def param_table_dict():"
 
 
 def test_no_param_table_dict_read_remains():
-    """Every parameter is read through ``param("<item>")``; no source reads the old path."""
+    """Every parameter is read through ``param("<item>")``; no source reads the old path.
+
+    The only ``param_table_dict(`` left is its definition in the core's ``Data``.
+    """
     sources = sorted(p for folder in (CORE_DIR, PRODUCTS_DIR) for p in folder.rglob("*.py")
                      if "__pycache__" not in p.parts)
     assert sources
-    hits = [f"{path.relative_to(ROOT)}:{number}"
-            for path in sources
-            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
-            if PARAM_TABLE_DICT_READ in line]
+    core_data = CORE_MODEL / "Data" / "__init__.py"
+    hits = []
+    for path in sources:
+        text = path.read_text(encoding="utf-8")
+        for match in PARAM_TABLE_DICT_RE.finditer(text):
+            line = text[text.rfind("\n", 0, match.start()) + 1:text.find("\n", match.end())]
+            if path.resolve() == core_data.resolve() and line == PARAM_TABLE_DICT_DEF:
+                continue
+            number = text.count("\n", 0, match.start()) + 1
+            hits.append(f"{path.relative_to(ROOT)}:{number}")
     assert not hits, hits
 
 
@@ -1620,6 +1630,23 @@ def test_param_equals_the_param_table_dict_value(product, product_models):
     assert values
     for item, value in values.items():
         assert data.param(item) == value, item
+
+
+@pytest.mark.parametrize("product, omega", [("klassische_rentenversicherung", 121),
+                                             ("pflegerentenversicherung", 110),
+                                             ("sofortrente", 121)])
+def test_omega_age_is_an_int_from_int_or_float_text(product, omega, product_models):
+    """``omega_age()`` is ``int`` whether the file writes ``121`` (an ``int`` from ``param``)
+    or Pflege's ``110.0`` (a ``float``); so is Pflege's ``beitragssumme_cap_age`` (``85.0``)."""
+    model = product_models(product)
+    text = {"klassische_rentenversicherung": int, "sofortrente": int,
+            "pflegerentenversicherung": float}[product]
+    assert type(model.Data.param("omega_age")) is text
+    item = model.Projection[model.Data.model_point_table().index[0]]
+    assert item.omega_age() == omega and type(item.omega_age()) is int
+    if product == "pflegerentenversicherung":
+        assert model.Data.param("beitragssumme_cap_age") == 85.0
+        assert type(item.beitragssumme_years()) is int
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))

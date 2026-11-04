@@ -396,8 +396,8 @@ rather than buried.
 | Modelled collection cost `maint_prem_pct` | **3,0 %** of each *Zahlbeitrag* | **[std]** (4) |
 | Renewal commission `comm_rate_renew` | **1,0 %** of each *Zahlbeitrag* from policy year 2 | **[std]** (4) |
 | Sum-related admin `gamma_rate` | **0,30 ‰** of `benefit_pp(t)` a year | **[std]** (4) |
-| Expense inflation `expense_infl` | **2,0 %** a year, a row of `param_table.csv`, on the sum-related admin only; the tariff's γ is level | **[std]** (5) |
-| Claim expense `claim_expense` | **250 €** per death claim | **[std]** (4) |
+| Expense inflation `expense_infl` | **2,0 %** a year, a row of `param_tariff_type.csv`, on the sum-related admin only; the tariff's γ is level | **[std]** (5) |
+| Claim expense `claim_expense` | **250 €** per death claim, a row of `param_tariff_type.csv` | **[std]** (4) |
 | Best-estimate mortality factor `mort_be_factor` | **1.00** | **[std]** (6) |
 | *Ratenzahlungszuschlag* `prem_freq_load` | 1.000 annual · **1.02** half-yearly · **1.03** quarterly · **1.05** monthly | convention **[std]** (7) |
 

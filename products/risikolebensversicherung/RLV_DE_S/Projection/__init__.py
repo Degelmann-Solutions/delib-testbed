@@ -71,7 +71,7 @@ benefit_schedule_file     data.benefit_schedule()            benefit_schedule.cs
 nvg_schedule_file         data.nvg_schedule()                nvg_schedule.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
-param_file                data.param_table()                 param_table.csv
+param_file                data.param_table()                 param_tariff_type.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -1274,12 +1274,13 @@ def expenses_maint(t):
 
 
 def expenses_claim(t):
-    """The claim expense on the month's deaths, 250 € each **[std]**.
+    """The claim expense on the month's deaths, 250 € each **[std]**, ``claim_expense`` of
+    *param_tariff_type.csv*.
 
     Override reason: the claim expense is an amount per death claim,
     products/risikolebensversicherung/technical-notes.md:400
     """
-    return claim_expense * pols_death(t)                             # noqa: F821
+    return data.param("claim_expense") * pols_death(t)               # noqa: F821
 
 
 def comm_init(t):
@@ -1588,8 +1589,6 @@ gamma_rate = 0.0003
 maint_prem_pct = 0.03
 
 comm_rate_renew = 0.01
-
-claim_expense = 250.0
 
 suicide_share = 0.03
 

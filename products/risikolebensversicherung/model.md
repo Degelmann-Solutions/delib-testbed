@@ -296,13 +296,13 @@ which is the one thing interleaving the two decrements monthly genuinely changes
 
 ## Inputs are external files
 
-The seven input CSVs, `param_table.csv` with `roll_fwd_tol` and `expense_infl` among them, live **in this directory**, beside `run.py` — not inside the model
+The seven input CSVs, `param_tariff_type.csv` with `roll_fwd_tol`, `expense_infl` and `claim_expense` among them, live **in this directory**, beside `run.py` — not inside the model
 folder. `RLV_DE_S/` holds nothing but formulas:
 
 ```
 products/risikolebensversicherung/
   model_point_table.csv  mort_table.csv  benefit_schedule.csv     <- inputs live here
-  nvg_schedule.csv       lapse_table.csv freq_loading_table.csv  param_table.csv
+  nvg_schedule.csv       lapse_table.csv freq_loading_table.csv  param_tariff_type.csv
   run.py  model.md  product-spec.md  technical-notes.md  sources.md
   RLV_DE_S/                    <- formulas only
     __init__.py  _system.json  Data/__init__.py  Projection/__init__.py
@@ -330,7 +330,7 @@ projected. The conventions suite counts the reads and asserts the *set* against
 | `nvg_schedule_file` | `nvg_schedule()` | `nvg_schedule.csv` |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` |
 | `freq_loading_file` | `freq_loading_table()` | `freq_loading_table.csv` |
-| `param_file` | `param_table()` | `param_table.csv` |
+| `param_file` | `param_table()` | `param_tariff_type.csv` |
 
 **The trade-off:** the model is not portable on its own — copy `RLV_DE_S/` without the
 CSVs and it reads fine, then fails on first evaluation. What you gain is that a diff shows
@@ -484,8 +484,8 @@ checks, not inputs.
 | `comm_rate_init` | 0.020 of the *Beitragssumme* | Splits the α of the ceiling into commission and other acquisition cost. No German commission scale is public |
 | `beta_tariff`, `gamma_rate` | 0.05 of each *Bruttobeitrag*; 0.00030 of `benefit_pp` a year | **Correction:** German term-life charge levels are *not* "structurally undisclosed". § 2 Abs. 1 Nr. 1 VVG-InfoV requires the *Abschlusskosten* as one total and the other costs as a share of the annual premium, § 2 Abs. 2 requires them **in Euro**, and § 4 Abs. 2 puts them on the *Informationsblatt*; both wordings point the customer there [S1] § 14 Abs. 1, [S3] § 16 Abs. 1 [R17]. What is missing is a **published rate card**. There is no *Effektivkostenquote* — § 2 Abs. 1 Nr. 9 confines that duty to a *gewiss* risk — and no *Basisinformationsblatt*, the product not being a PRIIP. **Observed check**: one specimen gives other annual costs of 48,52 € on a 218,52 € annual *Tarifbeitrag*, i.e. **22,2 %**, of which 35,20 € (**16,1 %**) administration [S2] — far above this composite's 5 % β, because the specimen's figure is a euro amount over a small premium, not a percentage loading. **Not recalibrated** (gap 8) |
 | `maint_prem_pct`, `comm_rate_renew` | 0.03 and 0.010 of each *Zahlbeitrag* | Deliberately different from `beta_tariff`: the gap is the *Kostenüberschuss*, which is **not returned** and emerges in `net_cf` |
-| `expense_infl` (a row of `param_table.csv`) | 0.02, on sum-related admin only | The tariff's γ is level while the modelled one inflates, so the cost result narrows over a long term and eventually reverses — a real feature of a 25-year contract |
-| `claim_expense` | 250 € per death claim | No German figure is public; worth 0,16 € in the anchor's first year |
+| `expense_infl` (a row of `param_tariff_type.csv`) | 0.02, on sum-related admin only | The tariff's γ is level while the modelled one inflates, so the cost result narrows over a long term and eventually reverses — a real feature of a 25-year contract |
+| `claim_expense` (a row of `param_tariff_type.csv`) | 250 € per death claim | No German figure is public; worth 0,16 € in the anchor's first year |
 | `suicide_share` | 0.03 | No German cause-of-death share was retrieved; stands for "about three per cent of deaths at these ages are suicides", argued range 0,01–0,05 [unverified]. The **three-year window itself is sourced** [R1] |
 | `suicide_years` | 3 | The statutory minimum, extendable by *Einzelvereinbarung* [R1] [REG-R26]. A Reference so an extended window can be modelled. **All three retrieved wordings adopt the statutory three and none extends it** [S1] [S3] [S4] |
 | Lapse table | 6 % / 4 % / 4 % / 3 % **a year**, zero through the final policy year | Argued from three structural features (mechanic 17); **no German figure supports any of it**, argued range 2–8 % in the early durations (gap 13). The final-year zero is a property of the last policy year and lives in the formula, not the table. The annual rate is spread to the month at `1 − (1 − w)^(1/12)` **[std]**: no German instrument states a conversion convention for any decrement, and what is not optional is that twelve of the monthly rates compound back to the year's |
@@ -497,7 +497,7 @@ checks, not inputs.
 | `premium_form = einmal` | Model point 7 | A **[std]** construction exercising the premium engine at `k = 1`. **No German standalone RLV in the corpus is written on it**; the out-of-scope *Restschuldversicherung* is, and it is a different product sold a different way |
 | Timing conventions | A premium instalment on the *Zahlweise*'s own cycle and the month's expenses at the beginning of the month, claims and lapses at the end, acquisition cost at issue only where `duration_init = 0` | **The approximation this row used to record is gone.** On the annual grid the model booked exits at anniversaries and said so, and the note recorded that the approximation was larger than first assumed: § 168 Abs. 1 with § 12 VVG gives termination at the end of the *Versicherungsperiode*, but both retrieved carriers allow it "jederzeit zum Ende des laufenden Monats" whatever the *Zahlweise* [S3] § 15 Abs. 9, [S4] § 13 Abs. 1. The monthly grid expresses exactly that. What remains **[std]** is the conversion of the annual rates to the month and the placing of claims at the end of the month |
 | `shock_lapse_lambda`, `sel_lapse_lambda` | 0.0 (references 2.0 and 0.30) | Both modules off, so the base run reproduces the worked example |
-| `roll_fwd_tol` (a row of `param_table.csv`), `val_tol` | 1e-10, 1e-9 | Tolerances scaled by `pols_if_init()` and `sum_assured()` respectively |
+| `roll_fwd_tol` (a row of `param_tariff_type.csv`), `val_tol` | 1e-10, 1e-9 | Tolerances scaled by `pols_if_init()` and `sum_assured()` respectively |
 | The fourteen model points | — | The anchor is the research file's representative composite; the rest are chosen to exercise the mechanics, not to describe a market |
 
 The only quantities **not** standardizations are the structural rules: the guaranteed

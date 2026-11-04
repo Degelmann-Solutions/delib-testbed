@@ -11,8 +11,8 @@ each writing its figures with ``--json``; the tests read those figures and call 
 - A quota exactly at the bound passes (``>=``).
 - RLV's executed set holds ``model_point`` and ``result_cf``, both from the core.
 - A bound above a measured quota makes the report exit 1 and name the product on stderr.
-- The static usage scan ``core/param_usage.py`` reaches every executed cell of every product,
-  so its reachability over-approximates a run.
+- The static usage scan ``core/param_usage.py`` reaches every executed ``Projection`` cell of
+  every product (``Data`` cells are not compared, the quota does not count them).
 """
 from __future__ import annotations
 
@@ -115,8 +115,8 @@ def test_a_bound_above_a_quota_exits_1_and_names_the_product(quotas, capsys):
 
 @pytest.mark.parametrize("product", PRODUCTS)
 def test_the_usage_scan_reaches_every_executed_cell(product, quotas):
-    """Every cell a run executes is reachable in the static usage scan, so an item the scan
-    reports unused is read by no run."""
+    """Every ``Projection`` cell a run executes is reachable in the static usage scan; the
+    ``Data`` cells are not compared, since the core quota does not record them."""
     folder = ROOT / "products" / product
     model_dir = next(p for p in sorted(folder.iterdir())
                      if p.is_dir() and (p / "_system.json").is_file())

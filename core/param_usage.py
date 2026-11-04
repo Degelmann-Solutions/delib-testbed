@@ -12,10 +12,10 @@ A read counts for a product only where its cell is reachable:
 - the edges are every ``ast.Name`` id and ``ast.Attribute`` attr in a cell's
   ``formula.source`` that names a cell of either space.
 
-This over-approximates what a run evaluates (``tests/test_core_quota.py`` checks the core
-quota's executed cells against it), so the scan is never less strict than a run: an item
-reported unused is read by no run, and a call to a missing item is reported for every call a
-run could make.  Counting every inherited core cell instead would flag core items in products
+This is meant to over-approximate what a run evaluates: ``tests/test_core_quota.py`` checks
+that every ``Projection`` cell the core quota records as executed is reachable (``Data``
+cells are not compared).  Where that holds, an item reported unused is read by no executed
+``Projection`` cell, and a call to a missing item is reported for every such call a run makes.  Counting every inherited core cell instead would flag core items in products
 that never evaluate the core cell reading them.
 
 In a reachable cell a call ``param("<item>")`` (or ``data.param("<item>")``) with one string

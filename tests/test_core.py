@@ -1775,24 +1775,31 @@ def test_param_layers_hold_every_item_once_and_merge_into_param_dict(product, pr
 
 
 def _loader_error(model_dir: Path, name: str, item: str = "roll_fwd_tol") -> str:
-    """The message of the loader's error on ``param(item)`` in a scratch copy; it must be a
-    ``ValueError``."""
+    """The error line of the loader's error on ``param(item)`` in a scratch copy, which must be
+    a ``ValueError``.
+
+    modelx wraps it in a ``FormulaError`` whose text also holds the formula source; only the
+    line before ``Formula traceback:`` is the raised error.
+    """
     copy = mx.read_model(model_dir, name=name)
     try:
         with pytest.raises(Exception) as raised:
             copy.Data.param(item)
     finally:
         copy.close()
-    message = str(raised.value)
-    assert isinstance(raised.value, ValueError) or "ValueError" in message, message
-    return message
+    if isinstance(raised.value, ValueError):
+        return f"ValueError: {raised.value}"
+    head = str(raised.value).split("Formula traceback:", 1)[0]
+    line = [text for text in head.splitlines() if text.strip()][-1]
+    assert line.startswith("ValueError: "), str(raised.value)
+    return line
 
 
 def test_param_rejects_an_item_in_two_layers(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     _add_params(folder / "param_tariff.csv", {"expense_infl": "0.03"})
     message = _loader_error(folder / MODELS["risikolebensversicherung"], "TwoLayerProbe")
-    assert "'expense_infl'" in message and "two layers" in message
+    assert "'expense_infl' stands in two layers" in message
     assert str(folder / "param_tariff_type.csv") in message
     assert str(folder / "param_tariff.csv") in message
 
@@ -1801,7 +1808,7 @@ def test_param_rejects_an_item_twice_in_one_file(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     _add_params(folder / "param_tariff_type.csv", {"roll_fwd_tol": "1e-10"})
     message = _loader_error(folder / MODELS["risikolebensversicherung"], "TwiceProbe")
-    assert "'roll_fwd_tol'" in message and "twice" in message
+    assert "'roll_fwd_tol' stands twice in" in message
     assert str(folder / "param_tariff_type.csv") in message
 
 
@@ -1810,7 +1817,7 @@ def test_param_rejects_a_core_item_in_the_tariff_type_file(tmp_path):
     model_dir = folder / MODELS["risikolebensversicherung"]
     _add_params(model_dir / "CoreData" / "param_core.csv", {"roll_fwd_tol": "1e-10"})
     message = _loader_error(model_dir, "CoreLockProbe")
-    assert "'roll_fwd_tol'" in message and "core item" in message
+    assert "'roll_fwd_tol' is a core item of" in message
     assert str(folder / "param_tariff_type.csv") in message
 
 
@@ -1820,7 +1827,7 @@ def test_param_rejects_a_core_item_in_the_tariff_file(tmp_path):
     _add_params(model_dir / "CoreData" / "param_core.csv", {"probe_core": "0.125"})
     _add_params(folder / "param_tariff.csv", {"probe_core": "0.25"})
     message = _loader_error(model_dir, "CoreLockTariffProbe")
-    assert "'probe_core'" in message and "core item" in message
+    assert "'probe_core' is a core item of" in message
     assert str(folder / "param_tariff.csv") in message
 
 
@@ -1979,6 +1986,32 @@ def test_the_usage_scan_reports_a_read_around_param(tmp_path, reader):
         copy.close()
     assert len(problems) == 1, problems
     assert "probe_bypass" in problems[0] and reader in problems[0]
+
+
+def test_the_usage_scan_reports_a_declared_missing_item_of_an_unreachable_cell(tmp_path):
+    """RLV inherits the core's ``omega_age`` unreached; a declared item no layer holds is a
+    problem there too."""
+    copy = _usage_copy(tmp_path, "DeclaredUnreachableProbe")
+    try:
+        _declare(copy, {"omega_age": ("probe_missing",)})
+        usage = param_usage.scan(copy)
+    finally:
+        copy.close()
+    assert "omega_age" not in usage.reachable
+    assert len(usage.problems) == 1, usage.problems
+    assert "'probe_missing'" in usage.problems[0] and "omega_age" in usage.problems[0]
+
+
+def test_a_core_item_read_by_one_product_is_used():
+    """``unused_core_items`` checks the core file across products: an item one product reads
+    is used, one that none reads is named."""
+    layers = {"core": {"probe_core": 0.125}, "tariff_type": {}}
+    reader = param_usage.Usage(layers=layers, reads={"probe_core": frozenset({"cell"})},
+                               reachable=frozenset({"cell"}), indirect={}, problems=[])
+    other = param_usage.Usage(layers=layers, reads={}, reachable=frozenset(), indirect={},
+                              problems=[])
+    assert param_usage.unused_core_items([reader, other]) == []
+    assert param_usage.unused_core_items([other, other]) == ["probe_core"]
 
 
 def test_an_unused_core_item_is_named(tmp_path):

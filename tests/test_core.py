@@ -44,7 +44,7 @@
   ``Projection``. RLV's 17 likewise, and its premium-shock test switches the module on
   through a row of a scratch copy's tariff-type file. KLV's 4 read ones likewise; its
   three References of the lapse modules that were never built, read by no cell, are in
-  neither its ``Projection`` nor its parameter files. BU's 11 likewise.
+  neither its ``Projection`` nor its parameter files. BU's 11 and FRV's 12 likewise.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -1778,10 +1778,26 @@ BU_MOVED_REFERENCES = {
     "runoff_months": 3,
 }
 
+# The 12 numeric References FRV's ``Projection`` held, as their former Python literals.
+FRV_MOVED_REFERENCES = {
+    "lapse_cap": 0.4,
+    "lapse_dyn_beta": 0.0,
+    "mmkt_return_ann": 0.015,
+    "glide_months": 60,
+    "comm_acq_rate": 0.025,
+    "expense_issue": 200.0,
+    "expense_maint_mth": 4.0,
+    "comm_renew_rate": 0.015,
+    "expense_claim": 150.0,
+    "expense_surr": 50.0,
+    "expense_annuitisation": 100.0,
+    "val_tol": 1e-10,
+}
+
 # The products whose numeric References have all moved into their parameter files.
 REFERENCES_MOVED = (
     "riester_rente", "risikolebensversicherung", "kapitallebensversicherung",
-    "berufsunfaehigkeit",
+    "berufsunfaehigkeit", "fondsgebundene_rentenversicherung",
 )
 
 
@@ -1827,6 +1843,18 @@ def test_bu_references_are_tariff_type_rows(product_models):
     layer = data.param_layers()["tariff_type"]
     assert len(BU_MOVED_REFERENCES) == 11
     for item, literal in BU_MOVED_REFERENCES.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+        assert item not in model.Projection.refs, item
+
+
+def test_frv_references_are_tariff_type_rows(product_models):
+    model = product_models("fondsgebundene_rentenversicherung")
+    data = model.Data
+    layer = data.param_layers()["tariff_type"]
+    assert len(FRV_MOVED_REFERENCES) == 12
+    for item, literal in FRV_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
         assert item in layer, item

@@ -175,8 +175,8 @@ def model_point_table_dict():
 def param_table_dict():
     """The parameter table as a dict by column: ``{column: {item: value}}``.
 
-    Built once per model from ``param_table()``; ``Projection.omega_age``,
-    ``unisex_mix_male``, ``expense_infl`` and ``roll_fwd_tol`` read its ``value`` column.
+    Built once per model from ``param_table()``.  The core's ``Projection`` reads its
+    parameters through ``param(item)``, not through this cell.
     """
     return param_table().to_dict()
 

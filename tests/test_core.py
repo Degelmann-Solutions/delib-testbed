@@ -35,7 +35,9 @@
 - The parameter files: ``param(item)`` reads RLV's tariff-type file without a tariff file,
   ``claim_expense`` among it and no longer a Reference of its ``Projection``,
   keeps an integer literal ``int``, reads a fixture core item and a tariff item in a scratch
-  copy, and raises on an unknown item and on a missing core file.
+  copy, and raises on an unknown item and on a missing core file; it equals the
+  ``param_table_dict()`` value of every product's every item, and no source reads
+  ``param_table_dict()["value"]`` any more.
 - The expense inflation: Sofort's derived factor steps on the policy anniversary, Pflege's
   compounds continuously over ``t / 12`` years.
 - The dict cells: every core dict cell of a table a product has equals its reader's
@@ -1591,6 +1593,30 @@ def test_param_reads_the_tariff_type_layer(product_models):
     for item in ("roll_fwd_tol", "expense_infl"):
         value = data.param(item)
         assert type(value) is float and value == data.param_table_dict()["value"][item], item
+
+
+PARAM_TABLE_DICT_READ = 'param_table_dict()["value"]'
+
+
+def test_no_param_table_dict_read_remains():
+    """Every parameter is read through ``param("<item>")``; no source reads the old path."""
+    sources = sorted(p for p in CORE_DIR.rglob("*.py") if "__pycache__" not in p.parts)
+    assert sources
+    hits = [f"{path.relative_to(ROOT)}:{number}"
+            for path in sources
+            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
+            if PARAM_TABLE_DICT_READ in line]
+    assert not hits, hits
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_param_equals_the_param_table_dict_value(product, product_models):
+    """``param(item)`` is the value ``param_table_dict()`` held for every item of the file."""
+    data = product_models(product).Data
+    values = data.param_table_dict()["value"]
+    assert values
+    for item, value in values.items():
+        assert data.param(item) == value, item
 
 
 def test_rlv_claim_expense_is_a_tariff_type_row(product_models):

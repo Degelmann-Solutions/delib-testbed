@@ -71,7 +71,7 @@ benefit_schedule_file     data.benefit_schedule()            benefit_schedule.cs
 nvg_schedule_file         data.nvg_schedule()                nvg_schedule.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
-param_file                data.param_table()                 param_table.csv
+param_file                data.param_table()                 param_tariff_type.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming

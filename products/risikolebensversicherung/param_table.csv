@@ -1,3 +1,0 @@
-item,value,provenance
-roll_fwd_tol,1e-10,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
-expense_infl,0.02,"[std] 2.0 % a year on the sum-related admin only, stepping on the anniversary; the tariff gamma is level; was a Reference on Projection"

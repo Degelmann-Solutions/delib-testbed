@@ -36,7 +36,7 @@ benefit_schedule_file     benefit_schedule()            benefit_schedule.csv
 nvg_schedule_file         nvg_schedule()                nvg_schedule.csv
 lapse_file                lapse_table()                 lapse_table.csv
 freq_loading_file         freq_loading_table()          freq_loading_table.csv
-param_file                param_table()                 param_table.csv
+param_file                param_table()                 param_tariff_type.csv
 ========================  ============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
@@ -230,6 +230,6 @@ lapse_file = "lapse_table.csv"
 
 freq_loading_file = "freq_loading_table.csv"
 
-param_file = "param_table.csv"
+param_file = "param_tariff_type.csv"
 
 pd = ("Module", "pandas")

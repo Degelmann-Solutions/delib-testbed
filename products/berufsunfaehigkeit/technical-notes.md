@@ -340,7 +340,7 @@ source supplies.
 | Commission | Not a separate line — it sits inside `acq_rate`, which is the German taxonomy | **[std]** |
 | `prem_freq_load` — *Ratenzahlungszuschlag* | annual **1,00**; half-yearly **1,02**; quarterly **1,03**; monthly **1,05** | German market convention `[unverified]`; **[std]** |
 
-**Input files.** Eight CSVs, `param_tariff_type.csv` with `roll_fwd_tol` among them, sit beside `run.py`, read once per model by the unparameterized `Data`
+**Input files.** Eight CSVs, `param_tariff_type.csv` with `roll_fwd_tol`, `accept_factor`, the first-order loads, the charges and `runoff_months` among them, sit beside `run.py`, read once per model by the unparameterized `Data`
 Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv` carries a
 **`provenance` column**, one tag per row, as delib's second ruling requires.
 
@@ -353,7 +353,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | `occupation_table.csv` | `berufsgruppe` (BG1 – BG5) | `occ_factor`, `label`, `provenance` |
 | `lapse_table.csv` | `policy_year` (1 – 6, the last being ultimate) | `lapse_rate`, `provenance` |
 | `freq_loading_table.csv` | `prem_freq` | `prem_mode_months`, `prem_freq_load`, `provenance` |
-| `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance`: `roll_fwd_tol`, the tolerance of the `check_*` identities |
+| `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance`: `roll_fwd_tol`, the tolerance of the `check_*` identities; `accept_factor`; `inc_load_first`, `recov_load_first`, `mort_dis_load_first`, `mort_actv_load_first`; `acq_rate`, `admin_prem_rate`, `admin_flat_ann`, `claim_assess_cost`, `claim_maint_cost_mth`; `runoff_months` |
 
 ---
 

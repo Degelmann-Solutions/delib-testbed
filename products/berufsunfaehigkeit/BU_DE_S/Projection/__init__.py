@@ -736,7 +736,7 @@ def inc_rate(t):
     composition explicitly is what makes a substituted table that is already net of
     declinature visible rather than silent.
     """
-    return inc_rate_base(t) * occ_factor() * accept_factor * au_uplift()  # noqa: F821
+    return inc_rate_base(t) * occ_factor() * data.param("accept_factor") * au_uplift()  # noqa: F821
 
 
 def inc_rate_mth(t):
@@ -831,7 +831,8 @@ def inc_rate_first(s):
     the load is above one: a claim that starts more often.
     """
     return (inc_rate_at_age(age_first(s)) * occ_factor()
-            * accept_factor * au_uplift() * inc_load_first)          # noqa: F821
+            * data.param("accept_factor") * au_uplift()              # noqa: F821
+            * data.param("inc_load_first"))                          # noqa: F821
 
 
 def inc_rate_first_mth(s):
@@ -845,7 +846,7 @@ def recov_rate_first(z):
     ``recov_rate(z) x recov_load_first``, and the load is **below** one: prudence means a
     claim that ends less often and therefore lasts longer.
     """
-    return recov_rate(z) * recov_load_first                          # noqa: F821
+    return recov_rate(z) * data.param("recov_load_first")            # noqa: F821
 
 
 def recov_rate_first_mth(z):
@@ -855,7 +856,7 @@ def recov_rate_first_mth(z):
 
 def recov_rate_first_mth_year():
     """The eleven monthly first-order reactivation rates by claim year, as a tuple."""
-    return tuple(1.0 - (1.0 - r * recov_load_first) ** (1.0 / 12.0)  # noqa: F821
+    return tuple(1.0 - (1.0 - r * data.param("recov_load_first")) ** (1.0 / 12.0)  # noqa: F821
                  for r in recov_rates())
 
 
@@ -868,7 +869,7 @@ def mort_rate_first_mth(s):
     the first-order basis carries **no lapse at all**.
     """
     return 1.0 - (1.0 - mort_rate_at_age(age_first(s))
-                  * mort_actv_load_first) ** (1.0 / 12.0)            # noqa: F821
+                  * data.param("mort_actv_load_first")) ** (1.0 / 12.0)  # noqa: F821
 
 
 def mort_rate_dis_first_mth(s, z):
@@ -880,7 +881,7 @@ def mort_rate_dis_first_mth(s, z):
     """
     return 1.0 - (1.0 - mort_rate_dis_at_age(age_first(s))
                   * mort_dis_sel_factor(z)
-                  * mort_dis_load_first) ** (1.0 / 12.0)             # noqa: F821
+                  * data.param("mort_dis_load_first")) ** (1.0 / 12.0)  # noqa: F821
 
 
 def mort_rate_dis_first_mth_year(x):
@@ -889,7 +890,7 @@ def mort_rate_dis_first_mth_year(x):
     Keyed by age rather than by month, as :func:`mort_rate_dis_mth_year`: the shadow
     ledgers read it at ``age_first(s)``, which changes once a year.
     """
-    q = mort_rate_dis_at_age(x) * mort_dis_load_first                # noqa: F821
+    q = mort_rate_dis_at_age(x) * data.param("mort_dis_load_first")  # noqa: F821
     return tuple(1.0 - (1.0 - q * f) ** (1.0 / 12.0)
                  for f in mort_dis_sel_factors())
 
@@ -988,8 +989,8 @@ def prem_gross_level_pp():
         return rating_factor() * gross_prem_ann()
     numer = (pv_rente_first() + pv_wiedereingl_first()
              + pv_claim_cost_first() + pv_admin_first())
-    denom = (pv_prem_unit_first() * (1.0 - admin_prem_rate)          # noqa: F821
-             - acq_rate * beitragssumme_unit())                      # noqa: F821
+    denom = (pv_prem_unit_first() * (1.0 - data.param("admin_prem_rate"))  # noqa: F821
+             - data.param("acq_rate") * beitragssumme_unit())        # noqa: F821
     return rating_factor() * numer / denom
 
 
@@ -1170,7 +1171,7 @@ def runoff_cohorts_first(s):
     Three slots, both lists rolled at **active-lives** mortality because these lives have
     recovered.  Slot 1 is last month's claim terminations and the value they carried.
     """
-    n = runoff_months                                                # noqa: F821
+    n = data.param("runoff_months")                                  # noqa: F821
     pols = [0.0] * n
     val = [0.0] * n
     if s <= 0:
@@ -1281,7 +1282,7 @@ def pv_wiedereingl_first():
     if wiedereingliederung_months() == 0:
         return 0.0
     return sum(disc_factor_mth(s) * wiedereingliederung_months()
-               * runoff_val_first(s, runoff_months)                  # noqa: F821
+               * runoff_val_first(s, data.param("runoff_months"))    # noqa: F821
                * (1.0 - mort_rate_first_mth(s))
                for s in range(0, first_len()))
 
@@ -1297,14 +1298,15 @@ def pv_claim_cost_first():
     """
     total = 0.0
     for s in range(0, first_len()):
-        total += disc_factor_mth(s) * claim_assess_cost * pols_inception_first(s)  # noqa: F821
+        total += (disc_factor_mth(s) * data.param("claim_assess_cost")  # noqa: F821
+                  * pols_inception_first(s))
         if age_first(s) < benefit_end_age():
             if karenz_months() == 0:
                 in_payment = pols_dis_first(s)
             else:
                 in_payment = sum(dis_cohorts_first(s)[0][karenz_months():].tolist())
             paying = in_payment + pols_runoff_first(s)
-            total += disc_factor_mth(s) * claim_maint_cost_mth * paying   # noqa: F821
+            total += disc_factor_mth(s) * data.param("claim_maint_cost_mth") * paying  # noqa: F821
     return total
 
 
@@ -1316,7 +1318,8 @@ def pv_admin_first():
     administration loading is not here — it is proportional to the premium, so it stays on
     the left-hand side of the equivalence and reduces the denominator instead.
     """
-    return sum(disc_factor_mth(s) * admin_flat_ann / 12.0 * pols_if_first(s)  # noqa: F821
+    return sum(disc_factor_mth(s) * data.param("admin_flat_ann") / 12.0  # noqa: F821
+               * pols_if_first(s)
                for s in range(0, first_len()))
 
 
@@ -1458,7 +1461,7 @@ def runoff_cohorts(t):
     Empty at ``t <= 0`` on every model point, including the in-force claim: a claim in
     payment is *leistungspflichtig*, not in run-off.
     """
-    n = runoff_months                                                # noqa: F821
+    n = data.param("runoff_months")                                  # noqa: F821
     pols = [0.0] * n
     val = [0.0] * n
     if t <= 0:
@@ -1572,7 +1575,7 @@ def pols_reactivation(t):
     exposed to inception again.  They are also the population the
     *Wiedereingliederungshilfe* is paid on.
     """
-    return pols_runoff_slot(t, runoff_months) * (1.0 - mort_rate_mth(t))  # noqa: F821
+    return pols_runoff_slot(t, data.param("runoff_months")) * (1.0 - mort_rate_mth(t))  # noqa: F821
 
 
 def pols_death(t):
@@ -1713,7 +1716,7 @@ def claims_other(t, kind):
         if wiedereingliederung_months() == 0:
             return 0.0
         return (wiedereingliederung_months()
-                * runoff_val(t, runoff_months)                       # noqa: F821
+                * runoff_val(t, data.param("runoff_months"))         # noqa: F821
                 * (1.0 - mort_rate_mth(t)))
     raise ValueError("invalid kind")
 
@@ -1746,9 +1749,9 @@ def expenses(t):
     """
     acq = 0.0
     if t == 0 and duration_mth_init() == 0:
-        acq = acq_rate * prem_gross_level_pp() * beitragssumme_unit()  # noqa: F821
-    admin_prop = admin_prem_rate * prem_gross_pp(t) * pols_prem(t)   # noqa: F821
-    admin_flat = admin_flat_ann / 12.0 * pols_if(t)                  # noqa: F821
+        acq = data.param("acq_rate") * prem_gross_level_pp() * beitragssumme_unit()  # noqa: F821
+    admin_prop = data.param("admin_prem_rate") * prem_gross_pp(t) * pols_prem(t)  # noqa: F821
+    admin_flat = data.param("admin_flat_ann") / 12.0 * pols_if(t)    # noqa: F821
     return acq + admin_prop + admin_flat
 
 
@@ -1766,7 +1769,7 @@ def claim_expenses(t):
     is what makes a heavier occupational class carry a premium slightly below the ratio of
     its inception rates.
     """
-    assess = claim_assess_cost * pols_inception(t)                   # noqa: F821
+    assess = data.param("claim_assess_cost") * pols_inception(t)     # noqa: F821
     maint = 0.0
     if age(t) < benefit_end_age():
         if karenz_months() == 0:
@@ -1774,7 +1777,7 @@ def claim_expenses(t):
         else:
             in_payment = sum(dis_cohorts(t)[0][karenz_months():].tolist())
         paying = in_payment + pols_runoff(t)
-        maint = claim_maint_cost_mth * paying                        # noqa: F821
+        maint = data.param("claim_maint_cost_mth") * paying          # noqa: F821
     return assess + maint
 
 
@@ -2117,28 +2120,6 @@ def result_states():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-accept_factor = 0.8
-
-inc_load_first = 1.3
-
-recov_load_first = 0.7
-
-mort_dis_load_first = 0.8
-
-mort_actv_load_first = 0.8
-
-acq_rate = 0.025
-
-admin_prem_rate = 0.09
-
-admin_flat_ann = 18.0
-
-claim_assess_cost = 800.0
-
-claim_maint_cost_mth = 12.0
-
-runoff_months = 3
 
 
 pd = ("Module", "pandas")

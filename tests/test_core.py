@@ -42,9 +42,9 @@
   Riester's 32 former numeric References are rows of its tariff-type file with their
   literals' types and values, and no numeric Reference but ``point_id`` is left on its
   ``Projection``. RLV's 17 likewise, and its premium-shock test switches the module on
-  through a row of a scratch copy's tariff-type file. KLV's three References of the
-  lapse modules that were never built, read by no cell, are in neither its ``Projection``
-  nor its parameter files.
+  through a row of a scratch copy's tariff-type file. KLV's 4 read ones likewise; its
+  three References of the lapse modules that were never built, read by no cell, are in
+  neither its ``Projection`` nor its parameter files.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -1754,8 +1754,17 @@ RLV_MOVED_REFERENCES = {
     "val_tol": 1e-09,
 }
 
+# The 4 numeric References KLV's ``Projection`` held and its cells read, as their former
+# Python literals.
+KLV_MOVED_REFERENCES = {
+    "suicide_share": 0.02,
+    "bfz_min_si": 2500.0,
+    "term_surr_share": 0.0,
+    "bwr_rate": 0.0,
+}
+
 # The products whose numeric References have all moved into their parameter files.
-REFERENCES_MOVED = ("riester_rente", "risikolebensversicherung")
+REFERENCES_MOVED = ("riester_rente", "risikolebensversicherung", "kapitallebensversicherung")
 
 
 def test_riester_references_are_tariff_type_rows(product_models):
@@ -1776,6 +1785,18 @@ def test_rlv_references_are_tariff_type_rows(product_models):
     layer = data.param_layers()["tariff_type"]
     assert len(RLV_MOVED_REFERENCES) == 17
     for item, literal in RLV_MOVED_REFERENCES.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+        assert item not in model.Projection.refs, item
+
+
+def test_klv_references_are_tariff_type_rows(product_models):
+    model = product_models("kapitallebensversicherung")
+    data = model.Data
+    layer = data.param_layers()["tariff_type"]
+    assert len(KLV_MOVED_REFERENCES) == 4
+    for item, literal in KLV_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
         assert item in layer, item

@@ -39,6 +39,9 @@
   ``param_table_dict()`` value of every product's every item, and no source reads
   ``param_table_dict()["value"]`` any more; every product's ``param_file`` is its
   ``param_tariff_type.csv`` with the layer columns, and no ``param_table.csv`` is left.
+  Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
+  the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
+  item in the tariff-type or the tariff file.
 - The expense inflation: Sofort's derived factor steps on the policy anniversary, Pflege's
   compounds continuously over ``t / 12`` years.
 - The dict cells: every core dict cell of a table a product has equals its reader's
@@ -267,6 +270,7 @@ CORE_CELLS = {
         "param_table_dict": dict.fromkeys(MODELS, "derived"),
         "param_core_path": dict.fromkeys(MODELS, "derived"),
         "param_tariff_path": dict.fromkeys(MODELS, "derived"),
+        "param_layers": dict.fromkeys(MODELS, "derived"),
         "param_dict": dict.fromkeys(MODELS, "derived"),
         "param": dict.fromkeys(MODELS, "derived"),
         "mort_table_dict": dict.fromkeys(MODELS, "derived"),
@@ -1740,6 +1744,76 @@ def test_param_without_the_core_file_raises(tmp_path):
             copy.Data.param("roll_fwd_tol")
     finally:
         copy.close()
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_param_layers_hold_every_item_once_and_merge_into_param_dict(product, product_models):
+    """Every product reads the core and the tariff-type layer (and the tariff layer only where
+    the file exists), each item in one layer, and ``param_dict()`` is their merge."""
+    data = product_models(product).Data
+    layers = data.param_layers()
+    expected = ["core", "tariff_type"] + (["tariff"] if data.param_tariff_path().is_file()
+                                          else [])
+    assert list(layers) == expected
+    tariff_type = pd.read_csv(data.input_dir() / data.param_file, dtype=str,
+                              keep_default_na=False)["item"].tolist()
+    assert sorted(layers["tariff_type"]) == sorted(tariff_type)
+    assert len(tariff_type) == len(set(tariff_type))
+    items = [item for layer in layers.values() for item in layer]
+    assert len(items) == len(set(items))
+    merged = {item: value for layer in layers.values() for item, value in layer.items()}
+    assert data.param_dict() == merged
+    assert list(data.param_dict()) == list(merged)
+
+
+def _loader_error(model_dir: Path, name: str, item: str = "roll_fwd_tol") -> str:
+    """The message of the loader's error on ``param(item)`` in a scratch copy; it must be a
+    ``ValueError``."""
+    copy = mx.read_model(model_dir, name=name)
+    try:
+        with pytest.raises(Exception) as raised:
+            copy.Data.param(item)
+    finally:
+        copy.close()
+    message = str(raised.value)
+    assert isinstance(raised.value, ValueError) or "ValueError" in message, message
+    return message
+
+
+def test_param_rejects_an_item_in_two_layers(tmp_path):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    _add_params(folder / "param_tariff.csv", {"expense_infl": "0.03"})
+    message = _loader_error(folder / MODELS["risikolebensversicherung"], "TwoLayerProbe")
+    assert "'expense_infl'" in message and "two layers" in message
+    assert str(folder / "param_tariff_type.csv") in message
+    assert str(folder / "param_tariff.csv") in message
+
+
+def test_param_rejects_an_item_twice_in_one_file(tmp_path):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    _add_params(folder / "param_tariff_type.csv", {"roll_fwd_tol": "1e-10"})
+    message = _loader_error(folder / MODELS["risikolebensversicherung"], "TwiceProbe")
+    assert "'roll_fwd_tol'" in message and "twice" in message
+    assert str(folder / "param_tariff_type.csv") in message
+
+
+def test_param_rejects_a_core_item_in_the_tariff_type_file(tmp_path):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    model_dir = folder / MODELS["risikolebensversicherung"]
+    _add_params(model_dir / "CoreData" / "param_core.csv", {"roll_fwd_tol": "1e-10"})
+    message = _loader_error(model_dir, "CoreLockProbe")
+    assert "'roll_fwd_tol'" in message and "core item" in message
+    assert str(folder / "param_tariff_type.csv") in message
+
+
+def test_param_rejects_a_core_item_in_the_tariff_file(tmp_path):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    model_dir = folder / MODELS["risikolebensversicherung"]
+    _add_params(model_dir / "CoreData" / "param_core.csv", {"probe_core": "0.125"})
+    _add_params(folder / "param_tariff.csv", {"probe_core": "0.25"})
+    message = _loader_error(model_dir, "CoreLockTariffProbe")
+    assert "'probe_core'" in message and "core item" in message
+    assert str(folder / "param_tariff.csv") in message
 
 
 def test_klv_result_cf_is_the_core_statement_from_t_start(product_models):

@@ -1306,11 +1306,10 @@ def beitragssumme_years():
 
 
 def alpha_rate():
-    """The acquisition per-mille as a rate, ``acq_permille / permille_unit``.
+    """The acquisition per-mille as a rate, ``acq_permille / 1000``.
 
-    ``permille_unit`` is 1000, a row of *param_tariff_type.csv*.  :func:`zillmer_amount`,
-    the acquisition and distribution charge per policy, incurred once at ``t = 0``, is
-    ``acq_permille / permille_unit x beitragssumme()``, with the per-mille set
+    :func:`zillmer_amount`, the acquisition and distribution charge per policy, incurred
+    once at ``t = 0``, is ``acq_permille / 1000 x beitragssumme()``, with the per-mille set
     **exactly at** the § 4 DeckRV *Höchstzillmersatz* so the ceiling binds visibly.  The
     base is the *Beitragssumme*, **not** the annual premium — charging the per-mille on an
     annual premium understates it by a factor of the paying term and is a listed pitfall.
@@ -1321,7 +1320,7 @@ def alpha_rate():
     first row with a new-business point's.
     """
     permille = float(data.param("acq_permille"))                     # noqa: F821
-    return permille / data.param("permille_unit")                    # noqa: F821
+    return permille / 1000.0
 
 
 def inflation_years(t):
@@ -1872,8 +1871,7 @@ def premium_mth_pp():
     """
     if premium_mth() > 0.0:
         return premium_mth()
-    permille = (float(data.param("acq_permille"))                    # noqa: F821
-                / data.param("permille_unit"))                       # noqa: F821
+    permille = float(data.param("acq_permille")) / 1000.0            # noqa: F821
     admin_pct = float(data.param("admin_prem_pct"))                  # noqa: F821
     m = prem_mode_months()
     if m == 0:
@@ -2087,8 +2085,7 @@ def check_prem_equiv_resid(t):
     admin_pct = float(data.param("admin_prem_pct"))                  # noqa: F821
     admin_pp = float(data.param("admin_mth_pp"))                     # noqa: F821
     per_payment = float(data.param("claim_expense_pp"))              # noqa: F821
-    permille = (float(data.param("acq_permille"))                    # noqa: F821
-                / data.param("permille_unit"))                       # noqa: F821
+    permille = float(data.param("acq_permille")) / 1000.0            # noqa: F821
 
     prem_leg = p0 * mult * tar_pols_prem(t) if premium_due(t) else 0.0
 

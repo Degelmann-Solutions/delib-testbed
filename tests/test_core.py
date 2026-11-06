@@ -60,8 +60,7 @@
   their own tables; a frequency outside the table raises, and a row added to a scratch copy
   admits it. Pflege's instalment frequencies and the months each covers are its own table
   likewise. Riester's annuity frequency is a row ``ann_freq``, 12 as an ``int`` as Basis', and
-  the *Rentenfaktor* unit of FRV, Index, RV and Riester a row ``rf_unit``, 10000.0 as Basis';
-  Pflege's per-mille unit is a row ``permille_unit``, 1000.0.
+  the *Rentenfaktor* unit of FRV, Index, RV and Riester a row ``rf_unit``, 10000.0 as Basis'.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -1066,9 +1065,7 @@ def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
         assert (points[item] == basis.at[item, "value"]).all(), item
     basis = basis.drop(moved)
     assert list(merged.columns) == ["value", "unit", "basis", "provenance"]
-    # Rows added after the merge: units that were literals in formulas.
-    added = list(UNIT_AND_FREQUENCY_ROWS[product])
-    assert list(merged.index) == list(basis.index) + list(expense.index) + added
+    assert list(merged.index) == list(basis.index) + list(expense.index)
     assert merged["basis"].isna().all()
     for item in basis.index:
         assert merged.at[item, "value"] == basis.at[item, "value"], item
@@ -1981,7 +1978,6 @@ UNIT_AND_FREQUENCY_ROWS = {
     "fondsgebundene_rentenversicherung": {"rf_unit": 10000.0},
     "indexpolice": {"rf_unit": 10000.0},
     "klassische_rentenversicherung": {"rf_unit": 10000.0},
-    "pflegerentenversicherung": {"permille_unit": 1000.0},
     "riester_rente": {"rf_unit": 10000.0, "ann_freq": 12},
 }
 
@@ -2065,7 +2061,7 @@ STRUCTURAL_LITERALS = {
     "indexpolice": {"11", "12", "12.0", "13"},
     "kapitallebensversicherung": {"11", "12", "12.0"},
     "klassische_rentenversicherung": {"2", "12", "12.0"},
-    "pflegerentenversicherung": {"2", "3", "4", "5", "6", "12", "12.0"},
+    "pflegerentenversicherung": {"2", "3", "4", "5", "6", "12", "12.0", "1000.0"},
     "riester_rente": {"12", "12.0"},
     "risikolebensversicherung": {"2", "12", "12.0"},
     "sofortrente": {"0.5", "2", "12", "12.0"},

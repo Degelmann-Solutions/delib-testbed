@@ -231,7 +231,7 @@ premium here is computed, and the notes sanity-check its level against an argued
 band rather than against a citation.
 
 **The *Zillmerung* is charged on the *Beitragssumme*, not on the annual premium.**
-`zillmer_amount()` is `acq_permille / permille_unit × beitragssumme()` (`permille_unit = 1000`), with the per-mille set **exactly at**
+`zillmer_amount()` is `acq_permille / 1000 × beitragssumme()`, with the per-mille set **exactly at**
 the § 4 DeckRV *Höchstzillmersatz* of 25 ‰ so the ceiling binds visibly [REG-R16] [REG-R20]. A
 lifelong-premium contract has no finite *Beitragssumme* without a convention, and
 `beitragssumme_cap_age = 85` **[std]** is that convention —

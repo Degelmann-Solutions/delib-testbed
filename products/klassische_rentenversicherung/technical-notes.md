@@ -140,7 +140,7 @@ The right-hand column names the points that exercise each attribute away from it
 | `premium_form` | enum {laufend, einmal} | Recurring or single premium [S11] [REG-R53] | 2 (`einmal`) |
 | `prem_gross_pp` | EUR p.a. | Annual *Bruttobeitrag* before the frequency loading | all but 2 |
 | `premium_single_pp` | EUR | *Einmalbeitrag* | 2 |
-| `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | *Zahlweise*; keys `freq_load_table.csv` for the *Ratenzahlungszuschlag*. The **collection** is annual in advance whatever the elected frequency, § 12 Abs. 1 VVG making the *Versicherungsperiode* the year for this tariff | 3 (monthly), 4 (quarterly), 5 (half-yearly) |
+| `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | *Zahlweise*; keys `prem_freq_table.csv` for the *Ratenzahlungszuschlag*. The **collection** is annual in advance whatever the elected frequency, § 12 Abs. 1 VVG making the *Versicherungsperiode* the year for this tariff | 3 (monthly), 4 (quarterly), 5 (half-yearly) |
 | `prem_term_y` | int | Premium-paying **years** from inception, a count: premiums fall in policy years `k < prem_term_y` | 4 (20 of 22), 5 (25 of 27) |
 | `aufschub_y` | int | Deferment in **years**, a count: *Rentenbeginn* at the end of month `t = 12 × aufschub_y − 1` | all |
 | `rechnungszins` | rate | The contract's *Rechnungszins* — **a model-point attribute, not a global assumption** [R7] [REG-R14] [REG-R15] | 6 (2,75 %), 14 (0,90 %) |
@@ -222,7 +222,7 @@ table carries a per-row `provenance` column, this library's second ruling.
 | `rentenfaktor_table.csv` | `rf_scenario_id`, `age` | `annuity_rate_curr`, `provenance` |
 | `charge_table.csv` | `charge_id`, `item` | `value`, `provenance` |
 | `lapse_table.csv` | `policy_year` | `lapse_rate`, `provenance` |
-| `freq_load_table.csv` | `prem_freq` | `prem_freq_load`, `n_instalments` (**recorded, not applied**), `provenance` |
+| `prem_freq_table.csv` | `prem_freq` | `instalments` (**recorded, not applied**), `prem_freq_load`, `provenance` |
 | `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance` |
 
 `param_tariff_type.csv` holds every scalar [std] assumption that is neither a charge nor a rate table:
@@ -398,13 +398,13 @@ pitfall 6. `charge_table.csv` is keyed by `(charge_id, item)` so each number car
 | `min_annuity_mth` | 30,00 € a month | 30,00 € | § 165 threshold [R2]; level **[std]**, against 25,00 € a month at two carriers [S4] [S9] |
 | `annuity_admin_rate` | 0,015 of each instalment | 0,015 | **[std]**; **recorded, not applied** — see pitfall 12 |
 
-`freq_load_table.csv` carries the *Ratenzahlungszuschlag* **[std]** (gap 14): annual 1,000 (1
+`prem_freq_table.csv` carries the *Ratenzahlungszuschlag* **[std]** (gap 14): annual 1,000 (1
 instalment), half-yearly 1,020 (2), quarterly 1,030 (4), monthly 1,050 (12). No retrieved wording
 publishes one; every carrier refers the amounts to the *Kostenausweis nach § 2 VVG-InfoV* or the
 *Persönlicher Vorschlag* [S1] § 14 Abs. 1, [S4] § 11 Abs. 1, [S9] § 16 Abs. 1, which is why this gap
 is structural.
 
-**The loading is the whole of what the *Zahlweise* does here, and the `n_instalments` column stays
+**The loading is the whole of what the *Zahlweise* does here, and the `instalments` column stays
 documentation even on a monthly grid.** § 12 Abs. 1 VVG makes the *Versicherungsperiode* the year
 where premiums are not measured in shorter periods, the *Deckungskapital* this model turns on is
 defined at anniversaries, and § 169 Abs. 3 pays a mid-period exit the value struck at the **end** of

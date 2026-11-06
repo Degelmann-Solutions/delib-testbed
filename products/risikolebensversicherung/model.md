@@ -302,7 +302,7 @@ folder. `RLV_DE_S/` holds nothing but formulas:
 ```
 products/risikolebensversicherung/
   model_point_table.csv  mort_table.csv  benefit_schedule.csv     <- inputs live here
-  nvg_schedule.csv       lapse_table.csv freq_loading_table.csv  param_tariff_type.csv
+  nvg_schedule.csv       lapse_table.csv prem_freq_table.csv     param_tariff_type.csv
   run.py  model.md  product-spec.md  technical-notes.md  sources.md
   RLV_DE_S/                    <- formulas only
     __init__.py  _system.json  Data/__init__.py  Projection/__init__.py
@@ -329,7 +329,7 @@ projected. The conventions suite counts the reads and asserts the *set* against
 | `benefit_schedule_file` | `benefit_schedule()` | `benefit_schedule.csv` |
 | `nvg_schedule_file` | `nvg_schedule()` | `nvg_schedule.csv` |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` |
-| `freq_loading_file` | `freq_loading_table()` | `freq_loading_table.csv` |
+| `prem_freq_file` | `prem_freq_table()` | `prem_freq_table.csv` |
 | `param_file` | `param()` | `param_tariff_type.csv` |
 
 **The trade-off:** the model is not portable on its own — copy `RLV_DE_S/` without the
@@ -348,7 +348,7 @@ single exemption, a model point being a *configuration* rather than an assumptio
 | `benefit_schedule.csv` | `benefit_factor` by schedule id and **1-based** `policy_year`, read at `t + 1`: `konstant`, `linear_fallend` (`(21 − policy_year)/20`, i.e. `(20 − t)/20`), `annuitaet_fallend_3pct` | **[std]** — the three German shapes are structural [S15]; **no schedule parameter was established** (gap 15) |
 | `nvg_schedule.csv` | Cumulative `sum_uplift`: `keine` ≡ 1.0, `nvg_zwei_erhoehungen` stepping to 1.2 at year 6 and 1.4 at year 12 | **[std]** — the schedule is a mechanics demonstration and take-up is exogenous. **Gap 7 is now closed**: [S3] § 13 gives a nine-item event list, a **twelve-month** exercise window, a per-event cap of **20 % of the original sum insured, at most 50 000 €**, at most **five** occasions in all, and an end above **age 50**. Two 20 % increments are inside those caps; that both are taken is a model assumption no document supports. **The CSV is unchanged** [S3] [S11] [S17] |
 | `lapse_table.csv` | **Annual** lapse by **1-based** `policy_year`, read at `policy_year(t)`, 6 / 4 / 4 / 3 %; spread to the month by `lapse_rate_mth` | **[std]**, argued from structure, not data: nothing is forfeited by lapsing, exit is frictionless because the *Versicherungsperiode* follows the *Zahlweise* [R8], and the need amortises. The GDV whole-market *Stornoquote* [R18] is **deliberately not used** (gap 13) |
-| `freq_loading_table.csv` | *Ratenzahlungszuschlag* and instalment count by *Zahlweise*: 1.000 / 1.02 / 1.03 / 1.05 | **[std]** — a German market convention with **no carrier attribution** (gap 21). Whether carriers strike it on the *Bruttobeitrag* or the *Zahlbeitrag* was not established; this model loads the **billed** amount |
+| `prem_freq_table.csv` | *Ratenzahlungszuschlag* and instalment count by *Zahlweise*: 1.000 / 1.02 / 1.03 / 1.05 | **[std]** — a German market convention with **no carrier attribution** (gap 21). Whether carriers strike it on the *Bruttobeitrag* or the *Zahlbeitrag* was not established; this model loads the **billed** amount |
 
 ## The published identities
 

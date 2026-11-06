@@ -91,7 +91,7 @@ lapse_file                 data.lapse_table()                     lapse_table.cs
 zulage_file                data.zulage_schedule()                 zulage_schedule.csv
 income_file                data.income_schedule()                 income_schedule.csv
 surplus_file               data.surplus_table()                   surplus_scenario.csv
-freq_loading_file          data.freq_loading_table()              freq_loading.csv
+prem_freq_file             data.prem_freq_table()                 prem_freq_table.csv
 param_file                 data.param()                           param_tariff_type.csv
 =========================  =====================================  ==========================
 

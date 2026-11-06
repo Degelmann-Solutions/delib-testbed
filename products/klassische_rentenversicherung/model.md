@@ -113,7 +113,7 @@ times it; `aufschub_y`, `prem_term_y` and `rgz_years` are **counts of years**, s
 moved (`t < 12n` for the accumulation phase, `12m` guaranteed instalments) rather than the values;
 and `pup_year` stays the 1-based contractual policy year of the *Beitragsfreistellung*, with 0
 meaning "never", which the model maps to the paid-up policy year `k = pup_year − 1`.
-`freq_load_table.csv`'s `n_instalments` column remains documentation: see *The
+`prem_freq_table.csv`'s `instalments` column remains documentation: see *The
 Ratenzahlungszuschlag*, below.
 
 ## The declared rate contains the guarantee — the German delta
@@ -199,7 +199,7 @@ instead of being free.
 
 Instalments are **not** modelled, on the monthly grid as on the annual one: `prem_freq_load()` charges the
 loaded annual amount in the first month of the policy year, `prem_due(t)` is
-`duration_mth(t) % 12 == 0`, and `n_instalments` stays documentation — so a monthly payer here pays
+`duration_mth(t) % 12 == 0`, and `instalments` stays documentation — so a monthly payer here pays
 1,050 × the annual premium once a year, not twelve times.
 
 That is a decision rather than an omission, and three things fix it. § 12 Abs. 1 VVG makes the
@@ -362,7 +362,7 @@ folder. `RV_DE_S/` holds nothing but formulas:
 products/klassische_rentenversicherung/
   model_point_table.csv  mort_table.csv  decl_rate_table.csv   <- inputs live here,
   rentenfaktor_table.csv  charge_table.csv  lapse_table.csv       beside run.py and
-  freq_load_table.csv  param_tariff_type.csv  run.py              the four documents
+  prem_freq_table.csv  param_tariff_type.csv  run.py              the four documents
   RV_DE_S/                     <- formulas only
     __init__.py  _system.json     (model docstring)
     Data/__init__.py              (reads the CSVs, once per model)
@@ -392,7 +392,7 @@ repository is checked out.
 | `rentenfaktor_file` | `rentenfaktor_table()` | `rentenfaktor_table.csv` | The *aktueller Rentenfaktor* by scenario and attained age at *Rentenbeginn*, rising 2,5 % per year of age. `base` / `low` / `high` anchored at age 67 on 32,00 € / 25,50 € / 35,00 € **[std]** — no market level was established for any carrier in any year (gap 3) |
 | `charge_file` | `charge_table()` | `charge_table.csv` | Two charge sets, `zillmer_25` and `zillmer_40`, eight items each, keyed per item so every number carries its own provenance |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual surrender by contractual policy year (`policy_year` 1–40, read through `policy_year(t)`), last row held. Levels **[std]**; the one shaped feature is the **duration-12 step** at the § 20 Abs. 1 Nr. 6 EStG twelve-year threshold [R6] [REG-R45] |
-| `freq_loading_file` | `freq_loading_table()` | `freq_load_table.csv` | The *Ratenzahlungszuschlag*: 1,000 / 1,020 / 1,030 / 1,050 **[std]**, and `n_instalments` for documentation — the premium is collected annually in advance whatever the elected frequency, for the reasons under *The Ratenzahlungszuschlag* above |
+| `prem_freq_file` | `prem_freq_table()` | `prem_freq_table.csv` | The *Ratenzahlungszuschlag*: 1,000 / 1,020 / 1,030 / 1,050 **[std]**, and `instalments` for documentation — the premium is collected annually in advance whatever the elected frequency, for the reasons under *The Ratenzahlungszuschlag* above |
 | `param_file` | `param()` | `param_tariff_type.csv` | Every scalar that is neither a charge nor a rate table — the four expense levels and their inflation, `mort_be_factor`, `mort_base_year`, `omega_age`, `val_reserve_rate`, the three *Überschussrente* parameters and `roll_fwd_tol`. They live in a file rather than in References so that each carries its own provenance tag, which a Reference cannot |
 
 **The trade-off:** the model is not portable on its own — copy `RV_DE_S/` without the CSVs and

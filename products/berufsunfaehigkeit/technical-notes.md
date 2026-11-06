@@ -109,7 +109,7 @@ German ones, and each now carries a document that was read.
 | `leistungsdyn_rate` | float p.a. | *Leistungsdynamik*, escalation of the *BU-Rente* **in payment**, on each anniversary of onset | all at 0,02; 12 at 0,00 |
 | `premium_form` | enum {`level`, `dynamik`} | Level *Bruttobeitrag*, or *Beitragsdynamik* | 4 (`dynamik`) |
 | `beitragsdyn_rate` | float p.a. | Effective *Beitragsdynamik*, net of declined increases; 0 on the `level` form | 4 (0,03) |
-| `prem_freq` | enum {`monthly`,`quarterly`,`half_yearly`,`annual`} | Payment frequency; keys `freq_loading_table.csv` | 1 (monthly), 4 (annual), 5 (quarterly), 6 (half-yearly) |
+| `prem_freq` | enum {`monthly`,`quarterly`,`half_yearly`,`annual`} | Payment frequency; keys `prem_freq_table.csv` | 1 (monthly), 4 (annual), 5 (quarterly), 6 (half-yearly) |
 | `gross_prem_ann` | EUR p.a. | *Bruttobeitrag* override; **0 = derive by equivalence** | 13 (2 400,00) |
 | `beitragsverrechnung` | float | *Zahlbeitrag* / *Bruttobeitrag* | all at 0,70; 13 at 0,55 |
 | `rating_factor` | float | *Risikozuschlag* — a multiplier on the *Bruttobeitrag* **only** | 11 (1,50) |
@@ -352,7 +352,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | `mortality_table.csv` | `age` (18 – 70) | `mort_rate_actv`, `mort_rate_dis`, `provenance` |
 | `occupation_table.csv` | `berufsgruppe` (BG1 – BG5) | `occ_factor`, `label`, `provenance` |
 | `lapse_table.csv` | `policy_year` (1 – 6, the last being ultimate) | `lapse_rate`, `provenance` |
-| `freq_loading_table.csv` | `prem_freq` | `prem_mode_months`, `prem_freq_load`, `provenance` |
+| `prem_freq_table.csv` | `prem_freq` | `instalments`, `prem_freq_load`, `provenance` |
 | `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance`: `roll_fwd_tol`, the tolerance of the `check_*` identities; `accept_factor`; `inc_load_first`, `recov_load_first`, `mort_dis_load_first`, `mort_actv_load_first`; `acq_rate`, `admin_prem_rate`, `admin_flat_ann`, `claim_assess_cost`, `claim_maint_cost_mth`; `runoff_months` |
 
 ---
@@ -373,7 +373,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | `R(t)` | `bu_rente_pp(t)` — the **insured** monthly *BU-Rente*, `= R × (1 + g_B)^(y(t) − 1)` |
 | `R_p(t, z)` | `rente_pay_pp(t, z)` — the monthly *BU-Rente* **in payment** for cohort `z` |
 | `K` | `karenz_months`; `g_L` = `leistungsdyn_rate`; `g_B` = `beitragsdyn_rate` |
-| `θ` | `beitragsverrechnung`; `ρ` = `rating_factor`; `φ` = `prem_freq_load`; `M` = `prem_mode_months` |
+| `θ` | `beitragsverrechnung`; `ρ` = `rating_factor`; `φ` = `prem_freq_load`; `M` = `prem_cycle` |
 | `κ` | `occ_factor` for the model point's `berufsgruppe`; `α` = `accept_factor` = 0,80; `υ` = `au_uplift` |
 | `P` | `prem_gross_level_pp()`, the **level annual** *Bruttobeitrag* |
 | `P_b(t)` | `prem_gross_pp(t)` — the *Bruttobeitrag* instalment due at `t`; `P_z(t)` the *Zahlbeitrag* instalment |
@@ -717,7 +717,7 @@ for any of them, and the two that would matter most are the two no source suppli
 **Configuration.** Model point 1, the anchor cell, in full: `status = aktiv`, `issue_age = 30`,
 `sex = F`, `berufsgruppe = BG1` (*Bürotätigkeit*, `occ_factor` 1,00), `bu_rente_mth = 1 500,00 €`,
 `cover_end_age = 67`, `benefit_end_age = 67`, `karenz_months = 0`, `leistungsdyn_rate = 0,02`,
-`premium_form = level`, `beitragsdyn_rate = 0,00`, `prem_freq = monthly` (`prem_mode_months = 1`,
+`premium_form = level`, `beitragsdyn_rate = 0,00`, `prem_freq = monthly` (`prem_cycle = 1`,
 `prem_freq_load = 1,05`), `gross_prem_ann = 0` so the *Bruttobeitrag* is **derived by equivalence**,
 `beitragsverrechnung = 0,70`, `rating_factor = 1,00`, `au_klausel = false`, `au_uplift = 1,00`,
 `wiedereingliederung_months = 6`, `duration_mth_init = 0`, `claim_duration_init = 0`. Hence
@@ -905,7 +905,7 @@ only one of the two premium streams would have no way to show it.
 
 **The *Beitragsdynamik* variant.** Model point 4 is the second premium form: `issue_age = 25`,
 `berufsgruppe = BG2` (`occ_factor` 1,40), `bu_rente_mth = 1 200,00 €`, `premium_form = dynamik`
-with `beitragsdyn_rate = 0,03`, and **annual** payment (`prem_mode_months = 12`,
+with `beitragsdyn_rate = 0,03`, and **annual** payment (`prem_cycle = 12`,
 `prem_freq_load = 1,00`). Everything else is the anchor's. Hence `proj_len() = 12 × (67 − 25) = 504`,
 so the frame is `t = 0 … 503`; `BS_unit = Σ_{y=1..42} 1,03^(y−1) = 82.0231964511`, and the
 equivalence gives

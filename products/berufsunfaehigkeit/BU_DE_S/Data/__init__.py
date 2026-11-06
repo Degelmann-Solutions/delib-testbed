@@ -35,14 +35,14 @@ claim_duration_file       claim_duration_table()        claim_duration_table.csv
 mort_file                 mort_table()                  mortality_table.csv
 occupation_file           occupation_table()            occupation_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
-freq_loading_file         freq_loading_table()          freq_loading_table.csv
+prem_freq_file            prem_freq_table()             prem_freq_table.csv
 param_file                param()                       param_tariff_type.csv
 ========================  ============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
 ``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table``,
-``lapse_table`` and ``freq_loading_table``, this space's ``inception_table_dict``,
+``lapse_table`` and ``prem_freq_table``, this space's ``inception_table_dict``,
 ``claim_duration_table_dict`` and ``occupation_table_dict``, with ``inception_table_ages``
 and ``mort_table_ages``, the age range the lookups clamp to, and
 ``claim_duration_last_year``, the claim year the claim-duration lookups cap at.
@@ -91,8 +91,8 @@ The three anchors, and what a replacement built from company or DAV data must pr
 The remaining three files are market conventions rather than biometric bases:
 ``occupation_table.csv`` carries the five-class *Berufsgruppen* cut with BG1 at 1.00 and
 BG4 at 3.00 as its anchors, ``lapse_table.csv`` a low German BU *Stornoquote* falling
-from 4.0 % to a 2.0 % ultimate, and ``freq_loading_table.csv`` the
-*Ratenzahlungszuschlag* ladder with the months between instalments. All three are
+from 4.0 % to a 2.0 % ultimate, and ``prem_freq_table.csv`` the
+*Ratenzahlungszuschlag* ladder with the instalments a year. All three are
 ``[std]``: no German insurer publishes any of them.
 """
 
@@ -241,7 +241,7 @@ occupation_file = "occupation_table.csv"
 
 lapse_file = "lapse_table.csv"
 
-freq_loading_file = "freq_loading_table.csv"
+prem_freq_file = "prem_freq_table.csv"
 
 param_file = "param_tariff_type.csv"
 

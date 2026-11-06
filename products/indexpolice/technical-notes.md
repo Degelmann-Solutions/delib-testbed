@@ -119,7 +119,7 @@ final `provenance` column**, one tag per row — delib's second ruling, asserted
 | `election_table.csv` | `elect_id`, `t` | `w` — the fraction of the year's surplus directed to the index arm; `provenance` |
 | `mort_table.csv` | `sex`, `age` | `qx`; `provenance` |
 | `lapse_table.csv` | `t` | `lapse_rate` (the base rate before the terminal-year override); `provenance` |
-| `freq_load_table.csv` | `prem_freq` | `prem_freq_load` (the *Ratenzahlungszuschlag* multiplier); `provenance` |
+| `prem_freq_table.csv` | `prem_freq` | `instalments` (a year, not read); `prem_freq_load` (the *Ratenzahlungszuschlag* multiplier); `provenance` |
 
 Three index paths are shipped, all **[std]**, and their construction is stated so that a reader can
 rebuild them exactly rather than take them on trust:

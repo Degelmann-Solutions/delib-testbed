@@ -46,7 +46,7 @@ claim_duration_file       data.claim_duration_table()        claim_duration_tabl
 mort_file                 data.mort_table()                  mortality_table.csv
 occupation_file           data.occupation_table()            occupation_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
-freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
+prem_freq_file            data.prem_freq_table()             prem_freq_table.csv
 param_file                data.param()                       param_tariff_type.csv
 ========================  =================================  ==========================
 
@@ -85,7 +85,7 @@ g_B                        beitragsdyn_rate()              Beitragsdynamik p.a.
 theta                      beitragsverrechnung()           Zahlbeitrag / Bruttobeitrag
 rho                        rating_factor()                 Risikozuschlag on the premium
 phi                        prem_freq_load()                Ratenzahlungszuschlag
-M                          prem_mode_months()              Months between instalments
+M                          prem_cycle()                    Months between instalments
 kappa                      occ_factor()                    Occupational loading
 alpha                      accept_factor                   Anerkennungsquote factor
 upsilon                    au_uplift()                     AU-Klausel inception uplift
@@ -414,18 +414,6 @@ def beitragsdyn_rate():
     if premium_form() == "level":
         return 0.0
     return float(model_point()["beitragsdyn_rate"])
-
-
-def prem_mode_months():
-    """M: the number of months between premium instalments — 12, 6, 3 or 1.
-
-    A premium falls in month ``t`` when ``duration_mth(t)`` is a multiple of it, so on
-    the anchor cell one falls every month and on model point 4 one falls in months
-    0, 12, 24, ... and is twelve times as large.  Carrying the frequency as a parameter
-    rather than smoothing it is the whole reason this model runs on a monthly grid.
-    """
-    return int(data.freq_loading_table_dict()["prem_mode_months"][   # noqa: F821
-        prem_freq()])
 
 
 def gross_prem_ann():
@@ -1013,23 +1001,23 @@ def prem_gross_ann_pp(t):
 def prem_due(t):
     """1 in a month a premium instalment falls due, 0 otherwise.
 
-    ``duration_mth(t) % prem_mode_months() == 0``.  On the anchor cell that is every
+    ``duration_mth(t) % prem_cycle() == 0``.  On the anchor cell that is every
     month; on model point 4, months 0, 12, 24, ...; and on model point 6, whose valuation
     date is 180 policy months in and whose mode is half-yearly, months 0, 6, 12, ...
     """
-    return 1.0 if duration_mth(t) % prem_mode_months() == 0 else 0.0
+    return 1.0 if duration_mth(t) % prem_cycle() == 0 else 0.0
 
 
 def prem_gross_pp(t):
     """P_b(t): the *Bruttobeitrag* **instalment** due at the start of month t, per policy.
 
-    ``prem_due(t) x prem_gross_ann_pp(t) x prem_freq_load() x prem_mode_months() / 12``, so it
+    ``prem_due(t) x prem_gross_ann_pp(t) x prem_freq_load() x prem_cycle() / 12``, so it
     is zero in a month that is not a payment month and carries the whole period's premium
     in one that is.  The *Ratenzahlungszuschlag* scales it, which is why the annual
     *Bruttobeitrag* of a monthly payer buys a 5 % larger bill than the tariff amount.
     """
     return (prem_due(t) * prem_gross_ann_pp(t) * prem_freq_load()
-            * prem_mode_months() / 12.0)
+            * prem_cycle() / 12.0)
 
 
 def prem_zahl_pp(t):

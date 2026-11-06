@@ -70,7 +70,7 @@ mort_file                 data.mort_table()                  mort_table.csv
 benefit_schedule_file     data.benefit_schedule()            benefit_schedule.csv
 nvg_schedule_file         data.nvg_schedule()                nvg_schedule.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
-freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
+prem_freq_file            data.prem_freq_table()             prem_freq_table.csv
 param_file                data.param()                       param_tariff_type.csv
 ========================  =================================  ==========================
 
@@ -366,7 +366,7 @@ What the finer grid does resolve is everything that is **not** a contract term. 
 *Zahlweise* is now real: a modal *Zahlbeitrag* is collected in instalments on its own
 cycle (:func:`prem_inst_pp`) instead of whole at the anniversary, so the four
 fractionated model points collect 0,95 %-1,67 % less over the run — model point 4's
-*monatlich* premium income falls from 4 471,82 € to 4 400,26 € — which is the
+`monthly` premium income falls from 4 471,82 € to 4 400,26 € — which is the
 premium-cessation rule biting where an annual grid could not express it, and the
 *Ratenzahlungszuschlag* at last charging for a service the model renders. Claims fall in
 the month of claim rather than at the year end, so the anchor's death claims fall from
@@ -953,15 +953,6 @@ def beitragsverrechnung_rate():
 # What is billed
 
 
-def prem_cycle():
-    """Months between premium instalments: 12 annual, 6 half-yearly, 3 quarterly, 1 monthly.
-
-    ``12 // instalments()`` — arithmetic of the elected *Zahlweise* rather than an
-    assumption, so it is written here rather than held in a Reference or a column.
-    """
-    return 12 // instalments()
-
-
 def prem_due(t):
     """Whether a premium instalment falls due at the **beginning** of month t.
 
@@ -1054,7 +1045,7 @@ def prem_inst_pp(t):
     the split identity holds instalment by instalment as well as year by year.  An annual
     payer therefore collects the whole 733,01 € of the anchor cell in the first month of
     each policy year and nothing in the other eleven; model point 4 is the contrast,
-    twelve instalments on a *monatlich* *Zahlweise*.
+    twelve instalments on a `monthly` *Zahlweise*.
 
     **This is the one place the finer grid changes an answer rather than its resolution.**
     On a fractionated point the instalments after the first are collected on a block that
@@ -1234,7 +1225,7 @@ def maint_pp(t):
     carries the same annual charge as it did — but it is now borne by the in-force of
     **each month** rather than of the anniversary, which is what makes a decrementing
     block cost less.  The collection cost follows the *Zahlweise*: it is charged when a
-    bill is collected, which on an annual payer is once a year and on a *monatlich* one is
+    bill is collected, which on an annual payer is once a year and on a `monthly` one is
     twelve times, and that is what a collection cost is.
 
     The tariff loads 5,0 % of each *Bruttobeitrag* against a modelled collection cost of

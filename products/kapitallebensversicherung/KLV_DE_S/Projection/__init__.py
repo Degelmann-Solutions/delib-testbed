@@ -84,7 +84,7 @@ mort_file                 data.mort_table()                  mort_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 surplus_rate_file         data.surplus_rate_table()          surplus_rate_table.csv
 charge_file               data.charge_table()                cost_table.csv
-freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
+prem_freq_file            data.prem_freq_table()             prem_freq_table.csv
 deckrv_file               data.deckrv_table()                deckrv_table.csv
 param_file                data.param()                       param_tariff_type.csv
 ========================  =================================  ==========================
@@ -625,7 +625,7 @@ def prem_freq_load():
     """
     if unterjaehrig_form() == "echt":
         return 1.0
-    return float(data.freq_loading_table_dict()["prem_freq_load"][   # noqa: F821
+    return float(data.prem_freq_table_dict()["prem_freq_load"][      # noqa: F821
         prem_freq()])
 
 
@@ -1241,14 +1241,6 @@ def prem_paid_pp(k):
     first of them.
     """
     return prem_charged_pp(k) - prem_offset_pp(k)
-
-
-def prem_cycle():
-    """Months between premium instalments: 12 annual, 6 half-yearly, 3 quarterly, 1 monthly.
-
-    ``12 // instalments()`` — arithmetic of the elected *Zahlweise* rather than an assumption.
-    """
-    return 12 // instalments()
 
 
 def prem_due(t):

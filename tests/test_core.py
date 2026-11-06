@@ -57,7 +57,10 @@
   listed for its space in ``STRUCTURAL_LITERALS``, and every listed value occurs there.
   BU's claim-year caps are the last ``dur_year`` of its claim-duration table, so a scratch
   copy with a twelfth row reads it; Pflege's surrender cap is the last policy year of its
-  surrender table likewise. The payment frequencies FRV and Sofort allow are the keys of
+  surrender table likewise. The products with a regular premium read their premium
+  frequencies from one ``prem_freq_table.csv``, keyed ``annual`` to ``monthly``, with
+  ``instalments`` an ``int`` a year, and every model point's ``prem_freq`` is a key. The
+  payment frequencies FRV and Sofort allow are the keys of
   their own tables; a frequency outside the table raises, and a row added to a scratch copy
   admits it. Pflege's instalment frequencies and the months each covers are its own table
   likewise. Riester's annuity frequency is a row ``ann_freq``, 12 as an ``int`` as Basis', and
@@ -271,12 +274,12 @@ CORE_CELLS = {
         "rentenfaktor_table": {"basisrente": "derived",
                                "fondsgebundene_rentenversicherung": "derived",
                                "klassische_rentenversicherung": "derived"},
-        "freq_loading_table": {"berufsunfaehigkeit": "derived",
-                               "indexpolice": "derived",
-                               "kapitallebensversicherung": "derived",
-                               "klassische_rentenversicherung": "derived",
-                               "riester_rente": "derived",
-                               "risikolebensversicherung": "derived"},
+        "prem_freq_table": {"berufsunfaehigkeit": "derived",
+                            "indexpolice": "derived",
+                            "kapitallebensversicherung": "derived",
+                            "klassische_rentenversicherung": "derived",
+                            "riester_rente": "derived",
+                            "risikolebensversicherung": "derived"},
         "surplus_table_index": {"basisrente": "derived",
                                 "riester_rente": "derived"},
         "surplus_table": {"basisrente": "derived",
@@ -300,7 +303,7 @@ CORE_CELLS = {
         "mort_table_dict": dict.fromkeys(MODELS, "derived"),
         "lapse_table_dict": dict.fromkeys(MODELS, "derived"),
         "rentenfaktor_table_dict": dict.fromkeys(MODELS, "derived"),
-        "freq_loading_table_dict": dict.fromkeys(MODELS, "derived"),
+        "prem_freq_table_dict": dict.fromkeys(MODELS, "derived"),
         "surplus_table_dict": dict.fromkeys(MODELS, "derived"),
         "charge_table_dict": dict.fromkeys(MODELS, "derived"),
         "hoechstrechnungszins_table_dict": dict.fromkeys(MODELS, "derived"),
@@ -342,8 +345,12 @@ CORE_CELLS = {
                            "klassische_rentenversicherung": "derived",
                            "riester_rente": "derived",
                            "risikolebensversicherung": "derived"},
-        "instalments": {"kapitallebensversicherung": "derived",
+        "instalments": {"berufsunfaehigkeit": "derived",
+                        "kapitallebensversicherung": "derived",
                         "risikolebensversicherung": "derived"},
+        "prem_cycle": {"berufsunfaehigkeit": "derived",
+                       "kapitallebensversicherung": "derived",
+                       "risikolebensversicherung": "derived"},
         "issue_age": {**dict.fromkeys(MODELS, "derived"), "sofortrente": "override"},
         "sex": {"berufsunfaehigkeit": "derived",
                 "fondsgebundene_rentenversicherung": "derived",
@@ -2608,7 +2615,7 @@ DICT_READERS = {
     "mort_table": "mort_file",
     "lapse_table": "lapse_file",
     "rentenfaktor_table": "rentenfaktor_file",
-    "freq_loading_table": "freq_loading_file",
+    "prem_freq_table": "prem_freq_file",
     "surplus_table": "surplus_file",
     "charge_table": "charge_file",
     "hoechstrechnungszins_table": "hoechstrechnungszins_file",
@@ -2680,16 +2687,16 @@ def test_frv_charge_row_is_read_only(product_models):
     assert shared == before and dict(row) == before
 
 
-def test_a_prem_freq_without_a_loading_raises(tmp_path):
+def test_a_prem_freq_outside_the_table_raises(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     table = folder / "model_point_table.csv"
     points = pd.read_csv(table, index_col="point_id")
     point_id = points.index[0]
-    points.loc[point_id, "prem_freq"] = "woechentlich"
+    points.loc[point_id, "prem_freq"] = "weekly"
     points.to_csv(table)
     copy = mx.read_model(folder / MODELS["risikolebensversicherung"], name="FreqProbe")
     try:
-        message = "no frequency loading for prem_freq woechentlich"
+        message = "invalid prem_freq weekly"
         with pytest.raises(Exception, match=message) as raised:
             copy.Projection[point_id].prem_freq()
         assert raised_value_error(raised, message)
@@ -3135,7 +3142,7 @@ def test_klv_surplus_rates_and_stornoabzug_hold_their_last_policy_year(product_m
 
 def test_klv_echt_instalments_carry_no_loading(product_models):
     model = product_models("kapitallebensversicherung")
-    loading = model.Data.freq_loading_table()
+    loading = model.Data.prem_freq_table()
     unecht, echt = model.Projection[4], model.Projection[5]
     assert (unecht.prem_freq(), echt.prem_freq()) == ("monthly", "monthly")
     assert (unecht.unterjaehrig_form(), echt.unterjaehrig_form()) == ("unecht", "echt")
@@ -3283,6 +3290,44 @@ def test_basis_single_premium_reads_no_loading(tmp_path):
         assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
     finally:
         copy.close()
+
+
+# The premium payment frequencies, one name and one table in every product with a regular
+# premium: key -> instalments a year.
+PREM_FREQ_INSTALMENTS = {"annual": 1, "half_yearly": 2, "quarterly": 4, "monthly": 12}
+PREM_FREQ_PRODUCTS = sorted(["berufsunfaehigkeit", "indexpolice", "kapitallebensversicherung",
+                             "klassische_rentenversicherung", "riester_rente",
+                             "risikolebensversicherung"])
+
+
+def test_the_products_with_a_premium_frequency_table_are_listed(product_models):
+    having = [product for product in sorted(MODELS)
+              if "prem_freq_file" in product_models(product).Data.refs]
+    assert having == PREM_FREQ_PRODUCTS
+
+
+@pytest.mark.parametrize("product", PREM_FREQ_PRODUCTS)
+def test_premium_frequencies_are_one_table_with_instalments(product, product_models):
+    """``prem_freq_table.csv`` keyed by ``prem_freq``, its ``instalments`` an ``int`` a year,
+    and every model point's ``prem_freq`` one of its keys."""
+    model = product_models(product)
+    data = model.Data
+    assert data.prem_freq_file == "prem_freq_table.csv"
+    table = data.prem_freq_table()
+    assert table.index.name == "prem_freq"
+    assert set(table.index) <= set(PREM_FREQ_INSTALMENTS)
+    assert table.columns[0] == "instalments" and table.columns[-1] == "provenance"
+    assert set(table.columns) <= {"instalments", "prem_freq_load", "provenance"}
+    instalments = data.prem_freq_table_dict()["instalments"]
+    assert all(type(n) is int for n in instalments.values())
+    assert instalments == {key: PREM_FREQ_INSTALMENTS[key] for key in table.index}
+    points = data.model_point_table()
+    assert not {"prem_mode", "prem_mode_months"} & set(points.columns)
+    assert set(points["prem_freq"]) <= set(table.index)
+    for point_id in points.index:
+        item = model.Projection[point_id]
+        assert type(item.instalments()) is int
+        assert item.prem_cycle() == 12 // PREM_FREQ_INSTALMENTS[points.at[point_id, "prem_freq"]]
 
 
 # The payment frequencies a product allows, a table of its own: product -> (keys cell, keys).

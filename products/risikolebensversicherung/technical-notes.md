@@ -86,8 +86,8 @@ the library's retired-names register.
   `issue_age + policy_term − 1`. `cover_end_age` is **derived**, not carried, so the two cannot
   disagree.
 - **Timing conventions [std].** A *Zahlbeitrag* **instalment** on the *Zahlweise*'s own cycle at the
-  **beginning** of month `t` — one month in twelve for a *jaehrlich* payer, every month for a
-  *monatlich* one; acquisition cost and initial commission at issue, i.e. in month `t = 0` of a
+  **beginning** of month `t` — one month in twelve for an `annual` payer, every month for a
+  `monthly` one; acquisition cost and initial commission at issue, i.e. in month `t = 0` of a
   new-business point and **never** on an in-force point, where they are sunk; a twelfth of the
   sum-related admin charge, the collection cost on the instalment actually collected, and the
   renewal commission on it, at the beginning of the month on the opening in-force; **death claims
@@ -141,7 +141,7 @@ carries a per-row `provenance` column**, which is delib's second ruling and is m
 | `benefit_schedule.csv` | `schedule_id`, `policy_year` | `benefit_factor` | per row |
 | `nvg_schedule.csv` | `nvg_id`, `policy_year` | `sum_uplift` (cumulative multiplier on the sum insured) | per row |
 | `lapse_table.csv` | `policy_year` | `lapse_rate` | per row |
-| `freq_loading_table.csv` | `prem_freq` | `instalments`, `prem_freq_load` | per row |
+| `prem_freq_table.csv` | `prem_freq` | `instalments`, `prem_freq_load` | per row |
 
 Six files, no orphans: the conventions suite asserts that every CSV beside the model backs a
 filename Reference in `Data` and that the set read by a full sweep is exactly the set registered in
@@ -164,7 +164,7 @@ not References on `Projection` as in `TradLife_A`; their values and tags are the
 | `policy_term` | int | *Versicherungsdauer* in whole years; equals `proj_len_y()`, and `proj_len() = 12 × it` | all |
 | `prem_term` | int | *Beitragszahlungsdauer* in whole years, `≤ policy_term` | 6 (12 < 20) |
 | `premium_form` | enum {laufend, einmal} | Level *Bruttobeitrag* over `prem_term`, or a single *Einmalbeitrag* at issue | 7 |
-| `prem_freq` | enum {jaehrlich, halbjaehrlich, vierteljaehrlich, monatlich} | *Zahlweise*; drives the *Ratenzahlungszuschlag* | 4, 5, 6, 10 |
+| `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | *Zahlweise*; drives the *Ratenzahlungszuschlag* | 4, 5, 6, 10 |
 | `benefit_schedule_id` | str | Key into `benefit_schedule.csv`: `konstant`, `linear_fallend`, `annuitaet_fallend_3pct` | 4, 5 |
 | `nvg_schedule_id` | str | Key into `nvg_schedule.csv`: `keine`, `nvg_zwei_erhoehungen` | 9 |
 | `surplus_form` | enum {beitragsverrechnung, keine} | Participating with *Beitragsverrechnung*, or the § 153-excluded non-participating tariff [R5] | 12 |
@@ -197,16 +197,16 @@ anchor cell.**
 
 | # | Configuration | What it exercises |
 |---|---|---|
-| 1 | 35 M N, 300 000 € `konstant`, 25/25 y, `laufend`, `jaehrlich`, participating | **The anchor.** The representative composite |
+| 1 | 35 M N, 300 000 € `konstant`, 25/25 y, `laufend`, `annual`, participating | **The anchor.** The representative composite |
 | 2 | As 1 but `sex = F` | The unisex cross-subsidy: identical tariff, different projected claims |
 | 3 | As 1 but `smoker = R` | The smoker split; the derived premium ratio against point 1 |
-| 4 | 40 M N, 250 000 € `linear_fallend`, 20/20 y, `monatlich` | Falling sum; the 5 % *Ratenzahlungszuschlag* |
-| 5 | 33 F N, 400 000 € `annuitaet_fallend_3pct`, 30/30 y, `vierteljaehrlich` | *Darlehensabsicherung* schedule; the 3 % loading |
-| 6 | 45 M N, 200 000 € `konstant`, 20/**12** y, `halbjaehrlich` | *Abgekürzte Beitragszahlungsdauer*; the largest *Deckungskapital*; the 2 % loading |
-| 7 | 50 M N, 100 000 € `konstant`, 10/**1** y, `einmal`, `jaehrlich` | The second premium form; the equivalence at its boundary |
+| 4 | 40 M N, 250 000 € `linear_fallend`, 20/20 y, `monthly` | Falling sum; the 5 % *Ratenzahlungszuschlag* |
+| 5 | 33 F N, 400 000 € `annuitaet_fallend_3pct`, 30/30 y, `quarterly` | *Darlehensabsicherung* schedule; the 3 % loading |
+| 6 | 45 M N, 200 000 € `konstant`, 20/**12** y, `half_yearly` | *Abgekürzte Beitragszahlungsdauer*; the largest *Deckungskapital*; the 2 % loading |
+| 7 | 50 M N, 100 000 € `konstant`, 10/**1** y, `einmal`, `annual` | The second premium form; the equivalence at its boundary |
 | 8 | 30 F N, 150 000 € `konstant`, 30/30 y, `duration_init = 12` | **In force.** The frame opens at `t = 144`; past the § 161 window and the elevated lapse durations |
 | 9 | 32 M N, 200 000 € `konstant`, 28/28 y, `nvg_zwei_erhoehungen` | *Nachversicherungsgarantie*; the § 161 clock restarting per increment |
-| 10 | 38 M N + 36 F N, 300 000 € `konstant`, 22/22 y, `monatlich`, `lives = 2` | *Verbundene Leben*; the first-death rate |
+| 10 | 38 M N + 36 F N, 300 000 € `konstant`, 22/22 y, `monthly`, `lives = 2` | *Verbundene Leben*; the first-death rate |
 | 11 | 42 M R, 250 000 € `konstant`, 18/18 y, `rating_factor = 1.75` | *Risikozuschlag* on an impaired smoker |
 | 12 | 36 F N, 300 000 € `konstant`, 25/25 y, `surplus_form = keine` | The § 153-excluded tariff: `prem_rebate ≡ 0`, billed = guaranteed |
 | 13 | 60 M N, 50 000 € `konstant`, 5/5 y | **Boundary.** Oldest entry, shortest term; the § 161 window covers three of five years |
@@ -631,11 +631,11 @@ The sum-related administration charge is an annual amount and accrues a twelfth 
 that runs a full year carries the same charge as it did — but it is borne by the in-force of **each
 month** rather than of the anniversary, which is what makes a decrementing block cost less. The
 collection cost follows the *Zahlweise*: it is charged when a bill is actually collected, once a
-year on a *jaehrlich* payer and twelve times on a *monatlich* one, which is what a collection cost
+year on an `annual` payer and twelve times on a `monthly` one, which is what a collection cost
 is and what the *Ratenzahlungszuschlag* was pricing all along.
 
 **The *Zahlweise* is now a cash-flow fact rather than a loading with nothing behind it.** On the
-annual grid the `instalments` column of `freq_loading_table.csv` could not be used for anything: the
+annual grid the `instalments` column of `prem_freq_table.csv` could not be used for anything: the
 whole loaded annual premium was collected at the anniversary whatever the mode. Here it sets the
 cycle, so a fractionated payer's later instalments are collected on a block that has already lost
 lives, and § 168 VVG's *Versicherungsperiode* is expressed rather than approximated. The instalments
@@ -834,7 +834,7 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
 10. **Mishandling the *Ratenzahlungszuschlag*.** `φ` multiplies the **annual** billed amount, so
     both premium streams and the rebate carry it once, and the instalment is that loaded amount
     divided by `r`. Assert `check_prem_split()` on every model point; that `prem_gross_pp(0)` on
-    model point 4 (*monatlich*) is exactly `1.05 ×` the same cell recomputed at `jaehrlich`; and
+    model point 4 (`monthly`) is exactly `1.05 ×` the same cell recomputed at `annual`; and
     that the twelve instalments of a policy year sum to exactly the year's annual amount — a single
     loading, not one applied to each stream separately and not one applied again to each instalment.
 11. **Double-counting premium cessation at death.** Instalments are collected at the beginning of
@@ -846,7 +846,7 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
     `n = 20`) assert `prem_gross_pp(t) == premiums(t) == prem_rebate_pp(t) == 0` for
     `t = 144…239`, while `claims_death(t) > 0` there and `res_pp_at(y,"BEF_PREM")` is falling. The
     boundary is an anniversary, the *Beitragszahlungsdauer* being stated in whole years; the last
-    instalment of this *halbjaehrlich* cell falls in month 138.
+    instalment of this `half_yearly` cell falls in month 138.
 13. **Hard-coding a constant sum insured.** Two of the three German shapes fall (mechanic 3). Assert
     `benefit_pp(t)` is flat on point 1; falls linearly to `S0/n` on point 4; and on point 5 falls
     **slowly then fast**, `benefit_pp(12) − benefit_pp(0) < benefit_pp(12(n−1)) − benefit_pp(12(n−2))`
@@ -921,7 +921,7 @@ evidence for any of them** (research gap 13).
 **Configuration.** Model point 1, the anchor cell, in full: `point_id = 1`,
 `policy_id = RLV-000001`, `issue_age = 35`, `sex = M`, `smoker = N`,
 `sum_assured = 300 000 €`, `policy_term = 25`, `prem_term = 25`,
-`premium_form = laufend`, `prem_freq = jaehrlich` (`prem_freq_load = 1.000`,
+`premium_form = laufend`, `prem_freq = annual` (`prem_freq_load = 1.000`,
 `instalments = 1`), `benefit_schedule_id = konstant` (`benefit_factor = 1.0` at every `t`),
 `nvg_schedule_id = keine` (`sum_uplift = 1.0` at every `t`),
 `surplus_form = beitragsverrechnung`, `lives = 1`, `issue_age2 = 0`, `smoker2 = -`,
@@ -999,7 +999,7 @@ required columns of `result_cf()` and `check_no_cash_value()` asserts them. `lia
 −net_cf(t)` is omitted for the same reason — it is the last column with its sign turned over.
 
 **The monthly view**, the twelve months of policy year 1 on `result_cf()` — the shape the annual
-grid could not show. Month 0 collects the whole year's *Zahlbeitrag*, this cell being a *jaehrlich*
+grid could not show. Month 0 collects the whole year's *Zahlbeitrag*, this cell being an `annual`
 payer, and bears the acquisition cost and the initial commission; the other eleven collect nothing
 and carry a death claim and a twelfth of the sum-related admin charge:
 
@@ -1045,7 +1045,7 @@ model's to the last displayed digit, and to 4e-15 across all fourteen model poin
 | crossover to negative | policy year 14 | policy year 14 |
 | deaths / lapses over the run | 0,03305608 / 0,53554078 | **0,03261764 / 0,53597922** |
 | expiries | 0,43140314 | 0,43140314 |
-| model point 4 (*monatlich*) `premiums` | 4 471,82 € | **4 400,26 €** |
+| model point 4 (`monthly`) `premiums` | 4 471,82 € | **4 400,26 €** |
 
 Death claims fall because a claim now falls in the month of death rather than at the year end, so
 it is borne by a block that has decremented for part of the year — except in the final policy year,
@@ -1053,7 +1053,7 @@ where lapse is zero under both grids and the year's deaths are therefore identic
 because a twelfth of the admin charge accrues each month on that month's in-force. The premium
 columns are unchanged on the ten annual-*Zahlweise* points and lower on the four fractionated ones,
 where instalments after the first are collected on a block that has already lost lives: 0,95 % less
-on the *halbjaehrlich* point 6, 1,67 % less on the *monatlich* point 10. And the closure identity's
+on the `half_yearly` point 6, 1,67 % less on the `monthly` point 10. And the closure identity's
 **total** is unchanged at 1,00000000 while its **split** moves, deaths and lapses now interleaving
 month by month instead of the whole year's lapses being taken after the whole year's mortality.
 

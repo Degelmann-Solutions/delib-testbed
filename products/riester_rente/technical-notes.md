@@ -126,7 +126,7 @@ reaches it through a `data` Reference and holds no `*_file` Reference and no `in
 | `zulage_schedule.csv` | `zulage_id`, `t` | `unmittelbar`, `n_kinder_pre2008`, `n_kinder_post2008`, `bonus`, `provenance` |
 | `income_schedule.csv` | `income_id`, `t` | `income`, `provenance` |
 | `surplus_scenario.csv` | `scenario_id`, `t` | `decl_rate`, `provenance` |
-| `freq_loading.csv` | `prem_freq` | `prem_freq_load`, `provenance` |
+| `prem_freq_table.csv` | `prem_freq` | `instalments` (a year, not read), `prem_freq_load`, `provenance` |
 | `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`, `expense_infl`), `basis`, `provenance` |
 
 **Every file except `model_point_table.csv` carries a per-row `provenance` column**, delib's second
@@ -138,7 +138,7 @@ exactly; what a replacement must preserve is stated in assumption class (c) and 
 ### Cells vocabulary
 
 `Data` publishes `input_dir`, `model_point_table`, `mort_table`, `annuity_mort_table`,
-`lapse_table`, `zulage_schedule`, `income_schedule`, `surplus_table`, `freq_loading_table`
+`lapse_table`, `zulage_schedule`, `income_schedule`, `surplus_table`, `prem_freq_table`
 and the parameter loader `param`.
 
 `Projection` publishes the library's shared names — **`model_point`, `proj_len`, `age`, `pols_if`,
@@ -192,7 +192,7 @@ value; the thirteen points are described under *Worked example*.
 | `income_init` | EUR | Contribution-liable earnings in the calendar year **before** the projection starts; the reference income for `t = 0` | all |
 | `zulage_id` | str | Key into `zulage_schedule.csv` | all |
 | `zulage_init_pp` | EUR | The Zulage credited at `t = 0`, earned in the year before it | 6 (375,00, including the bonus) |
-| `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | Payment frequency; keys `freq_loading.csv` | 3, 4, 6, 7, 10, 13 |
+| `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | Payment frequency; keys `prem_freq_table.csv` | 3, 4, 6, 7, 10, 13 |
 | `bfs_year` | int | The 0-based period index `t` from which contributions stop (*Beitragsfreistellung*); **−1 = never**, because `0` is now the first projected period | 10 (`t = 3`) |
 | `dk_pp_init` | EUR | *Deckungskapital* at the valuation date | all |
 | `surplus_pp_init` | EUR | *Überschussguthaben* at the valuation date | all |

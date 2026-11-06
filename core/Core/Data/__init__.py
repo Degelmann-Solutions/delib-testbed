@@ -154,10 +154,14 @@ def rentenfaktor_table():
         index_col=rentenfaktor_table_index())
 
 
-def freq_loading_table():
-    """The *Ratenzahlungszuschlag* by ``prem_freq``, from ``freq_loading_file``."""
+def prem_freq_table():
+    """The premium payment frequencies by ``prem_freq``, from ``prem_freq_file``.
+
+    One row per frequency the product allows, with its ``instalments`` a year and, where the
+    product charges one, its *Ratenzahlungszuschlag* ``prem_freq_load``.
+    """
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
+        input_dir() / prem_freq_file, index_col="prem_freq")         # noqa: F821
 
 
 def surplus_table_index():
@@ -229,13 +233,13 @@ def rentenfaktor_table_dict():
     return rentenfaktor_table().to_dict()
 
 
-def freq_loading_table_dict():
-    """The frequency loading table as a dict by column: ``{column: {prem_freq: value}}``.
+def prem_freq_table_dict():
+    """The premium frequency table as a dict by column: ``{column: {prem_freq: value}}``.
 
     ``Projection.prem_freq`` checks the frequency against its keys,
     ``prem_freq_load`` and ``instalments`` read the columns of their names.
     """
-    return freq_loading_table().to_dict()
+    return prem_freq_table().to_dict()
 
 
 def surplus_table_dict():

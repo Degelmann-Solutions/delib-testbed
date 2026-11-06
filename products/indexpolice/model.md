@@ -307,7 +307,7 @@ products/indexpolice/
   election_table.csv
   mort_table.csv
   lapse_table.csv
-  freq_load_table.csv
+  prem_freq_table.csv
   param_tariff_type.csv
   run.py
   model.md
@@ -345,7 +345,7 @@ is checked out.
 | `election_file` | `election_table()` | `election_table.csv` |
 | `mort_file` | `mort_table()` | `mort_table.csv` |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` |
-| `freq_loading_file` | `freq_loading_table()` | `freq_load_table.csv` |
+| `prem_freq_file` | `prem_freq_table()` | `prem_freq_table.csv` |
 | `param_file` | `param()` | `param_tariff_type.csv` |
 
 **The trade-off:** the model is not portable on its own. Copy `Index_DE_S/` without the CSVs
@@ -369,7 +369,7 @@ row. Their contractual reading is `policy year = k + 1`: the lapse table's
 *Einkommensteuergesetz* step at policy year 12 is the row `k = 11`, the `switch_at_15`
 election path holds `w = 1` through `k = 14`, and the two constructed *Indexjahre* of
 `eqidx_vol17` are the rows `k = 8` (Example A) and `k = 9` (Example B).
-`mort_table.csv` is keyed on `(sex, age)` and `freq_load_table.csv` on `prem_freq`, neither
+`mort_table.csv` is keyed on `(sex, age)` and `prem_freq_table.csv` on `prem_freq`, neither
 of them time axes. In `model_point_table.csv` nothing shifts: `duration_init` is an elapsed count
 of completed policy years and is 0-based by nature — it *is* `t_start()` — while
 `prem_term_y` is a term length, `issue_age` and `ret_age` are ages, and none of them
@@ -384,7 +384,7 @@ is a point on the frame's axis.
 | `election_table.csv` | `w` by `(elect_id, k)` (`k = 0 … 39`), four paths | **[std]** and **behavioural**. No election distribution for this product family is established, in either direction |
 | `mort_table.csv` | `qx` by sex and attained age 20–100 | **[std]** Gompertz proxy `0.001200 × 1.095^(age − 40)` with `qx(F) = 0.65 × qx(M)`. **Not** DAV 2008 T or DAV 2004 R: those are proprietary, are cited by name and are never shipped [REG-R48] [REG-R49]. **The anchor a replacement must preserve is `qx(M, 40) = 0.001200`.** It is a period table with no selection effect, and here mortality is a *timing* assumption rather than an amount one — but both properties matter greatly to the *Rentenfaktor*, which is why that is an input and not a computed quantity |
 | `lapse_table.csv` | Base surrender by year, keyed on the 0-based policy year: 5 % at `k = 0–1` (policy years 1–2), 3 % at `k = 2–10`, **6 % at `k = 11`, policy year 12**, 2 % from `k = 12` | **[std]**. The policy-year-12 step is the § 20 Abs. 1 Nr. 6 EStG threshold [R14] and is the shape's whole point; **no index-specific *Stornoquote* exists**, and the two market-wide GDV measures are irreconcilable [R19] |
-| `freq_load_table.csv` | The *Ratenzahlungszuschlag* multiplier by frequency: 1,000 / 1,020 / 1,030 / 1,050 | **[std]** market convention; no carrier tariff established |
+| `prem_freq_table.csv` | The *Ratenzahlungszuschlag* multiplier by frequency: 1,000 / 1,020 / 1,030 / 1,050 | **[std]** market convention; no carrier tariff established |
 
 ## The published identities
 

@@ -105,8 +105,8 @@ only (``--all`` gives the roadmap's formula exactly), in hours against the 10 h 
 counts ``M_CORE`` and ``M_PRODUCT`` are what the roadmap's command prints on the code they
 ship with, held here as constants and updated by every commit that changes them; ``--mutants``
 defaults to their sum ``M_NEW``, and any other value scales ``M_core`` and every ``M_p`` by
-``M / M_NEW``. The coverage filter is ignored. If a measured product is not ``ok`` at a ``W``, that ``W`` gets no
-combined forecast. The combined line never changes the exit status.
+``M / M_NEW``. The coverage filter is ignored. If a measured product is not ``ok`` at a
+``W``, that ``W`` gets no combined forecast. The combined line never changes the exit status.
 
 Exit status: 0 if every (product, W) is ``ok``; 1 if one failed a check, its child crashed
 or its slope is not positive (``unreliable``); 2 on a usage error. Every product is

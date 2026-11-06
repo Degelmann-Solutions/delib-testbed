@@ -260,7 +260,7 @@ Every numeric literal in a formula cell of the core's `Projection` and the ten p
 
 The actuarial literals moved byte-identically, each row's value the literal's text (an `int` stays an `int`), each read a literal `data.param("<item>")` in the literal's place:
 
-- FRV, rows of its `param_tariff_type.csv`: in `lapse_tax_step` the 12/62 rule of EStG § 20 Abs. 1 Nr. 6 Satz 2, `tax_step_min_year` 13 and `tax_step_age` 62, and the step's magnitude `tax_step_factor` 2.5; in `irr_ann` the bisection bracket `irr_lo` -0.99 and `irr_hi` 5.0.
+- FRV, rows of its `param_tariff_type.csv`: in `lapse_tax_step` the 12/62 rule of EStG § 20 Abs. 1 Nr. 6 Satz 2 with § 52 Abs. 28, `tax_step_min_year` 13 and `tax_step_age` 62, and the step's magnitude `tax_step_factor` 2.5; in `irr_ann` the bisection bracket `irr_lo` -0.99 and `irr_hi` 5.0. The bracket is no actuarial assumption but a row because it bounds the yields the measure can report, and a tariff with other charges could need another one (the ticket names it); the midpoints `0.5` and the iteration count `range(200)` only carry out the bisection inside whatever bracket it is given and stay structural.
 - Index: in `prem_charge_acq_min_pp` the five-year spread of § 169 Abs. 3 VVG, `surr_spread_years` 5.
 - KLV: in `res_min_pp` the same spread, `surr_spread_years` 5.0 (a `float`, as its literal, so `k / 5.0` divides as before), and in `benefit_death_pp` the three-year *Selbsttötung* window of § 161 VVG, `suicide_years` 3 (RLV's row of that name has the same value).
 - Pflege's eleven guards `1.0 - 1e-12`, which cap a decrement probability below 1 before `-ln(1 - q)`, read `1.0 - data.param("rate_cap_eps")`: the epsilon is technical with one value for every tariff type, so it is the item of the core file (section "The parameter files"); the subtraction stays in the cell.
@@ -278,7 +278,7 @@ The structural literals, by class and place:
 
 Some values of the same kind are rows rather than literals, since they were References before entry 8: Basis' `rf_unit` 10000.0 and `ann_freq` 12 (moved as References in its entry), and Sofort's `solve_max_iter` beside `solve_tol`. Aligning the two forms, a row or a literal for one class, is entry 11's.
 
-`STRUCTURAL_LITERALS` in `tests/test_core.py` lists, for the core and each product, the reprs of the structural literals its formula cells hold, and `test_formula_literals_are_listed_as_structural` walks every formula cell as above and fails on a literal not listed for its space, naming space, cell, line and value, and on a listed value its space no longer holds. A new literal in a formula is therefore either listed here and there as structural or moved into a parameter file.
+`STRUCTURAL_LITERALS` in `tests/test_core.py` lists, for the core and each product, the reprs of the structural literals its formula cells hold, and `test_formula_literals_are_listed_as_structural` walks every formula cell as above and fails on a literal not listed for its space, naming space, cell, line and value, and on a listed value its space no longer holds. The test catches a new literal whose value is not yet listed for its space, which is then either listed here and there as structural or moved into a parameter file; a new literal of a value already listed for its space passes it and is a matter for review.
 
 ## Commit trailers
 

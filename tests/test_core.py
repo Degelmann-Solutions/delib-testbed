@@ -47,7 +47,9 @@
   neither its ``Projection`` nor its parameter files. BU's 11, FRV's 12, Basis' 5,
   Index' 10 and Sofort's 10 likewise; RV and Pflege never had one.
   Every product's core layer is ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's eleven
-  guards read it, and no ``1e-12`` literal is left in its formulas.
+  guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 5 actuarial
+  formula literals (the tax step and the bracket of ``irr_ann``) are rows of its
+  tariff-type file with their literals' types and values.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -1798,6 +1800,15 @@ FRV_MOVED_REFERENCES = {
     "val_tol": 1e-10,
 }
 
+# The 5 actuarial literals FRV's formulas held (``lapse_tax_step``, ``irr_ann``), as written there.
+FRV_MOVED_LITERALS = {
+    "tax_step_min_year": 13,
+    "tax_step_age": 62,
+    "tax_step_factor": 2.5,
+    "irr_lo": -0.99,
+    "irr_hi": 5.0,
+}
+
 # The 5 numeric References Basis' ``Projection`` held, as their former Python literals.
 BASIS_MOVED_REFERENCES = {
     "elig_surv_prob": 0.55,
@@ -1903,6 +1914,16 @@ def test_frv_references_are_tariff_type_rows(product_models):
         assert type(value) is type(literal) and value == literal, item
         assert item in layer, item
         assert item not in model.Projection.refs, item
+
+
+def test_frv_literals_are_tariff_type_rows(product_models):
+    data = product_models("fondsgebundene_rentenversicherung").Data
+    layer = data.param_layers()["tariff_type"]
+    assert len(FRV_MOVED_LITERALS) == 5
+    for item, literal in FRV_MOVED_LITERALS.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
 
 
 def test_basis_references_are_tariff_type_rows(product_models):

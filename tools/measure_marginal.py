@@ -142,7 +142,7 @@ M_CORE = 186
 M_PRODUCT = {
     "basisrente": 630,
     "berufsunfaehigkeit": 507,
-    "fondsgebundene_rentenversicherung": 428,
+    "fondsgebundene_rentenversicherung": 421,
     "indexpolice": 346,
     "kapitallebensversicherung": 422,
     "klassische_rentenversicherung": 586,

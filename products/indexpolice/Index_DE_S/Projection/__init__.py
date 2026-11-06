@@ -1301,15 +1301,15 @@ def ann_monthly_pp():
     contract state and a separate model.
 
     **Neither this number nor the factor behind it is authoritative.**  The factor is a
-    **[std]** 25.00 EUR per 10,000 EUR and the mortality it is quoted against is a **[std]**
-    period-table proxy, while the real basis is DAV 2004 R, generational in age *and*
-    calendar year.  A period proxy priced at a 40-year-old's annuitisation twenty-seven
+    **[std]** 25.00 EUR per ``rf_unit`` = 10,000 EUR (a row of *param_tariff_type.csv*) and
+    the mortality it is quoted against is a **[std]** period-table proxy, while the real
+    basis is DAV 2004 R, generational in age *and* calendar year.  A period proxy priced at a 40-year-old's annuitisation twenty-seven
     years out understates the liability by a margin that dwarfs every other assumption here,
     which is why the model **reports** an annuity and does not compute one.
     """
     if ann_option() != "annuity":
         return 0.0
-    return mat_pp(proj_len_y() - 1) / 10000.0 * rentenfaktor()
+    return mat_pp(proj_len_y() - 1) / data.param("rf_unit") * rentenfaktor()  # noqa: F821
 
 
 # --- expenses and the cash flow statement ------------------------------------

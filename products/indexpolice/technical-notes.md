@@ -599,7 +599,7 @@ that was established — so the forfeiture remains all-or-nothing [std] and the 
 Two reported quantities that are not cash flows:
 
     rentenfaktor()   = max( rentenfaktor_guar, rentenfaktor_curr )
-    ann_monthly_pp() = M(n−1) / 10 000 × rentenfaktor()  if ann_option == "annuity", else 0.0
+    ann_monthly_pp() = M(n−1) / rf_unit × rentenfaktor()  if ann_option == "annuity", else 0.0   (rf_unit = 10 000, a row of param_tariff_type.csv)
 
 ### Expenses and the cash flow statement
 

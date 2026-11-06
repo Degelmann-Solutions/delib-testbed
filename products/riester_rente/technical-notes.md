@@ -586,7 +586,7 @@ that a reader should see — but it is a diagnostic: **the guarantee is tested o
     else:                 teilkapital_pp() = teilkapital_share · V ;
                           annuity_capital_pp() = V − teilkapital_pp() ; commutation_pp() = 0
 
-    annuity_month_pp() = annuity_capital_pp() / 10 000 · R       the instalment, paid monthly
+    annuity_month_pp() = annuity_capital_pp() / rf_unit · R      the instalment, paid monthly; rf_unit = 10 000, a row of param_tariff_type.csv
     a(k)               = 12 · annuity_month_pp()   for is_payout_y(k) and not commuted
 
 `k p(x, τ)` is survivorship on the **first-order** annuity basis — the same basis the market's

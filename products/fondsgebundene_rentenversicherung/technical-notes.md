@@ -566,7 +566,7 @@ that exclusion visible rather than merely asserted.
     R_c = rentenfaktor_curr(ret_age)
     R   = max( R_g, R_c )
     av_maturity_pp() = F_BEF_DECR(n − 1)
-    annuity_mth_pp() = av_maturity_pp() / 10 000 × R
+    annuity_mth_pp() = av_maturity_pp() / rf_unit × R      rf_unit = 10 000, a row of param_tariff_type.csv
 
 The shipped `rentenfaktor_table.csv` is **[std] and derived, not observed**. The 0 %
 *Rechnungszins* it rests on is no longer an inference from a classic tariff: a fondsgebundene AVB

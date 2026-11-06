@@ -1260,7 +1260,8 @@ def pup_cashout():
         return False
     threshold = float(data.charge_table_dict()["value"][             # noqa: F821
         (model_point()["charge_id"], "min_annuity_mth")])
-    return bool(pup_value_pp() / 10000.0 * annuity_rate_guar() < threshold)
+    return bool(pup_value_pp() / data.param("rf_unit") * annuity_rate_guar()  # noqa: F821
+                < threshold)
 
 
 def pup_uplift(k):
@@ -1498,11 +1499,13 @@ def annuity_rate_appl():
 def annuity_guar_mth_pp():
     """G: the *garantierte Rente*, monthly, per policy.
 
-    ``capital_conv_pp() / 10 000 x annuity_rate_appl()`` — the conversion rule in one line.
+    ``capital_conv_pp() / rf_unit x annuity_rate_appl()`` — the conversion rule in one line,
+    the *Rentenfaktor* quoted per ``rf_unit`` = 10 000 € of capital, a row of
+    *param_tariff_type.csv*.
     Struck once, at the *Rentenbeginn*, and level for life thereafter; only this part is
     guaranteed, the *Überschussrente* beside it is not.
     """
-    return capital_conv_pp() / 10000.0 * annuity_rate_appl()
+    return capital_conv_pp() / data.param("rf_unit") * annuity_rate_appl()  # noqa: F821
 
 
 def annuity_sur_mth_pp(k):
@@ -1972,14 +1975,14 @@ def check_cv_floor():
 
 
 def check_annuity_conv_resid(t):
-    """The conversion residual: ``annuity_guar_mth_pp x 10 000 - capital_conv_pp x f``.
+    """The conversion residual: ``annuity_guar_mth_pp x rf_unit - capital_conv_pp x f``.
 
     A scalar identity — the conversion is struck once, at the *Rentenbeginn* — evaluated at
     every ``t`` so that it has the same shape as the other checks.  ``f`` is rebuilt here as
     ``max(annuity_rate_guar(), annuity_rate_curr())`` rather than read from
     :func:`annuity_rate_appl`, so the check is independent of the cells it is checking.
     """
-    return (annuity_guar_mth_pp() * 10000.0
+    return (annuity_guar_mth_pp() * data.param("rf_unit")             # noqa: F821
             - capital_conv_pp() * max(annuity_rate_guar(), annuity_rate_curr()))
 
 
@@ -1992,7 +1995,7 @@ def check_annuity_conv():
     general contract data.
     """
     scale = max(1.0, abs(capital_conv_pp()))
-    tol = roll_fwd_tol() * scale * 10000.0
+    tol = roll_fwd_tol() * scale * data.param("rf_unit")             # noqa: F821
     if abs(check_annuity_conv_resid(result_cf().index[0])) > tol:
         return False
     if annuity_rate_appl() < annuity_rate_guar() - roll_fwd_tol():

@@ -59,7 +59,8 @@
   surrender table likewise. The payment frequencies FRV and Sofort allow are the keys of
   their own tables; a frequency outside the table raises, and a row added to a scratch copy
   admits it. Pflege's instalment frequencies and the months each covers are its own table
-  likewise. Riester's annuity frequency is a row ``ann_freq``, 12 as an ``int`` as Basis'.
+  likewise. Riester's annuity frequency is a row ``ann_freq``, 12 as an ``int`` as Basis', and
+  the *Rentenfaktor* unit of FRV, Index, RV and Riester a row ``rf_unit``, 10000.0 as Basis'.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -1974,7 +1975,10 @@ def test_klv_literals_are_tariff_type_rows(product_models):
 # item name and one type in every product.
 UNIT_AND_FREQUENCY_ROWS = {
     "basisrente": {"rf_unit": 10000.0, "ann_freq": 12},
-    "riester_rente": {"ann_freq": 12},
+    "fondsgebundene_rentenversicherung": {"rf_unit": 10000.0},
+    "indexpolice": {"rf_unit": 10000.0},
+    "klassische_rentenversicherung": {"rf_unit": 10000.0},
+    "riester_rente": {"rf_unit": 10000.0, "ann_freq": 12},
 }
 
 
@@ -2053,12 +2057,12 @@ STRUCTURAL_LITERALS = {
     "core": {"11", "12", "12.0"},
     "basisrente": {"12", "12.0"},
     "berufsunfaehigkeit": {"2", "12", "12.0"},
-    "fondsgebundene_rentenversicherung": {"0.5", "12", "12.0", "200", "10000.0"},
-    "indexpolice": {"11", "12", "12.0", "13", "10000.0"},
+    "fondsgebundene_rentenversicherung": {"0.5", "12", "12.0", "200"},
+    "indexpolice": {"11", "12", "12.0", "13"},
     "kapitallebensversicherung": {"11", "12", "12.0"},
-    "klassische_rentenversicherung": {"2", "12", "12.0", "10000.0"},
+    "klassische_rentenversicherung": {"2", "12", "12.0"},
     "pflegerentenversicherung": {"2", "3", "4", "5", "6", "12", "12.0", "1000.0"},
-    "riester_rente": {"12", "12.0", "10000.0"},
+    "riester_rente": {"12", "12.0"},
     "risikolebensversicherung": {"2", "12", "12.0"},
     "sofortrente": {"0.5", "2", "12", "12.0"},
 }

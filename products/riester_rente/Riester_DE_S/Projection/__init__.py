@@ -1358,7 +1358,7 @@ def rentenfaktor_curr():
     expense cash flow.  On the anchor it is 27,947822, **below** the guaranteed 29,00, so
     the guarantee binds.
     """
-    return ((1.0 - data.param("rentenfaktor_margin")) * 10000.0      # noqa: F821
+    return ((1.0 - data.param("rentenfaktor_margin")) * data.param("rf_unit")  # noqa: F821
             / (data.param("ann_freq") * ann_factor()))               # noqa: F821
 
 
@@ -1377,11 +1377,12 @@ def rentenfaktor_applied():
 def annuity_month_pp():
     """The monthly annuity instalment per policy, in euros.
 
-    ``annuity_capital_pp() / 10 000 x rentenfaktor_applied()`` — the *Rentenfaktor* is
-    quoted per 10 000 € of capital, which is the German market's convention and the reason
-    a factor of 29,00 is a monthly and not an annual amount.  Zero on a commuted contract.
+    ``annuity_capital_pp() / rf_unit x rentenfaktor_applied()`` — the *Rentenfaktor* is
+    quoted per ``rf_unit`` = 10 000 € of capital (a row of *param_tariff_type.csv*), which
+    is the German market's convention and the reason a factor of 29,00 is a monthly and not
+    an annual amount.  Zero on a commuted contract.
     """
-    return annuity_capital_pp() / 10000.0 * rentenfaktor_applied()
+    return annuity_capital_pp() / data.param("rf_unit") * rentenfaktor_applied()  # noqa: F821
 
 
 def is_kleinbetrag():
@@ -1402,7 +1403,7 @@ def is_kleinbetrag():
     way round.
     """
     test = ((1.0 - min(teilkapital_share(), data.param("teilkapital_cap")))  # noqa: F821
-            * capital_conv_pp() / 10000.0
+            * capital_conv_pp() / data.param("rf_unit")              # noqa: F821
             * rentenfaktor_applied())
     return bool(test <= data.param("kleinbetrag_threshold_mth"))     # noqa: F821
 
@@ -1951,7 +1952,7 @@ def check_conversion_resid(k):
     r2 = capital_conv_pp() - (teilkapital_pp() + annuity_capital_pp()
                               + commutation_pp())
     r3 = (rentenfaktor_curr() * data.param("ann_freq") * ann_factor()  # noqa: F821
-          - (1.0 - data.param("rentenfaktor_margin")) * 10000.0)     # noqa: F821
+          - (1.0 - data.param("rentenfaktor_margin")) * data.param("rf_unit"))  # noqa: F821
     r4 = data.param("ann_freq") * annuity_month_pp() - annuity_pp(k)  # noqa: F821
     return abs(r1) + abs(r2) + abs(r3) + abs(r4)
 

@@ -1698,14 +1698,15 @@ def av_maturity_pp():
 def annuity_mth_pp():
     """The monthly annuity the *Fondsguthaben* buys at *Rentenbeginn*, per policy.
 
-    ``av_maturity_pp() / 10 000 x rentenfaktor_applied()``.
+    ``av_maturity_pp() / rf_unit x rentenfaktor_applied()``, the *Rentenfaktor* quoted per
+    ``rf_unit`` = 10 000 € of fund, a row of *param_tariff_type.csv*.
 
     **This model stops here.**  The annuity is published, not projected: the payout phase —
     the *Überschussrente*, the *Rentengarantiezeit*, the *Rentenbezugskosten* — belongs to
     ``products/sofortrente/``.  Under the *Kapitalwahlrecht* the same capital is taken as a
     lump sum instead, which is why that flag changes no cash flow here.
     """
-    return av_maturity_pp() / 10000.0 * rentenfaktor_applied()
+    return av_maturity_pp() / data.param("rf_unit") * rentenfaktor_applied()  # noqa: F821
 
 
 def gross_return_ref():

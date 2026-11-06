@@ -19,3 +19,4 @@ tax_step_age,62,,"[R20] [REG-R45] section 20 (1) no. 6 sentence 2 EStG with sect
 tax_step_factor,2.5,,"[std] multiplier 2.5 on the lapse rate for the twelve months of the tax-threshold policy year; the 12/62 threshold is statutory, its magnitude is not; was a literal in lapse_tax_step on Projection"
 irr_lo,-0.99,,"[std] lower end of the bisection bracket of irr_ann, an annual yield of -99 %; a numerical bound, not an actuarial assumption; was a literal in irr_ann on Projection"
 irr_hi,5.0,,"[std] upper end of the bisection bracket of irr_ann, an annual yield of 500 %; a numerical bound, not an actuarial assumption; was a literal in irr_ann on Projection"
+rf_unit,10000.0,,"[std] the Rentenfaktor is quoted in EUR of monthly annuity per 10 000 EUR of fund at Rentenbeginn; a unit convention, not an assumption; the same row as Basis' rf_unit; was a literal in annuity_mth_pp on Projection"

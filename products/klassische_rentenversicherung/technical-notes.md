@@ -612,7 +612,7 @@ policy year `k = n − 1` — on the survivors of that month's decrements:
     val_reserve_pp   = val_reserve_rate × capital_gross_pp
     K                = max( guar_capital_pp, capital_gross_pp + val_reserve_pp )
     f                = max( f_g, f_c )
-    G                = K / 10 000 × f
+    G                = K / rf_unit × f      rf_unit = 10 000, a row of param_tariff_type.csv
 
     pols_surv_rb              = l(12n−1) − pols_death(12n−1) − pols_lapse(12n−1)
     pols_commutation(12n−1)   = κ × pols_surv_rb

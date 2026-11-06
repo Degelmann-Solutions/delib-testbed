@@ -49,7 +49,8 @@
   Every product's core layer is ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's eleven
   guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 5 actuarial
   formula literals (the tax step and the bracket of ``irr_ann``) are rows of its
-  tariff-type file with their literals' types and values; Index' five-year spread likewise.
+  tariff-type file with their literals' types and values; Index' five-year spread and KLV's
+  five-year spread and three-year suicide window likewise.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -1812,6 +1813,9 @@ FRV_MOVED_LITERALS = {
 # The actuarial literal Index' formulas held (``prem_charge_acq_min_pp``), as written there.
 INDEX_MOVED_LITERALS = {"surr_spread_years": 5}
 
+# The actuarial literals KLV's formulas held (``res_min_pp``, ``benefit_death_pp``), as written.
+KLV_MOVED_LITERALS = {"surr_spread_years": 5.0, "suicide_years": 3}
+
 # The 5 numeric References Basis' ``Projection`` held, as their former Python literals.
 BASIS_MOVED_REFERENCES = {
     "elig_surv_prob": 0.55,
@@ -1934,6 +1938,16 @@ def test_index_literals_are_tariff_type_rows(product_models):
     layer = data.param_layers()["tariff_type"]
     assert len(INDEX_MOVED_LITERALS) == 1
     for item, literal in INDEX_MOVED_LITERALS.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+
+
+def test_klv_literals_are_tariff_type_rows(product_models):
+    data = product_models("kapitallebensversicherung").Data
+    layer = data.param_layers()["tariff_type"]
+    assert len(KLV_MOVED_LITERALS) == 2
+    for item, literal in KLV_MOVED_LITERALS.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
         assert item in layer, item

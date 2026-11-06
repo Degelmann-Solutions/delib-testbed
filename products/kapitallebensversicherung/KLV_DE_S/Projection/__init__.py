@@ -834,7 +834,8 @@ def res_min_pp(k):
     :func:`res_zill_pp` only at durations 0 and ``m``.  A model publishing only the Zillmer
     reserve as the surrender value understates it at essentially every duration.
     """
-    return res_net_pp(k) - zillmer_amount() * max(0.0, 1.0 - k / 5.0)
+    return (res_net_pp(k) - zillmer_amount()
+            * max(0.0, 1.0 - k / data.param("surr_spread_years")))   # noqa: F821
 
 
 def is_paid_up(k):
@@ -1515,7 +1516,7 @@ def benefit_death_pp(t):
     Override reason: a death pays the full benefit, with the *Rückkaufswert* on the suicide
     share in the first three years, products/kapitallebensversicherung/technical-notes.md:620
     """
-    if duration(t) < 3:
+    if duration(t) < data.param("suicide_years"):                    # noqa: F821
         return ((1.0 - data.param("suicide_share")) * benefit_full_pp(t)  # noqa: F821
                 + data.param("suicide_share") * surr_value_pp(t))    # noqa: F821
     return benefit_full_pp(t)

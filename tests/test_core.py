@@ -50,7 +50,9 @@
   guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 5 actuarial
   formula literals (the tax step and the bracket of ``irr_ann``) are rows of its
   tariff-type file with their literals' types and values; Index' five-year spread and KLV's
-  five-year spread and three-year suicide window likewise.
+  five-year spread and three-year suicide window likewise. Every other numeric literal of a
+  formula cell of the core and the ten products, but 0, 1, 0.0 and 1.0, is structural and
+  listed for its space in ``STRUCTURAL_LITERALS``, and every listed value occurs there.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -2010,6 +2012,56 @@ def test_pflege_guards_read_the_core_epsilon():
                 and node.value == 1e-12]
     assert literals == []
     assert text.count('1.0 - data.param("rate_cap_eps")') == 11
+
+
+# The structural numeric literals of the formula cells, by space, as ``repr`` of the value
+# (docs/core.md, "Formula literals"): every other literal of a formula is a parameter row.
+STRUCTURAL_LITERALS = {
+    "core": {"11", "12", "12.0"},
+    "basisrente": {"12", "12.0"},
+    "berufsunfaehigkeit": {"2", "10", "11", "12", "12.0"},
+    "fondsgebundene_rentenversicherung": {"0.5", "3", "6", "12", "12.0", "200", "10000.0"},
+    "indexpolice": {"11", "12", "12.0", "13", "10000.0"},
+    "kapitallebensversicherung": {"11", "12", "12.0"},
+    "klassische_rentenversicherung": {"2", "12", "12.0", "10000.0"},
+    "pflegerentenversicherung": {"2", "3", "4", "5", "6", "12", "12.0", "40", "1000.0"},
+    "riester_rente": {"12", "12.0", "10000.0"},
+    "risikolebensversicherung": {"2", "12", "12.0"},
+    "sofortrente": {"0.5", "2", "4", "12", "12.0"},
+}
+
+
+def _formula_cells(path: Path):
+    """The formula cells of a ``Projection``, as docs/roadmap.md, "The new M", counts them:
+    module-level ``def``s and non-underscore ``name = lambda``, each with its name."""
+    for node in ast.parse(path.read_text(encoding="utf-8")).body:
+        if isinstance(node, ast.FunctionDef):
+            yield node.name, node
+        elif (isinstance(node, ast.Assign) and isinstance(node.value, ast.Lambda)
+              and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+              and not node.targets[0].id.startswith("_")):
+            yield node.targets[0].id, node.value
+
+
+def test_formula_literals_are_listed_as_structural():
+    """Every numeric literal of a formula cell but 0, 1, 0.0 and 1.0, subscripts and
+    ``range(...)`` included, is listed for its space, and every listed value occurs there."""
+    assert sorted(STRUCTURAL_LITERALS) == sorted(["core", *MODELS])
+    paths = {"core": CORE_MODEL / "Projection" / "__init__.py"}
+    paths.update({product: PRODUCTS_DIR / product / model / "Projection" / "__init__.py"
+                  for product, model in MODELS.items()})
+    unlisted, found = [], {}
+    for space, path in paths.items():
+        found[space] = set()
+        for name, cell in _formula_cells(path):
+            for node in ast.walk(cell):
+                if (isinstance(node, ast.Constant) and type(node.value) in (int, float)
+                        and node.value not in (0, 1)):
+                    found[space].add(repr(node.value))
+                    if repr(node.value) not in STRUCTURAL_LITERALS[space]:
+                        unlisted.append(f"{space}: {name} line {node.lineno}: {node.value!r}")
+    assert not unlisted, unlisted
+    assert found == STRUCTURAL_LITERALS
 
 
 # KLV's switches of two lapse modules that were specified and never built, read by no cell.

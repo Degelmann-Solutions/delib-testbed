@@ -1,6 +1,6 @@
 # The common core of phase 3: layout and conventions
 
-Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates, the policy counts, the cash flows, the expense inflation, the outputs and checks, the contract data and charges and the parameter files, how the core quota is measured and bounded, and the conventions every core commit follows: commit trailers, the rules for measuring speed, the reason on a product override, and how a product's `UPSTREAM.md` names the files phase 3 changed. The tests that enforce the conventions are `tests/test_core.py`, `tests/test_provenance.py`, `tests/test_core_quota.py` and `tests/test_baseline_deviations.py` (with the tool `tools/baseline_deviations.py`).
+Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates, the policy counts, the cash flows, the expense inflation, the outputs and checks, the contract data and charges, the parameter files and the formula literals, how the core quota is measured and bounded, and the conventions every core commit follows: commit trailers, the rules for measuring speed, the reason on a product override, and how a product's `UPSTREAM.md` names the files phase 3 changed. The tests that enforce the conventions are `tests/test_core.py`, `tests/test_provenance.py`, `tests/test_core_quota.py` and `tests/test_baseline_deviations.py` (with the tool `tools/baseline_deviations.py`).
 
 ## Layout
 
@@ -238,7 +238,7 @@ The shared loaders in the core's `Data` beside the tables of entry 2: `surplus_t
 
 A scalar parameter, a rate, factor, amount or tolerance with one value per tariff, is a row of a parameter file and is read through one lookup in the core's `Data`, `param("<item>")`, always called with the item's name as a string literal, so that a scan of the code finds every item read (`data.param("<item>")` from a `Projection`). Three layers hold the items, each item in exactly one of them for a tariff:
 
-- the core file `core/Core/Data/param_core.csv`, the technical and house-wide quantities with one value for every tariff type. It holds one item, `rate_cap_eps` (1e-12): Pflege's eleven guards cap a decrement probability at `1 - rate_cap_eps` before taking its force `-ln(1 - q)`, so that the force stays finite at the limiting age;
+- the core file `core/Core/Data/param_core.csv`, the technical and house-wide quantities with one value for every tariff type. It holds one item, `rate_cap_eps` (1e-12): Pflege's eleven guards cap a decrement probability at `1 - rate_cap_eps` before taking its force `-ln(1 - q)`, so that the force stays finite at the limiting age (section "Formula literals");
 - the tariff-type file in the product folder, named by the product's Reference `param_file`: `param_tariff_type.csv` in all ten products, each renamed from the product's `param_table.csv` (RLV first, the other nine together);
 - the tariff file `param_tariff.csv` in the product folder, optional: it appears only at the first value in which a tariff deviates from its tariff type, and the loader skips the layer where it is absent.
 
@@ -253,6 +253,32 @@ Whether every item is read and every call names an item is checked statically, b
 The core file lives beside the core's loaders rather than at `core/param_core.csv`, and `param_core_path()` finds it as `_model.path / "CoreData" / "param_core.csv"`, through the product's `CoreData` symlink: `param_file` resolves against `input_dir()`, the product folder, and a scratch copy of a product folder (tests, `tools/measure_marginal.py`) copies the `CoreData` folder through the symlink and with it the core file, so a copy reads its own core file and a test can give it a fixture item without touching the core (Moritz, 2026-11-04). `mx.read_model` ignores a CSV file in a space folder, and `tests/test_provenance.py` does not descend into the symlinked folder, so the file adds no cell and no product file.
 
 Every parameter read goes through `param`: the core's parameter cells `omega_age`, `unisex_mix_male`, `expense_infl` and `roll_fwd_tol` and the products' own reads (RV, Pflege, Basis, FRV, KLV, Riester) call `data.param("<item>")`, each in the `int` or `float` wrapper it had; `tests/test_core.py` fails on a source that still reads `param_table_dict()["value"]`. `param_table()` and `param_table_dict()` remain the DataFrame and dict readers of `param_file`, without a formula reading them.
+
+## Formula literals
+
+Every numeric literal in a formula cell of the core's `Projection` and the ten products' `Projection` spaces was reviewed (epic-parameter-files, entry 8): the cells "The new M" counts in `docs/roadmap.md` (module-level `def`s and non-underscore `name = lambda`, walked whole), with the literals inside a subscript and in the arguments of `range(...)` included and the values 0, 1, 0.0 and 1.0 excluded; docstrings hold no formula. The `Data` spaces and the products' `__init__.py` hold no such literal. A literal is actuarial when it states an assumption or a statutory term a tariff could set otherwise; then a parameter mutant on it was a code change, and it became a row of a parameter file. Every other literal is structural, part of how the formula is written, and stays.
+
+The actuarial literals moved byte-identically, each row's value the literal's text (an `int` stays an `int`), each read a literal `data.param("<item>")` in the literal's place:
+
+- FRV, rows of its `param_tariff_type.csv`: in `lapse_tax_step` the 12/62 rule of EStG § 20 Abs. 1 Nr. 6 Satz 2, `tax_step_min_year` 13 and `tax_step_age` 62, and the step's magnitude `tax_step_factor` 2.5; in `irr_ann` the bisection bracket `irr_lo` -0.99 and `irr_hi` 5.0.
+- Index: in `prem_charge_acq_min_pp` the five-year spread of § 169 Abs. 3 VVG, `surr_spread_years` 5.
+- KLV: in `res_min_pp` the same spread, `surr_spread_years` 5.0 (a `float`, as its literal, so `k / 5.0` divides as before), and in `benefit_death_pp` the three-year *Selbsttötung* window of § 161 VVG, `suicide_years` 3 (RLV's row of that name has the same value).
+- Pflege's eleven guards `1.0 - 1e-12`, which cap a decrement probability below 1 before `-ln(1 - q)`, read `1.0 - data.param("rate_cap_eps")`: the epsilon is technical with one value for every tariff type, so it is the item of the core file (section "The parameter files"); the subtraction stays in the cell.
+
+Each moving commit took its literals out of O6 and updated the counts of `tools/measure_marginal.py` and `tests/test_measure_marginal.py` to the output of the roadmap's command: Pflege 822 to 811, FRV 428 to 421, Index 346 to 344, KLV 422 to 419, M 5,305 to 5,282, M_core 186 unchanged. The roadmap's section records the counts at `790706b` and stays as it is.
+
+The structural literals, by class and place:
+
+- The month and year grid: `12` and `12.0` (months per year) in the core and every product, `11`, the last month of a policy year (`t % 12 == 11` in the core's `is_anniv`, `12 k + 11` in Index and KLV), and `13` in Index' `range(1, 13)`, the twelve months of a year.
+- Payment frequencies in a validation set or the frequency map: FRV's and Pflege's `prem_mode_months` (3, 6, 12) and Sofort's `payment_freq` (2, 4, 12).
+- Units: `10000.0`, per 10,000 of capital (FRV, Index, RV, Riester), and `1000.0`, per mille (Pflege).
+- Structure indices and counts: the second life `2` (RLV's `lives` and `smoker2`, Sofort throughout); Pflege's care grades and ledger positions `2` to `6`; BU's tuple and array positions `2`; RV's `pup - 2`, the row of the year before the paid-up year.
+- Table shapes: BU's claim years, `10` and `11` (the 11 claim years of `claim_duration_table.csv`, with `range(1, 12)`), and Pflege's `40`, the last row of `surrender_table.csv`.
+- Numerics: the bisection midpoints `0.5` (FRV, Sofort) and FRV's iteration count `range(200)`.
+
+Some values of the same kind are rows rather than literals, since they were References before entry 8: Basis' `rf_unit` 10000.0 and `ann_freq` 12 (moved as References in its entry), and Sofort's `solve_max_iter` beside `solve_tol`. Aligning the two forms, a row or a literal for one class, is entry 11's.
+
+`STRUCTURAL_LITERALS` in `tests/test_core.py` lists, for the core and each product, the reprs of the structural literals its formula cells hold, and `test_formula_literals_are_listed_as_structural` walks every formula cell as above and fails on a literal not listed for its space, naming space, cell, line and value, and on a listed value its space no longer holds. A new literal in a formula is therefore either listed here and there as structural or moved into a parameter file.
 
 ## Commit trailers
 

@@ -1660,18 +1660,32 @@ def test_param_equals_the_file_value(product, product_models):
 @pytest.mark.parametrize("product, omega", [("klassische_rentenversicherung", 121),
                                              ("pflegerentenversicherung", 110),
                                              ("sofortrente", 121)])
-def test_omega_age_is_an_int_from_int_or_float_text(product, omega, product_models):
-    """``omega_age()`` is ``int`` whether the file writes ``121`` (an ``int`` from ``param``)
-    or Pflege's ``110.0`` (a ``float``); so is Pflege's ``beitragssumme_cap_age`` (``85.0``)."""
+def test_omega_age_is_an_int(product, omega, product_models):
+    """Every file writes ``omega_age`` as an integer, so ``param`` gives an ``int``; so does
+    Pflege's ``beitragssumme_cap_age`` (``85``)."""
     model = product_models(product)
-    text = {"klassische_rentenversicherung": int, "sofortrente": int,
-            "pflegerentenversicherung": float}[product]
-    assert type(model.Data.param("omega_age")) is text
+    assert type(model.Data.param("omega_age")) is int
     item = model.Projection[model.Data.model_point_table().index[0]]
     assert item.omega_age() == omega and type(item.omega_age()) is int
     if product == "pflegerentenversicherung":
-        assert model.Data.param("beitragssumme_cap_age") == 85.0
+        assert model.Data.param("beitragssumme_cap_age") == 85
+        assert type(model.Data.param("beitragssumme_cap_age")) is int
         assert type(item.beitragssumme_years()) is int
+
+
+def test_an_item_of_several_files_has_one_type():
+    """An item named in several parameter files is one quantity: every file writes its
+    value as the same type, an integer literal everywhere or a decimal one everywhere."""
+    files = sorted(PRODUCTS_DIR.glob("*/param_tariff_type.csv"))
+    files.append(CORE_MODEL / "Data" / "param_core.csv")
+    types = {}
+    for path in files:
+        for item, text in pd.read_csv(path, dtype=str, keep_default_na=False)[
+                ["item", "value"]].itertuples(index=False):
+            kind = "int" if text.strip().lstrip("+-").isdigit() else "float"
+            types.setdefault(item, {}).setdefault(kind, []).append(path.parent.name)
+    mixed = {item: kinds for item, kinds in types.items() if len(kinds) > 1}
+    assert not mixed, mixed
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
@@ -1808,8 +1822,9 @@ FRV_MOVED_LITERALS = {
 # The actuarial literal Index' formulas held (``prem_charge_acq_min_pp``), as written there.
 INDEX_MOVED_LITERALS = {"surr_spread_years": 5}
 
-# The actuarial literals KLV's formulas held (``res_min_pp``, ``benefit_death_pp``), as written.
-KLV_MOVED_LITERALS = {"surr_spread_years": 5.0, "suicide_years": 3}
+# The actuarial literals KLV's formulas held (``res_min_pp``, ``benefit_death_pp``), as rows.
+# ``surr_spread_years`` was ``5.0`` there; its row is ``5``, an ``int`` as Index' row.
+KLV_MOVED_LITERALS = {"surr_spread_years": 5, "suicide_years": 3}
 
 # The 5 numeric References Basis' ``Projection`` held, as their former Python literals.
 BASIS_MOVED_REFERENCES = {

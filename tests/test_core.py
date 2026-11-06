@@ -57,13 +57,14 @@
   listed for its space in ``STRUCTURAL_LITERALS``, and every listed value occurs there.
   BU's claim-year caps are the last ``dur_year`` of its claim-duration table, so a scratch
   copy with a twelfth row reads it; Pflege's surrender cap is the last policy year of its
-  surrender table likewise. The products with a regular premium read their premium
+  surrender table likewise. The nine products with a regular premium read their premium
   frequencies from one ``prem_freq_table.csv``, keyed ``annual`` to ``monthly``, with
-  ``instalments`` an ``int`` a year, and every model point's ``prem_freq`` is a key. The
-  payment frequencies FRV and Sofort allow are the keys of
-  their own tables; a frequency outside the table raises, and a row added to a scratch copy
-  admits it. Pflege's instalment frequencies and the months each covers are its own table
-  likewise. Riester's annuity frequency is a row ``ann_freq``, 12 as an ``int`` as Basis', and
+  ``instalments`` an ``int`` a year, and every model point's ``prem_freq`` is a key; Basis'
+  single premium reads no loading, Pflege's is the premium form ``single``, not a frequency.
+  ``prem_form`` is ``regular`` or ``single`` in the six products that have it, and an unknown
+  form raises. Sofort's annuity frequencies are the keys of its ``ann_freq_table.csv``. A
+  frequency outside its table raises (FRV, Pflege, Sofort), and a row added to a scratch copy
+  admits it. Riester's annuity frequency is a row ``ann_freq``, 12 as an ``int`` as Basis', and
   the *Rentenfaktor* unit of FRV, Index, RV and Riester a row ``rf_unit``, 10000.0 as Basis'.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
@@ -3390,7 +3391,7 @@ def test_an_unknown_premium_form_raises(tmp_path):
 
 # The payment frequencies a product allows, a table of its own: product -> (keys cell, keys).
 FREQUENCY_KEYS = {
-    "sofortrente": ("payment_freq_table_keys", frozenset({1, 2, 4, 12})),
+    "sofortrente": ("ann_freq_table_keys", frozenset({1, 2, 4, 12})),
 }
 
 # A frequency the shipped table lacks: product -> (table file, model-point column, value,
@@ -3403,8 +3404,8 @@ FREQUENCY_PROBES = {
         "prem_freq_table.csv", "prem_freq", "bimonthly", 'bimonthly,6,"[std] test fixture"',
         "prem_freq", "invalid prem_freq bimonthly", "bimonthly"),
     "sofortrente": (
-        "payment_freq_table.csv", "payment_freq", 3, '3,"[std] test fixture"',
-        "payment_freq", "invalid payment_freq", 3),
+        "ann_freq_table.csv", "ann_freq", 3, '3,"[std] test fixture"',
+        "ann_freq", "invalid ann_freq", 3),
 }
 
 
@@ -3430,7 +3431,7 @@ def test_pflege_single_premium_is_a_premium_form_not_a_frequency(product_models)
 
 
 @pytest.mark.parametrize("product", sorted(FREQUENCY_KEYS))
-def test_payment_frequencies_are_the_keys_of_their_table(product, product_models):
+def test_annuity_frequencies_are_the_keys_of_their_table(product, product_models):
     data = product_models(product).Data
     cell, keys = FREQUENCY_KEYS[product]
     assert data.cells[cell]() == keys

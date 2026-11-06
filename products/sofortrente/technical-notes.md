@@ -60,7 +60,7 @@ repeated in prose.
   and it selects the **contract's own *Höchstrechnungszins* vintage** [REG-R14] [REG-R15].
 - **Timing conventions [std].** The *Einmalbeitrag* arrives at the **start of month 0**. Instalments
   are paid at the **start** of a payment month; under `advance` (*vorschüssig*) the first falls at
-  `t = defer_mths()`, under `arrears` (*nachschüssig*) at `t = defer_mths() + 12/payment_freq`. A
+  `t = defer_mths()`, under `arrears` (*nachschüssig*) at `t = defer_mths() + 12/ann_freq`. A
   payment is made if the payee is alive at the **start** of that month — the same instant — so the
   survival index of a payment is always `t` and the two timings differ **only in which months carry
   an instalment**. Deaths fall **during** month `t`, so a life dying in month `t` has already
@@ -106,7 +106,7 @@ repeated in prose.
 | `surv_age` | int | Second life's age last birthday at *Vertragsbeginn* | 4, 5 |
 | `surv_birth_year` | int | Second life's *Geburtsjahr* | 4, 5 |
 | `surv_sex` | enum {M, F} | Second life's sex, decrement only | 4, 5 |
-| `payment_freq` | int, a key of `payment_freq_table.csv` {12, 4, 2, 1} | Instalments per year, `m` | 7 (4), 8 (1), 11 (2) |
+| `ann_freq` | int, a key of `ann_freq_table.csv` {12, 4, 2, 1} | Instalments per year, `m` | 7 (4), 8 (1), 11 (2) |
 | `payment_timing` | enum {advance, arrears} | *vorschüssig* / *nachschüssig* **[std]** | 9 |
 | `rechnungszins` | float | The tariff *Rechnungszins* `i`, at or below the vintage cap | 10, 13 |
 | `surplus_form` | enum {none, konstant, teildynamisch, volldynamisch} | *Überschussverwendung* | 5, 8, 11, 13 (konstant); 6, 12 (voll); 14 (none) |
@@ -216,7 +216,7 @@ minimum [REG-R18] [REG-R24]; class (c) is the modeller's view of experience.
 | Tariff *Rechnungszins* | Model-point attribute; **1,00 %** for 2025–2026 business, at or below the vintage cap. Every retrieved tariff prices **at** its vintage's cap; no below-cap pricing was observed | [S2] [S3] [S4] [S6]; [REG-R14] [REG-R15] |
 | Guarantee | The *garantierte Rente* is immutable for life; § 163 VVG is the only channel and it is narrow — and narrower here, Abs. 1 re-setting a *premium* this product does not have | [R4] [REG-R27] |
 | Payment frequency and timing | Monthly, *vorschüssig*, first instalment at inception. Frequencies read at four sources; **timing contradicted — two AVB pay in arrears**, and the model's convention is retained in this pass | [S1] [S2] [S6] [S7]; timing **[std]**, contradicted by [S4] [S6] |
-| *Rentengarantiezeit* | `guar_years × payment_freq` instalments payable **regardless of survival** from *Rentenbeginn*: "Stirbt die versicherte Person während der Rentengarantiezeit, so wird die monatliche Rente bis zum Ablauf der Rentengarantiezeit weiter gezahlt" | [S4]; also [S1] [S5] [S6] [S8] [R23] |
+| *Rentengarantiezeit* | `guar_years × ann_freq` instalments payable **regardless of survival** from *Rentenbeginn*: "Stirbt die versicherte Person während der Rentengarantiezeit, so wird die monatliche Rente bis zum Ablauf der Rentengarantiezeit weiter gezahlt" | [S4]; also [S1] [S5] [S6] [S8] [R23] |
 | *Kapital-/Beitragsrückgewähr* | `max(SP − guaranteed instalments already paid, 0)` on death — and two AVB confirm the netting is on the **guaranteed** annuity, so this is no longer a **[std]** argument | [S2] [S6] [R23] |
 | *Hinterbliebenenrente* | `surv_pct` of the annuitant's annuity to a named second life, from the annuitant's death, for that life's remaining lifetime; lapses if the second life predeceases; and it begins only **after** any *Rentengarantiezeit* has expired | [S1] [S9]; percentages [unverified] — the model conditions state none |
 | Death-benefit exclusivity | The refund is **not** combined with a guarantee period or a survivor's annuity | **[std]**, research gap 10 |
@@ -396,7 +396,7 @@ tagged in the tables above.
 |---|---|---|
 | `t` | — | month index from *Vertragsbeginn*, 0-based, `t = t₀ … n − 1` |
 | `t₀`, `n` | `t_start`, `proj_len` | first projected month index; **exclusive end** of the frame |
-| `m`, `p` | `payment_freq`, `pay_period_mths` | instalments per year; months between them, `p = 12/m` |
+| `m`, `p` | `ann_freq`, `pay_period_mths` | instalments per year; months between them, `p = 12/m` |
 | `D`, `G` | `defer_mths`, `guar_years` | deferment in months; guarantee period in years |
 | `SP`, `SP_net` | `single_prem`, `net_single_prem` | *Einmalbeitrag*; `SP(1 − α)` |
 | `α`, `β` | `expense_load_alpha`, `expense_load_beta` | acquisition and annuity-administration loadings |
@@ -478,7 +478,7 @@ two it is.
 
 ### Payment months, the certain floor and the payment factors
 
-    pay_period_mths()   = 12 // payment_freq()                                  ( p )
+    pay_period_mths()   = 12 // ann_freq()                                      ( p )
     first_pay_mth()     = defer_mths()                    under `advance`
                         = defer_mths() + pay_period_mths()  under `arrears`
     is_payment_mth(t)   = ( t ≥ first_pay_mth() )  and  ( (t − first_pay_mth()) mod p == 0 )
@@ -806,7 +806,7 @@ with every attribute stated: `policy_id = SOF-000001`; `single_prem = 100,000.00
 `issue_age = 65`; `issue_year = 2025`; `birth_year = 1960`; `sex = M`; `defer_years = 0`, so
 `defer_mths() = 0` and `first_pay_mth() = 0`; `guar_years = 10`, so `guar_end_mth() = 120` and the
 first 120 monthly instalments are certain; `refund_form = none`; `surv_pct = 0.00`, with `surv_age`,
-`surv_birth_year` and `surv_sex` unused and carried as zeros; `payment_freq = 12` and
+`surv_birth_year` and `surv_sex` unused and carried as zeros; `ann_freq = 12` and
 `payment_timing = advance`, so an instalment falls at the start of every month from `t = 0`;
 `rechnungszins = 0.0100`, the *Höchstrechnungszins* in force for 2025 business [REG-R15];
 `surplus_form = teildynamisch`; `annuity_pp_init = 0.00`, so the guaranteed annuity is **derived by

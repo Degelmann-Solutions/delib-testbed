@@ -41,7 +41,7 @@ mort_file                     data.mort_table()                    mort_table.cs
 improvement_file              data.improvement_table()             improvement_table.csv
 surplus_scale_file            data.surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     data.hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
-payment_freq_file             data.payment_freq_table()            payment_freq_table.csv
+ann_freq_file                 data.ann_freq_table()                ann_freq_table.csv
 param_file                    data.param()                         param_tariff_type.csv
 ============================  ===================================  ================================
 
@@ -72,7 +72,7 @@ alpha            expense_load_alpha                    Acquisition loading in th
 beta             expense_load_beta                     Loading on the annuity value
 i                rechnungszins()                       Tariff Rechnungszins
 (cap)            hoechstrechnungszins()                Hoechstrechnungszins at issue_year
-m                payment_freq()                        Instalments per year
+m                ann_freq()                            Instalments per year
 p = 12/m         pay_period_mths()                     Months between instalments
 D                defer_mths()                          Aufschubzeit in months
 (none)           first_pay_mth()                       Month of the first instalment
@@ -153,7 +153,7 @@ the level. Letting the model point's ``sex`` into the tariff would reproduce a t
 unlawful in Germany since 21 December 2012.
 
 ``annuity_factor()`` is the notes' ``ä`` and is **not** the market's ``a12``:
-``a12 = annuity_factor() / payment_freq()``, so a research figure of ``a12 = 20.426``
+``a12 = annuity_factor() / ann_freq()``, so a research figure of ``a12 = 20.426``
 corresponds to ``annuity_factor() = 245.11``. It is a pricing quantity and stays acyclic:
 it depends on the tariff basis, the elected options and the tariff interest rate, and on
 nothing that depends on the projected path. In particular it does **not** depend on
@@ -365,18 +365,18 @@ def surv_pct():
     return float(model_point()["surv_pct"])
 
 
-def payment_freq():
-    """m: instalments per year, one of 12, 4, 2 or 1, the keys of *payment_freq_table.csv*.
+def ann_freq():
+    """m: instalments per year, one of 12, 4, 2 or 1, the keys of *ann_freq_table.csv*.
 
     Monthly is the market standard and the product's whole commercial proposition — an
     income replacing a salary.  The other frequencies exist as options; no carrier's menu,
     and no loading or discount for choosing one, was established, so this model prices
     them on the same basis and lets the timing of the instalments do the work.  Raises
-    ``ValueError`` for a frequency ``data.payment_freq_table_keys()`` does not hold.
+    ``ValueError`` for a frequency ``data.ann_freq_table_keys()`` does not hold.
     """
-    v = int(model_point()["payment_freq"])
-    if v not in data.payment_freq_table_keys():                      # noqa: F821
-        raise ValueError("invalid payment_freq")
+    v = int(model_point()["ann_freq"])
+    if v not in data.ann_freq_table_keys():                          # noqa: F821
+        raise ValueError("invalid ann_freq")
     return v
 
 
@@ -658,8 +658,8 @@ def net_single_prem():
 
 
 def pay_period_mths():
-    """p: months between instalments, ``12 // payment_freq()``."""
-    return 12 // payment_freq()
+    """p: months between instalments, ``12 // ann_freq()``."""
+    return 12 // ann_freq()
 
 
 def first_pay_mth():
@@ -690,7 +690,7 @@ def is_payment_mth(t):
 def guar_end_mth():
     """The first month **after** the *Rentengarantiezeit*: ``first_pay_mth() + 12 G``.
 
-    Note that it is 12 G and not ``G x payment_freq() x pay_period_mths()`` spelled out —
+    Note that it is 12 G and not ``G x ann_freq() x pay_period_mths()`` spelled out —
     they are the same number, which is the point: a G-year guarantee covers ``G x m``
     instalments at every frequency and under both timings.
     """
@@ -716,7 +716,7 @@ def annuity_factor():
     :func:`tariff_lives` rather than on the projected one, and ``v = 1 / (1 + i)``.
 
     It is dimensionless and it is **not** the market's ``a12``:
-    ``a12 = annuity_factor() / payment_freq()``.  It is a pricing quantity and stays
+    ``a12 = annuity_factor() / ann_freq()``.  It is a pricing quantity and stays
     acyclic — it depends on the tariff basis, the elected options and the tariff interest
     rate, and on nothing that depends on the projected path.  In particular it does not
     depend on ``surplus_form``, so :func:`annuity_pp_derived` is invariant to it.

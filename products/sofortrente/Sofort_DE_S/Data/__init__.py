@@ -35,7 +35,7 @@ mort_file                     mort_table()                    mort_table.csv
 improvement_file              improvement_table()             improvement_table.csv
 surplus_scale_file            surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
-payment_freq_file             payment_freq_table()            payment_freq_table.csv
+ann_freq_file                 ann_freq_table()                ann_freq_table.csv
 param_file                    param()                         param_tariff_type.csv
 ============================  ==============================  ================================
 
@@ -44,7 +44,7 @@ dicts by column, built once per model, which the projection's lookups read inste
 ``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table`` and
 ``hoechstrechnungszins_table``, this space's ``improvement_table_dict`` and
 ``surplus_scale_table_dict``, with ``mort_table_ages`` and ``improvement_table_ages``, the
-age range the lookups clamp to, and ``payment_freq_table_keys``, the payment frequencies
+age range the lookups clamp to, and ``ann_freq_table_keys``, the payment frequencies
 the table allows.
 
 Every file but ``model_point_table.csv`` carries a final ``provenance`` column, one tag
@@ -170,14 +170,14 @@ def surplus_scale_table():
         input_dir() / surplus_scale_file, index_col="surplus_form")  # noqa: F821
 
 
-def payment_freq_table():
+def ann_freq_table():
     """The payment frequencies an annuity may have, in instalments a year.
 
-    Read from *payment_freq_table.csv*, one row per frequency, keyed by ``payment_freq``:
+    Read from *ann_freq_table.csv*, one row per frequency, keyed by ``ann_freq``:
     12, 4, 2 and 1, monthly, quarterly, half-yearly and annual.
     """
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / payment_freq_file, index_col="payment_freq")   # noqa: F821
+        input_dir() / ann_freq_file, index_col="ann_freq")           # noqa: F821
 
 
 def improvement_table_dict():
@@ -198,13 +198,13 @@ def surplus_scale_table_dict():
     return surplus_scale_table().to_dict()
 
 
-def payment_freq_table_keys():
-    """The keys of ``payment_freq_table()`` as a ``frozenset`` of ``int``: 12, 4, 2 and 1.
+def ann_freq_table_keys():
+    """The keys of ``ann_freq_table()`` as a ``frozenset`` of ``int``: 12, 4, 2 and 1.
 
-    Built once per model; ``Projection.payment_freq`` checks the model point's frequency
+    Built once per model; ``Projection.ann_freq`` checks the model point's frequency
     against it.
     """
-    return frozenset(int(m) for m in payment_freq_table().index)
+    return frozenset(int(m) for m in ann_freq_table().index)
 
 
 def mort_table_ages():
@@ -240,7 +240,7 @@ surplus_scale_file = "surplus_scale_table.csv"
 
 hoechstrechnungszins_file = "hoechstrechnungszins_table.csv"
 
-payment_freq_file = "payment_freq_table.csv"
+ann_freq_file = "ann_freq_table.csv"
 
 param_file = "param_tariff_type.csv"
 

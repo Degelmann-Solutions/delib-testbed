@@ -242,7 +242,7 @@ German carrier publishes a mix** (research gap 13).
 Instalments are paid at the **start** of a payment month and a payment is made if the payee
 is alive at that same instant, so the survival index of a payment is `t` under both timings
 and the two conventions differ **only in which months carry an instalment**: under `advance`
-the first falls at `defer_mths()`, under `arrears` at `defer_mths() + 12/payment_freq`. A
+the first falls at `defer_mths()`, under `arrears` at `defer_mths() + 12/ann_freq`. A
 `G`-year guarantee covers `G × m` instalments at every frequency and under both timings,
 which is why `guar_end_mth()` is `first_pay_mth() + 12 G` and not a frequency expression.
 
@@ -266,7 +266,7 @@ folder. `Sofort_DE_S/` holds nothing but formulas:
 
 ```
 products/sofortrente/
-  model_point_table.csv  mort_table.csv  improvement_table.csv  payment_freq_table.csv  <- inputs live here
+  model_point_table.csv  mort_table.csv  improvement_table.csv  ann_freq_table.csv      <- inputs live here
   surplus_scale_table.csv  hoechstrechnungszins_table.csv  param_tariff_type.csv
   run.py  model.md  product-spec.md  technical-notes.md  sources.md
   Sofort_DE_S/                     <- formulas only
@@ -418,7 +418,7 @@ from the month it falls in, are **absent** here: the payment instant is the star
 | `R`, `U(t)`, `A(t)` | `annuity_guar_pp` / `annuity_surp_pp` / `annuity_pp` | Three amounts, one per cells: the immutable *garantierte Rente*, the declared *Überschussrente*, and their sum. Publishing only the first models less than the payment; publishing only the third loses the distinction between a promise and a declaration |
 | `q⁽¹⁾(x)`, `q⁽²⁾(x)` | `mort_rate_tariff` / `mort_rate` | **Different objects, not two readings of one table**: first-order unisex for pricing, second-order sex-specific for the projection. `mort_rate` is the library's shared name and takes the projection basis, as it does in every other delib model |
 | `C(t)` | `cum_annuity_guar_pp` | Deliberately *not* `cum_annuity_pp`, the name `SPIA_US_S`, `PA_UK_S` and `Rente_FR_S` use, because it accumulates the **guaranteed** instalment alone. The longer name is the [std] refund-basis decision made visible at the point of use |
-| `ä` | `annuity_factor` | The notes' `ä`, and **not** the market's `a12`: `a12 = annuity_factor() / payment_freq()`, so the research file's `a12 = 20,426` is `annuity_factor() = 245,11`. `Rente_FR_S` carries the same name for the **French** unit — the value of one unit of *annual* rente, `sum(l(t) v^t) / 12` — so its `annuity_factor` is this model's `a12` and not this cells |
+| `ä` | `annuity_factor` | The notes' `ä`, and **not** the market's `a12`: `a12 = annuity_factor() / ann_freq()`, so the research file's `a12 = 20,426` is `annuity_factor() = 245,11`. `Rente_FR_S` carries the same name for the **French** unit — the value of one unit of *annual* rente, `sum(l(t) v^t) / 12` — so its `annuity_factor` is this model's `a12` and not this cells |
 | `l̃(k)` | `tariff_lives` | The first-order survival path, used only inside the pricing sums and running from inception whatever `t_start()` is. Kept apart from `lives_if` so that the equivalence stays acyclic |
 
 ## Standardizations used

@@ -23,7 +23,7 @@ print("options: Aufschubzeit {} mth, Rentengarantiezeit {} y, refund {}, "
       "Hinterbliebenenrente {:.0%}".format(
           proj.defer_mths(), proj.guar_years(), proj.refund_form(), proj.surv_pct()))
 print("payment: {} per year, {}, first instalment at t = {}, guarantee ends at t = {}".format(
-    proj.payment_freq(), proj.payment_timing(), proj.first_pay_mth(),
+    proj.ann_freq(), proj.payment_timing(), proj.first_pay_mth(),
     proj.guar_end_mth()))
 print("tariff:  i = {:.4f} (cap {:.4f} for {}), alpha = {:.3f}, beta = {:.3f}, "
       "surplus = {}".format(
@@ -36,7 +36,7 @@ print("frame:   t = {} ... {} ({} monthly rows, proj_len = {} exclusive)".format
 print()
 print("net_single_prem  {:,.4f} EUR".format(proj.net_single_prem()))
 print("annuity_factor   {:.6f}   (a12 = {:.6f})".format(
-    proj.annuity_factor(), proj.annuity_factor() / proj.payment_freq()))
+    proj.annuity_factor(), proj.annuity_factor() / proj.ann_freq()))
 print("refund_pv        {:,.4f} EUR".format(proj.refund_pv()))
 print("annuity_guar_pp  {:,.6f} EUR per instalment".format(
     proj.annuity_guar_pp(proj.t_start())))

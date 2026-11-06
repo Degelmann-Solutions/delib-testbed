@@ -354,7 +354,7 @@ three-class split, and confusing them is pitfall 12's neighbour.
 | `mort_base_year` | **2025**, a row of `param_tariff_type.csv` | **[std]** |
 | `omega_age` ω | **121**, a row of `param_tariff_type.csv` | **[std]** |
 | `roll_fwd_tol` | **1e-8**, a row of `param_tariff_type.csv`, the tolerance every `check_*` closes to | **[std]** |
-| `solve_tol`, `solve_max_iter` | **1e-10**, **200**, rows of `param_tariff_type.csv` — the bisection controls for the refund solve | **[std]** |
+| Bisection tolerance and iteration cap | **1e-10**, **200**, literals in `annuity_pp_derived()` — the bisection controls for the refund solve, solver settings and so code | **[std]** |
 
 (c1) **No charge or expense parameter was established at any carrier** (research gap 8), so none of
 these has an observed range. The loadings are argued in `product-spec.md` footnote 6. The incurred
@@ -556,7 +556,7 @@ with `n(t)` the number of instalments paid by month `t` and `d̃_a` the first-or
 `g` is increasing in `R` on `(0, R_max]` where `R_max = SP_net / (ä (1 + β))` is the no-refund
 annuity, and `g(0) = SP · Σ v^(t/12) d̃_a(t) < SP_net` on any basis with a positive interest rate, so
 a root exists and **bisection on `[0, R_max]` converges**. The reference implementation bisects to
-`solve_tol` in at most `solve_max_iter` steps, evaluating the sum inline from the cached
+a bracket of `1e-10` in at most `200` steps, evaluating the sum inline from the cached
 `tariff_lives` path rather than through a cells parameterized by the trial `R`.
 
 **Computing `R_max` and then subtracting a refund cost is a different — and wrong — answer** (pitfall
@@ -1245,7 +1245,7 @@ In rough order of leverage for a German payout-annuity block:
    life annuity on the [std] basis, and the reduction is sensitive to the interest rate in a way the
    plain annuity is not, because the refund is a *death* benefit discounted from an earlier date than
    the annuity payments it displaces. It is also the only place in the model where a numerical solve
-   sits inside the pricing, so a change of `solve_tol` is a change of answer, not of runtime.
+   sits inside the pricing, so a change of its tolerance, 1e-10, is a change of answer, not of runtime.
 6. **The second life and the independence assumption.** The *Hinterbliebenenrente* is priced with both
    lives independent **[std]**; real joint lives are positively dependent, so the model **overstates**
    the joint-life annuity value and understates the cost of the rider. No delib source quantifies the

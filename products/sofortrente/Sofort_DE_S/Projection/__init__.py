@@ -173,7 +173,7 @@ equation is **implicit in R**::
 with ``n(t)`` the instalments paid by month ``t``. ``g`` is increasing in ``R`` on
 ``(0, R_max]``, where ``R_max`` is the no-refund annuity, and ``g(0) < net_single_prem()``
 on any basis with a positive interest rate, so a root exists and bisection converges.
-:func:`annuity_pp_derived` bisects to ``solve_tol`` in at most ``solve_max_iter`` steps,
+:func:`annuity_pp_derived` bisects to a bracket of ``1e-10`` in at most ``200`` steps,
 evaluating the sum inline from the cached :func:`tariff_lives` path rather than through a
 cells parameterized by the trial ``R``.
 
@@ -777,7 +777,7 @@ def annuity_pp_derived():
         paid.append(0 if t < fp else (t - fp) // p + 1)
     lo = 0.0
     hi = r_max
-    for it in range(data.param("solve_max_iter")):                   # noqa: F821
+    for it in range(200):
         mid = 0.5 * (lo + hi)
         g = mid * a * load
         for j in range(len(dens)):
@@ -786,7 +786,7 @@ def annuity_pp_derived():
             hi = mid
         else:
             lo = mid
-        if hi - lo <= data.param("solve_tol"):                       # noqa: F821
+        if hi - lo <= 1e-10:
             break
     return 0.5 * (lo + hi)
 

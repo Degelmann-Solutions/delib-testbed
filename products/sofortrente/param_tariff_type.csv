@@ -10,5 +10,3 @@ expense_maint_pp,60.0,,"[std] [S4] [S2] [S15] maintenance expense 60 EUR a year 
 expense_pay_pp,1.5,,"[std] [S4] [S2] [S15] cost of running one instalment, 1.50 EUR per instalment paid; the direction is sourced, the level is not; was a Reference on Projection"
 mix_male,0.45,,"[std] [REG-R34] male share rho_M of the unisex blend of the sex-distinct tables, a direction with no magnitude; no German carrier publishes a portfolio mix (research gap 13); was a Reference on Projection"
 mort_base_year,2025,,"[std] base year of the mortality trend, so the shipped tables are the period tables of calendar year 2025 and the anchor's cohort exponent at 65 is exactly zero; was a Reference on Projection"
-solve_tol,1e-10,,"[std] tolerance of the bisection of the refund solve, the only numerical solve in the model, so a change of answer rather than of runtime; was a Reference on Projection"
-solve_max_iter,200,,"[std] iteration cap of the bisection of the refund solve; was a Reference on Projection"

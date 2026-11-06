@@ -46,7 +46,8 @@
   through a row of a scratch copy's tariff-type file. KLV's 4 read ones likewise; its
   three References of the lapse modules that were never built, read by no cell, are in
   neither its ``Projection`` nor its parameter files. BU's 11, FRV's 12, Basis' 5,
-  Index' 10 and Sofort's 10 likewise; RV and Pflege never had one.
+  Index' 10 and 8 of Sofort's 10 likewise; Sofort's other 2, the bisection settings of its
+  refund solve, are literals in its formula. RV and Pflege never had one.
   Every product's core layer is ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's eleven
   guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 3 actuarial
   formula literals (the tax step of ``lapse_tax_step``) are rows of its
@@ -1854,7 +1855,8 @@ INDEX_MOVED_REFERENCES = {
     "rentenfaktor_curr": 25.0,
 }
 
-# The 10 numeric References Sofort's ``Projection`` held, as their former Python literals.
+# 8 of the 10 numeric References Sofort's ``Projection`` held, as their former Python literals;
+# the other 2, ``solve_tol`` 1e-10 and ``solve_max_iter`` 200, are literals of ``annuity_pp_derived``.
 SOFORT_MOVED_REFERENCES = {
     "expense_load_alpha": 0.025,
     "expense_load_beta": 0.02,
@@ -1864,8 +1866,6 @@ SOFORT_MOVED_REFERENCES = {
     "expense_pay_pp": 1.5,
     "mix_male": 0.45,
     "mort_base_year": 2025,
-    "solve_tol": 1e-10,
-    "solve_max_iter": 200,
 }
 
 # The products whose numeric References have all moved into their parameter files: all ten,
@@ -2018,7 +2018,7 @@ def test_sofort_references_are_tariff_type_rows(product_models):
     model = product_models("sofortrente")
     data = model.Data
     layer = data.param_layers()["tariff_type"]
-    assert len(SOFORT_MOVED_REFERENCES) == 10
+    assert len(SOFORT_MOVED_REFERENCES) == 8
     for item, literal in SOFORT_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
@@ -2062,7 +2062,7 @@ STRUCTURAL_LITERALS = {
     "pflegerentenversicherung": {"2", "3", "4", "5", "6", "12", "12.0", "1000.0"},
     "riester_rente": {"12", "12.0"},
     "risikolebensversicherung": {"2", "12", "12.0"},
-    "sofortrente": {"0.5", "2", "12", "12.0"},
+    "sofortrente": {"0.5", "1e-10", "2", "12", "12.0", "200"},
 }
 
 

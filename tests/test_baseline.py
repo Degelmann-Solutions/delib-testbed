@@ -184,3 +184,16 @@ def test_stored_baseline_reads_back_to_the_recipe_hash(product):
     assert b"\r" not in stored
     assert recipe_hash_of_csv(stored) == recipe_hash
     assert len({line.split(b",", 1)[0] for line in stored.split(b"\n")[1:-1]}) == points
+
+
+@pytest.mark.parametrize("product", sorted(BASELINE))
+def test_run_script_prints_without_error(product):
+    """Each product's ``run.py``, the hand-run demo, exits 0 and prints its checks.
+
+    No other test runs these scripts; Sofort's crashed at its check loop for nine days
+    because it called the core's ``check_net_cf_tol(t)`` without ``t``.
+    """
+    done = subprocess.run([sys.executable, str(ROOT / "products" / product / "run.py")],
+                          capture_output=True, text=True, timeout=300)
+    assert done.returncode == 0, done.stderr
+    assert "checks" in done.stdout

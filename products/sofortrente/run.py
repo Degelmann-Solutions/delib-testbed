@@ -50,8 +50,9 @@ for col in df.columns[1:]:
     print("  {:<18s} {:>18,.2f}".format(col, df[col].sum()))
 print()
 print("checks:")
-for name in sorted(c for c in model.Projection.cells
-                   if c.startswith("check_") and not c.endswith("_resid")):
+for name in sorted(c for c, cells in model.Projection.cells.items()
+                   if c.startswith("check_") and not c.endswith("_resid")
+                   and not cells.parameters):
     print("  {:<26s} {}".format(name, getattr(proj, name)()))
 
 model.close()

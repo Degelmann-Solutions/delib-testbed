@@ -41,6 +41,7 @@ mort_file                     data.mort_table()                    mort_table.cs
 improvement_file              data.improvement_table()             improvement_table.csv
 surplus_scale_file            data.surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     data.hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
+payment_freq_file             data.payment_freq_table()            payment_freq_table.csv
 param_file                    data.param()                         param_tariff_type.csv
 ============================  ===================================  ================================
 
@@ -365,15 +366,16 @@ def surv_pct():
 
 
 def payment_freq():
-    """m: instalments per year, one of 12, 4, 2 or 1.
+    """m: instalments per year, one of 12, 4, 2 or 1, the keys of *payment_freq_table.csv*.
 
     Monthly is the market standard and the product's whole commercial proposition — an
     income replacing a salary.  The other frequencies exist as options; no carrier's menu,
     and no loading or discount for choosing one, was established, so this model prices
-    them on the same basis and lets the timing of the instalments do the work.
+    them on the same basis and lets the timing of the instalments do the work.  Raises
+    ``ValueError`` for a frequency ``data.payment_freq_table_keys()`` does not hold.
     """
     v = int(model_point()["payment_freq"])
-    if v not in (1, 2, 4, 12):
+    if v not in data.payment_freq_table_keys():                      # noqa: F821
         raise ValueError("invalid payment_freq")
     return v
 

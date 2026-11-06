@@ -106,7 +106,7 @@ repeated in prose.
 | `surv_age` | int | Second life's age last birthday at *Vertragsbeginn* | 4, 5 |
 | `surv_birth_year` | int | Second life's *Geburtsjahr* | 4, 5 |
 | `surv_sex` | enum {M, F} | Second life's sex, decrement only | 4, 5 |
-| `payment_freq` | int {12, 4, 2, 1} | Instalments per year, `m` | 7 (4), 8 (1), 11 (2) |
+| `payment_freq` | int, a key of `payment_freq_table.csv` {12, 4, 2, 1} | Instalments per year, `m` | 7 (4), 8 (1), 11 (2) |
 | `payment_timing` | enum {advance, arrears} | *vorschüssig* / *nachschüssig* **[std]** | 9 |
 | `rechnungszins` | float | The tariff *Rechnungszins* `i`, at or below the vintage cap | 10, 13 |
 | `surplus_form` | enum {none, konstant, teildynamisch, volldynamisch} | *Überschussverwendung* | 5, 8, 11, 13 (konstant); 6, 12 (voll); 14 (none) |

@@ -261,12 +261,12 @@ fund of those who died, and the annuity starts at an older age.
 
 ## Inputs are external files
 
-The six input CSVs live **in this directory**, beside `run.py` — not inside the model
+The seven input CSVs live **in this directory**, beside `run.py` — not inside the model
 folder. `Sofort_DE_S/` holds nothing but formulas:
 
 ```
 products/sofortrente/
-  model_point_table.csv  mort_table.csv  improvement_table.csv      <- inputs live here
+  model_point_table.csv  mort_table.csv  improvement_table.csv  payment_freq_table.csv  <- inputs live here
   surplus_scale_table.csv  hoechstrechnungszins_table.csv  param_tariff_type.csv
   run.py  model.md  product-spec.md  technical-notes.md  sources.md
   Sofort_DE_S/                     <- formulas only

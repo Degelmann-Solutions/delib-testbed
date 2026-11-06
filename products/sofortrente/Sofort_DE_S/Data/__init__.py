@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The six input CSVs are read here, **once per model**, and referenced from
+The seven input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Sofort_DE_S.Projection` as ``data``. :mod:`~.Sofort_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its
 own cells cache; if the readers lived there, every model point would re-read every file.
@@ -35,6 +35,7 @@ mort_file                     mort_table()                    mort_table.csv
 improvement_file              improvement_table()             improvement_table.csv
 surplus_scale_file            surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
+payment_freq_file             payment_freq_table()            payment_freq_table.csv
 param_file                    param()                         param_tariff_type.csv
 ============================  ==============================  ================================
 
@@ -43,7 +44,8 @@ dicts by column, built once per model, which the projection's lookups read inste
 ``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table`` and
 ``hoechstrechnungszins_table``, this space's ``improvement_table_dict`` and
 ``surplus_scale_table_dict``, with ``mort_table_ages`` and ``improvement_table_ages``, the
-age range the lookups clamp to.
+age range the lookups clamp to, and ``payment_freq_table_keys``, the payment frequencies
+the table allows.
 
 Every file but ``model_point_table.csv`` carries a final ``provenance`` column, one tag
 per row, per the library's second ruling. A model point is a *configuration* rather than
@@ -168,6 +170,16 @@ def surplus_scale_table():
         input_dir() / surplus_scale_file, index_col="surplus_form")  # noqa: F821
 
 
+def payment_freq_table():
+    """The payment frequencies an annuity may have, in instalments a year.
+
+    Read from *payment_freq_table.csv*, one row per frequency, keyed by ``payment_freq``:
+    12, 4, 2 and 1, monthly, quarterly, half-yearly and annual.
+    """
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / payment_freq_file, index_col="payment_freq")   # noqa: F821
+
+
 def improvement_table_dict():
     """The improvement rates as a dict by column: ``{column: {(basis, age): rate}}``.
 
@@ -184,6 +196,15 @@ def surplus_scale_table_dict():
     ``surplus_growth`` read the columns of their names.
     """
     return surplus_scale_table().to_dict()
+
+
+def payment_freq_table_keys():
+    """The keys of ``payment_freq_table()`` as a ``frozenset`` of ``int``: 12, 4, 2 and 1.
+
+    Built once per model; ``Projection.payment_freq`` checks the model point's frequency
+    against it.
+    """
+    return frozenset(int(m) for m in payment_freq_table().index)
 
 
 def mort_table_ages():
@@ -218,6 +239,8 @@ improvement_file = "improvement_table.csv"
 surplus_scale_file = "surplus_scale_table.csv"
 
 hoechstrechnungszins_file = "hoechstrechnungszins_table.csv"
+
+payment_freq_file = "payment_freq_table.csv"
 
 param_file = "param_tariff_type.csv"
 

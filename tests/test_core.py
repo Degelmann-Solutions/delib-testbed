@@ -56,9 +56,10 @@
   listed for its space in ``STRUCTURAL_LITERALS``, and every listed value occurs there.
   BU's claim-year caps are the last ``dur_year`` of its claim-duration table, so a scratch
   copy with a twelfth row reads it; Pflege's surrender cap is the last policy year of its
-  surrender table likewise. The payment frequencies FRV allows are the keys of its own
-  table; a frequency outside it raises, and a row added to a scratch copy admits it. Pflege's
-  instalment frequencies and the months each covers are its own table likewise.
+  surrender table likewise. The payment frequencies FRV and Sofort allow are the keys of
+  their own tables; a frequency outside the table raises, and a row added to a scratch copy
+  admits it. Pflege's instalment frequencies and the months each covers are its own table
+  likewise.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -2040,7 +2041,7 @@ STRUCTURAL_LITERALS = {
     "pflegerentenversicherung": {"2", "3", "4", "5", "6", "12", "12.0", "1000.0"},
     "riester_rente": {"12", "12.0", "10000.0"},
     "risikolebensversicherung": {"2", "12", "12.0"},
-    "sofortrente": {"0.5", "2", "4", "12", "12.0"},
+    "sofortrente": {"0.5", "2", "12", "12.0"},
 }
 
 
@@ -3248,6 +3249,7 @@ def test_basis_single_premium_reads_no_loading(tmp_path):
 # The payment frequencies a product allows, a table of its own: product -> (keys cell, keys).
 FREQUENCY_KEYS = {
     "fondsgebundene_rentenversicherung": ("prem_mode_table_keys", frozenset({1, 3, 6, 12})),
+    "sofortrente": ("payment_freq_table_keys", frozenset({1, 2, 4, 12})),
 }
 
 # Pflege's instalment frequencies and the months one instalment covers, as the map it held.
@@ -3263,6 +3265,9 @@ FREQUENCY_PROBES = {
     "pflegerentenversicherung": (
         "prem_mode_table.csv", "prem_mode", "bimonthly", 'bimonthly,2,"[std] test fixture"',
         "prem_mode_months", "invalid prem_mode", 2),
+    "sofortrente": (
+        "payment_freq_table.csv", "payment_freq", 3, '3,"[std] test fixture"',
+        "payment_freq", "invalid payment_freq", 3),
 }
 
 

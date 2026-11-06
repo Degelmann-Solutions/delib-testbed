@@ -149,7 +149,7 @@ M_PRODUCT = {
     "pflegerentenversicherung": 805,
     "riester_rente": 598,
     "risikolebensversicherung": 295,
-    "sofortrente": 485,
+    "sofortrente": 479,
 }
 M_NEW = M_CORE + sum(M_PRODUCT.values())
 

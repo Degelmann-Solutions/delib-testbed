@@ -271,7 +271,7 @@ Footnotes to **[std]** rows:
 | Parameter | Representative value | Basis |
 |---|---|---|
 | *Beitrag* | 200,00 EUR per month, level, payable for 30 years to *Rentenbeginn* | **[std]** (8) |
-| *Beitragssumme* | `Beitrag × (12 / prem_mode_months) × premium term` = 72,000.00 EUR — the sum of all premiums **payable**, not paid | definition [R12] [REG-R16] |
+| *Beitragssumme* | `Beitrag × instalments a year × premium term` = 72,000.00 EUR — the sum of all premiums **payable**, not paid | definition [R12] [REG-R16] |
 | Premium timing | In advance, at the start of each payment period | **[std]** (9) |
 | *Ratenzahlungszuschlag* | A loading for paying more often than annually; the composite reads the **instalment stated in the policy** and does not re-apply a loading | mechanic [S1]; level `[unverified]`; treatment **[std]** (9) |
 | Premium-paying term | Equal to the *Aufschubzeit* in the base case; a shorter term is permitted and shortens the acquisition-charge spread | **[std]** (10) |

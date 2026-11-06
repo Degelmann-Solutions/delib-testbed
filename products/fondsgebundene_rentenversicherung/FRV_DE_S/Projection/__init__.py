@@ -48,7 +48,7 @@ lapse_file                data.lapse_table()                 lapse_table.csv
 charge_file               data.charge_table()                charge_table.csv
 fund_scenario_file        data.fund_scenario_table()         fund_scenario_table.csv
 rentenfaktor_file         data.rentenfaktor_table()          rentenfaktor_table.csv
-prem_mode_file            data.prem_mode_table()             prem_mode_table.csv
+prem_freq_file            data.prem_freq_table()             prem_freq_table.csv
 param_file                data.param()                       param_tariff_type.csv
 ========================  =================================  ==========================
 
@@ -390,19 +390,6 @@ def prem_pp_base():
     return float(model_point()["prem_pp"])
 
 
-def prem_mode_months():
-    """Payment frequency in months: 1, 3, 6 or 12, a key of *prem_mode_table.csv*.
-
-    It decides both which months carry a premium and how many acquisition instalments the
-    sixty-month window holds — 60 monthly, 20 quarterly, 10 half-yearly, 5 annual.  Raises
-    ``ValueError`` for a frequency ``data.prem_mode_table_keys()`` does not hold.
-    """
-    v = int(model_point()["prem_mode_months"])
-    if v not in data.prem_mode_table_keys():                         # noqa: F821
-        raise ValueError("invalid prem_mode_months")
-    return v
-
-
 def dynamik_rate():
     """*Beitragsdynamik*: the contractual annual premium increase; 0 when off.
 
@@ -728,7 +715,7 @@ def prem_pp(t):
         return 0.0
     if pup_month() > 0 and t >= pup_month():
         return 0.0
-    if (t - t_start()) % prem_mode_months() != 0:
+    if (t - t_start()) % prem_cycle() != 0:
         return 0.0
     return prem_pp_base() * dynamik_factor(t)
 
@@ -743,7 +730,7 @@ def topup_pp(t):
 def beitragssumme_prem():
     """The annual premium of the *Beitragssumme*, at the **initial** level.
 
-    ``prem_pp_base() x (12 / prem_mode_months())`` on a recurring-premium contract, and the
+    ``prem_pp_base() x instalments()`` on a recurring-premium contract, and the
     *Einmalbeitrag* itself on a single-premium one, counted once by
     :func:`beitragssumme_years`; so ``beitragssumme()`` is 200.00 x 12 x 30 = 72 000,00 EUR
     on the anchor cell.  It is the base of the acquisition charge and it is **invariant**:
@@ -753,12 +740,12 @@ def beitragssumme_prem():
     function of the lapse assumption, which is both wrong and circular.
 
     Override reason: the premium is paid in instalments of ``prem_pp_base()`` every
-    ``prem_mode_months()`` months, or once as an *Einmalbeitrag*,
+    ``prem_cycle()`` months, or once as an *Einmalbeitrag*,
     products/fondsgebundene_rentenversicherung/technical-notes.md:443
     """
     if prem_form() == "einmal":
         return prem_pp_base()
-    return prem_pp_base() * (12.0 / prem_mode_months())
+    return prem_pp_base() * instalments()
 
 
 def beitragssumme_years():
@@ -785,7 +772,7 @@ def acq_window_months():
 
 
 def acq_instalments():
-    """The number of acquisition instalments: the window divided by the premium frequency.
+    """The number of acquisition instalments: the window over the months between premiums.
 
     60 on the anchor cell, 20 quarterly, 10 half-yearly, 5 annual, 24 on the two-year
     premium term, and 1 on a single premium.  The count matters because the instalment is
@@ -794,7 +781,7 @@ def acq_instalments():
     """
     if prem_form() == "einmal":
         return 1
-    return acq_window_months() // prem_mode_months()
+    return acq_window_months() // prem_cycle()
 
 
 def charge_acq_pp(t):
@@ -1947,7 +1934,7 @@ def check_acq_charge_resid(t):
         if pup_month() > 0:
             hi = min(hi, pup_month() - 1)
         elapsed = 0 if hi < t_start() else (
-            (hi - t_start()) // prem_mode_months() + 1)
+            (hi - t_start()) // prem_cycle() + 1)
     instalment = (zillmer_amount() / acq_instalments()
                   if acq_instalments() else 0.0)
     topups = (topup_amount()

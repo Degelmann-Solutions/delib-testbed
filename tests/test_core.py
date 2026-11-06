@@ -276,6 +276,7 @@ CORE_CELLS = {
                                "klassische_rentenversicherung": "derived"},
         "prem_freq_table": {"basisrente": "derived",
                             "berufsunfaehigkeit": "derived",
+                            "fondsgebundene_rentenversicherung": "derived",
                             "indexpolice": "derived",
                             "kapitallebensversicherung": "derived",
                             "klassische_rentenversicherung": "derived",
@@ -333,6 +334,7 @@ CORE_CELLS = {
                           "pflegerentenversicherung": "derived"},
         "prem_freq": {"basisrente": "derived",
                       "berufsunfaehigkeit": "derived",
+                      "fondsgebundene_rentenversicherung": "derived",
                       "indexpolice": "derived",
                       "kapitallebensversicherung": "derived",
                       "klassische_rentenversicherung": "derived",
@@ -347,9 +349,11 @@ CORE_CELLS = {
                            "riester_rente": "derived",
                            "risikolebensversicherung": "derived"},
         "instalments": {"berufsunfaehigkeit": "derived",
+                        "fondsgebundene_rentenversicherung": "derived",
                         "kapitallebensversicherung": "derived",
                         "risikolebensversicherung": "derived"},
         "prem_cycle": {"berufsunfaehigkeit": "derived",
+                       "fondsgebundene_rentenversicherung": "derived",
                        "kapitallebensversicherung": "derived",
                        "risikolebensversicherung": "derived"},
         "issue_age": {**dict.fromkeys(MODELS, "derived"), "sofortrente": "override"},
@@ -3296,9 +3300,10 @@ def test_basis_single_premium_reads_no_loading(tmp_path):
 # The premium payment frequencies, one name and one table in every product with a regular
 # premium: key -> instalments a year.
 PREM_FREQ_INSTALMENTS = {"annual": 1, "half_yearly": 2, "quarterly": 4, "monthly": 12}
-PREM_FREQ_PRODUCTS = sorted(["basisrente", "berufsunfaehigkeit", "indexpolice", "kapitallebensversicherung",
-                             "klassische_rentenversicherung", "riester_rente",
-                             "risikolebensversicherung"])
+PREM_FREQ_PRODUCTS = sorted(["basisrente", "berufsunfaehigkeit",
+                             "fondsgebundene_rentenversicherung", "indexpolice",
+                             "kapitallebensversicherung", "klassische_rentenversicherung",
+                             "riester_rente", "risikolebensversicherung"])
 
 
 def test_the_products_with_a_premium_frequency_table_are_listed(product_models):
@@ -3333,7 +3338,6 @@ def test_premium_frequencies_are_one_table_with_instalments(product, product_mod
 
 # The payment frequencies a product allows, a table of its own: product -> (keys cell, keys).
 FREQUENCY_KEYS = {
-    "fondsgebundene_rentenversicherung": ("prem_mode_table_keys", frozenset({1, 3, 6, 12})),
     "sofortrente": ("payment_freq_table_keys", frozenset({1, 2, 4, 12})),
 }
 
@@ -3345,8 +3349,8 @@ PFLEGE_PREM_MODE_MONTHS = {"monthly": 1, "quarterly": 3, "half_yearly": 6, "annu
 # row that admits it, cell that checks it, its error message, the cell's value once admitted).
 FREQUENCY_PROBES = {
     "fondsgebundene_rentenversicherung": (
-        "prem_mode_table.csv", "prem_mode_months", 2, '2,"[std] test fixture"',
-        "prem_mode_months", "invalid prem_mode_months", 2),
+        "prem_freq_table.csv", "prem_freq", "bimonthly", 'bimonthly,6,"[std] test fixture"',
+        "prem_freq", "invalid prem_freq bimonthly", "bimonthly"),
     "pflegerentenversicherung": (
         "prem_mode_table.csv", "prem_mode", "bimonthly", 'bimonthly,2,"[std] test fixture"',
         "prem_mode_months", "invalid prem_mode", 2),

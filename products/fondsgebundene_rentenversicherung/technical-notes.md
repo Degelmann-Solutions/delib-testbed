@@ -611,7 +611,7 @@ The product's defining metric, and the reason the library publishes it: on a con
 
     gross_return_ref() = ( Π_{t=t₀..n−1} (1 + fund_return_gross_ann(t))^(1/12) )^(12 / (n − t₀)) − 1
 
-    irr_ann() solves, by bisection on k in [irr_lo, irr_hi] = [-0.99, 5.0], rows of param_tariff_type.csv:
+    irr_ann() solves, by bisection on k:
        Σ_t (B(t) + Z(t)) · (1 + k)^((n − t)/12)
        − Σ_t W(t) · (1 + k)^((n − 1 − t)/12)
        + F(t₀) · (1 + k)^((n − t₀)/12)                    =  av_maturity_pp()

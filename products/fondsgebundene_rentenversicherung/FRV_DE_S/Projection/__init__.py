@@ -1744,7 +1744,7 @@ def irr_ann():
     flows += [(-withdrawals_pp(t), (n - 1 - t) / 12.0) for t in range(t0, n)]
     flows += [(av_pp(t0), (n - t0) / 12.0)]
     target = av_maturity_pp()
-    lo, hi = data.param("irr_lo"), data.param("irr_hi")              # noqa: F821
+    lo, hi = -0.99, 5.0
     for _ in range(200):
         mid = 0.5 * (lo + hi)
         if sum(a * (1.0 + mid) ** m for a, m in flows) - target > 0.0:

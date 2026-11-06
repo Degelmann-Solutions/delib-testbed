@@ -48,6 +48,7 @@ lapse_file                data.lapse_table()                 lapse_table.csv
 charge_file               data.charge_table()                charge_table.csv
 fund_scenario_file        data.fund_scenario_table()         fund_scenario_table.csv
 rentenfaktor_file         data.rentenfaktor_table()          rentenfaktor_table.csv
+prem_mode_file            data.prem_mode_table()             prem_mode_table.csv
 param_file                data.param()                       param_tariff_type.csv
 ========================  =================================  ==========================
 
@@ -390,13 +391,14 @@ def prem_pp_base():
 
 
 def prem_mode_months():
-    """Payment frequency in months: 1, 3, 6 or 12.
+    """Payment frequency in months: 1, 3, 6 or 12, a key of *prem_mode_table.csv*.
 
     It decides both which months carry a premium and how many acquisition instalments the
-    sixty-month window holds — 60 monthly, 20 quarterly, 10 half-yearly, 5 annual.
+    sixty-month window holds — 60 monthly, 20 quarterly, 10 half-yearly, 5 annual.  Raises
+    ``ValueError`` for a frequency ``data.prem_mode_table_keys()`` does not hold.
     """
     v = int(model_point()["prem_mode_months"])
-    if v not in (1, 3, 6, 12):
+    if v not in data.prem_mode_table_keys():                         # noqa: F821
         raise ValueError("invalid prem_mode_months")
     return v
 

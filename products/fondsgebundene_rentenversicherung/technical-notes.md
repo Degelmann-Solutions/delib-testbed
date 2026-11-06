@@ -121,7 +121,7 @@ that exercise the attribute non-trivially, so a reader can find the row that tes
 | `ret_age` | int | age at *Rentenbeginn*; fixes `proj_len()` and the *Rentenfaktor* row | 13 (70), all others 67 |
 | `prem_form` | enum {`laufend`, `einmal`} | recurring or single premium | 2 (`einmal`) |
 | `prem_pp` | EUR | the **instalment the policy states**, or the *Einmalbeitrag*. Already contains whatever *Ratenzahlungszuschlag* the tariff applied | all |
-| `prem_mode_months` | int {1, 3, 6, 12} | payment frequency in months | 3 (3), 4 (6), 5 (12) |
+| `prem_mode_months` | int, a key of `prem_mode_table.csv` {1, 3, 6, 12} | payment frequency in months | 3 (3), 4 (6), 5 (12) |
 | `prem_term_y` | int | premium-paying term in years; 0 for `einmal` | 12 (2 years against a 12-year deferment) |
 | `dynamik_rate` | float | *Beitragsdynamik*, annual premium increase at each anniversary; 0 = off | 10 (3 %) |
 | `pup_month` | int | 0-based policy month from which the contract is *beitragsfrei*; 0 = never (the sentinel, not the inception month) | 7 (120) |

@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The seven input CSVs are read here, **once per model**, and referenced from
+The eight input CSVs are read here, **once per model**, and referenced from
 :mod:`~.FRV_DE_S.Projection` as ``data``. :mod:`~.FRV_DE_S.Projection` is parameterized
 by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells
 cache; if the readers lived there, every model point would re-read every file. Holding
@@ -36,14 +36,16 @@ lapse_file                lapse_table()                 lapse_table.csv
 charge_file               charge_table()                charge_table.csv
 fund_scenario_file        fund_scenario_table()         fund_scenario_table.csv
 rentenfaktor_file         rentenfaktor_table()          rentenfaktor_table.csv
+prem_mode_file            prem_mode_table()             prem_mode_table.csv
 param_file                param()                       param_tariff_type.csv
 ========================  ============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
 ``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table``,
-``lapse_table`` and ``rentenfaktor_table``, this space's ``fund_scenario_table_dict``, and
-``charge_table_rows``, the charge table by row.
+``lapse_table`` and ``rentenfaktor_table``, this space's ``fund_scenario_table_dict``,
+``charge_table_rows``, the charge table by row, and ``prem_mode_table_keys``, the payment
+frequencies the table allows.
 
 **Every file but ``model_point_table.csv`` carries a ``provenance`` column**, one tag per
 row, and the library's conventions suite asserts it. That is this library's second
@@ -161,6 +163,25 @@ def rentenfaktor_table_index():
     return ["factor_id", "annuity_age"]
 
 
+def prem_mode_table():
+    """The payment frequencies a contract may have, in months between instalments.
+
+    Read from *prem_mode_table.csv*, one row per frequency, keyed by ``prem_mode_months``:
+    1, 3, 6 and 12, monthly, quarterly, half-yearly and annual.
+    """
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / prem_mode_file, index_col="prem_mode_months")  # noqa: F821
+
+
+def prem_mode_table_keys():
+    """The keys of ``prem_mode_table()`` as a ``frozenset`` of ``int``: 1, 3, 6 and 12.
+
+    Built once per model; ``Projection.prem_mode_months`` checks the model point's frequency
+    against it.
+    """
+    return frozenset(int(m) for m in prem_mode_table().index)
+
+
 def fund_scenario_table_dict():
     """The fund paths as a dict by column: ``{column: {(scenario_id, policy_year): rate}}``.
 
@@ -195,6 +216,8 @@ charge_file = "charge_table.csv"
 fund_scenario_file = "fund_scenario_table.csv"
 
 rentenfaktor_file = "rentenfaktor_table.csv"
+
+prem_mode_file = "prem_mode_table.csv"
 
 param_file = "param_tariff_type.csv"
 

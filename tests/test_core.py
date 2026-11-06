@@ -56,7 +56,8 @@
   listed for its space in ``STRUCTURAL_LITERALS``, and every listed value occurs there.
   BU's claim-year caps are the last ``dur_year`` of its claim-duration table, so a scratch
   copy with a twelfth row reads it; Pflege's surrender cap is the last policy year of its
-  surrender table likewise.
+  surrender table likewise. The payment frequencies FRV allows are the keys of its own
+  table; a frequency outside it raises, and a row added to a scratch copy admits it.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -2031,7 +2032,7 @@ STRUCTURAL_LITERALS = {
     "core": {"11", "12", "12.0"},
     "basisrente": {"12", "12.0"},
     "berufsunfaehigkeit": {"2", "12", "12.0"},
-    "fondsgebundene_rentenversicherung": {"0.5", "3", "6", "12", "12.0", "200", "10000.0"},
+    "fondsgebundene_rentenversicherung": {"0.5", "12", "12.0", "200", "10000.0"},
     "indexpolice": {"11", "12", "12.0", "13", "10000.0"},
     "kapitallebensversicherung": {"11", "12", "12.0"},
     "klassische_rentenversicherung": {"2", "12", "12.0", "10000.0"},
@@ -3238,6 +3239,52 @@ def test_basis_single_premium_reads_no_loading(tmp_path):
         with pytest.raises(Exception, match="prem_mode") as raised:
             copy.Projection[regular].prem_freq_load()
         assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+    finally:
+        copy.close()
+
+
+# The payment frequencies a product allows, a table of its own: product -> (keys cell, keys).
+FREQUENCY_KEYS = {
+    "fondsgebundene_rentenversicherung": ("prem_mode_table_keys", frozenset({1, 3, 6, 12})),
+}
+
+# A frequency the shipped table lacks: product -> (table file, model-point column, value,
+# row that admits it, cell that checks it, its error message, the cell's value once admitted).
+FREQUENCY_PROBES = {
+    "fondsgebundene_rentenversicherung": (
+        "prem_mode_table.csv", "prem_mode_months", 2, '2,"[std] test fixture"',
+        "prem_mode_months", "invalid prem_mode_months", 2),
+}
+
+
+@pytest.mark.parametrize("product", sorted(FREQUENCY_KEYS))
+def test_payment_frequencies_are_the_keys_of_their_table(product, product_models):
+    data = product_models(product).Data
+    cell, keys = FREQUENCY_KEYS[product]
+    assert data.cells[cell]() == keys
+    assert all(type(key) is int for key in data.cells[cell]())
+
+
+@pytest.mark.parametrize("product", sorted(FREQUENCY_PROBES))
+def test_a_frequency_outside_the_table_raises_and_a_row_admits_it(product, tmp_path):
+    table, column, value, row, cell, message, admitted = FREQUENCY_PROBES[product]
+    folder = product_copy(tmp_path, product)
+    points = pd.read_csv(folder / "model_point_table.csv", dtype=str, keep_default_na=False)
+    points.loc[0, column] = str(value)
+    points.to_csv(folder / "model_point_table.csv", index=False)
+    point_id = int(points.loc[0, "point_id"])
+    copy = mx.read_model(folder / MODELS[product], name="FreqProbe")
+    try:
+        with pytest.raises(Exception, match=message) as raised:
+            copy.Projection[point_id].cells[cell]()
+        assert raised_value_error(raised, message)
+    finally:
+        copy.close()
+    path = folder / table
+    path.write_text(path.read_text(encoding="utf-8") + row + "\n", encoding="utf-8")
+    copy = mx.read_model(folder / MODELS[product], name="FreqProbeAdmitted")
+    try:
+        assert copy.Projection[point_id].cells[cell]() == admitted
     finally:
         copy.close()
 

@@ -85,7 +85,7 @@ t // 12`. Because a 0-based frame has no `t = −1`, the opening *Anteilspreis* 
 | `model_point_table.csv` | `pup_month` | **Shifted −1**: a point on the frame's time axis. Model point 7 goes *beitragsfrei* at `t = 120` (was 121). `0` stays the "never" **sentinel**, not the inception month |
 | `model_point_table.csv` | `topup_month` | **Shifted −1**: model point 9 tops up at `t = 120` (was 121). `0` stays the "none" sentinel |
 | `model_point_table.csv` | `wd_month` | **Shifted −1**: model point 9 withdraws at `t = 240` (was 241). `0` stays the "none" sentinel |
-| `model_point_table.csv` | `issue_age`, `ret_age`, `prem_term_y`, `prem_mode_months` | **Unchanged.** Ages, a term in years and a frequency in months — none is a point on the frame |
+| `model_point_table.csv` | `issue_age`, `ret_age`, `prem_term_y`, `prem_mode_months` | **Unchanged.** Ages, a term in years and a frequency in months (a key of `prem_mode_table.csv`, read by `prem_mode_table()` beside the files below) — none is a point on the frame |
 | `lapse_table.csv` | `policy_year` | **Unchanged.** The contractual 1-based label; `lapse_rate_base(t)` maps through `policy_year(t) = t // 12 + 1` |
 | `fund_scenario_table.csv` | `policy_year` | **Unchanged**, for the same reason |
 | `charge_table.csv` | `alpha_spread_months` | **Unchanged.** A count of months, not an index |
@@ -306,12 +306,12 @@ period [R7] [R9] [REG-R31] [REG-R32]; this model implements neither.
 
 ## Inputs are external files
 
-The seven input CSVs live **in this directory**, beside `run.py` — not inside the model folder.
+The eight input CSVs live **in this directory**, beside `run.py` — not inside the model folder.
 `FRV_DE_S/` holds nothing but formulas:
 
 ```
 products/fondsgebundene_rentenversicherung/
-  model_point_table.csv  mort_table.csv  lapse_table.csv     <- inputs live here
+  model_point_table.csv  mort_table.csv  lapse_table.csv  prem_mode_table.csv  <- inputs live here
   charge_table.csv  fund_scenario_table.csv  rentenfaktor_table.csv  param_tariff_type.csv
   run.py
   product-spec.md  technical-notes.md  model.md  sources.md  <- the documents

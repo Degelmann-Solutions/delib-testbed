@@ -452,7 +452,7 @@ a 50 / 50 mix while writing 60 / 40" is model risk 7 [REG-R34].
 | `E_g(t)` | `esc_pg(t, g)`, the escalation-weighted counterpart of `ℓ_g` |
 | `d`, `K` | `leistungsdynamik`, the annual escalation of the annuity in payment; `karenz_months` |
 | `i` | `rechnungszins`; `v = (1 + i) ** (-1/12)`, used **only** in the pricing engine |
-| `α`, `β`, `γ`, `c`, `f` | `acq_permille/1000`, `admin_prem_pct`, `admin_mth_pp`, `claim_expense_pp`, `expense_infl` |
+| `α`, `β`, `γ`, `c`, `f` | `acq_permille/permille_unit` (`permille_unit = 1000`, a row of `param_tariff_type.csv`), `admin_prem_pct`, `admin_mth_pp`, `claim_expense_pp`, `expense_infl` |
 
 Forces are per annum; `R`, `P` and every cash-flow component are EUR.
 

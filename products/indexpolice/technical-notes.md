@@ -390,11 +390,11 @@ an expense is the insurer's cash outgo in `net_cf`. All levels **[std]**.
 
 | Input | Value | Note |
 |---|---|---|
-| Acquisition charge `acq_cost_rate` | 2,5 % of the *Beitragssumme*, spread over `zill_years = 5` premium-paying years | at the *Höchstzillmersatz* [REG-R16] |
-| Acquisition expense `acq_expense_rate` | 2,5 % of the *Beitragssumme*, incurred **in full at inception** | the *Zillmer* strain: paid out at once, recovered over five years |
-| Premium charge `β` (`exp_prem_rate`) | 3 % of each gross premium collected | *Verwaltungskosten* |
-| Reserve charge `γ` (`exp_av_rate`) | 0,25 % a year of the post-premium balance | *Verwaltungskosten* |
-| Maintenance expense | 36,00 € per policy a year, inflating at `expense_infl` = 1,5 % (`param_tariff_type.csv`) | *Stückkosten* |
+| Acquisition charge `acq_cost_rate` | 2,5 % of the *Beitragssumme*, spread over `zill_years = 5` premium-paying years, both rows of `param_tariff_type.csv` | at the *Höchstzillmersatz* [REG-R16] |
+| Acquisition expense `acq_expense_rate` | 2,5 % of the *Beitragssumme*, a row of `param_tariff_type.csv`, incurred **in full at inception** | the *Zillmer* strain: paid out at once, recovered over five years |
+| Premium charge `β` (`exp_prem_rate`) | 3 % of each gross premium collected, a row of `param_tariff_type.csv` | *Verwaltungskosten* |
+| Reserve charge `γ` (`exp_av_rate`) | 0,25 % a year of the post-premium balance, a row of `param_tariff_type.csv` | *Verwaltungskosten* |
+| Maintenance expense | 36,00 € per policy a year (`exp_fixed_pp`), inflating at `expense_infl` = 1,5 %, both rows of `param_tariff_type.csv` | *Stückkosten* |
 | Claim expense | **none** — not modeled | no source, and immaterial beside the benefit |
 
 The charge income (`β` plus `γ` plus the amortised acquisition charge) and the expense outgo are

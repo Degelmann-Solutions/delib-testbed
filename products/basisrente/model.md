@@ -388,7 +388,7 @@ neither shifts; `issue_year` is a calendar year, and `issue_age` and `ret_age` a
 | `charge_table.csv` | One row per tariff: the four account charges, the *Schlussüberschussanteil*, and the insurer's own expense and commission scale | `zill_rate` 25 ‰ (and 40 ‰ pre-LVRG) is [R16] [REG-R16] [REG-R20]; **everything else on the row is [std]**. Two tariffs ship, differing only in `zill_rate`, so the in-force cohorts carry their own cap |
 | `behaviour_table.csv` | `bf_rate` and `zuz_take_up` by `dur`, the **policy year** `policy_year(t)`. `dur` is a contractual 1-based label and **not** the frame's `t`, so the file starts at `dur = 1` and is unaffected by the 0-based index | **[std]**, and **no observed range exists**: no German insurer publishes a *Beitragsfreistellung* rate or a *Zuzahlung* take-up for this product (gap 3). The shape is argued from the product's structure; the levels are invented |
 | `option_table.csv` | One multiplicative factor per option key | **[std]** — the *Ratenzahlungszuschlag* on the *laufender Beitrag* alone, and the *Rentenfaktor* reductions for a *Rentengarantiezeit* and a survivor's annuity, anchored on a Schicht-3 illustration that is [unverified] and expressly not transferable |
-| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.85 | **[std]**, the round step from the first-order table to a best estimate [R17] [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads |
+| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.85, `roll_fwd_tol` 1e-09, and the 5 that were References on `Projection`: `elig_surv_prob` 0.55, `mort_base_year` 2005, `zill_spread_y` 5, `rf_unit` 10000.0 and `ann_freq` 12 | `mort_be_factor`: **[std]**, the round step from the first-order table to a best estimate [R17] [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads; each later row with its basis tags in its provenance |
 
 ## The published checks
 
@@ -434,7 +434,7 @@ worked example while the machinery stays visible and testable.
 | *Rentengarantiezeit* | `guarantee_period_y` (model point) | `0` | Turns on the `pols_gtd` ledger and `claims_survivor`, and reduces the *Rentenfaktor*. Model points 4 and 12 set it to 10 and 20 years |
 | BUZ | `buz_prem_share` (model point) | `0.00` | Read by `prem_total_pp` alone, which enters no cash flow. Model point 11 sits at 0.49, the statutory boundary [R1] |
 
-`elig_surv_prob = 0.55` is a `Projection` Reference and is **inert on the anchor**, carried so
+`elig_surv_prob = 0.55` is a row of `param_tariff_type.csv` and is **inert on the anchor**, carried so
 that model points 3, 4 and 12 can exercise it: on model point 3, setting it to zero removes the
 whole of `claims_death` and moves no other column, the annuity staying reduced by the option
 factor because a German tariff pays for the cover out of the annuity whether or not a survivor

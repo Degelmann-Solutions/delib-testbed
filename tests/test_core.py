@@ -44,7 +44,7 @@
   ``Projection``. RLV's 17 likewise, and its premium-shock test switches the module on
   through a row of a scratch copy's tariff-type file. KLV's 4 read ones likewise; its
   three References of the lapse modules that were never built, read by no cell, are in
-  neither its ``Projection`` nor its parameter files. BU's 11 and FRV's 12 likewise.
+  neither its ``Projection`` nor its parameter files. BU's 11, FRV's 12 and Basis' 5 likewise.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -1794,10 +1794,19 @@ FRV_MOVED_REFERENCES = {
     "val_tol": 1e-10,
 }
 
+# The 5 numeric References Basis' ``Projection`` held, as their former Python literals.
+BASIS_MOVED_REFERENCES = {
+    "elig_surv_prob": 0.55,
+    "mort_base_year": 2005,
+    "zill_spread_y": 5,
+    "rf_unit": 10000.0,
+    "ann_freq": 12,
+}
+
 # The products whose numeric References have all moved into their parameter files.
 REFERENCES_MOVED = (
     "riester_rente", "risikolebensversicherung", "kapitallebensversicherung",
-    "berufsunfaehigkeit", "fondsgebundene_rentenversicherung",
+    "berufsunfaehigkeit", "fondsgebundene_rentenversicherung", "basisrente",
 )
 
 
@@ -1855,6 +1864,18 @@ def test_frv_references_are_tariff_type_rows(product_models):
     layer = data.param_layers()["tariff_type"]
     assert len(FRV_MOVED_REFERENCES) == 12
     for item, literal in FRV_MOVED_REFERENCES.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+        assert item not in model.Projection.refs, item
+
+
+def test_basis_references_are_tariff_type_rows(product_models):
+    model = product_models("basisrente")
+    data = model.Data
+    layer = data.param_layers()["tariff_type"]
+    assert len(BASIS_MOVED_REFERENCES) == 5
+    for item, literal in BASIS_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
         assert item in layer, item

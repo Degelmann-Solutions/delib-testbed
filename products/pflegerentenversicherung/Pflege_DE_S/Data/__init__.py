@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The eight input CSVs are read here, **once per model**, and referenced from
+The nine input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Pflege_DE_S.Projection` as ``data``. :mod:`~.Pflege_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its
 own cells cache; if the readers lived there, every model point would re-read every file.
@@ -37,6 +37,7 @@ incidence_file             incidence_table()               incidence_table.csv
 care_file                  care_table()                    care_table.csv
 lapse_file                 lapse_table()                   lapse_table.csv
 surrender_file             surrender_table()               surrender_table.csv
+prem_mode_file             prem_mode_table()               prem_mode_table.csv
 param_file                 param()                         param_tariff_type.csv
 =========================  ==============================  =========================
 
@@ -44,7 +45,7 @@ Beside each reader stands a dict cell ``<reader>_dict()``, the same table as pla
 dicts by column, built once per model, which the projection's lookups read instead of
 ``DataFrame.at``: the core's for ``model_point_table``, ``mort_table``
 and ``lapse_table``, this space's for ``benefit_scale_table``, ``incidence_table``,
-``care_table`` and ``surrender_table``, with ``surrender_table_last_year``, the policy
+``care_table``, ``surrender_table`` and ``prem_mode_table``, with ``surrender_table_last_year``, the policy
 year the surrender lookup caps at.
 
 Every file but ``model_point_table.csv`` carries a final ``provenance`` column, one tag
@@ -177,6 +178,17 @@ def surrender_table():
         input_dir() / surrender_file, index_col="policy_year")       # noqa: F821
 
 
+def prem_mode_table():
+    """The instalment frequencies and the months one instalment covers, by ``prem_mode``.
+
+    Read from *prem_mode_table.csv*: ``prem_mode_months`` is 1, 3, 6 and 12 for
+    ``monthly``, ``quarterly``, ``half_yearly`` and ``annual``, and 0 for ``single``, the
+    *Einmalbeitrag*.
+    """
+    return pd.read_csv(                                              # noqa: F821
+        input_dir() / prem_mode_file, index_col="prem_mode")         # noqa: F821
+
+
 def benefit_scale_table_dict():
     """The *Leistungsstaffel* as a dict by column: ``{column: {(staffel_id, grade): pct}}``.
 
@@ -213,6 +225,16 @@ def surrender_table_dict():
     return surrender_table().to_dict()
 
 
+def prem_mode_table_dict():
+    """The instalment frequencies as a dict by column: ``{column: {prem_mode: months}}``.
+
+    Built once per model from ``prem_mode_table()``; ``Projection.prem_freq`` checks the
+    model point's ``prem_mode`` against its keys and ``prem_mode_months`` reads its
+    ``prem_mode_months`` column.
+    """
+    return prem_mode_table().to_dict()
+
+
 def surrender_table_last_year():
     """The last policy year of ``surrender_table()``, its largest ``policy_year``: 40.
 
@@ -239,6 +261,8 @@ care_file = "care_table.csv"
 lapse_file = "lapse_table.csv"
 
 surrender_file = "surrender_table.csv"
+
+prem_mode_file = "prem_mode_table.csv"
 
 param_file = "param_tariff_type.csv"
 

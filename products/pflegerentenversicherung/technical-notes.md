@@ -103,7 +103,7 @@ German terms of art keep their German form in prose.
 | `rente_mth` | float | The *vereinbarte Pflegerente* at *Pflegegrad* 5, EUR per month — the scaling constant of the whole benefit | 13 (1 500), 14 (500) |
 | `staffel_id` | str | Key into `benefit_scale_table.csv`: `delib_std` or `bahr` | 5 (`bahr`) |
 | `prem_end_age` | int | Attained age at which the *Beitrag* ceases; `110` (= `omega_age`) means lifelong | 4 and 9 (65, *abgekürzte Beitragszahlungsdauer*) |
-| `prem_mode` | enum {monthly, quarterly, half_yearly, annual, single} | Instalment frequency; `single` is the *Einmalbeitrag* | 1, 3, 4, 5, 6 |
+| `prem_mode` | enum {monthly, quarterly, half_yearly, annual, single}, the keys of `prem_mode_table.csv` | Instalment frequency; `single` is the *Einmalbeitrag* | 1, 3, 4, 5, 6 |
 | `premium_mth` | float | The contractual monthly *Beitrag*. **`0.0` means "derive by equivalence"** | 10 (75.00 supplied), 11 and 12 (in-force premiums) |
 | `rating_factor` | float | *Risikozuschlag* multiplier on the gross premium; `1.00` at standard rates | 13 (1.50) |
 | `wartezeit_months` | int | *Wartezeit* from inception, in months | 7 (36) |
@@ -444,7 +444,7 @@ a 50 / 50 mix while writing 60 / 40" is model risk 7 [REG-R34].
 | `π_g` | `benefit_pct(g)`, the *Leistungsstaffel* percentage |
 | `R` | `rente_mth`, the *vereinbarte Pflegerente* at *Pflegegrad* 5 |
 | `P` | `premium_mth_pp()`, the level monthly gross *Beitrag* per policy |
-| `m` | `prem_mode_months()` — 1, 3, 6, 12, or 0 for the *Einmalbeitrag* |
+| `m` | `prem_mode_months()` — 1, 3, 6, 12, or 0 for the *Einmalbeitrag*, from `prem_mode_table.csv` |
 | `μ_A(t)`, `μ_g(t)`, `ι(t)` | force of active-life mortality at `x(t)`; force of mortality in *Pflegegrad* `g` = `mort_mult(g) × μ_A(t)`; force of incidence into care, **0** while `t < wartezeit_months` |
 | `s_g` | `entry_share(g)`, the distribution of the grade first entered |
 | `δ_g(t)`, `ρ_g(t)`, `w(t)` | forces of deterioration `g → g+1` and recovery `g → g-1` (from PG1, to active); and the monthly lapse probability from the active state, `lapse_rate_mth`, **0** outside the premium term |

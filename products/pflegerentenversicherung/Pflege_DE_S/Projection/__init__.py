@@ -47,6 +47,7 @@ incidence_file             data.incidence_table()               incidence_table.
 care_file                  data.care_table()                    care_table.csv
 lapse_file                 data.lapse_table()                   lapse_table.csv
 surrender_file             data.surrender_table()               surrender_table.csv
+prem_mode_file             data.prem_mode_table()               prem_mode_table.csv
 param_file                 data.param()                         param_tariff_type.csv
 =========================  ===================================  =========================
 
@@ -341,13 +342,14 @@ def prem_end_age():
 def prem_freq():
     """The instalment frequency: monthly, quarterly, half_yearly, annual or single.
 
-    Read from the model point's ``prem_mode`` column.
+    Read from the model point's ``prem_mode`` column and checked against the keys of
+    *prem_mode_table.csv*; raises ``ValueError`` for a frequency the table has no row for.
 
     Override reason: the product has no frequency loading table and its frequencies include
     ``single``, the *Einmalbeitrag*, products/pflegerentenversicherung/technical-notes.md:106
     """
     v = str(model_point()["prem_mode"])
-    if v not in ("monthly", "quarterly", "half_yearly", "annual", "single"):
+    if v not in data.prem_mode_table_dict()["prem_mode_months"]:     # noqa: F821
         raise ValueError("invalid prem_mode")
     return v
 
@@ -356,7 +358,8 @@ def prem_mode_months():
     """m: the number of months one instalment covers; ``0`` for the *Einmalbeitrag*.
 
     1, 3, 6 or 12, and ``0`` for ``single``, which is the sentinel the premium cells read
-    as "one payment at ``t = 0`` and nothing thereafter".
+    as "one payment at ``t = 0`` and nothing thereafter": the ``prem_mode_months`` column of
+    *prem_mode_table.csv* at ``prem_freq()``.
 
     The model charges **no separate** *Ratenzahlungszuschlag*: the instalment loading is
     folded into ``admin_prem_pct``, which is a percentage of the premium collected and so
@@ -365,8 +368,7 @@ def prem_mode_months():
     monthly, through the timing of the discounting alone, which is the opposite sign to a
     real German tariff.
     """
-    return {"monthly": 1, "quarterly": 3, "half_yearly": 6,
-            "annual": 12, "single": 0}[prem_freq()]
+    return int(data.prem_mode_table_dict()["prem_mode_months"][prem_freq()])  # noqa: F821
 
 
 def premium_mth():

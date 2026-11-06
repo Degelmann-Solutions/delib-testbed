@@ -57,7 +57,8 @@
   BU's claim-year caps are the last ``dur_year`` of its claim-duration table, so a scratch
   copy with a twelfth row reads it; Pflege's surrender cap is the last policy year of its
   surrender table likewise. The payment frequencies FRV allows are the keys of its own
-  table; a frequency outside it raises, and a row added to a scratch copy admits it.
+  table; a frequency outside it raises, and a row added to a scratch copy admits it. Pflege's
+  instalment frequencies and the months each covers are its own table likewise.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -2722,6 +2723,7 @@ PFLEGE_DICT_READERS = {
     "incidence_table": "incidence_file",
     "care_table": "care_file",
     "surrender_table": "surrender_file",
+    "prem_mode_table": "prem_mode_file",
 }
 
 
@@ -3248,13 +3250,34 @@ FREQUENCY_KEYS = {
     "fondsgebundene_rentenversicherung": ("prem_mode_table_keys", frozenset({1, 3, 6, 12})),
 }
 
+# Pflege's instalment frequencies and the months one instalment covers, as the map it held.
+PFLEGE_PREM_MODE_MONTHS = {"monthly": 1, "quarterly": 3, "half_yearly": 6, "annual": 12,
+                           "single": 0}
+
 # A frequency the shipped table lacks: product -> (table file, model-point column, value,
 # row that admits it, cell that checks it, its error message, the cell's value once admitted).
 FREQUENCY_PROBES = {
     "fondsgebundene_rentenversicherung": (
         "prem_mode_table.csv", "prem_mode_months", 2, '2,"[std] test fixture"',
         "prem_mode_months", "invalid prem_mode_months", 2),
+    "pflegerentenversicherung": (
+        "prem_mode_table.csv", "prem_mode", "bimonthly", 'bimonthly,2,"[std] test fixture"',
+        "prem_mode_months", "invalid prem_mode", 2),
 }
+
+
+def test_pflege_prem_mode_months_are_read_from_its_table(product_models):
+    model = product_models("pflegerentenversicherung")
+    months = model.Data.prem_mode_table_dict()["prem_mode_months"]
+    assert months == PFLEGE_PREM_MODE_MONTHS
+    points = model.Data.model_point_table()
+    seen = set()
+    for point_id in points.index:
+        item = model.Projection[point_id]
+        value = item.prem_mode_months()
+        assert type(value) is int and value == PFLEGE_PREM_MODE_MONTHS[item.prem_freq()]
+        seen.add(item.prem_freq())
+    assert seen == set(PFLEGE_PREM_MODE_MONTHS)
 
 
 @pytest.mark.parametrize("product", sorted(FREQUENCY_KEYS))

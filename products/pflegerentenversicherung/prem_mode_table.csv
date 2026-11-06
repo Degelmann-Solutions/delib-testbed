@@ -1,0 +1,6 @@
+prem_mode,prem_mode_months,provenance
+monthly,1,"[S5] monthly payment in advance, one instalment covering 1 month; was a literal in prem_mode_months on Projection"
+quarterly,3,"[S5] quarterly payment in advance, one instalment covering 3 months; was a literal in prem_mode_months on Projection"
+half_yearly,6,"[S5] half-yearly payment in advance, one instalment covering 6 months; was a literal in prem_mode_months on Projection"
+annual,12,"[S5] annual payment in advance, one instalment covering 12 months; was a literal in prem_mode_months on Projection"
+single,0,"[std] the Einmalbeitrag, one payment at t = 0 and none thereafter; 0 is the sentinel the premium cells read; was a literal in prem_mode_months on Projection"

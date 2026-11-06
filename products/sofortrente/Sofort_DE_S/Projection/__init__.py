@@ -503,8 +503,8 @@ def mort_rate_at_age(x, table_sex, basis):
     annuitant's attained age passes the closing row while their survival is already zero.
     """
     if table_sex == "U":
-        return (mix_male * mort_rate_at_age(x, "M", basis)           # noqa: F821
-                + (1.0 - mix_male) * mort_rate_at_age(x, "F", basis))   # noqa: F821
+        return (data.param("mix_male") * mort_rate_at_age(x, "M", basis)  # noqa: F821
+                + (1.0 - data.param("mix_male")) * mort_rate_at_age(x, "F", basis))  # noqa: F821
     lo, hi = data.mort_table_ages()                                  # noqa: F821
     xx = min(max(int(x), lo), hi)
     return float(data.mort_table_dict()["mort_rate"][(basis, table_sex, xx)])   # noqa: F821
@@ -543,7 +543,7 @@ def mort_rate_gen(x, table_sex, cohort, basis):
     return min(1.0,
                mort_rate_at_age(x, table_sex, basis)
                * (1.0 - improve_rate_at_age(x, basis))
-               ** (cohort + x - mort_base_year))                     # noqa: F821
+               ** (cohort + x - data.param("mort_base_year")))       # noqa: F821
 
 
 def mort_rate(t, life=1):
@@ -652,7 +652,7 @@ def net_single_prem():
     degenerates, for a single premium, to exactly this one netting step.  ``alpha`` is
     **[std]**: no charge parameter was established at any carrier.
     """
-    return single_prem() * (1.0 - expense_load_alpha)                # noqa: F821
+    return single_prem() * (1.0 - data.param("expense_load_alpha"))  # noqa: F821
 
 
 def pay_period_mths():
@@ -754,7 +754,7 @@ def annuity_pp_derived():
     different — and wrong — answer**, and the difference is not a rounding.
     """
     a = annuity_factor()
-    load = 1.0 + expense_load_beta                                   # noqa: F821
+    load = 1.0 + data.param("expense_load_beta")                     # noqa: F821
     r_max = net_single_prem() / (a * load)
     if refund_form() == "none":
         return r_max
@@ -775,7 +775,7 @@ def annuity_pp_derived():
         paid.append(0 if t < fp else (t - fp) // p + 1)
     lo = 0.0
     hi = r_max
-    for it in range(solve_max_iter):                                 # noqa: F821
+    for it in range(data.param("solve_max_iter")):                   # noqa: F821
         mid = 0.5 * (lo + hi)
         g = mid * a * load
         for j in range(len(dens)):
@@ -784,7 +784,7 @@ def annuity_pp_derived():
             hi = mid
         else:
             lo = mid
-        if hi - lo <= solve_tol:                                     # noqa: F821
+        if hi - lo <= data.param("solve_tol"):                       # noqa: F821
             break
     return 0.5 * (lo + hi)
 
@@ -1096,8 +1096,8 @@ def expenses_acq(t):
     amount at ``t = 0``, products/sofortrente/technical-notes.md:617
     """
     if t == 0:
-        return pols_if_init() * (expense_acq_rate * single_prem()   # noqa: F821
-                                 + expense_acq_fixed)               # noqa: F821
+        return pols_if_init() * (data.param("expense_acq_rate") * single_prem()  # noqa: F821
+                                 + data.param("expense_acq_fixed"))  # noqa: F821
     return 0.0
 
 
@@ -1107,7 +1107,7 @@ def expenses_maint(t):
     Override reason: maintenance is a twelfth of the annual amount, inflated, on the
     obligation weight, products/sofortrente/technical-notes.md:618
     """
-    return (expense_maint_pp / 12.0) * inflation_factor(t) * pols_if(t)  # noqa: F821
+    return (data.param("expense_maint_pp") / 12.0) * inflation_factor(t) * pols_if(t)  # noqa: F821
 
 
 def expenses_claim(t):
@@ -1122,7 +1122,7 @@ def expenses_claim(t):
     payment factor, products/sofortrente/technical-notes.md:619
     """
     if is_payment_mth(t):
-        return (expense_pay_pp * inflation_factor(t)                 # noqa: F821
+        return (data.param("expense_pay_pp") * inflation_factor(t)   # noqa: F821
                 * pols_if_init() * payment_factor(t))
     return 0.0
 
@@ -1385,7 +1385,8 @@ def check_equivalence_resid():
     if annuity_pp_init() > 0.0:
         return 0.0
     return net_single_prem() - (annuity_pp_derived() * annuity_factor()
-                                * (1.0 + expense_load_beta) + refund_pv())   # noqa: F821
+                                * (1.0 + data.param("expense_load_beta"))  # noqa: F821
+                                + refund_pv())
 
 
 def check_equivalence():
@@ -1504,27 +1505,5 @@ def result_pols_columns():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-expense_load_alpha = 0.025
-
-expense_load_beta = 0.02
-
-expense_acq_rate = 0.02
-
-expense_acq_fixed = 200.0
-
-expense_maint_pp = 60.0
-
-expense_pay_pp = 1.5
-
-mix_male = 0.45
-
-mort_base_year = 2025
-
-
-
-solve_tol = 1e-10
-
-solve_max_iter = 200
 
 pd = ("Module", "pandas")

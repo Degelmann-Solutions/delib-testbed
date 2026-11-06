@@ -344,17 +344,17 @@ three-class split, and confusing them is pitfall 12's neighbour.
 
 | Input | Value | Basis |
 |---|---|---|
-| `expense_load_alpha` α — acquisition loading in the tariff | **2,5 %** of `SP` | **[std]** (c1) |
-| `expense_load_beta` β — administration loading on the annuity value | **2,0 %** | **[std]** (c1) |
-| `expense_acq_rate`, `expense_acq_fixed` — acquisition expense actually incurred at `t = 0` | **2,0 %** of `SP` **plus 200 €** | **[std]** (c1) |
-| `expense_maint_pp` — maintenance expense per annum, per unit of `pols_if` | **60 €**, accrued monthly | **[std]** (c1) |
-| `expense_pay_pp` — cost of running one instalment | **1,50 €** per instalment paid | **[std]** (c1) |
+| `expense_load_alpha` α — acquisition loading in the tariff | **2,5 %** of `SP`, a row of `param_tariff_type.csv` | **[std]** (c1) |
+| `expense_load_beta` β — administration loading on the annuity value | **2,0 %**, a row of `param_tariff_type.csv` | **[std]** (c1) |
+| `expense_acq_rate`, `expense_acq_fixed` — acquisition expense actually incurred at `t = 0` | **2,0 %** of `SP` **plus 200 €**, two rows of `param_tariff_type.csv` | **[std]** (c1) |
+| `expense_maint_pp` — maintenance expense per annum, per unit of `pols_if` | **60 €**, a row of `param_tariff_type.csv`, accrued monthly | **[std]** (c1) |
+| `expense_pay_pp` — cost of running one instalment | **1,50 €** per instalment paid, a row of `param_tariff_type.csv` | **[std]** (c1) |
 | `expense_infl` — expense inflation | **1,5 %** p.a., a row of `param_tariff_type.csv`, stepping at the policy anniversary | **[std]** (c1) |
-| `mix_male` ρ_M | **0.45** | **[std]** |
-| `mort_base_year` | **2025** | **[std]** |
+| `mix_male` ρ_M | **0.45**, a row of `param_tariff_type.csv` | **[std]** |
+| `mort_base_year` | **2025**, a row of `param_tariff_type.csv` | **[std]** |
 | `omega_age` ω | **121**, a row of `param_tariff_type.csv` | **[std]** |
 | `roll_fwd_tol` | **1e-8**, a row of `param_tariff_type.csv`, the tolerance every `check_*` closes to | **[std]** |
-| `solve_tol`, `solve_max_iter` | **1e-10**, **200** — the bisection controls for the refund solve | **[std]** |
+| `solve_tol`, `solve_max_iter` | **1e-10**, **200**, rows of `param_tariff_type.csv` — the bisection controls for the refund solve | **[std]** |
 
 (c1) **No charge or expense parameter was established at any carrier** (research gap 8), so none of
 these has an observed range. The loadings are argued in `product-spec.md` footnote 6. The incurred
@@ -383,8 +383,8 @@ Inputs are **external CSVs in the model folder's parent**, read once per model b
 not a table row, so the CSV never carries a rate no real table would. Every file **except**
 `model_point_table.csv` carries a final `provenance` column, one tag per row, per the library's second
 ruling; a model point is a configuration rather than an assumption and is the only exemption. The
-scalar assumptions of class (c) are `Projection` References rather than a sixth CSV, and are tagged in
-the tables above.
+scalar assumptions of class (c) are rows of `param_tariff_type.csv`, each with its `provenance`, and are
+tagged in the tables above.
 
 ---
 

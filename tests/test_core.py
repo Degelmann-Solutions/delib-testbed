@@ -44,7 +44,8 @@
   ``Projection``. RLV's 17 likewise, and its premium-shock test switches the module on
   through a row of a scratch copy's tariff-type file. KLV's 4 read ones likewise; its
   three References of the lapse modules that were never built, read by no cell, are in
-  neither its ``Projection`` nor its parameter files. BU's 11, FRV's 12, Basis' 5 and Index' 10 likewise.
+  neither its ``Projection`` nor its parameter files. BU's 11, FRV's 12, Basis' 5,
+  Index' 10 and Sofort's 10 likewise; RV and Pflege never had one.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -1817,11 +1818,27 @@ INDEX_MOVED_REFERENCES = {
     "rentenfaktor_curr": 25.0,
 }
 
-# The products whose numeric References have all moved into their parameter files.
+# The 10 numeric References Sofort's ``Projection`` held, as their former Python literals.
+SOFORT_MOVED_REFERENCES = {
+    "expense_load_alpha": 0.025,
+    "expense_load_beta": 0.02,
+    "expense_acq_rate": 0.02,
+    "expense_acq_fixed": 200.0,
+    "expense_maint_pp": 60.0,
+    "expense_pay_pp": 1.5,
+    "mix_male": 0.45,
+    "mort_base_year": 2025,
+    "solve_tol": 1e-10,
+    "solve_max_iter": 200,
+}
+
+# The products whose numeric References have all moved into their parameter files: all ten,
+# RV and Pflege having never had one.
 REFERENCES_MOVED = (
     "riester_rente", "risikolebensversicherung", "kapitallebensversicherung",
     "berufsunfaehigkeit", "fondsgebundene_rentenversicherung", "basisrente",
-    "indexpolice",
+    "indexpolice", "sofortrente", "klassische_rentenversicherung",
+    "pflegerentenversicherung",
 )
 
 
@@ -1903,6 +1920,18 @@ def test_index_references_are_tariff_type_rows(product_models):
     layer = data.param_layers()["tariff_type"]
     assert len(INDEX_MOVED_REFERENCES) == 10
     for item, literal in INDEX_MOVED_REFERENCES.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+        assert item not in model.Projection.refs, item
+
+
+def test_sofort_references_are_tariff_type_rows(product_models):
+    model = product_models("sofortrente")
+    data = model.Data
+    layer = data.param_layers()["tariff_type"]
+    assert len(SOFORT_MOVED_REFERENCES) == 10
+    for item, literal in SOFORT_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
         assert item in layer, item

@@ -796,28 +796,29 @@ def pols_ledger(t):
     the published cells, :func:`pols_entry` and :func:`pols_grad` among them, read their
     component.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     k = karenz_months()
     if t <= t_start():
         status = status_init()
         act = pols_if_init() if status == "aktiv" else 0.0
-        pg = tuple(pols_if_init() if status == "pg%d" % g else 0.0 for g in range(1, 6))
-        none = (0.0,) * 5
-        return (act, pg, pg, tuple((0.0,) * k for g in range(1, 6)), none, none)
+        pg = tuple(pols_if_init() if status == "pg%d" % g else 0.0 for g in range(1, n + 1))
+        none = (0.0,) * n
+        return (act, pg, pg, tuple((0.0,) * k for g in range(1, n + 1)), none, none)
     act0, pg0, esc0, kar0, _, _ = pols_ledger(t - 1)
     x = age(t - 1)
-    p = tuple(p_pg_age(x, g) for g in range(1, 6))
+    p = tuple(p_pg_age(x, g) for g in range(1, n + 1))
     pa = p_act_age(age(t - 1), duration_mth(t - 1) < wartezeit_months())
     care = act0 * pa[2]
-    entry = tuple(care * inc_share(g) for g in range(1, 6))
+    entry = tuple(care * inc_share(g) for g in range(1, n + 1))
     if k <= 0:
         grad = entry
         kar = kar0
     else:
         grad = []
         kar = []
-        for g in range(1, 6):
+        for g in range(1, n + 1):
             total = 0.0
-            for h in range(max(1, g - 1), min(5, g + 1) + 1):
+            for h in range(max(1, g - 1), min(n, g + 1) + 1):
                 w = kar0[h - 1][k - 1]
                 if w == 0.0:
                     continue
@@ -831,7 +832,7 @@ def pols_ledger(t):
             row = [entry[g - 1]]
             for z in range(2, k + 1):
                 total = 0.0
-                for h in range(max(1, g - 1), min(5, g + 1) + 1):
+                for h in range(max(1, g - 1), min(n, g + 1) + 1):
                     w = kar0[h - 1][z - 2]
                     if w == 0.0:
                         continue
@@ -852,13 +853,13 @@ def pols_ledger(t):
     factor = (1.0 + leistungsdynamik()) ** (1.0 / 12.0)
     pg = []
     esc = []
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         total = pg0[g - 1] * p[g - 1][0] + grad[g - 1]
         carried = esc0[g - 1] * p[g - 1][0]
         if g > 1:
             total += pg0[g - 2] * p[g - 2][2]
             carried += esc0[g - 2] * p[g - 2][2]
-        if g < 5:
+        if g < n:
             total += pg0[g] * p[g][3]
             carried += esc0[g] * p[g][3]
         pg.append(total)
@@ -1001,11 +1002,12 @@ def pols_care(t):
     its *Karenzzeit* is here and is paid nothing, and a life at *Pflegegrad* 1 on the
     ``delib_std`` grid is here, is paid nothing and keeps paying.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     state = pols_ledger(t)
     total = 0.0
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         total += state[1][g - 1]
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         for z in range(1, karenz_months() + 1):
             total += state[3][g - 1][z - 1]
     return total
@@ -1050,10 +1052,11 @@ def pols_waived(t):
     ``bahr``; and a life downgraded out of the insured grades **leaves** here and starts
     paying again.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     if age(t) >= prem_end_age():
         return 0.0
     total = 0.0
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         if waiver_flag(g):
             total += pols_ledger(t)[1][g - 1]
     return total
@@ -1086,9 +1089,10 @@ def pols_death(t):
     Override reason: the deaths come from every state, the active state and each *Pflegegrad*
     at its own rate, products/pflegerentenversicherung/technical-notes.md:207
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     state = pols_ledger(t)
     total = state[0] * p_act_age(age(t), duration_mth(t) < wartezeit_months())[1]
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         in_grade = state[1][g - 1]
         for z in range(1, karenz_months() + 1):
             in_grade += state[3][g - 1][z - 1]
@@ -1256,12 +1260,13 @@ def claims(t, kind=None):
     core's ``sum`` over the kinds rounds otherwise (compensated summation),
     products/pflegerentenversicherung/technical-notes.md:570
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     if kind is None:
         return (claims(t, "ANNUITY") + claims(t, "LAPSE")
                 + claims(t, "DEATH"))
     elif kind == "ANNUITY":
         total = 0.0
-        for g in range(1, 6):
+        for g in range(1, n + 1):
             pct = benefit_pct(g)
             if pct > 0.0:
                 total += pct * pols_ledger(t)[2][g - 1]
@@ -1372,9 +1377,10 @@ def claim_expenses(t):
     by the insurer, so the *Nachprüfung* is a documentation exercise rather than the
     adversarial re-assessment that drives a *Berufsunfähigkeitsrente*'s claims cost.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     per_payment = float(data.param("claim_expense_pp"))              # noqa: F821
     total = 0.0
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         if waiver_flag(g):
             total += pols_ledger(t)[1][g - 1]
     return per_payment * inflation_factor(t) * total
@@ -1602,23 +1608,24 @@ def tar_ledger(t):
     state.  One evaluation per month instead of one per month, grade and clock; the
     published cells read their component.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     k = karenz_months()
     if t <= 0:
-        zero = (0.0,) * 5
-        return (1.0, zero, zero, tuple((0.0,) * k for g in range(1, 6)))
+        zero = (0.0,) * n
+        return (1.0, zero, zero, tuple((0.0,) * k for g in range(1, n + 1)))
     act0, pg0, esc0, kar0 = tar_ledger(t - 1)
     x = age(t - 1)
-    p = tuple(tar_p_pg(x, g) for g in range(1, 6))
+    p = tuple(tar_p_pg(x, g) for g in range(1, n + 1))
     pa = tar_p_act(t - 1)
     if k <= 0:
-        grad = tuple(act0 * pa[2] * inc_share(g) for g in range(1, 6))
+        grad = tuple(act0 * pa[2] * inc_share(g) for g in range(1, n + 1))
         kar = kar0
     else:
         grad = []
         kar = []
-        for g in range(1, 6):
+        for g in range(1, n + 1):
             total = 0.0
-            for h in range(max(1, g - 1), min(5, g + 1) + 1):
+            for h in range(max(1, g - 1), min(n, g + 1) + 1):
                 w = kar0[h - 1][k - 1]
                 if w == 0.0:
                     continue
@@ -1632,7 +1639,7 @@ def tar_ledger(t):
             row = [act0 * pa[2] * inc_share(g)]
             for z in range(2, k + 1):
                 total = 0.0
-                for h in range(max(1, g - 1), min(5, g + 1) + 1):
+                for h in range(max(1, g - 1), min(n, g + 1) + 1):
                     w = kar0[h - 1][z - 2]
                     if w == 0.0:
                         continue
@@ -1652,13 +1659,13 @@ def tar_ledger(t):
     factor = (1.0 + leistungsdynamik()) ** (1.0 / 12.0)
     pg = []
     esc = []
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         total = pg0[g - 1] * p[g - 1][0] + grad[g - 1]
         carried = esc0[g - 1] * p[g - 1][0]
         if g > 1:
             total += pg0[g - 2] * p[g - 2][2]
             carried += esc0[g - 2] * p[g - 2][2]
-        if g < 5:
+        if g < n:
             total += pg0[g] * p[g][3]
             carried += esc0[g] * p[g][3]
         pg.append(total)
@@ -1695,12 +1702,13 @@ def tar_pols_karenz(t, g, z):
 
 def tar_pols_grad(t, g):
     """First-order graduations into *Pflegegrad* ``g``; the entrants themselves when K = 0."""
+    n = data.pflegegrad_count()                                      # noqa: F821
     state = tar_ledger(t)
     k = karenz_months()
     if k <= 0:
         return state[0] * tar_p_act(t)[2] * inc_share(g)
     total = 0.0
-    for h in range(max(1, g - 1), min(5, g + 1) + 1):
+    for h in range(max(1, g - 1), min(n, g + 1) + 1):
         w = state[3][h - 1][k - 1]
         if w == 0.0:
             continue
@@ -1731,9 +1739,10 @@ def tar_esc_pg(t, g):
 
 def tar_pols_if(t):
     """The first-order in-force count: active, deferred and paying together."""
+    n = data.pflegegrad_count()                                      # noqa: F821
     state = tar_ledger(t)
     total = state[0]
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         total += state[1][g - 1]
         for z in range(1, karenz_months() + 1):
             total += state[3][g - 1][z - 1]
@@ -1749,10 +1758,11 @@ def tar_pols_prem(t):
     year of benefit — and that cost sits inside the level premium.  It is one of the
     reasons a *Pflegerente* is dearer than a *Pflegetagegeld* of nominally equal benefit.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     if age(t) >= prem_end_age():
         return 0.0
     total = tar_pols_if(t)
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         if waiver_flag(g):
             total -= tar_ledger(t)[1][g - 1]
     return total
@@ -1764,9 +1774,10 @@ def tar_pols_death(t):
     Read only by the *Beitragsrückgewähr* leg of the equivalence: a death benefit written
     into a *Pflegerente* is a death cover and has to be priced as one.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     state = tar_ledger(t)
     total = state[0] * tar_p_act(t)[1]
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         in_grade = state[1][g - 1]
         for z in range(1, karenz_months() + 1):
             in_grade += state[3][g - 1][z - 1]
@@ -1785,10 +1796,11 @@ def tariff_benefit_pv():
     ledger, monthly, not a death or survival benefit,
     products/pflegerentenversicherung/technical-notes.md:617
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     total = 0.0
     for t in range(proj_len()):
         row = 0.0
-        for g in range(1, 6):
+        for g in range(1, n + 1):
             pct = benefit_pct(g)
             if pct > 0.0:
                 row += pct * tar_ledger(t)[2][g - 1]
@@ -1828,11 +1840,12 @@ def epv_admin():
 
 def epv_claim_expense():
     """C: the expected present value of the per-annuity-payment claims cost, first order."""
+    n = data.pflegegrad_count()                                      # noqa: F821
     per_payment = float(data.param("claim_expense_pp"))              # noqa: F821
     total = 0.0
     for t in range(proj_len()):
         row = 0.0
-        for g in range(1, 6):
+        for g in range(1, n + 1):
             if waiver_flag(g):
                 row += tar_ledger(t)[1][g - 1]
         if row:
@@ -1986,9 +1999,10 @@ def check_states_resid(t):
     1 at the limiting age, it also closes at the far end: the decrements account for the
     whole policy rather than leaving a truncation residue.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     state = pols_ledger(t)
     total = state[0] + pols_dead_cum(t) + pols_lapse_cum(t)
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         total += state[1][g - 1]
         for z in range(1, karenz_months() + 1):
             total += state[3][g - 1][z - 1]
@@ -2043,10 +2057,11 @@ def check_esc_ledger_resid(t):
     escalated before rather than after the transition — the benefit would be understated and
     no total in the frame would look wrong.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     state = pols_ledger(t)
     if leistungsdynamik() == 0.0:
-        return sum(state[2][g - 1] - state[1][g - 1] for g in range(1, 6))
-    return sum(min(0.0, state[2][g - 1] - state[1][g - 1]) for g in range(1, 6))
+        return sum(state[2][g - 1] - state[1][g - 1] for g in range(1, n + 1))
+    return sum(min(0.0, state[2][g - 1] - state[1][g - 1]) for g in range(1, n + 1))
 
 
 def check_esc_ledger():
@@ -2077,6 +2092,7 @@ def check_prem_equiv_resid(t):
     supplies its own *Beitrag* no equivalence was struck, and the residual is zero by
     construction: an equivalence that was never struck cannot be checked.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     if premium_mth() > 0.0:
         return 0.0
     p0 = premium_mth_pp() / rating_factor()
@@ -2092,7 +2108,7 @@ def check_prem_equiv_resid(t):
     state = tar_ledger(t)
     ben_leg = 0.0
     paying = 0.0
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         pct = benefit_pct(g)
         if pct > 0.0:
             ben_leg += pct * state[2][g - 1]
@@ -2185,25 +2201,23 @@ def result_states_columns():
     between them, the two decrements and the four annual rates,
     products/pflegerentenversicherung/technical-notes.md:662
     """
-    return (
-        ("pols_pg1", lambda t: pols_pg(t, 1)),                       # noqa: F821
-        ("pols_pg2", lambda t: pols_pg(t, 2)),                       # noqa: F821
-        ("pols_pg3", lambda t: pols_pg(t, 3)),                       # noqa: F821
-        ("pols_pg4", lambda t: pols_pg(t, 4)),                       # noqa: F821
-        ("pols_pg5", lambda t: pols_pg(t, 5)),                       # noqa: F821
+    n = data.pflegegrad_count()                                      # noqa: F821
+    return tuple(
+        ("pols_pg%d" % g, lambda t, g=g: pols_pg(t, g))              # noqa: F821
+        for g in range(1, n + 1)) + (
         ("pols_karenz",
          lambda t: sum(pols_karenz(t, g, z)                          # noqa: F821
-                       for g in range(1, 6)
+                       for g in range(1, n + 1)
                        for z in range(1, karenz_months() + 1))),     # noqa: F821
         ("pols_entry",
-         lambda t: sum(pols_entry(t, g) for g in range(1, 6))),      # noqa: F821
+         lambda t: sum(pols_entry(t, g) for g in range(1, n + 1))),  # noqa: F821
         ("pols_grad",
-         lambda t: sum(pols_grad(t, g) for g in range(1, 6))),       # noqa: F821
+         lambda t: sum(pols_grad(t, g) for g in range(1, n + 1))),   # noqa: F821
         ("pols_reactiv", pols_reactiv),                              # noqa: F821
         ("pols_death", pols_death),                                  # noqa: F821
         ("pols_lapse", pols_lapse),                                  # noqa: F821
         ("mort_rate", mort_rate),                                    # noqa: F821
-        ("mort_rate_care_pg5", lambda t: mort_rate_care(t, 5)),      # noqa: F821
+        ("mort_rate_care_pg%d" % n, lambda t: mort_rate_care(t, n)), # noqa: F821
         ("inc_rate", inc_rate),                                      # noqa: F821
         ("lapse_rate", lapse_rate),                                  # noqa: F821
         ("premium_pp", premium_pp),                                  # noqa: F821

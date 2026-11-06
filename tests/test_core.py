@@ -2059,7 +2059,7 @@ STRUCTURAL_LITERALS = {
     "indexpolice": {"11", "12", "12.0", "13"},
     "kapitallebensversicherung": {"11", "12", "12.0"},
     "klassische_rentenversicherung": {"2", "12", "12.0"},
-    "pflegerentenversicherung": {"2", "3", "4", "5", "6", "12", "12.0", "1000.0"},
+    "pflegerentenversicherung": {"2", "3", "4", "5", "12", "12.0", "1000.0"},
     "riester_rente": {"12", "12.0"},
     "risikolebensversicherung": {"2", "12", "12.0"},
     "sofortrente": {"0.5", "1e-10", "2", "12", "12.0", "200"},
@@ -2761,6 +2761,24 @@ def test_pflege_product_dict_cells_equal_their_readers(product_models):
             assert list(values) == list(df.index), (reader, column)
             for key in df.index:
                 assert same_value(values[key], df.at[key, column]), (reader, key, column)
+
+
+def test_pflege_grade_count_is_read_from_the_care_table(product_models):
+    """Pflege's number of care grades is the rows of ``care_table.csv``, and no formula
+    holds it as ``range(1, 6)``, ``(0.0,) * 5``, ``g < 5`` or ``min(5, ...)``."""
+    data = product_models("pflegerentenversicherung").Data
+    table = data.care_table()
+    count = data.pflegegrad_count()
+    assert type(count) is int and count == len(table) == 5
+    assert list(table.index) == list(range(1, count + 1))
+    path = PRODUCTS_DIR / "pflegerentenversicherung" / MODELS["pflegerentenversicherung"]
+    text = (path / "Projection" / "__init__.py").read_text(encoding="utf-8")
+    for literal in ("range(1, 6)", "(0.0,) * 5", "g < 5", "min(5, "):
+        assert literal not in text, literal
+    columns = [label for label, _ in
+               product_models("pflegerentenversicherung").Projection[1].result_states_columns()]
+    assert columns[:count] == ["pols_pg%d" % g for g in range(1, count + 1)]
+    assert "mort_rate_care_pg%d" % count in columns
 
 
 def test_pflege_surrender_cap_is_read_from_the_surrender_table(tmp_path, product_models):

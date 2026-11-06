@@ -46,7 +46,8 @@ dicts by column, built once per model, which the projection's lookups read inste
 ``DataFrame.at``: the core's for ``model_point_table``, ``mort_table``
 and ``lapse_table``, this space's for ``benefit_scale_table``, ``incidence_table``,
 ``care_table``, ``surrender_table`` and ``prem_mode_table``, with ``surrender_table_last_year``, the policy
-year the surrender lookup caps at.
+year the surrender lookup caps at, and ``pflegegrad_count``, the number of grades of
+``care_table``.
 
 Every file but ``model_point_table.csv`` carries a final ``provenance`` column, one tag
 per row — the library's second ruling, asserted by
@@ -243,6 +244,16 @@ def surrender_table_last_year():
     to every later year.
     """
     return int(surrender_table().index.max())
+
+
+def pflegegrad_count():
+    """The number of *Pflegegrade*, the rows of ``care_table()``: 5.
+
+    Built once per model; the grades run from 1 without a gap, as the table's index
+    ``pflegegrad`` does.  The projection's state ledgers, their checks and the frame of
+    ``result_states`` loop over ``1 .. pflegegrad_count()`` and read the top grade as it.
+    """
+    return len(care_table())
 
 
 # ---------------------------------------------------------------------------

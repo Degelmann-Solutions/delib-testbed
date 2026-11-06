@@ -44,7 +44,8 @@ Beside each reader stands a dict cell ``<reader>_dict()``, the same table as pla
 dicts by column, built once per model, which the projection's lookups read instead of
 ``DataFrame.at``: the core's for ``model_point_table``, ``mort_table``
 and ``lapse_table``, this space's for ``benefit_scale_table``, ``incidence_table``,
-``care_table`` and ``surrender_table``.
+``care_table`` and ``surrender_table``, with ``surrender_table_last_year``, the policy
+year the surrender lookup caps at.
 
 Every file but ``model_point_table.csv`` carries a final ``provenance`` column, one tag
 per row — the library's second ruling, asserted by
@@ -210,6 +211,16 @@ def surrender_table_dict():
     ``Projection.rkw_pp`` reads its ``rkw_prem_ratio`` column.
     """
     return surrender_table().to_dict()
+
+
+def surrender_table_last_year():
+    """The last policy year of ``surrender_table()``, its largest ``policy_year``: 40.
+
+    Built once per model from its index, which runs from 1 without a gap;
+    ``Projection.rkw_pp`` caps the policy year at it, so that the last row's ratio applies
+    to every later year.
+    """
+    return int(surrender_table().index.max())
 
 
 # ---------------------------------------------------------------------------

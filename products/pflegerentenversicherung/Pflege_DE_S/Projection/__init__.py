@@ -1205,7 +1205,8 @@ def prem_inst_pp(t):
 def rkw_pp(t):
     """The *Rückkaufswert* per surrendering policy at the end of month ``t``.
 
-    ``rkw_prem_ratio(min(y(t), 40)) x cum_prem_max_pp(t) x (1 - stornoabzug_rate())`` — the
+    ``rkw_prem_ratio(min(y(t), Y)) x cum_prem_max_pp(t) x (1 - stornoabzug_rate())``, with
+    ``Y = data.surrender_table_last_year()`` the table's last policy year, 40 — the
     guaranteed surrender value as a fraction of premiums paid to date, which is the
     scale-free form a German contract states, less any contractual *Stornoabzug*.
 
@@ -1217,7 +1218,7 @@ def rkw_pp(t):
     assumes away; the table encodes the answer for a contract that does.
     """
     ratio = float(data.surrender_table_dict()["rkw_prem_ratio"][     # noqa: F821
-        min(policy_year(t), 40)])
+        min(policy_year(t), data.surrender_table_last_year())])     # noqa: F821
     return ratio * cum_prem_max_pp(t) * (1.0 - stornoabzug_rate())
 
 

@@ -167,7 +167,7 @@ cells in the `Data` Space (the `annuallife/TradLife_A` layout). Every file **exc
 | `incidence_table.csv` | `sex`, `age` | `inc_rate`, `provenance` | Annual rate of entering **any** *Pflegegrad* from the active state, ages 18–109, both sexes |
 | `care_table.csv` | `pflegegrad` | `entry_share`, `det_rate`, `rec_rate`, `mort_mult`, `provenance` | The whole in-care basis in five rows: the distribution of the grade first entered, the annual deterioration rate to the next grade, the annual recovery rate to the previous grade or to active, and the force-of-mortality multiple over an active life of the same age |
 | `lapse_table.csv` | `policy_year` | `lapse_rate`, `provenance` | Annual lapse from the **active** state, policy years 1–40; year 40's rate applies to every later year |
-| `surrender_table.csv` | `policy_year` | `rkw_prem_ratio`, `provenance` | The guaranteed *Rückkaufswert* as a fraction of premiums paid to date, policy years 1–40, clamped as for lapse |
+| `surrender_table.csv` | `policy_year` | `rkw_prem_ratio`, `provenance` | The guaranteed *Rückkaufswert* as a fraction of premiums paid to date, policy years 1–40, clamped as for lapse at its last policy year `Y` (40), which `surrender_table_last_year()` reads from the table |
 | `param_tariff_type.csv` | `item` | `value`, `unit`, `basis`, `provenance` | `omega_age`, `unisex_mix_male`, `rec_age_ref`, `rec_age_decay`, `inc_cap`, `beitragssumme_cap_age`, `roll_fwd_tol`, and the five first-order prudence margins `inc_margin`, `det_margin`, `rec_margin`, `care_mort_margin`, `act_mort_margin` (`unit` empty); then `acq_permille`, `admin_prem_pct`, `admin_mth_pp`, `claim_expense_pp`, `expense_infl`. Upstream's `basis_table.csv` and `expense_table.csv`, merged in phase 3; `rechnungszins` moved to the model point |
 
 Eight files, each read by a reader cells in `Data`; the suite asserts there are no orphans.
@@ -571,7 +571,7 @@ It is a **deterministic** quantity, not a ledger, and it is what both the *Rück
 
 with
 
-    rkw_pp(t) = rkw_prem_ratio(min(y(t), 40)) * cum_prem_max_pp(t) * (1 - stornoabzug_rate)
+    rkw_pp(t) = rkw_prem_ratio(min(y(t), Y)) * cum_prem_max_pp(t) * (1 - stornoabzug_rate)
     brg_pp(t) = cum_prem_max_pp(t)   if beitragsrueckgewaehr else 0.0
 
 Note what `claims(t, "ANNUITY")` is weighted on: `E_g(t)`, the escalation ledger, **not** `ℓ_g(t)` —

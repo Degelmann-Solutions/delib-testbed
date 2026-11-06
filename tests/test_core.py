@@ -55,7 +55,8 @@
   formula cell of the core and the ten products, but 0, 1, 0.0 and 1.0, is structural and
   listed for its space in ``STRUCTURAL_LITERALS``, and every listed value occurs there.
   BU's claim-year caps are the last ``dur_year`` of its claim-duration table, so a scratch
-  copy with a twelfth row reads it.
+  copy with a twelfth row reads it; Pflege's surrender cap is the last policy year of its
+  surrender table likewise.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -2034,7 +2035,7 @@ STRUCTURAL_LITERALS = {
     "indexpolice": {"11", "12", "12.0", "13", "10000.0"},
     "kapitallebensversicherung": {"11", "12", "12.0"},
     "klassische_rentenversicherung": {"2", "12", "12.0", "10000.0"},
-    "pflegerentenversicherung": {"2", "3", "4", "5", "6", "12", "12.0", "40", "1000.0"},
+    "pflegerentenversicherung": {"2", "3", "4", "5", "6", "12", "12.0", "1000.0"},
     "riester_rente": {"12", "12.0", "10000.0"},
     "risikolebensversicherung": {"2", "12", "12.0"},
     "sofortrente": {"0.5", "2", "4", "12", "12.0"},
@@ -2735,6 +2736,33 @@ def test_pflege_product_dict_cells_equal_their_readers(product_models):
             assert list(values) == list(df.index), (reader, column)
             for key in df.index:
                 assert same_value(values[key], df.at[key, column]), (reader, key, column)
+
+
+def test_pflege_surrender_cap_is_read_from_the_surrender_table(tmp_path, product_models):
+    """The policy-year cap of ``rkw_pp`` is the table's last row, so a 41st row is read too."""
+    data = product_models("pflegerentenversicherung").Data
+    table = data.surrender_table()
+    last = data.surrender_table_last_year()
+    assert type(last) is int and last == int(table.index.max()) == len(table) == 40
+    folder = product_copy(tmp_path, "pflegerentenversicherung")
+    path = folder / "surrender_table.csv"
+    path.write_text(path.read_text(encoding="utf-8") + '41,0.900000,"[std] test fixture"\n',
+                    encoding="utf-8")
+    copy = mx.read_model(folder / MODELS["pflegerentenversicherung"], name="SurrenderProbe")
+    try:
+        assert copy.Data.surrender_table_last_year() == 41
+        checked = 0
+        for point_id in copy.Data.model_point_table().index:
+            item = copy.Projection[point_id]
+            for t in range(item.t_start(), item.proj_len()):
+                if item.policy_year(t) < 41 or item.cum_prem_max_pp(t) <= 0.0:
+                    continue
+                expected = 0.9 * item.cum_prem_max_pp(t) * (1.0 - item.stornoabzug_rate())
+                assert item.rkw_pp(t) == expected, (point_id, t)
+                checked += 1
+        assert checked
+    finally:
+        copy.close()
 
 
 # Pflege's care-grade rates keyed by attained age (and grade), not by month: cell -> whether

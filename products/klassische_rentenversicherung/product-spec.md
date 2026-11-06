@@ -145,7 +145,7 @@ wording [S1] [R24], conversion at `max(garantierter, aktueller Rentenfaktor)` [S
 | Design type | Single-life deferred annuity on the general account (*konventionell*, *klassisch*); profit-participating; Schicht 3 | [S1] [S4] [S8] [S9] [S11] |
 | Legal wrapper | Individual contract on the insurer's own AVB. A *Konsortialversicherung* edition of the same wording exists and changes the parties, not the cash flows | [S4] [S5] [S7]; [S6] |
 | Lives basis | Single life. The survivor's annuity is a separate *Zusatzversicherung* with its own GDV model conditions, not a benefit of the base contract | [S10] |
-| Premium form (model-point parameter) | (i) `laufend` — level recurring premium over the *Aufschubzeit*; (ii) `einmal` — *Einmalbeitrag* | (i) [S11]; (ii) [REG-R53]; split **[std]** (1) |
+| Premium form (model-point parameter) | (i) `regular` — level recurring premium over the *Aufschubzeit*; (ii) `single` — *Einmalbeitrag* | (i) [S11]; (ii) [REG-R53]; split **[std]** (1) |
 | Entry ages | 18 to 62 | **[std]** (2) |
 | *Aufschubdauer* | 5 to 40 years | **[std]** (2) |
 | *Rentenbeginn* age | 62 to 72; representative **67** | **[std]** (2) |

@@ -354,6 +354,12 @@ CORE_CELLS = {
                         "kapitallebensversicherung": "derived",
                         "pflegerentenversicherung": "derived",
                         "risikolebensversicherung": "derived"},
+        "prem_form": {"basisrente": "derived",
+                      "fondsgebundene_rentenversicherung": "derived",
+                      "indexpolice": "derived",
+                      "klassische_rentenversicherung": "derived",
+                      "pflegerentenversicherung": "derived",
+                      "risikolebensversicherung": "override"},
         "prem_cycle": {"berufsunfaehigkeit": "derived",
                        "fondsgebundene_rentenversicherung": "derived",
                        "kapitallebensversicherung": "derived",
@@ -3337,6 +3343,49 @@ def test_premium_frequencies_are_one_table_with_instalments(product, product_mod
         item = model.Projection[point_id]
         assert type(item.instalments()) is int
         assert item.prem_cycle() == 12 // PREM_FREQ_INSTALMENTS[points.at[point_id, "prem_freq"]]
+
+
+# The products with a single and a regular premium form, one model-point column prem_form.
+PREM_FORM_PRODUCTS = sorted(["basisrente", "fondsgebundene_rentenversicherung", "indexpolice",
+                             "klassische_rentenversicherung", "pflegerentenversicherung",
+                             "risikolebensversicherung"])
+
+
+def test_the_premium_form_is_one_column_with_two_values(product_models):
+    """``prem_form`` is ``regular`` or ``single`` wherever a product has the column, the core's
+    ``prem_form()`` reads it, and no ``premium_form`` of that meaning is left (BU's
+    ``premium_form``, *Dynamik* or level, is another quantity)."""
+    having = []
+    for product in sorted(MODELS):
+        model = product_models(product)
+        points = model.Data.model_point_table()
+        if "prem_form" not in points.columns:
+            continue
+        having.append(product)
+        assert set(points["prem_form"]) == {"regular", "single"}, product
+        for point_id in points.index:
+            assert model.Projection[point_id].prem_form() == points.at[point_id, "prem_form"]
+        assert "premium_form" not in points.columns, product
+    assert having == PREM_FORM_PRODUCTS
+    bu = product_models("berufsunfaehigkeit").Data.model_point_table()
+    assert set(bu["premium_form"]) == {"dynamik", "level"}
+
+
+def test_an_unknown_premium_form_raises(tmp_path):
+    folder = product_copy(tmp_path, "indexpolice")
+    table = folder / "model_point_table.csv"
+    points = pd.read_csv(table, index_col="point_id")
+    point_id = points.index[0]
+    points.loc[point_id, "prem_form"] = "level"
+    points.to_csv(table)
+    copy = mx.read_model(folder / MODELS["indexpolice"], name="FormProbe")
+    try:
+        message = "invalid prem_form"
+        with pytest.raises(Exception, match=message) as raised:
+            copy.Projection[point_id].prem_form()
+        assert raised_value_error(raised, message)
+    finally:
+        copy.close()
 
 
 # The payment frequencies a product allows, a table of its own: product -> (keys cell, keys).

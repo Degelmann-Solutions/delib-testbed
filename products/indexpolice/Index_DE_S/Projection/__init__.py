@@ -264,14 +264,6 @@ _spaces = []
 
 # --- the model point ---------------------------------------------------------
 
-def prem_form():
-    """``"level"`` (*laufender Beitrag*) or ``"single"`` (*Einmalbeitrag*)."""
-    v = model_point()["prem_form"]
-    if v not in ("level", "single"):
-        raise ValueError("invalid prem_form")
-    return v
-
-
 def av_pp_init():
     """The *Deckungskapital* per policy at ``t_start()``; 0 for new business."""
     return float(model_point()["av_pp_init"])

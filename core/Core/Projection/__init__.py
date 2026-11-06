@@ -103,6 +103,18 @@ def prem_cycle():
     return 12 // instalments()
 
 
+def prem_form():
+    """The premium form: ``regular`` (*laufender Beitrag*) or ``single`` (*Einmalbeitrag*).
+
+    From the model point's ``prem_form`` column; raises ``ValueError`` for another value.
+    A ``single`` premium is paid once and reads no ``prem_freq``.
+    """
+    v = model_point()["prem_form"]                                   # noqa: F821
+    if v not in ("regular", "single"):
+        raise ValueError("invalid prem_form")
+    return v
+
+
 def issue_age():
     """The age at issue of the selected model point, from its ``issue_age`` column."""
     return int(model_point()["issue_age"])                           # noqa: F821

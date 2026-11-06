@@ -502,7 +502,7 @@ def beitragssumme():
     """
     dyn = float(model_point()["prem_dyn_rate"])
     base = float(model_point()["prem_base_pp"])
-    if model_point()["prem_form"] == "single":
+    if prem_form() == "single":
         return base
     m = ret_age() - issue_age()
     return sum(base * (1.0 + dyn) ** u for u in range(max(m, 0)))
@@ -521,7 +521,7 @@ def prem_freq_load():
     Override reason: a single premium carries no loading, so it is 1 there and the
     frequency is not read, products/basisrente/technical-notes.md:389
     """
-    if model_point()["prem_form"] == "single":
+    if prem_form() == "single":
         return 1.0
     return float(data.prem_freq_table_dict()["prem_freq_load"][      # noqa: F821
         prem_freq()])
@@ -539,7 +539,7 @@ def prem_base_pp(k):
     This is the contractual amount.  What is actually charged is :func:`prem_pp`, which
     applies phi and stops at *Rentenbeginn*.
     """
-    if model_point()["prem_form"] == "single":
+    if prem_form() == "single":
         if k == 0 and duration_init() == 0:
             return float(model_point()["prem_base_pp"])
         return 0.0
@@ -902,7 +902,7 @@ def bf_rate(t):
     """
     if t < 0 or t >= t_conv() or t >= proj_len():
         return 0.0
-    if model_point()["prem_form"] == "single":
+    if prem_form() == "single":
         return 0.0
     key = model_point()["beh_table_id"]
     d = min(policy_year(t), data.behaviour_table_durs()[key])        # noqa: F821

@@ -364,20 +364,6 @@ _spaces = []
 
 # ----------------------------------------  the model point
 
-def prem_form():
-    """The premium form: ``laufend`` (recurring) or ``einmal`` (single).
-
-    The two differ in more than the number of instalments.  A *Einmalbeitrag* has no
-    *Beitragssumme* to zillmer against and no five-year spreading to obey, so its
-    acquisition charge is the *Zuzahlungskosten* rate levied once on receipt, which is
-    what :func:`zillmer_amount` returns for it.
-    """
-    v = model_point()["prem_form"]
-    if v not in ("laufend", "einmal"):
-        raise ValueError("invalid prem_form")
-    return v
-
-
 def prem_pp_base():
     """The *Beitrag* the policy states, per instalment, at the initial level.
 
@@ -603,7 +589,7 @@ def alpha_rate():
     ``alpha_rate() x beitragssumme()``, 2.50 % of 72 000,00 = **1 800,00 EUR** on the
     anchor cell, on a recurring-premium one.
     """
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         return zuzahlung_charge_rate()
     return float(charge_row()["alpha_rate"])
 
@@ -709,7 +695,7 @@ def prem_pp(t):
     else: the stated instalment already contains any *Ratenzahlungszuschlag*, so loading
     it again would charge the fractionation twice.
     """
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         return prem_pp_base() if t == t_start() else 0.0
     if t >= 12 * prem_term_y():
         return 0.0
@@ -743,7 +729,7 @@ def beitragssumme_prem():
     ``prem_cycle()`` months, or once as an *Einmalbeitrag*,
     products/fondsgebundene_rentenversicherung/technical-notes.md:443
     """
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         return prem_pp_base()
     return prem_pp_base() * instalments()
 
@@ -754,7 +740,7 @@ def beitragssumme_years():
     Override reason: the premium term is ``prem_term_y()`` years, and an *Einmalbeitrag* is
     counted once, products/fondsgebundene_rentenversicherung/technical-notes.md:443
     """
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         return 1
     return prem_term_y()
 
@@ -766,7 +752,7 @@ def acq_window_months():
     years: model point 12 pays for two years, so its window is 24 months and not 60.  Zero
     on a single-premium contract, whose acquisition charge is a one-off.
     """
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         return 0
     return min(alpha_spread_months(), 12 * prem_term_y())
 
@@ -779,7 +765,7 @@ def acq_instalments():
     ``zillmer_amount() / acq_instalments()``, so spreading a shortened window over sixty
     months would understate every instalment and leave the ledger short at the end.
     """
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         return 1
     return acq_window_months() // prem_cycle()
 
@@ -798,7 +784,7 @@ def charge_acq_pp(t):
     which is correct: the charge and the commission it funded are both behind it.
     """
     reg = 0.0
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         if t == t_start():
             reg = zillmer_amount()
     elif t < acq_window_months() and prem_pp(t) > 0.0:
@@ -1927,7 +1913,7 @@ def check_acq_charge_resid(t):
     charge has been collected and no more: ``alpha_rate x beitragssumme()`` exactly, which
     on the anchor is 1 800,00 EUR.
     """
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         elapsed = 1 if t >= t_start() else 0
     else:
         hi = min(t, acq_window_months() - 1)

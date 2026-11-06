@@ -119,10 +119,10 @@ that exercise the attribute non-trivially, so a reader can find the row that tes
 | `duration_mth_init` | int | policy months already elapsed at the valuation date; 0 for new business. An **elapsed count**, already 0-based, so it is `t_start()` itself | 6 |
 | `pols_if_init` | float | policies the model point represents | all |
 | `ret_age` | int | age at *Rentenbeginn*; fixes `proj_len()` and the *Rentenfaktor* row | 13 (70), all others 67 |
-| `prem_form` | enum {`laufend`, `einmal`} | recurring or single premium | 2 (`einmal`) |
+| `prem_form` | enum {`regular`, `single`} | recurring or single premium | 2 (`single`) |
 | `prem_pp` | EUR | the **instalment the policy states**, or the *Einmalbeitrag*. Already contains whatever *Ratenzahlungszuschlag* the tariff applied | all |
 | `prem_freq` | enum {annual, half_yearly, quarterly, monthly}, a key of `prem_freq_table.csv` | payment frequency; `prem_cycle = 12 // instalments` months between premiums | 3 (quarterly), 4 (half_yearly), 5 (annual) |
-| `prem_term_y` | int | premium-paying term in years; 0 for `einmal` | 12 (2 years against a 12-year deferment) |
+| `prem_term_y` | int | premium-paying term in years; 0 for `single` | 12 (2 years against a 12-year deferment) |
 | `dynamik_rate` | float | *Beitragsdynamik*, annual premium increase at each anniversary; 0 = off | 10 (3 %) |
 | `pup_month` | int | 0-based policy month from which the contract is *beitragsfrei*; 0 = never (the sentinel, not the inception month) | 7 (120) |
 | `db_form` | enum {`fund`, `prem_return`, `pct_fund`, `sum_assured`} | *Todesfallleistung* shape | 2, 13 (`fund`); 4, 12 (`pct_fund`); 7 (`sum_assured`); rest `prem_return` |
@@ -440,12 +440,12 @@ with a PRIIPs performance scenario**.
          = 0                     otherwise
     d(t) = (1 + dynamik_rate)^(y(t) − 1)                        Beitragsdynamik, 1.0 when off
 
-    S    = prem_pp_base × instalments × prem_term_y                  laufend
-         = prem_pp_base                                              einmal
+    S    = prem_pp_base × instalments × prem_term_y                  regular
+         = prem_pp_base                                              single
 
     N_α  = min(60, 12 × prem_term_y) / prem_cycle                acquisition instalments
-    α(t) = alpha_rate · S / N_α        on the first N_α premium dates      laufend
-         = zuzahlung_rate · B(t₀)      at t = t₀, once                     einmal
+    α(t) = alpha_rate · S / N_α        on the first N_α premium dates      regular
+         = zuzahlung_rate · B(t₀)      at t = t₀, once                     single
          + zuzahlung_rate · Z(t)       whenever a Zuzahlung falls
 
     A(t) = B(t) + Z(t) − α(t) − β · B(t)
@@ -832,7 +832,7 @@ any of them, and the research file's gaps register records that as gaps 18 and 1
 `issue_age = 37`; `duration_mth_init = 0`, so `t_start() = 0`; `pols_if_init = 1.0`;
 `ret_age = 67`, so `proj_len() = 12 × (67 − 37) = 360` months and the frame is
 `t = 0 … 359`;
-`prem_form = laufend`; `prem_pp = 200.00 EUR`; `prem_freq = monthly`; `prem_term_y = 30`;
+`prem_form = regular`; `prem_pp = 200.00 EUR`; `prem_freq = monthly`; `prem_term_y = 30`;
 `dynamik_rate = 0.00`; `pup_month = 0`; `db_form = prem_return`, so `db_pct` and `sum_assured` are
 unused; `charge_id = std_gross`; `scenario_id = base`; `rentenfaktor_id = std_2026`;
 `unit_price_init = 100.00 EUR`; `units_init = 0.0`; `cum_prem_init = 0.00 EUR`;

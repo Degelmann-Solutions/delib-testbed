@@ -223,7 +223,7 @@ Footnotes to **[std]** rows:
 
 | Parameter | Representative value | Basis |
 |---|---|---|
-| Premium form (model-point parameter) | (i) `laufend` — a **level *Bruttobeitrag*** payable at the start of each of the first `prem_term` policy years; (ii) `einmal` — a single *Einmalbeitrag* at issue | (i) mechanic 4 [R6] [R10]; (ii) **[std]** (5) |
+| Premium form (model-point parameter) | (i) `regular` — a **level *Bruttobeitrag*** payable at the start of each of the first `prem_term` policy years; (ii) `single` — a single *Einmalbeitrag* at issue | (i) mechanic 4 [R6] [R10]; (ii) **[std]** (5) |
 | What is guaranteed | The ***Bruttobeitrag*** — the maximum the policyholder can ever be required to pay, unchanged for the term | [R6] [REG-R27]; mechanic 5 |
 | What is billed | The ***Zahlbeitrag*** = *Bruttobeitrag* × (1 − `v`), with `v` the declared *Beitragsverrechnungssatz*. **Not guaranteed** and revisable annually by declaration alone | [R5] [R6] [R9] [S5]; level **[std]** (6) |
 | Representative `Zahl / Brutto` ratio | **0.57** | **[std]** (6) |
@@ -239,7 +239,7 @@ Footnotes to **[std]** rows:
 | Premium increase by the insurer | § 163 VVG — titled ***Prämien- und Leistungsänderung***, not *Anpassung der Prämie* — permits a *Neufestsetzung* only where the ***Leistungsbedarf*** has changed "nicht nur vorübergehend und nicht voraussehbar" against the bases of the agreed premium, where the new premium is "angemessen und erforderlich" for *dauernde Erfüllbarkeit*, and where "ein unabhängiger Treuhänder" has confirmed both; barred where the original calculation was inadequate and a careful actuary should have seen it. Abs. 2 gives the policyholder a right to a benefit reduction instead. **On a German RLV *Bruttobeitrag* this route is essentially never used** | [R6] [REG-R27]; non-use [unverified] — no retrieved document reports practice either way |
 | *Versicherungsteuer* | **None.** VersStG 2021 § 4 Abs. 1 Nr. 5 Buchst. a exempts a contract creating claims "im Fall des Todes", so the premium bears no insurance premium tax — unlike a French *cotisation* quoted "TTC" | [R16]; mechanic 7 |
 
-5. **The `einmal` form is a [std] construction and no German standalone RLV in the research file is
+5. **The `single` form is a [std] construction and no German standalone RLV in the research file is
    written on it.** It is carried because it is the degenerate case of the same equivalence that
    strikes the level premium, so it tests the premium engine at a boundary rather than adding a
    second engine; because the out-of-scope *Restschuldversicherung* is written on it; and because it

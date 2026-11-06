@@ -501,7 +501,7 @@ def prem_pp_sched(k):
     """P_sched(k): the premium schedule **as written at inception**, per policy.
 
     Zero after the *Rentenbeginn* and after the paying term; the *Einmalbeitrag* in the
-    first year (``k = 0``) on the ``einmal`` form; otherwise the loaded gross premium grown
+    first year (``k = 0``) on the ``single`` form; otherwise the loaded gross premium grown
     by the *Dynamik*.
 
     It ignores any later *Beitragsfreistellung* on purpose.  The § 4 DeckRV zillmer base is
@@ -512,7 +512,7 @@ def prem_pp_sched(k):
     mp = model_point()
     if k < 0 or k >= int(mp["aufschub_y"]) or k >= prem_term_y():
         return 0.0
-    if mp["premium_form"] == "einmal":
+    if prem_form() == "single":
         return float(mp["premium_single_pp"]) if k == 0 else 0.0
     return (float(mp["prem_gross_pp"]) * prem_freq_load()
             * (1.0 + float(mp["dynamik_rate"])) ** k)

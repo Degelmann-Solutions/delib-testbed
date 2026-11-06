@@ -218,7 +218,7 @@ behavioural::
 
     G = ( A + gamma Gamma ) / ( (1 - beta) ae - z k )
 
-With ``premium_form = einmal`` the paying term ``k`` is 1 and ``ae`` is 1, so the same
+With ``prem_form = single`` the paying term ``k`` is 1 and ``ae`` is 1, so the same
 expression returns the *Einmalbeitrag*: the second premium form is this engine at a
 boundary, not a second engine.
 
@@ -416,21 +416,24 @@ def smoker_codes():
     return ("N", "R")
 
 
-def premium_form():
-    """The premium form: ``laufend`` or ``einmal``.
+def prem_form():
+    """The premium form: ``regular`` or ``single``.
 
-    ``laufend`` is a level *Bruttobeitrag* over ``prem_term`` years and is the German
-    market form.  ``einmal`` is a **[std]** construction — no German standalone
+    ``regular`` is a level *Bruttobeitrag* over ``prem_term`` years and is the German
+    market form.  ``single`` is a **[std]** construction — no German standalone
     *Risikolebensversicherung* in the research corpus is written on a single premium — and
     is carried because it is the degenerate case ``k = 1`` of the same equivalence, so it
     exercises the premium engine at a boundary rather than adding a second engine.  The
-    cells is a stated consistency gate: ``einmal`` requires ``prem_term = 1``.
+    cells is a stated consistency gate: ``single`` requires ``prem_term = 1``.
+
+    Override reason: a single premium is the paying term ``k = 1`` of the same equivalence,
+    so it requires ``prem_term = 1``, products/risikolebensversicherung/technical-notes.md:166
     """
-    v = model_point()["premium_form"]
-    if v not in ("laufend", "einmal"):
-        raise ValueError("invalid premium_form")
-    if v == "einmal" and prem_term() != 1:
-        raise ValueError("einmal requires prem_term = 1")
+    v = model_point()["prem_form"]
+    if v not in ("regular", "single"):
+        raise ValueError("invalid prem_form")
+    if v == "single" and prem_term() != 1:
+        raise ValueError("single requires prem_term = 1")
     return v
 
 

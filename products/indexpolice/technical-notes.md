@@ -169,7 +169,7 @@ from its base value, so that no column is carried without being tested.
 | `duration_init` | int | completed policy years at the valuation date; 0 = new business; the frame starts at `t_start() = 12 × duration_init`, `duration_init` already being a 0-based elapsed count of policy **years** | 8, 13 |
 | `pols_if_init` | float | policies represented at `t_start()` | — (1.0 everywhere) |
 | `ret_age` | int | attained age at *Rentenbeginn*; `proj_len() = ret_age − issue_age` | 6 |
-| `prem_form` | enum {level, single} | *laufender Beitrag* or *Einmalbeitrag* | 7 |
+| `prem_form` | enum {regular, single} | *laufender Beitrag* or *Einmalbeitrag* | 7 |
 | `prem_gross_pp` | EUR | the **annual-mode** premium (the *Jahresbeitrag*), or the single premium | 5, 6, 7, 8, 12, 13 |
 | `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | payment frequency; drives `prem_freq_load()` | 4, 5, 6 |
 | `prem_term_y` | int | *Beitragszahlungsdauer* in policy years, ≤ `proj_len()` | 6, 7, 9, 13 |
@@ -871,7 +871,7 @@ them, and none for this product specifically.
 `policy_id = "DE-IDX-0001"`; `sex = M`; `issue_age = 40`; `duration_init = 0`, so `t_start() = 0` and the
 table below is the **entire** projection; `pols_if_init = 1.0`; `ret_age = 67`, hence
 `proj_len_y() = 67 − 40 = 27` policy years and `proj_len() = 324` months, `t = 0 … 323`;
-`prem_form = level`; `prem_gross_pp = 2 400,00 €` (the annual-mode
+`prem_form = regular`; `prem_gross_pp = 2 400,00 €` (the annual-mode
 *Jahresbeitrag*, i.e. the research file's 200,00 € a month taken annually); `prem_freq = annual`, so
 `prem_freq_load() = 1,000` and the premium collected equals the premium due; `prem_term_y = 27`, premiums
 payable throughout, so `prem_sum() = 27 × 2 400,00 = 64 800,00 €`; `av_pp_init = 0,00 €`;

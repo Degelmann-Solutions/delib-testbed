@@ -339,28 +339,6 @@ def prem_end_age():
     return int(model_point()["prem_end_age"])
 
 
-def prem_form():
-    """The premium form: ``regular`` (*laufender Beitrag*) or ``single`` (*Einmalbeitrag*).
-
-    From the model point's ``prem_form`` column; raises ``ValueError`` for another value.
-    A ``single`` premium is one payment at ``t = 0`` and nothing thereafter, and its
-    ``prem_freq`` is not read: the premium cells test the form before the frequency.  A
-    ``regular`` premium is paid every :func:`prem_cycle` months (``12 // instalments()``,
-    1, 3, 6 or 12), the frequency ``prem_freq`` a key of *prem_freq_table.csv*.
-
-    The model charges **no separate** *Ratenzahlungszuschlag*: the instalment loading is
-    folded into ``admin_prem_pct``, which is a percentage of the premium collected and so
-    is invariant to the mode.  The consequence is worth stating because a user will read
-    it the wrong way round — in this model annual mode prices very slightly *below*
-    monthly, through the timing of the discounting alone, which is the opposite sign to a
-    real German tariff.
-    """
-    v = model_point()["prem_form"]
-    if v not in ("regular", "single"):
-        raise ValueError("invalid prem_form")
-    return v
-
-
 def premium_mth():
     """The contractual monthly *Beitrag* from the model point; ``0.0`` is a sentinel.
 
@@ -1153,8 +1131,16 @@ def premium_pp(t):
 
     ``premium_mth_pp() x prem_cycle()`` on a due month and zero otherwise, so a
     quarterly contract pays three months' worth three times a year rather than a twelfth of
-    the annual amount every month.  For the *Einmalbeitrag* it is the whole
-    *Einmalbeitrag*, once, at ``t = 0``.
+    the annual amount every month.  For the *Einmalbeitrag*, ``prem_form() == "single"``,
+    it is the whole *Einmalbeitrag*, once, at ``t = 0``, and ``prem_freq`` is not read: the
+    premium cells test the form before the frequency.
+
+    The model charges **no separate** *Ratenzahlungszuschlag*: the instalment loading is
+    folded into ``admin_prem_pct``, which is a percentage of the premium collected and so
+    is invariant to the mode.  The consequence is worth stating because a user will read
+    it the wrong way round — in this model annual mode prices very slightly *below*
+    monthly, through the timing of the discounting alone, which is the opposite sign to a
+    real German tariff.
     """
     if not premium_due(t):
         return 0.0

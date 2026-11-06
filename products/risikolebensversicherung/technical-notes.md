@@ -163,7 +163,7 @@ not References on `Projection` as in `TradLife_A`; their values and tags are the
 | `sum_assured` | float EUR | Initial *Versicherungssumme*, `S0` | all |
 | `policy_term` | int | *Versicherungsdauer* in whole years; equals `proj_len_y()`, and `proj_len() = 12 × it` | all |
 | `prem_term` | int | *Beitragszahlungsdauer* in whole years, `≤ policy_term` | 6 (12 < 20) |
-| `premium_form` | enum {laufend, einmal} | Level *Bruttobeitrag* over `prem_term`, or a single *Einmalbeitrag* at issue | 7 |
+| `prem_form` | enum {regular, single} | Level *Bruttobeitrag* over `prem_term`, or a single *Einmalbeitrag* at issue | 7 |
 | `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | *Zahlweise*; drives the *Ratenzahlungszuschlag* | 4, 5, 6, 10 |
 | `benefit_schedule_id` | str | Key into `benefit_schedule.csv`: `konstant`, `linear_fallend`, `annuitaet_fallend_3pct` | 4, 5 |
 | `nvg_schedule_id` | str | Key into `nvg_schedule.csv`: `keine`, `nvg_zwei_erhoehungen` | 9 |
@@ -197,13 +197,13 @@ anchor cell.**
 
 | # | Configuration | What it exercises |
 |---|---|---|
-| 1 | 35 M N, 300 000 € `konstant`, 25/25 y, `laufend`, `annual`, participating | **The anchor.** The representative composite |
+| 1 | 35 M N, 300 000 € `konstant`, 25/25 y, `regular`, `annual`, participating | **The anchor.** The representative composite |
 | 2 | As 1 but `sex = F` | The unisex cross-subsidy: identical tariff, different projected claims |
 | 3 | As 1 but `smoker = R` | The smoker split; the derived premium ratio against point 1 |
 | 4 | 40 M N, 250 000 € `linear_fallend`, 20/20 y, `monthly` | Falling sum; the 5 % *Ratenzahlungszuschlag* |
 | 5 | 33 F N, 400 000 € `annuitaet_fallend_3pct`, 30/30 y, `quarterly` | *Darlehensabsicherung* schedule; the 3 % loading |
 | 6 | 45 M N, 200 000 € `konstant`, 20/**12** y, `half_yearly` | *Abgekürzte Beitragszahlungsdauer*; the largest *Deckungskapital*; the 2 % loading |
-| 7 | 50 M N, 100 000 € `konstant`, 10/**1** y, `einmal`, `annual` | The second premium form; the equivalence at its boundary |
+| 7 | 50 M N, 100 000 € `konstant`, 10/**1** y, `single`, `annual` | The second premium form; the equivalence at its boundary |
 | 8 | 30 F N, 150 000 € `konstant`, 30/30 y, `duration_init = 12` | **In force.** The frame opens at `t = 144`; past the § 161 window and the elevated lapse durations |
 | 9 | 32 M N, 200 000 € `konstant`, 28/28 y, `nvg_zwei_erhoehungen` | *Nachversicherungsgarantie*; the § 161 clock restarting per increment |
 | 10 | 38 M N + 36 F N, 300 000 € `konstant`, 22/22 y, `monthly`, `lives = 2` | *Verbundene Leben*; the first-death rate |
@@ -514,7 +514,7 @@ is linear in `G` and solves in closed form:
 
     G = ( A + γ·Γ ) / ( (1 − β)·ä − z·k )
 
-For `premium_form = einmal`, `k = 1` and `ä = 1`, so the same expression returns the
+For `prem_form = single`, `k = 1` and `ä = 1`, so the same expression returns the
 *Einmalbeitrag* — the second premium form is the same engine at a boundary, not a second engine. The
 actuarial *Nettoprämie* is `Gn = A / ä`, and it is what the reserve recursion below uses; it is
 **not** a cash flow and never appears in `result_cf()`.
@@ -921,7 +921,7 @@ evidence for any of them** (research gap 13).
 **Configuration.** Model point 1, the anchor cell, in full: `point_id = 1`,
 `policy_id = RLV-000001`, `issue_age = 35`, `sex = M`, `smoker = N`,
 `sum_assured = 300 000 €`, `policy_term = 25`, `prem_term = 25`,
-`premium_form = laufend`, `prem_freq = annual` (`prem_freq_load = 1.000`,
+`prem_form = regular`, `prem_freq = annual` (`prem_freq_load = 1.000`,
 `instalments = 1`), `benefit_schedule_id = konstant` (`benefit_factor = 1.0` at every `t`),
 `nvg_schedule_id = keine` (`sum_uplift = 1.0` at every `t`),
 `surplus_form = beitragsverrechnung`, `lives = 1`, `issue_age2 = 0`, `smoker2 = -`,
@@ -1181,7 +1181,7 @@ premium-shock lapse module **off**, so the table shows the mechanical effect alo
 `shock_lapse_lambda` on is what a stress of this shape should carry, and its omission is why the
 base run's `λ_s = 0` is stated rather than assumed.
 
-### Variant — the second premium form (`einmal`, model point 7)
+### Variant — the second premium form (`single`, model point 7)
 
 The same engine at `k = 1`: 50 M N, 100 000 € `konstant`, ten years' cover, a single
 *Einmalbeitrag*, annual mode, participating. With `ä = 1` exactly the equivalence collapses to

@@ -103,7 +103,7 @@ German terms of art keep their German form in prose.
 | `rente_mth` | float | The *vereinbarte Pflegerente* at *Pflegegrad* 5, EUR per month — the scaling constant of the whole benefit | 13 (1 500), 14 (500) |
 | `staffel_id` | str | Key into `benefit_scale_table.csv`: `delib_std` or `bahr` | 5 (`bahr`) |
 | `prem_end_age` | int | Attained age at which the *Beitrag* ceases; `110` (= `omega_age`) means lifelong | 4 and 9 (65, *abgekürzte Beitragszahlungsdauer*) |
-| `prem_mode` | enum {monthly, quarterly, half_yearly, annual, single}, the keys of `prem_mode_table.csv` | Instalment frequency; `single` is the *Einmalbeitrag* | 1, 3, 4, 5, 6 |
+| `prem_form`, `prem_freq` | enum {regular, single}; enum {monthly, quarterly, half_yearly, annual}, the keys of `prem_freq_table.csv` | Premium form, `single` the *Einmalbeitrag*; the instalment frequency of a `regular` premium, not read for `single` (shipped as `annual` there) | 1, 3, 4, 5, 6 |
 | `premium_mth` | float | The contractual monthly *Beitrag*. **`0.0` means "derive by equivalence"** | 10 (75.00 supplied), 11 and 12 (in-force premiums) |
 | `rating_factor` | float | *Risikozuschlag* multiplier on the gross premium; `1.00` at standard rates | 13 (1.50) |
 | `wartezeit_months` | int | *Wartezeit* from inception, in months | 7 (36) |
@@ -127,7 +127,7 @@ and `duration_mth_init` shifts where the frame **starts** without changing `proj
 | 3 | F, entry 55, quarterly, lifelong, `delib_std` | The upper half of the purchase cluster; quarterly instalments |
 | 4 | M, entry 40, premiums to age 65, half-yearly | *Abgekürzte Beitragszahlungsdauer*; half-yearly instalments; the paid-up tail |
 | 5 | F, entry 50, annual mode, `staffel_id = bahr` | The statutory 10/20/30/40/100 grid, where *Pflegegrad* 1 **is** insured and waived |
-| 6 | F, entry 60, `prem_mode = single` | The *Einmalbeitrag*: one payment at `t = 0`, no premium-paying ledger thereafter |
+| 6 | F, entry 60, `prem_form = single` | The *Einmalbeitrag*: one payment at `t = 0`, no premium-paying ledger thereafter |
 | 7 | M, entry 50, `wartezeit_months = 36`, `karenz_months = 6`, monthly | Both waiting devices, and the *Karenz* ledger |
 | 8 | F, entry 45, `leistungsdynamik = 0.02`, monthly | The escalation ledger; `esc_pg` diverges from `pols_pg` |
 | 9 | M, entry 45, `beitragsrueckgewaehr = True`, premiums to age 65, monthly | The death-benefit stream, `claims_death` non-zero |
@@ -161,7 +161,7 @@ cells in the `Data` Space (the `annuallife/TradLife_A` layout). Every file **exc
 
 | File | Index columns | Value columns | Content |
 |---|---|---|---|
-| `model_point_table.csv` | `point_id` | the eighteen attributes above | The fourteen model points. **Exempt** from `provenance` |
+| `model_point_table.csv` | `point_id` | the nineteen attributes above | The fourteen model points. **Exempt** from `provenance` |
 | `benefit_scale_table.csv` | `staffel_id`, `pflegegrad` | `benefit_pct`, `provenance` | The *Leistungsstaffel*: 0/30/50/75/100 % for `delib_std`, 10/20/30/40/100 % for `bahr` [R8] |
 | `mort_table.csv` | `sex`, `age` | `mort_rate`, `provenance` | Annual **active-life** mortality, ages 18–109, both sexes |
 | `incidence_table.csv` | `sex`, `age` | `inc_rate`, `provenance` | Annual rate of entering **any** *Pflegegrad* from the active state, ages 18–109, both sexes |
@@ -444,7 +444,7 @@ a 50 / 50 mix while writing 60 / 40" is model risk 7 [REG-R34].
 | `π_g` | `benefit_pct(g)`, the *Leistungsstaffel* percentage |
 | `R` | `rente_mth`, the *vereinbarte Pflegerente* at *Pflegegrad* 5 |
 | `P` | `premium_mth_pp()`, the level monthly gross *Beitrag* per policy |
-| `m` | `prem_mode_months()` — 1, 3, 6, 12, or 0 for the *Einmalbeitrag*, from `prem_mode_table.csv` |
+| `m` | `prem_cycle()` — 1, 3, 6, 12, `12 // instalments()` from `prem_freq_table.csv`; the *Einmalbeitrag* is `prem_form = single` |
 | `μ_A(t)`, `μ_g(t)`, `ι(t)` | force of active-life mortality at `x(t)`; force of mortality in *Pflegegrad* `g` = `mort_mult(g) × μ_A(t)`; force of incidence into care, **0** while `t < wartezeit_months` |
 | `s_g` | `entry_share(g)`, the distribution of the grade first entered |
 | `δ_g(t)`, `ρ_g(t)`, `w(t)` | forces of deterioration `g → g+1` and recovery `g → g-1` (from PG1, to active); and the monthly lapse probability from the active state, `lapse_rate_mth`, **0** outside the premium term |
@@ -801,7 +801,7 @@ The specific ways an implementation of *this* product looks right and is wrong. 
     otherwise — have **equal** `premium_mth_pp()` and **unequal** projected annuity totals, the
     female point's being larger [REG-R34].
 16. **Collecting a premium in a month that is not a due date.** Assert `premiums(t) == 0` at every
-    non-due `t` on points 3, 4 and 5, and `premium_pp(t) == premium_mth_pp() × prem_mode_months()` at
+    non-due `t` on points 3, 4 and 5, and `premium_pp(t) == premium_mth_pp() × prem_cycle()` at
     every due `t`.
 17. **Using the *Pflegegrad* stock distribution as the entry mix.** The stock is
     13,8 / 40,4 / 29,6 / 11,8 / 4,3 % at end-2023 [R18]; entrants are not. Assert `Σ_g entry_share(g) == 1.0` and that the
@@ -854,7 +854,7 @@ for any of them exists in this corpus** (research gap 20).
 `status = aktiv`; `rente_mth = 1,000.00` EUR per month, the *vereinbarte Pflegerente* at
 *Pflegegrad* 5; `staffel_id = delib_std`, so the *Leistungsstaffel* is
 0 / 30 / 50 / 75 / 100 % across grades 1 to 5; `prem_end_age = 110`, equal to `omega_age`, so the
-*Beitrag* is payable for life; `prem_mode = monthly`, so `prem_mode_months = 1` and a *Beitrag* is
+*Beitrag* is payable for life; `prem_freq = monthly`, so `prem_cycle = 1` and a *Beitrag* is
 due in every month of the term; `premium_mth = 0.00`, the sentinel that makes the model strike the
 *Beitrag* by equivalence; `rating_factor = 1.00`, standard rates; `wartezeit_months = 0`;
 `karenz_months = 0`; `leistungsdynamik = 0.00`; `beitragsrueckgewaehr = False`;

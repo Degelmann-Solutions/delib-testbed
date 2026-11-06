@@ -47,7 +47,7 @@ incidence_file             data.incidence_table()               incidence_table.
 care_file                  data.care_table()                    care_table.csv
 lapse_file                 data.lapse_table()                   lapse_table.csv
 surrender_file             data.surrender_table()               surrender_table.csv
-prem_mode_file             data.prem_mode_table()               prem_mode_table.csv
+prem_freq_file             data.prem_freq_table()               prem_freq_table.csv
 param_file                 data.param()                         param_tariff_type.csv
 =========================  ===================================  =========================
 
@@ -74,7 +74,7 @@ pi_g                        benefit_pct(g)                  Leistungsstaffel per
 (none)                      waiver_flag(g)                  Is an annuity payable at g?
 P                           premium_mth_pp()                Level monthly gross Beitrag
 (none)                      prem_net_level_pp()             Net level premium, A / U
-m                           prem_mode_months()              1, 3, 6, 12, or 0 for single
+m                           prem_cycle()                    1, 3, 6, 12; prem_form single
 (table)                     mort_rate_at_age(x)             Active table rate at age x
 (table)                     mort_rate_base(t)               Its value at age(t)
 q_A(x)                      mort_rate(t)                    Active annual death rate
@@ -339,27 +339,14 @@ def prem_end_age():
     return int(model_point()["prem_end_age"])
 
 
-def prem_freq():
-    """The instalment frequency: monthly, quarterly, half_yearly, annual or single.
+def prem_form():
+    """The premium form: ``regular`` (*laufender Beitrag*) or ``single`` (*Einmalbeitrag*).
 
-    Read from the model point's ``prem_mode`` column and checked against the keys of
-    *prem_mode_table.csv*; raises ``ValueError`` for a frequency the table has no row for.
-
-    Override reason: the product has no frequency loading table and its frequencies include
-    ``single``, the *Einmalbeitrag*, products/pflegerentenversicherung/technical-notes.md:106
-    """
-    v = str(model_point()["prem_mode"])
-    if v not in data.prem_mode_table_dict()["prem_mode_months"]:     # noqa: F821
-        raise ValueError("invalid prem_mode")
-    return v
-
-
-def prem_mode_months():
-    """m: the number of months one instalment covers; ``0`` for the *Einmalbeitrag*.
-
-    1, 3, 6 or 12, and ``0`` for ``single``, which is the sentinel the premium cells read
-    as "one payment at ``t = 0`` and nothing thereafter": the ``prem_mode_months`` column of
-    *prem_mode_table.csv* at ``prem_freq()``.
+    From the model point's ``prem_form`` column; raises ``ValueError`` for another value.
+    A ``single`` premium is one payment at ``t = 0`` and nothing thereafter, and its
+    ``prem_freq`` is not read: the premium cells test the form before the frequency.  A
+    ``regular`` premium is paid every :func:`prem_cycle` months (``12 // instalments()``,
+    1, 3, 6 or 12), the frequency ``prem_freq`` a key of *prem_freq_table.csv*.
 
     The model charges **no separate** *Ratenzahlungszuschlag*: the instalment loading is
     folded into ``admin_prem_pct``, which is a percentage of the premium collected and so
@@ -368,7 +355,10 @@ def prem_mode_months():
     monthly, through the timing of the discounting alone, which is the opposite sign to a
     real German tariff.
     """
-    return int(data.prem_mode_table_dict()["prem_mode_months"][prem_freq()])  # noqa: F821
+    v = model_point()["prem_form"]
+    if v not in ("regular", "single"):
+        raise ValueError("invalid prem_form")
+    return v
 
 
 def premium_mth():
@@ -1141,7 +1131,7 @@ def pols_lapse_cum(t):
 def premium_due(t):
     """Whether an instalment falls due at the start of month ``t``.
 
-    ``t % prem_mode_months() == 0`` inside the premium term, and for the *Einmalbeitrag*
+    ``t % prem_cycle() == 0`` inside the premium term, and for the *Einmalbeitrag*
     only at ``t = 0``.  The instalment months key off **issue**, not off the frame's first
     row, so an in-force quarterly point opening at ``t = 240`` still pays in the months the
     contract always paid in.
@@ -1153,24 +1143,24 @@ def premium_due(t):
     """
     if age(t) >= prem_end_age():
         return False
-    m = prem_mode_months()
-    if m == 0:
+    if prem_form() == "single":
         return t == 0
-    return t % m == 0
+    return t % prem_cycle() == 0
 
 
 def premium_pp(t):
     """The instalment charged per paying policy at the start of month ``t``.
 
-    ``premium_mth_pp() x prem_mode_months()`` on a due month and zero otherwise, so a
+    ``premium_mth_pp() x prem_cycle()`` on a due month and zero otherwise, so a
     quarterly contract pays three months' worth three times a year rather than a twelfth of
     the annual amount every month.  For the *Einmalbeitrag* it is the whole
     *Einmalbeitrag*, once, at ``t = 0``.
     """
     if not premium_due(t):
         return 0.0
-    m = prem_mode_months()
-    return premium_mth_pp() * (m if m > 0 else 1)
+    if prem_form() == "single":
+        return premium_mth_pp()
+    return premium_mth_pp() * prem_cycle()
 
 
 def cum_prem_max_pp(t):
@@ -1186,9 +1176,9 @@ def cum_prem_max_pp(t):
     in-force model point carry the right base at the frame's first row: the premiums paid
     before the valuation date were paid, whether or not the model projected them.
     """
-    m = prem_mode_months()
-    if m == 0:
+    if prem_form() == "single":
         return premium_mth_pp() if t >= 0 else 0.0
+    m = prem_cycle()
     last = min(t, 12 * (prem_end_age() - issue_age()) - 1)
     if last < 0:
         return 0.0
@@ -1288,7 +1278,7 @@ def beitragssumme_prem():
     Override reason: the premium is monthly, ``premium_mth_pp()``, or a single premium,
     products/pflegerentenversicherung/technical-notes.md:403
     """
-    if prem_mode_months() == 0:
+    if prem_form() == "single":
         return premium_mth_pp()
     return premium_mth_pp() * 12.0
 
@@ -1304,7 +1294,7 @@ def beitragssumme_years():
     Override reason: the premium runs to ``prem_end_age``, capped at
     ``beitragssumme_cap_age``, products/pflegerentenversicherung/technical-notes.md:403
     """
-    if prem_mode_months() == 0:
+    if prem_form() == "single":
         return 1
     cap = int(data.param("beitragssumme_cap_age"))                   # noqa: F821
     return max(0, min(prem_end_age(), cap) - issue_age())
@@ -1820,8 +1810,7 @@ def tariff_annuity():
     multi-state tariff ledger ``tar_pols_prem`` in units of the monthly premium, not an
     annual annuity-due, products/pflegerentenversicherung/technical-notes.md:618
     """
-    m = prem_mode_months()
-    mult = m if m > 0 else 1
+    mult = 1 if prem_form() == "single" else prem_cycle()
     total = 0.0
     for t in range(proj_len()):
         if premium_due(t):
@@ -1886,8 +1875,7 @@ def premium_mth_pp():
         return premium_mth()
     permille = float(data.param("acq_permille")) / 1000.0            # noqa: F821
     admin_pct = float(data.param("admin_prem_pct"))                  # noqa: F821
-    m = prem_mode_months()
-    if m == 0:
+    if prem_form() == "single":
         a1 = permille
     else:
         cap = int(data.param("beitragssumme_cap_age"))               # noqa: F821
@@ -1909,9 +1897,9 @@ def prem_units_at(t):
     equivalence can be assembled before the premium it would otherwise depend on is known.
     Breaking that circularity is the only reason this cells exists.
     """
-    m = prem_mode_months()
-    if m == 0:
+    if prem_form() == "single":
         return 1.0 if t >= 0 else 0.0
+    m = prem_cycle()
     last = min(t, 12 * (prem_end_age() - issue_age()) - 1)
     if last < 0:
         return 0.0
@@ -2096,8 +2084,8 @@ def check_prem_equiv_resid(t):
     if premium_mth() > 0.0:
         return 0.0
     p0 = premium_mth_pp() / rating_factor()
-    m = prem_mode_months()
-    mult = m if m > 0 else 1
+    single = prem_form() == "single"
+    mult = 1 if single else prem_cycle()
     admin_pct = float(data.param("admin_prem_pct"))                  # noqa: F821
     admin_pp = float(data.param("admin_mth_pp"))                     # noqa: F821
     per_payment = float(data.param("claim_expense_pp"))              # noqa: F821
@@ -2121,7 +2109,7 @@ def check_prem_equiv_resid(t):
                + per_payment * inflation_factor(t) * paying
                + admin_pct * prem_leg)
     if t == 0:
-        if m == 0:
+        if single:
             exp_leg += p0 * permille
         else:
             cap = int(data.param("beitragssumme_cap_age"))           # noqa: F821

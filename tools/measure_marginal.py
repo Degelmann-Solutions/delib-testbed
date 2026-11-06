@@ -146,7 +146,7 @@ M_PRODUCT = {
     "indexpolice": 343,
     "kapitallebensversicherung": 417,
     "klassische_rentenversicherung": 582,
-    "pflegerentenversicherung": 818,
+    "pflegerentenversicherung": 813,
     "riester_rente": 590,
     "risikolebensversicherung": 293,
     "sofortrente": 480,

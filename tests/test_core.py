@@ -280,6 +280,7 @@ CORE_CELLS = {
                             "indexpolice": "derived",
                             "kapitallebensversicherung": "derived",
                             "klassische_rentenversicherung": "derived",
+                            "pflegerentenversicherung": "derived",
                             "riester_rente": "derived",
                             "risikolebensversicherung": "derived"},
         "surplus_table_index": {"basisrente": "derived",
@@ -338,7 +339,7 @@ CORE_CELLS = {
                       "indexpolice": "derived",
                       "kapitallebensversicherung": "derived",
                       "klassische_rentenversicherung": "derived",
-                      "pflegerentenversicherung": "override",
+                      "pflegerentenversicherung": "derived",
                       "riester_rente": "derived",
                       "risikolebensversicherung": "derived"},
         "prem_freq_load": {"basisrente": "override",
@@ -351,10 +352,12 @@ CORE_CELLS = {
         "instalments": {"berufsunfaehigkeit": "derived",
                         "fondsgebundene_rentenversicherung": "derived",
                         "kapitallebensversicherung": "derived",
+                        "pflegerentenversicherung": "derived",
                         "risikolebensversicherung": "derived"},
         "prem_cycle": {"berufsunfaehigkeit": "derived",
                        "fondsgebundene_rentenversicherung": "derived",
                        "kapitallebensversicherung": "derived",
+                       "pflegerentenversicherung": "derived",
                        "risikolebensversicherung": "derived"},
         "issue_age": {**dict.fromkeys(MODELS, "derived"), "sofortrente": "override"},
         "sex": {"berufsunfaehigkeit": "derived",
@@ -2757,7 +2760,6 @@ PFLEGE_DICT_READERS = {
     "incidence_table": "incidence_file",
     "care_table": "care_file",
     "surrender_table": "surrender_file",
-    "prem_mode_table": "prem_mode_file",
 }
 
 
@@ -3303,7 +3305,8 @@ PREM_FREQ_INSTALMENTS = {"annual": 1, "half_yearly": 2, "quarterly": 4, "monthly
 PREM_FREQ_PRODUCTS = sorted(["basisrente", "berufsunfaehigkeit",
                              "fondsgebundene_rentenversicherung", "indexpolice",
                              "kapitallebensversicherung", "klassische_rentenversicherung",
-                             "riester_rente", "risikolebensversicherung"])
+                             "pflegerentenversicherung", "riester_rente",
+                             "risikolebensversicherung"])
 
 
 def test_the_products_with_a_premium_frequency_table_are_listed(product_models):
@@ -3341,10 +3344,6 @@ FREQUENCY_KEYS = {
     "sofortrente": ("payment_freq_table_keys", frozenset({1, 2, 4, 12})),
 }
 
-# Pflege's instalment frequencies and the months one instalment covers, as the map it held.
-PFLEGE_PREM_MODE_MONTHS = {"monthly": 1, "quarterly": 3, "half_yearly": 6, "annual": 12,
-                           "single": 0}
-
 # A frequency the shipped table lacks: product -> (table file, model-point column, value,
 # row that admits it, cell that checks it, its error message, the cell's value once admitted).
 FREQUENCY_PROBES = {
@@ -3352,26 +3351,33 @@ FREQUENCY_PROBES = {
         "prem_freq_table.csv", "prem_freq", "bimonthly", 'bimonthly,6,"[std] test fixture"',
         "prem_freq", "invalid prem_freq bimonthly", "bimonthly"),
     "pflegerentenversicherung": (
-        "prem_mode_table.csv", "prem_mode", "bimonthly", 'bimonthly,2,"[std] test fixture"',
-        "prem_mode_months", "invalid prem_mode", 2),
+        "prem_freq_table.csv", "prem_freq", "bimonthly", 'bimonthly,6,"[std] test fixture"',
+        "prem_freq", "invalid prem_freq bimonthly", "bimonthly"),
     "sofortrente": (
         "payment_freq_table.csv", "payment_freq", 3, '3,"[std] test fixture"',
         "payment_freq", "invalid payment_freq", 3),
 }
 
 
-def test_pflege_prem_mode_months_are_read_from_its_table(product_models):
+def test_pflege_single_premium_is_a_premium_form_not_a_frequency(product_models):
+    """Pflege's *Einmalbeitrag* is ``prem_form = single``, paid at ``t = 0`` alone, and its
+    ``prem_freq`` (shipped as ``annual``) is a key of the table; a ``regular`` premium falls
+    due every ``prem_cycle()`` months, over all four frequencies."""
     model = product_models("pflegerentenversicherung")
-    months = model.Data.prem_mode_table_dict()["prem_mode_months"]
-    assert months == PFLEGE_PREM_MODE_MONTHS
+    assert "single" not in model.Data.prem_freq_table().index
     points = model.Data.model_point_table()
-    seen = set()
+    forms, freqs = set(), set()
     for point_id in points.index:
         item = model.Projection[point_id]
-        value = item.prem_mode_months()
-        assert type(value) is int and value == PFLEGE_PREM_MODE_MONTHS[item.prem_freq()]
-        seen.add(item.prem_freq())
-    assert seen == set(PFLEGE_PREM_MODE_MONTHS)
+        forms.add(item.prem_form())
+        if item.prem_form() == "single":
+            assert points.at[point_id, "prem_freq"] == "annual"
+            assert [t for t in range(24) if item.premium_due(t)] == [0]
+        else:
+            freqs.add(item.prem_freq())
+            assert item.prem_cycle() == 12 // PREM_FREQ_INSTALMENTS[item.prem_freq()]
+    assert forms == {"regular", "single"}
+    assert freqs == set(PREM_FREQ_INSTALMENTS)
 
 
 @pytest.mark.parametrize("product", sorted(FREQUENCY_KEYS))

@@ -20,9 +20,10 @@ print("model point {}: {} - {} entry {}, {} - Pflegerente {:,.2f} EUR/month at P
           proj.status_init(), proj.rente_mth(), proj.staffel_id()))
 print("Leistungsstaffel  PG1 {:.0%}  PG2 {:.0%}  PG3 {:.0%}  PG4 {:.0%}  PG5 {:.0%}".format(
     *[proj.benefit_pct(g) for g in range(1, 6)]))
-print("premium: mode = {} (m = {}), to age {}, model point value {:,.2f}, "
+print("premium: form = {} (frequency {}), to age {}, model point value {:,.2f}, "
       "Risikozuschlag {:.2f}".format(
-          proj.prem_freq(), proj.prem_mode_months(), proj.prem_end_age(),
+          proj.prem_form(),
+          "-" if proj.prem_form() == "single" else proj.prem_freq(), proj.prem_end_age(),
           proj.premium_mth(), proj.rating_factor()))
 print("options: Wartezeit {} m, Karenzzeit {} m, Leistungsdynamik {:.2%}, "
       "Beitragsrueckgewaehr {}, Stornoabzug {:.2%}".format(

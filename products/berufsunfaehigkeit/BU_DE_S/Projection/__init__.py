@@ -572,11 +572,12 @@ def policy_year_first(s):
 def claim_year(z):
     """The claim year containing claim duration z, 1-based and capped at the table's last row.
 
-    ``(z - 1) // 12 + 1``, capped at 11: rows 1-10 of *claim_duration_table.csv* are claim
+    ``(z - 1) // 12 + 1``, capped at the table's last claim year,
+    ``data.claim_duration_last_year()``: rows 1-10 of *claim_duration_table.csv* are claim
     years 1-10 and row 11 is the ultimate.  Duration ``z = 1`` is the first month a claim
     can be paid, so ``z = 1 ... 12`` is claim year 1 and ``z = 13`` opens claim year 2.
     """
-    return min(11, max(1, (z - 1) // 12 + 1))
+    return min(data.claim_duration_last_year(), max(1, (z - 1) // 12 + 1))  # noqa: F821
 
 
 def seed_claim_dur():
@@ -623,18 +624,19 @@ def cohort_len_first(s):
 
 
 def cohort_year_idx(n):
-    """The claim-year index of the first ``n`` claim-duration cohorts, capped at 10.
+    """The claim-year index of the first ``n`` claim-duration cohorts, capped at the last row.
 
-    ``np.minimum(np.arange(n) // 12, 10)``: cohort ``z = 1 .. n`` reads the rate of its
-    claim year, the eleventh standing for every later one.  The disabled ledgers of both
+    ``np.minimum(np.arange(n) // 12, data.claim_duration_last_year() - 1)``, the cap 10 on
+    the shipped table: cohort ``z = 1 .. n`` reads the rate of its claim year, the table's
+    last (the eleventh) standing for every later one.  The disabled ledgers of both
     orders and their exits read it at their full length, :func:`max_claim_dur` and
-    ``first_len() + 1``, and slice it to the month's vector, ``[:m]``, which is the array
-    ``np.minimum(np.arange(m) // 12, 10)``; keyed by the full length rather than by ``m``,
+    ``first_len() + 1``, and slice it to the month's vector, ``[:m]``, which is the same
+    array at length ``m``; keyed by the full length rather than by ``m``,
     it is built once per contract and order rather than once per month.  Read-only: the
     array is shared by every reader, so it is returned with ``setflags(write=False)`` and a
     write into it or into a slice raises ``ValueError``.
     """
-    idx = np.minimum(np.arange(n) // 12, 10)
+    idx = np.minimum(np.arange(n) // 12, data.claim_duration_last_year() - 1)  # noqa: F821
     idx.setflags(write=False)
     return idx
 
@@ -695,24 +697,28 @@ def mort_rate_dis_at_age(x):
 def recov_rates():
     """The eleven annual reactivation rates by claim year, as a tuple.
 
-    Read once from *claim_duration_table.csv* and indexed by ``claim_year(z) - 1``.  The
+    Read once from *claim_duration_table.csv*, claim years 1 to
+    ``data.claim_duration_last_year()``, and indexed by ``claim_year(z) - 1``.  The
     table itself is the object the projection uses; this cells exists so that the file is
     turned into a tuple once rather than once per cohort, which on a 444-month projection
     with 445 cohorts is the difference between a lookup and a quarter of a million of
     them.
     """
     rates = data.claim_duration_table_dict()["recov_rate"]           # noqa: F821
-    return tuple(float(rates[y]) for y in range(1, 12))
+    return tuple(float(rates[y])
+                 for y in range(1, data.claim_duration_last_year() + 1))  # noqa: F821
 
 
 def mort_dis_sel_factors():
     """The eleven disabled-mortality select factors by claim year, as a tuple.
 
     3.0 / 2.0 / 1.6 / 1.4 / 1.3 and 1.2 from claim year 6, read once from
-    *claim_duration_table.csv*.  See :func:`recov_rates` for why it is a tuple.
+    *claim_duration_table.csv*, claim years 1 to ``data.claim_duration_last_year()``.  See
+    :func:`recov_rates` for why it is a tuple.
     """
     factors = data.claim_duration_table_dict()["mort_dis_sel_factor"]   # noqa: F821
-    return tuple(float(factors[y]) for y in range(1, 12))
+    return tuple(float(factors[y])
+                 for y in range(1, data.claim_duration_last_year() + 1))  # noqa: F821
 
 
 # --- the best-estimate rates as composed ---

@@ -54,6 +54,8 @@
   five-year spread and three-year suicide window likewise. Every other numeric literal of a
   formula cell of the core and the ten products, but 0, 1, 0.0 and 1.0, is structural and
   listed for its space in ``STRUCTURAL_LITERALS``, and every listed value occurs there.
+  BU's claim-year caps are the last ``dur_year`` of its claim-duration table, so a scratch
+  copy with a twelfth row reads it.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -2027,7 +2029,7 @@ def test_pflege_guards_read_the_core_epsilon():
 STRUCTURAL_LITERALS = {
     "core": {"11", "12", "12.0"},
     "basisrente": {"12", "12.0"},
-    "berufsunfaehigkeit": {"2", "10", "11", "12", "12.0"},
+    "berufsunfaehigkeit": {"2", "12", "12.0"},
     "fondsgebundene_rentenversicherung": {"0.5", "3", "6", "12", "12.0", "200", "10000.0"},
     "indexpolice": {"11", "12", "12.0", "13", "10000.0"},
     "kapitallebensversicherung": {"11", "12", "12.0"},
@@ -3435,6 +3437,29 @@ def test_bu_cohort_index_and_step_are_read_only(product_models):
                 array[:13] *= 2
             assert array.tolist() == before
     assert item.cohort_year_idx(item.max_claim_dur())[0] == 0
+
+
+def test_bu_claim_years_are_read_from_the_claim_duration_table(tmp_path, product_models):
+    """The claim-year cap is the table's last ``dur_year``, so a twelfth row is read too."""
+    data = product_models("berufsunfaehigkeit").Data
+    table = data.claim_duration_table()
+    last = data.claim_duration_last_year()
+    assert type(last) is int and last == int(table.index.max()) == len(table) == 11
+    folder = product_copy(tmp_path, "berufsunfaehigkeit")
+    path = folder / "claim_duration_table.csv"
+    path.write_text(path.read_text(encoding="utf-8") + '12,0.005,1.1,"[std] test fixture"\n',
+                    encoding="utf-8")
+    copy = mx.read_model(folder / MODELS["berufsunfaehigkeit"], name="ClaimYearProbe")
+    try:
+        assert copy.Data.claim_duration_last_year() == 12
+        item = copy.Projection[copy.Data.model_point_table().index[0]]
+        assert [item.claim_year(z) for z in (1, 12, 13, 132, 133, 144, 145, 999)] == [
+            1, 1, 2, 11, 12, 12, 12, 12]
+        assert item.recov_rates()[11] == 0.005 and len(item.recov_rates()) == 12
+        assert item.mort_dis_sel_factors()[11] == 1.1 and len(item.mort_dis_sel_factors()) == 12
+        assert item.cohort_year_idx(300).tolist() == np.minimum(np.arange(300) // 12, 11).tolist()
+    finally:
+        copy.close()
 
 
 def test_bu_rate_arrays_by_age_equal_the_tuples(product_models):

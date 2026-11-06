@@ -44,7 +44,8 @@ dicts by column, built once per model, which the projection's lookups read inste
 ``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table``,
 ``lapse_table`` and ``freq_loading_table``, this space's ``inception_table_dict``,
 ``claim_duration_table_dict`` and ``occupation_table_dict``, with ``inception_table_ages``
-and ``mort_table_ages``, the age range the lookups clamp to.
+and ``mort_table_ages``, the age range the lookups clamp to, and
+``claim_duration_last_year``, the claim year the claim-duration lookups cap at.
 
 Every file but ``model_point_table.csv`` carries a per-row ``provenance`` column, which
 is delib's second ruling: the citation discipline reaches the data files and is
@@ -212,6 +213,17 @@ def mort_table_ages():
     """
     ages = mort_table().index
     return (int(ages.min()), int(ages.max()))
+
+
+def claim_duration_last_year():
+    """The last claim year of ``claim_duration_table()``, its largest ``dur_year``: 11.
+
+    Built once per model from its index, which runs from 1 without a gap, the last row the
+    ultimate; ``Projection.claim_year`` caps the claim year at it, ``cohort_year_idx`` the
+    index at one below, and ``recov_rates`` and ``mort_dis_sel_factors`` read claim years 1
+    to it.
+    """
+    return int(claim_duration_table().index.max())
 
 
 # ---------------------------------------------------------------------------

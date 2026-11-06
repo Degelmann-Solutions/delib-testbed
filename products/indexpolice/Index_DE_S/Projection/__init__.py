@@ -469,7 +469,7 @@ def prem_charge_acq_min_pp(k):
 
     Acquisition and distribution costs must be spread over at least the first five years
     for the purpose of the *Mindestrückkaufswert*, whatever the tariff does — so this
-    profile is written with the literal 5 and not with ``zill_years``, which is a tariff
+    profile reads the row ``surr_spread_years`` and not ``zill_years``, which is a tariff
     parameter and not a statutory one.  With ``zill_years = 5`` the two coincide exactly
     and the floor is a no-op, which is the point: delib's charge profile is already at the
     statutory floor.  Set ``zill_years = 1`` and the floor bites.
@@ -483,7 +483,7 @@ def prem_charge_acq_min_pp(k):
                  data.param("zill_cap_rate")) * prem_sum()            # noqa: F821
     if prem_form() == "single":
         return charge if k == k_start() else 0.0
-    spread = min(5, prem_term_y())
+    spread = min(data.param("surr_spread_years"), prem_term_y())     # noqa: F821
     return charge / spread if k < spread else 0.0
 
 

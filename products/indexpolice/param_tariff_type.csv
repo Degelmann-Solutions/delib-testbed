@@ -11,3 +11,4 @@ exp_fixed_pp,36.0,,"[std] maintenance expense (Stueckkosten) 36.00 EUR per polic
 storno_rate,0.02,,"[std] [R2] [REG-R28] Stornoabzug 2 % of the floored base surrender value, applied where surr_charge_on = 1; deliberately mild in an observed band of 0 % to 20 %; was a Reference on Projection"
 rentenfaktor_guar,25.0,,"[std] guaranteed Rentenfaktor 25.00 EUR per 10 000 EUR per month; was a Reference on Projection"
 rentenfaktor_curr,25.0,,"[std] current Rentenfaktor 25.00 EUR per 10 000 EUR per month, set equal to the guaranteed one in the base run so that the max rule is exercised by a test rather than by the base path; was a Reference on Projection"
+surr_spread_years,5,,"[R2] [REG-R28] section 169 (3) VVG: for the Mindestrueckkaufswert the acquisition and distribution costs are spread evenly over at least the first 5 years, whatever the tariff's zill_years; a statutory floor, not a tariff parameter; was a literal in prem_charge_acq_min_pp on Projection"

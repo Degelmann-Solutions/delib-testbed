@@ -1350,7 +1350,8 @@ def ann_factor():
 def rentenfaktor_curr():
     """R_c: the current *Rentenfaktor* implied by the model's own annuity basis.
 
-    ``(1 - rentenfaktor_margin) x 10 000 / (12 x ann_factor())``.  The whole payout-phase
+    ``(1 - rentenfaktor_margin) x 10 000 / (ann_freq x ann_factor())``, ``ann_freq = 12``
+    instalments a year.  The whole payout-phase
     loading — the *Sicherheitsabschlag* and the administration margin — sits in this one
     deduction rather than being taken partly here and partly out of each instalment, which
     would double-count; the insurer's real payout administration is instead an explicit
@@ -1358,7 +1359,7 @@ def rentenfaktor_curr():
     the guarantee binds.
     """
     return ((1.0 - data.param("rentenfaktor_margin")) * 10000.0      # noqa: F821
-            / (12.0 * ann_factor()))
+            / (data.param("ann_freq") * ann_factor()))               # noqa: F821
 
 
 def rentenfaktor_applied():
@@ -1448,7 +1449,7 @@ def commutation_pp():
 def annuity_pp(k):
     """a(k): the **annual** annuity per policy in payout year k — twelve monthly instalments.
 
-    ``12 x annuity_month_pp()``, level for life.  It does **not** read
+    ``ann_freq x annuity_month_pp()``, ``ann_freq = 12``, level for life.  It does **not** read
     :func:`rentengarantie_years`: the guarantee period changes who is paid and never how
     much, and a model point with no guarantee period pays the *same* annuity to a smaller
     count.  Zero before *Rentenbeginn* and zero on a commuted contract.
@@ -1458,7 +1459,7 @@ def annuity_pp(k):
     """
     if not is_payout_y(k) or k >= proj_len_y() or is_kleinbetrag():
         return 0.0
-    return 12.0 * annuity_month_pp()
+    return data.param("ann_freq") * annuity_month_pp()               # noqa: F821
 
 
 def db_pp(k):
@@ -1932,11 +1933,11 @@ def check_conversion_resid(k):
     annuity_capital_pp() + commutation_pp()``, so a commuted contract pays no lump sum
     beside the *Abfindung* and an annuitised one pays no *Abfindung* beside the annuity.
     Third, the current *Rentenfaktor* and the annuity factor are consistent by
-    construction: ``rentenfaktor_curr() x 12 x ann_factor() = (1 - rentenfaktor_margin) x
-    10 000``, which is the identity that catches a Woolhouse correction applied twice, a
+    construction: ``rentenfaktor_curr() x ann_freq x ann_factor() = (1 - rentenfaktor_margin)
+    x 10 000``, which is the identity that catches a Woolhouse correction applied twice, a
     factor struck on the second-order basis, or a margin taken both in the factor and in the
     instalment.  Fourth, the instalment is the **monthly** one the factor quotes:
-    ``12 x annuity_month_pp() = annuity_pp(k)``, so an annual amount cannot reach a monthly
+    ``ann_freq x annuity_month_pp() = annuity_pp(k)``, so an annual amount cannot reach a monthly
     frame by accident.
 
     Unlike the other residuals this one is an absolute total rather than a signed
@@ -1949,9 +1950,9 @@ def check_conversion_resid(k):
     r1 = capital_conv_pp() - max(account_conv_pp(), guar_pp(k_conv() + 1))
     r2 = capital_conv_pp() - (teilkapital_pp() + annuity_capital_pp()
                               + commutation_pp())
-    r3 = (rentenfaktor_curr() * 12.0 * ann_factor()
+    r3 = (rentenfaktor_curr() * data.param("ann_freq") * ann_factor()  # noqa: F821
           - (1.0 - data.param("rentenfaktor_margin")) * 10000.0)     # noqa: F821
-    r4 = 12.0 * annuity_month_pp() - annuity_pp(k)
+    r4 = data.param("ann_freq") * annuity_month_pp() - annuity_pp(k)  # noqa: F821
     return abs(r1) + abs(r2) + abs(r3) + abs(r4)
 
 

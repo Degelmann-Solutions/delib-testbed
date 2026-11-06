@@ -59,7 +59,7 @@
   surrender table likewise. The payment frequencies FRV and Sofort allow are the keys of
   their own tables; a frequency outside the table raises, and a row added to a scratch copy
   admits it. Pflege's instalment frequencies and the months each covers are its own table
-  likewise.
+  likewise. Riester's annuity frequency is a row ``ann_freq``, 12 as an ``int`` as Basis'.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -1964,6 +1964,25 @@ def test_klv_literals_are_tariff_type_rows(product_models):
     layer = data.param_layers()["tariff_type"]
     assert len(KLV_MOVED_LITERALS) == 2
     for item, literal in KLV_MOVED_LITERALS.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+
+
+# The units and annuity frequencies that are rows rather than literals: product -> item ->
+# value. Basis' were References; the others were literals in formulas. One quantity has one
+# item name and one type in every product.
+UNIT_AND_FREQUENCY_ROWS = {
+    "basisrente": {"rf_unit": 10000.0, "ann_freq": 12},
+    "riester_rente": {"ann_freq": 12},
+}
+
+
+@pytest.mark.parametrize("product", sorted(UNIT_AND_FREQUENCY_ROWS))
+def test_units_and_frequencies_are_tariff_type_rows(product, product_models):
+    data = product_models(product).Data
+    layer = data.param_layers()["tariff_type"]
+    for item, literal in UNIT_AND_FREQUENCY_ROWS[product].items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
         assert item in layer, item

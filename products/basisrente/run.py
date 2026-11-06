@@ -29,7 +29,7 @@ print("Aufschubphase to Rentenbeginn at age {} (k = {}, t = {}), projection to a
           proj.proj_len_y() - 1, proj.proj_len() - 1))
 print("premium form = {} {}   Beitrag {:,.2f} EUR p.a. x freq load {:.3f}   "
       "Dynamik {:.1%}".format(
-          mp["prem_form"], mp["prem_mode"], mp["prem_base_pp"],
+          mp["prem_form"], mp["prem_freq"], mp["prem_base_pp"],
           proj.prem_freq_load(), mp["prem_dyn_rate"]))
 print("Beitragssumme {:,.2f} EUR   Zillmerung {:,.2f} EUR over {} years   "
       "Zuzahlung {:,.2f} EUR p.a. to duration {}".format(

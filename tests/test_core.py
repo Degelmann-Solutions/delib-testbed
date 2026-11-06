@@ -274,7 +274,8 @@ CORE_CELLS = {
         "rentenfaktor_table": {"basisrente": "derived",
                                "fondsgebundene_rentenversicherung": "derived",
                                "klassische_rentenversicherung": "derived"},
-        "prem_freq_table": {"berufsunfaehigkeit": "derived",
+        "prem_freq_table": {"basisrente": "derived",
+                            "berufsunfaehigkeit": "derived",
                             "indexpolice": "derived",
                             "kapitallebensversicherung": "derived",
                             "klassische_rentenversicherung": "derived",
@@ -330,7 +331,7 @@ CORE_CELLS = {
                         "riester_rente": "derived"},
         "karenz_months": {"berufsunfaehigkeit": "derived",
                           "pflegerentenversicherung": "derived"},
-        "prem_freq": {"basisrente": "override",
+        "prem_freq": {"basisrente": "derived",
                       "berufsunfaehigkeit": "derived",
                       "indexpolice": "derived",
                       "kapitallebensversicherung": "derived",
@@ -3276,18 +3277,18 @@ def test_basis_unknown_surplus_scenario_raises_key_error(tmp_path):
 
 def test_basis_single_premium_reads_no_loading(tmp_path):
     folder = product_copy(tmp_path, "basisrente")
-    table = folder / "option_table.csv"
-    options = pd.read_csv(table, index_col=["option_id", "option_key"])
-    options.drop(index="prem_mode", level="option_id").to_csv(table)
+    table = folder / "prem_freq_table.csv"
+    table.write_text(table.read_text(encoding="utf-8").splitlines()[0] + "\n", encoding="utf-8")
     copy = mx.read_model(folder / MODELS["basisrente"], name="LoadProbe")
     try:
         points = copy.Data.model_point_table()
         single = points.index[points["prem_form"] == "single"][0]
         regular = points.index[points["prem_form"] == "regular"][0]
         assert copy.Projection[single].prem_freq_load() == 1.0
-        with pytest.raises(Exception, match="prem_mode") as raised:
+        message = "invalid prem_freq " + str(points.at[regular, "prem_freq"])
+        with pytest.raises(Exception, match=message) as raised:
             copy.Projection[regular].prem_freq_load()
-        assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+        assert raised_value_error(raised, message)
     finally:
         copy.close()
 
@@ -3295,7 +3296,7 @@ def test_basis_single_premium_reads_no_loading(tmp_path):
 # The premium payment frequencies, one name and one table in every product with a regular
 # premium: key -> instalments a year.
 PREM_FREQ_INSTALMENTS = {"annual": 1, "half_yearly": 2, "quarterly": 4, "monthly": 12}
-PREM_FREQ_PRODUCTS = sorted(["berufsunfaehigkeit", "indexpolice", "kapitallebensversicherung",
+PREM_FREQ_PRODUCTS = sorted(["basisrente", "berufsunfaehigkeit", "indexpolice", "kapitallebensversicherung",
                              "klassische_rentenversicherung", "riester_rente",
                              "risikolebensversicherung"])
 

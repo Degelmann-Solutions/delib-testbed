@@ -54,7 +54,7 @@ Converting on the projection's own mortality abolishes it, which is the eleventh
 **Spaces.** The model contains two:
 
 :mod:`~.Basis_DE_S.Data`
-    Reads the eight input CSVs and holds their filename References. It takes no
+    Reads the nine input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.Basis_DE_S.Projection`

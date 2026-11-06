@@ -238,7 +238,7 @@ The shared loaders in the core's `Data` beside the tables of entry 2: `surplus_t
 
 A scalar parameter, a rate, factor, amount or tolerance with one value per tariff, is a row of a parameter file and is read through one lookup in the core's `Data`, `param("<item>")`, always called with the item's name as a string literal, so that a scan of the code finds every item read (`data.param("<item>")` from a `Projection`). Three layers hold the items, each item in exactly one of them for a tariff:
 
-- the core file `core/Core/Data/param_core.csv`, the technical and house-wide quantities with one value for every tariff type. It is empty (header only) until the first core item moves there;
+- the core file `core/Core/Data/param_core.csv`, the technical and house-wide quantities with one value for every tariff type. It holds one item, `rate_cap_eps` (1e-12): Pflege's eleven guards cap a decrement probability at `1 - rate_cap_eps` before taking its force `-ln(1 - q)`, so that the force stays finite at the limiting age;
 - the tariff-type file in the product folder, named by the product's Reference `param_file`: `param_tariff_type.csv` in all ten products, each renamed from the product's `param_table.csv` (RLV first, the other nine together);
 - the tariff file `param_tariff.csv` in the product folder, optional: it appears only at the first value in which a tariff deviates from its tariff type, and the loader skips the layer where it is absent.
 

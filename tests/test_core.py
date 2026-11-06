@@ -46,6 +46,8 @@
   three References of the lapse modules that were never built, read by no cell, are in
   neither its ``Projection`` nor its parameter files. BU's 11, FRV's 12, Basis' 5,
   Index' 10 and Sofort's 10 likewise; RV and Pflege never had one.
+  Every product's core layer is ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's eleven
+  guards read it, and no ``1e-12`` literal is left in its formulas.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -77,6 +79,7 @@
 """
 from __future__ import annotations
 
+import ast
 import hashlib
 import importlib.util
 import io
@@ -1938,6 +1941,29 @@ def test_sofort_references_are_tariff_type_rows(product_models):
         assert item not in model.Projection.refs, item
 
 
+# The items of the core file ``core/Core/Data/param_core.csv``, as their former Python literals.
+CORE_ITEMS = {"rate_cap_eps": 1e-12}
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_every_product_reads_the_core_items(product, product_models):
+    core = product_models(product).Data.param_layers()["core"]
+    assert core == CORE_ITEMS
+    assert all(type(core[item]) is type(literal) for item, literal in CORE_ITEMS.items())
+
+
+def test_pflege_guards_read_the_core_epsilon():
+    """Pflege's eleven guards ``1.0 - 1e-12`` read ``1.0 - data.param("rate_cap_eps")``, and
+    no ``1e-12`` literal is left in its formulas (its docstrings still give the value)."""
+    path = PRODUCTS_DIR / "pflegerentenversicherung" / MODELS["pflegerentenversicherung"]
+    text = (path / "Projection" / "__init__.py").read_text(encoding="utf-8")
+    literals = [node for node in ast.walk(ast.parse(text))
+                if isinstance(node, ast.Constant) and type(node.value) is float
+                and node.value == 1e-12]
+    assert literals == []
+    assert text.count('1.0 - data.param("rate_cap_eps")') == 11
+
+
 # KLV's switches of two lapse modules that were specified and never built, read by no cell.
 KLV_UNREAD_REFERENCES = ("beta_shock", "lapse_gap_a", "ref_rate")
 
@@ -1996,6 +2022,7 @@ def test_param_reads_a_core_item_and_a_tariff_item(tmp_path):
     model_dir = folder / MODELS["risikolebensversicherung"]
     core_file = model_dir / "CoreData" / "param_core.csv"
     assert not core_file.is_symlink()
+    shipped = (CORE_MODEL / "Data" / "param_core.csv").read_text(encoding="utf-8")
     _add_params(core_file, {"probe_core": "0.125"})
     _add_params(folder / "param_tariff.csv", {"probe_tariff": "7"})
     copy = mx.read_model(model_dir, name="CoreItemProbe")
@@ -2005,8 +2032,7 @@ def test_param_reads_a_core_item_and_a_tariff_item(tmp_path):
         assert copy.Data.param("roll_fwd_tol") == 1e-10
     finally:
         copy.close()
-    assert (CORE_MODEL / "Data" / "param_core.csv").read_text(encoding="utf-8") \
-        == "item,value,basis,provenance\n"
+    assert (CORE_MODEL / "Data" / "param_core.csv").read_text(encoding="utf-8") == shipped
 
 
 def test_param_rejects_an_unknown_item(product_models):
@@ -2299,8 +2325,8 @@ def test_an_unused_core_item_is_named(tmp_path):
     finally:
         copy.close()
     assert usage.problems == []
-    assert usage.layers["core"] == {"probe_core": 0.125}
-    assert param_usage.unused_core_items([usage]) == ["probe_core"]
+    assert usage.layers["core"] == {**CORE_ITEMS, "probe_core": 0.125}
+    assert param_usage.unused_core_items([usage]) == sorted(["probe_core", *CORE_ITEMS])
 
 
 def test_klv_result_cf_is_the_core_statement_from_t_start(product_models):

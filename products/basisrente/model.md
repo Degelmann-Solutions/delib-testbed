@@ -359,7 +359,7 @@ suite counts the reads and asserts the file set.
 | `charge_file` | `charge_table()` | `charge_table.csv` |
 | `behaviour_file` | `behaviour_table()` | `behaviour_table.csv` |
 | `option_file` | `option_table()` | `option_table.csv` |
-| `param_file` | `param_table()` | `param_tariff_type.csv` |
+| `param_file` | `param()` | `param_tariff_type.csv` |
 `Data.input_dir()` resolves the location from `_model.path.parent` when the model is read, so it
 works wherever the repository is checked out. **The trade-off:** the model is not portable on its
 own — copy `Basis_DE_S/` without the CSVs and it reads fine, then fails on first evaluation —

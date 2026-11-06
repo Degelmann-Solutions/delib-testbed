@@ -38,12 +38,12 @@ zulage_file                zulage_schedule()               zulage_schedule.csv
 income_file                income_schedule()               income_schedule.csv
 surplus_file               surplus_table()                 surplus_scenario.csv
 freq_loading_file          freq_loading_table()            freq_loading.csv
-param_file                 param_table()                   param_tariff_type.csv
+param_file                 param()                         param_tariff_type.csv
 =========================  ==============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.at`` and ``.loc``: the core's for ``mort_table``, ``param_table``,
+``DataFrame.at`` and ``.loc``: the core's for ``mort_table``,
 ``lapse_table`` and ``surplus_table``, this space's ``annuity_mort_table_dict``,
 ``zulage_schedule_dict`` and ``income_schedule_dict``.
 

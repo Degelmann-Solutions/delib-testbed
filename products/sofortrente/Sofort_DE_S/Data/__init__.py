@@ -35,12 +35,12 @@ mort_file                     mort_table()                    mort_table.csv
 improvement_file              improvement_table()             improvement_table.csv
 surplus_scale_file            surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
-param_file                    param_table()                   param_tariff_type.csv
+param_file                    param()                         param_tariff_type.csv
 ============================  ==============================  ================================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.loc``: the core's for ``model_point_table``, ``param_table``, ``mort_table`` and
+``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table`` and
 ``hoechstrechnungszins_table``, this space's ``improvement_table_dict`` and
 ``surplus_scale_table_dict``, with ``mort_table_ages`` and ``improvement_table_ages``, the
 age range the lookups clamp to.

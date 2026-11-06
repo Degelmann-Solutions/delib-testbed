@@ -36,12 +36,12 @@ rentenfaktor_file         rentenfaktor_table()          rentenfaktor_table.csv
 charge_file               charge_table()                charge_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
 freq_loading_file         freq_loading_table()          freq_load_table.csv
-param_file                param_table()                 param_tariff_type.csv
+param_file                param()                       param_tariff_type.csv
 ========================  ============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.at``: the core's for ``model_point_table``, ``param_table``, ``mort_table``,
+``DataFrame.at``: the core's for ``model_point_table``, ``mort_table``,
 ``rentenfaktor_table``, ``charge_table``, ``lapse_table`` and ``freq_loading_table``, this
 space's ``decl_rate_table_dict`` with ``decl_rate_years``, the calendar range of each
 scenario the declared rate is clamped to.
@@ -169,7 +169,7 @@ def charge_table_index():
     *Deckungskapital*: it moves money inside the contract and produces no cash flow.  An
     **expense** is the insurer's own outgo and is a cash flow.  The two are different
     things and confusing them is a listed pitfall; the expense levels live in
-    :func:`param_table`.
+    the parameter file ``param_file``, read through ``param``.
 
     Override reason: the table is keyed per item, so each number carries its own
     provenance, by ``charge_id`` and ``item``,

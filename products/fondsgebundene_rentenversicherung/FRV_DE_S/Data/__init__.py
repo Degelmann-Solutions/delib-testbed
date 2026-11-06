@@ -36,12 +36,12 @@ lapse_file                lapse_table()                 lapse_table.csv
 charge_file               charge_table()                charge_table.csv
 fund_scenario_file        fund_scenario_table()         fund_scenario_table.csv
 rentenfaktor_file         rentenfaktor_table()          rentenfaktor_table.csv
-param_file                param_table()                 param_tariff_type.csv
+param_file                param()                       param_tariff_type.csv
 ========================  ============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.loc``: the core's for ``model_point_table``, ``param_table``, ``mort_table``,
+``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table``,
 ``lapse_table`` and ``rentenfaktor_table``, this space's ``fund_scenario_table_dict``, and
 ``charge_table_rows``, the charge table by row.
 

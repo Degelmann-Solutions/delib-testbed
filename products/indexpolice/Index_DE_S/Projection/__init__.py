@@ -94,7 +94,7 @@ election_file          data.election_table()              election_table.csv
 mort_file              data.mort_table()                  mort_table.csv
 lapse_file             data.lapse_table()                 lapse_table.csv
 freq_loading_file      data.freq_loading_table()          freq_load_table.csv
-param_file             data.param_table()                 param_tariff_type.csv
+param_file             data.param()                       param_tariff_type.csv
 =====================  =================================  ==========================
 
 .. rubric:: Naming

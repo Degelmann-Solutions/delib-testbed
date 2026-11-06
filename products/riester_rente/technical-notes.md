@@ -139,7 +139,7 @@ exactly; what a replacement must preserve is stated in assumption class (c) and 
 
 `Data` publishes `input_dir`, `model_point_table`, `mort_table`, `annuity_mort_table`,
 `lapse_table`, `zulage_schedule`, `income_schedule`, `surplus_table`, `freq_loading_table`
-and `param_table`.
+and the parameter loader `param`.
 
 `Projection` publishes the library's shared names — **`model_point`, `proj_len`, `age`, `pols_if`,
 `mort_rate`, `claims`, `expenses`, `net_cf`, `result_cf`** — plus, in the same lifelib spelling:

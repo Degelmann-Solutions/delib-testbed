@@ -47,7 +47,7 @@ mort_file                 data.mort_table()                  mortality_table.csv
 occupation_file           data.occupation_table()            occupation_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
-param_file                data.param_table()                 param_tariff_type.csv
+param_file                data.param()                       param_tariff_type.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming

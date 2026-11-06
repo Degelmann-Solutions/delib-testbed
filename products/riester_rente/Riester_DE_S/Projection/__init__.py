@@ -92,7 +92,7 @@ zulage_file                data.zulage_schedule()                 zulage_schedul
 income_file                data.income_schedule()                 income_schedule.csv
 surplus_file               data.surplus_table()                   surplus_scenario.csv
 freq_loading_file          data.freq_loading_table()              freq_loading.csv
-param_file                 data.param_table()                     param_tariff_type.csv
+param_file                 data.param()                           param_tariff_type.csv
 =========================  =====================================  ==========================
 
 .. rubric:: Naming

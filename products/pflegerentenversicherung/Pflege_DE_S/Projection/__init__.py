@@ -47,7 +47,7 @@ incidence_file             data.incidence_table()               incidence_table.
 care_file                  data.care_table()                    care_table.csv
 lapse_file                 data.lapse_table()                   lapse_table.csv
 surrender_file             data.surrender_table()               surrender_table.csv
-param_file                 data.param_table()                   param_tariff_type.csv
+param_file                 data.param()                         param_tariff_type.csv
 =========================  ===================================  =========================
 
 .. rubric:: Naming

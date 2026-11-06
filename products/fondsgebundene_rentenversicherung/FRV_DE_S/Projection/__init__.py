@@ -48,7 +48,7 @@ lapse_file                data.lapse_table()                 lapse_table.csv
 charge_file               data.charge_table()                charge_table.csv
 fund_scenario_file        data.fund_scenario_table()         fund_scenario_table.csv
 rentenfaktor_file         data.rentenfaktor_table()          rentenfaktor_table.csv
-param_file                data.param_table()                 param_tariff_type.csv
+param_file                data.param()                       param_tariff_type.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming

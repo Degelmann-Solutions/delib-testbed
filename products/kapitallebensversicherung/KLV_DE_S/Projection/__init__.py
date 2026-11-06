@@ -86,7 +86,7 @@ surplus_rate_file         data.surplus_rate_table()          surplus_rate_table.
 charge_file               data.charge_table()                cost_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
 deckrv_file               data.deckrv_table()                deckrv_table.csv
-param_file                data.param_table()                 param_tariff_type.csv
+param_file                data.param()                       param_tariff_type.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming

@@ -36,9 +36,10 @@
   ``claim_expense`` among it and no longer a Reference of its ``Projection``,
   keeps an integer literal ``int``, reads a fixture core item and a tariff item in a scratch
   copy, and raises on an unknown item and on a missing core file; it equals the
-  ``param_table_dict()`` value of every product's every item, and no source reads
-  ``param_table_dict()["value"]`` any more; every product's ``param_file`` is its
-  ``param_tariff_type.csv`` with the layer columns, and no ``param_table.csv`` is left.
+  file's value of every product's every item, and the core's former readers
+  ``param_table()`` and ``param_table_dict()`` are gone with every read of them; every
+  product's ``param_file`` is its ``param_tariff_type.csv`` with the layer columns, and no
+  ``param_table.csv`` is left.
   Riester's 32 former numeric References are rows of its tariff-type file with their
   literals' types and values, and no numeric Reference but ``point_id`` is left on its
   ``Projection``. RLV's 17 likewise, and its premium-shock test switches the module on
@@ -229,13 +230,6 @@ CORE_CELLS = {
     "Data": {
         "input_dir": dict.fromkeys(MODELS, "derived"),
         "model_point_table": dict.fromkeys(MODELS, "derived"),
-        "param_table": {"basisrente": "derived",
-                        "fondsgebundene_rentenversicherung": "derived",
-                        "kapitallebensversicherung": "derived",
-                        "klassische_rentenversicherung": "derived",
-                        "pflegerentenversicherung": "derived",
-                        "riester_rente": "derived",
-                        "sofortrente": "derived"},
         "mort_table_index": {"basisrente": "override",
                              "berufsunfaehigkeit": "override",
                              "fondsgebundene_rentenversicherung": "override",
@@ -289,7 +283,6 @@ CORE_CELLS = {
                          "klassische_rentenversicherung": "derived"},
         "hoechstrechnungszins_table": {"sofortrente": "derived"},
         "model_point_table_dict": dict.fromkeys(MODELS, "derived"),
-        "param_table_dict": dict.fromkeys(MODELS, "derived"),
         "param_core_path": dict.fromkeys(MODELS, "derived"),
         "param_tariff_path": dict.fromkeys(MODELS, "derived"),
         "param_layers": dict.fromkeys(MODELS, "derived"),
@@ -1047,11 +1040,15 @@ def upstream_table(product: str, name: str, **read_csv) -> pd.DataFrame:
     return pd.read_csv(io.BytesIO(data), **read_csv)
 
 
-def test_pflege_param_table_holds_the_two_merged_tables(product_models):
+def tariff_type_table(product):
+    """The product's ``param_tariff_type.csv`` as pandas reads it, by ``item``."""
+    return pd.read_csv(PRODUCTS_DIR / product / "param_tariff_type.csv", index_col="item")
+
+
+def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     product = "pflegerentenversicherung"
     model = product_models(product)
-    assert model.Data.param_table._is_derived()
-    merged = model.Data.param_table()
+    merged = tariff_type_table(product)
     basis = upstream_table(product, "basis_table.csv", index_col="param")
     expense = upstream_table(product, "expense_table.csv", index_col="item")
     # The Rechnungszins moved from the table to the model point (a contract attribute).
@@ -1286,12 +1283,12 @@ def test_bu_mort_rate_is_its_table_rate_at_the_neutral_factor(product_models):
             assert item.mort_rate(t) == item.mort_rate_at_age(item.age(t)), (point_id, t)
 
 
-def test_klv_mort_rate_steps_its_table_by_the_factor_from_param_table(product_models):
+def test_klv_mort_rate_steps_its_table_by_the_factor_from_its_tariff_type_file(product_models):
     model = product_models("kapitallebensversicherung")
     projection = model.Projection
     assert projection.mort_rate._is_derived()
     assert projection.mort_be_factor._is_defined()
-    assert model.Data.param_table().at["mort_be_factor", "value"] == 0.75
+    assert model.Data.param("mort_be_factor") == 0.75
     item = projection[model.Data.model_point_table().index[0]]
     assert item.mort_be_factor() == 0.75
     for t in range(item.proj_len()):
@@ -1594,7 +1591,7 @@ ROLL_FWD_TOL = {
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
-def test_roll_fwd_tol_is_read_from_param_table(product, product_models):
+def test_roll_fwd_tol_is_read_from_its_tariff_type_file(product, product_models):
     model = product_models(product)
     projection = model.Projection
     assert projection.roll_fwd_tol._is_derived()
@@ -1626,39 +1623,35 @@ def test_param_reads_the_tariff_type_layer(product_models):
     assert data.param_core_path().is_file()
     for item in ("roll_fwd_tol", "expense_infl"):
         value = data.param(item)
-        assert type(value) is float and value == data.param_table_dict()["value"][item], item
+        assert type(value) is float and value == tariff_type_table(
+            "risikolebensversicherung").at[item, "value"], item
 
 
-PARAM_TABLE_DICT_RE = re.compile(r"(?<!\w)param_table_dict\(")
-PARAM_TABLE_DICT_DEF = "def param_table_dict():"
+PARAM_TABLE_RE = re.compile(r"(?<!\w)param_table(_dict)?\(")
 
 
-def test_no_param_table_dict_read_remains():
-    """Every parameter is read through ``param("<item>")``; no source reads the old path.
-
-    The only ``param_table_dict(`` left is its definition in the core's ``Data``.
-    """
+def test_no_param_table_reader_remains(product_models):
+    """Every parameter is read through ``param("<item>")``; the core's former readers
+    ``param_table()`` and ``param_table_dict()`` are gone, and no source names them."""
+    data = product_models("risikolebensversicherung").Data
+    assert "param_table" not in data.cells and "param_table_dict" not in data.cells
     sources = sorted(p for folder in (CORE_DIR, PRODUCTS_DIR) for p in folder.rglob("*.py")
                      if "__pycache__" not in p.parts)
     assert sources
-    core_data = CORE_MODEL / "Data" / "__init__.py"
     hits = []
     for path in sources:
         text = path.read_text(encoding="utf-8")
-        for match in PARAM_TABLE_DICT_RE.finditer(text):
-            line = text[text.rfind("\n", 0, match.start()) + 1:text.find("\n", match.end())]
-            if path.resolve() == core_data.resolve() and line == PARAM_TABLE_DICT_DEF:
-                continue
+        for match in PARAM_TABLE_RE.finditer(text):
             number = text.count("\n", 0, match.start()) + 1
             hits.append(f"{path.relative_to(ROOT)}:{number}")
     assert not hits, hits
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
-def test_param_equals_the_param_table_dict_value(product, product_models):
-    """``param(item)`` is the value ``param_table_dict()`` held for every item of the file."""
+def test_param_equals_the_file_value(product, product_models):
+    """``param(item)`` is the value pandas reads for every item of the tariff-type file."""
     data = product_models(product).Data
-    values = data.param_table_dict()["value"]
+    values = tariff_type_table(product)["value"].to_dict()
     assert values
     for item, value in values.items():
         assert data.param(item) == value, item
@@ -2375,8 +2368,7 @@ def test_the_usage_scan_reports_a_declared_cell_that_does_not_exist(tmp_path):
     assert "probe_nowhere" in problems[0] and "no cell" in problems[0]
 
 
-@pytest.mark.parametrize("reader", ["param_dict", "param_layers", "param_table",
-                                    "param_table_dict"])
+@pytest.mark.parametrize("reader", ["param_dict", "param_layers"])
 def test_the_usage_scan_reports_a_read_around_param(tmp_path, reader):
     copy = _usage_copy(tmp_path, "BypassProbe")
     try:
@@ -2571,7 +2563,6 @@ def test_pflege_inflation_factor_compounds_continuously(product_models):
 # The core's dict cells: reader -> the file Reference whose presence says a product has it.
 DICT_READERS = {
     "model_point_table": "model_point_file",
-    "param_table": "param_file",
     "mort_table": "mort_file",
     "lapse_table": "lapse_file",
     "rentenfaktor_table": "rentenfaktor_file",
@@ -2590,7 +2581,7 @@ def same_value(a, b) -> bool:
 def test_every_dict_cell_equals_its_reader(product, product_models):
     data = product_models(product).Data
     readers = [r for r, ref in DICT_READERS.items() if ref in data.refs]
-    assert "model_point_table" in readers and "param_table" in readers
+    assert "model_point_table" in readers
     for reader in readers:
         df = data.cells[reader]()
         table = data.cells[reader + "_dict"]()

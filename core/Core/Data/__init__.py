@@ -38,18 +38,6 @@ def model_point_table():
         input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
-def param_table():
-    """The product's scalar parameters by ``item``, read from its ``param_file``.
-
-    Columns ``value``, ``basis`` and ``provenance``, and an optional ``unit``: the
-    product's tariff-type file ``param_tariff_type.csv`` (``docs/core.md``, "The parameter
-    files").  The values are read with pandas' default float parsing, which round-trips
-    the decimal literals.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / param_file, index_col="item")                  # noqa: F821
-
-
 def param_core_path():
     """The core parameter file, ``param_core.csv`` beside the core's loaders.
 
@@ -212,15 +200,6 @@ def model_point_table_dict():
     ``int``, ``float``, ``bool`` and ``str`` with the same bits.
     """
     return model_point_table().to_dict("index")
-
-
-def param_table_dict():
-    """The parameter table as a dict by column: ``{column: {item: value}}``.
-
-    Built once per model from ``param_table()``.  No cell reads it: every parameter is
-    read through ``param(item)``.
-    """
-    return param_table().to_dict()
 
 
 def mort_table_dict():

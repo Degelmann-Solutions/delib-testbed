@@ -330,7 +330,7 @@ projected. The conventions suite counts the reads and asserts the *set* against
 | `nvg_schedule_file` | `nvg_schedule()` | `nvg_schedule.csv` |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` |
 | `freq_loading_file` | `freq_loading_table()` | `freq_loading_table.csv` |
-| `param_file` | `param_table()` | `param_tariff_type.csv` |
+| `param_file` | `param()` | `param_tariff_type.csv` |
 
 **The trade-off:** the model is not portable on its own — copy `RLV_DE_S/` without the
 CSVs and it reads fine, then fails on first evaluation. What you gain is that a diff shows

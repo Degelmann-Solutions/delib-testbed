@@ -36,12 +36,12 @@ surplus_rate_file         surplus_rate_table()          surplus_rate_table.csv
 charge_file               charge_table()                cost_table.csv
 freq_loading_file         freq_loading_table()          freq_loading_table.csv
 deckrv_file               deckrv_table()                deckrv_table.csv
-param_file                param_table()                 param_tariff_type.csv
+param_file                param()                       param_tariff_type.csv
 ========================  ============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.loc``: the core's for ``model_point_table``, ``param_table``, ``mort_table``,
+``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table``,
 ``lapse_table``, ``charge_table`` and ``freq_loading_table``, this space's
 ``surplus_rate_table_dict`` with ``surplus_rate_years``, the policy-year range of each
 scenario, and ``deckrv_table_dict``.

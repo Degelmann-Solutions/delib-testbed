@@ -377,7 +377,7 @@ Inputs are **external CSVs in the model folder's parent**, read once per model b
 | `improvement_table.csv` | `basis`, `age` | `improve_rate` | `Data.improvement_table()` |
 | `surplus_scale_table.csv` | `surplus_form` | `surplus_init_pct`, `surplus_growth` | `Data.surplus_scale_table()` |
 | `hoechstrechnungszins_table.csv` | `year_from` | `year_to`, `max_rate` | `Data.hoechstrechnungszins_table()` |
-| `param_tariff_type.csv` | `item` | `value` | `Data.param_table()`, the core's loader |
+| `param_tariff_type.csv` | `item` | `value` | `Data.param()`, the core's loader |
 
 `basis` takes `FIRST` or `SECOND`, `sex` takes `M` or `F` — the unisex blend is a model construction,
 not a table row, so the CSV never carries a rate no real table would. Every file **except**

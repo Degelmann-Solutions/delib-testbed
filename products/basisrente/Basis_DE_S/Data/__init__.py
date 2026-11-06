@@ -38,12 +38,12 @@ rentenfaktor_file          rentenfaktor_table()            rentenfaktor_table.cs
 charge_file                charge_table()                  charge_table.csv
 behaviour_file             behaviour_table()               behaviour_table.csv
 option_file                option_table()                  option_table.csv
-param_file                 param_table()                   param_tariff_type.csv
+param_file                 param()                         param_tariff_type.csv
 =========================  ==============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.loc``: the core's for ``model_point_table``, ``param_table``, ``mort_table``,
+``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table``,
 ``surplus_table``, ``rentenfaktor_table`` and ``charge_table``, this space's
 ``behaviour_table_dict`` and ``option_table_dict``, with ``behaviour_table_durs`` and
 ``surplus_table_years``, the last row of each behaviour table and surplus scenario the

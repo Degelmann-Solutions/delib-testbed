@@ -38,12 +38,12 @@ election_file          election_table()            election_table.csv
 mort_file              mort_table()                mort_table.csv
 lapse_file             lapse_table()               lapse_table.csv
 freq_loading_file      freq_loading_table()        freq_load_table.csv
-param_file             param_table()               param_tariff_type.csv
+param_file             param()                     param_tariff_type.csv
 =====================  ==========================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.loc``: the core's for ``model_point_table``, ``param_table``, ``mort_table``,
+``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table``,
 ``lapse_table`` and ``freq_loading_table``, this space's ``index_return_table_dict``,
 ``index_param_table_dict``, ``surplus_rate_table_dict`` and ``election_table_dict``.
 

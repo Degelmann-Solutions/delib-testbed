@@ -22,7 +22,7 @@ In a reachable cell a call ``param("<item>")`` (or ``data.param("<item>")``) wit
 literal reads that item.  Any other reference to ``param`` is an indirect read, which the cell
 has to declare in ``param_indirect()``, ``{cell: (item, ...)}``; the declared items count as
 read by the cell.  A cell other than the loader cells must not reference the readers behind
-``param`` (``param_dict``, ``param_layers``, ``param_table``, ``param_table_dict``).
+``param`` (``param_dict``, ``param_layers``).
 
 The problems of one product: a call or declared item naming an item no layer holds, an item
 of the tariff-type or the tariff layer that no reachable cell reads, an undeclared indirect
@@ -38,7 +38,7 @@ from dataclasses import dataclass
 SPACES = ("Projection", "Data")
 ROOT_PREFIXES = ("result_", "check_")
 LOADER = "param"
-READERS = frozenset({"param_dict", "param_layers", "param_table", "param_table_dict"})
+READERS = frozenset({"param_dict", "param_layers"})
 LOADER_CELLS = READERS | {LOADER}
 PRODUCT_LAYERS = ("tariff_type", "tariff")
 

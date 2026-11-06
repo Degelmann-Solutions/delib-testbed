@@ -82,7 +82,7 @@ rentenfaktor_file          data.rentenfaktor_table()            rentenfaktor_tab
 charge_file                data.charge_table()                  charge_table.csv
 behaviour_file             data.behaviour_table()               behaviour_table.csv
 option_file                data.option_table()                  option_table.csv
-param_file                 data.param_table()                   param_tariff_type.csv
+param_file                 data.param()                         param_tariff_type.csv
 =========================  ===================================  ==========================
 
 .. rubric:: Naming

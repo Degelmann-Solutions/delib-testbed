@@ -37,12 +37,12 @@ incidence_file             incidence_table()               incidence_table.csv
 care_file                  care_table()                    care_table.csv
 lapse_file                 lapse_table()                   lapse_table.csv
 surrender_file             surrender_table()               surrender_table.csv
-param_file                 param_table()                   param_tariff_type.csv
+param_file                 param()                         param_tariff_type.csv
 =========================  ==============================  =========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.at``: the core's for ``model_point_table``, ``param_table``, ``mort_table``
+``DataFrame.at``: the core's for ``model_point_table``, ``mort_table``
 and ``lapse_table``, this space's for ``benefit_scale_table``, ``incidence_table``,
 ``care_table`` and ``surrender_table``.
 
@@ -98,7 +98,7 @@ at ``t = 0`` prices), ``claim_expense_pp`` (EUR per annuity payment made) and
 ``expense_infl`` (annual); they are placeholder levels whose only cited element is the
 25 ‰ ceiling the acquisition charge is set exactly at. The two groups were the files
 ``basis_table.csv`` and ``expense_table.csv`` upstream; phase 3 merged them so that the
-loader ``param_table()`` is the common core's.
+loader ``param()`` is the common core's.
 """
 
 from modelx.serialize.jsonvalues import *

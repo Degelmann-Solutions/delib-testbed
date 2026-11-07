@@ -626,8 +626,8 @@ def alpha_rate():
 def alpha_amort_pp(k):
     """alpha(k): the *Zillmerung* instalment struck against the account in year k.
 
-    ``zillmer_amount() / zill_spread_y`` in equal instalments over the contract's first
-    ``zill_spread_y = 5`` years of *Aufschubphase* — **of the contract**, not of the
+    ``zillmer_amount() / acq_spread_years`` in equal instalments over the contract's first
+    ``acq_spread_years = 5`` years of *Aufschubphase* — **of the contract**, not of the
     projection — and zero thereafter.  An in-force model point past duration 5 therefore
     sees none of it at any ``k``: model point 6, at ``duration_init = 17``, sees zero
     throughout.  A single-premium contract runs the same five instalments, so the total
@@ -646,9 +646,9 @@ def alpha_amort_pp(k):
         return 0.0
     if int(model_point()["paidup_at_init"]) == 1:
         return 0.0
-    if duration_y(k) >= data.param("zill_spread_y"):                   # noqa: F821
+    if duration_y(k) >= data.param("acq_spread_years"):                # noqa: F821
         return 0.0
-    return zillmer_amount() / data.param("zill_spread_y")            # noqa: F821
+    return zillmer_amount() / data.param("acq_spread_years")         # noqa: F821
 
 
 def alpha_zuz_pp(k):

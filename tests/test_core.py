@@ -1858,7 +1858,7 @@ KLV_MOVED_LITERALS = {"surr_spread_years": 5, "suicide_years": 3}
 BASIS_MOVED_REFERENCES = {
     "elig_surv_prob": 0.55,
     "mort_base_year": 2005,
-    "zill_spread_y": 5,
+    "acq_spread_years": 5,
     "rf_unit": 10000.0,
     "ann_freq": 12,
 }

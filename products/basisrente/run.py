@@ -33,7 +33,7 @@ print("premium form = {} {}   Beitrag {:,.2f} EUR p.a. x freq load {:.3f}   "
           proj.prem_freq_load(), mp["prem_dyn_rate"]))
 print("Beitragssumme {:,.2f} EUR   Zillmerung {:,.2f} EUR over {} years   "
       "Zuzahlung {:,.2f} EUR p.a. to duration {}".format(
-          proj.beitragssumme(), proj.zillmer_amount(), proj.data.param("zill_spread_y"),
+          proj.beitragssumme(), proj.zillmer_amount(), proj.data.param("acq_spread_years"),
           mp["zuzahlung_pp"], mp["zuzahlung_end_dur"]))
 print("Rentenfaktor: guaranteed {:.2f}, current {:.2f}, option factor {:.3f} "
       "-> applied {:.4f}".format(

@@ -183,7 +183,7 @@ year, like the two balances it moves between, so it sits in `result_acct()` with
 
 The AltZertG requires acquisition costs to be spread over **at least five years** [R1] — a
 tighter cap on *Zillmerung* than anything the VVG imposes on a Schicht-3 contract. So
-`acq_charge_pp(k)` is one fifth of `acq_charge_rate × beitragssumme` in contract years 1 to 5
+`acq_charge_pp(k)` is one fifth of `charge_acq_bsum_once × beitragssumme` in contract years 1 to 5
 and zero after: on the anchor, 168,00 € at `k = 0` and `k = 1` and nothing from `k = 2`.
 It never appears in `result_cf()`, being a deduction *before* the account, but 168,00 € of the
 488,90 € rise in the *Sparbeitrag* between `k = 1` and `k = 2` is the charge ending rather
@@ -223,7 +223,7 @@ independent, one a contract term struck at inception and the other a function of
 table, and the model states which is authoritative rather than leaving it to be inferred. The
 whole payout loading sits in `rentenfaktor_margin` (30 % **[std]**) rather than being split
 between the factor and each instalment, which would double-count; payout administration is an
-explicit `expense_annuity` flow instead. `check_conversion()` asserts
+explicit `expense_annuity_pp_ann` flow instead. `check_conversion()` asserts
 `rentenfaktor_curr() · 12 · ann_factor() = (1 − rentenfaktor_margin) · 10 000` on every model
 point, whether or not the current factor applies. `teilkapital_pp()` is the elected share
 clamped at the statutory 30 % [R1]: 13 726,91 € on the anchor, leaving 32 029,47 € to annuitise
@@ -375,7 +375,7 @@ frequency-loading invariance is tested.
 | `income_schedule.csv` | Contribution-liable earnings by schedule id and `t`, 0–59 | **[std]** 2 % nominal growth paths plus a `zero` path for the *mittelbar* eligible spouse. It decides when the 2 100 € ceiling binds |
 | `surplus_scenario.csv` | `decl_rate` by scenario id and `t`, 0–89: `base` 2,30 %, `low` 0,50 % | **[std]**, the **largest single lever in the model** and the least supported (gap 12). The rate **includes** the *Rechnungszins* [REG-R53] |
 | `prem_freq_table.csv` | The *Ratenzuschlag* multiplier by payment frequency | **[std]** 1.0000 / 1.0100 / 1.0200 / 1.0300, a charge and never a credit |
-| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.80, `expense_infl` 0.02, and the 32 scalar tariff parameters that were References on `Projection`, `valuation_year` and `grundzulage` … `comm_rate_renew` | `mort_be_factor` **[std]**, the step from the first-order death table to the best estimate, below it because a death table carries its margin above [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads. The 32 moved References carry their own basis tags in their provenance, statutory or **[std]** per row, as in `technical-notes.md` "Assumption inputs" |
+| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.80, `expense_infl` 0.02, and the 32 scalar tariff parameters that were References on `Projection`, `valuation_year` and `grundzulage` … `comm_renew_prem_inst` | `mort_be_factor` **[std]**, the step from the first-order death table to the best estimate, below it because a death table carries its margin above [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads. The 32 moved References carry their own basis tags in their provenance, statutory or **[std]** per row, as in `technical-notes.md` "Assumption inputs" |
 
 ### How the time-like input columns are keyed
 

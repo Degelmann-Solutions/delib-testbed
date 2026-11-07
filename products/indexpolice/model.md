@@ -287,7 +287,7 @@ one place where the model's economics are knowingly incomplete.
 `av_min_pp(k)` is a **shadow** account carrying the same recursion with the acquisition
 charge on the statutory five-year spread of § 169 Abs. 3 VVG, and it exists only to produce
 `min_surr_pp(k)`. It is not the reserve, it is not published in the cash flow statement, and
-it never touches a death or a maturity benefit. With `zill_years = 5` the two accounts
+it never touches a death or a maturity benefit. With `acq_spread_years = 5` the two accounts
 coincide exactly and the floor is a no-op — which is the point, delib's charge profile
 already sitting at the statutory floor. The DeckRV *Höchstzillmersatz* and the § 169 VVG
 spread are two different rules with two different functions — what may be **reserved**

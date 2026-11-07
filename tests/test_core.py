@@ -1865,14 +1865,14 @@ BASIS_MOVED_REFERENCES = {
 
 # The 10 numeric References Index' ``Projection`` held, as their former Python literals.
 INDEX_MOVED_REFERENCES = {
-    "acq_cost_rate": 0.025,
-    "acq_expense_rate": 0.025,
-    "zill_years": 5,
-    "zill_cap_rate": 0.025,
-    "exp_prem_rate": 0.03,
-    "exp_av_rate": 0.0025,
-    "exp_fixed_pp": 36.0,
-    "storno_rate": 0.02,
+    "charge_acq_bsum_once": 0.025,
+    "expense_acq_bsum_once": 0.025,
+    "acq_spread_years": 5,
+    "zillmer_cap_bsum": 0.025,
+    "charge_admin_prem_inst": 0.03,
+    "charge_admin_av_ann": 0.0025,
+    "expense_admin_pp_ann": 36.0,
+    "stornoabzug_rate": 0.02,
     "rentenfaktor_guar": 25.0,
     "rentenfaktor_curr": 25.0,
 }

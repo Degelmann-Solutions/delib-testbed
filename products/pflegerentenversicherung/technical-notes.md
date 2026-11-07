@@ -168,7 +168,7 @@ cells in the `Data` Space (the `annuallife/TradLife_A` layout). Every file **exc
 | `care_table.csv` | `pflegegrad` | `entry_share`, `det_rate`, `rec_rate`, `mort_mult`, `provenance` | The whole in-care basis in five rows: the distribution of the grade first entered, the annual deterioration rate to the next grade, the annual recovery rate to the previous grade or to active, and the force-of-mortality multiple over an active life of the same age |
 | `lapse_table.csv` | `policy_year` | `lapse_rate`, `provenance` | Annual lapse from the **active** state, policy years 1–40; year 40's rate applies to every later year |
 | `surrender_table.csv` | `policy_year` | `rkw_prem_ratio`, `provenance` | The guaranteed *Rückkaufswert* as a fraction of premiums paid to date, policy years 1–40, clamped as for lapse at its last policy year `Y` (40), which `surrender_table_last_year()` reads from the table |
-| `param_tariff_type.csv` | `item` | `value`, `unit`, `basis`, `provenance` | `omega_age`, `unisex_mix_male`, `rec_age_ref`, `rec_age_decay`, `inc_cap`, `beitragssumme_cap_age`, `roll_fwd_tol`, and the five first-order prudence margins `inc_margin`, `det_margin`, `rec_margin`, `care_mort_margin`, `act_mort_margin` (`unit` empty); then `acq_permille`, `admin_prem_pct`, `admin_mth_pp`, `claim_expense_pp`, `expense_infl`. Upstream's `basis_table.csv` and `expense_table.csv`, merged in phase 3; `rechnungszins` moved to the model point |
+| `param_tariff_type.csv` | `item` | `value`, `unit`, `basis`, `provenance` | `omega_age`, `unisex_mix_male`, `rec_age_ref`, `rec_age_decay`, `inc_cap`, `beitragssumme_cap_age`, `roll_fwd_tol`, and the five first-order prudence margins `inc_load_first`, `det_load_first`, `recov_load_first`, `mort_care_load_first`, `mort_actv_load_first` (`unit` empty); then `acq_permille`, `load_admin_prem_inst`, `load_admin_pp_mth`, `load_claim_pp_inst`, `expense_infl`. Upstream's `basis_table.csv` and `expense_table.csv`, merged in phase 3; `rechnungszins` moved to the model point |
 
 Eight files, each read by a reader cells in `Data`; the suite asserts there are no orphans.
 
@@ -394,9 +394,9 @@ throughout.
 | Item | Value | Unit | Rationale |
 |---|---|---|---|
 | `acq_permille` | 25.0 | ‰ of *Beitragssumme*, at `t = 0` | Set **exactly at** the § 4 DeckRV *Höchstzillmersatz* [REG-R16], so the ceiling binds visibly |
-| `admin_prem_pct` | 0.030 | fraction of each premium collected | Placeholder; absorbs the *Ratenzahlungszuschlag* the model does not charge separately |
-| `admin_mth_pp` | 2.00 | EUR per policy in force per month, `t = 0` prices | Placeholder, a plausible fraction of a mass-market monthly premium |
-| `claim_expense_pp` | 1.50 | EUR per annuity payment made | Set **low** — the trigger is determined by a third party [R6], so claims cost is well below a *Berufsunfähigkeitsrente*'s [REG-R29] |
+| `load_admin_prem_inst` | 0.030 | fraction of each premium collected | Placeholder; absorbs the *Ratenzahlungszuschlag* the model does not charge separately |
+| `load_admin_pp_mth` | 2.00 | EUR per policy in force per month, `t = 0` prices | Placeholder, a plausible fraction of a mass-market monthly premium |
+| `load_claim_pp_inst` | 1.50 | EUR per annuity payment made | Set **low** — the trigger is determined by a third party [R6], so claims cost is well below a *Berufsunfähigkeitsrente*'s [REG-R29] |
 | `expense_infl` | 0.015 | annual | Placeholder; over a 65-year projection it is a factor of about 2.6 on the per-policy line |
 
 The *Beitragssumme* the acquisition charge is struck on is
@@ -414,20 +414,20 @@ that survives is a life that can claim:
 
 | Margin | Value | Applied to | Direction |
 |---|---|---|---|
-| `inc_margin` | 1.25 | `inc_rate` | more claims |
-| `det_margin` | 1.15 | `det_rate` | faster progression to the higher-paying grades |
-| `rec_margin` | 0.80 | `rec_rate` | fewer recoveries, so longer spells |
-| `care_mort_margin` | 0.85 | in-care mortality | longer annuities |
-| `act_mort_margin` | 0.90 | active mortality | more lives survive to claim |
+| `inc_load_first` | 1.25 | `inc_rate` | more claims |
+| `det_load_first` | 1.15 | `det_rate` | faster progression to the higher-paying grades |
+| `recov_load_first` | 0.80 | `rec_rate` | fewer recoveries, so longer spells |
+| `mort_care_load_first` | 0.85 | in-care mortality | longer annuities |
+| `mort_actv_load_first` | 0.90 | active mortality | more lives survive to claim |
 
 All five are **[std]** and the responsible actuary's judgment sets them in practice [REG-R11]
 [REG-R56]. **This file used to add that no German source gives a *Sicherheitszuschlag* level for a
 *Pflegetafel*. The DAV does** [R15] [REG-R8], by minimum *Pflegegrad*: a *Gesamtzuschlag* on
 incidence of **24,5 / 21,4 / 20,5 / 24,0 / 31,2 %**, a *Gesamtabschlag* on *Invalidensterblichkeit*
 of **28,5 / 24,2 / 24,2 / 24,3 / 25,7 %**, and **13,6 %** on *Aktivensterblichkeit*. Against those,
-`inc_margin` 1.25 sits inside the published range and `act_mort_margin` 0.90 is close to 0.864; but
-`care_mort_margin` 0.85 is **materially less prudent** than the published 0.715–0.758, and
-`det_margin` and `rec_margin` have no published counterpart because the *Stufenmodell* has no
+`inc_load_first` 1.25 sits inside the published range and `mort_actv_load_first` 0.90 is close to 0.864; but
+`mort_care_load_first` 0.85 is **materially less prudent** than the published 0.715–0.758, and
+`det_load_first` and `recov_load_first` have no published counterpart because the *Stufenmodell* has no
 per-grade transitions. **Nothing here was changed**: these are pricing bases, and moving one moves
 the worked example and the golden tests. The **first-order basis carries no lapse at all**, which is both
 German practice and what keeps the model acyclic. Pricing blends the sexes at
@@ -452,7 +452,7 @@ a 50 / 50 mix while writing 60 / 40" is model risk 7 [REG-R34].
 | `E_g(t)` | `esc_pg(t, g)`, the escalation-weighted counterpart of `ℓ_g` |
 | `d`, `K` | `leistungsdynamik`, the annual escalation of the annuity in payment; `karenz_months` |
 | `i` | `rechnungszins`; `v = (1 + i) ** (-1/12)`, used **only** in the pricing engine |
-| `α`, `β`, `γ`, `c`, `f` | `acq_permille/1000`, `admin_prem_pct`, `admin_mth_pp`, `claim_expense_pp`, `expense_infl` |
+| `α`, `β`, `γ`, `c`, `f` | `acq_permille/1000`, `load_admin_prem_inst`, `load_admin_pp_mth`, `load_claim_pp_inst`, `expense_infl` |
 
 Forces are per annum; `R`, `P` and every cash-flow component are EUR.
 
@@ -794,7 +794,7 @@ The specific ways an implementation of *this* product looks right and is wrong. 
 14. **Striking the equivalence premium on the projection basis.** Assert `check_prem_equiv()` is
     `True`, that `premium_mth_pp()` is invariant to every value in `lapse_table.csv`, and that
     `tar_inc_rate(x)` exceeds the **unisex-blended** best-estimate incidence
-    `0.5 i_M(x) + 0.5 i_F(x)` by exactly `inc_margin` at every age below the `inc_cap`. Against the
+    `0.5 i_M(x) + 0.5 i_F(x)` by exactly `inc_load_first` at every age below the `inc_cap`. Against the
     anchor cell's own *female* incidence the ratio is 1.128 at age 45 and 1.089 at 85, not 1.25:
     the blend and the margin are two separate operations and only the second is prudence.
 15. **Pricing on the model point's own sex.** Assert points 1 and 2 — female and male, identical
@@ -931,7 +931,7 @@ per payment falling on a paying population of the order of 1e-5 for the first tw
 **Check 1 — the equivalence premium, from the four actuarial values.** The premium is not read off a
 rate card; it is the solution of the first-order equivalence, and the values that determine it are
 published as cells: `tariff_benefit_pv() = A = 17,789.761930`, `tariff_annuity() = U = 313.500018`,
-`epv_admin() = G = 892.884210`, `epv_claim_expense() = C = 69.389246`, with `β = admin_prem_pct =
+`epv_admin() = G = 892.884210`, `epv_claim_expense() = C = 69.389246`, with `β = load_admin_prem_inst =
 0.030` and the *Zillmerung* allowance `a1 = 0.025 × 12 × (85 − 45) = 12.000000` in units of `P`:
 
     P = (17,789.761930 + 892.884210 + 69.389246) / (313.500018 x 0.970 - 12.000000)

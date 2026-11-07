@@ -83,7 +83,7 @@
   *Höchstrechnungszins* band), and a table the product lacks is never read.
 - Pflege's own dict cells equal their readers; its care-grade rates are keyed by attained
   age and grade, not by month, and keep their limiting-age, recovery-damping and grade-5
-  values; a missing ``rec_margin`` row raises; its entrants and graduations are the ledger's
+  values; a missing ``recov_load_first`` row raises; its entrants and graduations are the ledger's
   own and equal the formulas they had beside it; its month-keyed rates depend on the month only
   through the attained age, as the age-keyed transitions assume.
 - The shared caches are read-only: every product's ``model_point()``, FRV's ``charge_row()``
@@ -1077,12 +1077,28 @@ def tariff_type_table(product):
     return pd.read_csv(PRODUCTS_DIR / product / "param_tariff_type.csv", index_col="item")
 
 
+# Pflege's items renamed after the merge (docs/core.md, "Parameter names"): upstream name ->
+# current name.
+PFLEGE_RENAMED = {
+    "inc_margin": "inc_load_first",
+    "det_margin": "det_load_first",
+    "rec_margin": "recov_load_first",
+    "care_mort_margin": "mort_care_load_first",
+    "act_mort_margin": "mort_actv_load_first",
+    "admin_prem_pct": "load_admin_prem_inst",
+    "admin_mth_pp": "load_admin_pp_mth",
+    "claim_expense_pp": "load_claim_pp_inst",
+}
+
+
 def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     product = "pflegerentenversicherung"
     model = product_models(product)
     merged = tariff_type_table(product)
     basis = upstream_table(product, "basis_table.csv", index_col="param")
     expense = upstream_table(product, "expense_table.csv", index_col="item")
+    basis = basis.rename(index=PFLEGE_RENAMED)
+    expense = expense.rename(index=PFLEGE_RENAMED)
     # The Rechnungszins moved from the table to the model point (a contract attribute).
     moved = ["rechnungszins"]
     points = model.Data.model_point_table()
@@ -2969,15 +2985,15 @@ def test_pflege_tariff_deterioration_is_zero_at_grade_5(product_models):
     assert item.tar_det_rate(1) == min(1.0 - 1e-12, 1.15 * item.det_rate(1))
 
 
-def test_pflege_rec_margin_without_its_row_raises_key_error(tmp_path):
+def test_pflege_recov_load_first_without_its_row_raises_key_error(tmp_path):
     folder = product_copy(tmp_path, "pflegerentenversicherung")
     table = folder / "param_tariff_type.csv"
     params = pd.read_csv(table, index_col="item")
-    params.drop(index="rec_margin").to_csv(table)
+    params.drop(index="recov_load_first").to_csv(table)
     copy = mx.read_model(folder / MODELS["pflegerentenversicherung"], name="RecProbe")
     try:
         point_id = copy.Data.model_point_table().index[0]
-        with pytest.raises(Exception, match="rec_margin") as raised:
+        with pytest.raises(Exception, match="recov_load_first") as raised:
             copy.Projection[point_id].tar_rec_rate(60, 1)
         assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
     finally:

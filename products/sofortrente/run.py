@@ -28,7 +28,7 @@ print("payment: {} per year, {}, first instalment at t = {}, guarantee ends at t
 print("tariff:  i = {:.4f} (cap {:.4f} for {}), alpha = {:.3f}, beta = {:.3f}, "
       "surplus = {}".format(
           proj.rechnungszins(), proj.hoechstrechnungszins(), proj.issue_year(),
-          proj.data.param("expense_load_alpha"), proj.data.param("expense_load_beta"),
+          proj.data.param("load_acq_sp_once"), proj.data.param("load_admin_annval_once"),
           proj.surplus_form()))
 print("frame:   t = {} ... {} ({} monthly rows, proj_len = {} exclusive)".format(
     proj.t_start(), proj.proj_len() - 1, proj.proj_len() - proj.t_start(),

@@ -68,7 +68,7 @@ expectancy 24,29 years at 65 and ``q(65) = 0.00789``, ``q(75) = 0.02001``,
 first-order basis, and **not** DAV 2004 R.
 
 **The anchor is the unisex blend.** The two sex factors are chosen so that the
-``mix_male = 0.45`` blend of the FIRST series reproduces ``q_base(x)`` itself:
+``unisex_mix_male = 0.45`` blend of the FIRST series reproduces ``q_base(x)`` itself:
 ``0.45 x 1.250000 + 0.55 x 0.795455 = 1.00000025``, the exact factor for the female
 series being ``0.4375 / 0.55 = 0.79545454...`` and 0.795455 its six-decimal rounding. The
 blend therefore reproduces the research file's own law to 2.5e-7 relative at every age,
@@ -128,7 +128,7 @@ def mort_table_index():
 
     Indexed by ``(basis, sex, age)`` with ``basis`` in ``{FIRST, SECOND}`` and ``sex`` in
     ``{M, F}``.  The unisex series the tariff is struck on is **computed** from these two
-    at ``mix_male``; it is deliberately not a row, because no real sex-distinct table
+    at ``unisex_mix_male``; it is deliberately not a row, because no real sex-distinct table
     carries one.
 
     A **[std]** proxy, not DAV 2004 R; see the Space docstring for what it is, what its

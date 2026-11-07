@@ -68,8 +68,8 @@ x_a(t), x_s(t)   age(t, life)                          Attained age of each life
 (none)           calendar_year(t)                      Calendar year of month t
 SP               single_prem()                         The Einmalbeitrag
 SP_net           net_single_prem()                     SP (1 - alpha)
-alpha            expense_load_alpha                    Acquisition loading in the tariff
-beta             expense_load_beta                     Loading on the annuity value
+alpha            load_acq_sp_once                    Acquisition loading in the tariff
+beta             load_admin_annval_once                     Loading on the annuity value
 i                rechnungszins()                       Tariff Rechnungszins
 (cap)            hoechstrechnungszins()                Hoechstrechnungszins at issue_year
 m                ann_freq()                            Instalments per year
@@ -291,8 +291,8 @@ def sex(life=1):
     """The sex of each life, M or F.  **Decrement only — it must not enter the tariff.**
 
     German new business has had to be unisex since 21 December 2012, so the annuity factor
-    is struck on a blend of the sex-distinct tables at ``mix_male`` and never on the model
-    point's own sex; see :func:`mort_rate_tariff`.  The tension worth knowing is that the
+    is struck on a blend of the sex-distinct tables at ``unisex_mix_male`` and never on the
+    model point's own sex; see :func:`mort_rate_tariff`.  The tension worth knowing is that the
     underlying tables remain sex-distinct, so a realised portfolio mix away from the
     assumed one shows up as a *Risikoergebnis* — which is precisely why a unisex annuity is
     a better deal for women than for men and why the female share of a voluntary annuitant
@@ -496,17 +496,18 @@ def mort_rate_at_age(x, table_sex, basis):
     """The table's annual death rate at attained age ``x``.
 
     ``table_sex`` is ``M``, ``F`` or ``U``; ``basis`` is ``FIRST`` or ``SECOND``.  ``U`` is
-    **computed** as ``mix_male q_M + (1 - mix_male) q_F`` and is never a row of the CSV,
-    because no real sex-distinct table carries one — the unisex tariff is a blend an
-    insurer strikes on an assumed portfolio mix, not a published table.
+    **computed** as ``unisex_mix_male q_M + (1 - unisex_mix_male) q_F``, the core's
+    :func:`unisex_mix_male`, and is never a row of the CSV, because no real sex-distinct table
+    carries one — the unisex tariff is a blend an insurer strikes on an assumed portfolio mix,
+    not a published table.
 
     Ages outside the table are clamped to its ends.  The upper clamp is the one that
     matters: on a joint-life point the frame runs to the *second* life's horizon, so the
     annuitant's attained age passes the closing row while their survival is already zero.
     """
     if table_sex == "U":
-        return (data.param("mix_male") * mort_rate_at_age(x, "M", basis)  # noqa: F821
-                + (1.0 - data.param("mix_male")) * mort_rate_at_age(x, "F", basis))  # noqa: F821
+        return (unisex_mix_male() * mort_rate_at_age(x, "M", basis)
+                + (1.0 - unisex_mix_male()) * mort_rate_at_age(x, "F", basis))
     lo, hi = data.mort_table_ages()                                  # noqa: F821
     xx = min(max(int(x), lo), hi)
     return float(data.mort_table_dict()["mort_rate"][(basis, table_sex, xx)])   # noqa: F821
@@ -647,14 +648,14 @@ def tariff_lives(k, life=1):
 
 
 def net_single_prem():
-    """SP_net: the *Nettoeinmalbeitrag*, ``single_prem() (1 - expense_load_alpha)``.
+    """SP_net: the *Nettoeinmalbeitrag*, ``single_prem() (1 - load_acq_sp_once)``.
 
     The insurer deducts the acquisition and distribution loading from the *Einmalbeitrag*
     and annuitises the remainder.  An accumulation product's *Deckungskapital* recursion
     degenerates, for a single premium, to exactly this one netting step.  ``alpha`` is
     **[std]**: no charge parameter was established at any carrier.
     """
-    return single_prem() * (1.0 - data.param("expense_load_alpha"))  # noqa: F821
+    return single_prem() * (1.0 - data.param("load_acq_sp_once"))    # noqa: F821
 
 
 def pay_period_mths():
@@ -739,7 +740,7 @@ def annuity_pp_derived():
 
     Where no refund is elected the equivalence is explicit::
 
-        R = net_single_prem() / ( annuity_factor() x (1 + expense_load_beta) )
+        R = net_single_prem() / ( annuity_factor() x (1 + load_admin_annval_once) )
 
     Where ``refund_form() == "full"`` it is **implicit**, because the death benefit is the
     *Einmalbeitrag* less the instalments already paid and a smaller annuity runs that
@@ -756,7 +757,7 @@ def annuity_pp_derived():
     different — and wrong — answer**, and the difference is not a rounding.
     """
     a = annuity_factor()
-    load = 1.0 + data.param("expense_load_beta")                     # noqa: F821
+    load = 1.0 + data.param("load_admin_annval_once")                # noqa: F821
     r_max = net_single_prem() / (a * load)
     if refund_form() == "none":
         return r_max
@@ -1084,12 +1085,12 @@ def claims_other(t, kind):
 
 
 def expenses_acq(t):
-    """The acquisition expense at ``t = 0`` only, ``pols_if_init (expense_acq_rate SP + c)``.
+    """The acquisition expense at ``t = 0`` only, ``pols_if_init (expense_acq_sp_once SP + c)``.
 
     The acquisition term appears at ``t = 0`` only, and therefore not at all on an in-force
     point.  All three expense terms are **[std]** — no expense parameter was established at
     any carrier.  These are the expenses *incurred*.  The two tariff *loadings* —
-    ``expense_load_alpha`` and ``expense_load_beta`` — are pricing parameters and appear
+    ``load_acq_sp_once`` and ``load_admin_annval_once`` — are pricing parameters and appear
     only in the equivalence.  Keeping them apart is the point of the split: the gap between
     them is the modelled *Kostenüberschuss*, and a user replacing one set must replace the
     other with it or the modelled profit moves silently.
@@ -1098,22 +1099,23 @@ def expenses_acq(t):
     amount at ``t = 0``, products/sofortrente/technical-notes.md:617
     """
     if t == 0:
-        return pols_if_init() * (data.param("expense_acq_rate") * single_prem()  # noqa: F821
-                                 + data.param("expense_acq_fixed"))  # noqa: F821
+        return pols_if_init() * (data.param("expense_acq_sp_once") * single_prem()  # noqa: F821
+                                 + data.param("expense_acq_pp_once"))  # noqa: F821
     return 0.0
 
 
 def expenses_maint(t):
-    """The maintenance expense, ``(expense_maint_pp / 12) inflation_factor(t) pols_if(t)``.
+    """The maintenance expense, ``(expense_admin_pp_ann / 12) inflation_factor(t) pols_if(t)``.
 
     Override reason: maintenance is a twelfth of the annual amount, inflated, on the
     obligation weight, products/sofortrente/technical-notes.md:618
     """
-    return (data.param("expense_maint_pp") / 12.0) * inflation_factor(t) * pols_if(t)  # noqa: F821
+    return ((data.param("expense_admin_pp_ann") / 12.0)                # noqa: F821
+            * inflation_factor(t) * pols_if(t))
 
 
 def expenses_claim(t):
-    """The payment run, ``expense_pay_pp inflation_factor(t) pols_if_init payment_factor(t)``.
+    """The payment run, ``expense_pay_pp_inst inflation_factor(t) pols_if_init payment_factor(t)``.
 
     In a payment month, zero in the others.  The per-instalment term is weighted by
     :func:`payment_factor` rather than by :func:`pols_if`, and that is not a slip: a
@@ -1124,7 +1126,7 @@ def expenses_claim(t):
     payment factor, products/sofortrente/technical-notes.md:619
     """
     if is_payment_mth(t):
-        return (data.param("expense_pay_pp") * inflation_factor(t)   # noqa: F821
+        return (data.param("expense_pay_pp_inst") * inflation_factor(t)  # noqa: F821
                 * pols_if_init() * payment_factor(t))
     return 0.0
 
@@ -1387,7 +1389,7 @@ def check_equivalence_resid():
     if annuity_pp_init() > 0.0:
         return 0.0
     return net_single_prem() - (annuity_pp_derived() * annuity_factor()
-                                * (1.0 + data.param("expense_load_beta"))  # noqa: F821
+                                * (1.0 + data.param("load_admin_annval_once"))  # noqa: F821
                                 + refund_pv())
 
 

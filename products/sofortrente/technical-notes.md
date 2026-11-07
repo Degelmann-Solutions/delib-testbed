@@ -333,7 +333,7 @@ systematic *Risikoüberschuss* this product's surplus is largely financed from [
 collapsing them destroys both halves of the mechanic and is pitfall 9.
 
 **Unisex blend.** `mort_rate_at_age(x, "U", basis) = ρ_M · q(x, "M", basis) + (1 − ρ_M) · q(x, "F", basis)`
-with `ρ_M = mix_male = 0.45` **[std]**. The direction is argued rather than observed: a unisex tariff
+with `ρ_M = unisex_mix_male = 0.45` **[std]**. The direction is argued rather than observed: a unisex tariff
 struck on sex-distinct tables is a better deal for women than for men, so the realised female share of
 a voluntary annuitant portfolio sits above the population share [REG-R34]. **No German carrier
 publishes a portfolio mix** (research gap 13).
@@ -344,13 +344,13 @@ three-class split, and confusing them is pitfall 12's neighbour.
 
 | Input | Value | Basis |
 |---|---|---|
-| `expense_load_alpha` α — acquisition loading in the tariff | **2,5 %** of `SP`, a row of `param_tariff_type.csv` | **[std]** (c1) |
-| `expense_load_beta` β — administration loading on the annuity value | **2,0 %**, a row of `param_tariff_type.csv` | **[std]** (c1) |
-| `expense_acq_rate`, `expense_acq_fixed` — acquisition expense actually incurred at `t = 0` | **2,0 %** of `SP` **plus 200 €**, two rows of `param_tariff_type.csv` | **[std]** (c1) |
-| `expense_maint_pp` — maintenance expense per annum, per unit of `pols_if` | **60 €**, a row of `param_tariff_type.csv`, accrued monthly | **[std]** (c1) |
-| `expense_pay_pp` — cost of running one instalment | **1,50 €** per instalment paid, a row of `param_tariff_type.csv` | **[std]** (c1) |
+| `load_acq_sp_once` α — acquisition loading in the tariff | **2,5 %** of `SP`, a row of `param_tariff_type.csv` | **[std]** (c1) |
+| `load_admin_annval_once` β — administration loading on the annuity value | **2,0 %**, a row of `param_tariff_type.csv` | **[std]** (c1) |
+| `expense_acq_sp_once`, `expense_acq_pp_once` — acquisition expense actually incurred at `t = 0` | **2,0 %** of `SP` **plus 200 €**, two rows of `param_tariff_type.csv` | **[std]** (c1) |
+| `expense_admin_pp_ann` — maintenance expense per annum, per unit of `pols_if` | **60 €**, a row of `param_tariff_type.csv`, accrued monthly | **[std]** (c1) |
+| `expense_pay_pp_inst` — cost of running one instalment | **1,50 €** per instalment paid, a row of `param_tariff_type.csv` | **[std]** (c1) |
 | `expense_infl` — expense inflation | **1,5 %** p.a., a row of `param_tariff_type.csv`, stepping at the policy anniversary | **[std]** (c1) |
-| `mix_male` ρ_M | **0.45**, a row of `param_tariff_type.csv` | **[std]** |
+| `unisex_mix_male` ρ_M | **0.45**, a row of `param_tariff_type.csv` | **[std]** |
 | `mort_base_year` | **2025**, a row of `param_tariff_type.csv` | **[std]** |
 | `omega_age` ω | **121**, a row of `param_tariff_type.csv` | **[std]** |
 | `roll_fwd_tol` | **1e-8**, a row of `param_tariff_type.csv`, the tolerance every `check_*` closes to | **[std]** |
@@ -399,7 +399,7 @@ tagged in the tables above.
 | `m`, `p` | `ann_freq`, `pay_period_mths` | instalments per year; months between them, `p = 12/m` |
 | `D`, `G` | `defer_mths`, `guar_years` | deferment in months; guarantee period in years |
 | `SP`, `SP_net` | `single_prem`, `net_single_prem` | *Einmalbeitrag*; `SP(1 − α)` |
-| `α`, `β` | `expense_load_alpha`, `expense_load_beta` | acquisition and annuity-administration loadings |
+| `α`, `β` | `load_acq_sp_once`, `load_admin_annval_once` | acquisition and annuity-administration loadings |
 | `i`, `v` | `rechnungszins` | tariff *Rechnungszins*; `v = 1/(1 + i)` |
 | `R` | `annuity_pp_derived`, `annuity_guar_pp(t)` | the *garantierte Rente* per instalment |
 | `U(t)`, `A(t)` | `annuity_surp_pp`, `annuity_pp` | *Überschussrente* instalment; total instalment `R + U(t)` |
@@ -416,8 +416,8 @@ tagged in the tables above.
 | `F(t)` | `payment_factor` | expected instalments payable at `t`, per unit of `pols_if_init` |
 | `C(t)`, `K(t)` | `cum_annuity_guar_pp`, `refund_pp` | cumulative guaranteed instalments; the refund then due |
 | `ä` | `annuity_factor` | value at `t = 0` of one unit of instalment on the tariff basis |
-| `ω`, `ρ_M` | `omega_age`, `mix_male` | limiting age; portfolio male share |
-| `c_e`, `c_p`, `π` | `expense_maint_pp`, `expense_pay_pp`, `expense_infl` | maintenance p.a.; per-instalment cost; inflation |
+| `ω`, `ρ_M` | `omega_age`, `unisex_mix_male` | limiting age; portfolio male share |
+| `c_e`, `c_p`, `π` | `expense_admin_pp_ann`, `expense_pay_pp_inst`, `expense_infl` | maintenance p.a.; per-instalment cost; inflation |
 | `E₀` | — | acquisition expense incurred at `t = 0` |
 
 `q`, `λ`, `l`, `γ`, `F` are dimensionless; `SP`, `R`, `U`, `A`, `K`, `C` and every cash flow are EUR;
@@ -614,7 +614,7 @@ buried in a total.
 
 **Expenses.**
 
-    expenses(t) = 1{t = 0} · pols_if_init · ( expense_acq_rate · SP + expense_acq_fixed )
+    expenses(t) = 1{t = 0} · pols_if_init · ( expense_acq_sp_once · SP + expense_acq_pp_once )
                 + ( c_e / 12 ) · inflation_factor(t) · pols_if(t)
                 + 1{payment month} · c_p · inflation_factor(t) · pols_if_init · payment_factor(t)
 
@@ -820,7 +820,7 @@ Hence `horizon_mths(1) = 12 × (121 − 65) = 672`, `proj_len() = 672`, and the 
 at `v^(k/12)` with `v = 1/1.01`. *Mortality.* The base tables are the research file's Gompertz–Makeham
 law `q_base(x) = 1 − exp(−(A + B·c^x·(c − 1)/ln c))` with `A = 0.0002`, `B = 1.5 × 10⁻⁵`, `c = 1.10`
 **[std]**, split by sex as `FIRST/M = 1.250000 × q_base` and `FIRST/F = 0.795455 × q_base` so that the
-`mix_male = 0.45` **[std]** unisex blend reproduces `q_base` exactly, and the second-order series
+`unisex_mix_male = 0.45` **[std]** unisex blend reproduces `q_base` exactly, and the second-order series
 `SECOND = 1.20 × FIRST` **[std]**; improvement `λ_SECOND(x) = 1,5 %` to age 70, tapering linearly to
 zero at 105, with `λ_FIRST = 1.25 × λ_SECOND` **[std]**; base year `mort_base_year = 2025` **[std]**,
 so the annuitant's cohort exponent at age 65 is `1960 + 65 − 2025 = 0` and the anchor's first-year
@@ -1250,7 +1250,7 @@ In rough order of leverage for a German payout-annuity block:
    lives independent **[std]**; real joint lives are positively dependent, so the model **overstates**
    the joint-life annuity value and understates the cost of the rider. No delib source quantifies the
    dependence.
-7. **`mix_male` and the unisex tariff.** The realised portfolio mix drives the *Risikoergebnis* the
+7. **`unisex_mix_male` and the unisex tariff.** The realised portfolio mix drives the *Risikoergebnis* the
    MindZV then shares [REG-R18] [REG-R34], and `ρ_M = 0.45` is a direction with no magnitude behind
    it. It moves the tariff annuity factor directly, so it moves every derived annuity in the table.
 8. **Expense levels on small tickets.** At model point 11's 25 000 € the [std] acquisition expense of

@@ -1880,13 +1880,13 @@ INDEX_MOVED_REFERENCES = {
 # 8 of the 10 numeric References Sofort's ``Projection`` held, as their former Python literals;
 # the other 2, ``solve_tol`` 1e-10 and ``solve_max_iter`` 200, are literals of ``annuity_pp_derived``.
 SOFORT_MOVED_REFERENCES = {
-    "expense_load_alpha": 0.025,
-    "expense_load_beta": 0.02,
-    "expense_acq_rate": 0.02,
-    "expense_acq_fixed": 200.0,
-    "expense_maint_pp": 60.0,
-    "expense_pay_pp": 1.5,
-    "mix_male": 0.45,
+    "load_acq_sp_once": 0.025,
+    "load_admin_annval_once": 0.02,
+    "expense_acq_sp_once": 0.02,
+    "expense_acq_pp_once": 200.0,
+    "expense_admin_pp_ann": 60.0,
+    "expense_pay_pp_inst": 1.5,
+    "unisex_mix_male": 0.45,
     "mort_base_year": 2025,
 }
 

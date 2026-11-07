@@ -168,7 +168,7 @@ cells in the `Data` Space (the `annuallife/TradLife_A` layout). Every file **exc
 | `care_table.csv` | `pflegegrad` | `entry_share`, `det_rate`, `rec_rate`, `mort_mult`, `provenance` | The whole in-care basis in five rows: the distribution of the grade first entered, the annual deterioration rate to the next grade, the annual recovery rate to the previous grade or to active, and the force-of-mortality multiple over an active life of the same age |
 | `lapse_table.csv` | `policy_year` | `lapse_rate`, `provenance` | Annual lapse from the **active** state, policy years 1–40; year 40's rate applies to every later year |
 | `surrender_table.csv` | `policy_year` | `rkw_prem_ratio`, `provenance` | The guaranteed *Rückkaufswert* as a fraction of premiums paid to date, policy years 1–40, clamped as for lapse at its last policy year `Y` (40), which `surrender_table_last_year()` reads from the table |
-| `param_tariff_type.csv` | `item` | `value`, `unit`, `basis`, `provenance` | `omega_age`, `unisex_mix_male`, `rec_age_ref`, `rec_age_decay`, `inc_cap`, `beitragssumme_cap_age`, `roll_fwd_tol`, and the five first-order prudence margins `inc_load_first`, `det_load_first`, `recov_load_first`, `mort_care_load_first`, `mort_actv_load_first` (`unit` empty); then `acq_permille`, `load_admin_prem_inst`, `load_admin_pp_mth`, `load_claim_pp_inst`, `expense_infl`. Upstream's `basis_table.csv` and `expense_table.csv`, merged in phase 3; `rechnungszins` moved to the model point |
+| `param_tariff_type.csv` | `item` | `value`, `unit`, `basis`, `provenance` | `omega_age`, `unisex_mix_male`, `rec_age_ref`, `rec_age_decay`, `inc_cap`, `beitragssumme_cap_age`, `roll_fwd_tol`, and the five first-order prudence margins `inc_load_first`, `det_load_first`, `recov_load_first`, `mort_care_load_first`, `mort_actv_load_first` (`unit` empty); then `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_pp_mth`, `load_claim_pp_inst`, `expense_infl`. Upstream's `basis_table.csv` and `expense_table.csv`, merged in phase 3; `rechnungszins` moved to the model point |
 
 Eight files, each read by a reader cells in `Data`; the suite asserts there are no orphans.
 
@@ -393,7 +393,7 @@ throughout.
 
 | Item | Value | Unit | Rationale |
 |---|---|---|---|
-| `acq_permille` | 25.0 | ‰ of *Beitragssumme*, at `t = 0` | Set **exactly at** the § 4 DeckRV *Höchstzillmersatz* [REG-R16], so the ceiling binds visibly |
+| `load_acq_bsum_once` | 0.025 | fraction of *Beitragssumme* (25 ‰), at `t = 0` | Set **exactly at** the § 4 DeckRV *Höchstzillmersatz* [REG-R16], so the ceiling binds visibly |
 | `load_admin_prem_inst` | 0.030 | fraction of each premium collected | Placeholder; absorbs the *Ratenzahlungszuschlag* the model does not charge separately |
 | `load_admin_pp_mth` | 2.00 | EUR per policy in force per month, `t = 0` prices | Placeholder, a plausible fraction of a mass-market monthly premium |
 | `load_claim_pp_inst` | 1.50 | EUR per annuity payment made | Set **low** — the trigger is determined by a third party [R6], so claims cost is well below a *Berufsunfähigkeitsrente*'s [REG-R29] |
@@ -452,7 +452,7 @@ a 50 / 50 mix while writing 60 / 40" is model risk 7 [REG-R34].
 | `E_g(t)` | `esc_pg(t, g)`, the escalation-weighted counterpart of `ℓ_g` |
 | `d`, `K` | `leistungsdynamik`, the annual escalation of the annuity in payment; `karenz_months` |
 | `i` | `rechnungszins`; `v = (1 + i) ** (-1/12)`, used **only** in the pricing engine |
-| `α`, `β`, `γ`, `c`, `f` | `acq_permille/1000`, `load_admin_prem_inst`, `load_admin_pp_mth`, `load_claim_pp_inst`, `expense_infl` |
+| `α`, `β`, `γ`, `c`, `f` | `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_pp_mth`, `load_claim_pp_inst`, `expense_infl` |
 
 Forces are per annum; `R`, `P` and every cash-flow component are EUR.
 

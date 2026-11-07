@@ -231,13 +231,13 @@ premium here is computed, and the notes sanity-check its level against an argued
 band rather than against a citation.
 
 **The *Zillmerung* is charged on the *Beitragssumme*, not on the annual premium.**
-`zillmer_amount()` is `acq_permille / 1000 × beitragssumme()`, with the per-mille set **exactly at**
+`zillmer_amount()` is `load_acq_bsum_once × beitragssumme()`, with the rate set **exactly at**
 the § 4 DeckRV *Höchstzillmersatz* of 25 ‰ so the ceiling binds visibly [REG-R16] [REG-R20]. A
 lifelong-premium contract has no finite *Beitragssumme* without a convention, and
 `beitragssumme_cap_age = 85` **[std]** is that convention —
 `P × 12 × (min(prem_end_age, 85) − issue_age)`, and the *Einmalbeitrag* itself where there is
 one. On the anchor cell that is 30 815,24 € and a charge of 770,38 €, all of it at `t = 0`.
-Charging the per-mille on an *annual* premium instead understates it by a factor of the paying term
+Charging the rate on an *annual* premium instead understates it by a factor of the paying term
 — here forty-fold — and is a listed pitfall. Because the charge falls at `t = 0` only, an
 **in-force model point never incurs it**: its frame opens at `duration_mth_init() > 0` and the cost
 was incurred before the valuation date, which is worth knowing before comparing an in-force point's
@@ -272,7 +272,7 @@ place: point `Data.mort_file` at another same-schema file and the projection fol
 | `care_file` | `care_table()` | `care_table.csv` | The whole in-care basis in five rows: `entry_share` 0.20 / 0.38 / 0.24 / 0.13 / 0.05, `det_rate` 0.28 / 0.24 / 0.20 / 0.16 / 0.00, `rec_rate` 0.10 / 0.06 / 0.04 / 0.02 / 0.01 and `mort_mult` 1.5 / 2.5 / 3.5 / 6.0 / 9.0 on the **force**. All **[std]**. `entry_share` is deliberately **not** the stock distribution of about 9 / 44 / 27 / 14 / 6 % [R18]: entrants skew lower than the stock because deterioration moves people up over a spell |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual lapse from the **active** state by policy year 1–40, year 40's rate applying thereafter: 6,0 / 5,0 / 4,0 / 3,5 / 3,0 % then 2,5 / 2,0 / 1,5 %. **[std]**, and **no lapse rate for a German *Pflegerente* at any duration was established**; the shape is argued from the *Zillmerung*, and the 14-day *Widerruf* sits inside year 1 [REG-R23] |
 | `surrender_file` | `surrender_table()` | `surrender_table.csv` | The guaranteed *Rückkaufswert* as a fraction of premiums paid to date, by *Versicherungsjahr* `y(t) = t // 12 + 1`, 1–40. **[std]** shape encoding two cited facts and no cited level — the 25 ‰ *Zillmerung* allowance, which is why years 1 and 2 are zero [REG-R16], and the § 169 Abs. 3 VVG five-year cost spread, which is why it turns positive in year 3 [REG-R28] |
-| `param_file` | `param()` | `param_tariff_type.csv` | The scalar parameters by `item`, with a `unit` column for the expense rows. `omega_age` 110, `unisex_mix_male` 0.50, `rec_age_ref` 75, `rec_age_decay` 0.10, `inc_cap` 0.50, `beitragssumme_cap_age` 85, `roll_fwd_tol` 1e−10 and the five first-order margins `inc_load_first` 1.25, `det_load_first` 1.15, `recov_load_first` 0.80, `mort_care_load_first` 0.85, `mort_actv_load_first` 0.90; **none of these is cited**; the *Rechnungszins*, the one cited pricing assumption, is a model-point column since phase 3 [REG-R14] [REG-R15]. Then `acq_permille` 25,000 ‰ of *Beitragssumme*, `load_admin_prem_inst` 3,0 %, `load_admin_pp_mth` 2,00 € a month, `load_claim_pp_inst` 1,50 € per annuity payment, `expense_infl` 1,5 % a year, all **[std]** but the 25 ‰ ceiling the first sits exactly at. Everything not cited is **[std]**. Upstream these were two files, `basis_table.csv` and `expense_table.csv`; phase 3 merged them so that the loader is the common core's |
+| `param_file` | `param()` | `param_tariff_type.csv` | The scalar parameters by `item`, with a `unit` column for the expense rows. `omega_age` 110, `unisex_mix_male` 0.50, `rec_age_ref` 75, `rec_age_decay` 0.10, `inc_cap` 0.50, `beitragssumme_cap_age` 85, `roll_fwd_tol` 1e−10 and the five first-order margins `inc_load_first` 1.25, `det_load_first` 1.15, `recov_load_first` 0.80, `mort_care_load_first` 0.85, `mort_actv_load_first` 0.90; **none of these is cited**; the *Rechnungszins*, the one cited pricing assumption, is a model-point column since phase 3 [REG-R14] [REG-R15]. Then `load_acq_bsum_once` 0,025 (25 ‰) of *Beitragssumme*, `load_admin_prem_inst` 3,0 %, `load_admin_pp_mth` 2,00 € a month, `load_claim_pp_inst` 1,50 € per annuity payment, `expense_infl` 1,5 % a year, all **[std]** but the 25 ‰ ceiling the first sits exactly at. Everything not cited is **[std]**. Upstream these were two files, `basis_table.csv` and `expense_table.csv`; phase 3 merged them so that the loader is the common core's |
 
 Every file but the model point table carries a **`provenance` column**, one tag per row — delib's
 second ruling, and it is machine-checked.

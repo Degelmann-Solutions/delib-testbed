@@ -1078,8 +1078,9 @@ def tariff_type_table(product):
 
 
 # Pflege's items renamed after the merge (docs/core.md, "Parameter names"): upstream name ->
-# current name.
+# current name. ``acq_permille`` 25 (per mille) is the fraction ``load_acq_bsum_once`` 0.025.
 PFLEGE_RENAMED = {
+    "acq_permille": "load_acq_bsum_once",
     "inc_margin": "inc_load_first",
     "det_margin": "det_load_first",
     "rec_margin": "recov_load_first",
@@ -1099,6 +1100,9 @@ def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     expense = upstream_table(product, "expense_table.csv", index_col="item")
     basis = basis.rename(index=PFLEGE_RENAMED)
     expense = expense.rename(index=PFLEGE_RENAMED)
+    assert expense.at["load_acq_bsum_once", "unit"] == "permille_of_beitragssumme"
+    expense.at["load_acq_bsum_once", "value"] /= 1000.0
+    expense.at["load_acq_bsum_once", "unit"] = "fraction_of_beitragssumme"
     # The Rechnungszins moved from the table to the model point (a contract attribute).
     moved = ["rechnungszins"]
     points = model.Data.model_point_table()
@@ -2102,7 +2106,7 @@ STRUCTURAL_LITERALS = {
     "indexpolice": {"11", "12", "12.0", "13"},
     "kapitallebensversicherung": {"11", "12", "12.0"},
     "klassische_rentenversicherung": {"2", "12", "12.0"},
-    "pflegerentenversicherung": {"2", "3", "4", "5", "12", "12.0", "1000.0"},
+    "pflegerentenversicherung": {"2", "3", "4", "5", "12", "12.0"},
     "riester_rente": {"12", "12.0"},
     "risikolebensversicherung": {"2", "12", "12.0"},
     "sofortrente": {"0.5", "1e-10", "2", "12", "12.0", "200"},

@@ -1274,7 +1274,7 @@ def beitragssumme_years():
 
     A lifelong-premium contract has no finite *Beitragssumme* without a convention, and
     ``beitragssumme_cap_age = 85`` **[std]** is that convention.  It is a parameter, not a
-    citation: what is cited is the 25 ‰ ceiling of DeckRV § 4 that the per-mille is set
+    citation: what is cited is the 25 ‰ ceiling of DeckRV § 4 that the rate is set
     exactly at, cut from 40 ‰ by the LVRG from 1 January 2015.  1 for the *Einmalbeitrag*.
 
     Override reason: the premium runs to ``prem_end_age``, capped at
@@ -1287,12 +1287,12 @@ def beitragssumme_years():
 
 
 def alpha_rate():
-    """The acquisition per-mille as a rate, ``acq_permille / 1000``.
+    """The acquisition rate on the *Beitragssumme*, ``load_acq_bsum_once``.
 
     :func:`zillmer_amount`, the acquisition and distribution charge per policy, incurred
-    once at ``t = 0``, is ``acq_permille / 1000 x beitragssumme()``, with the per-mille set
+    once at ``t = 0``, is ``load_acq_bsum_once x beitragssumme()``, with the rate set
     **exactly at** the § 4 DeckRV *Höchstzillmersatz* so the ceiling binds visibly.  The
-    base is the *Beitragssumme*, **not** the annual premium — charging the per-mille on an
+    base is the *Beitragssumme*, **not** the annual premium — charging the rate on an
     annual premium understates it by a factor of the paying term and is a listed pitfall.
 
     Because it falls at ``t = 0`` only, an in-force model point never incurs it: its frame
@@ -1300,8 +1300,7 @@ def alpha_rate():
     date.  That is correct, and it is worth knowing before comparing an in-force point's
     first row with a new-business point's.
     """
-    permille = float(data.param("acq_permille"))                     # noqa: F821
-    return permille / 1000.0
+    return float(data.param("load_acq_bsum_once"))                   # noqa: F821
 
 
 def inflation_years(t):
@@ -1859,14 +1858,14 @@ def premium_mth_pp():
     """
     if premium_mth() > 0.0:
         return premium_mth()
-    permille = float(data.param("acq_permille")) / 1000.0            # noqa: F821
+    acq_load = float(data.param("load_acq_bsum_once"))               # noqa: F821
     admin_pct = float(data.param("load_admin_prem_inst"))            # noqa: F821
     if prem_form() == "single":
-        a1 = permille
+        a1 = acq_load
     else:
         cap = int(data.param("beitragssumme_cap_age"))               # noqa: F821
         years = max(0, min(prem_end_age(), cap) - issue_age())
-        a1 = permille * 12.0 * years
+        a1 = acq_load * 12.0 * years
     d1 = 0.0
     if beitragsrueckgewaehr():
         for t in range(proj_len()):
@@ -2075,7 +2074,7 @@ def check_prem_equiv_resid(t):
     admin_pct = float(data.param("load_admin_prem_inst"))            # noqa: F821
     admin_pp = float(data.param("load_admin_pp_mth"))                # noqa: F821
     per_payment = float(data.param("load_claim_pp_inst"))            # noqa: F821
-    permille = float(data.param("acq_permille")) / 1000.0            # noqa: F821
+    acq_load = float(data.param("load_acq_bsum_once"))               # noqa: F821
 
     prem_leg = p0 * mult * tar_pols_prem(t) if premium_due(t) else 0.0
 
@@ -2096,11 +2095,11 @@ def check_prem_equiv_resid(t):
                + admin_pct * prem_leg)
     if t == 0:
         if single:
-            exp_leg += p0 * permille
+            exp_leg += p0 * acq_load
         else:
             cap = int(data.param("beitragssumme_cap_age"))           # noqa: F821
             years = max(0, min(prem_end_age(), cap) - issue_age())
-            exp_leg += p0 * permille * 12.0 * years
+            exp_leg += p0 * acq_load * 12.0 * years
 
     return disc_factor_mth(t) * (prem_leg - ben_leg - exp_leg)
 

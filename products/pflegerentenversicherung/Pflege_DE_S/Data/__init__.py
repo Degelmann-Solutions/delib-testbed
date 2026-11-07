@@ -95,7 +95,7 @@ the *Beitragssumme* convention ``beitragssumme_cap_age``, the check tolerance
 ``roll_fwd_tol`` and the five first-order prudence margins ``inc_load_first``,
 ``det_load_first``, ``recov_load_first``, ``mort_care_load_first`` and
 ``mort_actv_load_first``, none of them cited; the *Rechnungszins* is a model-point column. The last five rows are the expense assumptions with their ``unit``:
-``acq_permille`` (‰ of *Beitragssumme*, charged once at ``t = 0``), ``load_admin_prem_inst``
+``load_acq_bsum_once`` (fraction of *Beitragssumme*, charged once at ``t = 0``), ``load_admin_prem_inst``
 (fraction of each *Beitrag* collected), ``load_admin_pp_mth`` (EUR per policy in force per month
 at ``t = 0`` prices), ``load_claim_pp_inst`` (EUR per annuity payment made) and
 ``expense_infl`` (annual); they are placeholder levels whose only cited element is the

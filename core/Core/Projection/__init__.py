@@ -83,7 +83,14 @@ def prem_freq():
 
 
 def prem_freq_load():
-    """phi: the *Ratenzahlungszuschlag* for ``prem_freq()``, from *prem_freq_table.csv*."""
+    """phi: the *Ratenzahlungszuschlag* for ``prem_freq()``, from *prem_freq_table.csv*.
+
+    1.0 for a single premium, ``prem_form() == "single"``: the loading prices the
+    instalments of a *laufender Beitrag*, and an *Einmalbeitrag* has none, so the frequency
+    is not read.
+    """
+    if prem_form() == "single":
+        return 1.0
     return float(data.prem_freq_table_dict()[                        # noqa: F821
         "prem_freq_load"][prem_freq()])                              # noqa: F821
 
@@ -107,9 +114,12 @@ def prem_form():
     """The premium form: ``regular`` (*laufender Beitrag*) or ``single`` (*Einmalbeitrag*).
 
     From the model point's ``prem_form`` column; raises ``ValueError`` for another value.
-    A ``single`` premium is paid once and reads no ``prem_freq``.
+    A product whose model points have no such column writes regular premiums only and
+    reads ``regular``.  A ``single`` premium carries no
+    *Ratenzahlungszuschlag* (``prem_freq_load``), and its model point's ``prem_freq`` is
+    ``annual``, the one payment of its year.
     """
-    v = model_point()["prem_form"]                                   # noqa: F821
+    v = model_point().get("prem_form", "regular")                    # noqa: F821
     if v not in ("regular", "single"):
         raise ValueError("invalid prem_form")
     return v

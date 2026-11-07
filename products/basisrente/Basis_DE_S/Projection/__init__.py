@@ -508,25 +508,6 @@ def beitragssumme():
     return sum(base * (1.0 + dyn) ** u for u in range(max(m, 0)))
 
 
-def prem_freq_load():
-    """phi: the *Ratenzahlungszuschlag* for the model point's payment frequency.
-
-    Read from *prem_freq_table.csv* at ``prem_freq()``: 1.000 annual, 1.020
-    half-yearly, 1.030 quarterly, 1.050 monthly **[std]**.  It multiplies the *laufender
-    Beitrag* and **nothing else** — not the *Zuzahlung*, which carries no frequency
-    loading because it is a single payment, and not a single premium, which is why
-    :func:`prem_freq_load` returns 1.0 for ``prem_form = "single"``.  Applying it twice, or
-    to the *Zuzahlung*, is the eighth pitfall.
-
-    Override reason: a single premium carries no loading, so it is 1 there and the
-    frequency is not read, products/basisrente/technical-notes.md:389
-    """
-    if prem_form() == "single":
-        return 1.0
-    return float(data.prem_freq_table_dict()["prem_freq_load"][      # noqa: F821
-        prem_freq()])
-
-
 def prem_base_pp(k):
     """The contractual *laufender Beitrag* in year k, before the *Ratenzahlungszuschlag*.
 

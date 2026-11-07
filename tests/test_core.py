@@ -343,7 +343,7 @@ CORE_CELLS = {
                       "pflegerentenversicherung": "derived",
                       "riester_rente": "derived",
                       "risikolebensversicherung": "derived"},
-        "prem_freq_load": {"basisrente": "override",
+        "prem_freq_load": {"basisrente": "derived",
                            "berufsunfaehigkeit": "derived",
                            "indexpolice": "derived",
                            "kapitallebensversicherung": "override",
@@ -3407,6 +3407,25 @@ FREQUENCY_PROBES = {
         "ann_freq_table.csv", "ann_freq", 3, '3,"[std] test fixture"',
         "ann_freq", "invalid ann_freq", 3),
 }
+
+
+def test_a_single_premium_is_annual_and_carries_no_frequency_loading(product_models):
+    """Every single-premium point carries ``prem_freq = annual`` and ``prem_freq_load`` 1.0,
+    the core's rule for every product; Basis no longer overrides ``prem_freq_load``."""
+    checked = 0
+    for product in sorted(MODELS):
+        model = product_models(product)
+        points = model.Data.model_point_table()
+        if "prem_form" not in points.columns:
+            assert model.Projection[int(points.index[0])].prem_form() == "regular"
+            continue
+        for point_id in points.index[points["prem_form"] == "single"]:
+            assert points.at[point_id, "prem_freq"] == "annual", (product, point_id)
+            assert model.Projection[int(point_id)].prem_freq_load() == 1.0, (product, point_id)
+            checked += 1
+    assert checked == 6
+    path = PRODUCTS_DIR / "basisrente" / MODELS["basisrente"] / "Projection" / "__init__.py"
+    assert "def prem_freq_load" not in path.read_text(encoding="utf-8")
 
 
 def test_pflege_single_premium_is_a_premium_form_not_a_frequency(product_models):

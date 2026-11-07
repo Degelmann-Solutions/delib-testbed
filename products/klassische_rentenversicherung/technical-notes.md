@@ -226,8 +226,8 @@ table carries a per-row `provenance` column, this library's second ruling.
 | `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance` |
 
 `param_tariff_type.csv` holds every scalar [std] assumption that is neither a charge nor a rate table:
-`expense_acq_pp`, `expense_maint_pp`, `expense_annuity_pp`, `expense_claim_pp`, `expense_infl`,
-`mort_be_factor`, `mort_base_year`, `omega_age`, `val_reserve_rate`, `sur_ann_rate`,
+`expense_acq_pp_once`, `expense_admin_pp_ann`, `expense_annuity_pp_ann`, `expense_claim_pp_once`, `expense_infl`,
+`mort_be_factor`, `mort_base_year`, `omega_age`, `bwr_rate`, `sur_ann_rate`,
 `sur_ann_growth`, `sur_ann_theta` and `roll_fwd_tol`. Keeping them in a file rather than in
 `Projection` References is what gives each of them its own provenance tag.
 
@@ -270,7 +270,7 @@ so the total interest credited is 3,00 % for 2026. **The values below are unchan
 | Declared *laufende Verzinsung* `decl_rate` | **2,55 % p.a.** level on the `base` path; **1,50 %** on the `low` path | **[std]** (i) |
 | Surplus rate `bonus_rate(t)` | `max(0, decl_rate(t) − rechnungszins)` — **1,55 %** on the 1,00 % vintage, **0 %** on the 2,75 % vintage | mechanic [R24] [REG-R53]; **[std]** level |
 | Interest credited on the *Ansammlungsguthaben* | at `decl_rate(t)`, the full declared rate | mechanic [R24]; **[std]** (ii) |
-| *Bewertungsreserven* rate at *Rentenbeginn* `val_reserve_rate` | **1,5 %** of the accumulated value | mechanic [S4] [R4]; level **[std]** (iii) |
+| *Bewertungsreserven* rate at *Rentenbeginn* `bwr_rate` | **1,5 %** of the accumulated value | mechanic [S4] [R4]; level **[std]** (iii) |
 | *aktueller Rentenfaktor* at *Rentenbeginn* | **32,00 €** per month per 10 000 € at age 67 on the `base` path; **25,50 €** `low`; **35,00 €** `high` | mechanic [S13] [R24]; level **[std]** (iv) |
 | *Überschussrente* rate `sur_ann_rate` (`konstant`) | **12 %** of the *garantierte Rente*, level | mechanic [R20]; level **[std]** (v) |
 | *Überschussrente* growth `sur_ann_growth` (`volldynamisch`) | **1,5 % p.a.** compound on the *garantierte Rente* | mechanic [R20] [R24]; level **[std]** (v) |
@@ -375,10 +375,10 @@ rate.
 
 | Input | Value | Note |
 |---|---|---|
-| Acquisition `expense_acq_pp` | **400,00 €** per policy at issue, new business only | **[std]** |
-| Maintenance, accumulation `expense_maint_pp` | **45,00 €** per policy p.a., inflating; a twelfth a month | **[std]** |
-| Administration, payout `expense_annuity_pp` | **30,00 €** per policy p.a., inflating; a twelfth a month | **[std]** |
-| Settlement `expense_claim_pp` | **120,00 €** per death, surrender or commutation event | **[std]** |
+| Acquisition `expense_acq_pp_once` | **400,00 €** per policy at issue, new business only | **[std]** |
+| Maintenance, accumulation `expense_admin_pp_ann` | **45,00 €** per policy p.a., inflating; a twelfth a month | **[std]** |
+| Administration, payout `expense_annuity_pp_ann` | **30,00 €** per policy p.a., inflating; a twelfth a month | **[std]** |
+| Settlement `expense_claim_pp_once` | **120,00 €** per death, surrender or commutation event | **[std]** |
 | Inflation `expense_infl` | **2,0 % p.a.**, compounding in **policy years** and stepping on the anniversary | **[std]** |
 
 **Charges — and the distinction from expenses is load-bearing.** A *charge* is a deduction the tariff
@@ -609,7 +609,7 @@ All of it happens at the end of the last accumulation **month** `t = 12n − 1` 
 policy year `k = n − 1` — on the survivors of that month's decrements:
 
     capital_gross_pp = av_pp_at(n−1,"AFT_INT") + av_sur_pp_at(n−1,"AFT_INT")
-    val_reserve_pp   = val_reserve_rate × capital_gross_pp
+    val_reserve_pp   = bwr_rate × capital_gross_pp
     K                = max( guar_capital_pp, capital_gross_pp + val_reserve_pp )
     f                = max( f_g, f_c )
     G                = K / rf_unit × f      rf_unit = 10 000, a row of param_tariff_type.csv
@@ -656,10 +656,10 @@ the conversion moved on the anchor cell.
 ### Expenses and the cash flow statement
 
     base(t)      = l(t)  for t < 12n,   a(t)  for t ≥ 12n
-    expenses(t)  = expense_acq_pp × 1{t = t_start() and duration_init = 0}
-                 + ( t < 12n ? expense_maint_pp : expense_annuity_pp ) / 12
+    expenses(t)  = expense_acq_pp_once × 1{t = t_start() and duration_init = 0}
+                 + ( t < 12n ? expense_admin_pp_ann : expense_annuity_pp_ann ) / 12
                    × (1+expense_infl)^duration(t) × base(t)
-                 + expense_claim_pp × ( pols_death(t) + pols_lapse(t) + pols_commutation(t) )
+                 + expense_claim_pp_once × ( pols_death(t) + pols_lapse(t) + pols_commutation(t) )
 
     net_cf(t)      = premiums(t) − claims_death(t) − claims_lapse(t) − claims_commutation(t)
                      − annuity_payments(t) − expenses(t)
@@ -856,7 +856,7 @@ becomes a test in `tests/test_klassische_rentenversicherung_de.py`.
     recorded in `charge_table.csv` and **not applied**. Assert
     `annuity_payments(t) = (G + U(duration(t))) × pols_annuity(t)` exactly, with no charge term, and
     that the model's payout-phase `expenses` are a twelfth of the inflated per-policy
-    `expense_annuity_pp` on the exposed count plus the `expense_claim_pp` settlement cost of that
+    `expense_annuity_pp_ann` on the exposed count plus the `expense_claim_pp_once` settlement cost of that
     month's deaths, and nothing else. The settlement line survives into the
     payout phase although the death pays no benefit, because stopping an annuity and running the
     *Rentengarantiezeit* succession is administration the insurer still performs.
@@ -963,7 +963,7 @@ in full from the first year's premium and nil thereafter; the § 169 Abs. 3 five
 Verzinsung* `decl_rate = 2,55 % p.a.` level on the `base` path **[std]**, hence
 `bonus_rate = max(0; 2,55 % − 1,00 %) = 1,55 % p.a.` **[std]**, with the *Ansammlungsguthaben*
 itself credited at the full 2,55 % **[std]**; the *Bewertungsreserven* crystallisation
-`val_reserve_rate = 1,5 %` of the accumulated value at *Rentenbeginn* **[std]** [S4] [R4]; the
+`bwr_rate = 1,5 %` of the accumulated value at *Rentenbeginn* **[std]** [S4] [R4]; the
 *aktueller Rentenfaktor* at age 67 on the `base` path, `32,00 €` per month per 10 000 € **[std]**,
 which exceeds the guaranteed `28,00 €` and therefore wins the `max()`; and the *Überschussrente*
 under the `konstant` system, `sur_ann_rate = 12 %` of the *garantierte Rente*, level **[std]**.
@@ -1240,8 +1240,8 @@ direction: re-running point 6 on a global 1,00 % rate moves its *Deckungskapital
 by −7,7 % and its *Ansammlungsguthaben* by +156 %, while the conversion capital moves by −0,8 %.
 The vintage error is a **misallocation between the two accounts**, not a hole in the total, which
 is why it survives a reasonableness check on the headline figure. (v) ***Pitfall 12 overstated the
-payout-phase expense***: `expenses(t)` there is the inflated `expense_annuity_pp` on the exposed
-count **plus** the `expense_claim_pp` settlement cost of that month's deaths, which is a small
+payout-phase expense***: `expenses(t)` there is the inflated `expense_annuity_pp_ann` on the exposed
+count **plus** the `expense_claim_pp_once` settlement cost of that month's deaths, which is a small
 percentage of the line in the first payout year and grows with mortality down the tail.
 
 ---

@@ -351,7 +351,7 @@ decrement interaction, all of which move the worked example and the golden tests
 deliberately off remain the *Rentengarantiezeit* [S1] [S4] [S9], which is modelled, and the
 survivor's-annuity rider [S10], which is off and which in any case begins only after a guarantee
 period expires. Deaths still *happen* in the payout phase: they move `pols_if`, end the annuity
-outside the guarantee window and carry an `expense_claim_pp` settlement cost, and they pay no benefit.
+outside the guarantee window and carry an `expense_claim_pp_once` settlement cost, and they pay no benefit.
 
 ## Inputs are external files
 
@@ -393,7 +393,7 @@ repository is checked out.
 | `charge_file` | `charge_table()` | `charge_table.csv` | Two charge sets, `zillmer_25` and `zillmer_40`, eight items each, keyed per item so every number carries its own provenance |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual surrender by contractual policy year (`policy_year` 1–40, read through `policy_year(t)`), last row held. Levels **[std]**; the one shaped feature is the **duration-12 step** at the § 20 Abs. 1 Nr. 6 EStG twelve-year threshold [R6] [REG-R45] |
 | `prem_freq_file` | `prem_freq_table()` | `prem_freq_table.csv` | The *Ratenzahlungszuschlag*: 1,000 / 1,020 / 1,030 / 1,050 **[std]**, and `instalments` for documentation — the premium is collected annually in advance whatever the elected frequency, for the reasons under *The Ratenzahlungszuschlag* above |
-| `param_file` | `param()` | `param_tariff_type.csv` | Every scalar that is neither a charge nor a rate table — the four expense levels and their inflation, `mort_be_factor`, `mort_base_year`, `omega_age`, `val_reserve_rate`, the three *Überschussrente* parameters and `roll_fwd_tol`. They live in a file rather than in References so that each carries its own provenance tag, which a Reference cannot |
+| `param_file` | `param()` | `param_tariff_type.csv` | Every scalar that is neither a charge nor a rate table — the four expense levels and their inflation, `mort_be_factor`, `mort_base_year`, `omega_age`, `bwr_rate`, the three *Überschussrente* parameters and `roll_fwd_tol`. They live in a file rather than in References so that each carries its own provenance tag, which a Reference cannot |
 
 **The trade-off:** the model is not portable on its own — copy `RV_DE_S/` without the CSVs and
 it reads fine, then fails on first evaluation. What you gain is that a diff of the model shows
@@ -519,7 +519,7 @@ Everything below is **[std]** — chosen where the sources vary, are proprietary
 | `stornoabzug_rate` | 2,0 % on `zillmer_25`, nil on `zillmer_40` | § 169 Abs. 5's three conditions are cited [R1]. **The earlier rationale was wrong**: a duration-graded deduction is not what Abs. 5 voids — it voids a deduction *for unamortised acquisition costs* — and the retrieved wordings show duration tapering is ordinary market practice [S11] § 34 Abs. 4–5. Observed forms are none [S8] [S9], a flat 250 EUR [S4], or tapering percentages [S11]. The flat rate is a simplification of that spread |
 | `min_annuity_mth` | 30,00 € a month | The § 165 *Mindestversicherungsleistung* requirement is statutory, its level contractual; two carriers set **25,00 € a month** [S4] [S9] and one 600,00 € a year for a partial surrender [S8]. 30,00 € is chosen so one model point trips the cash-out branch |
 | `annuity_admin_rate` | 1,5 %, recorded and **not applied** | The *Rentenfaktor* is exogenous and already carries the tariff's payout loading |
-| `val_reserve_rate` | 1,5 % of the accumulated value | The *hälftige* participation (§ 153 Abs. 3 Satz 2) and the *Rentenbeginn* crystallisation (§ 153 Abs. 4, annuities only) are statutory [R4] and applied by [S4] and [S15]; **no amount, ratio or reserve level is established anywhere** |
+| `bwr_rate` | 1,5 % of the accumulated value | The *hälftige* participation (§ 153 Abs. 3 Satz 2) and the *Rentenbeginn* crystallisation (§ 153 Abs. 4, annuities only) are statutory [R4] and applied by [S4] and [S15]; **no amount, ratio or reserve level is established anywhere** |
 | *Überschussrente* | `sur_ann_rate` 12 %, `sur_ann_growth` 1,5 %, `sur_ann_theta` 0,5 | The three payout systems and their *directions* are established [R19] [R20] [R24]; no level, rate or split is |
 | Expenses | 400,00 € acquisition, 45,00 € p.a. accumulation, 30,00 € p.a. payout, 120,00 € per settlement, 2,0 % inflation | No German carrier publishes an expense assumption (gap 14) |
 | `prem_freq_load` | 1,000 / 1,020 / 1,030 / 1,050 | No carrier's *Ratenzahlungszuschlag* was established (gap 14) |

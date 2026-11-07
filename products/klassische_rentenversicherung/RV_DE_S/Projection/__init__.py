@@ -1429,14 +1429,14 @@ def capital_gross_pp():
 def val_reserve_pp():
     """The *Bewertungsreserven* crystallised at the *Rentenbeginn*, per policy.
 
-    ``val_reserve_rate x capital_gross_pp()``, 1,5 % **[std]**.  The mechanic is cited twice
+    ``bwr_rate x capital_gross_pp()``, 1,5 % **[std]**.  The mechanic is cited twice
     over — participation in the *Bewertungsreserven* is *hälftig* under § 153 Abs. 3 VVG and
     the transition to annuity payment is a key point for it — and **no amount, ratio or
     reserve level was established anywhere**, so the rate is a placeholder sized to be visible
     without dominating.  Policyholders also participate during the payout phase; that
     continuing participation is not modelled.
     """
-    return (float(data.param("val_reserve_rate"))                    # noqa: F821
+    return (float(data.param("bwr_rate"))                            # noqa: F821
             * capital_gross_pp())
 
 
@@ -1673,31 +1673,31 @@ def claims_other(t, kind):
     raise ValueError("invalid kind")
 
 
-def expense_acq_pp():
+def expense_acq_pp_once():
     """The acquisition expense at issue, from *param_tariff_type.csv*: 400,00 € **[std]**."""
-    return float(data.param("expense_acq_pp"))                       # noqa: F821
+    return float(data.param("expense_acq_pp_once"))                  # noqa: F821
 
 
-def expense_maint_pp():
+def expense_admin_pp_ann():
     """The maintenance expense per policy per year in the accumulation phase: 45,00 € **[std]**."""
-    return float(data.param("expense_maint_pp"))                     # noqa: F821
+    return float(data.param("expense_admin_pp_ann"))                 # noqa: F821
 
 
-def expense_annuity_pp():
+def expense_annuity_pp_ann():
     """The administration expense per policy per year in the payout phase: 30,00 € **[std]**."""
-    return float(data.param("expense_annuity_pp"))                   # noqa: F821
+    return float(data.param("expense_annuity_pp_ann"))               # noqa: F821
 
 
-def expense_claim_pp():
+def expense_claim_pp_once():
     """The settlement expense per death, surrender or commutation event: 120,00 € **[std]**."""
-    return float(data.param("expense_claim_pp"))                     # noqa: F821
+    return float(data.param("expense_claim_pp_once"))                # noqa: F821
 
 
 def expenses_pp(t):
     """The per-policy administration expense in **month** t, inflated: a twelfth of the year's.
 
-    ``expense_maint_pp()`` in the accumulation phase and ``expense_annuity_pp()`` in the payout
-    phase, **divided by twelve** and times ``(1 + expense_infl())^duration(t)``.
+    ``expense_admin_pp_ann()`` in the accumulation phase and ``expense_annuity_pp_ann()`` in the
+    payout phase, **divided by twelve** and times ``(1 + expense_infl())^duration(t)``.
 
     Two decisions are stated by that formula.  The level is a twelfth of the annual amount
     rather than a monthly amount of its own, so a year of it on a closed cohort is exactly the
@@ -1707,8 +1707,8 @@ def expenses_pp(t):
     leaves mid-year is now borne only for the months it was there, which is the refinement the
     finer grid buys here.
     """
-    level = (expense_maint_pp() if duration(t) < int(model_point()["aufschub_y"])
-             else expense_annuity_pp())
+    level = (expense_admin_pp_ann() if duration(t) < int(model_point()["aufschub_y"])
+             else expense_annuity_pp_ann())
     return level / 12.0 * inflation_factor(t)
 
 
@@ -1727,7 +1727,7 @@ def expenses_acq(t):
     only, products/klassische_rentenversicherung/technical-notes.md:659
     """
     if t == t_start() and k_start() == 0:
-        return expense_acq_pp() * pols_if(t)
+        return expense_acq_pp_once() * pols_if(t)
     return 0.0
 
 
@@ -1751,7 +1751,7 @@ def expenses_claim(t):
     Override reason: settlement is an amount per death, surrender or commutation,
     products/klassische_rentenversicherung/technical-notes.md:381
     """
-    return expense_claim_pp() * (pols_death(t) + pols_lapse(t)
+    return expense_claim_pp_once() * (pols_death(t) + pols_lapse(t)
                                  + pols_commutation(t))
 
 

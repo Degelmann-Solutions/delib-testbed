@@ -385,14 +385,14 @@ with a PRIIPs performance scenario**.
 
 | Input | Value | Basis |
 |---|---|---|
-| Acquisition commission `comm_acq_rate` | **2.50 % of the *Beitragssumme***, a row of `param_tariff_type.csv`, paid at `t = 0` | **[std]** (5) |
-| Issue expense `expense_issue` | 200.00 EUR at `t = 0`, a row of `param_tariff_type.csv` | **[std]** (5) |
-| Maintenance expense `expense_maint_mth` | 4.00 EUR per policy per month, a row of `param_tariff_type.csv`, inflating at `expense_infl` | **[std]** (5) |
+| Acquisition commission `comm_acq_bsum_once` | **2.50 % of the *Beitragssumme***, a row of `param_tariff_type.csv`, paid at `t = 0` | **[std]** (5) |
+| Issue expense `expense_acq_pp_once` | 200.00 EUR at `t = 0`, a row of `param_tariff_type.csv` | **[std]** (5) |
+| Maintenance expense `expense_admin_pp_mth` | 4.00 EUR per policy per month, a row of `param_tariff_type.csv`, inflating at `expense_infl` | **[std]** (5) |
 | Expense inflation `expense_infl` | 2.0 % p.a., a row of `param_tariff_type.csv`, applied as `1.02^(t/12)` | **[std]** |
-| Renewal commission `comm_renew_rate` | 1.5 % of each gross premium, a row of `param_tariff_type.csv` | **[std]** (5) |
-| Claim expense `expense_claim` | 150.00 EUR per death claim, a row of `param_tariff_type.csv` | **[std]** |
-| Surrender expense `expense_surr` | 50.00 EUR per surrender, a row of `param_tariff_type.csv` | **[std]** |
-| Annuitisation expense `expense_annuitisation` | 100.00 EUR per policy converting at *Rentenbeginn*, a row of `param_tariff_type.csv` | **[std]** |
+| Renewal commission `comm_renew_prem_inst` | 1.5 % of each gross premium, a row of `param_tariff_type.csv` | **[std]** (5) |
+| Claim expense `expense_claim_pp_once` | 150.00 EUR per death claim, a row of `param_tariff_type.csv` | **[std]** |
+| Surrender expense `expense_surr_pp_once` | 50.00 EUR per surrender, a row of `param_tariff_type.csv` | **[std]** |
+| Annuitisation expense `expense_conv_pp_once` | 100.00 EUR per policy converting at *Rentenbeginn*, a row of `param_tariff_type.csv` | **[std]** |
 | Dynamic-lapse coefficient `lapse_dyn_beta` | **0** in the base run, a row of `param_tariff_type.csv`; 0.15 as the reference value | **[std]** (6) |
 
 5. **The acquisition commission is set equal to the acquisition charge deliberately.** The insurer
@@ -532,13 +532,13 @@ composite it is the *Fondsguthaben* exactly, and `claims_lapse` is then the whol
     premiums(t)  = ( B(t) + Z(t) ) · l(t)
     prem_to_av(t)= A(t) · l(t)
     charge_*(t)  = charge_*_pp(t) · l(t)                       for the four unit-side charges
-    expenses(t)  = expense_issue · l(t) · 1{t = 0}
+    expenses(t)  = expense_acq_pp_once · l(t) · 1{t = 0}
                    + expense_maint_pp(t) · l(t)
-                   + expense_claim · pols_death(t)
-                   + expense_surr  · pols_lapse(t)
-                   + expense_annuitisation · pols_maturity(t)
-    commissions(t) = comm_acq_rate · S · l(t) · 1{t = 0}
-                   + comm_renew_rate · B(t) · l(t)
+                   + expense_claim_pp_once · pols_death(t)
+                   + expense_surr_pp_once  · pols_lapse(t)
+                   + expense_conv_pp_once · pols_maturity(t)
+    commissions(t) = comm_acq_bsum_once · S · l(t) · 1{t = 0}
+                   + comm_renew_prem_inst · B(t) · l(t)
 
     net_cf(t) = charge_acq(t) + charge_admin_prem(t) + charge_admin_fund(t)
                 + charge_policy_fee(t) + charge_risk(t) + stornoabzug(t)
@@ -869,11 +869,11 @@ the tax step `lapse_tax_step = 2.5` applies in policy year 26 (`t = 300 … 311`
 attained age 62 is reached and duration 12 is long past [R20] [REG-R45], giving 7.5 % p.a. and
 0.647574 % monthly there; `lapse_cap = 40 %`; `lapse_dyn_beta = 0` (module off);
 `lapse_rate_mth(359) = 0`, because the end of month `t = 359` is *Rentenbeginn*. *Expenses*, all
-**[std]**: acquisition commission `comm_acq_rate = 2.50 %` of the *Beitragssumme* = 1 800,00 €
-plus `expense_issue = 200,00 €`, both at `t = 0`; maintenance `expense_maint_mth = 4,00 €` per
+**[std]**: acquisition commission `comm_acq_bsum_once = 2.50 %` of the *Beitragssumme* = 1 800,00 €
+plus `expense_acq_pp_once = 200,00 €`, both at `t = 0`; maintenance `expense_admin_pp_mth = 4,00 €` per
 month inflating at `expense_infl = 2.0 % p.a.` as `4.00 × 1.02^(t/12)`; renewal commission
-`comm_renew_rate = 1.5 %` of each gross premium; `expense_claim = 150,00 €` per death;
-`expense_surr = 50,00 €` per surrender; `expense_annuitisation = 100,00 €` at *Rentenbeginn*.
+`comm_renew_prem_inst = 1.5 %` of each gross premium; `expense_claim_pp_once = 150,00 €` per death;
+`expense_surr_pp_once = 50,00 €` per surrender; `expense_conv_pp_once = 100,00 €` at *Rentenbeginn*.
 *Conversion*: `rentenfaktor_guar(67) = 25.00` and `rentenfaktor_curr(67) = 25.00` from row
 `std_2026`, both **[std]** and derived from `T_eff(67) = 33.3333` at a 0 % *Rechnungszins*
 [S10] [R16] [R22] [REG-R49], so `rentenfaktor_applied() = 25.00`. No *Überschussbeteiligung*, no

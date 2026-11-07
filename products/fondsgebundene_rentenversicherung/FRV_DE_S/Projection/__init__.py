@@ -1476,7 +1476,7 @@ def death_strain(t):
 
 
 def expense_acq_pp(t):
-    """The issue expense per policy issued, at t = 0: ``expense_issue``, 200,00 EUR.
+    """The issue expense per policy issued, at t = 0: ``expense_acq_pp_once``, 200,00 EUR.
 
     The insurer's own acquisition cost **excluding the commission**, which is
     :func:`comm_acq_pp` — the split :func:`expenses` and :func:`commissions` publish
@@ -1488,11 +1488,11 @@ def expense_acq_pp(t):
     """
     if t != 0:
         return 0.0
-    return data.param("expense_issue")                               # noqa: F821
+    return data.param("expense_acq_pp_once")                         # noqa: F821
 
 
 def comm_acq_pp(t):
-    """The *Abschlussprovision* per policy issued, at t = 0: ``comm_acq_rate x S``.
+    """The *Abschlussprovision* per policy issued, at t = 0: ``comm_acq_bsum_once x S``.
 
     On the anchor cell 2.50 % of a 72 000,00 EUR *Beitragssumme* = **1 800,00 EUR**, and
     zero at every other month.
@@ -1504,7 +1504,7 @@ def comm_acq_pp(t):
     No German commission scale was established, so any other level would be an unsourced
     number pretending to be an observation.
 
-    ``comm_acq_rate`` is a **flat scalar**, so that equality holds on ``std_gross`` and
+    ``comm_acq_bsum_once`` is a **flat scalar**, so that equality holds on ``std_gross`` and
     fails on the two low-load tariffs: on ``std_netto`` and ``std_low`` the assumed
     commission exceeds the tariff's own acquisition charge and those cells carry a
     projected loss.  That is the flat assumption showing, not a product fact — a real
@@ -1518,7 +1518,7 @@ def comm_acq_pp(t):
     """
     if t != 0:
         return 0.0
-    return data.param("comm_acq_rate") * beitragssumme()             # noqa: F821
+    return data.param("comm_acq_bsum_once") * beitragssumme()        # noqa: F821
 
 
 def inflation_years(t):
@@ -1536,12 +1536,12 @@ def inflation_years(t):
 def expense_maint_pp(t):
     """Maintenance expense per policy in month t, inflating from inception.
 
-    ``expense_maint_mth x (1 + expense_infl)^(t/12)`` — 4,00 EUR a month at 2 % p.a., and
+    ``expense_admin_pp_mth x (1 + expense_infl)^(t/12)`` — 4,00 EUR a month at 2 % p.a., and
     exactly 4,00 EUR in the inception month ``t = 0``.  Inflated off the policy month
     rather than the projection's own start, so an in-force cell picks up the inflation its
     elapsed duration has already accrued.
     """
-    return data.param("expense_maint_mth") * inflation_factor(t)     # noqa: F821
+    return data.param("expense_admin_pp_mth") * inflation_factor(t)  # noqa: F821
 
 
 def expenses(t):
@@ -1563,9 +1563,9 @@ def expenses(t):
     """
     return (expense_acq_pp(t) * pols_if(t)
             + expense_maint_pp(t) * pols_if(t)
-            + data.param("expense_claim") * pols_death(t)            # noqa: F821
-            + data.param("expense_surr") * pols_lapse(t)             # noqa: F821
-            + data.param("expense_annuitisation") * pols_maturity(t))  # noqa: F821
+            + data.param("expense_claim_pp_once") * pols_death(t)    # noqa: F821
+            + data.param("expense_surr_pp_once") * pols_lapse(t)     # noqa: F821
+            + data.param("expense_conv_pp_once") * pols_maturity(t))   # noqa: F821
 
 
 def comm_init(t):
@@ -1575,7 +1575,7 @@ def comm_init(t):
     German unit-linked commission scale was established.  The commissions are published
     beside :func:`expenses`.
 
-    Override reason: the initial commission is ``comm_acq_rate`` of the *Beitragssumme* on
+    Override reason: the initial commission is ``comm_acq_bsum_once`` of the *Beitragssumme* on
     the count in force at ``t = 0``,
     products/fondsgebundene_rentenversicherung/technical-notes.md:540
     """
@@ -1583,12 +1583,13 @@ def comm_init(t):
 
 
 def comm_renew(t):
-    """The *Bestandsprovision* ``comm_renew_rate x prem_pp(t)`` on every gross *Beitrag* **[std]**.
+    """The *Bestandsprovision* ``comm_renew_prem_inst x prem_pp(t)`` on every gross *Beitrag*
+    **[std]**.
 
     Override reason: the renewal commission is a rate on each gross premium,
     products/fondsgebundene_rentenversicherung/technical-notes.md:541
     """
-    return data.param("comm_renew_rate") * prem_pp(t) * pols_if(t)   # noqa: F821
+    return data.param("comm_renew_prem_inst") * prem_pp(t) * pols_if(t)  # noqa: F821
 
 
 def net_cf(t):

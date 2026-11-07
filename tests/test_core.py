@@ -1766,6 +1766,9 @@ def test_rlv_claim_expense_is_a_tariff_type_row(product_models):
         assert item.expenses_claim(t) == 250.0 * item.pols_death(t), t
 
 
+# The moved References and literals below are keyed by their current item names, which may
+# differ from the References' names (docs/core.md, "Parameter names").
+
 # The 32 numeric References Riester's ``Projection`` held, as their former Python literals.
 RIESTER_MOVED_REFERENCES = {
     "valuation_year": 2027,

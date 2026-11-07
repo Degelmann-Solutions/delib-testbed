@@ -256,6 +256,89 @@ The core file lives beside the core's loaders rather than at `core/param_core.cs
 
 Every parameter read goes through `param`: the core's parameter cells `omega_age`, `unisex_mix_male`, `expense_infl` and `roll_fwd_tol` and the products' own reads (RV, Pflege, Basis, FRV, KLV, Riester) call `data.param("<item>")`, each in the `int` or `float` wrapper it had. The former DataFrame and dict readers `param_table()` and `param_table_dict()` had no reader left and are gone; `tests/test_core.py` fails on a source that still names them.
 
+### Parameter names
+
+The same quantity has the same item name in every product (Moritz, 2026-11-07). A cost parameter, the amount or rate of a cost, charge, loading or commission, is named `<category>_<kind>_<base>_<period>`:
+
+- **Category**, decided by what the code does with the item: `expense`, a cost of the company, a second-order cash flow; `comm`, a commission; `charge`, deducted from the customer's contract or account (unit-linked, Riester, Index); `load`, a loading of the first-order tariff or premium calculation (alpha, beta, gamma, *Zillmersatz*). An item that prices the premium and is also charged as a cash flow is a `load`.
+- **Kind**: `acq` (*Abschluss*), `admin` (*laufende Verwaltung* in the accumulation or active phase), `annuity` (*Verwaltung* in payout), `claim` (*Leistungsfall*; `claim_assess` and `claim_admin` where split), `surr` (surrender), `conv` (*Verrentung*), `pay` (payment run), `collect` (*Inkasso*), `transfer` (*Anbieterwechsel*), and for commissions `acq` and `renew`.
+- **Base**: `pp`, euro per policy or per event, or the base of a rate: `bsum` (*Beitragssumme*), `prem` (gross premium or contribution), `sp` (single premium), `av` (account or fund value), `sum` (sum insured or benefit), `annval` (annuity present value).
+- **Period**: `once` (at issue or per event), `ann` (a year), `mth` (a month), `inst` (per premium instalment or per payment).
+
+A rate is a fraction in every file: Pflege's acquisition rate, 25 per mille as `acq_permille`, is `load_acq_bsum_once` 0.025, and its formulas lost the `/ 1000.0`. Other shared quantities: a first-order load on a decrement is a factor named `<decrement>_load_first`, as BU's; the unisex male share is `unisex_mix_male`, read through the core's `unisex_mix_male()` where a product blends; the years over which the acquisition charge is spread are `acq_spread_years`, another quantity than the § 169 Abs. 3 VVG floor `surr_spread_years`; the share of the *Bewertungsreserven* is `bwr_rate`; the *Stornoabzug* rate is `stornoabzug_rate`; the base year of a generational mortality table is `mort_base_year`. `expense_infl` is an inflation rate, not a cost, and keeps its name. A cell whose name only repeated an old item name took the new name (RV's four expense cells, Pflege's five margin cells).
+
+The renamed items, old name to new name:
+
+| Product | Old | New |
+|---|---|---|
+| BU | `acq_rate` | `load_acq_bsum_once` |
+| BU | `admin_prem_rate` | `load_admin_prem_inst` |
+| BU | `admin_flat_ann` | `load_admin_pp_ann` |
+| BU | `claim_assess_cost` | `load_claim_assess_pp_once` |
+| BU | `claim_maint_cost_mth` | `load_claim_admin_pp_mth` |
+| FRV | `comm_acq_rate` | `comm_acq_bsum_once` |
+| FRV | `comm_renew_rate` | `comm_renew_prem_inst` |
+| FRV | `expense_issue` | `expense_acq_pp_once` |
+| FRV | `expense_maint_mth` | `expense_admin_pp_mth` |
+| FRV | `expense_claim` | `expense_claim_pp_once` |
+| FRV | `expense_surr` | `expense_surr_pp_once` |
+| FRV | `expense_annuitisation` | `expense_conv_pp_once` |
+| Index | `acq_cost_rate` | `charge_acq_bsum_once` |
+| Index | `acq_expense_rate` | `expense_acq_bsum_once` |
+| Index | `exp_prem_rate` | `charge_admin_prem_inst` |
+| Index | `exp_av_rate` | `charge_admin_av_ann` |
+| Index | `exp_fixed_pp` | `expense_admin_pp_ann` |
+| Index | `zill_cap_rate` | `zillmer_cap_bsum`, the DeckRV § 4 cap, not a cost |
+| Index | `zill_years` | `acq_spread_years` |
+| Index | `storno_rate` | `stornoabzug_rate` |
+| RV | `expense_acq_pp` | `expense_acq_pp_once` |
+| RV | `expense_maint_pp` | `expense_admin_pp_ann` |
+| RV | `expense_annuity_pp` | `expense_annuity_pp_ann` |
+| RV | `expense_claim_pp` | `expense_claim_pp_once` |
+| RV | `val_reserve_rate` | `bwr_rate` |
+| Pflege | `acq_permille` 25 | `load_acq_bsum_once` 0.025 |
+| Pflege | `admin_prem_pct` | `load_admin_prem_inst` |
+| Pflege | `admin_mth_pp` | `load_admin_pp_mth` |
+| Pflege | `claim_expense_pp` | `load_claim_pp_inst` |
+| Pflege | `inc_margin` | `inc_load_first` |
+| Pflege | `det_margin` | `det_load_first` |
+| Pflege | `rec_margin` | `recov_load_first` |
+| Pflege | `act_mort_margin` | `mort_actv_load_first` |
+| Pflege | `care_mort_margin` | `mort_care_load_first` |
+| Riester | `acq_charge_rate` | `charge_acq_bsum_once` |
+| Riester | `admin_charge_prem_rate` | `charge_admin_prem_inst` |
+| Riester | `admin_charge_fixed` | `charge_admin_pp_ann` |
+| Riester | `transfer_charge` | `charge_transfer_pp_once` |
+| Riester | `expense_acq` | `expense_acq_pp_once` |
+| Riester | `expense_acq_rate` | `expense_acq_bsum_once` |
+| Riester | `expense_maint` | `expense_admin_pp_ann` |
+| Riester | `expense_annuity` | `expense_annuity_pp_ann` |
+| Riester | `expense_claim` | `expense_claim_pp_once` |
+| Riester | `comm_rate_init` | `comm_acq_bsum_once` |
+| Riester | `comm_rate_renew` | `comm_renew_prem_inst` |
+| Riester | `acq_charge_years` | `acq_spread_years` |
+| Riester | `bewres_rate` | `bwr_rate` |
+| Riester | `annuity_base_year` | `mort_base_year` |
+| RLV | `zillmer_rate` | `load_acq_bsum_once` |
+| RLV | `beta_tariff` | `load_admin_prem_inst` |
+| RLV | `gamma_rate` | `load_admin_sum_ann` |
+| RLV | `maint_prem_pct` | `expense_collect_prem_inst` |
+| RLV | `claim_expense` | `expense_claim_pp_once` |
+| RLV | `comm_rate_init` | `comm_acq_bsum_once` |
+| RLV | `comm_rate_renew` | `comm_renew_prem_inst` |
+| RLV | `sicherheitszuschlag_m` 1.25 (`m`) | `mort_load_first` 2.25 (`1 + m`) |
+| RLV | `sex_mix_male` | `unisex_mix_male` |
+| Sofort | `expense_load_alpha` | `load_acq_sp_once` |
+| Sofort | `expense_load_beta` | `load_admin_annval_once` |
+| Sofort | `expense_acq_rate` | `expense_acq_sp_once` |
+| Sofort | `expense_acq_fixed` | `expense_acq_pp_once` |
+| Sofort | `expense_maint_pp` | `expense_admin_pp_ann` |
+| Sofort | `expense_pay_pp` | `expense_pay_pp_inst` |
+| Sofort | `mix_male` | `unisex_mix_male` |
+| Basis | `zill_spread_y` | `acq_spread_years` |
+
+Every rename is byte-identical; the two that changed a value, Pflege's per mille and RLV's factor, give the same doubles (25.0 / 1000.0 is 0.025, 1.0 + 1.25 is 2.25). The columns of the other tables (cost and charge tables, model points) keep their names.
+
 ## Formula literals
 
 Every numeric literal in a formula cell of the core's `Projection` and the ten products' `Projection` spaces was reviewed (epic-parameter-files, entry 8, and its follow-ups of 2026-11-06): the cells "The new M" counts in `docs/roadmap.md` (module-level `def`s and non-underscore `name = lambda`, walked whole), with the literals inside a subscript and in the arguments of `range(...)` included and the values 0, 1, 0.0 and 1.0 excluded; docstrings hold no formula. The `Data` spaces and the products' `__init__.py` hold no such literal. A literal is actuarial when it states an assumption or a statutory term a tariff could set otherwise; then a parameter mutant on it was a code change, and it became a row of a parameter file. Further rules decide the rest (Moritz, 2026-11-06):

@@ -1782,9 +1782,10 @@ RIESTER_MOVED_REFERENCES = {
     "comm_renew_prem_inst": 0.015,
 }
 
-# The 17 numeric References RLV's ``Projection`` held, as their former Python literals.
+# The 17 numeric References RLV's ``Projection`` held, as their former Python literals; the
+# *Sicherheitszuschlag* ``sicherheitszuschlag_m`` 1.25 is the factor ``mort_load_first``, 1 + m.
 RLV_MOVED_REFERENCES = {
-    "sicherheitszuschlag_m": 1.25,
+    "mort_load_first": 1.0 + 1.25,
     "unisex_mix_male": 0.5,
     "surplus_share": 0.9,
     "decl_scale": 1.0,
@@ -1920,6 +1921,7 @@ def test_rlv_references_are_tariff_type_rows(product_models):
     data = model.Data
     layer = data.param_layers()["tariff_type"]
     assert len(RLV_MOVED_REFERENCES) == 17
+    assert "sicherheitszuschlag_m" not in model.Projection.refs
     for item, literal in RLV_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item

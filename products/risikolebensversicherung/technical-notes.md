@@ -444,7 +444,7 @@ rather than buried.
 | `B(t)` | `benefit_pp(t) = S0 · f(t) · u(t)` |
 | `q̃(x)` | `mort_rate_at_age(table_id, sex, smoker, x)`, the shipped second-order table rate |
 | `ω` | `unisex_mix_male` = 0.50, the tariff's unisex mix **[std]** |
-| `m` | `sicherheitszuschlag_m` = 1.25 **[std]** |
+| `m` | `mort_load_first` − 1 = 1.25 **[std]**; the row is the factor `1 + m` = 2.25 |
 | `rf` | `rating_factor` |
 | `q₂(t)` | `mort_rate(t)`, the projected second-order **annual** rate of month `t`'s policy year |
 | `q₂ᵐ(t)` | `mort_rate_mth(t) = 1 − (1 − q₂(t))^(1/12)` **[std]**, the rate actually applied |
@@ -814,7 +814,7 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
    `prem_paid_pp(t)` and `beitragsverrechnung_rate()` are identical to 1e-12, while their
    `claims_death` totals differ by a factor near two.
 7. **Applying the *Sicherheitszuschlag* to the projection.** `q₁` prices, `q₂` projects. Assert that
-   `claims_death` is invariant to `sicherheitszuschlag_m` while `prem_gross` is not, and that
+   `claims_death` is invariant to `mort_load_first` while `prem_gross` is not, and that
    `mort_rate_tariff(t) / mort_rate(t)` equals `2.25 × (unisex blend / own-sex rate)` — 1.6875 for a
    male, 3.375 for a female on the shipped proxy, the blend being `0.75 × q̃(M)` — rather than 2.25
    for both.
@@ -934,7 +934,7 @@ frame summed into policy years by `result_cf_annual()` — is the **entire** pro
 `mort_rate(M, N, x) = 0.00040 × 1.095^(x − 30)` at attained ages 35 to 59, so
 `mort_rate(0) = 0.00040 × 1.095^5` and `mort_rate(24) = 0.00040 × 1.095^29` **[std]**;
 `mort_be_factor = 1.00` **[std]**. *Tariff mortality*: the unisex 50/50 blend
-`0.00030 × 1.095^(x − 30)` **[std]** loaded by `1 + m` with `sicherheitszuschlag_m = 1.25`
+`0.00030 × 1.095^(x − 30)` **[std]** loaded by `1 + m` = `mort_load_first` = 2.25, `m = 1.25`
 **[std]**, and `unisex_mix_male = 0.50` **[std]** [R13] [REG-R34]. *Interest*:
 `rechnungszins = 1,00 %`, a model-point column fixed at conclusion for the whole term (DeckRV § 2 Abs. 2), 1,00 % on every shipped point — the DeckRV ***Höchstzinssatz***, a **ceiling the model adopts as the
 rate**; a retrieved carrier prices its term tariff at 0,25 % instead **[R10] [REG-R14] [REG-R15]

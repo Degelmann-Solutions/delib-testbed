@@ -183,14 +183,14 @@ that loading is handed straight back as *Beitragsverrechnung*. A test asserting
 ``Gn < P`` is asserting the absence of the product's central mechanic.
 
 **``q1`` prices and ``q2`` projects.** :func:`mort_rate_tariff` is the first-order tariff
-rate — the unisex 50/50 blend, loaded by ``(1 + sicherheitszuschlag_m)`` and by the
-*Risikozuschlag* — and it enters the premium and the reserve and **nothing else**.
+rate — the unisex 50/50 blend, loaded by ``mort_load_first``, the factor ``1 + m`` of the
+*Sicherheitszuschlag* ``m``, and by the *Risikozuschlag* — and it enters the premium and the reserve and **nothing else**.
 :func:`mort_rate` is the second-order rate on the policy's own sex and smoker status and
 it drives every decrement and every claim. The ratio between them is *not* ``1 + m``: it
 is ``2.25 x (unisex blend / own-sex rate)``, which on the shipped proxy is **1.6875 for a
 male and 3.375 for a female**. That asymmetry is the unisex cross-subsidy and it is a
 product fact, not a modelling artefact. Applying the *Sicherheitszuschlag* to the
-projection is the pitfall; ``claims_death`` must be invariant to ``sicherheitszuschlag_m``
+projection is the pitfall; ``claims_death`` must be invariant to ``mort_load_first``
 while ``prem_gross`` is not.
 
 **``B(t)`` is the contractual sum; what a claim pays is not always ``B(t)``.**
@@ -604,7 +604,7 @@ def mort_rate(t):
     policy's own sex and smoker status, rated, first-death where there are two lives, and
     loaded for selective lapse where that module is on.  This drives every decrement and
     every claim, and the *Sicherheitszuschlag* must not appear in it: ``claims_death`` is
-    invariant to ``sicherheitszuschlag_m`` while ``prem_gross`` is not, and an
+    invariant to ``mort_load_first`` while ``prem_gross`` is not, and an
     implementation that projects on ``q1`` overstates claims by a factor of about two.
 
     ``mort_be_factor`` is 1.00, so the shipped proxy **is** the best estimate and there is
@@ -624,11 +624,12 @@ def mort_rate(t):
 
 
 def mort_load_tariff(t):
-    """The loading of the first-order tariff rate, ``(1 + m) x rf``.
+    """The loading of the first-order tariff rate, ``mort_load_first x rf = (1 + m) x rf``.
 
     q1(t), :func:`mort_rate_tariff`, is this times the unisex blend, its base.  It prices
     the *Bruttobeitrag* and the first-order *Deckungskapital* and enters nothing else.  The
-    *Sicherheitszuschlag* ``m = 1.25`` is **[std]**: the DAV *Richtlinie* regulates the
+    *Sicherheitszuschlag* ``m = 1.25``, the row ``mort_load_first = 1 + m = 2.25`` of
+    *param_tariff_type.csv*, is **[std]**: the DAV *Richtlinie* regulates the
     **procedure** for setting the *Sicherheitszuschläge*, not the level, which is not
     public, and the argued range is 1.0 to 1.5.  It is the single parameter that sets the
     *Brutto* / *Zahlbeitrag* spread — and, because 90 % of the extra margin is returned as
@@ -643,7 +644,7 @@ def mort_load_tariff(t):
     Override reason: the tariff rate is the unisex blend loaded by ``1 + m`` and the rating
     factor, products/risikolebensversicherung/technical-notes.md:231
     """
-    return (1.0 + data.param("sicherheitszuschlag_m")) * rating_factor()  # noqa: F821
+    return data.param("mort_load_first") * rating_factor()           # noqa: F821
 
 
 def mort_rate_tariff_base(t):
@@ -925,8 +926,9 @@ def beitragsverrechnung_rate():
 
     **Derived from the surplus mechanic, not assumed.**  The tariff's own mortality margin
     in year ``t`` is ``(q1 - q1/(1+m)) B = (m/(1+m)) q1 B`` per in-force policy, so its
-    actuarial value at issue is exactly ``(m/(1+m)) A``.  The declaration returns
-    ``surplus_share`` of it over the paying term::
+    actuarial value at issue is exactly ``(m/(1+m)) A``, with ``1 + m`` the row
+    ``mort_load_first`` and so ``m/(1+m) = (mort_load_first - 1) / mort_load_first``.  The
+    declaration returns ``surplus_share`` of it over the paying term::
 
         v_d = min( v_max, decl_scale surplus_share (m/(1+m)) A / (G ae) )
 
@@ -945,8 +947,9 @@ def beitragsverrechnung_rate():
     """
     if surplus_form() == "keine":
         return 0.0
-    m = data.param("sicherheitszuschlag_m")                          # noqa: F821
-    raw = (data.param("decl_scale") * data.param("surplus_share") * (m / (1.0 + m))  # noqa: F821
+    load = data.param("mort_load_first")                             # noqa: F821
+    raw = (data.param("decl_scale") * data.param("surplus_share")    # noqa: F821
+           * ((load - 1.0) / load)
            * tariff_benefit_pv()
            / (prem_gross_level_pp() * tariff_annuity()))
     return min(data.param("v_max"), raw)                             # noqa: F821

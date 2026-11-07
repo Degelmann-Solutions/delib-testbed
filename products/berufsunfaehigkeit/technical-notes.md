@@ -331,13 +331,13 @@ source supplies.
 
 | Input | Value | Basis |
 |---|---|---|
-| `acq_rate` — *Abschluss- und Vertriebskosten* | **2,5 % of the *Beitragssumme***, charged once at issue | at the § 4 DeckRV *Höchstzillmersatz* of 25 ‰ [R13] [REG-R16]; level **[std]** |
-| `admin_prem_rate` — proportional *Verwaltungskosten* | **9 % of the *Bruttobeitrag***, every month a premium is due | **[std]** |
-| `admin_flat_ann` — flat *Verwaltungskosten* | **18,00 € per policy per year**, charged 1/12 monthly, **level in euro** | **[std]** |
-| `claim_assess_cost` — *Leistungsbearbeitung*, assessment | **800,00 € per claim inception** | **[std]** |
-| `claim_maint_cost_mth` — *Leistungsbearbeitung*, maintenance | **12,00 € per month a claim is in payment** | **[std]** |
+| `load_acq_bsum_once` — *Abschluss- und Vertriebskosten* | **2,5 % of the *Beitragssumme***, charged once at issue | at the § 4 DeckRV *Höchstzillmersatz* of 25 ‰ [R13] [REG-R16]; level **[std]** |
+| `load_admin_prem_inst` — proportional *Verwaltungskosten* | **9 % of the *Bruttobeitrag***, every month a premium is due | **[std]** |
+| `load_admin_pp_ann` — flat *Verwaltungskosten* | **18,00 € per policy per year**, charged 1/12 monthly, **level in euro** | **[std]** |
+| `load_claim_assess_pp_once` — *Leistungsbearbeitung*, assessment | **800,00 € per claim inception** | **[std]** |
+| `load_claim_admin_pp_mth` — *Leistungsbearbeitung*, maintenance | **12,00 € per month a claim is in payment** | **[std]** |
 | Expense inflation | **None.** A German *Verwaltungskostenzuschlag* is fixed in the tariff at conclusion | **[std]** |
-| Commission | Not a separate line — it sits inside `acq_rate`, which is the German taxonomy | **[std]** |
+| Commission | Not a separate line — it sits inside `load_acq_bsum_once`, which is the German taxonomy | **[std]** |
 | `prem_freq_load` — *Ratenzahlungszuschlag* | annual **1,00**; half-yearly **1,02**; quarterly **1,03**; monthly **1,05** | German market convention `[unverified]`; **[std]** |
 
 **Input files.** Eight CSVs, `param_tariff_type.csv` with `roll_fwd_tol`, `accept_factor`, the first-order loads, the charges and `runoff_months` among them, sit beside `run.py`, read once per model by the unparameterized `Data`
@@ -353,7 +353,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | `occupation_table.csv` | `berufsgruppe` (BG1 – BG5) | `occ_factor`, `label`, `provenance` |
 | `lapse_table.csv` | `policy_year` (1 – 6, the last being ultimate) | `lapse_rate`, `provenance` |
 | `prem_freq_table.csv` | `prem_freq` | `instalments`, `prem_freq_load`, `provenance` |
-| `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance`: `roll_fwd_tol`, the tolerance of the `check_*` identities; `accept_factor`; `inc_load_first`, `recov_load_first`, `mort_dis_load_first`, `mort_actv_load_first`; `acq_rate`, `admin_prem_rate`, `admin_flat_ann`, `claim_assess_cost`, `claim_maint_cost_mth`; `runoff_months` |
+| `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance`: `roll_fwd_tol`, the tolerance of the `check_*` identities; `accept_factor`; `inc_load_first`, `recov_load_first`, `mort_dis_load_first`, `mort_actv_load_first`; `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_pp_ann`, `load_claim_assess_pp_once`, `load_claim_admin_pp_mth`; `runoff_months` |
 
 ---
 
@@ -387,8 +387,8 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | `L(t)`, `L_p(t)` | `pols_if(t)`, `pols_prem(t)` |
 | `v` | `(1 + rechnungszins)^(−1/12)`, used **only** in the equivalence, never to discount a published cash flow |
 | `λ_i, λ_r, λ_d, λ_a` | the four first-order safety loads: 1,30 / 0,70 / 0,80 / 0,80 |
-| `A`, `β`, `γ` | `acq_rate` 0,025; `admin_prem_rate` 0,09; `admin_flat_ann` 18,00 |
-| `c_a`, `c_m` | `claim_assess_cost` 800,00; `claim_maint_cost_mth` 12,00 |
+| `A`, `β`, `γ` | `load_acq_bsum_once` 0,025; `load_admin_prem_inst` 0,09; `load_admin_pp_ann` 18,00 |
+| `c_a`, `c_m` | `load_claim_assess_pp_once` 800,00; `load_claim_admin_pp_mth` 12,00 |
 
 **Annual rates convert to monthly by** `p_m = 1 − (1 − p)^(1/12)`, applied to `i`, `r`, `q^a`, `q^i`
 and `w` alike **[std]**. The library's convention is that `mort_rate` and `lapse_rate` are the
@@ -739,10 +739,10 @@ claim year 6 **[std]**. Lapse 4,0 % / 4,0 % / 3,5 % / 3,0 % / 2,5 % / 2,0 % from
 `p_m = 1 − (1 − p)^(1/12)` **[std]**. First-order loads for the equivalence: inception × **1,30**,
 reactivation × **0,70**, disabled-lives mortality × **0,80**, active-lives mortality × **0,80**,
 **no lapse**, `rechnungszins` **1,00 % p.a.** **[std]** [R13] [REG-R14] [REG-R15]. Charges
-**[std]**: `acq_rate` **2,5 % of the *Beitragssumme*** at issue, at the § 4 DeckRV cap [REG-R16];
-`admin_prem_rate` **9 % of the *Bruttobeitrag***; `admin_flat_ann` **18,00 €** per policy per year
-charged 1/12 monthly with **no inflation**; `claim_assess_cost` **800,00 €** per inception;
-`claim_maint_cost_mth` **12,00 €** per month in payment. *Beitragsverrechnung* **0,70**, held
+**[std]**: `load_acq_bsum_once` **2,5 % of the *Beitragssumme*** at issue, at the § 4 DeckRV cap [REG-R16];
+`load_admin_prem_inst` **9 % of the *Bruttobeitrag***; `load_admin_pp_ann` **18,00 €** per policy per year
+charged 1/12 monthly with **no inflation**; `load_claim_assess_pp_once` **800,00 €** per inception;
+`load_claim_admin_pp_mth` **12,00 €** per month in payment. *Beitragsverrechnung* **0,70**, held
 constant **[std]**. *Ratenzahlungszuschlag* **1,05** for the monthly mode **[std]**.
 *Wiedereingliederungshilfe* **6 monthly *Renten*** on each completed run-off **[std]**.
 *Leistungsdynamik* **2 % a year** on each anniversary of onset **[std]**. No *Beitragsdynamik*, no

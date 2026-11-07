@@ -182,13 +182,13 @@ an **output of a stated first-order basis**. With ``d(s) = disc_factor_mth(s)``,
 equivalence is
 
     P x PV_prem = PV_rente + PV_wgh + PV_cost + PV_admin
-                + acq_rate x P x BS_unit + admin_prem_rate x P x PV_prem
+                + load_acq_bsum_once x P x BS_unit + load_admin_prem_inst x P x PV_prem
 
 which is **linear in P**, because both the acquisition and the proportional
 administration loadings are proportional to it, so
 
     P = (PV_rente + PV_wgh + PV_cost + PV_admin)
-        / ( PV_prem x (1 - admin_prem_rate) - acq_rate x BS_unit )
+        / ( PV_prem x (1 - load_admin_prem_inst) - load_acq_bsum_once x BS_unit )
 
 and :func:`prem_gross_level_pp` is ``rating_factor() x P``, or ``rating_factor() x
 gross_prem_ann()`` where the model point overrides it. **The recursion is acyclic**: no
@@ -969,8 +969,8 @@ def prem_gross_level_pp():
 
         P = (pv_rente_first() + pv_wiedereingl_first() + pv_claim_cost_first()
              + pv_admin_first())
-            / (pv_prem_unit_first() x (1 - admin_prem_rate)
-               - acq_rate x beitragssumme_unit())
+            / (pv_prem_unit_first() x (1 - load_admin_prem_inst)
+               - load_acq_bsum_once x beitragssumme_unit())
 
     struck on the first-order shadow ledgers, **without lapse** and **before** the
     *Risikozuschlag*.  It is linear in P because both loadings are proportional to it, and
@@ -983,8 +983,8 @@ def prem_gross_level_pp():
         return rating_factor() * gross_prem_ann()
     numer = (pv_rente_first() + pv_wiedereingl_first()
              + pv_claim_cost_first() + pv_admin_first())
-    denom = (pv_prem_unit_first() * (1.0 - data.param("admin_prem_rate"))  # noqa: F821
-             - data.param("acq_rate") * beitragssumme_unit())        # noqa: F821
+    denom = (pv_prem_unit_first() * (1.0 - data.param("load_admin_prem_inst"))  # noqa: F821
+             - data.param("load_acq_bsum_once") * beitragssumme_unit())  # noqa: F821
     return rating_factor() * numer / denom
 
 
@@ -1284,15 +1284,15 @@ def pv_wiedereingl_first():
 def pv_claim_cost_first():
     """PV_cost: the present value of the *Leistungsbearbeitungskosten*, first-order basis.
 
-    ``claim_assess_cost`` on each inception plus ``claim_maint_cost_mth`` on each month a
-    claim is in payment — the disabled cohorts past the *Karenzzeit* and all three run-off
-    slots, and nothing at all from the *Leistungsendalter*.  These are flat euro amounts,
+    ``load_claim_assess_pp_once`` on each inception plus ``load_claim_admin_pp_mth`` on each
+    month a claim is in payment — the disabled cohorts past the *Karenzzeit* and all three
+    run-off slots, and nothing at all from the *Leistungsendalter*.  These are flat euro amounts,
     which is why a heavier occupational class carries a premium slightly **below** the
     ratio of its inception rates.
     """
     total = 0.0
     for s in range(0, first_len()):
-        total += (disc_factor_mth(s) * data.param("claim_assess_cost")  # noqa: F821
+        total += (disc_factor_mth(s) * data.param("load_claim_assess_pp_once")  # noqa: F821
                   * pols_inception_first(s))
         if age_first(s) < benefit_end_age():
             if karenz_months() == 0:
@@ -1300,19 +1300,20 @@ def pv_claim_cost_first():
             else:
                 in_payment = sum(dis_cohorts_first(s)[0][karenz_months():].tolist())
             paying = in_payment + pols_runoff_first(s)
-            total += disc_factor_mth(s) * data.param("claim_maint_cost_mth") * paying  # noqa: F821
+            total += (disc_factor_mth(s) * data.param("load_claim_admin_pp_mth")  # noqa: F821
+                      * paying)
     return total
 
 
 def pv_admin_first():
     """PV_admin: the present value of the flat *Verwaltungskosten*, first-order basis.
 
-    ``admin_flat_ann / 12`` on every in-force life in every month, uninflated: a German
+    ``load_admin_pp_ann / 12`` on every in-force life in every month, uninflated: a German
     *Verwaltungskostenzuschlag* is fixed in the tariff at conclusion.  The *proportional*
     administration loading is not here — it is proportional to the premium, so it stays on
     the left-hand side of the equivalence and reduces the denominator instead.
     """
-    return sum(disc_factor_mth(s) * data.param("admin_flat_ann") / 12.0  # noqa: F821
+    return sum(disc_factor_mth(s) * data.param("load_admin_pp_ann") / 12.0  # noqa: F821
                * pols_if_first(s)
                for s in range(0, first_len()))
 
@@ -1366,7 +1367,7 @@ def pols_inception(t):
     factor, the *Anerkennungsquote* and the *AU-Klausel* uplift.  These lives enter claim
     duration ``z = 1`` at the start of month ``t + 1``, which is when their first
     *BU-Rente* falls due if there is no *Karenzzeit*.  Each one costs
-    ``claim_assess_cost``.
+    ``load_claim_assess_pp_once``.
     """
     base = pols_actv(t) - pols_death_actv(t) - pols_lapse(t)
     return base * inc_rate_mth(t)
@@ -1722,18 +1723,18 @@ def expenses(t):
     a BU charge structure and a pure risk contract carries no *Effektivkosten*
     disclosure:
 
-    * **acquisition**, ``acq_rate x prem_gross_level_pp() x beitragssumme_unit()``,
+    * **acquisition**, ``load_acq_bsum_once x prem_gross_level_pp() x beitragssumme_unit()``,
       levied **once, at t = 0, and only on a new-business point** — an in-force point has
       already incurred it, and charging it again at the valuation date is a numbered
       pitfall.  At 2.5 % of a 37-year *Beitragssumme* it is the largest single expense
       item in the model and it dominates the first month's :func:`net_cf`;
-    * **proportional administration**, ``admin_prem_rate x premiums(t)``, in every month a
+    * **proportional administration**, ``load_admin_prem_inst x premiums(t)``, in every month a
       premium is due;
-    * **flat administration**, ``admin_flat_ann / 12`` per in-force policy per month,
+    * **flat administration**, ``load_admin_pp_ann / 12`` per in-force policy per month,
       **uninflated**, because a German *Verwaltungskostenzuschlag* is fixed in the tariff
       at conclusion.
 
-    Commission is not a separate line: it sits inside ``acq_rate``, which is the German
+    Commission is not a separate line: it sits inside ``load_acq_bsum_once``, which is the German
     taxonomy.  Claim handling is not here either — it is :func:`claim_expenses`, because
     it scales with claims rather than with policies.
 
@@ -1743,18 +1744,19 @@ def expenses(t):
     """
     acq = 0.0
     if t == 0 and duration_mth_init() == 0:
-        acq = data.param("acq_rate") * prem_gross_level_pp() * beitragssumme_unit()  # noqa: F821
-    admin_prop = data.param("admin_prem_rate") * prem_gross_pp(t) * pols_prem(t)  # noqa: F821
-    admin_flat = data.param("admin_flat_ann") / 12.0 * pols_if(t)    # noqa: F821
+        acq = (data.param("load_acq_bsum_once")                      # noqa: F821
+               * prem_gross_level_pp() * beitragssumme_unit())
+    admin_prop = data.param("load_admin_prem_inst") * prem_gross_pp(t) * pols_prem(t)  # noqa: F821
+    admin_flat = data.param("load_admin_pp_ann") / 12.0 * pols_if(t)  # noqa: F821
     return acq + admin_prop + admin_flat
 
 
 def claim_expenses(t):
     """The *Leistungsbearbeitungskosten* at month t **[std]**.
 
-    ``claim_assess_cost`` on each inception at the **end** of the month — the
+    ``load_claim_assess_pp_once`` on each inception at the **end** of the month — the
     *Leistungspruefung* of a German BU claim is expensive and is incurred once, when the
-    claim is decided — plus ``claim_maint_cost_mth`` on each month a claim is in payment,
+    claim is decided — plus ``load_claim_admin_pp_mth`` on each month a claim is in payment,
     on the same population the *BU-Rente* is paid to: the disabled cohorts past the
     *Karenzzeit* and all three run-off slots, and nothing from the *Leistungsendalter*.
 
@@ -1763,7 +1765,7 @@ def claim_expenses(t):
     is what makes a heavier occupational class carry a premium slightly below the ratio of
     its inception rates.
     """
-    assess = data.param("claim_assess_cost") * pols_inception(t)     # noqa: F821
+    assess = data.param("load_claim_assess_pp_once") * pols_inception(t)  # noqa: F821
     maint = 0.0
     if age(t) < benefit_end_age():
         if karenz_months() == 0:
@@ -1771,7 +1773,7 @@ def claim_expenses(t):
         else:
             in_payment = sum(dis_cohorts(t)[0][karenz_months():].tolist())
         paying = in_payment + pols_runoff(t)
-        maint = data.param("claim_maint_cost_mth") * paying          # noqa: F821
+        maint = data.param("load_claim_admin_pp_mth") * paying       # noqa: F821
     return assess + maint
 
 

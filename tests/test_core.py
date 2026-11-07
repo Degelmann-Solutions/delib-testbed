@@ -1816,11 +1816,11 @@ BU_MOVED_REFERENCES = {
     "recov_load_first": 0.7,
     "mort_dis_load_first": 0.8,
     "mort_actv_load_first": 0.8,
-    "acq_rate": 0.025,
-    "admin_prem_rate": 0.09,
-    "admin_flat_ann": 18.0,
-    "claim_assess_cost": 800.0,
-    "claim_maint_cost_mth": 12.0,
+    "load_acq_bsum_once": 0.025,
+    "load_admin_prem_inst": 0.09,
+    "load_admin_pp_ann": 18.0,
+    "load_claim_assess_pp_once": 800.0,
+    "load_claim_admin_pp_mth": 12.0,
     "runoff_months": 3,
 }
 

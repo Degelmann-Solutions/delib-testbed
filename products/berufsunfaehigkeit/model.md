@@ -152,7 +152,7 @@ administration loadings are proportional to it:
 
 ```
 P = (PV_rente + PV_wgh + PV_cost + PV_admin)
-    / ( PV_prem x (1 - admin_prem_rate) - acq_rate x BS_unit )
+    / ( PV_prem x (1 - load_admin_prem_inst) - load_acq_bsum_once x BS_unit )
 
   = (24,452.4895291302 + 531.1897520089 + 335.6805156244 + 544.5174674852)
     / (29.0716529817 x 0.91 - 0.025 x 37)
@@ -301,7 +301,7 @@ another same-schema file and the projection follows, with no formula change.
 | `occupation_file` | `occupation_table()` | `occupation_table.csv` | The five *Berufsgruppen* with loadings and labels: BG1 1,00, BG2 1,40, BG3 2,10, BG4 3,00, BG5 4,50. **[std]**, anchored at 1,00 for office and 3,00 for the reference manual class inside the recalled 2×–4× band [S6]. Carrier classifications are **not comparable with one another** |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual *Stornoquote* by policy year 1–5, row 6 the ultimate: 4,0 / 4,0 / 3,5 / 3,0 / 2,5 / 2,0 %. **[std]**, and **low by the standards of every other delib product** — a product fact, not a modelling choice, because cover cannot be replaced once health has changed [S16]. The 30-day *Widerruf* sits inside year 1 [REG-R23] |
 | `prem_freq_file` | `prem_freq_table()` | `prem_freq_table.csv` | `instalments` (1 / 2 / 4 / 12) and the *Ratenzahlungszuschlag* `prem_freq_load` (1,00 / 1,02 / 1,03 / 1,05). **[std]**: the ladder is the recalled German market convention and no retrieved document confirms it |
-| `param_file` | `param()` | `param_tariff_type.csv` | The scalar parameters by `item`: `roll_fwd_tol` 1e−10, the tolerance every `check_*` closes to, a float comparison tolerance and not an actuarial assumption. Added in phase 3, when it moved from a Reference on `Projection` into the table the common core reads; since then also the 11 tariff parameters that were References on `Projection`, `accept_factor`, the four first-order loads `inc_load_first`, `recov_load_first`, `mort_dis_load_first` and `mort_actv_load_first`, the charges `acq_rate`, `admin_prem_rate`, `admin_flat_ann`, `claim_assess_cost` and `claim_maint_cost_mth`, and `runoff_months`, each with its basis tags in its provenance |
+| `param_file` | `param()` | `param_tariff_type.csv` | The scalar parameters by `item`: `roll_fwd_tol` 1e−10, the tolerance every `check_*` closes to, a float comparison tolerance and not an actuarial assumption. Added in phase 3, when it moved from a Reference on `Projection` into the table the common core reads; since then also the 11 tariff parameters that were References on `Projection`, `accept_factor`, the four first-order loads `inc_load_first`, `recov_load_first`, `mort_dis_load_first` and `mort_actv_load_first`, the charges `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_pp_ann`, `load_claim_assess_pp_once` and `load_claim_admin_pp_mth`, and `runoff_months`, each with its basis tags in its provenance |
 
 Every file but the model point table carries a **`provenance` column**, one tag per row —
 delib's second ruling, and it is machine-checked.
@@ -375,7 +375,7 @@ model does not compute being built and run down.
 
 `expenses` is administration only — acquisition, the proportional loading and the flat charge.
 The *Leistungsbearbeitungskosten* are `claim_expenses`, separate because they scale with
-**claims** rather than policies; commission is not a line at all, sitting inside `acq_rate`.
+**claims** rather than policies; commission is not a line at all, sitting inside `load_acq_bsum_once`.
 
 ## Naming
 
@@ -432,10 +432,10 @@ only the *levels* that no retrievable document supplies.
 | First-order loads | 1,30 / 0,70 / 0,80 / 0,80, **no lapse** | Prudence for a disability product forks: higher incidence, lower reactivation, lower disabled and active mortality, and no anticipation of a favourable decrement |
 | `rechnungszins` | **1,00 % p.a.** | The *Höchstrechnungszins*. **The figure is sourced**: DeckRV § 2 Abs. 1 fixes it "auf 1 Prozent", and § 2 Abs. 2 makes the rate used at conclusion apply for the whole term [R13]. **The 1 January 2025 commencement is not in the consolidated text and stays `[unverified]`** [REG-R15]. Used only in the equivalence. A model-point column, fixed at conclusion for the whole term; every shipped point carries this rate |
 | `pols_if_init` | **1,0** on every model point | The policy count a model point stands for, the opening value of `pols_if`: the model is a per-policy probability projection. A model-point column since phase 3, where it was the literal 1.0 |
-| `acq_rate` | **2,5 % of the *Beitragssumme***, once at issue | Sits **at** the § 4 DeckRV *Höchstzillmersatz*: "Der Zillmersatz darf 25 Promille der Summe aller Prämien nicht überschreiten" [R13] [REG-R16], restated by both retrieved AVB as 2,5 % of the premiums payable over the term [S1] [S6]. The ceiling is the only sourced number in the charge structure, and the level is a choice to sit at it |
-| `admin_prem_rate` | **9 % of the *Bruttobeitrag*** | A construction, and **not** because the disclosure does not exist: VVG-InfoV § 2 Abs. 1 Nr. 1 with Abs. 2 and Abs. 4 requires a German BU insurer to state the calculated acquisition costs and the administration costs in euro, and one AVB points the customer to the *Produktinformationsblatt* for them [R12] [S6]. **No PIB was obtained** [S13], so the level here is a choice. A pure risk contract does separately lack an *Effektivkosten* figure, § 2 Abs. 1 Nr. 9 confining that to contracts whose obligation is certain [S14] |
-| `admin_flat_ann` | **18,00 € p.a.**, charged 1/12 monthly, **uninflated** | A German *Verwaltungskostenzuschlag* is fixed in the tariff at conclusion |
-| `claim_assess_cost` / `claim_maint_cost_mth` | **800,00 €** per inception / **12,00 €** per month in payment | The BU-specific charge a modeller from a term-life background forgets. Flat euro amounts, which is why a heavier class carries a premium below the ratio of its inception rates |
+| `load_acq_bsum_once` | **2,5 % of the *Beitragssumme***, once at issue | Sits **at** the § 4 DeckRV *Höchstzillmersatz*: "Der Zillmersatz darf 25 Promille der Summe aller Prämien nicht überschreiten" [R13] [REG-R16], restated by both retrieved AVB as 2,5 % of the premiums payable over the term [S1] [S6]. The ceiling is the only sourced number in the charge structure, and the level is a choice to sit at it |
+| `load_admin_prem_inst` | **9 % of the *Bruttobeitrag*** | A construction, and **not** because the disclosure does not exist: VVG-InfoV § 2 Abs. 1 Nr. 1 with Abs. 2 and Abs. 4 requires a German BU insurer to state the calculated acquisition costs and the administration costs in euro, and one AVB points the customer to the *Produktinformationsblatt* for them [R12] [S6]. **No PIB was obtained** [S13], so the level here is a choice. A pure risk contract does separately lack an *Effektivkosten* figure, § 2 Abs. 1 Nr. 9 confining that to contracts whose obligation is certain [S14] |
+| `load_admin_pp_ann` | **18,00 € p.a.**, charged 1/12 monthly, **uninflated** | A German *Verwaltungskostenzuschlag* is fixed in the tariff at conclusion |
+| `load_claim_assess_pp_once` / `load_claim_admin_pp_mth` | **800,00 €** per inception / **12,00 €** per month in payment | The BU-specific charge a modeller from a term-life background forgets. Flat euro amounts, which is why a heavier class carries a premium below the ratio of its inception rates |
 | `prem_freq_load` | 1,00 / 1,02 / 1,03 / 1,05 | The recalled German *Ratenzahlungszuschlag* ladder `[unverified]` — the retrieved AVB name the frequencies (single, monthly, quarterly, half-yearly, annual) but no loading [S1]; it scales *Brutto* and *Beitragsverrechnung* together |
 | `beitragsverrechnung` | **0,70**, held constant | Midpoint of the recalled 0,60–0,75 common range inside a 0,50–0,80 band `[unverified]` — **no retrieved document gives a ratio**, though two now state the mechanic in their own words [S6] [S12]. **The largest single parameter uncertainty in the model**, and holding it constant its largest discretionary assumption |
 | `leistungsdyn_rate` | **2 % p.a.** | Midpoint of the recalled 1–3 % menu. A BU model without in-claim escalation misses the product's dominant long-duration sensitivity |

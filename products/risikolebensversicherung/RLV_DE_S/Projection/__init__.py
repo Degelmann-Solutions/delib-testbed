@@ -564,14 +564,14 @@ def mort_rate_base(t):
 def mort_rate_blend(t):
     """The unisex 50/50 blend of the sex-distinct table rates — the **tariff's** life.
 
-    ``sex_mix_male`` weights the male table and its complement the female one, and for
-    ``lives = 2`` the two blends are combined by the same first-death rule as
+    ``unisex_mix_male()``, the core's, weights the male table and its complement the female
+    one, and for ``lives = 2`` the two blends are combined by the same first-death rule as
     :func:`mort_rate_base`, again **before** any loading.  This is what a German tariff is
     priced on, because sex may not enter the premium while the underlying tables remain
     sex-distinct.  The mixing ratio is proprietary at every carrier and the 50/50 here is
     **[std]**.
     """
-    w_m = data.param("sex_mix_male")                                 # noqa: F821
+    w_m = unisex_mix_male()
     q_a = (w_m * mort_rate_at_age("M", smoker(), age(t))
            + (1.0 - w_m) * mort_rate_at_age("F", smoker(), age(t)))
     if lives() == 1:
@@ -912,12 +912,12 @@ def prem_gross_level_pp():
     **This is the guaranteed premium** — the maximum the policyholder can ever be required
     to pay, unchanged for the term.  It is not what is billed.
     """
-    denom = ((1.0 - data.param("beta_tariff")) * tariff_annuity()    # noqa: F821
-             - data.param("zillmer_rate") * prem_term())             # noqa: F821
+    denom = ((1.0 - data.param("load_admin_prem_inst")) * tariff_annuity()  # noqa: F821
+             - data.param("load_acq_bsum_once") * prem_term())       # noqa: F821
     if denom <= 0.0:
         raise ValueError("degenerate premium equivalence: loadings exceed the annuity")
     return (tariff_benefit_pv()
-            + data.param("gamma_rate") * tariff_term_annuity()) / denom  # noqa: F821
+            + data.param("load_admin_sum_ann") * tariff_term_annuity()) / denom  # noqa: F821
 
 
 def beitragsverrechnung_rate():
@@ -1132,7 +1132,7 @@ def res_zill_pp_at(y, timing):
     p_y = pols_tariff(y) if y < proj_len_y() else 1.0
     remaining = sum(disc_factor(u - y) * (pols_tariff(u) / p_y)
                     for u in range(max(y, 0), prem_term()))
-    zill = (data.param("zillmer_rate") * prem_term() * prem_gross_level_pp()  # noqa: F821
+    zill = (data.param("load_acq_bsum_once") * prem_term() * prem_gross_level_pp()  # noqa: F821
             * remaining / tariff_annuity())
     return res_pp_at(y, timing) - zill
 
@@ -1198,7 +1198,7 @@ def acq_cost_pp():
     is the economic reason an early lapse hurts on a product with no surrender value to
     forfeit.  On an **in-force** model point it is sunk and is not incurred at all.
     """
-    return data.param("zillmer_rate") * prem_term() * prem_gross_level_pp()  # noqa: F821
+    return data.param("load_acq_bsum_once") * prem_term() * prem_gross_level_pp()  # noqa: F821
 
 
 def comm_init_pp():
@@ -1211,7 +1211,7 @@ def comm_init_pp():
     *Bruttobeitrag* available for *Beitragsverrechnung*.  **[std]**: no German scale is
     public.
     """
-    return data.param("comm_rate_init") * prem_term() * prem_gross_level_pp()  # noqa: F821
+    return data.param("comm_acq_bsum_once") * prem_term() * prem_gross_level_pp()  # noqa: F821
 
 
 def maint_pp(t):
@@ -1236,11 +1236,12 @@ def maint_pp(t):
     **not** return it: splitting the MindZV's *übriges Ergebnis* limb, whose minimum share
     is different, has no basis in the research corpus, so the cost result emerges in
     :func:`net_cf` and stays there.  That is a stated simplification — ``prem_rebate`` is
-    invariant to ``maint_prem_pct`` and ``comm_rate_renew`` while ``net_cf`` is not — and
-    not an oversight.
+    invariant to ``expense_collect_prem_inst`` and ``comm_renew_prem_inst`` while ``net_cf``
+    is not — and not an oversight.
     """
-    return (data.param("gamma_rate") * benefit_pp(t) * inflation_factor(t) / 12.0  # noqa: F821
-            + data.param("maint_prem_pct") * prem_inst_pp(t))        # noqa: F821
+    return (data.param("load_admin_sum_ann")                         # noqa: F821
+            * benefit_pp(t) * inflation_factor(t) / 12.0
+            + data.param("expense_collect_prem_inst") * prem_inst_pp(t))  # noqa: F821
 
 
 def expenses_acq(t):
@@ -1270,13 +1271,13 @@ def expenses_maint(t):
 
 
 def expenses_claim(t):
-    """The claim expense on the month's deaths, 250 € each **[std]**, ``claim_expense`` of
+    """The claim expense on the month's deaths, 250 € each **[std]**, ``expense_claim_pp_once`` of
     *param_tariff_type.csv*.
 
     Override reason: the claim expense is an amount per death claim,
     products/risikolebensversicherung/technical-notes.md:400
     """
-    return data.param("claim_expense") * pols_death(t)               # noqa: F821
+    return data.param("expense_claim_pp_once") * pols_death(t)       # noqa: F821
 
 
 def comm_init(t):
@@ -1303,7 +1304,7 @@ def comm_renew(t):
     Override reason: the renewal commission is a rate on each *Zahlbeitrag* instalment from
     policy year 2, products/risikolebensversicherung/technical-notes.md:397
     """
-    return (data.param("comm_rate_renew") * prem_inst_pp(t) * pols_if(t)  # noqa: F821
+    return (data.param("comm_renew_prem_inst") * prem_inst_pp(t) * pols_if(t)  # noqa: F821
             if duration(t) >= 1 else 0.0)
 
 

@@ -33,7 +33,7 @@
   net-cash-flow residual is rebuilt from its frame's columns; KLV's ``check_net_cf`` closes to
   the scaled tolerance and fails above it.
 - The parameter files: ``param(item)`` reads RLV's tariff-type file without a tariff file,
-  ``claim_expense`` among it and no longer a Reference of its ``Projection``,
+  ``expense_claim_pp_once`` among it and no longer a Reference of its ``Projection``,
   keeps an integer literal ``int``, reads a fixture core item and a tariff item in a scratch
   copy, and raises on an unknown item and on a missing core file; it equals the
   file's value of every product's every item, and the core's former readers
@@ -557,7 +557,9 @@ CORE_CELLS = {
         "disc_factor": {"kapitallebensversicherung": "derived",
                         "risikolebensversicherung": "derived"},
         "unisex_mix_male": {"kapitallebensversicherung": "derived",
-                            "pflegerentenversicherung": "derived"},
+                            "pflegerentenversicherung": "derived",
+                            "risikolebensversicherung": "derived",
+                            "sofortrente": "derived"},
         "unisex_blend": {"kapitallebensversicherung": "derived",
                          "pflegerentenversicherung": "derived"},
         "mort_load_tariff": {"fondsgebundene_rentenversicherung": "derived",
@@ -1735,9 +1737,10 @@ def test_rlv_claim_expense_is_a_tariff_type_row(product_models):
     model = product_models("risikolebensversicherung")
     data = model.Data
     assert data.param_file == "param_tariff_type.csv"
-    value = data.param("claim_expense")
+    value = data.param("expense_claim_pp_once")
     assert type(value) is float and value == 250.0
     assert "claim_expense" not in model.Projection.refs
+    assert "expense_claim_pp_once" not in model.Projection.refs
     item = model.Projection[model.Data.model_point_table().index[0]]
     for t in range(item.t_start(), item.t_start() + 24):
         assert item.expenses_claim(t) == 250.0 * item.pols_death(t), t
@@ -1782,16 +1785,16 @@ RIESTER_MOVED_REFERENCES = {
 # The 17 numeric References RLV's ``Projection`` held, as their former Python literals.
 RLV_MOVED_REFERENCES = {
     "sicherheitszuschlag_m": 1.25,
-    "sex_mix_male": 0.5,
+    "unisex_mix_male": 0.5,
     "surplus_share": 0.9,
     "decl_scale": 1.0,
     "v_max": 0.95,
-    "zillmer_rate": 0.025,
-    "comm_rate_init": 0.02,
-    "beta_tariff": 0.05,
-    "gamma_rate": 0.0003,
-    "maint_prem_pct": 0.03,
-    "comm_rate_renew": 0.01,
+    "load_acq_bsum_once": 0.025,
+    "comm_acq_bsum_once": 0.02,
+    "load_admin_prem_inst": 0.05,
+    "load_admin_sum_ann": 0.0003,
+    "expense_collect_prem_inst": 0.03,
+    "comm_renew_prem_inst": 0.01,
     "suicide_share": 0.03,
     "suicide_years": 3,
     "shock_lapse_lambda": 0.0,
@@ -2337,7 +2340,7 @@ def test_the_usage_scan_counts_a_core_cell_only_where_it_is_reachable(product_mo
     assert "expense_infl" in pflege.reads["expense_infl"]
     rlv = param_usage.scan(product_models("risikolebensversicherung"))
     assert "omega_age" not in rlv.reachable and "omega_age" not in rlv.reads
-    assert "expenses_claim" in rlv.reads["claim_expense"]
+    assert "expenses_claim" in rlv.reads["expense_claim_pp_once"]
 
 
 def test_the_usage_scan_reports_an_unused_item_in_each_product_layer(tmp_path):
@@ -2361,7 +2364,7 @@ def test_the_usage_scan_reports_a_call_to_a_missing_item(tmp_path):
     def edit(folder):
         table = folder / "param_tariff_type.csv"
         params = pd.read_csv(table, dtype=str, keep_default_na=False, index_col="item")
-        params.drop(index="claim_expense").to_csv(table)
+        params.drop(index="expense_claim_pp_once").to_csv(table)
 
     copy = _usage_copy(tmp_path, "MissingProbe", edit)
     try:
@@ -2369,7 +2372,7 @@ def test_the_usage_scan_reports_a_call_to_a_missing_item(tmp_path):
     finally:
         copy.close()
     assert len(problems) == 1, problems
-    assert "'claim_expense'" in problems[0] and "expenses_claim" in problems[0]
+    assert "'expense_claim_pp_once'" in problems[0] and "expenses_claim" in problems[0]
     assert "no layer" in problems[0]
 
 

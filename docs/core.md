@@ -339,6 +339,8 @@ The renamed items, old name to new name:
 
 Every rename is byte-identical; the two that changed a value, Pflege's per mille and RLV's factor, give the same doubles (25.0 / 1000.0 is 0.025, 1.0 + 1.25 is 2.25). The columns of the other tables (cost and charge tables, model points) keep their names.
 
+A value the product docs quote (`model.md`, `technical-notes.md`, the anchor amounts) is the value of the tariff-type file, `param_tariff_type.csv`, on the anchor model point. A tariff file `param_tariff.csv` that sets an item otherwise changes the number without changing the docs; the docs then describe the tariff type, not that tariff (Moritz, 2026-11-08).
+
 ## Formula literals
 
 Every numeric literal in a formula cell of the core's `Projection` and the ten products' `Projection` spaces was reviewed (epic-parameter-files, entry 8, and its follow-ups of 2026-11-06): the cells "The new M" counts in `docs/roadmap.md` (module-level `def`s and non-underscore `name = lambda`, walked whole), with the literals inside a subscript and in the arguments of `range(...)` included and the values 0, 1, 0.0 and 1.0 excluded; docstrings hold no formula. The `Data` spaces and the products' `__init__.py` hold no such literal. A literal is actuarial when it states an assumption or a statutory term a tariff could set otherwise; then a parameter mutant on it was a code change, and it became a row of a parameter file. Further rules decide the rest (Moritz, 2026-11-06):

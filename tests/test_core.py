@@ -1641,7 +1641,7 @@ def test_rlv_liability_cf_is_the_negated_net_cf(product_models):
 ROLL_FWD_TOL = {
     "basisrente": 1e-08,
     "berufsunfaehigkeit": 1e-08,
-    "fondsgebundene_rentenversicherung": 1e-10,
+    "fondsgebundene_rentenversicherung": 1e-08,
     "indexpolice": 1e-08,
     "kapitallebensversicherung": 1e-10,
     "klassische_rentenversicherung": 1e-09,
@@ -1769,7 +1769,7 @@ def test_basis_is_source_or_setzung_or_empty():
 EMPTY_BASIS = {
     "basisrente": set(),
     "berufsunfaehigkeit": set(),
-    "fondsgebundene_rentenversicherung": {"check_tol"},
+    "fondsgebundene_rentenversicherung": set(),
     "indexpolice": set(),
     "kapitallebensversicherung": {"check_tol"},
     "klassische_rentenversicherung": {"check_tol"},
@@ -1909,7 +1909,8 @@ BU_MOVED_REFERENCES = {
 }
 
 # The 12 numeric References FRV's ``Projection`` held, as their former Python literals;
-# ``val_tol`` 1e-10 is read as ``check_tol``, the same quantity with the same value.
+# ``val_tol`` 1e-10 is read as ``check_tol``, the same quantity with the same value, which entry 12
+# of epic-parameter-files aligned to 1e-08.
 FRV_MOVED_REFERENCES = {
     "lapse_cap": 0.4,
     "lapse_dyn_beta": 0.0,
@@ -1922,7 +1923,7 @@ FRV_MOVED_REFERENCES = {
     "expense_claim_pp_once": 150.0,
     "expense_surr_pp_once": 50.0,
     "expense_conv_pp_once": 100.0,
-    "check_tol": 1e-10,
+    "check_tol": 1e-08,
 }
 
 # The 3 actuarial literals FRV's formulas held (``lapse_tax_step``), as written there.

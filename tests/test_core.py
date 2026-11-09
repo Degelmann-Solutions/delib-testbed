@@ -1096,7 +1096,7 @@ PFLEGE_RENAMED = {
 
 # Pflege's values that entry 12 of epic-parameter-files aligned (the acceptance of 2026-11-09):
 # current item -> aligned value, against upstream's.
-PFLEGE_ALIGNED = {"expense_infl": 0.02}
+PFLEGE_ALIGNED = {"expense_infl": 0.02, "check_tol": 1e-08}
 
 
 def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
@@ -1645,7 +1645,7 @@ ROLL_FWD_TOL = {
     "indexpolice": 1e-08,
     "kapitallebensversicherung": 1e-08,
     "klassische_rentenversicherung": 1e-08,
-    "pflegerentenversicherung": 1e-10,
+    "pflegerentenversicherung": 1e-08,
     "riester_rente": 1e-09,
     "risikolebensversicherung": 1e-10,
     "sofortrente": 1e-08,
@@ -1773,7 +1773,7 @@ EMPTY_BASIS = {
     "indexpolice": set(),
     "kapitallebensversicherung": set(),
     "klassische_rentenversicherung": set(),
-    "pflegerentenversicherung": {"check_tol"},
+    "pflegerentenversicherung": set(),
     "riester_rente": {"check_tol"},
     "risikolebensversicherung": {"check_tol", "val_tol"},
     "sofortrente": set(),

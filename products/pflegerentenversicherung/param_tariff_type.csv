@@ -5,7 +5,7 @@ recov_age_ref,75,,Setzung,"[std] age above which Reaktivierung is damped, so det
 recov_age_decay,0.1,,Setzung,"[std] exp(-0.10 x (age - 75)) damping on the recovery rates; order-of-magnitude reasoning, unsourced [unverified]; recovery falls to about a third by age 86"
 inc_cap,0.5,,Setzung,[std] shape device: without it the incidence exponential exceeds one before age 100; 0.5 binds only at the oldest ages
 beitragssumme_cap_age,85,,Setzung,"[std] a lifelong-premium contract has no finite Beitragssumme without a convention; this is the convention the 25 permille Zillmerung base is struck on [REG-R16]; 85, a high but reached premium-paying age"
-check_tol,1e-10,,,"[std] absolute tolerance of every check_* identity, scaled by pols_if_init or by P x U"
+check_tol,1e-08,,Setzung,"[std] absolute tolerance of every check_* identity, scaled by pols_if_init or by P x U; 1e-08 is the tightest value every product's checks are known to pass, orders of magnitude below the effect of any parameter mutant; one value for every product (acceptance of 2026-11-09), 1e-10 until then"
 inc_load_first,1.25,,Setzung,"[std] Rechnungsgrundlagen erster Ordnung: more claims. Only the DIRECTION is cited [REG-R8] [REG-R47]; no German Sicherheitszuschlag level for a Pflegetafel was established; +25 %; no first-order Pflege margin was found in the library (bib DAV-Veroeffentlichungen/Lebensversicherung/2025-06-24_DAV_LV_Hinweis_Best-Estimate-in-der-Lebensversicherung.pdf p. 15-16)"
 det_load_first,1.15,,Setzung,[std] first-order margin: faster progression to the higher-paying grades [REG-R8] [REG-R47]
 recov_load_first,0.8,,Setzung,"[std] first-order margin: fewer recoveries, so longer spells [REG-R8] [REG-R47]"

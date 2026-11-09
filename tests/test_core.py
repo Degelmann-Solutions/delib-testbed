@@ -1761,7 +1761,7 @@ def test_basis_is_source_or_setzung_or_empty():
 # "Open points", 1): their ``basis`` stays empty until that commit; every other row has one.
 EMPTY_BASIS = {
     "basisrente": {"check_tol"},
-    "berufsunfaehigkeit": {"check_tol", "accept_factor", "mort_dis_load_first"},
+    "berufsunfaehigkeit": {"check_tol", "mort_dis_load_first"},
     "fondsgebundene_rentenversicherung": {"check_tol"},
     "indexpolice": {"expense_infl"},
     "kapitallebensversicherung": {"check_tol"},
@@ -1883,9 +1883,10 @@ KLV_MOVED_REFERENCES = {
     "bwr_rate": 0.0,
 }
 
-# The 11 numeric References BU's ``Projection`` held, as their former Python literals.
+# The 11 numeric References BU's ``Projection`` held, as their former Python literals, with the
+# values entry 12 of epic-parameter-files aligned (``accept_factor`` 0.8 to 0.75).
 BU_MOVED_REFERENCES = {
-    "accept_factor": 0.8,
+    "accept_factor": 0.75,
     "inc_load_first": 1.3,
     "recov_load_first": 0.7,
     "mort_dis_load_first": 0.8,

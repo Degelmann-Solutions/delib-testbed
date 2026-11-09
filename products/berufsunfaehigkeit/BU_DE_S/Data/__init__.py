@@ -70,7 +70,7 @@ The three anchors, and what a replacement built from company or DAV data must pr
     is the **age shape** — nearly flat to 30, moderate through the forties, sharply
     accelerating from the mid-forties, so that the last decade before the *Endalter*
     dominates the liability — and the declaration of whether the table is **gross or net
-    of declinature**. The shipped table is gross, and ``accept_factor = 0.80`` sits on
+    of declinature**. The shipped table is gross, and ``accept_factor = 0.75`` sits on
     top of it; a table already net of declinature must be used with that factor at 1.00
     or the *Anerkennungsquote* is counted twice.
 

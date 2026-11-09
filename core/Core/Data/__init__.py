@@ -64,30 +64,72 @@ def param_tariff_path():
     return input_dir() / "param_tariff.csv"
 
 
+def param_layers():
+    """The parameter layers of the tariff: ``{layer: {item: value}}``, built once per model.
+
+    The layers in turn, ``"core"`` from ``param_core_path()``, ``"tariff_type"`` from the
+    tariff-type file ``param_file`` and, where it exists, ``"tariff"`` from the tariff file
+    ``param_tariff_path()``; each file has the columns ``item``, ``value``, ``basis`` and
+    ``provenance``.  A value whose text is an integer literal is a Python ``int``, any other a
+    Python ``float``, the value the same literal has in Python.
+
+    The loader checks the files as it reads them and raises ``ValueError`` naming the item
+    and the file or files: an item standing twice in one file, an item of the core file in a
+    product file (the core lock), an item standing in both product files (uniqueness).
+    """
+    paths = {"core": param_core_path(),
+             "tariff_type": input_dir() / param_file}                 # noqa: F821
+    if param_tariff_path().is_file():
+        paths["tariff"] = param_tariff_path()
+    layers = {}
+    seen = {}
+    for layer, path in paths.items():
+        table = pd.read_csv(path, dtype=str, keep_default_na=False)  # noqa: F821
+        values = {}
+        for item, text in zip(table["item"], table["value"]):
+            if item in values:
+                raise ValueError(f"parameter {item!r} stands twice in {path}")
+            if item in seen:
+                first_layer, first_path = seen[item]
+                if first_layer == "core":
+                    raise ValueError(
+                        f"parameter {item!r} is a core item of {first_path}; the product"
+                        f" file {path} must not hold it")
+                raise ValueError(
+                    f"parameter {item!r} stands in two layers: {first_path} and {path}")
+            text = text.strip()
+            values[item] = int(text) if text.lstrip("+-").isdigit() else float(text)
+        for item in values:
+            seen[item] = (layer, path)
+        layers[layer] = values
+    return layers
+
+
 def param_dict():
     """Every parameter of the tariff by ``item``: ``{item: value}``, built once per model.
 
-    The layers are read in turn, the core file ``param_core_path()``, the tariff-type file
-    ``param_file`` and, where it exists, the tariff file ``param_tariff_path()``; each has
-    the columns ``item``, ``value``, ``basis`` and ``provenance``, and the layers are
-    disjoint.  A value whose text is an integer literal is a Python ``int``, any other a
-    Python ``float``, the value the same literal has in Python.
+    The layers of ``param_layers()`` merged in their order; the loader has checked that they
+    are disjoint.
     """
-    paths = [param_core_path(), input_dir() / param_file]            # noqa: F821
-    if param_tariff_path().is_file():
-        paths.append(param_tariff_path())
     values = {}
-    for path in paths:
-        table = pd.read_csv(path, dtype=str, keep_default_na=False)  # noqa: F821
-        for item, text in zip(table["item"], table["value"]):
-            text = text.strip()
-            values[item] = int(text) if text.lstrip("+-").isdigit() else float(text)
+    for layer in param_layers().values():
+        values.update(layer)
     return values
 
 
 def param(item):
     """The parameter ``item`` from ``param_dict()``; an unknown item raises ``KeyError``."""
     return param_dict()[item]
+
+
+def param_indirect():
+    """The cells that read parameters other than by a literal ``param("<item>")``.
+
+    ``{cell: (item, ...)}``, each such cell with the items it reads; empty in the core.  A
+    product (or a table factory reading its items by a computed name) overrides it.  Only
+    the static usage scan ``core/param_usage.py`` reads it, never a run.
+    """
+    return {}
 
 
 def mort_table_index():

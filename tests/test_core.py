@@ -39,6 +39,15 @@
   ``param_table_dict()`` value of every product's every item, and no source reads
   ``param_table_dict()["value"]`` any more; every product's ``param_file`` is its
   ``param_tariff_type.csv`` with the layer columns, and no ``param_table.csv`` is left.
+  Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
+  the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
+  item in the tariff-type or the tariff file.
+- The usage scan ``core/param_usage.py``: every product reads every item of its layers
+  through a reachable literal ``param`` call and the core file has no unused item; on a
+  scratch copy it reports an unused item of either product layer, a call to a missing item,
+  an undeclared indirect read, a declared item no layer holds, a declared cell that does not
+  exist and a read around ``param``, counts a declared indirect read, and names an unused
+  core item.
 - The expense inflation: Sofort's derived factor steps on the policy anniversary, Pflege's
   compounds continuously over ``t / 12`` years.
 - The dict cells: every core dict cell of a table a product has equals its reader's
@@ -62,6 +71,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import io
 import math
 import re
@@ -267,8 +277,10 @@ CORE_CELLS = {
         "param_table_dict": dict.fromkeys(MODELS, "derived"),
         "param_core_path": dict.fromkeys(MODELS, "derived"),
         "param_tariff_path": dict.fromkeys(MODELS, "derived"),
+        "param_layers": dict.fromkeys(MODELS, "derived"),
         "param_dict": dict.fromkeys(MODELS, "derived"),
         "param": dict.fromkeys(MODELS, "derived"),
+        "param_indirect": dict.fromkeys(MODELS, "derived"),
         "mort_table_dict": dict.fromkeys(MODELS, "derived"),
         "lapse_table_dict": dict.fromkeys(MODELS, "derived"),
         "rentenfaktor_table_dict": dict.fromkeys(MODELS, "derived"),
@@ -1740,6 +1752,281 @@ def test_param_without_the_core_file_raises(tmp_path):
             copy.Data.param("roll_fwd_tol")
     finally:
         copy.close()
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_param_layers_hold_every_item_once_and_merge_into_param_dict(product, product_models):
+    """Every product reads the core and the tariff-type layer (and the tariff layer only where
+    the file exists), each item in one layer, and ``param_dict()`` is their merge."""
+    data = product_models(product).Data
+    layers = data.param_layers()
+    expected = ["core", "tariff_type"] + (["tariff"] if data.param_tariff_path().is_file()
+                                          else [])
+    assert list(layers) == expected
+    tariff_type = pd.read_csv(data.input_dir() / data.param_file, dtype=str,
+                              keep_default_na=False)["item"].tolist()
+    assert sorted(layers["tariff_type"]) == sorted(tariff_type)
+    assert len(tariff_type) == len(set(tariff_type))
+    items = [item for layer in layers.values() for item in layer]
+    assert len(items) == len(set(items))
+    merged = {item: value for layer in layers.values() for item, value in layer.items()}
+    assert data.param_dict() == merged
+    assert list(data.param_dict()) == list(merged)
+
+
+def _loader_error(model_dir: Path, name: str, item: str = "roll_fwd_tol") -> str:
+    """The error line of the loader's error on ``param(item)`` in a scratch copy, which must be
+    a ``ValueError``.
+
+    modelx wraps it in a ``FormulaError`` whose text also holds the formula source; only the
+    line before ``Formula traceback:`` is the raised error.
+    """
+    copy = mx.read_model(model_dir, name=name)
+    try:
+        with pytest.raises(Exception) as raised:
+            copy.Data.param(item)
+    finally:
+        copy.close()
+    if isinstance(raised.value, ValueError):
+        return f"ValueError: {raised.value}"
+    head = str(raised.value).split("Formula traceback:", 1)[0]
+    line = [text for text in head.splitlines() if text.strip()][-1]
+    assert line.startswith("ValueError: "), str(raised.value)
+    return line
+
+
+def test_param_rejects_an_item_in_two_layers(tmp_path):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    _add_params(folder / "param_tariff.csv", {"expense_infl": "0.03"})
+    message = _loader_error(folder / MODELS["risikolebensversicherung"], "TwoLayerProbe")
+    assert "'expense_infl' stands in two layers" in message
+    assert str(folder / "param_tariff_type.csv") in message
+    assert str(folder / "param_tariff.csv") in message
+
+
+def test_param_rejects_an_item_twice_in_one_file(tmp_path):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    _add_params(folder / "param_tariff_type.csv", {"roll_fwd_tol": "1e-10"})
+    message = _loader_error(folder / MODELS["risikolebensversicherung"], "TwiceProbe")
+    assert "'roll_fwd_tol' stands twice in" in message
+    assert str(folder / "param_tariff_type.csv") in message
+
+
+def test_param_rejects_a_core_item_in_the_tariff_type_file(tmp_path):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    model_dir = folder / MODELS["risikolebensversicherung"]
+    _add_params(model_dir / "CoreData" / "param_core.csv", {"roll_fwd_tol": "1e-10"})
+    message = _loader_error(model_dir, "CoreLockProbe")
+    assert "'roll_fwd_tol' is a core item of" in message
+    assert str(folder / "param_tariff_type.csv") in message
+
+
+def test_param_rejects_a_core_item_in_the_tariff_file(tmp_path):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    model_dir = folder / MODELS["risikolebensversicherung"]
+    _add_params(model_dir / "CoreData" / "param_core.csv", {"probe_core": "0.125"})
+    _add_params(folder / "param_tariff.csv", {"probe_core": "0.25"})
+    message = _loader_error(model_dir, "CoreLockTariffProbe")
+    assert "'probe_core' is a core item of" in message
+    assert str(folder / "param_tariff.csv") in message
+
+
+def load_param_usage():
+    """The static usage scan ``core/param_usage.py``, a plain module beside the core model."""
+    spec = importlib.util.spec_from_file_location("param_usage", CORE_DIR / "param_usage.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+param_usage = load_param_usage()
+
+
+def _usage_copy(tmp_path, name: str, edit=None):
+    """The scan of a scratch RLV copy, after ``edit(folder)`` changed its files, and the copy;
+    the caller closes it."""
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    if edit is not None:
+        edit(folder)
+    return mx.read_model(folder / MODELS["risikolebensversicherung"], name=name)
+
+
+def _add_cell(model, space: str, source: str) -> None:
+    name = source.split("(", 1)[0].removeprefix("def ")
+    model.spaces[space].new_cells(name=name, formula=source)
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_the_usage_scan_finds_no_problem(product, product_models):
+    """Every shipped product reads every item of its layers, calls no missing item, reads
+    no parameter indirectly and does not bypass ``param``."""
+    model = product_models(product)
+    usage = param_usage.scan(model)
+    assert usage.problems == []
+    assert usage.indirect == {}
+    assert usage.reads and set(usage.reads) <= set(model.Data.param_dict())
+    assert {"param", "param_dict", "param_layers"} <= usage.reachable
+
+
+def test_no_core_item_is_unused(product_models):
+    usages = [param_usage.scan(product_models(product)) for product in sorted(MODELS)]
+    assert param_usage.unused_core_items(usages) == []
+
+
+def test_the_usage_scan_counts_a_core_cell_only_where_it_is_reachable(product_models):
+    """Pflege reads ``expense_infl`` through the core's ``expense_infl()``, RLV's
+    ``omega_age()`` is inherited but reached by nothing."""
+    pflege = param_usage.scan(product_models("pflegerentenversicherung"))
+    assert "expense_infl" in pflege.reads["expense_infl"]
+    rlv = param_usage.scan(product_models("risikolebensversicherung"))
+    assert "omega_age" not in rlv.reachable and "omega_age" not in rlv.reads
+    assert "expenses_claim" in rlv.reads["claim_expense"]
+
+
+def test_the_usage_scan_reports_an_unused_item_in_each_product_layer(tmp_path):
+    def edit(folder):
+        _add_params(folder / "param_tariff_type.csv", {"probe_unused": "1.5"})
+        _add_params(folder / "param_tariff.csv", {"probe_unused_tariff": "2.5"})
+
+    copy = _usage_copy(tmp_path, "UnusedProbe", edit)
+    try:
+        problems = param_usage.scan(copy).problems
+    finally:
+        copy.close()
+    assert len(problems) == 2, problems
+    assert "'probe_unused'" in problems[0] and "tariff_type layer" in problems[0]
+    assert "param_tariff_type.csv" in problems[0]
+    assert "'probe_unused_tariff'" in problems[1] and "tariff layer" in problems[1]
+    assert "param_tariff.csv" in problems[1]
+
+
+def test_the_usage_scan_reports_a_call_to_a_missing_item(tmp_path):
+    def edit(folder):
+        table = folder / "param_tariff_type.csv"
+        params = pd.read_csv(table, dtype=str, keep_default_na=False, index_col="item")
+        params.drop(index="claim_expense").to_csv(table)
+
+    copy = _usage_copy(tmp_path, "MissingProbe", edit)
+    try:
+        problems = param_usage.scan(copy).problems
+    finally:
+        copy.close()
+    assert len(problems) == 1, problems
+    assert "'claim_expense'" in problems[0] and "expenses_claim" in problems[0]
+    assert "no layer" in problems[0]
+
+
+INDIRECT_CELL = ('def probe_indirect():\n'
+                 '    name = "expense_infl"\n'
+                 '    return data.param(name)\n')
+
+
+def test_the_usage_scan_reports_an_undeclared_indirect_read(tmp_path):
+    copy = _usage_copy(tmp_path, "IndirectProbe")
+    try:
+        _add_cell(copy, "Projection", INDIRECT_CELL)
+        _add_cell(copy, "Projection", "def probe_reader():\n    return probe_indirect()\n")
+        usage = param_usage.scan(copy)
+    finally:
+        copy.close()
+    assert "probe_indirect" in usage.reachable
+    assert len(usage.problems) == 1, usage.problems
+    assert "probe_indirect" in usage.problems[0] and "param_indirect()" in usage.problems[0]
+
+
+def _declare(model, declared: dict) -> None:
+    model.Data.cells["param_indirect"].formula = (
+        f"def param_indirect():\n    return {declared!r}\n")
+
+
+def test_the_usage_scan_counts_a_declared_indirect_read(tmp_path):
+    copy = _usage_copy(tmp_path, "DeclaredProbe")
+    try:
+        _add_cell(copy, "Projection", INDIRECT_CELL)
+        _declare(copy, {"probe_indirect": ("expense_infl",)})
+        usage = param_usage.scan(copy)
+    finally:
+        copy.close()
+    assert usage.problems == []
+    assert usage.indirect == {"probe_indirect": ("expense_infl",)}
+    assert "probe_indirect" in usage.reads["expense_infl"]
+
+
+def test_the_usage_scan_reports_a_declared_item_no_layer_holds(tmp_path):
+    copy = _usage_copy(tmp_path, "DeclaredMissingProbe")
+    try:
+        _add_cell(copy, "Projection", INDIRECT_CELL)
+        _declare(copy, {"probe_indirect": ("expense_infl", "probe_missing")})
+        problems = param_usage.scan(copy).problems
+    finally:
+        copy.close()
+    assert len(problems) == 1, problems
+    assert "'probe_missing'" in problems[0] and "probe_indirect" in problems[0]
+
+
+def test_the_usage_scan_reports_a_declared_cell_that_does_not_exist(tmp_path):
+    copy = _usage_copy(tmp_path, "DeclaredUnknownProbe")
+    try:
+        _declare(copy, {"probe_nowhere": ("expense_infl",)})
+        problems = param_usage.scan(copy).problems
+    finally:
+        copy.close()
+    assert len(problems) == 1, problems
+    assert "probe_nowhere" in problems[0] and "no cell" in problems[0]
+
+
+@pytest.mark.parametrize("reader", ["param_dict", "param_layers", "param_table",
+                                    "param_table_dict"])
+def test_the_usage_scan_reports_a_read_around_param(tmp_path, reader):
+    copy = _usage_copy(tmp_path, "BypassProbe")
+    try:
+        _add_cell(copy, "Projection", f"def probe_bypass():\n    return data.{reader}()\n")
+        problems = param_usage.scan(copy).problems
+    finally:
+        copy.close()
+    assert len(problems) == 1, problems
+    assert "probe_bypass" in problems[0] and reader in problems[0]
+
+
+def test_the_usage_scan_reports_a_declared_missing_item_of_an_unreachable_cell(tmp_path):
+    """RLV inherits the core's ``omega_age`` unreached; a declared item no layer holds is a
+    problem there too."""
+    copy = _usage_copy(tmp_path, "DeclaredUnreachableProbe")
+    try:
+        _declare(copy, {"omega_age": ("probe_missing",)})
+        usage = param_usage.scan(copy)
+    finally:
+        copy.close()
+    assert "omega_age" not in usage.reachable
+    assert len(usage.problems) == 1, usage.problems
+    assert "'probe_missing'" in usage.problems[0] and "omega_age" in usage.problems[0]
+
+
+def test_a_core_item_read_by_one_product_is_used():
+    """``unused_core_items`` checks the core file across products: an item one product reads
+    is used, one that none reads is named."""
+    layers = {"core": {"probe_core": 0.125}, "tariff_type": {}}
+    reader = param_usage.Usage(layers=layers, reads={"probe_core": frozenset({"cell"})},
+                               reachable=frozenset({"cell"}), indirect={}, problems=[])
+    other = param_usage.Usage(layers=layers, reads={}, reachable=frozenset(), indirect={},
+                              problems=[])
+    assert param_usage.unused_core_items([reader, other]) == []
+    assert param_usage.unused_core_items([other, other]) == ["probe_core"]
+
+
+def test_an_unused_core_item_is_named(tmp_path):
+    def edit(folder):
+        model_dir = folder / MODELS["risikolebensversicherung"]
+        _add_params(model_dir / "CoreData" / "param_core.csv", {"probe_core": "0.125"})
+
+    copy = _usage_copy(tmp_path, "UnusedCoreProbe", edit)
+    try:
+        usage = param_usage.scan(copy)
+    finally:
+        copy.close()
+    assert usage.problems == []
+    assert usage.layers["core"] == {"probe_core": 0.125}
+    assert param_usage.unused_core_items([usage]) == ["probe_core"]
 
 
 def test_klv_result_cf_is_the_core_statement_from_t_start(product_models):

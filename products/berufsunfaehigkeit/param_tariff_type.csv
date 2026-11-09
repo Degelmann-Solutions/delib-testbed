@@ -1,2 +1,13 @@
 item,value,basis,provenance
 roll_fwd_tol,1e-10,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
+accept_factor,0.8,,"[std] [R21] [R20] [REG-R53] the Anerkennungsquote, an acceptance factor on the inception rate, on a table gross of declinature; recalled at 75 to 80 %, unverified; was a Reference on Projection"
+inc_load_first,1.3,,"[std] [REG-R47] first-order load on the inception rate, higher incidence: prudence for a disability product means a claim that starts more often; was a Reference on Projection"
+recov_load_first,0.7,,"[std] [REG-R47] first-order load on the reactivation rate, lower reactivation: a claim that ends less often; was a Reference on Projection"
+mort_dis_load_first,0.8,,"[std] [REG-R47] first-order load on disabled-lives mortality, lower mortality: a claim that lasts longer; was a Reference on Projection"
+mort_actv_load_first,0.8,,"[std] [REG-R47] first-order load on active-lives mortality, lower mortality: an active death releases a liability, so a prudent basis does not anticipate it; was a Reference on Projection"
+acq_rate,0.025,,"[R13] [REG-R16] Abschluss- und Vertriebskosten 2.5 % of the Beitragssumme, charged once at issue, at the section 4 DeckRV Hoechstzillmersatz of 25 per mille; commission sits inside it; the level a choice to sit at the ceiling [std]; was a Reference on Projection"
+admin_prem_rate,0.09,,"[std] [R12] proportional Verwaltungskosten 9 % of the Bruttobeitrag, every month a premium is due; VVG-InfoV section 2 requires the costs in euro, but no PIB was obtained, so the level is a choice; was a Reference on Projection"
+admin_flat_ann,18.0,,"[std] flat Verwaltungskosten 18.00 EUR per policy per year, charged 1/12 monthly, uninflated: a German Verwaltungskostenzuschlag is fixed in the tariff at conclusion; was a Reference on Projection"
+claim_assess_cost,800.0,,"[std] Leistungsbearbeitung, assessment: 800.00 EUR per claim inception, a flat euro amount; was a Reference on Projection"
+claim_maint_cost_mth,12.0,,"[std] Leistungsbearbeitung, maintenance: 12.00 EUR per month a claim is in payment, a flat euro amount; was a Reference on Projection"
+runoff_months,3,,"[R3] [REG-R29] the section 174 (2) VVG run-off, the insurer liable to the end of the third month after the Einstellungsmitteilung reaches the policyholder; three slots of the run-off ledger; was a Reference on Projection"

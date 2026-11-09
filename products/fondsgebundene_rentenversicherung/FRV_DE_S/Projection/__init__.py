@@ -893,10 +893,11 @@ def fund_return_gross_ann(t):
     if not ablauf_flag():
         return base
     remaining = (proj_len() - 1) - t
-    if remaining >= glide_months:                                    # noqa: F821
+    if remaining >= data.param("glide_months"):                      # noqa: F821
         return base
-    step = (glide_months - remaining) / float(glide_months)          # noqa: F821
-    return base + (mmkt_return_ann - base) * step                    # noqa: F821
+    step = ((data.param("glide_months") - remaining)                 # noqa: F821
+            / float(data.param("glide_months")))                     # noqa: F821
+    return base + (data.param("mmkt_return_ann") - base) * step      # noqa: F821
 
 
 def fund_ter_ann(t):
@@ -1267,11 +1268,11 @@ def lapse_dyn_add(t):
     ``lapse_dyn_beta = 0`` in the base run and 0.15 is the reference value.  No German
     calibration evidence for a coefficient of any size exists in this corpus.
     """
-    if lapse_dyn_beta == 0.0:                                        # noqa: F821
+    if data.param("lapse_dyn_beta") == 0.0:                          # noqa: F821
         return 0.0
     if cum_prem_pp(t) <= 0.0:
         return 0.0
-    return lapse_dyn_beta * max(0.0, 1.0 - av_pp(t) / cum_prem_pp(t))  # noqa: F821
+    return data.param("lapse_dyn_beta") * max(0.0, 1.0 - av_pp(t) / cum_prem_pp(t))  # noqa: F821
 
 
 def lapse_rate(t):
@@ -1284,7 +1285,7 @@ def lapse_rate(t):
     Override reason: the table rate is stepped at the tax threshold, raised by the dynamic
     lapse and capped at 40 %, products/fondsgebundene_rentenversicherung/technical-notes.md:336
     """
-    return min(lapse_cap,                                            # noqa: F821
+    return min(data.param("lapse_cap"),                              # noqa: F821
                lapse_rate_base(t) * lapse_tax_step(t) + lapse_dyn_add(t))
 
 
@@ -1511,7 +1512,7 @@ def expense_acq_pp(t):
     """
     if t != 0:
         return 0.0
-    return expense_issue                                             # noqa: F821
+    return data.param("expense_issue")                               # noqa: F821
 
 
 def comm_acq_pp(t):
@@ -1541,7 +1542,7 @@ def comm_acq_pp(t):
     """
     if t != 0:
         return 0.0
-    return comm_acq_rate * beitragssumme()                           # noqa: F821
+    return data.param("comm_acq_rate") * beitragssumme()             # noqa: F821
 
 
 def inflation_years(t):
@@ -1564,7 +1565,7 @@ def expense_maint_pp(t):
     rather than the projection's own start, so an in-force cell picks up the inflation its
     elapsed duration has already accrued.
     """
-    return expense_maint_mth * inflation_factor(t)                   # noqa: F821
+    return data.param("expense_maint_mth") * inflation_factor(t)     # noqa: F821
 
 
 def expenses(t):
@@ -1586,9 +1587,9 @@ def expenses(t):
     """
     return (expense_acq_pp(t) * pols_if(t)
             + expense_maint_pp(t) * pols_if(t)
-            + expense_claim * pols_death(t)                          # noqa: F821
-            + expense_surr * pols_lapse(t)                           # noqa: F821
-            + expense_annuitisation * pols_maturity(t))              # noqa: F821
+            + data.param("expense_claim") * pols_death(t)            # noqa: F821
+            + data.param("expense_surr") * pols_lapse(t)             # noqa: F821
+            + data.param("expense_annuitisation") * pols_maturity(t))  # noqa: F821
 
 
 def comm_init(t):
@@ -1611,7 +1612,7 @@ def comm_renew(t):
     Override reason: the renewal commission is a rate on each gross premium,
     products/fondsgebundene_rentenversicherung/technical-notes.md:541
     """
-    return comm_renew_rate * prem_pp(t) * pols_if(t)                 # noqa: F821
+    return data.param("comm_renew_rate") * prem_pp(t) * pols_if(t)   # noqa: F821
 
 
 def net_cf(t):
@@ -1807,7 +1808,7 @@ def check_net_cf_tol(t):
     Override reason: the statement is checked to val_tol relative to the month's net cash
     flow, products/fondsgebundene_rentenversicherung/technical-notes.md:655
     """
-    return val_tol * max(1.0, abs(net_cf(t)))                        # noqa: F821
+    return data.param("val_tol") * max(1.0, abs(net_cf(t)))          # noqa: F821
 
 
 def check_prem_split_resid(t):
@@ -1826,7 +1827,7 @@ def check_prem_split_resid(t):
 def check_prem_split():
     """True when the premium splits exactly three ways in every projected month."""
     return all(abs(check_prem_split_resid(t))
-               <= val_tol * max(1.0, abs(premiums(t)))               # noqa: F821
+               <= data.param("val_tol") * max(1.0, abs(premiums(t)))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1847,7 +1848,7 @@ def check_units_roll_fwd_resid(t):
 def check_units_roll_fwd():
     """True when the unit count rolls forward exactly in every projected month."""
     return all(abs(check_units_roll_fwd_resid(t))
-               <= val_tol * max(1.0, abs(units_pp(t)))               # noqa: F821
+               <= data.param("val_tol") * max(1.0, abs(units_pp(t)))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1871,7 +1872,7 @@ def check_av_roll_fwd_resid(t):
 def check_av_roll_fwd():
     """True when the *Fondsguthaben* rolls forward exactly in every projected month."""
     return all(abs(check_av_roll_fwd_resid(t))
-               <= val_tol * max(1.0, abs(av_pp_at(t, "BEF_DECR")))   # noqa: F821
+               <= data.param("val_tol") * max(1.0, abs(av_pp_at(t, "BEF_DECR")))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1896,7 +1897,7 @@ def check_benefit_funding_resid(t):
 def check_benefit_funding():
     """True when every benefit is funded from the fund or the insurer, in every month."""
     return all(abs(check_benefit_funding_resid(t))
-               <= val_tol * max(1.0, abs(av_releases(t)))            # noqa: F821
+               <= data.param("val_tol") * max(1.0, abs(av_releases(t)))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1955,7 +1956,7 @@ def check_acq_charge_resid(t):
 def check_acq_charge():
     """True when the acquisition-charge ledger matches its counted expectation everywhere."""
     return all(abs(check_acq_charge_resid(t))
-               <= val_tol * max(1.0, zillmer_amount())             # noqa: F821
+               <= data.param("val_tol") * max(1.0, zillmer_amount())  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -2044,30 +2045,5 @@ def result_fund():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-lapse_cap = 0.4
-
-lapse_dyn_beta = 0.0
-
-mmkt_return_ann = 0.015
-
-glide_months = 60
-
-comm_acq_rate = 0.025
-
-expense_issue = 200.0
-
-expense_maint_mth = 4.0
-
-comm_renew_rate = 0.015
-
-expense_claim = 150.0
-
-expense_surr = 50.0
-
-expense_annuitisation = 100.0
-
-
-val_tol = 1e-10
 
 pd = ("Module", "pandas")

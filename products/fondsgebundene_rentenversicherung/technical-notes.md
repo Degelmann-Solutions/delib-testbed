@@ -385,15 +385,15 @@ with a PRIIPs performance scenario**.
 
 | Input | Value | Basis |
 |---|---|---|
-| Acquisition commission `comm_acq_rate` | **2.50 % of the *Beitragssumme***, paid at `t = 0` | **[std]** (5) |
-| Issue expense `expense_issue` | 200.00 EUR at `t = 0` | **[std]** (5) |
-| Maintenance expense `expense_maint_mth` | 4.00 EUR per policy per month, inflating at `expense_infl` | **[std]** (5) |
+| Acquisition commission `comm_acq_rate` | **2.50 % of the *Beitragssumme***, a row of `param_tariff_type.csv`, paid at `t = 0` | **[std]** (5) |
+| Issue expense `expense_issue` | 200.00 EUR at `t = 0`, a row of `param_tariff_type.csv` | **[std]** (5) |
+| Maintenance expense `expense_maint_mth` | 4.00 EUR per policy per month, a row of `param_tariff_type.csv`, inflating at `expense_infl` | **[std]** (5) |
 | Expense inflation `expense_infl` | 2.0 % p.a., a row of `param_tariff_type.csv`, applied as `1.02^(t/12)` | **[std]** |
-| Renewal commission `comm_renew_rate` | 1.5 % of each gross premium | **[std]** (5) |
-| Claim expense `expense_claim` | 150.00 EUR per death claim | **[std]** |
-| Surrender expense `expense_surr` | 50.00 EUR per surrender | **[std]** |
-| Annuitisation expense `expense_annuitisation` | 100.00 EUR per policy converting at *Rentenbeginn* | **[std]** |
-| Dynamic-lapse coefficient `lapse_dyn_beta` | **0** in the base run; 0.15 as the reference value | **[std]** (6) |
+| Renewal commission `comm_renew_rate` | 1.5 % of each gross premium, a row of `param_tariff_type.csv` | **[std]** (5) |
+| Claim expense `expense_claim` | 150.00 EUR per death claim, a row of `param_tariff_type.csv` | **[std]** |
+| Surrender expense `expense_surr` | 50.00 EUR per surrender, a row of `param_tariff_type.csv` | **[std]** |
+| Annuitisation expense `expense_annuitisation` | 100.00 EUR per policy converting at *Rentenbeginn*, a row of `param_tariff_type.csv` | **[std]** |
+| Dynamic-lapse coefficient `lapse_dyn_beta` | **0** in the base run, a row of `param_tariff_type.csv`; 0.15 as the reference value | **[std]** (6) |
 
 5. **The acquisition commission is set equal to the acquisition charge deliberately.** The insurer
    pays 2.50 % of the *Beitragssumme* at inception and recovers exactly that, undiscounted, over

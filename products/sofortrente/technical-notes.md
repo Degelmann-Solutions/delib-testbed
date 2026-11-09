@@ -349,7 +349,7 @@ three-class split, and confusing them is pitfall 12's neighbour.
 | `expense_acq_sp_once`, `expense_acq_pp_once` — acquisition expense actually incurred at `t = 0` | **2,0 %** of `SP` **plus 200 €**, two rows of `param_tariff_type.csv` | **[std]** (c1) |
 | `expense_admin_pp_ann` — maintenance expense per annum, per unit of `pols_if` | **60 €**, a row of `param_tariff_type.csv`, accrued monthly | **[std]** (c1) |
 | `expense_pay_pp_inst` — cost of running one instalment | **1,50 €** per instalment paid, a row of `param_tariff_type.csv` | **[std]** (c1) |
-| `expense_infl` — expense inflation | **2,0 %** p.a., the house-wide rate (acceptance of 2026-11-09; was 1,5 %), a row of `param_tariff_type.csv`, stepping at the policy anniversary | **[std]** (c1) |
+| `expense_infl` — expense inflation | **2,0 %** p.a., the house-wide rate (acceptance of 2026-11-09; was 1,5 %), an item of the core file `param_core.csv`, stepping at the policy anniversary | **[std]** (c1) |
 | `unisex_mix_male` ρ_M | **0.45**, a row of `param_tariff_type.csv` | **[std]** |
 | `mort_base_year` | **2025**, a row of `param_tariff_type.csv` | **[std]** |
 | `omega_age` ω | **121**, a row of `param_tariff_type.csv` | **[std]** |

@@ -2150,6 +2150,7 @@ CORE_ITEMS = {
     "tax_step_min_year": 13,
     "tax_step_age": 62,
     "mmkt_return_ann": 0.015,
+    "expense_infl": 0.02,
     "zillmer_cap_bsum": 0.025,
     "valuation_year": 2027,
     "grundzulage": 175.0,
@@ -2367,9 +2368,9 @@ def _loader_error(model_dir: Path, name: str, item: str = "check_tol") -> str:
 
 def test_param_rejects_an_item_in_two_layers(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
-    _add_params(folder / "param_tariff.csv", {"expense_infl": "0.03"})
+    _add_params(folder / "param_tariff.csv", {"expense_claim_pp_once": "300.0"})
     message = _loader_error(folder / MODELS["risikolebensversicherung"], "TwoLayerProbe")
-    assert "'expense_infl' stands in two layers" in message
+    assert "'expense_claim_pp_once' stands in two layers" in message
     assert str(folder / "param_tariff_type.csv") in message
     assert str(folder / "param_tariff.csv") in message
 
@@ -2835,7 +2836,7 @@ def test_a_prem_freq_outside_the_table_raises(tmp_path):
 
 def test_expense_infl_without_its_row_raises_key_error(tmp_path):
     folder = product_copy(tmp_path, "klassische_rentenversicherung")
-    table = folder / "param_tariff_type.csv"
+    table = folder / MODELS["klassische_rentenversicherung"] / "CoreData" / "param_core.csv"
     params = pd.read_csv(table, index_col="item")
     params.drop(index="expense_infl").to_csv(table)
     copy = mx.read_model(folder / MODELS["klassische_rentenversicherung"], name="InflProbe")

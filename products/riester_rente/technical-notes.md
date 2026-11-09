@@ -127,7 +127,7 @@ reaches it through a `data` Reference and holds no `*_file` Reference and no `in
 | `income_schedule.csv` | `income_id`, `t` | `income`, `provenance` |
 | `surplus_scenario.csv` | `scenario_id`, `t` | `decl_rate`, `provenance` |
 | `prem_freq_table.csv` | `prem_freq` | `instalments` (a year, not read), `prem_freq_load`, `provenance` |
-| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`, `expense_infl`), `basis`, `provenance` |
+| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor` and the tariff's scalars), `basis`, `provenance`; `expense_infl` is an item of the core file `param_core.csv` |
 
 **Every file except `model_point_table.csv` carries a per-row `provenance` column**, delib's second
 ruling: a model point is a configuration, every other row is an assumption and says where its number

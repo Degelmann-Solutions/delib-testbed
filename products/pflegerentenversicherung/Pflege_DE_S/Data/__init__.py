@@ -96,8 +96,9 @@ the *Beitragssumme* convention ``beitragssumme_cap_age`` and the five first-orde
 ``mort_actv_load_first``, none of them cited; the *Rechnungszins* is a model-point column. The last five rows are the expense assumptions with their ``unit``:
 ``load_acq_bsum_once`` (fraction of *Beitragssumme*, charged once at ``t = 0``), ``load_admin_prem_inst``
 (fraction of each *Beitrag* collected), ``load_admin_pp_mth`` (EUR per policy in force per month
-at ``t = 0`` prices), ``load_claim_pp_inst`` (EUR per annuity payment made) and
-``expense_infl`` (annual, the house-wide rate); they are placeholder levels whose only cited element is the
+at ``t = 0`` prices) and ``load_claim_pp_inst`` (EUR per annuity payment made), with the
+house-wide ``expense_infl`` (annual) beside them in the core file; they are placeholder
+levels whose only cited element is the
 25 ‰ ceiling the acquisition charge is set exactly at. The two groups were the files
 ``basis_table.csv`` and ``expense_table.csv`` upstream; phase 3 merged them so that the
 loader ``param()`` is the common core's.

@@ -388,7 +388,7 @@ with a PRIIPs performance scenario**.
 | Acquisition commission `comm_acq_bsum_once` | **2.50 % of the *Beitragssumme***, a row of `param_tariff_type.csv`, paid at `t = 0` | **[std]** (5) |
 | Issue expense `expense_acq_pp_once` | 200.00 EUR at `t = 0`, a row of `param_tariff_type.csv` | **[std]** (5) |
 | Maintenance expense `expense_admin_pp_mth` | 4.00 EUR per policy per month, a row of `param_tariff_type.csv`, inflating at `expense_infl` | **[std]** (5) |
-| Expense inflation `expense_infl` | 2.0 % p.a., a row of `param_tariff_type.csv`, applied as `1.02^(t/12)` | **[std]** |
+| Expense inflation `expense_infl` | 2.0 % p.a., the house-wide rate, an item of the core file `param_core.csv`, applied as `1.02^(t/12)` | **[std]** |
 | Renewal commission `comm_renew_prem_inst` | 1.5 % of each gross premium, a row of `param_tariff_type.csv` | **[std]** (5) |
 | Claim expense `expense_claim_pp_once` | 150.00 EUR per death claim, a row of `param_tariff_type.csv` | **[std]** |
 | Surrender expense `expense_surr_pp_once` | 50.00 EUR per surrender, a row of `param_tariff_type.csv` | **[std]** |

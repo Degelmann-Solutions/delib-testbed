@@ -1,0 +1,3 @@
+item,value,basis,provenance
+roll_fwd_tol,1e-08,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
+expense_infl,0.015,,"[std] 1.5 % p.a. inflation of the Stueckkosten from issue, stepping on the anniversary; was the Reference exp_infl on Projection"

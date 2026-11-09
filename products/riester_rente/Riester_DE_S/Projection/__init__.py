@@ -92,7 +92,7 @@ zulage_file                data.zulage_schedule()                 zulage_schedul
 income_file                data.income_schedule()                 income_schedule.csv
 surplus_file               data.surplus_table()                   surplus_scenario.csv
 freq_loading_file          data.freq_loading_table()              freq_loading.csv
-param_file                 data.param_table()                     param_table.csv
+param_file                 data.param_table()                     param_tariff_type.csv
 =========================  =====================================  ==========================
 
 .. rubric:: Naming
@@ -650,14 +650,14 @@ def annuity_mort_rate(x, tau):
 def mort_be_factor():
     """The step from the accumulation death table to the best estimate, 0.80.
 
-    Read from *param_table.csv*; the payout phase's ``annuity_mort_be_factor`` runs the
+    Read from *param_tariff_type.csv*; the payout phase's ``annuity_mort_be_factor`` runs the
     other way and stays a Reference.
 
     Override reason: the best estimate sits at 0.80 of the first-order death table, below
     it because the direction of prudence forks by product, a tariff parameter in
-    *param_table.csv*, products/riester_rente/technical-notes.md:415
+    *param_tariff_type.csv*, products/riester_rente/technical-notes.md:415
     """
-    return float(data.param_table_dict()["value"]["mort_be_factor"])  # noqa: F821
+    return float(data.param("mort_be_factor"))                       # noqa: F821
 
 
 def mort_rate(t):

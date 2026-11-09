@@ -223,9 +223,9 @@ table carries a per-row `provenance` column, this library's second ruling.
 | `charge_table.csv` | `charge_id`, `item` | `value`, `provenance` |
 | `lapse_table.csv` | `policy_year` | `lapse_rate`, `provenance` |
 | `freq_load_table.csv` | `prem_freq` | `prem_freq_load`, `n_instalments` (**recorded, not applied**), `provenance` |
-| `param_table.csv` | `item` | `value`, `provenance` |
+| `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance` |
 
-`param_table.csv` holds every scalar [std] assumption that is neither a charge nor a rate table:
+`param_tariff_type.csv` holds every scalar [std] assumption that is neither a charge nor a rate table:
 `expense_acq_pp`, `expense_maint_pp`, `expense_annuity_pp`, `expense_claim_pp`, `expense_infl`,
 `mort_be_factor`, `mort_base_year`, `omega_age`, `val_reserve_rate`, `sur_ann_rate`,
 `sur_ann_growth`, `sur_ann_theta` and `roll_fwd_tol`. Keeping them in a file rather than in

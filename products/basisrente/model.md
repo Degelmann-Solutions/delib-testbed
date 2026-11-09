@@ -333,7 +333,7 @@ formulas:
 products/basisrente/
   model_point_table.csv  mort_table.csv  surplus_table.csv    <- inputs live here
   rentenfaktor_table.csv  charge_table.csv  behaviour_table.csv  option_table.csv
-  param_table.csv
+  param_tariff_type.csv
   run.py  model.md  product-spec.md  technical-notes.md  sources.md
   Basis_DE_S/  <- formulas only: __init__.py  _system.json  Data/  Projection/
 ```
@@ -359,7 +359,7 @@ suite counts the reads and asserts the file set.
 | `charge_file` | `charge_table()` | `charge_table.csv` |
 | `behaviour_file` | `behaviour_table()` | `behaviour_table.csv` |
 | `option_file` | `option_table()` | `option_table.csv` |
-| `param_file` | `param_table()` | `param_table.csv` |
+| `param_file` | `param_table()` | `param_tariff_type.csv` |
 `Data.input_dir()` resolves the location from `_model.path.parent` when the model is read, so it
 works wherever the repository is checked out. **The trade-off:** the model is not portable on its
 own — copy `Basis_DE_S/` without the CSVs and it reads fine, then fails on first evaluation —
@@ -388,12 +388,12 @@ neither shifts; `issue_year` is a calendar year, and `issue_age` and `ret_age` a
 | `charge_table.csv` | One row per tariff: the four account charges, the *Schlussüberschussanteil*, and the insurer's own expense and commission scale | `zill_rate` 25 ‰ (and 40 ‰ pre-LVRG) is [R16] [REG-R16] [REG-R20]; **everything else on the row is [std]**. Two tariffs ship, differing only in `zill_rate`, so the in-force cohorts carry their own cap |
 | `behaviour_table.csv` | `bf_rate` and `zuz_take_up` by `dur`, the **policy year** `policy_year(t)`. `dur` is a contractual 1-based label and **not** the frame's `t`, so the file starts at `dur = 1` and is unaffected by the 0-based index | **[std]**, and **no observed range exists**: no German insurer publishes a *Beitragsfreistellung* rate or a *Zuzahlung* take-up for this product (gap 3). The shape is argued from the product's structure; the levels are invented |
 | `option_table.csv` | One multiplicative factor per option key | **[std]** — the *Ratenzahlungszuschlag* on the *laufender Beitrag* alone, and the *Rentenfaktor* reductions for a *Rentengarantiezeit* and a survivor's annuity, anchored on a Schicht-3 illustration that is [unverified] and expressly not transferable |
-| `param_table.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.85 | **[std]**, the round step from the first-order table to a best estimate [R17] [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads |
+| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.85 | **[std]**, the round step from the first-order table to a best estimate [R17] [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads |
 
 ## The published checks
 
 Six identities, each a `bool` over the whole projection with a per-period residual companion,
-compared against `roll_fwd_tol()` = 1e-9 (`param_table.csv`) scaled by the run's own magnitude so the tolerance means
+compared against `roll_fwd_tol()` = 1e-9 (`param_tariff_type.csv`) scaled by the run's own magnitude so the tolerance means
 the same thing on a 300 € contribution and on a 30 826 € one.
 
 **The residual's argument follows its cells' clock.** Three take a **month** — the cash flow

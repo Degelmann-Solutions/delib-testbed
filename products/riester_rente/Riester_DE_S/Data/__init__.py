@@ -38,7 +38,7 @@ zulage_file                zulage_schedule()               zulage_schedule.csv
 income_file                income_schedule()               income_schedule.csv
 surplus_file               surplus_table()                 surplus_scenario.csv
 freq_loading_file          freq_loading_table()            freq_loading.csv
-param_file                 param_table()                   param_table.csv
+param_file                 param_table()                   param_tariff_type.csv
 =========================  ==============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
@@ -211,6 +211,6 @@ surplus_file = "surplus_scenario.csv"
 
 freq_loading_file = "freq_loading.csv"
 
-param_file = "param_table.csv"
+param_file = "param_tariff_type.csv"
 
 pd = ("Module", "pandas")

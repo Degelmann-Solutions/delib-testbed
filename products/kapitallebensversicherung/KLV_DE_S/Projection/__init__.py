@@ -86,7 +86,7 @@ surplus_rate_file         data.surplus_rate_table()          surplus_rate_table.
 charge_file               data.charge_table()                cost_table.csv
 freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
 deckrv_file               data.deckrv_table()                deckrv_table.csv
-param_file                data.param_table()                 param_table.csv
+param_file                data.param_table()                 param_tariff_type.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -571,13 +571,13 @@ def mort_rate_at_age(x):
 
 
 def mort_be_factor():
-    """The step from the first-order table to the best estimate, 0.75, from *param_table.csv*.
+    """The step from the first-order table to the best estimate, 0.75, from *param_tariff_type.csv*.
 
     Override reason: the best estimate is 0.75 of the first-order table, a 33 % safety
-    loading and a tariff parameter in *param_table.csv*,
+    loading and a tariff parameter in *param_tariff_type.csv*,
     products/kapitallebensversicherung/model.md:513
     """
-    return float(data.param_table_dict()["value"]["mort_be_factor"])  # noqa: F821
+    return float(data.param("mort_be_factor"))                       # noqa: F821
 
 
 def hoechstrechnungszins():
@@ -1601,7 +1601,7 @@ def expense_infl():
     """The annual expense inflation rate of this policy's cost set, 1,8 % p.a. **[std]**.
 
     Read from *cost_table.csv* at :func:`cost_id`, beside the expense levels it inflates,
-    rather than from *param_table.csv*: the rate belongs to the cost basis, and a book with
+    rather than from *param_tariff_type.csv*: the rate belongs to the cost basis, and a book with
     two cost sets carries two rates.
 
     Override reason: the expense inflation is a column of the cost table keyed by

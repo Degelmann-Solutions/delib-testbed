@@ -41,10 +41,10 @@ def model_point_table():
 def param_table():
     """The product's scalar parameters by ``item``, read from its ``param_file``.
 
-    Columns ``value`` and ``provenance``, and an optional ``unit``; a tariff-type file
-    renamed to ``param_tariff_type.csv`` also has ``basis`` (``docs/core.md``, "The
-    parameter files").  The values are read with pandas' default float parsing, which
-    round-trips the decimal literals.
+    Columns ``value``, ``basis`` and ``provenance``, and an optional ``unit``: the
+    product's tariff-type file ``param_tariff_type.csv`` (``docs/core.md``, "The parameter
+    files").  The values are read with pandas' default float parsing, which round-trips
+    the decimal literals.
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / param_file, index_col="item")                  # noqa: F821
@@ -175,8 +175,8 @@ def model_point_table_dict():
 def param_table_dict():
     """The parameter table as a dict by column: ``{column: {item: value}}``.
 
-    Built once per model from ``param_table()``; ``Projection.omega_age``,
-    ``unisex_mix_male``, ``expense_infl`` and ``roll_fwd_tol`` read its ``value`` column.
+    Built once per model from ``param_table()``.  No cell reads it: every parameter is
+    read through ``param(item)``.
     """
     return param_table().to_dict()
 

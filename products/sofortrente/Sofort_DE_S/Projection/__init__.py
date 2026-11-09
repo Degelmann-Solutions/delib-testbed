@@ -41,7 +41,7 @@ mort_file                     data.mort_table()                    mort_table.cs
 improvement_file              data.improvement_table()             improvement_table.csv
 surplus_scale_file            data.surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     data.hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
-param_file                    data.param_table()                   param_table.csv
+param_file                    data.param_table()                   param_tariff_type.csv
 ============================  ===================================  ================================
 
 .. rubric:: Naming

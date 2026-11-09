@@ -35,7 +35,7 @@ mort_file                     mort_table()                    mort_table.csv
 improvement_file              improvement_table()             improvement_table.csv
 surplus_scale_file            surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
-param_file                    param_table()                   param_table.csv
+param_file                    param_table()                   param_tariff_type.csv
 ============================  ==============================  ================================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
@@ -219,6 +219,6 @@ surplus_scale_file = "surplus_scale_table.csv"
 
 hoechstrechnungszins_file = "hoechstrechnungszins_table.csv"
 
-param_file = "param_table.csv"
+param_file = "param_tariff_type.csv"
 
 pd = ("Module", "pandas")

@@ -37,7 +37,7 @@ incidence_file             incidence_table()               incidence_table.csv
 care_file                  care_table()                    care_table.csv
 lapse_file                 lapse_table()                   lapse_table.csv
 surrender_file             surrender_table()               surrender_table.csv
-param_file                 param_table()                   param_table.csv
+param_file                 param_table()                   param_tariff_type.csv
 =========================  ==============================  =========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
@@ -84,7 +84,7 @@ table in place of these changes the basis with no formula change.
 The remaining tables are standardizations of a different kind: ``lapse_table.csv`` and
 ``surrender_table.csv`` encode a shape argued from the *Zillmerung* and the § 169 VVG
 five-year spread rather than from data — no lapse rate and no *Rückkaufswert* for a German
-*Pflegerente* at any duration was established — and ``param_table.csv`` holds the scalar
+*Pflegerente* at any duration was established — and ``param_tariff_type.csv`` holds the scalar
 parameters by ``item``. Its first twelve rows are the bases and conventions: the
 terminal age ``omega_age``, the unisex mix ``unisex_mix_male``, the
 recovery-damping shape ``rec_age_ref`` / ``rec_age_decay``, the ``inc_cap`` shape device,
@@ -229,6 +229,6 @@ lapse_file = "lapse_table.csv"
 
 surrender_file = "surrender_table.csv"
 
-param_file = "param_table.csv"
+param_file = "param_tariff_type.csv"
 
 pd = ("Module", "pandas")

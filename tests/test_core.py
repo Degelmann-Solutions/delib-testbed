@@ -27,7 +27,7 @@
   kind and an unknown kind is rejected; Index and RV pay exactly zero commission; KLV's net
   cash flow subtracts its claims kind by kind; RLV's liability cash flow is its net cash flow
   negated.
-- The outputs and checks: every product reads ``check_tol`` from its ``param_tariff_type.csv``
+- The outputs and checks: every product reads ``check_tol`` from the core file ``param_core.csv``
   and a missing row raises; KLV's ``result_cf`` is the core's statement from ``t_start()``;
   RV's annual frame sums the flows and takes its two counts at the year's start; RLV's
   net-cash-flow residual is rebuilt from its frame's columns; KLV's ``check_net_cf`` closes to
@@ -1113,6 +1113,9 @@ def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     for item, value in PFLEGE_ALIGNED.items():
         table = basis if item in basis.index else expense
         table.at[item, "value"] = value
+    # Items of the core file since entry 12 of epic-parameter-files leave the tariff-type file.
+    basis = basis.drop([item for item in CORE_ITEMS if item in basis.index])
+    expense = expense.drop([item for item in CORE_ITEMS if item in expense.index])
     # The Rechnungszins moved from the table to the model point (a contract attribute).
     moved = ["rechnungszins"]
     points = model.Data.model_point_table()
@@ -1653,19 +1656,20 @@ ROLL_FWD_TOL = {
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
-def test_roll_fwd_tol_is_read_from_its_tariff_type_file(product, product_models):
+def test_roll_fwd_tol_is_read_from_the_core_file(product, product_models):
     model = product_models(product)
     projection = model.Projection
     assert projection.roll_fwd_tol._is_derived()
     assert "roll_fwd_tol" not in projection.refs
     assert "roll_fwd_tol" not in model.Data.param_dict()
+    assert "check_tol" in model.Data.param_layers()["core"]
     point_id = model.Data.model_point_table().index[0]
     assert projection[point_id].roll_fwd_tol() == ROLL_FWD_TOL[product]
 
 
 def test_roll_fwd_tol_without_its_row_raises_key_error(tmp_path):
     folder = product_copy(tmp_path, "kapitallebensversicherung")
-    table = folder / "param_tariff_type.csv"
+    table = folder / MODELS["kapitallebensversicherung"] / "CoreData" / "param_core.csv"
     params = pd.read_csv(table, index_col="item")
     params.drop(index="check_tol").to_csv(table)
     copy = mx.read_model(folder / MODELS["kapitallebensversicherung"], name="TolProbe")
@@ -1684,7 +1688,7 @@ def test_param_reads_the_tariff_type_layer(product_models):
     assert not data.param_tariff_path().exists()
     assert data.param_core_path() == data.model.path / "CoreData" / "param_core.csv"
     assert data.param_core_path().is_file()
-    for item in ("check_tol", "expense_infl"):
+    for item in ("expense_claim_pp_once", "unisex_mix_male"):
         value = data.param(item)
         assert type(value) is float and value == tariff_type_table(
             "risikolebensversicherung").at[item, "value"], item
@@ -2139,6 +2143,7 @@ def test_sofort_references_stand_in_their_layer(product_models):
 # The items of the core file ``core/Core/Data/param_core.csv``, as their former Python literals.
 CORE_ITEMS = {
     "rate_cap_eps": 1e-12,
+    "check_tol": 1e-08,
     "suicide_years": 3,
     "surr_spread_years": 5,
     "runoff_months": 3,
@@ -2371,18 +2376,18 @@ def test_param_rejects_an_item_in_two_layers(tmp_path):
 
 def test_param_rejects_an_item_twice_in_one_file(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
-    _add_params(folder / "param_tariff_type.csv", {"check_tol": "1e-10"})
+    _add_params(folder / "param_tariff_type.csv", {"expense_claim_pp_once": "250.0"})
     message = _loader_error(folder / MODELS["risikolebensversicherung"], "TwiceProbe")
-    assert "'check_tol' stands twice in" in message
+    assert "'expense_claim_pp_once' stands twice in" in message
     assert str(folder / "param_tariff_type.csv") in message
 
 
 def test_param_rejects_a_core_item_in_the_tariff_type_file(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     model_dir = folder / MODELS["risikolebensversicherung"]
-    _add_params(model_dir / "CoreData" / "param_core.csv", {"check_tol": "1e-10"})
+    _add_params(model_dir / "CoreData" / "param_core.csv", {"expense_claim_pp_once": "250.0"})
     message = _loader_error(model_dir, "CoreLockProbe")
-    assert "'check_tol' is a core item of" in message
+    assert "'expense_claim_pp_once' is a core item of" in message
     assert str(folder / "param_tariff_type.csv") in message
 
 

@@ -142,12 +142,13 @@ ruling, asserted by the conventions suite.
 | `behaviour_table.csv` | `beh_table_id`, `dur` | `bf_rate`, `zuz_take_up` | The two behavioural assumptions that vary by policy duration: the *Beitragsfreistellung* rate and the *Zuzahlung* take-up. **`dur` is the policy year, `duration(t) + 1`**, so "durations 1–5" below reads off the file directly |
 | `prem_freq_table.csv` | `prem_freq` | `instalments`, `prem_freq_load` | The premium payment frequencies: the instalments a year and the *Ratenzahlungszuschlag* on the *laufender Beitrag* |
 | `option_table.csv` | `option_id`, `option_key` | `factor` | One multiplicative factor per contractual option: `guarantee_period` and `survivor` → the reduction in the *Rentenfaktor* |
-| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`, `check_tol`, `elig_surv_prob`, `mort_base_year`, `acq_spread_years`, `rf_unit`, `ann_freq`) | The scalar tariff parameters, read by the common core's loader; added in phase 3 |
+| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`, `elig_surv_prob`, `mort_base_year`, `acq_spread_years`, `rf_unit`, `ann_freq`) | The scalar tariff parameters, read by the common core's loader; added in phase 3; `check_tol` is an item of the core file `param_core.csv` |
 
 Scalar assumptions that are single numbers rather than tables are rows of `param_tariff_type.csv`
 since phase 3, read by the common core's loader, and are tagged in *Assumption inputs* below:
 `elig_surv_prob`, `mort_base_year`, `acq_spread_years`, `rf_unit`, `ann_freq`, beside
-`mort_be_factor` and `check_tol`; each was a `Projection` Reference before.
+`mort_be_factor` and `check_tol`, which is an item of the core file `param_core.csv` since entry 12 of
+epic-parameter-files; each was a `Projection` Reference before.
 
 ---
 
@@ -691,7 +692,7 @@ with the other's index is a category error rather than a rounding question.
 | `check_annuity_roll_fwd()` | year | `ann_pp(k) = ann_pp(k−1) × (1 + ann_bonus_rate(k−1))` for `k > k_conv()`; `12 × ann_mth_pp(t) = ann_pp(k)` across the year's months, so the uplift steps on the anniversary and nowhere else; and `pols_gtd(t) = 0` for `t > gtd_end_t()` |
 
 Each returns a `bool` over the whole projection and has a per-period residual companion
-`check_*_resid`, compared against `roll_fwd_tol()` = 1e-8, `check_tol` of `param_tariff_type.csv`.
+`check_*_resid`, compared against `roll_fwd_tol()` = 1e-8, `check_tol` of the core file `param_core.csv`.
 
 ---
 

@@ -168,7 +168,7 @@ cells in the `Data` Space (the `annuallife/TradLife_A` layout). Every file **exc
 | `care_table.csv` | `pflegegrad` | `entry_share`, `det_rate`, `rec_rate`, `mort_mult`, `provenance` | The whole in-care basis in five rows: the distribution of the grade first entered, the annual deterioration rate to the next grade, the annual recovery rate to the previous grade or to active, and the force-of-mortality multiple over an active life of the same age |
 | `lapse_table.csv` | `policy_year` | `lapse_rate`, `provenance` | Annual lapse from the **active** state, policy years 1–40; year 40's rate applies to every later year |
 | `surrender_table.csv` | `policy_year` | `rkw_prem_ratio`, `provenance` | The guaranteed *Rückkaufswert* as a fraction of premiums paid to date, policy years 1–40, clamped as for lapse at its last policy year `Y` (40), which `surrender_table_last_year()` reads from the table |
-| `param_tariff_type.csv` | `item` | `value`, `unit`, `basis`, `provenance` | `omega_age`, `unisex_mix_male`, `recov_age_ref`, `recov_age_decay`, `inc_cap`, `beitragssumme_cap_age`, `check_tol`, and the five first-order prudence margins `inc_load_first`, `det_load_first`, `recov_load_first`, `mort_care_load_first`, `mort_actv_load_first` (`unit` empty); then `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_pp_mth`, `load_claim_pp_inst`, `expense_infl`. Upstream's `basis_table.csv` and `expense_table.csv`, merged in phase 3; `rechnungszins` moved to the model point |
+| `param_tariff_type.csv` | `item` | `value`, `unit`, `basis`, `provenance` | `omega_age`, `unisex_mix_male`, `recov_age_ref`, `recov_age_decay`, `inc_cap`, `beitragssumme_cap_age` and the five first-order prudence margins `inc_load_first`, `det_load_first`, `recov_load_first`, `mort_care_load_first`, `mort_actv_load_first` (`unit` empty); then `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_pp_mth`, `load_claim_pp_inst`, `expense_infl`. Upstream's `basis_table.csv` and `expense_table.csv`, merged in phase 3; `rechnungszins` moved to the model point |
 
 Eight files, each read by a reader cells in `Data`; the suite asserts there are no orphans.
 
@@ -680,7 +680,7 @@ on every model point.
 | `check_prem_equiv` | `Σ_t check_prem_equiv_resid(t) ≈ 0`: the gross premium closes the first-order equivalence, assembled from the tariff ledgers rather than from the closed form |
 
 `check_net_cf` is mandatory across the library; the other five are this product's own. All six use
-`check_tol` from `param_tariff_type.csv`.
+`check_tol` from the core file `param_core.csv`.
 
 ---
 

@@ -214,16 +214,16 @@ per row: delib's second ruling, machine-checked.
 | `cost_table.csv` | `cost_id` | `alpha_rate`, `beta_rate`, `gamma_rate`, `acq_expense`, `maint_expense`, `expense_infl`, `claim_expense`, `comm_init_rate`, `comm_renew_rate`, `provenance` |
 | `freq_loading_table.csv` | `prem_freq` | `instalments`, `prem_freq_load`, `provenance` |
 | `deckrv_table.csv` | `issue_year` | `hoechstrechnungszins`, `hoechstzillmersatz`, `provenance` |
-| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`, `unisex_mix_male`), `basis`, `provenance` |
+| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`, `unisex_mix_male`, `suicide_share`, `bfz_min_si`, `term_surr_share`, `bwr_rate`), `basis`, `provenance` |
 
 `cost_table.csv` deliberately carries the **first-order tariff loadings and the second-order expense
 assumptions on the same row**, because the difference between them *is* the *Kostenüberschuss*, and
 `deckrv_table.csv` carries both DeckRV ceilings — § 2's *Höchstrechnungszins* and § 4's
 *Höchstzillmersatz* — keyed by `issue_year`, both being cohort facts that travel with the contract
 [REG-R14] [REG-R15] [REG-R16]. The scalars that are not tables — `suicide_share`,
-`bfz_min_si`, `term_surr_share`, `bwr_rate` and the two behaviour-module switches — are `Projection`
-References, and their values and tags are in this section; `mort_be_factor` and `unisex_mix_male` are rows of
-`param_tariff_type.csv` since phase 3, read by the common core's loader.
+`bfz_min_si`, `term_surr_share` and `bwr_rate` — are rows of `param_tariff_type.csv`, were `Projection`
+References (the two behaviour modules are not built, their unread switches removed), and their values and tags are in this section; `mort_be_factor` and `unisex_mix_male` are rows of
+it since phase 3, and all six are read by the common core's loader.
 
 Three classes. Class (a) is contractual or statutory and is cited; class (b) is the insurer's current
 discretionary declaration, revisable annually and capable of being zero [S3] [S9]; class (c) is the
@@ -267,7 +267,7 @@ distributing the wedge between them.
 | *Ansammlungszinssatz* `ans_rate` | **2.70% p.a.**, equal to the declared rate | mechanism [R28]; the § 28 RechVersV disclosure names the rate as a published quantity [REG-R54]; the level **[std]** (5) |
 | Scenarios `low` / `nil` | `low`: `decl_rate` 1.20%, `term_rate` 0.10%, `ans_rate` 1.20%. `nil`: all three **0.00%** | `nil` rests on the sourced statement that the surplus "may also be zero euros" [S9]; both scenarios **[std]** |
 | *Stornoabzug* `storno_rate` | 10% of the guaranteed value in years 1–5, 7.5% in 6–10, 5% in 11–15, 2.5% from 16 | **three carrier schedules on three bases**: 0–20% of the *Deckungskapital*, decaying to nil over the last ten years, sub judice [S3] [R22] [R30]; 50 € + 0,15% of premiums × years remaining [S9]; 100 € + 0,2% of (sum insured − reserve) [S18]; schedule **[std]** |
-| *Bewertungsreserven* rate `bwr_rate` | **0.00%** | [R1] [R8] [REG-R9]; zero **[std]** |
+| *Bewertungsreserven* rate `bwr_rate` | **0.00%**, a row of `param_tariff_type.csv` | [R1] [R8] [REG-R9]; zero **[std]** |
 
 3. Level for the whole projection is a modelling choice, not a forecast: the corpus supports a
    **direction** — about one in three insurers raised the rate for 2026, Allianz did not, the caution
@@ -384,7 +384,7 @@ German endowment carries. **The *Effektivkosten* they produce is a validation ta
 reproducing one needs the PRIIPs Annex VI algorithm and a holding period, neither of which delib
 implements [R9] [R19] [REG-R31] [REG-R32].
 
-**Suicide share `suicide_share` = 0.02 [std].** § 161 VVG substitutes the *Rückkaufswert* for the sum
+**Suicide share `suicide_share` = 0.02 [std]**, a row of `param_tariff_type.csv`. § 161 VVG substitutes the *Rückkaufswert* for the sum
 insured on the suicide sub-cause of death in the first three policy years [R4] [REG-R26]. No source
 gives a suicide share of deaths at any age, so 2 % is a placeholder standing for "about one death in
 fifty in the window is an excluded suicide". Setting it to zero is a defensible variant; **paying nil
@@ -531,9 +531,9 @@ Three rules ride on those four lines:
 
 - **The *Stornoabzug* bites on the guaranteed value only**, not on the *Überschussguthaben*: Debeka's
   published deduction is a percentage of the *Deckungskapital* [S3] [R30] (pitfall 6).
-- **`term_surr_share = 0` in the base run [std]** — the accrued *Schlussüberschussanteil* is paid at the
+- **`term_surr_share = 0` in the base run [std]**, a row of `param_tariff_type.csv` — the accrued *Schlussüberschussanteil* is paid at the
   *Ablauf* and on death, not on surrender (`product-spec.md`, footnote 12); the parameter is exposed.
-- **The *Mindestversicherungsleistung* test**: if `bfz_si_pp < bfz_min_si` (**2,500 EUR [std]**) the
+- **The *Mindestversicherungsleistung* test**: if `bfz_si_pp < bfz_min_si` (**2,500 EUR [std]**, a row of `param_tariff_type.csv`) the
   election is **not** a *Beitragsfreistellung* (lapse rate 1 in that year; 0 through the final policy year, whose end is the *Ablauf*) — § 165 VVG obliges the insurer to pay the § 169 value
   instead, so the model converts the point to a **surrender at the end of year `e = bfz_year − 1`**
   and the projection terminates there [R3] (pitfall 8). Model point 12 exercises that branch.
@@ -899,16 +899,16 @@ All formulas are **[std]**; no German calibration evidence exists for any of the
   Modelling it as a scheduled election keeps the unsourced number out of the base run; what that costs
   is stated — a real book converts a material, duration-dependent share to *beitragsfrei*, and this
   model shows that path only where a model point elects it.
-- **Two dynamic modules, both [std] and both off in the base run.** *Premium-shock lapse* is inert on
+- **Two dynamic modules, both [std], specified and not built.** *Premium-shock lapse* would be inert on
   the base contract, whose *Bruttobeitrag* is level, but live under *Beitragsverrechnung*, where a fall
   in the declared rate raises the *Zahlbeitrag*: `M_shock(k) = 1 + β_shock · max(0,
   prem_paid_pp(k)/prem_paid_pp(k−1) − 1 − g0)` on the **annual** *Zahlbeitrag* of consecutive policy
   years, `g0 = 0.05`, `β_shock = 1.5`, base run `β_shock = 0`.
   *Rate-gap lapse* keys on the gap between the declared rate and what is available elsewhere:
-  `lapse_add(k) = a · max(0, ref_rate − decl_rate(k) − tol)`, `a = 3.0`, `tol = 0.5 pp`, `ref_rate` a
-  model Reference, base run `a = 0`. Both compare **annual** declarations, which is what they are
+  `lapse_add(k) = a · max(0, ref_rate − decl_rate(k) − tol)`, `a = 3.0`, `tol = 0.5 pp`, `ref_rate = 0.03`,
+  base run `a = 0`. Both compare **annual** declarations, which is what they are
   about; neither becomes a monthly comparison. **No German calibration of any of these numbers exists in the
-  corpus**, which is why both ship off. **Selective lapsation is not modelled** either: surrenders on
+  corpus**, which is why neither is built. **Selective lapsation is not modelled** either: surrenders on
   an endowment are wealth- and tax-driven rather than health-driven.
 - **What the model deliberately does not do.** No premium-default path (§§ 37/38 VVG unresearched, gap
   20); no *Widerruf* decrement (§ 152 VVG unresearched); no dynamic *Beitragsverrechnung* take-up; and

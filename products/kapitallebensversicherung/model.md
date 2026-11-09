@@ -391,7 +391,7 @@ model shows logic changes only, and an input can be swapped in place with no for
 | `cost_file` | `cost_table()` | `cost_table.csv` | The first-order tariff loadings and the second-order expense basis **on the same row**, because the difference between them *is* the *Kostenüberschuss*. Ceilings cited [R7] [REG-R16] [R29]; every level **[std]** |
 | `freq_loading_file` | `freq_loading_table()` | `freq_loading_table.csv` | `instalments` and the *Ratenzahlungszuschlag* by frequency. The 2 / 3 / 5 % market convention [R28]; the single values **[std]** |
 | `deckrv_file` | `deckrv_table()` | `deckrv_table.csv` | Both DeckRV ceilings by `issue_year` — § 2's *Höchstrechnungszins* and § 4's *Höchstzillmersatz* — because both are **cohort facts** that travel with the contract [REG-R14] [REG-R15] [REG-R16] |
-| `param_file` | `param_table()` | `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.75, the step from the first-order table to the best estimate, and `unisex_mix_male` 0.5, the male share of the unisex tariff blend, both **[std]**. Added in phase 3, when the factors moved from a Reference on `Projection` into the table the common core reads |
+| `param_file` | `param_table()` | `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.75, the step from the first-order table to the best estimate, and `unisex_mix_male` 0.5, the male share of the unisex tariff blend, both **[std]**. Added in phase 3, when the factors moved from a Reference on `Projection` into the table the common core reads; since then also the four scalars that were References on `Projection`, `suicide_share`, `bfz_min_si`, `term_surr_share` and `bwr_rate`, each with its basis tags in its provenance |
 
 Every file but the model point table carries a per-row `provenance` column, which is this
 library's second ruling and is machine-checked.
@@ -432,23 +432,23 @@ the acquisition cost is spread for the surrender floor — a floor on the *value
 
 ## Modules that are off in the base run
 
-Three constructions are implemented and switched off, so the base run reproduces the worked
-example while the machinery stays visible and testable.
+One construction is implemented and switched off, and two lapse modules are specified and not
+built, so the base run reproduces the worked example; the formulas below are their specification.
 
 | Module | Switch | Off value | What it does |
 |---|---|---|---|
-| Premium-shock lapse | `beta_shock` | `0.0` | `1 + β·max(0, prem_paid_pp(k)/prem_paid_pp(k−1) − 1 − 0.05)`. Inert on a level *Bruttobeitrag*, but live under *Beitragsverrechnung*, where a fall in the declared rate raises the *Zahlbeitrag* |
-| Rate-gap lapse | `lapse_gap_a` | `0.0` | `a·max(0, ref_rate − decl_rate(k) − 0.005)` on `ref_rate = 0.03`, keyed on the gap between the declared rate and what is available elsewhere |
-| *Beteiligung an den Bewertungsreserven* | `bwr_rate` | `0.0` | Adds `bwr_rate × res_guar_pp(n − 1)` to the maturity benefit. § 153 Abs. 3 VVG allocates half the reserves determined on termination [R1], but § 139 VAG permits participation only to the extent they exceed the *Sicherungsbedarf* [R8], and that need has routinely exhausted them |
+| Premium-shock lapse, not built | `beta_shock`, an unread Reference, removed | `0.0` | `1 + β·max(0, prem_paid_pp(k)/prem_paid_pp(k−1) − 1 − 0.05)`. Inert on a level *Bruttobeitrag*, but live under *Beitragsverrechnung*, where a fall in the declared rate raises the *Zahlbeitrag* |
+| Rate-gap lapse, not built | `lapse_gap_a`, an unread Reference, removed | `0.0` | `a·max(0, ref_rate − decl_rate(k) − 0.005)` on `ref_rate = 0.03` (unread too, removed), keyed on the gap between the declared rate and what is available elsewhere |
+| *Beteiligung an den Bewertungsreserven* | `bwr_rate`, a row of `param_tariff_type.csv` | `0.0` | Adds `bwr_rate × res_guar_pp(n − 1)` to the maturity benefit. § 153 Abs. 3 VVG allocates half the reserves determined on termination [R1], but § 139 VAG permits participation only to the extent they exceed the *Sicherungsbedarf* [R8], and that need has routinely exhausted them |
 
-All three enter through **annual** quantities, and both lapse modules move `lapse_rate`, the
+`bwr_rate` enters and the two specified lapse modules would enter through **annual** quantities, and both would move `lapse_rate`, the
 year's rate, rather than `lapse_rate_mth` — a shock to a decrement is a statement about the year
 and the geometric split then carries it into the months on its own.
 
-`term_surr_share = 0` is a fourth switch of the same kind: the accrued
+`term_surr_share = 0`, a row of `param_tariff_type.csv`, is a second shipped switch of the same kind, with `bwr_rate`: the accrued
 *Schlussüberschussanteil* is not paid on surrender in the base run, and raising it is what
 a user who reads a carrier's wording differently would do first. **No German calibration of
-any of these numbers exists in the corpus**, which is why all four ship off.
+any of these numbers exists in the corpus**, which is why both ship off while the two lapse modules are not built.
 
 Also not implemented, and stated rather than left to be discovered: no premium-default path
 (§§ 37 and 38 VVG were never researched, gap 20), no *Widerruf* decrement (§ 152 VVG,
@@ -519,18 +519,18 @@ quantitative parameter is either source-tagged or marked here.
 | `decl_rate` held level | 2,70 % for the whole projection | The **level** is [R26]'s report of Allianz's **2025** declaration for a combined classic life-and-annuity book — no carrier publishes an endowment rate — and holding it level is a modelling choice, not a forecast. `low` and `nil` ship so the sensitivity is exercisable |
 | `term_rate` | 0,40 % p.a. of the *Deckungskapital* | **No terminal-bonus rate of any kind was established, for any insurer, in any year** (gap 1) |
 | `ans_rate` | 2,70 %, equal to `decl_rate` | A market convention. It matters because `ans_rate > rechnungszins` is what produces the maturity/death asymmetry between the two surplus systems [R28] |
-| `term_surr_share`, `bwr_rate` | 0.0 | Not inventing an entitlement the sources do not describe; and the *Sicherungsbedarf* has routinely exhausted the *Bewertungsreserven* [R1] [R8] |
+| `term_surr_share`, `bwr_rate` (rows of `param_tariff_type.csv`) | 0.0 | Not inventing an entitlement the sources do not describe; and the *Sicherungsbedarf* has routinely exhausted the *Bewertungsreserven* [R1] [R8] |
 | `storno_rate` schedule | 10 / 7,5 / 5 / 2,5 % by duration band | Against **three** carrier schedules on three incompatible bases — 0–20 % of the *Deckungskapital* decaying to nil over the last ten years, under collective action and a BGH remittal [S3] [R22] [R30]; 50 € + 0,15 % of premiums × years remaining [S9]; 100 € + 0,2 % of (sum insured − reserve) [S18]. Three figures on three bases are not a market range; a declining percentage of the reserve matches one of the three and is the only shape the model's state variables express |
 | `lapse_rate` schedule | 5 / 3,5 / 2 / 6 / 2,5 %, and **0** in the final year | The **shape** follows the twelve-year tax threshold [R10] [REG-R45]; the **levels** are not sourced (gap 10). The final-year zero is what makes the survivors leave as a maturity |
-| `suicide_share` | 0.02 | § 161 VVG's rule is sourced [R4]; **no source gives a suicide share of deaths at any age** |
-| `bfz_min_si` | 2 500 € | § 165 VVG's test is sourced [R3]; no carrier's *Mindestversicherungsleistung* was located |
+| `suicide_share` (a row of `param_tariff_type.csv`) | 0.02 | § 161 VVG's rule is sourced [R4]; **no source gives a suicide share of deaths at any age** |
+| `bfz_min_si` (a row of `param_tariff_type.csv`) | 2 500 € | § 165 VVG's test is sourced [R3]; no carrier's *Mindestversicherungsleistung* was located |
 | Five-year spreading read as straight-line | `max(0, 1 − k/5)` | § 169 Abs. 3's *gleichmäßige Verteilung* [R2] admits a five-year *Zillmerung* reading too, which gives a slightly lower floor at durations 1–4 and the same value from 5 |
 | *Bilanztermin* → policy-year end | — | Die Bayerische allocates at 31 December [S9]; on a policy-year grid that falls inside a policy year for every contract not written on 1 January. Gothaer instead allocates at the policy's own *Stammtag* [S7] and VPV at the start of the policy year [S18], so the policy-year convention is one of the observed ones. The effect against a calendar-year allocation is a timing shift of up to one year |
 | `zillmer_on = 0` (model point 13) | switch | § 4 DeckRV sets a **ceiling**, not a mandate [R7], but every carrier wording read applies the *Verrechnungsverfahren* at 2,5 % or, pre-2015, 4 % [S7] [S9] [S18]. The un-zillmered point exercises the invariance, not an observed market option |
 | Surplus *Wartezeit* = none | — | The wordings give three answers: none [S9], one year [S18], three years [S7] tariff group A and [S3]. The model takes the shortest |
 | DeckRV split years | 1994 and 2000 take the **higher** rate; 2027+ hold 1,00 % | The published history splits both years mid-year and a year-keyed table cannot [REG-R15], so `check_rechnungszins_cap()` is permissive in exactly those two years |
 | `prem_freq_load` values | 1,000 / 1,020 / 1,030 / 1,050 | The 2 / 3 / 5 % market range is cited [R28]; **no carrier publishes its own scale** |
-| Behaviour modules off | `beta_shock = 0`, `lapse_gap_a = 0` | No German calibration of either exists |
+| Behaviour modules not built | `beta_shock = 0`, `lapse_gap_a = 0`, their specified off values; the unread References removed | No German calibration of either exists |
 | The fourteen model points | — | No entry age, premium level or sum-insured band was established (gap 21); the anchor is a construction from the term band plus the twelve-year tax minimum |
 
 The quantities that are **not** standardizations are the two DeckRV ceilings [R7]

@@ -1252,8 +1252,9 @@ def lapse_tax_step(t):
     7.5 %.  On model point 12 the step never fires, because the projection ends at
     ``t = 143`` and the step year begins at ``t = 144``.
     """
-    step_year = max(13, 62 - issue_age() + 1)
-    return 2.5 if policy_year(t) == step_year else 1.0
+    step_year = max(data.param("tax_step_min_year"),                 # noqa: F821
+                    data.param("tax_step_age") - issue_age() + 1)    # noqa: F821
+    return data.param("tax_step_factor") if policy_year(t) == step_year else 1.0  # noqa: F821
 
 
 def lapse_dyn_add(t):
@@ -1740,7 +1741,7 @@ def irr_ann():
     flows += [(-withdrawals_pp(t), (n - 1 - t) / 12.0) for t in range(t0, n)]
     flows += [(av_pp(t0), (n - t0) / 12.0)]
     target = av_maturity_pp()
-    lo, hi = -0.99, 5.0
+    lo, hi = data.param("irr_lo"), data.param("irr_hi")              # noqa: F821
     for _ in range(200):
         mid = 0.5 * (lo + hi)
         if sum(a * (1.0 + mid) ** m for a, m in flows) - target > 0.0:

@@ -46,6 +46,13 @@
   three References of the lapse modules that were never built, read by no cell, are in
   neither its ``Projection`` nor its parameter files. BU's 11, FRV's 12, Basis' 5,
   Index' 10 and Sofort's 10 likewise; RV and Pflege never had one.
+  Every product's core layer is ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's eleven
+  guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 5 actuarial
+  formula literals (the tax step and the bracket of ``irr_ann``) are rows of its
+  tariff-type file with their literals' types and values; Index' five-year spread and KLV's
+  five-year spread and three-year suicide window likewise. Every other numeric literal of a
+  formula cell of the core and the ten products, but 0, 1, 0.0 and 1.0, is structural and
+  listed for its space in ``STRUCTURAL_LITERALS``, and every listed value occurs there.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -77,6 +84,7 @@
 """
 from __future__ import annotations
 
+import ast
 import hashlib
 import importlib.util
 import io
@@ -1795,6 +1803,21 @@ FRV_MOVED_REFERENCES = {
     "val_tol": 1e-10,
 }
 
+# The 5 actuarial literals FRV's formulas held (``lapse_tax_step``, ``irr_ann``), as written there.
+FRV_MOVED_LITERALS = {
+    "tax_step_min_year": 13,
+    "tax_step_age": 62,
+    "tax_step_factor": 2.5,
+    "irr_lo": -0.99,
+    "irr_hi": 5.0,
+}
+
+# The actuarial literal Index' formulas held (``prem_charge_acq_min_pp``), as written there.
+INDEX_MOVED_LITERALS = {"surr_spread_years": 5}
+
+# The actuarial literals KLV's formulas held (``res_min_pp``, ``benefit_death_pp``), as written.
+KLV_MOVED_LITERALS = {"surr_spread_years": 5.0, "suicide_years": 3}
+
 # The 5 numeric References Basis' ``Projection`` held, as their former Python literals.
 BASIS_MOVED_REFERENCES = {
     "elig_surv_prob": 0.55,
@@ -1902,6 +1925,36 @@ def test_frv_references_are_tariff_type_rows(product_models):
         assert item not in model.Projection.refs, item
 
 
+def test_frv_literals_are_tariff_type_rows(product_models):
+    data = product_models("fondsgebundene_rentenversicherung").Data
+    layer = data.param_layers()["tariff_type"]
+    assert len(FRV_MOVED_LITERALS) == 5
+    for item, literal in FRV_MOVED_LITERALS.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+
+
+def test_index_literals_are_tariff_type_rows(product_models):
+    data = product_models("indexpolice").Data
+    layer = data.param_layers()["tariff_type"]
+    assert len(INDEX_MOVED_LITERALS) == 1
+    for item, literal in INDEX_MOVED_LITERALS.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+
+
+def test_klv_literals_are_tariff_type_rows(product_models):
+    data = product_models("kapitallebensversicherung").Data
+    layer = data.param_layers()["tariff_type"]
+    assert len(KLV_MOVED_LITERALS) == 2
+    for item, literal in KLV_MOVED_LITERALS.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+
+
 def test_basis_references_are_tariff_type_rows(product_models):
     model = product_models("basisrente")
     data = model.Data
@@ -1936,6 +1989,79 @@ def test_sofort_references_are_tariff_type_rows(product_models):
         assert type(value) is type(literal) and value == literal, item
         assert item in layer, item
         assert item not in model.Projection.refs, item
+
+
+# The items of the core file ``core/Core/Data/param_core.csv``, as their former Python literals.
+CORE_ITEMS = {"rate_cap_eps": 1e-12}
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_every_product_reads_the_core_items(product, product_models):
+    core = product_models(product).Data.param_layers()["core"]
+    assert core == CORE_ITEMS
+    assert all(type(core[item]) is type(literal) for item, literal in CORE_ITEMS.items())
+
+
+def test_pflege_guards_read_the_core_epsilon():
+    """Pflege's eleven guards ``1.0 - 1e-12`` read ``1.0 - data.param("rate_cap_eps")``, and
+    no ``1e-12`` literal is left in its formulas (its docstrings still give the value)."""
+    path = PRODUCTS_DIR / "pflegerentenversicherung" / MODELS["pflegerentenversicherung"]
+    text = (path / "Projection" / "__init__.py").read_text(encoding="utf-8")
+    literals = [node for node in ast.walk(ast.parse(text))
+                if isinstance(node, ast.Constant) and type(node.value) is float
+                and node.value == 1e-12]
+    assert literals == []
+    assert text.count('1.0 - data.param("rate_cap_eps")') == 11
+
+
+# The structural numeric literals of the formula cells, by space, as ``repr`` of the value
+# (docs/core.md, "Formula literals"): every other literal of a formula is a parameter row.
+STRUCTURAL_LITERALS = {
+    "core": {"11", "12", "12.0"},
+    "basisrente": {"12", "12.0"},
+    "berufsunfaehigkeit": {"2", "10", "11", "12", "12.0"},
+    "fondsgebundene_rentenversicherung": {"0.5", "3", "6", "12", "12.0", "200", "10000.0"},
+    "indexpolice": {"11", "12", "12.0", "13", "10000.0"},
+    "kapitallebensversicherung": {"11", "12", "12.0"},
+    "klassische_rentenversicherung": {"2", "12", "12.0", "10000.0"},
+    "pflegerentenversicherung": {"2", "3", "4", "5", "6", "12", "12.0", "40", "1000.0"},
+    "riester_rente": {"12", "12.0", "10000.0"},
+    "risikolebensversicherung": {"2", "12", "12.0"},
+    "sofortrente": {"0.5", "2", "4", "12", "12.0"},
+}
+
+
+def _formula_cells(path: Path):
+    """The formula cells of a ``Projection``, as docs/roadmap.md, "The new M", counts them:
+    module-level ``def``s and non-underscore ``name = lambda``, each with its name."""
+    for node in ast.parse(path.read_text(encoding="utf-8")).body:
+        if isinstance(node, ast.FunctionDef):
+            yield node.name, node
+        elif (isinstance(node, ast.Assign) and isinstance(node.value, ast.Lambda)
+              and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+              and not node.targets[0].id.startswith("_")):
+            yield node.targets[0].id, node.value
+
+
+def test_formula_literals_are_listed_as_structural():
+    """Every numeric literal of a formula cell but 0, 1, 0.0 and 1.0, subscripts and
+    ``range(...)`` included, is listed for its space, and every listed value occurs there."""
+    assert sorted(STRUCTURAL_LITERALS) == sorted(["core", *MODELS])
+    paths = {"core": CORE_MODEL / "Projection" / "__init__.py"}
+    paths.update({product: PRODUCTS_DIR / product / model / "Projection" / "__init__.py"
+                  for product, model in MODELS.items()})
+    unlisted, found = [], {}
+    for space, path in paths.items():
+        found[space] = set()
+        for name, cell in _formula_cells(path):
+            for node in ast.walk(cell):
+                if (isinstance(node, ast.Constant) and type(node.value) in (int, float)
+                        and node.value not in (0, 1)):
+                    found[space].add(repr(node.value))
+                    if repr(node.value) not in STRUCTURAL_LITERALS[space]:
+                        unlisted.append(f"{space}: {name} line {node.lineno}: {node.value!r}")
+    assert not unlisted, unlisted
+    assert found == STRUCTURAL_LITERALS
 
 
 # KLV's switches of two lapse modules that were specified and never built, read by no cell.
@@ -1996,6 +2122,7 @@ def test_param_reads_a_core_item_and_a_tariff_item(tmp_path):
     model_dir = folder / MODELS["risikolebensversicherung"]
     core_file = model_dir / "CoreData" / "param_core.csv"
     assert not core_file.is_symlink()
+    shipped = (CORE_MODEL / "Data" / "param_core.csv").read_text(encoding="utf-8")
     _add_params(core_file, {"probe_core": "0.125"})
     _add_params(folder / "param_tariff.csv", {"probe_tariff": "7"})
     copy = mx.read_model(model_dir, name="CoreItemProbe")
@@ -2005,8 +2132,7 @@ def test_param_reads_a_core_item_and_a_tariff_item(tmp_path):
         assert copy.Data.param("roll_fwd_tol") == 1e-10
     finally:
         copy.close()
-    assert (CORE_MODEL / "Data" / "param_core.csv").read_text(encoding="utf-8") \
-        == "item,value,basis,provenance\n"
+    assert (CORE_MODEL / "Data" / "param_core.csv").read_text(encoding="utf-8") == shipped
 
 
 def test_param_rejects_an_unknown_item(product_models):
@@ -2299,8 +2425,8 @@ def test_an_unused_core_item_is_named(tmp_path):
     finally:
         copy.close()
     assert usage.problems == []
-    assert usage.layers["core"] == {"probe_core": 0.125}
-    assert param_usage.unused_core_items([usage]) == ["probe_core"]
+    assert usage.layers["core"] == {**CORE_ITEMS, "probe_core": 0.125}
+    assert param_usage.unused_core_items([usage]) == sorted(["probe_core", *CORE_ITEMS])
 
 
 def test_klv_result_cf_is_the_core_statement_from_t_start(product_models):

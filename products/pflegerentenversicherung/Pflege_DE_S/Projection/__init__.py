@@ -541,7 +541,7 @@ def mort_force(t):
     the cohort that entered it — of the order of ``1e-17`` of the original policy on the
     anchor cell — so the closure identity is exact to far beyond the tolerance.
     """
-    return -math.log(1.0 - min(mort_rate(t), 1.0 - 1e-12))           # noqa: F821
+    return -math.log(1.0 - min(mort_rate(t), 1.0 - data.param("rate_cap_eps")))  # noqa: F821
 
 
 def mort_rate_care(t, g):
@@ -612,7 +612,8 @@ def inc_force_age(x):
     """
     if x >= omega_age() - 1:
         return 0.0
-    return -math.log(1.0 - min(inc_rate(age_month(x)), 1.0 - 1e-12))  # noqa: F821
+    return -math.log(1.0 - min(inc_rate(age_month(x)),               # noqa: F821
+                               1.0 - data.param("rate_cap_eps")))    # noqa: F821
 
 
 def inc_share(g):
@@ -650,7 +651,7 @@ def det_force(x, g):
     q = det_rate(g)
     if q <= 0.0:
         return 0.0
-    return -math.log(1.0 - min(q, 1.0 - 1e-12))                      # noqa: F821
+    return -math.log(1.0 - min(q, 1.0 - data.param("rate_cap_eps")))  # noqa: F821
 
 
 def rec_age_ref():
@@ -700,7 +701,7 @@ def rec_force(x, g):
     q = rec_rate(x, g)
     if q <= 0.0:
         return 0.0
-    return -math.log(1.0 - min(q, 1.0 - 1e-12))                      # noqa: F821
+    return -math.log(1.0 - min(q, 1.0 - data.param("rate_cap_eps")))  # noqa: F821
 
 
 def lapse_factor(t):
@@ -1470,7 +1471,7 @@ def mort_rate_tariff(t):
     margin = act_mort_margin()
     q_m = float(data.mort_table_dict()["mort_rate"][("M", age(t))])  # noqa: F821
     q_f = float(data.mort_table_dict()["mort_rate"][("F", age(t))])  # noqa: F821
-    return min(1.0 - 1e-12, margin * unisex_blend(q_m, q_f))
+    return min(1.0 - data.param("rate_cap_eps"), margin * unisex_blend(q_m, q_f))  # noqa: F821
 
 
 def tar_mort_rate_care(x, g):
@@ -1493,9 +1494,10 @@ def tar_mort_rate_care(x, g):
     mult = float(data.care_table_dict()["mort_mult"][g])             # noqa: F821
     q_m = float(data.mort_table_dict()["mort_rate"][("M", x)])       # noqa: F821
     q_f = float(data.mort_table_dict()["mort_rate"][("F", x)])       # noqa: F821
-    q = min(1.0 - 1e-12, unisex_blend(q_m, q_f))
+    q = min(1.0 - data.param("rate_cap_eps"), unisex_blend(q_m, q_f))  # noqa: F821
     mu = -math.log(1.0 - q)                                          # noqa: F821
-    return min(1.0 - 1e-12, margin * (1.0 - math.exp(-mult * mu)))   # noqa: F821
+    return min(1.0 - data.param("rate_cap_eps"),                     # noqa: F821
+               margin * (1.0 - math.exp(-mult * mu)))                # noqa: F821
 
 
 def tar_inc_rate(x):
@@ -1525,7 +1527,7 @@ def tar_det_rate(g):
     prudence on a schedule whose top steps pay most.  Keyed by the grade alone, since
     neither factor depends on the age or the month.
     """
-    return min(1.0 - 1e-12, det_margin() * det_rate(g))
+    return min(1.0 - data.param("rate_cap_eps"), det_margin() * det_rate(g))  # noqa: F821
 
 
 def tar_rec_rate(x, g):
@@ -1548,11 +1550,12 @@ def tar_p_act(t):
     :func:`check_prem_equiv`, and splitting them would triple the pricing engine's surface
     for no gain.
     """
-    mu_a = -math.log(1.0 - min(mort_rate_tariff(t), 1.0 - 1e-12))    # noqa: F821
+    mu_a = -math.log(1.0 - min(mort_rate_tariff(t), 1.0 - data.param("rate_cap_eps")))  # noqa: F821
     if duration_mth(t) < wartezeit_months() or age(t) >= omega_age() - 1:
         mu_i = 0.0
     else:
-        mu_i = -math.log(1.0 - min(tar_inc_rate(age(t)), 1.0 - 1e-12))  # noqa: F821
+        mu_i = -math.log(1.0 - min(tar_inc_rate(age(t)),             # noqa: F821
+                                   1.0 - data.param("rate_cap_eps")))  # noqa: F821
     total = mu_a + mu_i
     stay = math.exp(-total / 12.0)                                   # noqa: F821
     return (stay, mu_a / total * (1.0 - stay), mu_i / total * (1.0 - stay))
@@ -1569,7 +1572,8 @@ def tar_p_pg(x, g):
     the transitions are evaluated once per age and grade; the tariff ledgers, which run
     by month, read them at ``age(t)``.
     """
-    mu_g = -math.log(1.0 - min(tar_mort_rate_care(x, g), 1.0 - 1e-12))  # noqa: F821
+    mu_g = -math.log(1.0 - min(tar_mort_rate_care(x, g),             # noqa: F821
+                               1.0 - data.param("rate_cap_eps")))    # noqa: F821
     if x >= omega_age() - 1:
         mu_d = 0.0
         mu_r = 0.0

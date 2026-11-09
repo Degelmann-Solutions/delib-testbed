@@ -172,7 +172,7 @@ together with a binding `guar_capital_pp` (13), and a *Rentengarantiezeit* of ze
 
 **One constraint the table must satisfy and the model asserts.** `av_spread_pp` (below) is seeded
 equal to `av_pp_init` on an in-force point, which is exact only once the acquisition charge is
-amortised under both treatments, so every in-force point has `duration_init ≥ alpha_spread_years = 5`
+amortised under both treatments, so every in-force point has `duration_init ≥ surr_spread_years = 5`
 **[std]**. Points 6 and 14 open at durations 20 and 8.
 
 ---
@@ -389,14 +389,14 @@ pitfall 6. `charge_table.csv` is keyed by `(charge_id, item)` so each number car
 
 | Item | `zillmer_25` | `zillmer_40` | Basis |
 |---|---|---|---|
-| `alpha_rate` | 0,025 of the *Beitragssumme* | 0,040 | cap [REG-R16]; use of the cap **[std]** |
-| `alpha_spread_years` | 5 | 5 | § 169 Abs. 3 [REG-R28] |
-| `beta_rate` | 0,040 of each gross premium | 0,040 | **[std]** |
-| `gamma_rate` | 0,0020 p.a. of the *Deckungskapital* | 0,0020 | **[std]** |
-| `gamma_pup_rate` | 0,0030 p.a. while premium-free | 0,0030 | **[std]** |
+| `charge_acq_bsum_once` | 0,025 of the *Beitragssumme* | 0,040 | cap [REG-R16]; use of the cap **[std]** |
+| (not in the table: core item `surr_spread_years`, 5) | — | — | § 169 Abs. 3 [REG-R28] |
+| `charge_admin_prem_inst` | 0,040 of each gross premium | 0,040 | **[std]** |
+| `charge_admin_av_ann` | 0,0020 p.a. of the *Deckungskapital* | 0,0020 | **[std]** |
+| `charge_admin_pup_av_ann` | 0,0030 p.a. while premium-free | 0,0030 | **[std]** |
 | `stornoabzug_rate` | 0,020 of the pre-deduction value | 0,000 | conditions [R1] [REG-R28]; level and flat, duration-free shape **[std]** — observed forms are none [S8] [S9], a flat 250 EUR [S4], or percentages tapering to nil over the last ten years [S11] |
 | `min_annuity_mth` | 30,00 € a month | 30,00 € | § 165 threshold [R2]; level **[std]**, against 25,00 € a month at two carriers [S4] [S9] |
-| `annuity_admin_rate` | 0,015 of each instalment | 0,015 | **[std]**; **recorded, not applied** — see pitfall 12 |
+| (not in the table: no payout administration charge) | — | — | **not applied** — see pitfall 12 |
 
 `prem_freq_table.csv` carries the *Ratenzahlungszuschlag* **[std]** (gap 14): annual 1,000 (1
 instalment), half-yearly 1,020 (2), quarterly 1,030 (4), monthly 1,050 (12). No retrieved wording
@@ -460,7 +460,7 @@ flow in `result_cf()` is EUR for the model point as a whole.
     premiums(t) = P(duration(t)) × l(t)    where prem_due(t), else 0
 
     beitragssumme    = Σ_{u=0..min(prem_term_y, n)−1} P_sched(u)
-    zillmer_amount   = alpha_rate × beitragssumme
+    zillmer_amount   = charge_acq_bsum_once × beitragssumme
 
 `P_sched` is the premium schedule **as written at inception**, ignoring any later
 *Beitragsfreistellung*: § 4 DeckRV takes the *Zillmersatz* on the sum of all premiums payable under
@@ -470,9 +470,9 @@ frequency loading is inside `P`, so it is inside the *Beitragssumme* too.
 ### The premium decomposition
 
     α(k)  = min( P(k), max(0, zillmer_amount − alpha_cum_pp(k)) )        zillmered
-    α̃(k)  = zillmer_amount / alpha_spread_years   for k < 5, else 0      § 169 Abs. 3 [REG-R28]
-    β(k)  = beta_rate × P(k)
-    γ(k)  = (paid_up(k) ? gamma_pup_rate : gamma_rate) × V(k)
+    α̃(k)  = zillmer_amount / surr_spread_years   for k < 5, else 0      § 169 Abs. 3 [REG-R28]
+    β(k)  = charge_admin_prem_inst × P(k)
+    γ(k)  = (paid_up(k) ? charge_admin_pup_av_ann : charge_admin_av_ann) × V(k)
     Ď(k)  = prem_cum_pp(k) + P(k)                     if death_benefit_form = prem_refund
           = V(k)                                      if death_benefit_form = deckungskapital
           = max(of the two)                           if death_benefit_form = max
@@ -557,7 +557,7 @@ If `pup_cashout` is false the contract continues premium-free: `P(k) = 0` from `
 the *Deckungskapital* is **reset to `pup_value_pp`** — the § 165 rule that the paid-up benefit is
 computed on the § 169 Abs. 3–5 value, on the premium basis [R2] [REG-R28] — the *Ansammlungsguthaben*
 is untouched, `Δ` is set to zero because the two accounts have merged, and the reserve-based charge
-switches to `gamma_pup_rate`. **The uplift is real money and it is published**, as
+switches to `charge_admin_pup_av_ann`. **The uplift is real money and it is published**, as
 `pup_uplift(pup_year − 2) = ( pup_value_pp − av_pp_at(pup_year−2,"AFT_INT") ) × l(12(pup_year − 1))`,
 so that the fund-level roll-forward still closes. It is booked in the **transition year**
 `k = pup_year − 2`, because that is the year whose roll-forward needs it: the uplift is the step
@@ -816,7 +816,7 @@ becomes a test in `tests/test_klassische_rentenversicherung_de.py`.
 6. **Booking the *Kostenbeitrag* as an expense.** The charges are internal deductions that move money
    inside the contract; `expenses` is the insurer's best-estimate outgo. Assert
    `expenses(t) ≠ charge_due_pp(duration(t)) × pols_if(t)` and that `expenses(t)` is invariant to
-   `beta_rate` and `gamma_rate`, while `av_pp(k+1)` is not. Double-counting them inflates outgo by
+   `charge_admin_prem_inst` and `charge_admin_av_ann`, while `av_pp(k+1)` is not. Double-counting them inflates outgo by
    the whole charge load and is the commonest way to make a German model look conservative.
 7. **Computing the surrender value off the zillmered reserve.** § 169 Abs. 3 floors it at the reserve
    with acquisition costs spread evenly over the first five contract years [REG-R28]. Assert
@@ -852,8 +852,8 @@ becomes a test in `tests/test_klassische_rentenversicherung_de.py`.
     itself rises monotonically, from 4,37 € to 15,39 €, because first-order mortality more than
     triples over the deferment while the amount at risk moves by a third.
 12. **Deducting the payout-phase administration charge from the annuity.** The *Rentenfaktor* is
-    exogenous here and already carries the tariff's payout loading, so `annuity_admin_rate` is
-    recorded in `charge_table.csv` and **not applied**. Assert
+    exogenous here and already carries the tariff's payout loading, so no such charge is
+    held in `charge_table.csv` or **applied**. Assert
     `annuity_payments(t) = (G + U(duration(t))) × pols_annuity(t)` exactly, with no charge term, and
     that the model's payout-phase `expenses` are a twelfth of the inflated per-policy
     `expense_annuity_pp_ann` on the exposed count plus the `expense_claim_pp_once` settlement cost of that
@@ -952,10 +952,10 @@ and `proj_len() = 852`, so the frame is `t = 0 … 851`: the accumulation phase 
 survivor-weighted annuity runs from `t = 324` to `t = 851`.
 
 **Assumptions, each tagged.** *Contractual and cited:* the *Rechnungszins* `i = 1,00 % p.a.`
-[REG-R15]; the *Höchstzillmersatz* `alpha_rate = 25 ‰` of the *Beitragssumme* [REG-R16], giving
+[REG-R15]; the *Höchstzillmersatz* `charge_acq_bsum_once = 25 ‰` of the *Beitragssumme* [REG-R16], giving
 `beitragssumme = 17 × 3 000,00 = 51 000,00 €` and `zillmer_amount = 1 275,00 €`, zillmered — taken
 in full from the first year's premium and nil thereafter; the § 169 Abs. 3 five-year spread,
-`alpha_spread_years = 5`, giving `α̃(k) = 255,00 €` for `k = 0 … 4` [REG-R28]; the § 165
+`surr_spread_years = 5`, giving `α̃(k) = 255,00 €` for `k = 0 … 4` [REG-R28]; the § 165
 *Mindestversicherungsleistung* test, not triggered on this cell [R2]; the death benefit
 *Beitragsrückgewähr*, the premiums paid to date, premiums only [S1] [R24]; the conversion rule
 `monthly annuity = capital / 10 000 × Rentenfaktor` [R24]; and the applied factor
@@ -967,10 +967,10 @@ itself credited at the full 2,55 % **[std]**; the *Bewertungsreserven* crystalli
 *aktueller Rentenfaktor* at age 67 on the `base` path, `32,00 €` per month per 10 000 € **[std]**,
 which exceeds the guaranteed `28,00 €` and therefore wins the `max()`; and the *Überschussrente*
 under the `konstant` system, `sur_ann_rate = 12 %` of the *garantierte Rente*, level **[std]**.
-*Charges (all levels [std]):* `beta_rate = 4,0 %` of each gross premium; `gamma_rate = 0,20 % p.a.`
+*Charges (all levels [std]):* `charge_admin_prem_inst = 4,0 %` of each gross premium; `charge_admin_av_ann = 0,20 % p.a.`
 of the *Deckungskapital*; the *Risikobeitrag* `ρ(k) = mort_rate_tariff(12k) × max(0, prem_cum_pp(k) +
 prem_pp(k) − av_pp(k))`; `stornoabzug_rate = 2,0 %` of the pre-deduction value, subject to the
-§ 169 Abs. 3 floor [R1] [REG-R28]; `annuity_admin_rate = 1,5 %`, recorded and **not applied**
+§ 169 Abs. 3 floor [R1] [REG-R28]; no payout-phase administration charge, **not applied**
 (pitfall 12). *Behavioural and experience (all [std]):* first-order mortality from the shipped
 generational proxy, `mort_rate_tariff(t) = q_base(M, x(t)) × (1 − improve(x(t)))^(τ(t) − 2005)`,
 annual and flat across a policy year, with
@@ -1325,7 +1325,7 @@ In rough order of leverage on a German deferred-annuity block.
 5. **The *Kapitalwahlrecht* take-up rate.** At 30 % it removes nearly a third of the annuity block at
    `t = 16` and replaces it with a single payment. It is a pure [std] with no evidence (gap 20), and
    it substitutes for a tax comparison the model does not perform [R6] [REG-R45].
-6. **The charge set, and the § 169 Abs. 3 floor it collides with.** `alpha_rate` at the statutory
+6. **The charge set, and the § 169 Abs. 3 floor it collides with.** `charge_acq_bsum_once` at the statutory
    ceiling makes the year-one *Sparbeitrag* small and the early *Deckungskapital* correspondingly
    thin, but the floor then reverses most of that for surrender purposes [REG-R16] [REG-R28], so the
    two parameters must be moved together.

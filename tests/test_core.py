@@ -1646,7 +1646,7 @@ ROLL_FWD_TOL = {
     "kapitallebensversicherung": 1e-08,
     "klassische_rentenversicherung": 1e-08,
     "pflegerentenversicherung": 1e-08,
-    "riester_rente": 1e-09,
+    "riester_rente": 1e-08,
     "risikolebensversicherung": 1e-10,
     "sofortrente": 1e-08,
 }
@@ -1774,7 +1774,7 @@ EMPTY_BASIS = {
     "kapitallebensversicherung": set(),
     "klassische_rentenversicherung": set(),
     "pflegerentenversicherung": set(),
-    "riester_rente": {"check_tol"},
+    "riester_rente": set(),
     "risikolebensversicherung": {"check_tol", "val_tol"},
     "sofortrente": set(),
 }

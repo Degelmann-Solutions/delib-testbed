@@ -141,12 +141,12 @@ ruling, asserted by the conventions suite.
 | `charge_table.csv` | `tariff_id` | `zill_rate`, `alpha_zuz_rate`, `beta_prem`, `gamma_av`, `unit_cost_pp`, `terminal_bonus_rate`, `acq_expense_pp`, `comm_init_rate`, `comm_renew_rate`, `maint_expense_pp`, `annuity_admin_pp`, `expense_infl` | One row per tariff: the charge scale and the insurer's own expense and commission scale |
 | `behaviour_table.csv` | `beh_table_id`, `dur` | `bf_rate`, `zuz_take_up` | The two behavioural assumptions that vary by policy duration: the *Beitragsfreistellung* rate and the *Zuzahlung* take-up. **`dur` is the policy year, `duration(t) + 1`**, so "durations 1–5" below reads off the file directly |
 | `option_table.csv` | `option_id`, `option_key` | `factor` | One multiplicative factor per contractual option: `prem_mode` → the *Ratenzahlungszuschlag* on the premium; `guarantee_period` and `survivor` → the reduction in the *Rentenfaktor* |
-| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`) | The scalar tariff parameters, read by the common core's loader; added in phase 3 |
+| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`, `roll_fwd_tol`, `elig_surv_prob`, `mort_base_year`, `zill_spread_y`, `rf_unit`, `ann_freq`) | The scalar tariff parameters, read by the common core's loader; added in phase 3 |
 
-Scalar assumptions that are single numbers rather than tables are `Projection` References and are
-tagged in *Assumption inputs* below: `elig_surv_prob`, `mort_base_year`,
-`zill_spread_y`, `rf_unit`, `ann_freq`. The exceptions are `mort_be_factor` and `roll_fwd_tol`, rows
-of `param_tariff_type.csv` since phase 3, read by the common core's loader.
+Scalar assumptions that are single numbers rather than tables are rows of `param_tariff_type.csv`
+since phase 3, read by the common core's loader, and are tagged in *Assumption inputs* below:
+`elig_surv_prob`, `mort_base_year`, `zill_spread_y`, `rf_unit`, `ann_freq`, beside
+`mort_be_factor` and `roll_fwd_tol`; each was a `Projection` Reference before.
 
 ---
 

@@ -676,9 +676,9 @@ def alpha_amort_pp(k):
         return 0.0
     if int(model_point()["paidup_at_init"]) == 1:
         return 0.0
-    if duration_y(k) >= zill_spread_y:                                 # noqa: F821
+    if duration_y(k) >= data.param("zill_spread_y"):                   # noqa: F821
         return 0.0
-    return zillmer_amount() / zill_spread_y                          # noqa: F821
+    return zillmer_amount() / data.param("zill_spread_y")            # noqa: F821
 
 
 def alpha_zuz_pp(k):
@@ -830,7 +830,7 @@ def mort_rate_at_age(x, y):
     """
     table = data.mort_table_dict()                                   # noqa: F821
     rate = (float(table["qx"][x])
-            * (1.0 - float(table["trend"][x])) ** (y - mort_base_year))   # noqa: F821
+            * (1.0 - float(table["trend"][x])) ** (y - data.param("mort_base_year")))  # noqa: F821
     return min(max(rate, 0.0), 1.0)
 
 
@@ -1105,7 +1105,7 @@ def pols_gtd(t):
         return 0.0
     if t == start:
         return 0.0
-    return pols_gtd(t - 1) + pols_death(t - 1) * elig_surv_prob      # noqa: F821
+    return pols_gtd(t - 1) + pols_death(t - 1) * data.param("elig_surv_prob")  # noqa: F821
 
 
 def decl_rate(k):
@@ -1415,8 +1415,8 @@ def ann_pp(k):
             return float(model_point()["ann_pp_init"])
         if pols_if(max(0, t_conv())) <= 0.0:
             return 0.0
-        return (fund_at_conv() / pols_if(max(0, t_conv())) / rf_unit  # noqa: F821
-                * rentenfaktor_applied() * ann_freq)                 # noqa: F821
+        return (fund_at_conv() / pols_if(max(0, t_conv())) / data.param("rf_unit")  # noqa: F821
+                * rentenfaktor_applied() * data.param("ann_freq"))   # noqa: F821
     return ann_pp(k - 1) * (1.0 + ann_bonus_rate(k - 1))
 
 
@@ -1444,7 +1444,7 @@ def ann_mth_pp(t):
         return 0.0
     if t < max(0, t_conv()):
         return 0.0
-    return ann_pp(proj_year(t)) / ann_freq                           # noqa: F821
+    return ann_pp(proj_year(t)) / data.param("ann_freq")             # noqa: F821
 
 
 def db_pp(k):
@@ -1527,7 +1527,7 @@ def claims(t, kind=None):
         if t < 0 or t >= t_conv() or t >= proj_len():
             return 0.0
         k = proj_year(t)
-        return elig_surv_prob * (                                    # noqa: F821
+        return data.param("elig_surv_prob") * (                      # noqa: F821
             db_pp(k) * pols_death_paying(t) + db_pu_pp(k) * pols_death_paidup(t))
     if kind == "ANNUITY":
         if t < max(0, t_conv()) or t >= proj_len():
@@ -1784,8 +1784,8 @@ def check_conversion_resid(k):
         return 0.0
     if rentenfaktor_applied() <= 0.0:
         return 0.0
-    return (ann_pp(k) * pols_if(max(0, t_conv())) * rf_unit           # noqa: F821
-            / (rentenfaktor_applied() * ann_freq)                    # noqa: F821
+    return (ann_pp(k) * pols_if(max(0, t_conv())) * data.param("rf_unit")  # noqa: F821
+            / (rentenfaktor_applied() * data.param("ann_freq"))      # noqa: F821
             - fund_at_conv())
 
 
@@ -1862,7 +1862,7 @@ def check_annuity_roll_fwd_resid(k):
         if k < start or t > gtd_end_t():
             resid += abs(pols_gtd(t))
         if k >= start:
-            resid += abs(ann_freq * ann_mth_pp(t) - ann_pp(k))       # noqa: F821
+            resid += abs(data.param("ann_freq") * ann_mth_pp(t) - ann_pp(k))  # noqa: F821
     return resid
 
 
@@ -2011,16 +2011,6 @@ def result_pols():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-elig_surv_prob = 0.55
-
-mort_base_year = 2005
-
-zill_spread_y = 5
-
-rf_unit = 10000.0
-
-ann_freq = 12
 
 
 pd = ("Module", "pandas")

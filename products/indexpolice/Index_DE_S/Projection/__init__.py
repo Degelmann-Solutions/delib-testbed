@@ -456,10 +456,11 @@ def prem_charge_acq_pp(k):
     """
     if k < k_start() or k >= proj_len_y():
         return 0.0
-    charge = min(acq_cost_rate, zill_cap_rate) * prem_sum()          # noqa: F821
+    charge = min(data.param("acq_cost_rate"),                         # noqa: F821
+                 data.param("zill_cap_rate")) * prem_sum()            # noqa: F821
     if prem_form() == "single":
         return charge if k == k_start() else 0.0
-    spread = min(zill_years, prem_term_y())                          # noqa: F821
+    spread = min(data.param("zill_years"), prem_term_y())            # noqa: F821
     return charge / spread if k < spread else 0.0
 
 
@@ -478,7 +479,8 @@ def prem_charge_acq_min_pp(k):
     """
     if k < k_start() or k >= proj_len_y():
         return 0.0
-    charge = min(acq_cost_rate, zill_cap_rate) * prem_sum()          # noqa: F821
+    charge = min(data.param("acq_cost_rate"),                         # noqa: F821
+                 data.param("zill_cap_rate")) * prem_sum()            # noqa: F821
     if prem_form() == "single":
         return charge if k == k_start() else 0.0
     spread = min(5, prem_term_y())
@@ -491,7 +493,7 @@ def prem_charge_adm_pp(k):
     *Verwaltungskosten* taken as the premium is credited.  **[std]**: no German insurer
     publishes a charge level for this product.
     """
-    return exp_prem_rate * prem_gross_pp(k)                          # noqa: F821
+    return data.param("exp_prem_rate") * prem_gross_pp(k)            # noqa: F821
 
 
 def prem_to_av_pp(k):
@@ -907,7 +909,7 @@ def av_charge_pp(k):
     from the account rather than from the premium.  A **charge**, not an expense: it
     reduces the policyholder's *Deckungskapital* and does not appear in ``net_cf``.
     """
-    return exp_av_rate * av_pp_at(k, "AFT_PREM")                     # noqa: F821
+    return data.param("exp_av_rate") * av_pp_at(k, "AFT_PREM")       # noqa: F821
 
 
 def av_charge(k):
@@ -1016,7 +1018,7 @@ def av_min_pp_at(k, timing):
         return (av_min_pp(k) + prem_gross_pp(k) - prem_charge_acq_min_pp(k)
                 - prem_charge_adm_pp(k))
     if timing == "AFT_CHARGE":
-        return av_min_pp_at(k, "AFT_PREM") * (1.0 - exp_av_rate)     # noqa: F821
+        return av_min_pp_at(k, "AFT_PREM") * (1.0 - data.param("exp_av_rate"))  # noqa: F821
     if timing == "AFT_GUAR":
         return av_min_pp_at(k, "AFT_CHARGE") * (1.0 + rechnungszins())
     if timing == "AFT_CREDIT":
@@ -1201,7 +1203,7 @@ def surr_charge_pp(k):
     research was a 5 % base deduction plus a capital-market-dependent component, and the
     observed band runs from 0 % to 20 %, so 2 % is a deliberately mild **[std]**.
     """
-    return (storno_rate * surr_charge_on()                           # noqa: F821
+    return (data.param("storno_rate") * surr_charge_on()             # noqa: F821
             * max(av_pp_at(k, "AFT_GUAR"), min_surr_pp(k)))
 
 
@@ -1288,7 +1290,7 @@ def rentenfaktor():
     rule of the German deferred annuity.  The two are set equal in the base run **[std]**
     so that the max-of-two rule is exercised by a test rather than by the base path.
     """
-    return max(rentenfaktor_guar, rentenfaktor_curr)                 # noqa: F821
+    return max(data.param("rentenfaktor_guar"), data.param("rentenfaktor_curr"))  # noqa: F821
 
 
 def ann_monthly_pp():
@@ -1323,7 +1325,7 @@ def exp_acq_pp(t):
     """
     if t != t_start() or duration_init() != 0:
         return 0.0
-    return acq_expense_rate * prem_sum()                             # noqa: F821
+    return data.param("acq_expense_rate") * prem_sum()               # noqa: F821
 
 
 def exp_maint_pp(k):
@@ -1335,7 +1337,7 @@ def exp_maint_pp(k):
     amount; :func:`expenses` charges a twelfth of it each month, and the inflation factor
     steps on the anniversary because it compounds in policy years.
     """
-    return exp_fixed_pp * inflation_factor(12 * k)                   # noqa: F821
+    return data.param("exp_fixed_pp") * inflation_factor(12 * k)     # noqa: F821
 
 
 def expenses_maint(t):
@@ -1639,26 +1641,6 @@ def result_index():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-acq_cost_rate = 0.025
-
-acq_expense_rate = 0.025
-
-zill_years = 5
-
-zill_cap_rate = 0.025
-
-exp_prem_rate = 0.03
-
-exp_av_rate = 0.0025
-
-exp_fixed_pp = 36.0
-
-storno_rate = 0.02
-
-rentenfaktor_guar = 25.0
-
-rentenfaktor_curr = 25.0
 
 
 pd = ("Module", "pandas")

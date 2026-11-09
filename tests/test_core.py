@@ -44,7 +44,8 @@
   ``Projection``. RLV's 17 likewise, and its premium-shock test switches the module on
   through a row of a scratch copy's tariff-type file. KLV's 4 read ones likewise; its
   three References of the lapse modules that were never built, read by no cell, are in
-  neither its ``Projection`` nor its parameter files. BU's 11 and FRV's 12 likewise.
+  neither its ``Projection`` nor its parameter files. BU's 11, FRV's 12, Basis' 5,
+  Index' 10 and Sofort's 10 likewise; RV and Pflege never had one.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -1794,10 +1795,50 @@ FRV_MOVED_REFERENCES = {
     "val_tol": 1e-10,
 }
 
-# The products whose numeric References have all moved into their parameter files.
+# The 5 numeric References Basis' ``Projection`` held, as their former Python literals.
+BASIS_MOVED_REFERENCES = {
+    "elig_surv_prob": 0.55,
+    "mort_base_year": 2005,
+    "zill_spread_y": 5,
+    "rf_unit": 10000.0,
+    "ann_freq": 12,
+}
+
+# The 10 numeric References Index' ``Projection`` held, as their former Python literals.
+INDEX_MOVED_REFERENCES = {
+    "acq_cost_rate": 0.025,
+    "acq_expense_rate": 0.025,
+    "zill_years": 5,
+    "zill_cap_rate": 0.025,
+    "exp_prem_rate": 0.03,
+    "exp_av_rate": 0.0025,
+    "exp_fixed_pp": 36.0,
+    "storno_rate": 0.02,
+    "rentenfaktor_guar": 25.0,
+    "rentenfaktor_curr": 25.0,
+}
+
+# The 10 numeric References Sofort's ``Projection`` held, as their former Python literals.
+SOFORT_MOVED_REFERENCES = {
+    "expense_load_alpha": 0.025,
+    "expense_load_beta": 0.02,
+    "expense_acq_rate": 0.02,
+    "expense_acq_fixed": 200.0,
+    "expense_maint_pp": 60.0,
+    "expense_pay_pp": 1.5,
+    "mix_male": 0.45,
+    "mort_base_year": 2025,
+    "solve_tol": 1e-10,
+    "solve_max_iter": 200,
+}
+
+# The products whose numeric References have all moved into their parameter files: all ten,
+# RV and Pflege having never had one.
 REFERENCES_MOVED = (
     "riester_rente", "risikolebensversicherung", "kapitallebensversicherung",
-    "berufsunfaehigkeit", "fondsgebundene_rentenversicherung",
+    "berufsunfaehigkeit", "fondsgebundene_rentenversicherung", "basisrente",
+    "indexpolice", "sofortrente", "klassische_rentenversicherung",
+    "pflegerentenversicherung",
 )
 
 
@@ -1855,6 +1896,42 @@ def test_frv_references_are_tariff_type_rows(product_models):
     layer = data.param_layers()["tariff_type"]
     assert len(FRV_MOVED_REFERENCES) == 12
     for item, literal in FRV_MOVED_REFERENCES.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+        assert item not in model.Projection.refs, item
+
+
+def test_basis_references_are_tariff_type_rows(product_models):
+    model = product_models("basisrente")
+    data = model.Data
+    layer = data.param_layers()["tariff_type"]
+    assert len(BASIS_MOVED_REFERENCES) == 5
+    for item, literal in BASIS_MOVED_REFERENCES.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+        assert item not in model.Projection.refs, item
+
+
+def test_index_references_are_tariff_type_rows(product_models):
+    model = product_models("indexpolice")
+    data = model.Data
+    layer = data.param_layers()["tariff_type"]
+    assert len(INDEX_MOVED_REFERENCES) == 10
+    for item, literal in INDEX_MOVED_REFERENCES.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+        assert item not in model.Projection.refs, item
+
+
+def test_sofort_references_are_tariff_type_rows(product_models):
+    model = product_models("sofortrente")
+    data = model.Data
+    layer = data.param_layers()["tariff_type"]
+    assert len(SOFORT_MOVED_REFERENCES) == 10
+    for item, literal in SOFORT_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
         assert item in layer, item

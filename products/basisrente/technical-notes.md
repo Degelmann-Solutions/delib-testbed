@@ -138,7 +138,7 @@ ruling, asserted by the conventions suite.
 | `mort_table.csv` | `age` | `qx`, `trend` | The **[std]** DAV 2004 R-shaped **first-order** proxy: `qx` at the base calendar year and the annual improvement `trend` that makes it generational |
 | `surplus_table.csv` | `scenario_id`, `t` | `decl_rate`, `ann_bonus_rate` | The declared *laufende Verzinsung* in the *Aufschubphase* and the *Überschussrente* uplift in the *Rentenphase*, by scenario and projection year |
 | `rentenfaktor_table.csv` | `rf_scenario_id`, `age` | `rf_curr` | The insurer's *aktueller Rentenfaktor* at each conversion age, by scenario |
-| `charge_table.csv` | `tariff_id` | `zill_rate`, `alpha_zuz_rate`, `beta_prem`, `gamma_av`, `unit_cost_pp`, `terminal_bonus_rate`, `acq_expense_pp`, `comm_init_rate`, `comm_renew_rate`, `maint_expense_pp`, `annuity_admin_pp`, `expense_infl` | One row per tariff: the charge scale and the insurer's own expense and commission scale |
+| `charge_table.csv` | `tariff_id` | `charge_acq_bsum_once`, `charge_acq_sp_once`, `charge_admin_prem_inst`, `charge_admin_av_ann`, `charge_admin_pp_ann`, `terminal_bonus_rate`, `expense_acq_pp_once`, `comm_acq_bsum_once`, `comm_renew_prem_inst`, `expense_admin_pp_ann`, `expense_annuity_pp_ann`, `expense_infl` | One row per tariff: the charge scale and the insurer's own expense and commission scale |
 | `behaviour_table.csv` | `beh_table_id`, `dur` | `bf_rate`, `zuz_take_up` | The two behavioural assumptions that vary by policy duration: the *Beitragsfreistellung* rate and the *Zuzahlung* take-up. **`dur` is the policy year, `duration(t) + 1`**, so "durations 1–5" below reads off the file directly |
 | `prem_freq_table.csv` | `prem_freq` | `instalments`, `prem_freq_load` | The premium payment frequencies: the instalments a year and the *Ratenzahlungszuschlag* on the *laufender Beitrag* |
 | `option_table.csv` | `option_id`, `option_key` | `factor` | One multiplicative factor per contractual option: `guarantee_period` and `survivor` → the reduction in the *Rentenfaktor* |
@@ -270,7 +270,7 @@ class (c) is the modeller's view of experience.
 | BUZ premium share | Supplementary covers strictly **below 50 %** of the total contribution | **not [R1]** — the statute requires only that the cover be *ergänzend*. The 50 % test is BMF-Schreiben v. 24.05.2017 Rz. 38, measured on the actual total premium payable [R18], and is a contract term in the GDV BUZ model conditions § 9 Abs. 2 [S12] |
 | Conversion rule | `ann_pp = fund / 10 000 × max(rentenfaktor_gtd, rf_curr) × 12`, reduced by the option factors | [R17] [S1] |
 | *Rechnungszins* (`rechnungszins`) | The cohort's *Höchstrechnungszins*: 1,00 % from 1 January 2025; 0,25 % 2022–2024; 0,90 % 2017–2021; 1,25 % 2015–2016; 1,75 % 2012–2014; 2,25 % 2007–2011; 2,75 % 2004–2006. **Fixed at conclusion for the whole term** | [R16] [REG-R14] [REG-R15] |
-| *Höchstzillmersatz* (`zill_rate`) | **25 ‰ of the *Beitragssumme***, from 1 January 2015 (40 ‰ before) | [R16] [REG-R16] [REG-R20] |
+| *Höchstzillmersatz* (`charge_acq_bsum_once`) | **25 ‰ of the *Beitragssumme***, from 1 January 2015 (40 ‰ before) | [R16] [REG-R16] [REG-R20] |
 | *Überschussbeteiligung* entitlement | Statutory, on the same terms as any German life contract; MindZV floor 90 % / 90 % / 50 % | [R15] [REG-R24] [REG-R18] |
 | Mortality basis | **DAV 2004 R**, generational; first order for pricing and the guaranteed *Rentenfaktor*, second order for the best estimate. **Not public, not redistributed** | [R17] [REG-R47] [REG-R49] |
 | Unisex | Mandatory from 21 December 2012; `sex` is reporting only | [REG-R34] |
@@ -286,8 +286,8 @@ class (c) is the modeller's view of experience.
 | *Aktueller Rentenfaktor* `rf_curr(age)` | **31,50 €** at age 67 in scenario `base`; scenario `low` runs about 12 % below it | **[std]** (v) |
 | *Verwaltungskosten* β on premium | **7,5 %** of each *laufender Beitrag* and *Zuzahlung* | **[std]**; band 5 %–10 %, product-spec |
 | *Verwaltungskosten* γ on the reserve | **0,35 %** p.a. of the *Deckungskapital* | **[std]**; band 0,2 %–0,6 % |
-| *Stückkosten* `unit_cost_pp` | **36,00 €** per policy p.a., inflating at `expense_infl` | **[std]** |
-| Acquisition charge on a *Zuzahlung* `alpha_zuz_rate` | **2,5 %** of each *Zuzahlung*, charged in the year it is paid | **[std]**; gap 8 |
+| *Stückkosten* `charge_admin_pp_ann` | **36,00 €** per policy p.a., inflating at `expense_infl` | **[std]** |
+| Acquisition charge on a *Zuzahlung* `charge_acq_sp_once` | **2,5 %** of each *Zuzahlung*, charged in the year it is paid | **[std]**; gap 8 |
 | *Ratenzahlungszuschlag* | 1,000 annual · 1,020 half-yearly · 1,030 quarterly · 1,050 monthly, on the *laufender Beitrag* only | **[std]**; market convention |
 | Option cost on the *Rentenfaktor* | `guarantee_period` 0 → 1,000; 10 → 0,995; 20 → 0,974. `survivor` 0,00 → 1,000; 0,60 → 0,930 | **[std]** (vi) |
 
@@ -325,11 +325,11 @@ best-estimate factor for a Basisrente, and the research file records the absence
 | *Beitragsfreistellung* rate `bf_rate(dur)` | **4,0 %** at durations 1–5, **3,0 %** at 6–10, **2,0 %** at 11+ | Higher than a Schicht-3 lapse rate early — the buyer's income is volatile by construction and going premium-free is free of penalty and reversible — and lower late, because there is no realisable value to tempt anyone out. That **shape** is argued in `product-spec.md`; the levels are invented |
 | *Zuzahlung* take-up `zuz_take_up(dur)` | **0.70** at durations 1–5, **0.85** at 6–15, **0.90** at 16+ | The *Zuzahlung* is paid out of a profit not known until the year end, so it is behavioural, not contractual. Rising with duration because the contract and the habit bed in |
 | Eligible-survivor probability `elig_surv_prob` | **0.55** | The probability that a spouse or registered partner, or a *Kindergeld*-eligible child, exists at the moment of death [R1]. On a contract taken at 45 and running to 67 the child channel has usually closed, so this is in substance a marriage-survival probability. **One of the most consequential [std] numbers in the whole delib library** |
-| Acquisition expense `acq_expense_pp` | **250,00 €** at inception | Round-number placeholder |
-| Initial commission `comm_init_rate` | **2,5 % of `beitragssumme`**, paid at inception | Sized to the *Zillmerung* cap [R16], the German design in which what the insurer pays out is what it may write into the reserve. **A carrier's published figure now matches it exactly**: NÜRNBERGER's *Muster*-PIB puts *Abschluss- und Vertriebskosten* at "*2,50 % der vereinbarten Beiträge*", 900,00 € on a 36 000 € *Beitragssumme* [S13] — that is the cost, not the commission, but on the German design they are the same lever. [S2]'s 1 575 € specimen *Abschlussprovision* stays [unverified] |
-| Renewal commission `comm_renew_rate` | **1,5 %** of premiums plus *Zuzahlungen* from year 2 | Market convention; no level established |
-| Maintenance expense `maint_expense_pp` | **60,00 €** per in-force policy p.a., inflating | Placeholder |
-| Annuity administration `annuity_admin_pp` | **36,00 €** per annuitant p.a., inflating | Placeholder; the payout phase is administratively cheaper than the accumulation phase |
+| Acquisition expense `expense_acq_pp_once` | **250,00 €** at inception | Round-number placeholder |
+| Initial commission `comm_acq_bsum_once` | **2,5 % of `beitragssumme`**, paid at inception | Sized to the *Zillmerung* cap [R16], the German design in which what the insurer pays out is what it may write into the reserve. **A carrier's published figure now matches it exactly**: NÜRNBERGER's *Muster*-PIB puts *Abschluss- und Vertriebskosten* at "*2,50 % der vereinbarten Beiträge*", 900,00 € on a 36 000 € *Beitragssumme* [S13] — that is the cost, not the commission, but on the German design they are the same lever. [S2]'s 1 575 € specimen *Abschlussprovision* stays [unverified] |
+| Renewal commission `comm_renew_prem_inst` | **1,5 %** of premiums plus *Zuzahlungen* from year 2 | Market convention; no level established |
+| Maintenance expense `expense_admin_pp_ann` | **60,00 €** per in-force policy p.a., inflating | Placeholder |
+| Annuity administration `expense_annuity_pp_ann` | **36,00 €** per annuitant p.a., inflating | Placeholder; the payout phase is administratively cheaper than the accumulation phase |
 | Expense inflation `expense_infl` | **1,5 %** p.a. | Placeholder |
 | *Zillmerung* spread `acq_spread_years` | **5** years | **Cited, not [std] — gap 8 is closed.** The AltZertG's own five-year rule (§ 1 Abs. 1 Satz 1 Nr. 8) sits in the *Altersvorsorgevertrag* definition and § 5a does not import it [R10]; but **VVG § 165 Abs. 2** computes the premium-free benefit on the *Rückkaufswert* of § 169 Abs. 3, whose floor is the reserve "*bei gleichmäßiger Verteilung der angesetzten Abschluss- und Vertriebskosten auf die ersten fünf Vertragsjahre*" [R14] — and a *Beitragsfreistellung* is the only exit this product has. Two retrieved wordings state it directly: GDV model conditions § 10 Abs. 1 (with the shorter premium term as the alternative) and CosmosDirekt LA 1079 A § 8 Abs. 1 [S12] [S1] |
 
@@ -359,7 +359,7 @@ surrender, no assignment, no provider transfer, no commutation. That is the prod
 | `P(k)`, `Z(k)` | `prem_pp(k)`, `zuz_pp(k)` | the *laufender Beitrag* charged and the *Zuzahlung* paid, per paying policy, per year |
 | `P₀`, `δ`, `φ` | `prem_base_pp`, `prem_dyn_rate`, `prem_freq_load()` | base premium at inception, *Beitragsdynamik*, *Ratenzahlungszuschlag* |
 | `S` | `beitragssumme()` | the *Beitragssumme* at inception |
-| `α`, `α_z`, `β`, `γ`, `u(k)` | `alpha_amort_pp(k)`, `alpha_zuz_pp(k)`, `beta_prem`, `gamma_av`, `unit_cost_pp(k)` | the four charges struck against the account, all annual |
+| `α`, `α_z`, `β`, `γ`, `u(k)` | `alpha_amort_pp(k)`, `alpha_zuz_pp(k)`, `charge_admin_prem_inst`, `charge_admin_av_ann`, `unit_cost_pp(k)` | the four charges struck against the account, all annual |
 | `N(k)` | `prem_to_av_pp(k)` | premium credited to the account after all four charges |
 | `i(k)` | `cred_rate(k)` | credited rate, `max(rechnungszins, decl_rate(k))` |
 | `σ` | `terminal_bonus_rate` | *Schlussüberschussanteil* rate at *Rentenbeginn* |
@@ -434,16 +434,16 @@ S = Σ_{u=0}^{m−1} prem_base_pp × (1 + δ)^u          for prem_form = "regula
   = prem_base_pp                                    for prem_form = "single"
 ```
 
-The zillmerised acquisition charge is capped at `zill_rate × S` and amortised in `acq_spread_years`
+The zillmerised acquisition charge is capped at `charge_acq_bsum_once × S` and amortised in `acq_spread_years`
 equal instalments over the first premium-paying years of the **contract**, not of the projection —
 so an in-force point that is past duration 5 sees none of it:
 
 ```
-zillmer_amount = zill_rate × S
+zillmer_amount = charge_acq_bsum_once × S
 α(k)           = zillmer_amount / acq_spread_years     if d(k) < acq_spread_years and premiums are due
                = 0                                  otherwise
-α_z(k)         = alpha_zuz_rate × Z(k)
-u(k)           = unit_cost_pp × (1 + expense_infl)^k
+α_z(k)         = charge_acq_sp_once × Z(k)
+u(k)           = charge_admin_pp_ann × (1 + expense_infl)^k
 N(k)           = ( P(k) + Z(k) ) × (1 − β) − α(k) − α_z(k) − u(k)
 ```
 
@@ -606,11 +606,11 @@ claims(t, "DEATH")   = 1{s > 0} × 1{t < 12T} × π
                        × [ db_pp(k) × pols_death_paying(t) + db_pu_pp(k) × pols_death_paidup(t) ]
 claims(t, "ANNUITY") = ann_mth_pp(t) × l(t)                        for t ≥ max(0, 12T), else 0
 claims(t, "SURVIVOR")= ann_mth_pp(t) × g(t)                        the Rentengarantiezeit stream
-expenses(t)          = acq_expense_pp × pols_if_init × 1{t = 0 and duration_init = 0}
-                       + maint_expense_pp / 12 × (1 + expense_infl)^k × l(t)     for t < 12T
-                       + annuity_admin_pp / 12 × (1 + expense_infl)^k × ( l(t) + g(t) )  for t ≥ 12T
-commissions(t)       = comm_init_rate × S × pols_if_init × 1{t = 0 and duration_init = 0}
-                       + comm_renew_rate × ( premiums(t) + zuzahlungen(t) )   for t ≥ 1
+expenses(t)          = expense_acq_pp_once × pols_if_init × 1{t = 0 and duration_init = 0}
+                       + expense_admin_pp_ann / 12 × (1 + expense_infl)^k × l(t)     for t < 12T
+                       + expense_annuity_pp_ann / 12 × (1 + expense_infl)^k × ( l(t) + g(t) )  for t ≥ 12T
+commissions(t)       = comm_acq_bsum_once × S × pols_if_init × 1{t = 0 and duration_init = 0}
+                       + comm_renew_prem_inst × ( premiums(t) + zuzahlungen(t) )   for t ≥ 1
 net_cf(t)            = premiums(t) + zuzahlungen(t)
                        − claims(t, "DEATH") − claims(t, "ANNUITY") − claims(t, "SURVIVOR")
                        − expenses(t) − commissions(t)
@@ -774,12 +774,12 @@ a test.
 4. **Double-counting a charge as an expense.** β, γ, the *Stückkosten* and the *Zillmerung*
    amortisation are **account deductions**, i.e. insurer income; the insurer's outgo is the acquisition
    expense, the commission, the maintenance expense and the annuity administration. Assert that
-   `expenses(t)` is invariant to `beta_prem`, `gamma_av` and `zill_rate`, and that changing `gamma_av`
+   `expenses(t)` is invariant to `charge_admin_prem_inst`, `charge_admin_av_ann` and `charge_acq_bsum_once`, and that changing `charge_admin_av_ann`
    moves `net_cf` **only** through the annuity that the smaller fund buys at *Rentenbeginn*.
 5. **Charging the whole *Zillmerung* in year one.** It is spread over `acq_spread_years = 5` premium-paying
    years **[std]** and capped at 25 ‰ of the *Beitragssumme* [R16] [REG-R16]. Assert
    `alpha_amort_pp(k)` is equal for `k = 0 … 4` and zero from `k = 5`, that
-   `Σ_k alpha_amort_pp(k) = zill_rate × beitragssumme()` to 1e-9, and that an in-force point past
+   `Σ_k alpha_amort_pp(k) = charge_acq_bsum_once × beitragssumme()` to 1e-9, and that an in-force point past
    duration 5 (model point 6) sees `alpha_amort_pp(k) = 0` in every year.
 6. **Stacking the declared rate on top of the guarantee.** A German *laufende Verzinsung* is the
    **total** credited rate, so `cred_rate(k) = max(rechnungszins, decl_rate(k))`, not `rechnungszins +
@@ -938,13 +938,13 @@ trigger [R15]; `ann_bonus_rate(k) = 1.0 %` p.a. compounding **[std]**, a *teildy
 *Conversion*: `rf_curr(67) = 31.50 €` in scenario `base` **[std]** against the guaranteed 28,00 €
 **[std]**, so `rentenfaktor_applied() = max(28.00, 31.50) × 1.000 = 31.50` — the **current** factor
 binds on this cell, and model point 13 exercises the other branch [R17] [S1]. *Charges*:
-`zill_rate = 25 ‰` of the *Beitragssumme* [R16] [REG-R16] [REG-R20], amortised over
-`acq_spread_years = 5` years, now cited rather than **[std]** [R14] [S1] [S12]; `alpha_zuz_rate = 2.5 %` of each *Zuzahlung* **[std]**;
-`beta_prem = 7.5 %` **[std]**; `gamma_av = 0.35 %` p.a. **[std]**; `unit_cost_pp = 36.00 €` p.a.
+`charge_acq_bsum_once = 25 ‰` of the *Beitragssumme* [R16] [REG-R16] [REG-R20], amortised over
+`acq_spread_years = 5` years, now cited rather than **[std]** [R14] [S1] [S12]; `charge_acq_sp_once = 2.5 %` of each *Zuzahlung* **[std]**;
+`charge_admin_prem_inst = 7.5 %` **[std]**; `charge_admin_av_ann = 0.35 %` p.a. **[std]**; `charge_admin_pp_ann = 36.00 €` p.a.
 inflating at `expense_infl = 1.5 %` **[std]**. *Insurer expense and commission*, all **[std]**:
-`acq_expense_pp = 250.00 €` at inception; `comm_init_rate = 2.5 %` of `beitragssumme()` at
-inception; `comm_renew_rate = 1.5 %` of premiums plus *Zuzahlungen* from the second projection year;
-`maint_expense_pp = 60.00 €` per in-force policy p.a. inflating; `annuity_admin_pp = 36.00 €` per
+`expense_acq_pp_once = 250.00 €` at inception; `comm_acq_bsum_once = 2.5 %` of `beitragssumme()` at
+inception; `comm_renew_prem_inst = 1.5 %` of premiums plus *Zuzahlungen* from the second projection year;
+`expense_admin_pp_ann = 60.00 €` per in-force policy p.a. inflating; `expense_annuity_pp_ann = 36.00 €` per
 annuitant p.a. inflating. *Behaviour*, all **[std]**: `bf_rate = 4.0 %` at durations 1–5, `3.0 %` at
 6–10, `2.0 %` at 11+; `zuz_take_up = 0.70` at durations 1–5, `0.85` at 6–15, `0.90` at 16+;
 `elig_surv_prob = 0.55`, which is **inert on this cell** because the survivor rider is off and is
@@ -1172,8 +1172,8 @@ rather than one month at a time. A last arithmetic coincidence that is not a coi
 `commissions(0) = 0.025 x S = 4,094.8475308191` is **the same number** as
 `zillmer_amount() = 0.025 x S`, because the initial commission rate and the *Höchstzillmersatz* are
 both 2,5 %. That is the German design rather than an accident — what the insurer pays out at
-inception is sized to what it may write into the reserve — and it is why moving `comm_init_rate`
-without moving `zill_rate` opens a hole in the first year that nothing closes.
+inception is sized to what it may write into the reserve — and it is why moving `comm_acq_bsum_once`
+without moving `charge_acq_bsum_once` opens a hole in the first year that nothing closes.
 
 ### The variant: the *Einmalbeitrag* (model point 5)
 
@@ -1251,7 +1251,7 @@ each is now written into the notes at its source rather than only here.
 2. **`av(k_conv())` is the pre-conversion fund, not zero.** `check_av_roll_fwd()` now asserts
    `av_at(k_conv(), "AFT_INT") = 0` — the conversion empties the account — and `av(k) = 0` for every
    `k > k_conv()`. The old wording would have hidden the one number the conversion is struck on.
-3. **The acquisition expense is a fund-level amount**, `acq_expense_pp × pols_if_init × 1{…}`,
+3. **The acquisition expense is a fund-level amount**, `expense_acq_pp_once × pols_if_init × 1{…}`,
    matching the initial commission beside it. Nothing moves on the shipped points, all of which
    carry `pols_if_init = 1.0`.
 4. **`omega_age_max` is not a Reference.** `omega_age()` is one above the last row of

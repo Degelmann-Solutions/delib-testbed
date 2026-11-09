@@ -102,7 +102,7 @@ model point 13 exercises the other branch of ``max(garantiert, aktuell)``.
 policyholder's *Deckungskapital* (the *Zillmerung* rate, the premium charge β, the
 reserve charge γ and the *Stückkosten*), the *Schlussüberschussanteil* rate, and the
 insurer's own expense and commission scale. Two tariffs ship, differing only in
-``zill_rate``: 25 ‰ of the *Beitragssumme* for business written from 1 January 2015 and
+``charge_acq_bsum_once``: 25 ‰ of the *Beitragssumme* for business written from 1 January 2015 and
 40 ‰ for the pre-LVRG in-force cohorts.
 
 ``behaviour_table.csv`` holds the two behavioural assumptions that vary by duration —

@@ -174,7 +174,7 @@ the `max` live at once [REG-R14] [REG-R15]. The shipped model points carry four 
 vintages — 1,00 %, 1,75 %, 2,25 % and 2,75 % — and both branches are exercised: on the anchor
 the declared path (2,60 % / 2,40 % / 2,20 %) binds in every year, while on model point 8 the
 2,75 % guarantee stands above the whole declared path and binds in every year. The reserve
-charge γ is netted **inside** the same crediting step, `(1 + cred_rate(k) − gamma_av)`, and
+charge γ is netted **inside** the same crediting step, `(1 + cred_rate(k) − charge_admin_av_ann)`, and
 the *Stückkosten* are taken before it.
 
 ## Charges are insurer income; expenses are insurer outgo
@@ -185,13 +185,13 @@ are **insurer income**. All four are annual and take `k`. The insurer's own **ou
 different list and is monthly: the acquisition expense, the commission, and a twelfth of the
 annual maintenance expense or annuity administration in each month. Booking a
 charge as both is the notes' fourth pitfall, and it is why `expenses(t)` is invariant to
-`beta_prem`, `gamma_av` and `zill_rate`: raising all three moves not one euro of `expenses` or
+`charge_admin_prem_inst`, `charge_admin_av_ann` and `charge_acq_bsum_once`: raising all three moves not one euro of `expenses` or
 `commissions`, and moves `net_cf` **only** through the smaller annuity that a smaller fund buys
 at *Rentenbeginn* — 208 826,46 € of annuity claims against 225 647,81 €.
 
 The *Zillmerung* is **spread over five years and capped at 25 ‰ of the *Beitragssumme***
 [R16] [REG-R16]. `alpha_amort_pp(k)` is equal at `k = 0 … 4`, zero from `k = 5`, and the five
-instalments sum to `zill_rate × beitragssumme()` exactly. The window is a window of the
+instalments sum to `charge_acq_bsum_once × beitragssumme()` exactly. The window is a window of the
 **contract**, not of the projection, so model point 6 — in force at `duration_init = 17` —
 sees `alpha_amort_pp(k) = 0` in every year; on a single-premium contract the five instalments
 still run and the debit outlives the one premium that paid for it. One arithmetic coincidence
@@ -199,7 +199,7 @@ in the worked example is not a coincidence: `commissions(0) = 0.025 × S = 4 094
 same number as `zillmer_amount()`, because the initial commission rate and the
 *Höchstzillmersatz* are both 2,5 %. That is the German design — what the insurer pays out at
 inception is sized to what it may write into the reserve — and it is why moving
-`comm_init_rate` without moving `zill_rate` opens a first-year hole that nothing closes.
+`comm_acq_bsum_once` without moving `charge_acq_bsum_once` opens a first-year hole that nothing closes.
 
 ## The premium is a stream, not a level amount
 
@@ -386,7 +386,7 @@ neither shifts; `issue_year` is a calendar year, and `issue_age` and `ret_age` a
 | `mort_table.csv` | First-order `qx` and the improvement `trend` by age 20–121 | **[std]** DAV 2004 R-shaped proxy `min(1, 0.014000 × 1.085^(age − 67))` with a flat `trend = 0.015`. *Not* DAV 2004 R, which is the DAV's property and is cited, never shipped [R17] [REG-R47] [REG-R49]. **The anchor a replacement must preserve is `qx(67) = 0.014000`**, because the worked example converts at 67; it must also stay generational, stay first order, and end at an age where `qx = 1.0` |
 | `surplus_table.csv` | `decl_rate` and `ann_bonus_rate` by scenario and `t`. **Its `t` is the model's own projection *year* `k` and is 0-based**, running 0…94: the 2,60 % band is `t = 0…9`, the 2,40 % band `t = 10…19`, 2,20 % thereafter | **[std]** — 2,60 % / 2,40 % / 2,20 % declared, 1,0 % *Überschussrente*. A scenario, not a forecast: **no declared rate specific to a Basisrente was established anywhere in the delib corpus**, and the sibling files' rates are Schicht-3 and endowment figures that must not be relabelled |
 | `rentenfaktor_table.csv` | `rf_curr` by scenario and conversion age 60–75 | **[std]** — 31,50 € at 67, graded 3,5 % per year of age; the `low` scenario is 0.88 of it, and exists so model point 13 exercises the other branch of the `max`. **No *Rentenfaktor* level, range or time series exists anywhere in the delib corpus**, for this or any product (gap 4) |
-| `charge_table.csv` | One row per tariff: the four account charges, the *Schlussüberschussanteil*, and the insurer's own expense and commission scale | `zill_rate` 25 ‰ (and 40 ‰ pre-LVRG) is [R16] [REG-R16] [REG-R20]; **everything else on the row is [std]**. Two tariffs ship, differing only in `zill_rate`, so the in-force cohorts carry their own cap |
+| `charge_table.csv` | One row per tariff: the four account charges, the *Schlussüberschussanteil*, and the insurer's own expense and commission scale | `charge_acq_bsum_once` 25 ‰ (and 40 ‰ pre-LVRG) is [R16] [REG-R16] [REG-R20]; **everything else on the row is [std]**. Two tariffs ship, differing only in `charge_acq_bsum_once`, so the in-force cohorts carry their own cap |
 | `behaviour_table.csv` | `bf_rate` and `zuz_take_up` by `dur`, the **policy year** `policy_year(t)`. `dur` is a contractual 1-based label and **not** the frame's `t`, so the file starts at `dur = 1` and is unaffected by the 0-based index | **[std]**, and **no observed range exists**: no German insurer publishes a *Beitragsfreistellung* rate or a *Zuzahlung* take-up for this product (gap 3). The shape is argued from the product's structure; the levels are invented |
 | `prem_freq_table.csv` | The instalments a year and the *Ratenzahlungszuschlag* by payment frequency: 1,000 / 1,020 / 1,030 / 1,050 | **[std]** — the *Ratenzahlungszuschlag* on the *laufender Beitrag* alone; German market convention, no tariff sheet was reached |
 | `option_table.csv` | One multiplicative factor per option key | **[std]** — the *Rentenfaktor* reductions for a *Rentengarantiezeit* and a survivor's annuity, anchored on a Schicht-3 illustration that is [unverified] and expressly not transferable |

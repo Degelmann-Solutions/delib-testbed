@@ -7,7 +7,7 @@ grundzulage,175.0,,"[R9] [REG-R42] Grundzulage 175.00 EUR per year, section 84 s
 kinderzulage_pre2008,185.0,,"[R9] [R19] [REG-R42] Kinderzulage 185.00 EUR per year for a child born before 1 January 2008, section 85 (1) sentence 1 EStG; was a Reference on Projection"
 kinderzulage_post2008,300.0,,"[R9] [R19] [REG-R42] Kinderzulage 300.00 EUR per year for a child born on or after 1 January 2008, section 85 (1) sentence 2 EStG; was a Reference on Projection"
 berufseinsteiger_bonus,200.0,,"[R9] [REG-R42] Berufseinsteiger-Bonus 200.00 EUR once, section 84 sentences 2 and 3 EStG; was a Reference on Projection"
-mindest_rate,0.04,,"[R10] [REG-R42] Mindesteigenbeitrag rate, 4 % of the previous year's contribution-liable earnings, section 86 (1) sentence 2 EStG; was a Reference on Projection"
+mindesteigenbeitrag_rate,0.04,,"[R10] [REG-R42] Mindesteigenbeitrag rate, 4 % of the previous year's contribution-liable earnings, section 86 (1) sentence 2 EStG; was a Reference on Projection"
 foerder_ceiling,2100.0,,"[R10] [REG-R42] ceiling of the Mindesteigenbeitrag, the section 10a (1) sentence 1 EStG Hoechstbetrag of 2 100.00 EUR, section 86 (1) sentence 2 EStG; was a Reference on Projection"
 sockelbeitrag,60.0,,"[R10] [REG-R42] Sockelbeitrag 60.00 EUR per year, the floor of the Mindesteigenbeitrag, section 86 (1) sentence 4 EStG; was a Reference on Projection"
 zulage_lag,1,,"[R5] [R11] [REG-R42] the Zulage of contribution year t is credited by the ZfA in t + 1 (sections 88 to 90 EStG, AltvPIBV section 9 (3): 15 May); the compression onto the annual grid [std]; was a Reference on Projection"

@@ -1778,7 +1778,7 @@ RIESTER_MOVED_REFERENCES = {
     "kinderzulage_pre2008": 185.0,
     "kinderzulage_post2008": 300.0,
     "berufseinsteiger_bonus": 200.0,
-    "mindest_rate": 0.04,
+    "mindesteigenbeitrag_rate": 0.04,
     "foerder_ceiling": 2100.0,
     "sockelbeitrag": 60.0,
     "zulage_lag": 1,

@@ -321,6 +321,7 @@ The renamed items, old name to new name:
 | Riester | `acq_charge_years` | `acq_spread_years` |
 | Riester | `bewres_rate` | `bwr_rate` |
 | Riester | `annuity_base_year` | `mort_base_year` |
+| Riester | `mindest_rate` | `mindesteigenbeitrag_rate` |
 | RLV | `zillmer_rate` | `load_acq_bsum_once` |
 | RLV | `beta_tariff` | `load_admin_prem_inst` |
 | RLV | `gamma_rate` | `load_admin_sum_ann` |

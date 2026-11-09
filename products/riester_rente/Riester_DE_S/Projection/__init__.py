@@ -862,8 +862,8 @@ def zulage_entitlement_pp(k):
 def mindesteigenbeitrag_pp(k):
     """M(k): the § 86 *Mindesteigenbeitrag* of contribution year k.
 
-    ``max(sockelbeitrag, min(mindest_rate x Y(k), foerder_ceiling) - Z*(k))``: 4 % of the
-    previous calendar year's contribution-liable earnings, capped at the 2 100 €
+    ``max(sockelbeitrag, min(mindesteigenbeitrag_rate x Y(k), foerder_ceiling) - Z*(k))``:
+    4 % of the previous calendar year's contribution-liable earnings, capped at the 2 100 €
     *Sonderausgaben* ceiling, **less** the full entitlement, and floored at the 60 €
     *Sockelbeitrag*.  The floor is what makes the product's economics extraordinary at low
     incomes: on model point 4, 60,00 € of own money draws 775,00 € of Zulagen.  Zero once
@@ -873,7 +873,7 @@ def mindesteigenbeitrag_pp(k):
     if not is_accum_y(k):
         return 0.0
     return max(data.param("sockelbeitrag"),                          # noqa: F821
-               min(data.param("mindest_rate") * income_ref(k),       # noqa: F821
+               min(data.param("mindesteigenbeitrag_rate") * income_ref(k),  # noqa: F821
                    data.param("foerder_ceiling"))                    # noqa: F821
                - zulage_entitlement_pp(k))
 

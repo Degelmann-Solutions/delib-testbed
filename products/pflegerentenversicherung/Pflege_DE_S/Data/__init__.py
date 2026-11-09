@@ -92,7 +92,7 @@ parameters by ``item``. Its first twelve rows are the bases and conventions: the
 terminal age ``omega_age``, the unisex mix ``unisex_mix_male``, the
 recovery-damping shape ``recov_age_ref`` / ``recov_age_decay``, the ``inc_cap`` shape device,
 the *Beitragssumme* convention ``beitragssumme_cap_age``, the check tolerance
-``roll_fwd_tol`` and the five first-order prudence margins ``inc_load_first``,
+``check_tol`` and the five first-order prudence margins ``inc_load_first``,
 ``det_load_first``, ``recov_load_first``, ``mort_care_load_first`` and
 ``mort_actv_load_first``, none of them cited; the *Rechnungszins* is a model-point column. The last five rows are the expense assumptions with their ``unit``:
 ``load_acq_bsum_once`` (fraction of *Beitragssumme*, charged once at ``t = 0``), ``load_admin_prem_inst``

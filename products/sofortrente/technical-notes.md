@@ -353,7 +353,7 @@ three-class split, and confusing them is pitfall 12's neighbour.
 | `unisex_mix_male` ρ_M | **0.45**, a row of `param_tariff_type.csv` | **[std]** |
 | `mort_base_year` | **2025**, a row of `param_tariff_type.csv` | **[std]** |
 | `omega_age` ω | **121**, a row of `param_tariff_type.csv` | **[std]** |
-| `roll_fwd_tol` | **1e-8**, a row of `param_tariff_type.csv`, the tolerance every `check_*` closes to | **[std]** |
+| `check_tol` | **1e-8**, a row of `param_tariff_type.csv`, the tolerance every `check_*` closes to | **[std]** |
 | Bisection tolerance and iteration cap | **1e-10**, **200**, literals in `annuity_pp_derived()` — the bisection controls for the refund solve, solver settings and so code | **[std]** |
 
 (c1) **No charge or expense parameter was established at any carrier** (research gap 8), so none of
@@ -834,7 +834,7 @@ Rente* and steps up 1 % at each policy anniversary, ratcheting under the *Bonusr
 `60 €` a year accrued monthly on `pols_if(t)` **[std]**; `1,50 €` per instalment paid **[std]**; all
 three inflating at `expense_infl = 1,5 %` p.a., stepping at the policy anniversary **[std]**.
 *Decrements.* Death only — no lapse, no surrender, no paid-up, no option exercise [R1] [R2] [R5].
-*Tolerances.* `roll_fwd_tol()` = 1e-8 (`param_tariff_type.csv`); the refund solve is not exercised on this cell.
+*Tolerances.* `roll_fwd_tol()` = 1e-8 (`check_tol`, `param_tariff_type.csv`); the refund solve is not exercised on this cell.
 
 All amounts in euros; `pols_if` and the survival probabilities to six decimals, cash flows to the
 cent, and every total summed **at full precision and then rounded** rather than accumulated from

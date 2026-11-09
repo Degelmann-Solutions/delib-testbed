@@ -1,6 +1,6 @@
 item,value,basis,provenance
 omega_age,121,,"[std] limiting age; the proxy mortality table closes with q = 1 at attained age 120, so the survival path reaches zero inside the horizon"
-roll_fwd_tol,1e-08,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
+check_tol,1e-08,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
 expense_infl,0.015,,"[std] 1.5 % p.a. on the maintenance and payment expenses, stepping at the policy anniversary; no expense parameter was established at any carrier; was a Reference on Projection"
 load_acq_sp_once,0.025,,"[std] acquisition loading alpha in the tariff, 2.5 % of the single premium; no charge parameter was established at any carrier (research gap 8); was a Reference on Projection"
 load_admin_annval_once,0.02,,"[std] administration loading beta on the annuity value, 2.0 %, covering a payment run whose per-policy cost is roughly constant in euros; was a Reference on Projection"

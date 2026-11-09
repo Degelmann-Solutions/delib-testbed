@@ -1,6 +1,6 @@
 item,value,basis,provenance
 mort_be_factor,0.8,,"[std] [REG-R47] the step from the accumulation death table to the best estimate, below it because a first-order death table assumes mortality higher than expected; the annuity basis runs the other way"
-roll_fwd_tol,1e-09,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
+check_tol,1e-09,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
 expense_infl,0.02,,"[std] 2.0 % p.a. inflation of the accumulation maintenance on contract duration, stepping on the anniversary; was a Reference on Projection"
 valuation_year,2027,,"[std] [REG-R44] the valuation date 1 January 2027, the first day the product is closed to new business; every model point opens there, so the year of issue counts back from it; was a Reference on Projection"
 grundzulage,175.0,,"[R9] [REG-R42] Grundzulage 175.00 EUR per year, section 84 sentence 1 EStG; was a Reference on Projection"

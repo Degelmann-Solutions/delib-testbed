@@ -1,5 +1,5 @@
 item,value,basis,provenance
-roll_fwd_tol,1e-08,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
+check_tol,1e-08,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
 expense_infl,0.015,,"[std] 1.5 % p.a. inflation of the Stueckkosten from issue, stepping on the anniversary; was the Reference exp_infl on Projection"
 charge_acq_bsum_once,0.025,,"[std] [REG-R16] acquisition charge 2.5 % of the Beitragssumme, spread over acq_spread_years premium-paying years, at the DeckRV Hoechstzillmersatz of 25 per mille; was a Reference on Projection"
 expense_acq_bsum_once,0.025,,"[std] acquisition expense 2.5 % of the Beitragssumme, incurred in full at inception: the Zillmer strain, paid out at once and recovered over five years; was a Reference on Projection"

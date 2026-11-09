@@ -1,6 +1,6 @@
 item,value,basis,provenance
 mort_be_factor,0.75,,"[std] [REG-R47] a flat step from the first-order death table to the best estimate, crude and said to be; it makes the Risikoergebnis exactly 25 Prozent of the Risikobeitrag"
-roll_fwd_tol,1e-10,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
+check_tol,1e-10,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
 expense_infl,0.02,,"[std] 2.0 % p.a. inflation of the monthly maintenance expense, from inception; no source; was a Reference on Projection"
 lapse_cap,0.4,,"[std] cap of 40 % on the annual lapse rate, so a dynamic module cannot produce an absurd rate; no German unit-linked Stornoquote exists in this corpus; was a Reference on Projection"
 lapse_dyn_beta,0.0,,"[std] [R1] [R2] coefficient of the additive dynamic lapse on the fund's shortfall against the premiums paid, 0: the module is off in the base run, 0.15 the reference value; no German calibration for a coefficient of any size exists; was a Reference on Projection"

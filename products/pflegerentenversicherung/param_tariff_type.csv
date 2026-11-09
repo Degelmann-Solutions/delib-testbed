@@ -5,7 +5,7 @@ recov_age_ref,75,,,"[std] age above which Reaktivierung is damped, so deteriorat
 recov_age_decay,0.1,,,"[std] exp(-0.10 x (age - 75)) damping on the recovery rates; order-of-magnitude reasoning, unsourced [unverified]"
 inc_cap,0.5,,,[std] shape device: without it the incidence exponential exceeds one before age 100
 beitragssumme_cap_age,85,,,[std] a lifelong-premium contract has no finite Beitragssumme without a convention; this is the convention the 25 permille Zillmerung base is struck on [REG-R16]
-roll_fwd_tol,1e-10,,,"[std] absolute tolerance of every check_* identity, scaled by pols_if_init or by P x U"
+check_tol,1e-10,,,"[std] absolute tolerance of every check_* identity, scaled by pols_if_init or by P x U"
 inc_load_first,1.25,,,[std] Rechnungsgrundlagen erster Ordnung: more claims. Only the DIRECTION is cited [REG-R8] [REG-R47]; no German Sicherheitszuschlag level for a Pflegetafel was established
 det_load_first,1.15,,,[std] first-order margin: faster progression to the higher-paying grades [REG-R8] [REG-R47]
 recov_load_first,0.8,,,"[std] first-order margin: fewer recoveries, so longer spells [REG-R8] [REG-R47]"

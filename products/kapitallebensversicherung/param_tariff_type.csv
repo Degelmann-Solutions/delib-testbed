@@ -1,7 +1,7 @@
 item,value,basis,provenance
 mort_be_factor,0.75,,"[std] the step from the first-order table to the best estimate, a 33 Prozent first-order safety loading; the Sicherheitszuschlag level is not established for any German carrier"
 unisex_mix_male,0.5,,"[std] the male share of the unisex tariff blend; new business is unisex [REG-R34] and no insurer publishes the portfolio mix behind its own tariff"
-roll_fwd_tol,1e-10,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
+check_tol,1e-10,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
 suicide_share,0.02,,"[std] [R4] [REG-R26] share of the deaths in the first three policy years that are excluded suicides, paid the Rueckkaufswert under section 161 VVG instead of the sum insured; no source gives a suicide share of deaths at any age; was a Reference on Projection"
 bfz_min_sum,2500.0,,"[std] [R3] the Mindestversicherungsleistung 2 500 EUR a Beitragsfreistellung must reach, below it section 165 VVG pays the section 169 value instead; no carrier's minimum was located; was a Reference on Projection"
 term_surr_share,0.0,,"[std] share of the accrued Schlussueberschussanteil paid on surrender, 0: paid at the Ablauf and on death only, not inventing an entitlement the sources do not describe; was a Reference on Projection"

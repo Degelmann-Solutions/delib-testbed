@@ -27,7 +27,7 @@
   kind and an unknown kind is rejected; Index and RV pay exactly zero commission; KLV's net
   cash flow subtracts its claims kind by kind; RLV's liability cash flow is its net cash flow
   negated.
-- The outputs and checks: every product reads ``roll_fwd_tol`` from its ``param_tariff_type.csv``
+- The outputs and checks: every product reads ``check_tol`` from its ``param_tariff_type.csv``
   and a missing row raises; KLV's ``result_cf`` is the core's statement from ``t_start()``;
   RV's annual frame sums the flows and takes its two counts at the year's start; RLV's
   net-cash-flow residual is rebuilt from its frame's columns; KLV's ``check_net_cf`` closes to
@@ -1091,6 +1091,7 @@ PFLEGE_RENAMED = {
     "claim_expense_pp": "load_claim_pp_inst",
     "rec_age_ref": "recov_age_ref",
     "rec_age_decay": "recov_age_decay",
+    "roll_fwd_tol": "check_tol",
 }
 
 
@@ -1650,6 +1651,7 @@ def test_roll_fwd_tol_is_read_from_its_tariff_type_file(product, product_models)
     projection = model.Projection
     assert projection.roll_fwd_tol._is_derived()
     assert "roll_fwd_tol" not in projection.refs
+    assert "roll_fwd_tol" not in model.Data.param_dict()
     point_id = model.Data.model_point_table().index[0]
     assert projection[point_id].roll_fwd_tol() == ROLL_FWD_TOL[product]
 
@@ -1658,11 +1660,11 @@ def test_roll_fwd_tol_without_its_row_raises_key_error(tmp_path):
     folder = product_copy(tmp_path, "kapitallebensversicherung")
     table = folder / "param_tariff_type.csv"
     params = pd.read_csv(table, index_col="item")
-    params.drop(index="roll_fwd_tol").to_csv(table)
+    params.drop(index="check_tol").to_csv(table)
     copy = mx.read_model(folder / MODELS["kapitallebensversicherung"], name="TolProbe")
     try:
         point_id = copy.Data.model_point_table().index[0]
-        with pytest.raises(Exception, match="roll_fwd_tol") as raised:
+        with pytest.raises(Exception, match="check_tol") as raised:
             copy.Projection[point_id].roll_fwd_tol()
         assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
     finally:
@@ -1675,7 +1677,7 @@ def test_param_reads_the_tariff_type_layer(product_models):
     assert not data.param_tariff_path().exists()
     assert data.param_core_path() == data.model.path / "CoreData" / "param_core.csv"
     assert data.param_core_path().is_file()
-    for item in ("roll_fwd_tol", "expense_infl"):
+    for item in ("check_tol", "expense_infl"):
         value = data.param(item)
         assert type(value) is float and value == tariff_type_table(
             "risikolebensversicherung").at[item, "value"], item
@@ -2216,7 +2218,7 @@ def test_param_reads_a_core_item_and_a_tariff_item(tmp_path):
     try:
         assert copy.Data.param("probe_core") == 0.125
         assert copy.Data.param("probe_tariff") == 7
-        assert copy.Data.param("roll_fwd_tol") == 1e-10
+        assert copy.Data.param("check_tol") == 1e-10
     finally:
         copy.close()
     assert (CORE_MODEL / "Data" / "param_core.csv").read_text(encoding="utf-8") == shipped
@@ -2236,7 +2238,7 @@ def test_param_without_the_core_file_raises(tmp_path):
     copy = mx.read_model(model_dir, name="NoCoreProbe")
     try:
         with pytest.raises(Exception, match="param_core.csv"):
-            copy.Data.param("roll_fwd_tol")
+            copy.Data.param("check_tol")
     finally:
         copy.close()
 
@@ -2261,7 +2263,7 @@ def test_param_layers_hold_every_item_once_and_merge_into_param_dict(product, pr
     assert list(data.param_dict()) == list(merged)
 
 
-def _loader_error(model_dir: Path, name: str, item: str = "roll_fwd_tol") -> str:
+def _loader_error(model_dir: Path, name: str, item: str = "check_tol") -> str:
     """The error line of the loader's error on ``param(item)`` in a scratch copy, which must be
     a ``ValueError``.
 
@@ -2293,18 +2295,18 @@ def test_param_rejects_an_item_in_two_layers(tmp_path):
 
 def test_param_rejects_an_item_twice_in_one_file(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
-    _add_params(folder / "param_tariff_type.csv", {"roll_fwd_tol": "1e-10"})
+    _add_params(folder / "param_tariff_type.csv", {"check_tol": "1e-10"})
     message = _loader_error(folder / MODELS["risikolebensversicherung"], "TwiceProbe")
-    assert "'roll_fwd_tol' stands twice in" in message
+    assert "'check_tol' stands twice in" in message
     assert str(folder / "param_tariff_type.csv") in message
 
 
 def test_param_rejects_a_core_item_in_the_tariff_type_file(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     model_dir = folder / MODELS["risikolebensversicherung"]
-    _add_params(model_dir / "CoreData" / "param_core.csv", {"roll_fwd_tol": "1e-10"})
+    _add_params(model_dir / "CoreData" / "param_core.csv", {"check_tol": "1e-10"})
     message = _loader_error(model_dir, "CoreLockProbe")
-    assert "'roll_fwd_tol' is a core item of" in message
+    assert "'check_tol' is a core item of" in message
     assert str(folder / "param_tariff_type.csv") in message
 
 

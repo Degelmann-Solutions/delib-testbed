@@ -1,5 +1,5 @@
 item,value,basis,provenance
-roll_fwd_tol,1e-10,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
+check_tol,1e-10,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
 accept_factor,0.8,,"[std] [R21] [R20] [REG-R53] the Anerkennungsquote, an acceptance factor on the inception rate, on a table gross of declinature; recalled at 75 to 80 %, unverified; was a Reference on Projection"
 inc_load_first,1.3,,"[std] [REG-R47] first-order load on the inception rate, higher incidence: prudence for a disability product means a claim that starts more often; was a Reference on Projection"
 recov_load_first,0.7,,"[std] [REG-R47] first-order load on the reactivation rate, lower reactivation: a claim that ends less often; was a Reference on Projection"

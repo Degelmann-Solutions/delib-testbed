@@ -228,7 +228,7 @@ table carries a per-row `provenance` column, this library's second ruling.
 `param_tariff_type.csv` holds every scalar [std] assumption that is neither a charge nor a rate table:
 `expense_acq_pp_once`, `expense_admin_pp_ann`, `expense_annuity_pp_ann`, `expense_claim_pp_once`, `expense_infl`,
 `mort_be_factor`, `mort_base_year`, `omega_age`, `bwr_rate`, `sur_ann_rate`,
-`sur_ann_growth`, `sur_ann_theta` and `roll_fwd_tol`. Keeping them in a file rather than in
+`sur_ann_growth`, `sur_ann_theta` and `check_tol`. Keeping them in a file rather than in
 `Projection` References is what gives each of them its own provenance tag.
 
 ### (a) Contractual and guaranteed elements (cited)

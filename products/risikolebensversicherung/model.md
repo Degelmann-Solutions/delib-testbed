@@ -296,7 +296,7 @@ which is the one thing interleaving the two decrements monthly genuinely changes
 
 ## Inputs are external files
 
-The seven input CSVs, `param_tariff_type.csv` with `roll_fwd_tol`, `expense_infl`, `expense_claim_pp_once` and the 17 scalar tariff parameters that were References on `Projection` among them, live **in this directory**, beside `run.py` — not inside the model
+The seven input CSVs, `param_tariff_type.csv` with `check_tol`, `expense_infl`, `expense_claim_pp_once` and the 17 scalar tariff parameters that were References on `Projection` among them, live **in this directory**, beside `run.py` — not inside the model
 folder. `RLV_DE_S/` holds nothing but formulas:
 
 ```
@@ -497,7 +497,7 @@ checks, not inputs.
 | `prem_form = single` | Model point 7 | A **[std]** construction exercising the premium engine at `k = 1`. **No German standalone RLV in the corpus is written on it**; the out-of-scope *Restschuldversicherung* is, and it is a different product sold a different way |
 | Timing conventions | A premium instalment on the *Zahlweise*'s own cycle and the month's expenses at the beginning of the month, claims and lapses at the end, acquisition cost at issue only where `duration_init = 0` | **The approximation this row used to record is gone.** On the annual grid the model booked exits at anniversaries and said so, and the note recorded that the approximation was larger than first assumed: § 168 Abs. 1 with § 12 VVG gives termination at the end of the *Versicherungsperiode*, but both retrieved carriers allow it "jederzeit zum Ende des laufenden Monats" whatever the *Zahlweise* [S3] § 15 Abs. 9, [S4] § 13 Abs. 1. The monthly grid expresses exactly that. What remains **[std]** is the conversion of the annual rates to the month and the placing of claims at the end of the month |
 | `shock_lapse_lambda`, `sel_lapse_lambda` (rows of `param_tariff_type.csv`) | 0.0 (references 2.0 and 0.30) | Both modules off, so the base run reproduces the worked example |
-| `roll_fwd_tol`, `val_tol` (rows of `param_tariff_type.csv`) | 1e-10, 1e-9 | Tolerances scaled by `pols_if_init()` and `sum_assured()` respectively |
+| `check_tol`, `val_tol` (rows of `param_tariff_type.csv`) | 1e-10, 1e-9 | Tolerances scaled by `pols_if_init()` and `sum_assured()` respectively |
 | The fourteen model points | — | The anchor is the research file's representative composite; the rest are chosen to exercise the mechanics, not to describe a market |
 
 The only quantities **not** standardizations are the structural rules: the guaranteed

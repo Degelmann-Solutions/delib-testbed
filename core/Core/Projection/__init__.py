@@ -890,12 +890,12 @@ def liability_cf(t):
 
 
 def roll_fwd_tol():
-    """The tolerance the ``check_*`` identities close to, from *param_tariff_type.csv*.
+    """The tolerance the ``check_*`` identities close to, the item ``check_tol``.
 
     A float comparison tolerance, not an actuarial assumption: each check scales it by the
-    magnitude of what it compares.  A product without the row raises ``KeyError``.
+    magnitude of what it compares.  A tariff without the item raises ``KeyError``.
     """
-    return float(data.param("roll_fwd_tol"))                         # noqa: F821
+    return float(data.param("check_tol"))                            # noqa: F821
 
 
 def result_cf_columns():

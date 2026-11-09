@@ -707,3 +707,53 @@ All ten products together, at the recounted M = 5,305, P = 10,000 (1,000 per pro
 ## The +22 % of the night measurement
 
 Within this session the same code (`790706b`, branch and `main` control) gave Σ t from 14.61 to 15.70 ms over six runs, a spread of 7.5 % (2.6 % on the branch alone), at load averages from 3 to 9.5. The two earlier figures were measured on the content of `94294d6`, not on this code: PRs #37 and #38 changed timed code since (the core's `Projection`, BU, FRV, Pflege and `tools/run_baseline.py`), so this measurement does not repeat them. Those two, 12.9 ms (PR #34, before its merge; its description gives load ≈ 4.5 for its alternating runs) and 15.7 ms (night measurement, load about 1), lie 22 % apart, more than the 7.5 % spread on `790706b`, so in-session noise of that size does not account for the gap. The load at the start does not order the figures: 12.9 ms at about 4.5, 15.7 ms at about 1, 14.6 to 15.7 ms here at 3 to 9.5. The cause of the 22 % stays open; this measurement cannot separate a change in the code from a condition that differs between sessions. The higher figures stay the recorded ones; at every figure measured the forecast lies within the night.
+
+# Parameter tables: night forecast after the alignment
+
+Entry 13 of epic-parameter-files (R11): after the renames, core moves and value alignment of entries 11 and 12, the night forecast is measured at the code and M of the commit it runs on, `d849151` (branch `parameter-files-alignment`), M = 5,249 (M_core = 190, Σ M_p = 5,059, the pins of `tools/measure_marginal.py`, unchanged by the alignment), against 5.1 h, the forecast of "Phase 3: night forecast remeasured". The branch changes timed paths (parameter values, the core file the loader reads, the core and product `Projection` code that reads the renamed and moved items), so a `main` control on `e16c935` runs alternately in the same session (docs/core.md, "Measuring rules"). Read-only: no model or runner changed for it.
+
+- Date: 2026-11-09, 16:34 to 16:44 (all-products runs), 16:47 to 17:04 (the targeted runs below)
+- Commits: branch `d849151`, clean tree; control `e16c935` (`main`, merge of PR #51) in the worktree `/tmp/s113-main`, the same installed packages
+- Machine: the same as for 2a to 2d (12th Gen Intel Core i7-12800HX, 24 logical CPUs, 62.8 GiB RAM, Linux 6.6 under WSL2; Python 3.12.13, modelx 0.33.0, pandas 3.1.0, numpy 2.5.4)
+- Commands, six runs one after the other, branch and control in turn, `uptime` before each:
+  - `uv run python tools/measure_marginal.py --all --workers 24 --json /tmp/s113-<side>-<i>.json` (defaults: engine export, cleanup on, transform cache off, K = 32, R = 3, P = 10,000, M = 5,249 on both sides); exit 0 and status `ok` for all ten products in every run, wall time 96 to 109 s each
+- Load: the runs followed each other directly, so the load rose from 1.42 before the first to 10.21 before the last.
+
+## The six runs at W = 24
+
+| Run | Side | Commit | load (1 min) | Σ t_marginal ms | Σ fixed s | forecast h |
+|---|---|---|---:|---:|---:|---:|
+| 1 | branch | `d849151` | 1.42 | 15.34 | 10.43 | 5.28 |
+| 2 | `main` | `e16c935` | 3.43 | 14.79 | 10.38 | 5.16 |
+| 3 | branch | `d849151` | 6.28 | 15.31 | 10.98 | 5.38 |
+| 4 | `main` | `e16c935` | 8.66 | 16.23 | 10.82 | 5.55 |
+| 5 | branch | `d849151` | 9.65 | 17.74 | 11.47 | 5.99 |
+| 6 | `main` | `e16c935` | 10.21 | 16.70 | 11.76 | 5.77 |
+
+`t_marginal` per product in ms, runs 1 to 6 in the order above, and each side's mean:
+
+| Product | 1 b | 2 m | 3 b | 4 m | 5 b | 6 m | branch mean | `main` mean |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| basisrente | 1.44 | 1.38 | 1.43 | 1.44 | 1.88 | 1.44 | 1.58 | 1.42 |
+| berufsunfaehigkeit | 2.69 | 2.58 | 2.73 | 2.68 | 3.23 | 2.83 | 2.89 | 2.70 |
+| fondsgebundene_rentenversicherung | 1.06 | 1.00 | 1.09 | 1.23 | 1.23 | 1.18 | 1.13 | 1.14 |
+| indexpolice | 0.58 | 0.53 | 0.51 | 0.57 | 0.62 | 0.84 | 0.57 | 0.64 |
+| kapitallebensversicherung | 0.64 | 0.64 | 0.75 | 0.62 | 0.71 | 0.94 | 0.70 | 0.73 |
+| klassische_rentenversicherung | 1.80 | 1.72 | 1.87 | 1.71 | 2.02 | 1.72 | 1.89 | 1.72 |
+| pflegerentenversicherung | 3.47 | 3.44 | 3.26 | 3.89 | 3.95 | 3.67 | 3.56 | 3.67 |
+| riester_rente | 1.40 | 1.34 | 1.40 | 1.56 | 1.55 | 1.56 | 1.45 | 1.49 |
+| risikolebensversicherung | 0.85 | 0.84 | 0.91 | 0.96 | 0.97 | 1.11 | 0.91 | 0.97 |
+| sofortrente | 1.42 | 1.30 | 1.36 | 1.57 | 1.56 | 1.41 | 1.45 | 1.43 |
+
+Two products' branch means lie more than 10 % above their control (N4): `basisrente`, 1.58 against 1.42 ms (+11 %), and `klassische_rentenversicherung`, 1.89 against 1.72 ms (+10 %). Both branch means lie outside the control's spread of these six runs, which ran back to back with the load rising to 10, so they were measured again alone, branch and `main` in turn, each run started only once the 1-minute load was below 3:
+
+- `uv run python tools/measure_marginal.py basisrente klassische_rentenversicherung --workers 24`, five runs a side (load 2.15 to 2.95, wall time 20 to 35 s): in the three runs at 20 to 21 s wall, `basisrente` gives 1.56, 1.42, 1.47 ms on the branch against 1.45, 1.70, 1.60 ms on `main`, so the branch is not slower; runs 4 and 5 on both sides (29 to 35 s wall, `main`'s `basisrente` 5.52 ms in run 5) were disturbed and are not used. `klassische_rentenversicherung` gave 1.89, 1.75, 2.16 against 1.84, 1.69, 1.59 ms in those three runs, still higher, so it was measured once more on its own.
+- `uv run python tools/measure_marginal.py klassische_rentenversicherung --workers 24`, six runs a side, `main` first (load 2.50 to 2.96, wall 10 to 11 s after a disturbed first pair, 2.62 and 4.52 ms at 17 and 21 s, not used): `main` 1.73, 1.85, 1.81, 1.76, 1.89 ms (mean 1.81), branch 1.84, 1.83, 1.92, 1.89, 1.84 ms (mean 1.86), +2.9 %; the two sides overlap from 1.83 to 1.89 ms, and only the branch's highest run, 1.92 ms, lies above every control run, by 2 %.
+
+At low load neither product is more than 10 % slower than its control, so the rises of the six back-to-back runs are noise of a loaded machine. That fits the code: for both products the alignment changes no formula a contract runs, only parameter values (`klassische_rentenversicherung`: the check tolerance and the text of its expense inflation; `basisrente`: its best-estimate factor and check tolerance) and where the loader finds an item, a dictionary built once per model (`core/Core/Data/__init__.py`, `param_dict`).
+
+## Forecast
+
+All ten products together at M = 5,249, P = 10,000 (1,000 per product), W = 24, fixed cost included, are forecast at **5.6 h** on the aligned code (branch mean 5.55 h, min–max 5.28 to 5.99 h over three runs), within the 10 h night; the `main` control gave 5.16 to 5.77 h (mean 5.49 h) in the same session.
+
+Against the phase 3 forecast, 5.06 h unrounded (branch mean of "Phase 3: night forecast remeasured", 5.1 h rounded), the branch mean is 9.7 % higher (8.9 % against 5.1 h), just below the 10 % of R11, and the highest single run, 5.99 h at load 9.65, is 18 % higher. The rise stays below 10 %, so R11 asks for no reason; what the control separates is this: the alignment itself adds 1.1 % (branch 5.55 h against `main` 5.49 h, same session, same M). The remaining 8.5 % between `main` (`e16c935`) and 5.06 h is not separated: 5.06 h was measured on `790706b`, and the epic's earlier entries (PRs #41 to #51: the layered loader, the `param` reads, the moved literals) changed timed code since, beside a session that may differ. Per product, against the phase 3 table several branch means are 10 to 15 % higher (`berufsunfaehigkeit` 2.89 against 2.57 ms, `fondsgebundene_rentenversicherung` 1.13 against 0.98 ms, `indexpolice` 0.57 against 0.51 ms); against this session's control `fondsgebundene_rentenversicherung` and `indexpolice` are −1 % and −11 %, and `berufsunfaehigkeit` is +7 % (2.70 ms), above the control's highest run (2.83 ms) only through the branch's run at load 9.65 (3.23 ms; 2.69 and 2.73 ms in the other two, within the control's 2.58 to 2.83 ms). The 5.06 h were forecast at M = 5,305 (M_core = 186), this one at M = 5,249 (M_core = 190), the counts of the commit measured (epic decision of 2026-11-03), 1 % fewer mutants: at M = 5,305 the branch mean would be about 5.61 h, 11 % above 5.06 h, of which the alignment's share is the same 1.1 %. The assumptions of the command apply: a linear extrapolation without trace pruning, the coverage filter ignored, M the pinned counts, a forecast, not a measurement.

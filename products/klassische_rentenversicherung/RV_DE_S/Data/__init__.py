@@ -35,14 +35,14 @@ decl_rate_file            decl_rate_table()             decl_rate_table.csv
 rentenfaktor_file         rentenfaktor_table()          rentenfaktor_table.csv
 charge_file               charge_table()                charge_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
-freq_loading_file         freq_loading_table()          freq_load_table.csv
-param_file                param_table()                 param_tariff_type.csv
+prem_freq_file            prem_freq_table()             prem_freq_table.csv
+param_file                param()                       param_tariff_type.csv
 ========================  ============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.at``: the core's for ``model_point_table``, ``param_table``, ``mort_table``,
-``rentenfaktor_table``, ``charge_table``, ``lapse_table`` and ``freq_loading_table``, this
+``DataFrame.at``: the core's for ``model_point_table``, ``mort_table``,
+``rentenfaktor_table``, ``charge_table``, ``lapse_table`` and ``prem_freq_table``, this
 space's ``decl_rate_table_dict`` with ``decl_rate_years``, the calendar range of each
 scenario the declared rate is clamped to.
 
@@ -97,7 +97,7 @@ is a scenario, not a forecast. It covers calendar years 2005 to 2060 and the rea
 :mod:`~.RV_DE_S.Projection` clamps to that range, so a projection running past 2060 holds
 the last declared year flat.
 
-``charge_table.csv``, ``lapse_table.csv``, ``freq_load_table.csv`` and ``param_tariff_type.csv``
+``charge_table.csv``, ``lapse_table.csv``, ``prem_freq_table.csv`` and ``param_tariff_type.csv``
 carry levels that are **[std] throughout** with two exceptions that are cited rather than
 chosen: the *Höchstzillmersatz* of 25 ‰ of the *Beitragssumme* (40 ‰ before 1 January
 2015), and the five-year spread of acquisition costs that § 169 Abs. 3 VVG imposes on the
@@ -169,7 +169,7 @@ def charge_table_index():
     *Deckungskapital*: it moves money inside the contract and produces no cash flow.  An
     **expense** is the insurer's own outgo and is a cash flow.  The two are different
     things and confusing them is a listed pitfall; the expense levels live in
-    :func:`param_table`.
+    the parameter file ``param_file``, read through ``param``.
 
     Override reason: the table is keyed per item, so each number carries its own
     provenance, by ``charge_id`` and ``item``,
@@ -193,7 +193,7 @@ charge_file = "charge_table.csv"
 
 lapse_file = "lapse_table.csv"
 
-freq_loading_file = "freq_load_table.csv"
+prem_freq_file = "prem_freq_table.csv"
 
 param_file = "param_tariff_type.csv"
 

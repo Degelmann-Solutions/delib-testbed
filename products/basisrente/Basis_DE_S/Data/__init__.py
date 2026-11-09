@@ -38,13 +38,14 @@ rentenfaktor_file          rentenfaktor_table()            rentenfaktor_table.cs
 charge_file                charge_table()                  charge_table.csv
 behaviour_file             behaviour_table()               behaviour_table.csv
 option_file                option_table()                  option_table.csv
-param_file                 param_table()                   param_tariff_type.csv
+prem_freq_file             prem_freq_table()               prem_freq_table.csv
+param_file                 param()                         param_tariff_type.csv
 =========================  ==============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.loc``: the core's for ``model_point_table``, ``param_table``, ``mort_table``,
-``surplus_table``, ``rentenfaktor_table`` and ``charge_table``, this space's
+``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table``,
+``surplus_table``, ``rentenfaktor_table``, ``charge_table`` and ``prem_freq_table``, this space's
 ``behaviour_table_dict`` and ``option_table_dict``, with ``behaviour_table_durs`` and
 ``surplus_table_years``, the last row of each behaviour table and surplus scenario the
 lookups clamp to.
@@ -109,10 +110,11 @@ the *Beitragsfreistellung* rate and the *Zuzahlung* take-up. **Its ``dur`` index
 policy year, ``duration(t) + 1``**, so the notes' "durations 1–5" reads off the file
 directly; ``duration(t)`` itself is completed policy years and is 0 in the first year.
 
-``option_table.csv`` holds one multiplicative factor per contractual option:
-``prem_mode`` is the *Ratenzahlungszuschlag* applied to the *laufender Beitrag* alone,
-and ``guarantee_period`` and ``survivor`` are reductions in the *Rentenfaktor*, because a
-German tariff pays for those covers out of the annuity rather than by scaling the death
+``prem_freq_table.csv`` holds the premium payment frequencies with their instalments
+a year and the *Ratenzahlungszuschlag* ``prem_freq_load``, applied to the *laufender
+Beitrag* alone.  ``option_table.csv`` holds one multiplicative factor per contractual
+option: ``guarantee_period`` and ``survivor`` are reductions in the *Rentenfaktor*, because
+a German tariff pays for those covers out of the annuity rather than by scaling the death
 benefit.
 
 ``model_point_table.csv`` is the thirteen policies, indexed by ``point_id``, which is
@@ -181,14 +183,14 @@ def behaviour_table():
 def option_table():
     """One multiplicative factor per contractual option, from *option_table.csv*.
 
-    Indexed by ``option_id`` and ``option_key``.  ``prem_mode`` gives the
-    *Ratenzahlungszuschlag*, which multiplies the *laufender Beitrag* and nothing else;
-    ``guarantee_period`` and ``survivor`` give the reduction in the *Rentenfaktor* that
-    pays for a *Rentengarantiezeit* and a *Hinterbliebenenrente*.
+    Indexed by ``option_id`` and ``option_key``.  ``guarantee_period`` and ``survivor``
+    give the reduction in the *Rentenfaktor* that pays for a *Rentengarantiezeit* and a
+    *Hinterbliebenenrente*.  ``option_key`` is read as text, the form
+    ``Projection.rf_option_factor`` writes its keys in (``"10"``, ``"0.60"``).
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / option_file,                                   # noqa: F821
-        index_col=["option_id", "option_key"])
+        index_col=["option_id", "option_key"], dtype={"option_key": str})
 
 
 def behaviour_table_dict():
@@ -214,8 +216,7 @@ def option_table_dict():
     """The option factors as a dict by column: ``{column: {(option_id, option_key): factor}}``.
 
     Built once per model from ``option_table()``, keyed by the tuple of its two index
-    columns; ``Projection.prem_freq_load`` and ``rf_option_factor`` read its ``factor``
-    column.
+    columns; ``Projection.rf_option_factor`` reads its ``factor`` column.
     """
     return option_table().to_dict()
 
@@ -246,6 +247,8 @@ charge_file = "charge_table.csv"
 behaviour_file = "behaviour_table.csv"
 
 option_file = "option_table.csv"
+
+prem_freq_file = "prem_freq_table.csv"
 
 param_file = "param_tariff_type.csv"
 

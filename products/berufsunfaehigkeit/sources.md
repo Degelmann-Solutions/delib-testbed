@@ -443,7 +443,7 @@ Entries cited by the *Berufsunfähigkeit* documents:
 - **REG-R1 / REG-R2 / REG-R4** — Solvabilität II, the Delegated Regulation and the EIOPA risk-free curves: the valuation layer that consumes `liability_cf`, cited and never computed.
 - **REG-R8 / REG-R9 / REG-R11** — VAG §§ 138, 139 and 141–143: premium sufficiency and *Gleichbehandlung*, the supervisory side of the *Überschussbeteiligung*, the *Verantwortlicher Aktuar*.
 - **REG-R14 / REG-R15** — the DeckRV and the *Höchstrechnungszins* rate history: the 1,00 % the premium equivalence discounts at. DeckRV § 2 Abs. 1 was read for this pass and states the 1 Prozent figure [R13]; **the 1 January 2025 commencement is not in the consolidated text and stays `[unverified]`**.
-- **REG-R16 / REG-R20** — DeckRV § 4 *Höchstzillmersätze* and the LVRG cut from 40 ‰ to 25 ‰: the ceiling `acq_rate` sits at, the rate in use at conclusion applying for the whole term.
+- **REG-R16 / REG-R20** — DeckRV § 4 *Höchstzillmersätze* and the LVRG cut from 40 ‰ to 25 ‰: the ceiling `load_acq_bsum_once` sits at, the rate in use at conclusion applying for the whole term.
 - **REG-R18 / REG-R19 / REG-R24** — MindZV, RfBV and VVG § 153: the surplus machinery behind the *Beitragsverrechnung*. MindZV §§ 7 and 8 were read for this pass [R14]: the risk-result minimum is 90 %, the *übriges Ergebnis* minimum 50 %.
 - **REG-R23** — VVG §§ 8 and 152, the 14-day and 30-day *Widerrufsrechte*: absorbed into the first-year lapse rate rather than modelled.
 - **REG-R28** — VVG §§ 165–170: *prämienfreie Versicherung*, *Kündigung*, *Rückkaufswert* and the *Stornoabzug* — the article-level source for the cash values this model does not price.

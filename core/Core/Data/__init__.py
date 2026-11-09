@@ -38,18 +38,6 @@ def model_point_table():
         input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
-def param_table():
-    """The product's scalar parameters by ``item``, read from its ``param_file``.
-
-    Columns ``value``, ``basis`` and ``provenance``, and an optional ``unit``: the
-    product's tariff-type file ``param_tariff_type.csv`` (``docs/core.md``, "The parameter
-    files").  The values are read with pandas' default float parsing, which round-trips
-    the decimal literals.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / param_file, index_col="item")                  # noqa: F821
-
-
 def param_core_path():
     """The core parameter file, ``param_core.csv`` beside the core's loaders.
 
@@ -64,30 +52,72 @@ def param_tariff_path():
     return input_dir() / "param_tariff.csv"
 
 
+def param_layers():
+    """The parameter layers of the tariff: ``{layer: {item: value}}``, built once per model.
+
+    The layers in turn, ``"core"`` from ``param_core_path()``, ``"tariff_type"`` from the
+    tariff-type file ``param_file`` and, where it exists, ``"tariff"`` from the tariff file
+    ``param_tariff_path()``; each file has the columns ``item``, ``value``, ``basis`` and
+    ``provenance``.  A value whose text is an integer literal is a Python ``int``, any other a
+    Python ``float``, the value the same literal has in Python.
+
+    The loader checks the files as it reads them and raises ``ValueError`` naming the item
+    and the file or files: an item standing twice in one file, an item of the core file in a
+    product file (the core lock), an item standing in both product files (uniqueness).
+    """
+    paths = {"core": param_core_path(),
+             "tariff_type": input_dir() / param_file}                 # noqa: F821
+    if param_tariff_path().is_file():
+        paths["tariff"] = param_tariff_path()
+    layers = {}
+    seen = {}
+    for layer, path in paths.items():
+        table = pd.read_csv(path, dtype=str, keep_default_na=False)  # noqa: F821
+        values = {}
+        for item, text in zip(table["item"], table["value"]):
+            if item in values:
+                raise ValueError(f"parameter {item!r} stands twice in {path}")
+            if item in seen:
+                first_layer, first_path = seen[item]
+                if first_layer == "core":
+                    raise ValueError(
+                        f"parameter {item!r} is a core item of {first_path}; the product"
+                        f" file {path} must not hold it")
+                raise ValueError(
+                    f"parameter {item!r} stands in two layers: {first_path} and {path}")
+            text = text.strip()
+            values[item] = int(text) if text.lstrip("+-").isdigit() else float(text)
+        for item in values:
+            seen[item] = (layer, path)
+        layers[layer] = values
+    return layers
+
+
 def param_dict():
     """Every parameter of the tariff by ``item``: ``{item: value}``, built once per model.
 
-    The layers are read in turn, the core file ``param_core_path()``, the tariff-type file
-    ``param_file`` and, where it exists, the tariff file ``param_tariff_path()``; each has
-    the columns ``item``, ``value``, ``basis`` and ``provenance``, and the layers are
-    disjoint.  A value whose text is an integer literal is a Python ``int``, any other a
-    Python ``float``, the value the same literal has in Python.
+    The layers of ``param_layers()`` merged in their order; the loader has checked that they
+    are disjoint.
     """
-    paths = [param_core_path(), input_dir() / param_file]            # noqa: F821
-    if param_tariff_path().is_file():
-        paths.append(param_tariff_path())
     values = {}
-    for path in paths:
-        table = pd.read_csv(path, dtype=str, keep_default_na=False)  # noqa: F821
-        for item, text in zip(table["item"], table["value"]):
-            text = text.strip()
-            values[item] = int(text) if text.lstrip("+-").isdigit() else float(text)
+    for layer in param_layers().values():
+        values.update(layer)
     return values
 
 
 def param(item):
     """The parameter ``item`` from ``param_dict()``; an unknown item raises ``KeyError``."""
     return param_dict()[item]
+
+
+def param_indirect():
+    """The cells that read parameters other than by a literal ``param("<item>")``.
+
+    ``{cell: (item, ...)}``, each such cell with the items it reads; empty in the core.  A
+    product (or a table factory reading its items by a computed name) overrides it.  Only
+    the static usage scan ``core/param_usage.py`` reads it, never a run.
+    """
+    return {}
 
 
 def mort_table_index():
@@ -124,10 +154,14 @@ def rentenfaktor_table():
         index_col=rentenfaktor_table_index())
 
 
-def freq_loading_table():
-    """The *Ratenzahlungszuschlag* by ``prem_freq``, from ``freq_loading_file``."""
+def prem_freq_table():
+    """The premium payment frequencies by ``prem_freq``, from ``prem_freq_file``.
+
+    One row per frequency the product allows, with its ``instalments`` a year and, where the
+    product charges one, its *Ratenzahlungszuschlag* ``prem_freq_load``.
+    """
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
+        input_dir() / prem_freq_file, index_col="prem_freq")         # noqa: F821
 
 
 def surplus_table_index():
@@ -172,15 +206,6 @@ def model_point_table_dict():
     return model_point_table().to_dict("index")
 
 
-def param_table_dict():
-    """The parameter table as a dict by column: ``{column: {item: value}}``.
-
-    Built once per model from ``param_table()``.  No cell reads it: every parameter is
-    read through ``param(item)``.
-    """
-    return param_table().to_dict()
-
-
 def mort_table_dict():
     """The mortality table as a dict by column: ``{column: {key: rate}}``.
 
@@ -208,13 +233,13 @@ def rentenfaktor_table_dict():
     return rentenfaktor_table().to_dict()
 
 
-def freq_loading_table_dict():
-    """The frequency loading table as a dict by column: ``{column: {prem_freq: value}}``.
+def prem_freq_table_dict():
+    """The premium frequency table as a dict by column: ``{column: {prem_freq: value}}``.
 
     ``Projection.prem_freq`` checks the frequency against its keys,
     ``prem_freq_load`` and ``instalments`` read the columns of their names.
     """
-    return freq_loading_table().to_dict()
+    return prem_freq_table().to_dict()
 
 
 def surplus_table_dict():

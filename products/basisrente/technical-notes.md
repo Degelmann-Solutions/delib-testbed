@@ -140,13 +140,14 @@ ruling, asserted by the conventions suite.
 | `rentenfaktor_table.csv` | `rf_scenario_id`, `age` | `rf_curr` | The insurer's *aktueller Rentenfaktor* at each conversion age, by scenario |
 | `charge_table.csv` | `tariff_id` | `zill_rate`, `alpha_zuz_rate`, `beta_prem`, `gamma_av`, `unit_cost_pp`, `terminal_bonus_rate`, `acq_expense_pp`, `comm_init_rate`, `comm_renew_rate`, `maint_expense_pp`, `annuity_admin_pp`, `expense_infl` | One row per tariff: the charge scale and the insurer's own expense and commission scale |
 | `behaviour_table.csv` | `beh_table_id`, `dur` | `bf_rate`, `zuz_take_up` | The two behavioural assumptions that vary by policy duration: the *Beitragsfreistellung* rate and the *Zuzahlung* take-up. **`dur` is the policy year, `duration(t) + 1`**, so "durations 1–5" below reads off the file directly |
-| `option_table.csv` | `option_id`, `option_key` | `factor` | One multiplicative factor per contractual option: `prem_mode` → the *Ratenzahlungszuschlag* on the premium; `guarantee_period` and `survivor` → the reduction in the *Rentenfaktor* |
-| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`) | The scalar tariff parameters, read by the common core's loader; added in phase 3 |
+| `prem_freq_table.csv` | `prem_freq` | `instalments`, `prem_freq_load` | The premium payment frequencies: the instalments a year and the *Ratenzahlungszuschlag* on the *laufender Beitrag* |
+| `option_table.csv` | `option_id`, `option_key` | `factor` | One multiplicative factor per contractual option: `guarantee_period` and `survivor` → the reduction in the *Rentenfaktor* |
+| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`, `roll_fwd_tol`, `elig_surv_prob`, `mort_base_year`, `acq_spread_years`, `rf_unit`, `ann_freq`) | The scalar tariff parameters, read by the common core's loader; added in phase 3 |
 
-Scalar assumptions that are single numbers rather than tables are `Projection` References and are
-tagged in *Assumption inputs* below: `elig_surv_prob`, `mort_base_year`,
-`zill_spread_y`, `rf_unit`, `ann_freq`. The exceptions are `mort_be_factor` and `roll_fwd_tol`, rows
-of `param_tariff_type.csv` since phase 3, read by the common core's loader.
+Scalar assumptions that are single numbers rather than tables are rows of `param_tariff_type.csv`
+since phase 3, read by the common core's loader, and are tagged in *Assumption inputs* below:
+`elig_surv_prob`, `mort_base_year`, `acq_spread_years`, `rf_unit`, `ann_freq`, beside
+`mort_be_factor` and `roll_fwd_tol`; each was a `Projection` Reference before.
 
 ---
 
@@ -164,7 +165,7 @@ of `param_tariff_type.csv` since phase 3, read by the common core's loader.
 | `pols_if_init` | float | Policies the model point represents | all |
 | `prem_form` | enum {regular, single} | *laufender Beitrag* against *Einmalbeitrag* | 5 (single) |
 | `prem_base_pp` | EUR p.a. | The contractual *laufender Beitrag* at inception, before the *Ratenzahlungszuschlag* and before any *Dynamik*; for `single`, the *Einmalbeitrag* | all but 7, 8 |
-| `prem_mode` | enum {annual, half_yearly, quarterly, monthly} | Payment frequency; keys `option_table.csv` for the *Ratenzahlungszuschlag* | 1, 5, 7, 8, 9, 13 annual · 4 half-yearly · 3, 11 quarterly · 2, 6, 10, 12 monthly |
+| `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | Payment frequency; keys `prem_freq_table.csv` for the *Ratenzahlungszuschlag* | 1, 5, 7, 8, 9, 13 annual · 4 half-yearly · 3, 11 quarterly · 2, 6, 10, 12 monthly |
 | `prem_dyn_rate` | rate p.a. | *Beitragsdynamik*, the contractual annual escalation | 1, 2, 3, 4, 6, 9, 11, 12 |
 | `zuzahlung_pp` | EUR p.a. | The nominal annual *Zuzahlung* before take-up | 1, 3, 11 |
 | `zuzahlung_end_dur` | int | Policy duration at which the *Zuzahlung* stops: it is paid while `duration(t) < zuzahlung_end_dur`, i.e. through policy year `zuzahlung_end_dur` | 1, 3, 11 |
@@ -329,7 +330,7 @@ best-estimate factor for a Basisrente, and the research file records the absence
 | Maintenance expense `maint_expense_pp` | **60,00 €** per in-force policy p.a., inflating | Placeholder |
 | Annuity administration `annuity_admin_pp` | **36,00 €** per annuitant p.a., inflating | Placeholder; the payout phase is administratively cheaper than the accumulation phase |
 | Expense inflation `expense_infl` | **1,5 %** p.a. | Placeholder |
-| *Zillmerung* spread `zill_spread_y` | **5** years | **Cited, not [std] — gap 8 is closed.** The AltZertG's own five-year rule (§ 1 Abs. 1 Satz 1 Nr. 8) sits in the *Altersvorsorgevertrag* definition and § 5a does not import it [R10]; but **VVG § 165 Abs. 2** computes the premium-free benefit on the *Rückkaufswert* of § 169 Abs. 3, whose floor is the reserve "*bei gleichmäßiger Verteilung der angesetzten Abschluss- und Vertriebskosten auf die ersten fünf Vertragsjahre*" [R14] — and a *Beitragsfreistellung* is the only exit this product has. Two retrieved wordings state it directly: GDV model conditions § 10 Abs. 1 (with the shorter premium term as the alternative) and CosmosDirekt LA 1079 A § 8 Abs. 1 [S12] [S1] |
+| *Zillmerung* spread `acq_spread_years` | **5** years | **Cited, not [std] — gap 8 is closed.** The AltZertG's own five-year rule (§ 1 Abs. 1 Satz 1 Nr. 8) sits in the *Altersvorsorgevertrag* definition and § 5a does not import it [R10]; but **VVG § 165 Abs. 2** computes the premium-free benefit on the *Rückkaufswert* of § 169 Abs. 3, whose floor is the reserve "*bei gleichmäßiger Verteilung der angesetzten Abschluss- und Vertriebskosten auf die ersten fünf Vertragsjahre*" [R14] — and a *Beitragsfreistellung* is the only exit this product has. Two retrieved wordings state it directly: GDV model conditions § 10 Abs. 1 (with the shorter premium term as the alternative) and CosmosDirekt LA 1079 A § 8 Abs. 1 [S12] [S1] |
 
 **No decrement other than death and the *Beitragsfreistellung* transition exists in this model.** No
 surrender, no assignment, no provider transfer, no commutation. That is the product [R1] [REG-R39]
@@ -385,7 +386,7 @@ P(k)            = prem_base_pp(k) × φ        if k < T and not paid-up and prem
                 = 0                          otherwise
 ```
 
-with `φ = factor("prem_mode", prem_mode)` from `option_table.csv`. For `prem_form = "single"` the
+with `φ = prem_freq_load` at `prem_freq` from `prem_freq_table.csv`. For `prem_form = "single"` the
 *Einmalbeitrag* is paid once, in year `k = 0` and only when `duration_init = 0`, and `φ = 1` — a
 single payment carries no *Ratenzahlungszuschlag* (pitfall 8).
 
@@ -400,7 +401,7 @@ Z(k) = zuzahlung_pp × zuz_take_up(d(k))      if k < T and d(k) < zuzahlung_end_
 tariff prices a half-yearly, quarterly or monthly mode by loading the **amount** through `φ`, not by
 moving the *Versicherungsperiode*, and the account the contribution is credited to is a
 *Deckungskapital* struck per *Versicherungsjahr*. So the whole year's *Beitrag* and *Zuzahlung* fall
-in the first month of the projection year — `prem_due(t)`, `t % 12 == 0` — whatever `prem_mode` says,
+in the first month of the projection year — `prem_due(t)`, `t % 12 == 0` — whatever `prem_freq` says,
 and splitting the cash into instalments while crediting the account annually would make the fund's
 cash and the account's credit disagree inside the year for no gain in fidelity.
 
@@ -432,13 +433,13 @@ S = Σ_{u=0}^{m−1} prem_base_pp × (1 + δ)^u          for prem_form = "regula
   = prem_base_pp                                    for prem_form = "single"
 ```
 
-The zillmerised acquisition charge is capped at `zill_rate × S` and amortised in `zill_spread_y`
+The zillmerised acquisition charge is capped at `zill_rate × S` and amortised in `acq_spread_years`
 equal instalments over the first premium-paying years of the **contract**, not of the projection —
 so an in-force point that is past duration 5 sees none of it:
 
 ```
 zillmer_amount = zill_rate × S
-α(k)           = zillmer_amount / zill_spread_y     if d(k) < zill_spread_y and premiums are due
+α(k)           = zillmer_amount / acq_spread_years     if d(k) < acq_spread_years and premiums are due
                = 0                                  otherwise
 α_z(k)         = alpha_zuz_rate × Z(k)
 u(k)           = unit_cost_pp × (1 + expense_infl)^k
@@ -774,7 +775,7 @@ a test.
    expense, the commission, the maintenance expense and the annuity administration. Assert that
    `expenses(t)` is invariant to `beta_prem`, `gamma_av` and `zill_rate`, and that changing `gamma_av`
    moves `net_cf` **only** through the annuity that the smaller fund buys at *Rentenbeginn*.
-5. **Charging the whole *Zillmerung* in year one.** It is spread over `zill_spread_y = 5` premium-paying
+5. **Charging the whole *Zillmerung* in year one.** It is spread over `acq_spread_years = 5` premium-paying
    years **[std]** and capped at 25 ‰ of the *Beitragssumme* [R16] [REG-R16]. Assert
    `alpha_amort_pp(k)` is equal for `k = 0 … 4` and zero from `k = 5`, that
    `Σ_k alpha_amort_pp(k) = zill_rate × beitragssumme()` to 1e-9, and that an in-force point past
@@ -793,7 +794,7 @@ a test.
    before it.
 8. **Applying the *Ratenzahlungszuschlag* twice, or to the wrong thing.** It multiplies the *laufender
    Beitrag* only. Assert `prem_pp(k) / (prem_base_pp × (1+δ)^d(k)) = φ` exactly in every year, that
-   `zuz_pp(k)` is invariant to `prem_mode`, and that a single-premium point carries `φ = 1`. **The
+   `zuz_pp(k)` is invariant to `prem_freq`, and that a single-premium point carries `φ = 1`. **The
    monthly grid does not change this**: φ prices a fractionated mode by loading the amount, so
    `prem_due(t)` still puts the whole year's contribution in the first month of the year, and a model
    that both split the cash into instalments *and* kept φ would charge for the deferral twice.
@@ -901,7 +902,7 @@ any of them, and the research file records the absence as gap 3.
 **Configuration.** Model point 1, the anchor cell, exactly as shipped in `model_point_table.csv`:
 `point_id = 1`; `policy_id = DE-BAS-0001`; `sex = M` (reporting only; pricing is unisex [REG-R34]);
 `issue_age = 45`; `issue_year = 2026`; `duration_init = 0`; `ret_age = 67`;
-`pols_if_init = 1.0`; `prem_form = regular`; `prem_base_pp = 6,000.00 €` p.a.; `prem_mode = annual`,
+`pols_if_init = 1.0`; `prem_form = regular`; `prem_base_pp = 6,000.00 €` p.a.; `prem_freq = annual`,
 so `prem_freq_load = 1.000`; `prem_dyn_rate = 0.02`; `zuzahlung_pp = 4,000.00 €` p.a.;
 `zuzahlung_end_dur = 22`; `paidup_at_init = 0`; `av_pp_init = 0.00 €`; `ann_pp_init = 0.00 €`;
 `rechnungszins = 0.0100`; `rentenfaktor_gtd = 28.00 €` per month per 10 000 €; `guarantee_period_y = 0`;
@@ -937,7 +938,7 @@ trigger [R15]; `ann_bonus_rate(k) = 1.0 %` p.a. compounding **[std]**, a *teildy
 **[std]**, so `rentenfaktor_applied() = max(28.00, 31.50) × 1.000 = 31.50` — the **current** factor
 binds on this cell, and model point 13 exercises the other branch [R17] [S1]. *Charges*:
 `zill_rate = 25 ‰` of the *Beitragssumme* [R16] [REG-R16] [REG-R20], amortised over
-`zill_spread_y = 5` years, now cited rather than **[std]** [R14] [S1] [S12]; `alpha_zuz_rate = 2.5 %` of each *Zuzahlung* **[std]**;
+`acq_spread_years = 5` years, now cited rather than **[std]** [R14] [S1] [S12]; `alpha_zuz_rate = 2.5 %` of each *Zuzahlung* **[std]**;
 `beta_prem = 7.5 %` **[std]**; `gamma_av = 0.35 %` p.a. **[std]**; `unit_cost_pp = 36.00 €` p.a.
 inflating at `expense_infl = 1.5 %` **[std]**. *Insurer expense and commission*, all **[std]**:
 `acq_expense_pp = 250.00 €` at inception; `comm_init_rate = 2.5 %` of `beitragssumme()` at

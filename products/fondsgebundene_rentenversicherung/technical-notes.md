@@ -119,10 +119,10 @@ that exercise the attribute non-trivially, so a reader can find the row that tes
 | `duration_mth_init` | int | policy months already elapsed at the valuation date; 0 for new business. An **elapsed count**, already 0-based, so it is `t_start()` itself | 6 |
 | `pols_if_init` | float | policies the model point represents | all |
 | `ret_age` | int | age at *Rentenbeginn*; fixes `proj_len()` and the *Rentenfaktor* row | 13 (70), all others 67 |
-| `prem_form` | enum {`laufend`, `einmal`} | recurring or single premium | 2 (`einmal`) |
+| `prem_form` | enum {`regular`, `single`} | recurring or single premium | 2 (`single`) |
 | `prem_pp` | EUR | the **instalment the policy states**, or the *Einmalbeitrag*. Already contains whatever *Ratenzahlungszuschlag* the tariff applied | all |
-| `prem_mode_months` | int {1, 3, 6, 12} | payment frequency in months | 3 (3), 4 (6), 5 (12) |
-| `prem_term_y` | int | premium-paying term in years; 0 for `einmal` | 12 (2 years against a 12-year deferment) |
+| `prem_freq` | enum {annual, half_yearly, quarterly, monthly}, a key of `prem_freq_table.csv` | payment frequency; `prem_cycle = 12 // instalments` months between premiums | 3 (quarterly), 4 (half_yearly), 5 (annual) |
+| `prem_term_y` | int | premium-paying term in years; 0 for `single` | 12 (2 years against a 12-year deferment) |
 | `dynamik_rate` | float | *Beitragsdynamik*, annual premium increase at each anniversary; 0 = off | 10 (3 %) |
 | `pup_month` | int | 0-based policy month from which the contract is *beitragsfrei*; 0 = never (the sentinel, not the inception month) | 7 (120) |
 | `db_form` | enum {`fund`, `prem_return`, `pct_fund`, `sum_assured`} | *Todesfallleistung* shape | 2, 13 (`fund`); 4, 12 (`pct_fund`); 7 (`sum_assured`); rest `prem_return` |
@@ -332,7 +332,7 @@ approaches and spike when both limbs are met [R20] [REG-R45].
                               1.0 otherwise                                        [std]
     # the 12/62 threshold itself is statutory: EStG § 20 Abs. 1 Nr. 6 Satz 2 with
     # § 52 Abs. 28 (62 for contracts concluded after 31 December 2011; 60 before).
-    # Its magnitude, 2.5, is [std].
+    # Its magnitude, 2.5, is [std]. 13, 62 and 2.5 are rows of param_tariff_type.csv.
     lapse_rate(t)      = min( lapse_cap, lapse_rate_base(t) × lapse_tax_step(t) + lapse_dyn_add(t) )
     lapse_rate_mth(t)  = 1 − (1 − lapse_rate(t))^(1/12)
     lapse_rate_mth(proj_len() − 1) = 0                                             [std]
@@ -385,15 +385,15 @@ with a PRIIPs performance scenario**.
 
 | Input | Value | Basis |
 |---|---|---|
-| Acquisition commission `comm_acq_rate` | **2.50 % of the *Beitragssumme***, paid at `t = 0` | **[std]** (5) |
-| Issue expense `expense_issue` | 200.00 EUR at `t = 0` | **[std]** (5) |
-| Maintenance expense `expense_maint_mth` | 4.00 EUR per policy per month, inflating at `expense_infl` | **[std]** (5) |
+| Acquisition commission `comm_acq_bsum_once` | **2.50 % of the *Beitragssumme***, a row of `param_tariff_type.csv`, paid at `t = 0` | **[std]** (5) |
+| Issue expense `expense_acq_pp_once` | 200.00 EUR at `t = 0`, a row of `param_tariff_type.csv` | **[std]** (5) |
+| Maintenance expense `expense_admin_pp_mth` | 4.00 EUR per policy per month, a row of `param_tariff_type.csv`, inflating at `expense_infl` | **[std]** (5) |
 | Expense inflation `expense_infl` | 2.0 % p.a., a row of `param_tariff_type.csv`, applied as `1.02^(t/12)` | **[std]** |
-| Renewal commission `comm_renew_rate` | 1.5 % of each gross premium | **[std]** (5) |
-| Claim expense `expense_claim` | 150.00 EUR per death claim | **[std]** |
-| Surrender expense `expense_surr` | 50.00 EUR per surrender | **[std]** |
-| Annuitisation expense `expense_annuitisation` | 100.00 EUR per policy converting at *Rentenbeginn* | **[std]** |
-| Dynamic-lapse coefficient `lapse_dyn_beta` | **0** in the base run; 0.15 as the reference value | **[std]** (6) |
+| Renewal commission `comm_renew_prem_inst` | 1.5 % of each gross premium, a row of `param_tariff_type.csv` | **[std]** (5) |
+| Claim expense `expense_claim_pp_once` | 150.00 EUR per death claim, a row of `param_tariff_type.csv` | **[std]** |
+| Surrender expense `expense_surr_pp_once` | 50.00 EUR per surrender, a row of `param_tariff_type.csv` | **[std]** |
+| Annuitisation expense `expense_conv_pp_once` | 100.00 EUR per policy converting at *Rentenbeginn*, a row of `param_tariff_type.csv` | **[std]** |
+| Dynamic-lapse coefficient `lapse_dyn_beta` | **0** in the base run, a row of `param_tariff_type.csv`; 0.15 as the reference value | **[std]** (6) |
 
 5. **The acquisition commission is set equal to the acquisition charge deliberately.** The insurer
    pays 2.50 % of the *Beitragssumme* at inception and recovers exactly that, undiscounted, over
@@ -436,16 +436,16 @@ with a PRIIPs performance scenario**.
 
 ### The *Beitragsverrechnung*
 
-    B(t) = prem_pp_base · d(t)   if t < 12·prem_term_y, (pup_month > 0 ⇒ t < pup_month), (t − t₀) mod prem_mode_months = 0
+    B(t) = prem_pp_base · d(t)   if t < 12·prem_term_y, (pup_month > 0 ⇒ t < pup_month), (t − t₀) mod prem_cycle = 0
          = 0                     otherwise
     d(t) = (1 + dynamik_rate)^(y(t) − 1)                        Beitragsdynamik, 1.0 when off
 
-    S    = prem_pp_base × (12 / prem_mode_months) × prem_term_y      laufend
-         = prem_pp_base                                              einmal
+    S    = prem_pp_base × instalments × prem_term_y                  regular
+         = prem_pp_base                                              single
 
-    N_α  = min(60, 12 × prem_term_y) / prem_mode_months          acquisition instalments
-    α(t) = alpha_rate · S / N_α        on the first N_α premium dates      laufend
-         = zuzahlung_rate · B(t₀)      at t = t₀, once                     einmal
+    N_α  = min(60, 12 × prem_term_y) / prem_cycle                acquisition instalments
+    α(t) = alpha_rate · S / N_α        on the first N_α premium dates      regular
+         = zuzahlung_rate · B(t₀)      at t = t₀, once                     single
          + zuzahlung_rate · Z(t)       whenever a Zuzahlung falls
 
     A(t) = B(t) + Z(t) − α(t) − β · B(t)
@@ -532,13 +532,13 @@ composite it is the *Fondsguthaben* exactly, and `claims_lapse` is then the whol
     premiums(t)  = ( B(t) + Z(t) ) · l(t)
     prem_to_av(t)= A(t) · l(t)
     charge_*(t)  = charge_*_pp(t) · l(t)                       for the four unit-side charges
-    expenses(t)  = expense_issue · l(t) · 1{t = 0}
+    expenses(t)  = expense_acq_pp_once · l(t) · 1{t = 0}
                    + expense_maint_pp(t) · l(t)
-                   + expense_claim · pols_death(t)
-                   + expense_surr  · pols_lapse(t)
-                   + expense_annuitisation · pols_maturity(t)
-    commissions(t) = comm_acq_rate · S · l(t) · 1{t = 0}
-                   + comm_renew_rate · B(t) · l(t)
+                   + expense_claim_pp_once · pols_death(t)
+                   + expense_surr_pp_once  · pols_lapse(t)
+                   + expense_conv_pp_once · pols_maturity(t)
+    commissions(t) = comm_acq_bsum_once · S · l(t) · 1{t = 0}
+                   + comm_renew_prem_inst · B(t) · l(t)
 
     net_cf(t) = charge_acq(t) + charge_admin_prem(t) + charge_admin_fund(t)
                 + charge_policy_fee(t) + charge_risk(t) + stornoabzug(t)
@@ -566,7 +566,7 @@ that exclusion visible rather than merely asserted.
     R_c = rentenfaktor_curr(ret_age)
     R   = max( R_g, R_c )
     av_maturity_pp() = F_BEF_DECR(n − 1)
-    annuity_mth_pp() = av_maturity_pp() / 10 000 × R
+    annuity_mth_pp() = av_maturity_pp() / rf_unit × R      rf_unit = 10 000, a row of param_tariff_type.csv
 
 The shipped `rentenfaktor_table.csv` is **[std] and derived, not observed**. The 0 %
 *Rechnungszins* it rests on is no longer an inference from a classic tariff: a fondsgebundene AVB
@@ -832,7 +832,7 @@ any of them, and the research file's gaps register records that as gaps 18 and 1
 `issue_age = 37`; `duration_mth_init = 0`, so `t_start() = 0`; `pols_if_init = 1.0`;
 `ret_age = 67`, so `proj_len() = 12 × (67 − 37) = 360` months and the frame is
 `t = 0 … 359`;
-`prem_form = laufend`; `prem_pp = 200.00 EUR`; `prem_mode_months = 1`; `prem_term_y = 30`;
+`prem_form = regular`; `prem_pp = 200.00 EUR`; `prem_freq = monthly`; `prem_term_y = 30`;
 `dynamik_rate = 0.00`; `pup_month = 0`; `db_form = prem_return`, so `db_pct` and `sum_assured` are
 unused; `charge_id = std_gross`; `scenario_id = base`; `rentenfaktor_id = std_2026`;
 `unit_price_init = 100.00 EUR`; `units_init = 0.0`; `cum_prem_init = 0.00 EUR`;
@@ -869,11 +869,11 @@ the tax step `lapse_tax_step = 2.5` applies in policy year 26 (`t = 300 … 311`
 attained age 62 is reached and duration 12 is long past [R20] [REG-R45], giving 7.5 % p.a. and
 0.647574 % monthly there; `lapse_cap = 40 %`; `lapse_dyn_beta = 0` (module off);
 `lapse_rate_mth(359) = 0`, because the end of month `t = 359` is *Rentenbeginn*. *Expenses*, all
-**[std]**: acquisition commission `comm_acq_rate = 2.50 %` of the *Beitragssumme* = 1 800,00 €
-plus `expense_issue = 200,00 €`, both at `t = 0`; maintenance `expense_maint_mth = 4,00 €` per
+**[std]**: acquisition commission `comm_acq_bsum_once = 2.50 %` of the *Beitragssumme* = 1 800,00 €
+plus `expense_acq_pp_once = 200,00 €`, both at `t = 0`; maintenance `expense_admin_pp_mth = 4,00 €` per
 month inflating at `expense_infl = 2.0 % p.a.` as `4.00 × 1.02^(t/12)`; renewal commission
-`comm_renew_rate = 1.5 %` of each gross premium; `expense_claim = 150,00 €` per death;
-`expense_surr = 50,00 €` per surrender; `expense_annuitisation = 100,00 €` at *Rentenbeginn*.
+`comm_renew_prem_inst = 1.5 %` of each gross premium; `expense_claim_pp_once = 150,00 €` per death;
+`expense_surr_pp_once = 50,00 €` per surrender; `expense_conv_pp_once = 100,00 €` at *Rentenbeginn*.
 *Conversion*: `rentenfaktor_guar(67) = 25.00` and `rentenfaktor_curr(67) = 25.00` from row
 `std_2026`, both **[std]** and derived from `T_eff(67) = 33.3333` at a 0 % *Rechnungszins*
 [S10] [R16] [R22] [REG-R49], so `rentenfaktor_applied() = 25.00`. No *Überschussbeteiligung*, no

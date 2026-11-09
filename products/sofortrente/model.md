@@ -132,7 +132,7 @@ g(R) = R ä (1 + β) + Σ_t v^(t/12) d̃_a(t) max(SP − n(t) R, 0)  =  SP_net
 ```
 
 `g` is increasing in `R` on `(0, R_max]` with `g(0) < SP_net`, so `annuity_pp_derived()`
-bisects to `solve_tol = 1e-10` in at most `solve_max_iter = 200` steps, evaluating the sum
+bisects to a bracket of `1e-10` in at most `200` steps, evaluating the sum
 inline from the cached `tariff_lives` path rather than through a cells parameterized by the
 trial `R` — which is what keeps the solve out of the dependency graph. **Computing `R_max` and
 then subtracting a refund cost is a different — and wrong — answer, and the difference is not
@@ -231,7 +231,7 @@ level-only margin would hold it constant. Collapsing the two bases destroys the 
 *Risikoüberschuss* the *Überschussrente* is largely financed from.
 
 **Unisex.** German new business has had to be unisex since 21 December 2012 [REG-R34], so
-the tariff factor is struck at `table_sex = "U"`, a `mix_male = 0.45` blend of the
+the tariff factor is struck at `table_sex = "U"`, a `unisex_mix_male = 0.45` blend of the
 sex-distinct series computed in the model and never a row of the CSV, because no real
 sex-distinct table carries one. Letting `sex()` into the tariff reproduces a tariff unlawful
 in Germany. The direction of `ρ_M` is argued and its magnitude is not observed, and **no
@@ -242,7 +242,7 @@ German carrier publishes a mix** (research gap 13).
 Instalments are paid at the **start** of a payment month and a payment is made if the payee
 is alive at that same instant, so the survival index of a payment is `t` under both timings
 and the two conventions differ **only in which months carry an instalment**: under `advance`
-the first falls at `defer_mths()`, under `arrears` at `defer_mths() + 12/payment_freq`. A
+the first falls at `defer_mths()`, under `arrears` at `defer_mths() + 12/ann_freq`. A
 `G`-year guarantee covers `G × m` instalments at every frequency and under both timings,
 which is why `guar_end_mth()` is `first_pay_mth() + 12 G` and not a frequency expression.
 
@@ -261,12 +261,12 @@ fund of those who died, and the annuity starts at an older age.
 
 ## Inputs are external files
 
-The six input CSVs live **in this directory**, beside `run.py` — not inside the model
+The seven input CSVs live **in this directory**, beside `run.py` — not inside the model
 folder. `Sofort_DE_S/` holds nothing but formulas:
 
 ```
 products/sofortrente/
-  model_point_table.csv  mort_table.csv  improvement_table.csv      <- inputs live here
+  model_point_table.csv  mort_table.csv  improvement_table.csv  ann_freq_table.csv      <- inputs live here
   surplus_scale_table.csv  hoechstrechnungszins_table.csv  param_tariff_type.csv
   run.py  model.md  product-spec.md  technical-notes.md  sources.md
   Sofort_DE_S/                     <- formulas only
@@ -291,11 +291,11 @@ conventions suite counts the reads and asserts the file set.
 | File | Reference / Cells | Contents and provenance |
 |---|---|---|
 | `model_point_table.csv` | `model_point_file` / `model_point_table()` | Fourteen points. **Point 1 is the worked-example anchor cell** (100 000 €, M65 born 1960, 2025 vintage, 10-year *Rentengarantiezeit*, monthly *vorschüssig*, `i = 1,00 %`, *teildynamisch*), **[std]**; points 2–14 exercise the plain *Leibrente*, each death-benefit option, a joint-life cell, all four frequencies, both timings, all four surplus forms, a five-year *Aufschubzeit*, an in-force cell with a given annuity, a 0,25 %-era vintage, both ends of the age envelope and the surplus switched off. The only file without a `provenance` column: a model point is a configuration, not an assumption |
-| `mort_table.csv` | `mort_file` / `mort_table()` | Annual death rates by `(basis, sex, age)` in four series, `{FIRST, SECOND} × {M, F}`, ages 50–120. A **[std]** Gompertz–Makeham proxy and **not DAV 2004 R**, which is DAV property and is cited by name, never shipped [R10] [REG-R49]. **The anchor a replacement must preserve** is that the `mix_male = 0.45` blend of the FIRST series reproduces the research file's own `q_base(x)` — to 2,5 × 10⁻⁷ relative, the female factor being a six-decimal rounding of `0.4375/0.55` |
+| `mort_table.csv` | `mort_file` / `mort_table()` | Annual death rates by `(basis, sex, age)` in four series, `{FIRST, SECOND} × {M, F}`, ages 50–120. A **[std]** Gompertz–Makeham proxy and **not DAV 2004 R**, which is DAV property and is cited by name, never shipped [R10] [REG-R49]. **The anchor a replacement must preserve** is that the `unisex_mix_male = 0.45` blend of the FIRST series reproduces the research file's own `q_base(x)` — to 2,5 × 10⁻⁷ relative, the female factor being a six-decimal rounding of `0.4375/0.55` |
 | `improvement_table.csv` | `improvement_file` / `improvement_table()` | The *Trendfunktion* `λ(x)` by `(basis, age)`: **[std]** 1,5 % a year to age 70 on the second-order basis, tapering linearly to zero at 105, with the first-order basis improving 25 % faster. DAV 2004 R's own trend is **not public and was not reachable** — the DAV derivation and the contemporaneous expositions are members' and conference materials with no open address [R10] [R12] |
 | `surplus_scale_table.csv` | `surplus_scale_file` / `surplus_scale_table()` | `surplus_init_pct` and `surplus_growth` for the *Überschussverwendung* forms. **[std]** and **uncalibrated**: one carrier group's payout-phase declaration is now in the corpus — 3,35 % less the *Rechnungszins* for 2026, interest surplus only [S10] — and one carrier's realised increase, 0,75 % for 2024 [S8], but neither was used to set these values and the shipped two-component shape does not match either. The corpus still gives no range [R21] [R22] (research gap 4 narrows) |
 | `hoechstrechnungszins_table.csv` | `hoechstrechnungszins_file` / `hoechstrechnungszins_table()` | The statutory rate history by vintage band [REG-R14] [REG-R15]; the two mid-year steps of 1994 and 2000 are assigned **[std]** to the rate in force on 1 January of the split year |
-| `param_tariff_type.csv` | `param_file` / `param_table()` | Scalar tariff parameters by `item`, read by the common core's loader: the limiting age `omega_age`, 121 **[std]**, and `expense_infl`, 1,5 % **[std]** |
+| `param_tariff_type.csv` | `param_file` / `param()` | Scalar tariff parameters by `item`, read by the common core's loader: the limiting age `omega_age`, 121 **[std]**, `expense_infl`, 1,5 % **[std]**, `roll_fwd_tol`, and 8 of the 10 that were `Projection` References, `load_acq_sp_once` to `mort_base_year` **[std]** |
 
 **No input file is keyed by the frame's `t`,** so the move to the 0-based convention left every
 CSV byte-identical. The time-like columns and why each stands: `mort_table.csv` and
@@ -390,8 +390,8 @@ this model does not compute.
 `expenses` is the notes' total: acquisition at `t = 0`, maintenance on `pols_if(t)`, and the
 per-instalment cost on `payment_factor(t)` — the last is not a slip, because a survivor's
 annuity in payment is a **second** payment run and a beneficiary's guaranteed instalment
-costs the same to pay as the annuitant's. The tariff *loadings* `expense_load_alpha` and
-`expense_load_beta` are pricing parameters and appear only in the equivalence; the gap
+costs the same to pay as the annuitant's. The tariff *loadings* `load_acq_sp_once` and
+`load_admin_annval_once` are pricing parameters and appear only in the equivalence; the gap
 between the loadings and the expenses is the modelled *Kostenüberschuss*, 300,00 € at
 inception on the anchor cell.
 
@@ -418,7 +418,7 @@ from the month it falls in, are **absent** here: the payment instant is the star
 | `R`, `U(t)`, `A(t)` | `annuity_guar_pp` / `annuity_surp_pp` / `annuity_pp` | Three amounts, one per cells: the immutable *garantierte Rente*, the declared *Überschussrente*, and their sum. Publishing only the first models less than the payment; publishing only the third loses the distinction between a promise and a declaration |
 | `q⁽¹⁾(x)`, `q⁽²⁾(x)` | `mort_rate_tariff` / `mort_rate` | **Different objects, not two readings of one table**: first-order unisex for pricing, second-order sex-specific for the projection. `mort_rate` is the library's shared name and takes the projection basis, as it does in every other delib model |
 | `C(t)` | `cum_annuity_guar_pp` | Deliberately *not* `cum_annuity_pp`, the name `SPIA_US_S`, `PA_UK_S` and `Rente_FR_S` use, because it accumulates the **guaranteed** instalment alone. The longer name is the [std] refund-basis decision made visible at the point of use |
-| `ä` | `annuity_factor` | The notes' `ä`, and **not** the market's `a12`: `a12 = annuity_factor() / payment_freq()`, so the research file's `a12 = 20,426` is `annuity_factor() = 245,11`. `Rente_FR_S` carries the same name for the **French** unit — the value of one unit of *annual* rente, `sum(l(t) v^t) / 12` — so its `annuity_factor` is this model's `a12` and not this cells |
+| `ä` | `annuity_factor` | The notes' `ä`, and **not** the market's `a12`: `a12 = annuity_factor() / ann_freq()`, so the research file's `a12 = 20,426` is `annuity_factor() = 245,11`. `Rente_FR_S` carries the same name for the **French** unit — the value of one unit of *annual* rente, `sum(l(t) v^t) / 12` — so its `annuity_factor` is this model's `a12` and not this cells |
 | `l̃(k)` | `tariff_lives` | The first-order survival path, used only inside the pricing sums and running from inception whatever `t_start()` is. Kept apart from `lives_if` so that the equivalence stays acyclic |
 
 ## Standardizations used
@@ -434,16 +434,16 @@ table stands.
 | [std] | Value | Rationale |
 |---|---|---|
 | Mortality proxy | `q_base(x) = 1 − exp(−(A + B c^x (c−1)/ln c))`, `A = 0.0002`, `B = 1.5e-5`, `c = 1.10` | The research file's own printed law, life expectancy 24,29 years at 65 — a **prudent annuitant** shape of the right order for a German first-order basis. DAV 2004 R is DAV property and is not shipped [R10] [REG-R49]. **Measurably lighter than a real tariff basis**: on the one carrier quotation now in the corpus the constructed annuity is about **16 % high** [S8], and the model is not refitted to it here |
-| Sex split | `FIRST/M = 1.250000 q_base`, `FIRST/F = 0.795455 q_base` | Chosen so the `mix_male` blend reproduces `q_base` itself, which is what lets every annuity factor printed in the research file be traced into this model. Exact to 2,5 × 10⁻⁷ relative |
+| Sex split | `FIRST/M = 1.250000 q_base`, `FIRST/F = 0.795455 q_base` | Chosen so the `unisex_mix_male` blend reproduces `q_base` itself, which is what lets every annuity factor printed in the research file be traced into this model. Exact to 2,5 × 10⁻⁷ relative |
 | First-order level margin | `SECOND = 1.20 × FIRST` | The direction is established — prudent means *lighter* for an annuity [R10] [REG-R47] — and the size was not (research gap 12) |
 | Closing row and cap | `q = 1` at attained age 120; every series capped at 1.0 | Forces the survival path to zero inside the `omega_age` horizon. The cap binds only on `SECOND/M` at ages 117–119, where `1.20 × FIRST` would stop being a probability |
 | *Trendfunktion* | `λ_SECOND = 1,5 %` to age 70, tapering linearly to 0 at 105 | A plausible German annuitant improvement shape; DAV 2004 R's own trend is not public [R10] [R12] |
 | First-order trend margin | `λ_FIRST = 1.25 × λ_SECOND` | Prudence for an annuity must reach the **rate** of improvement, not only its level [REG-R47]. The size is the modeller's view |
 | `mort_base_year`, `omega_age` | 2025; 121 | The base year makes the shipped tables the period tables of 2025, so the anchor's cohort exponent at 65 is exactly zero; the limiting age is an upper bound the proxy reaches zero survival before |
 | Monthly rates | `1 − (1 − q)^(1/12)` | A uniform force of mortality across the policy year, under which twelve monthly survivals compound back to the annual one exactly |
-| `mix_male` ρ_M | 0.45 | A **direction with no magnitude**: a unisex tariff on sex-distinct tables favours women, so a voluntary annuitant portfolio's female share exceeds the population share [REG-R34]. No carrier publishes a mix (research gap 13) |
-| `expense_load_alpha` α | 2,5 % of `SP` | A single-premium annuity's acquisition cost is one commission plus an issue expense, with no premium stream to amortise against. **No charge parameter was established at any carrier** (research gap 8) |
-| `expense_load_beta` β | 2,0 % of the annuity value | Covers a payment run whose per-policy cost is roughly constant in euros — right on 100 000 €, too small on 25 000 €, which is itself why minimum *Einmalbeiträge* exist |
+| `unisex_mix_male` ρ_M | 0.45 | A **direction with no magnitude**: a unisex tariff on sex-distinct tables favours women, so a voluntary annuitant portfolio's female share exceeds the population share [REG-R34]. No carrier publishes a mix (research gap 13) |
+| `load_acq_sp_once` α | 2,5 % of `SP` | A single-premium annuity's acquisition cost is one commission plus an issue expense, with no premium stream to amortise against. **No charge parameter was established at any carrier** (research gap 8) |
+| `load_admin_annval_once` β | 2,0 % of the annuity value | Covers a payment run whose per-policy cost is roughly constant in euros — right on 100 000 €, too small on 25 000 €, which is itself why minimum *Einmalbeiträge* exist |
 | Acquisition expense | 2,0 % of `SP` + 200 € | Sized so the tariff over-recovers modestly, which is the right direction and the source of the modelled *Kostenüberschuss* — 2 500 € taken against 2 200 € incurred on the anchor cell |
 | Maintenance / payment expense | 60 € a year on `pols_if`; 1,50 € per instalment | The two running costs a payout annuity actually has: the annual *Standmitteilung* and proof-of-life routine, and the payment run itself. Both fall on the insurer by the AVB — "Vor jeder Rentenzahlung können wir **auf unsere Kosten** einen amtlichen Lebensnachweis … verlangen" [S4] [S2] — so the direction is sourced; **the levels are not** [S15] |
 | `expense_infl` | 1,5 % p.a. (`param_tariff_type.csv`), stepping at the **policy anniversary** | Every step in this product falls on an anniversary; nothing happens on 31 December |
@@ -456,7 +456,7 @@ table stands.
 | Age basis | `issue_age + t // 12`, with `issue_year == birth_year + issue_age` on every shipped point | An internal-consistency convention, not a contract fact; a real book carries a fractional offset of up to a year |
 | *Höchstrechnungszins* split years | 1994 and 2000 assigned to the 1 January rate | The statutory steps fall mid-year and a model point carries one vintage [REG-R15]. `kapitallebensversicherung/deckrv_table.csv` resolves the same two years to the **higher** of the pair instead, so the two tables agree on 2000 and differ on 1994 — 3,50 % here, 4,00 % there. Neither is derivable from [REG-R15], so the divergence is recorded here and in this file's `provenance` column rather than silently reconciled. No delib model point in either product carries a 1994 vintage — the earliest anywhere in the library is 2005 — so no shipped number turns on it |
 | Annuitant selection, proof of life | No adjustment factor on the first-order table; suspension not modelled | DAV 2004 R is an annuitant-experience table understood to carry *Selektionsfaktoren* already [REG-R49], so selection belongs inside the basis; a failed life certificate is a timing effect on an unchanged obligation |
-| Tolerances | `roll_fwd_tol()` = 1e-8 (`param_tariff_type.csv`); `solve_tol = 1e-10`; `solve_max_iter = 200` | The refund solve is the only numerical solve in the model, so `solve_tol` is a change of answer rather than of runtime |
+| Tolerances | `roll_fwd_tol()` = 1e-8, a row of `param_tariff_type.csv`; the refund solve's bisection tolerance 1e-10 and iteration cap 200, literals in `annuity_pp_derived()` | The refund solve is the only numerical solve in the model, so its tolerance is a change of answer rather than of runtime |
 | Commercial envelope and model points | Entry ages 60–85; *Einmalbeitrag* 25 000–500 000 € around 100 000 €; fourteen cells | One carrier's limits are now read and the envelope is **not** moved to them: Allianz takes a *Mindesteinmalbeitrag* of **3 000 €** and a *Höchsteintrittsalter* of **85** [S7], so the age ceiling matches and the ticket floor is an order of magnitude conservative. No upper ticket limit and no lower entry age was established anywhere (research gap 7). The anchor is the notes' worked example; the rest exercise one mechanic each |
 
 The only quantities in this model that are **not** standardizations are structural, and each

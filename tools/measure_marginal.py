@@ -102,11 +102,11 @@ products under ``products/``, ten today; the per-product lines keep ``P``)::
 
 with ``f_p = fixed(W)``, ``t_p = t_marginal(W)`` and the sums over the measured products
 only (``--all`` gives the roadmap's formula exactly), in hours against the 10 h night. The
-counts ``M_CORE`` and ``M_PRODUCT`` are the roadmap's at commit ``790706b``, held here as
-constants (the count itself is the roadmap's command); ``--mutants`` defaults to their sum,
-5,305, and any other value scales ``M_core`` and every ``M_p`` by ``M / 5,305``. The coverage
-filter is ignored. If a measured product is not ``ok`` at a ``W``, that ``W`` gets no
-combined forecast. The combined line never changes the exit status.
+counts ``M_CORE`` and ``M_PRODUCT`` are what the roadmap's command prints on the code they
+ship with, held here as constants and updated by every commit that changes them; ``--mutants``
+defaults to their sum ``M_NEW``, and any other value scales ``M_core`` and every ``M_p`` by
+``M / M_NEW``. The coverage filter is ignored. If a measured product is not ``ok`` at a
+``W``, that ``W`` gets no combined forecast. The combined line never changes the exit status.
 
 Exit status: 0 if every (product, W) is ``ok``; 1 if one failed a check, its child crashed
 or its slope is not positive (``unreliable``); 2 on a usage error. Every product is
@@ -134,22 +134,22 @@ TABLE = "model_point_table.csv"
 NIGHT_HOURS = 10.0
 DEFAULT_WORKERS = (1, 4, 8, 12, 16, 24)
 
-# The new M, counted by where each mutant sits: docs/roadmap.md, section "The new M", at commit
-# 790706b (merge of PR #38, after entries 17 and 18 of epic-night-run; first counted at f07f003,
-# the merge of PR #20). The counts drift as cells change; recounting is the roadmap's command,
-# not this tool's, and tests/test_measure_marginal.py runs it against these constants.
-M_CORE = 186
+# The new M, counted by where each mutant sits: the counts the command of docs/roadmap.md,
+# section "The new M", prints on this code (the roadmap records them at 790706b, the merge of
+# PR #38). Every commit that moves a literal out of O6 updates them; recounting is the roadmap's
+# command, not this tool's, and tests/test_measure_marginal.py runs it against these constants.
+M_CORE = 190
 M_PRODUCT = {
-    "basisrente": 630,
-    "berufsunfaehigkeit": 507,
-    "fondsgebundene_rentenversicherung": 428,
-    "indexpolice": 346,
-    "kapitallebensversicherung": 422,
-    "klassische_rentenversicherung": 586,
-    "pflegerentenversicherung": 822,
-    "riester_rente": 598,
-    "risikolebensversicherung": 295,
-    "sofortrente": 485,
+    "basisrente": 628,
+    "berufsunfaehigkeit": 506,
+    "fondsgebundene_rentenversicherung": 414,
+    "indexpolice": 343,
+    "kapitallebensversicherung": 417,
+    "klassische_rentenversicherung": 582,
+    "pflegerentenversicherung": 807,
+    "riester_rente": 590,
+    "risikolebensversicherung": 292,
+    "sofortrente": 480,
 }
 M_NEW = M_CORE + sum(M_PRODUCT.values())
 
@@ -349,8 +349,8 @@ def assumption_lines(mutants: int, pool: int, workers: list[int], factor: int,
         "once the separate test-set repository generates them.",
         "  Combined: a core mutant runs every measured product, a product mutant only its own, "
         f"each with its fixed cost and P/{n_products} = {_num(pool / n_products)} contracts per "
-        "product; the coverage filter is ignored; M_core and M_p are the counts of docs/roadmap.md, "
-        f"\"The new M\", at 790706b, scaled by M / {M_NEW:,}.",
+        "product; the coverage filter is ignored; M_core and M_p are the counts of the command of "
+        f"docs/roadmap.md, \"The new M\", on this code, scaled by M / {M_NEW:,}.",
     ]
 
 

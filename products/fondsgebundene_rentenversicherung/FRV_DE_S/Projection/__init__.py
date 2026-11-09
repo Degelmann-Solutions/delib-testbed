@@ -48,7 +48,8 @@ lapse_file                data.lapse_table()                 lapse_table.csv
 charge_file               data.charge_table()                charge_table.csv
 fund_scenario_file        data.fund_scenario_table()         fund_scenario_table.csv
 rentenfaktor_file         data.rentenfaktor_table()          rentenfaktor_table.csv
-param_file                data.param_table()                 param_tariff_type.csv
+prem_freq_file            data.prem_freq_table()             prem_freq_table.csv
+param_file                data.param()                       param_tariff_type.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -363,20 +364,6 @@ _spaces = []
 
 # ----------------------------------------  the model point
 
-def prem_form():
-    """The premium form: ``laufend`` (recurring) or ``einmal`` (single).
-
-    The two differ in more than the number of instalments.  A *Einmalbeitrag* has no
-    *Beitragssumme* to zillmer against and no five-year spreading to obey, so its
-    acquisition charge is the *Zuzahlungskosten* rate levied once on receipt, which is
-    what :func:`zillmer_amount` returns for it.
-    """
-    v = model_point()["prem_form"]
-    if v not in ("laufend", "einmal"):
-        raise ValueError("invalid prem_form")
-    return v
-
-
 def prem_pp_base():
     """The *Beitrag* the policy states, per instalment, at the initial level.
 
@@ -387,18 +374,6 @@ def prem_pp_base():
     any *Beitragsdynamik*.
     """
     return float(model_point()["prem_pp"])
-
-
-def prem_mode_months():
-    """Payment frequency in months: 1, 3, 6 or 12.
-
-    It decides both which months carry a premium and how many acquisition instalments the
-    sixty-month window holds — 60 monthly, 20 quarterly, 10 half-yearly, 5 annual.
-    """
-    v = int(model_point()["prem_mode_months"])
-    if v not in (1, 3, 6, 12):
-        raise ValueError("invalid prem_mode_months")
-    return v
 
 
 def dynamik_rate():
@@ -614,7 +589,7 @@ def alpha_rate():
     ``alpha_rate() x beitragssumme()``, 2.50 % of 72 000,00 = **1 800,00 EUR** on the
     anchor cell, on a recurring-premium one.
     """
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         return zuzahlung_charge_rate()
     return float(charge_row()["alpha_rate"])
 
@@ -720,13 +695,13 @@ def prem_pp(t):
     else: the stated instalment already contains any *Ratenzahlungszuschlag*, so loading
     it again would charge the fractionation twice.
     """
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         return prem_pp_base() if t == t_start() else 0.0
     if t >= 12 * prem_term_y():
         return 0.0
     if pup_month() > 0 and t >= pup_month():
         return 0.0
-    if (t - t_start()) % prem_mode_months() != 0:
+    if (t - t_start()) % prem_cycle() != 0:
         return 0.0
     return prem_pp_base() * dynamik_factor(t)
 
@@ -741,7 +716,7 @@ def topup_pp(t):
 def beitragssumme_prem():
     """The annual premium of the *Beitragssumme*, at the **initial** level.
 
-    ``prem_pp_base() x (12 / prem_mode_months())`` on a recurring-premium contract, and the
+    ``prem_pp_base() x instalments()`` on a recurring-premium contract, and the
     *Einmalbeitrag* itself on a single-premium one, counted once by
     :func:`beitragssumme_years`; so ``beitragssumme()`` is 200.00 x 12 x 30 = 72 000,00 EUR
     on the anchor cell.  It is the base of the acquisition charge and it is **invariant**:
@@ -751,12 +726,12 @@ def beitragssumme_prem():
     function of the lapse assumption, which is both wrong and circular.
 
     Override reason: the premium is paid in instalments of ``prem_pp_base()`` every
-    ``prem_mode_months()`` months, or once as an *Einmalbeitrag*,
+    ``prem_cycle()`` months, or once as an *Einmalbeitrag*,
     products/fondsgebundene_rentenversicherung/technical-notes.md:443
     """
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         return prem_pp_base()
-    return prem_pp_base() * (12.0 / prem_mode_months())
+    return prem_pp_base() * instalments()
 
 
 def beitragssumme_years():
@@ -765,7 +740,7 @@ def beitragssumme_years():
     Override reason: the premium term is ``prem_term_y()`` years, and an *Einmalbeitrag* is
     counted once, products/fondsgebundene_rentenversicherung/technical-notes.md:443
     """
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         return 1
     return prem_term_y()
 
@@ -777,22 +752,22 @@ def acq_window_months():
     years: model point 12 pays for two years, so its window is 24 months and not 60.  Zero
     on a single-premium contract, whose acquisition charge is a one-off.
     """
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         return 0
     return min(alpha_spread_months(), 12 * prem_term_y())
 
 
 def acq_instalments():
-    """The number of acquisition instalments: the window divided by the premium frequency.
+    """The number of acquisition instalments: the window over the months between premiums.
 
     60 on the anchor cell, 20 quarterly, 10 half-yearly, 5 annual, 24 on the two-year
     premium term, and 1 on a single premium.  The count matters because the instalment is
     ``zillmer_amount() / acq_instalments()``, so spreading a shortened window over sixty
     months would understate every instalment and leave the ledger short at the end.
     """
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         return 1
-    return acq_window_months() // prem_mode_months()
+    return acq_window_months() // prem_cycle()
 
 
 def charge_acq_pp(t):
@@ -809,7 +784,7 @@ def charge_acq_pp(t):
     which is correct: the charge and the commission it funded are both behind it.
     """
     reg = 0.0
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         if t == t_start():
             reg = zillmer_amount()
     elif t < acq_window_months() and prem_pp(t) > 0.0:
@@ -893,10 +868,11 @@ def fund_return_gross_ann(t):
     if not ablauf_flag():
         return base
     remaining = (proj_len() - 1) - t
-    if remaining >= glide_months:                                    # noqa: F821
+    if remaining >= data.param("glide_months"):                      # noqa: F821
         return base
-    step = (glide_months - remaining) / float(glide_months)          # noqa: F821
-    return base + (mmkt_return_ann - base) * step                    # noqa: F821
+    step = ((data.param("glide_months") - remaining)                 # noqa: F821
+            / float(data.param("glide_months")))                     # noqa: F821
+    return base + (data.param("mmkt_return_ann") - base) * step      # noqa: F821
 
 
 def fund_ter_ann(t):
@@ -1251,8 +1227,9 @@ def lapse_tax_step(t):
     7.5 %.  On model point 12 the step never fires, because the projection ends at
     ``t = 143`` and the step year begins at ``t = 144``.
     """
-    step_year = max(13, 62 - issue_age() + 1)
-    return 2.5 if policy_year(t) == step_year else 1.0
+    step_year = max(data.param("tax_step_min_year"),                 # noqa: F821
+                    data.param("tax_step_age") - issue_age() + 1)    # noqa: F821
+    return data.param("tax_step_factor") if policy_year(t) == step_year else 1.0  # noqa: F821
 
 
 def lapse_dyn_add(t):
@@ -1267,11 +1244,11 @@ def lapse_dyn_add(t):
     ``lapse_dyn_beta = 0`` in the base run and 0.15 is the reference value.  No German
     calibration evidence for a coefficient of any size exists in this corpus.
     """
-    if lapse_dyn_beta == 0.0:                                        # noqa: F821
+    if data.param("lapse_dyn_beta") == 0.0:                          # noqa: F821
         return 0.0
     if cum_prem_pp(t) <= 0.0:
         return 0.0
-    return lapse_dyn_beta * max(0.0, 1.0 - av_pp(t) / cum_prem_pp(t))  # noqa: F821
+    return data.param("lapse_dyn_beta") * max(0.0, 1.0 - av_pp(t) / cum_prem_pp(t))  # noqa: F821
 
 
 def lapse_rate(t):
@@ -1284,7 +1261,7 @@ def lapse_rate(t):
     Override reason: the table rate is stepped at the tax threshold, raised by the dynamic
     lapse and capped at 40 %, products/fondsgebundene_rentenversicherung/technical-notes.md:336
     """
-    return min(lapse_cap,                                            # noqa: F821
+    return min(data.param("lapse_cap"),                              # noqa: F821
                lapse_rate_base(t) * lapse_tax_step(t) + lapse_dyn_add(t))
 
 
@@ -1499,7 +1476,7 @@ def death_strain(t):
 
 
 def expense_acq_pp(t):
-    """The issue expense per policy issued, at t = 0: ``expense_issue``, 200,00 EUR.
+    """The issue expense per policy issued, at t = 0: ``expense_acq_pp_once``, 200,00 EUR.
 
     The insurer's own acquisition cost **excluding the commission**, which is
     :func:`comm_acq_pp` — the split :func:`expenses` and :func:`commissions` publish
@@ -1511,11 +1488,11 @@ def expense_acq_pp(t):
     """
     if t != 0:
         return 0.0
-    return expense_issue                                             # noqa: F821
+    return data.param("expense_acq_pp_once")                         # noqa: F821
 
 
 def comm_acq_pp(t):
-    """The *Abschlussprovision* per policy issued, at t = 0: ``comm_acq_rate x S``.
+    """The *Abschlussprovision* per policy issued, at t = 0: ``comm_acq_bsum_once x S``.
 
     On the anchor cell 2.50 % of a 72 000,00 EUR *Beitragssumme* = **1 800,00 EUR**, and
     zero at every other month.
@@ -1527,7 +1504,7 @@ def comm_acq_pp(t):
     No German commission scale was established, so any other level would be an unsourced
     number pretending to be an observation.
 
-    ``comm_acq_rate`` is a **flat scalar**, so that equality holds on ``std_gross`` and
+    ``comm_acq_bsum_once`` is a **flat scalar**, so that equality holds on ``std_gross`` and
     fails on the two low-load tariffs: on ``std_netto`` and ``std_low`` the assumed
     commission exceeds the tariff's own acquisition charge and those cells carry a
     projected loss.  That is the flat assumption showing, not a product fact — a real
@@ -1541,7 +1518,7 @@ def comm_acq_pp(t):
     """
     if t != 0:
         return 0.0
-    return comm_acq_rate * beitragssumme()                           # noqa: F821
+    return data.param("comm_acq_bsum_once") * beitragssumme()        # noqa: F821
 
 
 def inflation_years(t):
@@ -1559,12 +1536,12 @@ def inflation_years(t):
 def expense_maint_pp(t):
     """Maintenance expense per policy in month t, inflating from inception.
 
-    ``expense_maint_mth x (1 + expense_infl)^(t/12)`` — 4,00 EUR a month at 2 % p.a., and
+    ``expense_admin_pp_mth x (1 + expense_infl)^(t/12)`` — 4,00 EUR a month at 2 % p.a., and
     exactly 4,00 EUR in the inception month ``t = 0``.  Inflated off the policy month
     rather than the projection's own start, so an in-force cell picks up the inflation its
     elapsed duration has already accrued.
     """
-    return expense_maint_mth * inflation_factor(t)                   # noqa: F821
+    return data.param("expense_admin_pp_mth") * inflation_factor(t)  # noqa: F821
 
 
 def expenses(t):
@@ -1586,9 +1563,9 @@ def expenses(t):
     """
     return (expense_acq_pp(t) * pols_if(t)
             + expense_maint_pp(t) * pols_if(t)
-            + expense_claim * pols_death(t)                          # noqa: F821
-            + expense_surr * pols_lapse(t)                           # noqa: F821
-            + expense_annuitisation * pols_maturity(t))              # noqa: F821
+            + data.param("expense_claim_pp_once") * pols_death(t)    # noqa: F821
+            + data.param("expense_surr_pp_once") * pols_lapse(t)     # noqa: F821
+            + data.param("expense_conv_pp_once") * pols_maturity(t))   # noqa: F821
 
 
 def comm_init(t):
@@ -1598,7 +1575,7 @@ def comm_init(t):
     German unit-linked commission scale was established.  The commissions are published
     beside :func:`expenses`.
 
-    Override reason: the initial commission is ``comm_acq_rate`` of the *Beitragssumme* on
+    Override reason: the initial commission is ``comm_acq_bsum_once`` of the *Beitragssumme* on
     the count in force at ``t = 0``,
     products/fondsgebundene_rentenversicherung/technical-notes.md:540
     """
@@ -1606,12 +1583,13 @@ def comm_init(t):
 
 
 def comm_renew(t):
-    """The *Bestandsprovision* ``comm_renew_rate x prem_pp(t)`` on every gross *Beitrag* **[std]**.
+    """The *Bestandsprovision* ``comm_renew_prem_inst x prem_pp(t)`` on every gross *Beitrag*
+    **[std]**.
 
     Override reason: the renewal commission is a rate on each gross premium,
     products/fondsgebundene_rentenversicherung/technical-notes.md:541
     """
-    return comm_renew_rate * prem_pp(t) * pols_if(t)                 # noqa: F821
+    return data.param("comm_renew_prem_inst") * prem_pp(t) * pols_if(t)  # noqa: F821
 
 
 def net_cf(t):
@@ -1694,14 +1672,15 @@ def av_maturity_pp():
 def annuity_mth_pp():
     """The monthly annuity the *Fondsguthaben* buys at *Rentenbeginn*, per policy.
 
-    ``av_maturity_pp() / 10 000 x rentenfaktor_applied()``.
+    ``av_maturity_pp() / rf_unit x rentenfaktor_applied()``, the *Rentenfaktor* quoted per
+    ``rf_unit`` = 10 000 € of fund, a row of *param_tariff_type.csv*.
 
     **This model stops here.**  The annuity is published, not projected: the payout phase —
     the *Überschussrente*, the *Rentengarantiezeit*, the *Rentenbezugskosten* — belongs to
     ``products/sofortrente/``.  Under the *Kapitalwahlrecht* the same capital is taken as a
     lump sum instead, which is why that flag changes no cash flow here.
     """
-    return av_maturity_pp() / 10000.0 * rentenfaktor_applied()
+    return av_maturity_pp() / data.param("rf_unit") * rentenfaktor_applied()  # noqa: F821
 
 
 def gross_return_ref():
@@ -1807,7 +1786,7 @@ def check_net_cf_tol(t):
     Override reason: the statement is checked to val_tol relative to the month's net cash
     flow, products/fondsgebundene_rentenversicherung/technical-notes.md:655
     """
-    return val_tol * max(1.0, abs(net_cf(t)))                        # noqa: F821
+    return data.param("val_tol") * max(1.0, abs(net_cf(t)))          # noqa: F821
 
 
 def check_prem_split_resid(t):
@@ -1826,7 +1805,7 @@ def check_prem_split_resid(t):
 def check_prem_split():
     """True when the premium splits exactly three ways in every projected month."""
     return all(abs(check_prem_split_resid(t))
-               <= val_tol * max(1.0, abs(premiums(t)))               # noqa: F821
+               <= data.param("val_tol") * max(1.0, abs(premiums(t)))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1847,7 +1826,7 @@ def check_units_roll_fwd_resid(t):
 def check_units_roll_fwd():
     """True when the unit count rolls forward exactly in every projected month."""
     return all(abs(check_units_roll_fwd_resid(t))
-               <= val_tol * max(1.0, abs(units_pp(t)))               # noqa: F821
+               <= data.param("val_tol") * max(1.0, abs(units_pp(t)))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1871,7 +1850,7 @@ def check_av_roll_fwd_resid(t):
 def check_av_roll_fwd():
     """True when the *Fondsguthaben* rolls forward exactly in every projected month."""
     return all(abs(check_av_roll_fwd_resid(t))
-               <= val_tol * max(1.0, abs(av_pp_at(t, "BEF_DECR")))   # noqa: F821
+               <= data.param("val_tol") * max(1.0, abs(av_pp_at(t, "BEF_DECR")))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1896,7 +1875,7 @@ def check_benefit_funding_resid(t):
 def check_benefit_funding():
     """True when every benefit is funded from the fund or the insurer, in every month."""
     return all(abs(check_benefit_funding_resid(t))
-               <= val_tol * max(1.0, abs(av_releases(t)))            # noqa: F821
+               <= data.param("val_tol") * max(1.0, abs(av_releases(t)))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1935,14 +1914,14 @@ def check_acq_charge_resid(t):
     charge has been collected and no more: ``alpha_rate x beitragssumme()`` exactly, which
     on the anchor is 1 800,00 EUR.
     """
-    if prem_form() == "einmal":
+    if prem_form() == "single":
         elapsed = 1 if t >= t_start() else 0
     else:
         hi = min(t, acq_window_months() - 1)
         if pup_month() > 0:
             hi = min(hi, pup_month() - 1)
         elapsed = 0 if hi < t_start() else (
-            (hi - t_start()) // prem_mode_months() + 1)
+            (hi - t_start()) // prem_cycle() + 1)
     instalment = (zillmer_amount() / acq_instalments()
                   if acq_instalments() else 0.0)
     topups = (topup_amount()
@@ -1955,7 +1934,7 @@ def check_acq_charge_resid(t):
 def check_acq_charge():
     """True when the acquisition-charge ledger matches its counted expectation everywhere."""
     return all(abs(check_acq_charge_resid(t))
-               <= val_tol * max(1.0, zillmer_amount())             # noqa: F821
+               <= data.param("val_tol") * max(1.0, zillmer_amount())  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -2044,30 +2023,5 @@ def result_fund():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-lapse_cap = 0.4
-
-lapse_dyn_beta = 0.0
-
-mmkt_return_ann = 0.015
-
-glide_months = 60
-
-comm_acq_rate = 0.025
-
-expense_issue = 200.0
-
-expense_maint_mth = 4.0
-
-comm_renew_rate = 0.015
-
-expense_claim = 150.0
-
-expense_surr = 50.0
-
-expense_annuitisation = 100.0
-
-
-val_tol = 1e-10
 
 pd = ("Module", "pandas")

@@ -23,19 +23,20 @@ print("options: Aufschubzeit {} mth, Rentengarantiezeit {} y, refund {}, "
       "Hinterbliebenenrente {:.0%}".format(
           proj.defer_mths(), proj.guar_years(), proj.refund_form(), proj.surv_pct()))
 print("payment: {} per year, {}, first instalment at t = {}, guarantee ends at t = {}".format(
-    proj.payment_freq(), proj.payment_timing(), proj.first_pay_mth(),
+    proj.ann_freq(), proj.payment_timing(), proj.first_pay_mth(),
     proj.guar_end_mth()))
 print("tariff:  i = {:.4f} (cap {:.4f} for {}), alpha = {:.3f}, beta = {:.3f}, "
       "surplus = {}".format(
           proj.rechnungszins(), proj.hoechstrechnungszins(), proj.issue_year(),
-          proj.expense_load_alpha, proj.expense_load_beta, proj.surplus_form()))
+          proj.data.param("load_acq_sp_once"), proj.data.param("load_admin_annval_once"),
+          proj.surplus_form()))
 print("frame:   t = {} ... {} ({} monthly rows, proj_len = {} exclusive)".format(
     proj.t_start(), proj.proj_len() - 1, proj.proj_len() - proj.t_start(),
     proj.proj_len()))
 print()
 print("net_single_prem  {:,.4f} EUR".format(proj.net_single_prem()))
 print("annuity_factor   {:.6f}   (a12 = {:.6f})".format(
-    proj.annuity_factor(), proj.annuity_factor() / proj.payment_freq()))
+    proj.annuity_factor(), proj.annuity_factor() / proj.ann_freq()))
 print("refund_pv        {:,.4f} EUR".format(proj.refund_pv()))
 print("annuity_guar_pp  {:,.6f} EUR per instalment".format(
     proj.annuity_guar_pp(proj.t_start())))
@@ -49,8 +50,9 @@ for col in df.columns[1:]:
     print("  {:<18s} {:>18,.2f}".format(col, df[col].sum()))
 print()
 print("checks:")
-for name in sorted(c for c in model.Projection.cells
-                   if c.startswith("check_") and not c.endswith("_resid")):
+for name in sorted(c for c, cells in model.Projection.cells.items()
+                   if c.startswith("check_") and not c.endswith("_resid")
+                   and not cells.parameters):
     print("  {:<26s} {}".format(name, getattr(proj, name)()))
 
 model.close()

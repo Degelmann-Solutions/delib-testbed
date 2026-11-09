@@ -37,7 +37,7 @@ German terms of art keep their German form in prose.
   `k = proj_year(t) = t // 12` counts **projection years** and is the annual-step model's own `t`.
   The contractual contract year is `duration_y(k) + 1 = duration_init + k + 1`, which is `k + 1`
   only on a point projected from its own inception (`duration_init = 0`). The
-  valuation date is **1 January 2027** [std] — the first day on which the product is closed to new
+  valuation date is **1 January 2027** (`valuation_year`, a row of `param_tariff_type.csv`) [std] — the first day on which the product is closed to new
   business [REG-R44] — so `calendar_year_y(k) = 2027 + k` and the calendar year steps on the
   anniversary. The contract is annual in every
   respect the annual clock carries: the Zulage is an annual entitlement determined on a calendar
@@ -89,7 +89,7 @@ German terms of art keep their German form in prose.
   that month — and it is worth 361,74 € of the anchor's payout phase and 573,50 € of model point
   12's, which carries no *Rentengarantiezeit*. Inside a guarantee window the two grids agree **to
   the cent**, the count being fixed there. The *level* of the annuity was always right, the
-  conversion factor carrying the Woolhouse `−11/24` correction.
+  conversion factor carrying the Woolhouse `−11/24` correction (`woolhouse`, a row of `param_tariff_type.csv`).
 - **Age basis.** Age last birthday, `age_y(k) = issue_age + duration_init + k`, stepping on the
   anniversary so the twelve months of a projection year share one rate. Riester tariffs
   are **unisex** from a 2006 vintage [R23] [REG-R34], so `sex` is carried for reporting only and
@@ -126,7 +126,7 @@ reaches it through a `data` Reference and holds no `*_file` Reference and no `in
 | `zulage_schedule.csv` | `zulage_id`, `t` | `unmittelbar`, `n_kinder_pre2008`, `n_kinder_post2008`, `bonus`, `provenance` |
 | `income_schedule.csv` | `income_id`, `t` | `income`, `provenance` |
 | `surplus_scenario.csv` | `scenario_id`, `t` | `decl_rate`, `provenance` |
-| `freq_loading.csv` | `prem_freq` | `prem_freq_load`, `provenance` |
+| `prem_freq_table.csv` | `prem_freq` | `instalments` (a year, not read), `prem_freq_load`, `provenance` |
 | `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`, `expense_infl`), `basis`, `provenance` |
 
 **Every file except `model_point_table.csv` carries a per-row `provenance` column**, delib's second
@@ -138,8 +138,8 @@ exactly; what a replacement must preserve is stated in assumption class (c) and 
 ### Cells vocabulary
 
 `Data` publishes `input_dir`, `model_point_table`, `mort_table`, `annuity_mort_table`,
-`lapse_table`, `zulage_schedule`, `income_schedule`, `surplus_table`, `freq_loading_table`
-and `param_table`.
+`lapse_table`, `zulage_schedule`, `income_schedule`, `surplus_table`, `prem_freq_table`
+and the parameter loader `param`.
 
 `Projection` publishes the library's shared names — **`model_point`, `proj_len`, `age`, `pols_if`,
 `mort_rate`, `claims`, `expenses`, `net_cf`, `result_cf`** — plus, in the same lifelib spelling:
@@ -192,7 +192,7 @@ value; the thirteen points are described under *Worked example*.
 | `income_init` | EUR | Contribution-liable earnings in the calendar year **before** the projection starts; the reference income for `t = 0` | all |
 | `zulage_id` | str | Key into `zulage_schedule.csv` | all |
 | `zulage_init_pp` | EUR | The Zulage credited at `t = 0`, earned in the year before it | 6 (375,00, including the bonus) |
-| `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | Payment frequency; keys `freq_loading.csv` | 3, 4, 6, 7, 10, 13 |
+| `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | Payment frequency; keys `prem_freq_table.csv` | 3, 4, 6, 7, 10, 13 |
 | `bfs_year` | int | The 0-based period index `t` from which contributions stop (*Beitragsfreistellung*); **−1 = never**, because `0` is now the first projected period | 10 (`t = 3`) |
 | `dk_pp_init` | EUR | *Deckungskapital* at the valuation date | all |
 | `surplus_pp_init` | EUR | *Überschussguthaben* at the valuation date | all |
@@ -274,20 +274,20 @@ consequential, because the declared rate is what decides whether the guarantee c
 
 | Input | Value | Basis |
 |---|---|---|
-| *Grundzulage* | **175.00** per year — § 84 Satz 1 EStG, "ab dem Beitragsjahr 2018 jährlich 175 Euro" | [R9] [REG-R42] |
-| *Kinderzulage* | **185.00** for a child born before 1 Jan 2008; **300.00** for one born on or after — § 85 Abs. 1 Sätze 1 and 2, keyed to *Kindergeld* being *festgesetzt* | [R9] [R19] [REG-R42] |
-| *Berufseinsteiger-Bonus* | **200.00**, "einmalig", 25th year not completed at the start of the contribution year, first year a Zulage is claimed — § 84 Sätze 2 and 3 | [R9] [REG-R42] |
-| *Mindesteigenbeitrag* rate, ceiling, floor | **4 %** of the previous year's contribution-liable earnings, capped at the § 10a Abs. 1 Satz 1 *Höchstbetrag* of **2 100.00**, less the entitlement, floored at the **60.00** *Sockelbeitrag* — § 86 Abs. 1 Sätze 2, 4 and 5 | [R10] [REG-R42] |
+| *Grundzulage* | **175.00** per year (`grundzulage`, a row of `param_tariff_type.csv`) — § 84 Satz 1 EStG, "ab dem Beitragsjahr 2018 jährlich 175 Euro" | [R9] [REG-R42] |
+| *Kinderzulage* | **185.00** for a child born before 1 Jan 2008; **300.00** for one born on or after (`kinderzulage_pre2008`, `kinderzulage_post2008`, rows of `param_tariff_type.csv`) — § 85 Abs. 1 Sätze 1 and 2, keyed to *Kindergeld* being *festgesetzt* | [R9] [R19] [REG-R42] |
+| *Berufseinsteiger-Bonus* | **200.00** (`berufseinsteiger_bonus`, a row of `param_tariff_type.csv`), "einmalig", 25th year not completed at the start of the contribution year, first year a Zulage is claimed — § 84 Sätze 2 and 3 | [R9] [REG-R42] |
+| *Mindesteigenbeitrag* rate, ceiling, floor | **4 %** of the previous year's contribution-liable earnings, capped at the § 10a Abs. 1 Satz 1 *Höchstbetrag* of **2 100.00**, less the entitlement, floored at the **60.00** *Sockelbeitrag* (`mindest_rate`, `foerder_ceiling`, `sockelbeitrag`, rows of `param_tariff_type.csv`) — § 86 Abs. 1 Sätze 2, 4 and 5 | [R10] [REG-R42] |
 | Proportional Kürzung | The Zulage is reduced in the ratio of the contribution paid to the *Mindesteigenbeitrag* — never lost outright | [R10] [REG-R42] |
-| Zulage cash lag | Contribution year `t` is credited by the ZfA in `t + 1`; AltvPIBV § 9 Abs. 3 prescribes **15 May of `t + 1`** for every disclosure calculation | [R5] [R11] [REG-R42]; the annual-grid compression **[std]** (1) |
+| Zulage cash lag | Contribution year `t` is credited by the ZfA in `t + 1`; AltvPIBV § 9 Abs. 3 prescribes **15 May of `t + 1`** for every disclosure calculation; `zulage_lag = 1`, a row of `param_tariff_type.csv` | [R5] [R11] [REG-R42]; the annual-grid compression **[std]** (1) |
 | *Beitragsgarantie* | At *Rentenbeginn*, at least "die bis dahin gezahlten Beiträge und die uns zugeflossenen staatlichen Zulagen" must be available for the agreed benefits — statutory as to the test, **contractual as to the Zulagen** | [R1] [REG-R43] for the test; [S2] § 1 Abs. 10, [S4] § 1 Abs. 2, [S6] for the Zulagen limb |
-| Guarantee carve-out | Biometric-rider contributions excluded, "bis zu **20 Prozent** der Gesamtbeiträge" — AltZertG § 1 Abs. 1 Satz 1 Nr. 3, drafted at [S2] § 1 Abs. 10 | [R1] [REG-R43] [S2] |
+| Guarantee carve-out | Biometric-rider contributions excluded, "bis zu **20 Prozent** der Gesamtbeiträge" (`guar_carve_out_cap`, a row of `param_tariff_type.csv`) — AltZertG § 1 Abs. 1 Satz 1 Nr. 3, drafted at [S2] § 1 Abs. 10 | [R1] [REG-R43] [S2] |
 | Earliest *Rentenbeginn* | Completed **62nd** year — § 1 Abs. 1 Satz 1 Nr. 2. The **60th** for contracts concluded before 1 Jan 2012 is the transitional rule of **§ 14 Abs. 2**, not § 1 | [R1] [REG-R43] |
-| *Teilkapitalauszahlung* cap | **30 %** of "des zu Beginn der Auszahlungsphase zur Verfügung stehenden Kapitals" — § 1 Abs. 1 Satz 1 Nr. 4 Buchst. a | [R1] [REG-R43] |
-| Acquisition-cost spreading | "gleichmäßig mindestens auf die ersten **fünf Vertragsjahre** …, soweit sie nicht als Prozentsatz von den Altersvorsorgebeiträgen abgezogen werden" — § 1 Abs. 1 Satz 1 Nr. 8. The qualifier is why the charge on a Zulage is taken once at inflow in every retrieved wording | [R1] [REG-R43] [S2] [S4] [S6]; *Höchstzillmersatz* 25 ‰, DeckRV § 4 Abs. 1 [REG-R16] |
-| *Kleinbetragsrente* threshold | **The statutory rate is 1,5 %**, not 1 %: § 93 Abs. 3 Satz 2 Nr. 1 EStG, aggregated across the saver's contracts at that provider (Satz 3). On the 3 955.00 monthly *Bezugsgröße* used here that is **59.33**. `kleinbetrag_threshold_mth` is **39.55** and is therefore **too low**; the model is unchanged | [R15] [REG-R42] [REG-R46]; the *Bezugsgröße* `[unverified]`; see (2) |
+| *Teilkapitalauszahlung* cap | **30 %** (`teilkapital_cap`, a row of `param_tariff_type.csv`) of "des zu Beginn der Auszahlungsphase zur Verfügung stehenden Kapitals" — § 1 Abs. 1 Satz 1 Nr. 4 Buchst. a | [R1] [REG-R43] |
+| Acquisition-cost spreading | "gleichmäßig mindestens auf die ersten **fünf Vertragsjahre** …, soweit sie nicht als Prozentsatz von den Altersvorsorgebeiträgen abgezogen werden" — § 1 Abs. 1 Satz 1 Nr. 8 (`acq_spread_years = 5`, a row of `param_tariff_type.csv`). The qualifier is why the charge on a Zulage is taken once at inflow in every retrieved wording | [R1] [REG-R43] [S2] [S4] [S6]; *Höchstzillmersatz* 25 ‰, DeckRV § 4 Abs. 1 [REG-R16] |
+| *Kleinbetragsrente* threshold | **The statutory rate is 1,5 %**, not 1 %: § 93 Abs. 3 Satz 2 Nr. 1 EStG, aggregated across the saver's contracts at that provider (Satz 3). On the 3 955.00 monthly *Bezugsgröße* used here that is **59.33**. `kleinbetrag_threshold_mth`, a row of `param_tariff_type.csv`, is **39.55** and is therefore **too low**; the model is unchanged | [R15] [REG-R42] [REG-R46]; the *Bezugsgröße* `[unverified]`; see (2) |
 | *Rückkaufswert* floor | "mindestens der Betrag des Deckungskapitals, das sich bei gleichmäßiger Verteilung der angesetzten Abschluss- und Vertriebskosten auf die ersten fünf Vertragsjahre ergibt" — § 169 Abs. 3 VVG; satisfied by construction here, and both retrieved wordings compute it that way | [REG-R28] [S2] [S4] |
-| Annuity form | Lifelong, monthly, "gleich bleiben oder steigen" over the whole payout phase; up to twelve monthly payments may be combined into one | [R1] [REG-R43] |
+| Annuity form | Lifelong, monthly (`ann_freq = 12`, a row of `param_tariff_type.csv`), "gleich bleiben oder steigen" over the whole payout phase; up to twelve monthly payments may be combined into one | [R1] [REG-R43] |
 | Unisex | "eine lebenslange und **unabhängig vom Geschlecht berechnete** Altersversorgung" — § 1 Abs. 1 Satz 1 Nr. 2, and in the wordings at [S2] § 1 Abs. 1, [S4] § 1 Abs. 1 and a "geschlechtsunabhängige Sterbetafel" at [S6]. The **dates** — 1 Jan 2006 for Riester, 21 Dec 2012 for the general market — are `[unverified]` | [R1] [R23] [REG-R34] |
 
 1. **Gap 6 is closed and this footnote's premise no longer holds.** § 90 Abs. 2 EStG has the ZfA pay
@@ -320,15 +320,15 @@ consequential, because the declared rate is what decides whether the guarantee c
 | *Laufende Verzinsung* `decl_rate(t)` | Scenario path in `surplus_scenario.csv`: `base` **2,30 %** level, `low` **0,50 %** level | **[std]** (4) |
 | Surplus system in accumulation | *Verzinsliche Ansammlung*: declared surplus accrues in a **second account** beside the *Deckungskapital* and bears the declared rate | market practice; level **[std]** (4) |
 | *Risikoüberschuss* and *Kostenüberschuss* | **Zero** in the base run | **[std]** (5) |
-| *Schlussüberschussanteil* | **2,0 %** of contributions credited, declared at *Rentenbeginn*, and **counted toward the guarantee** | **[std]** (6), gap 9 |
-| *Bewertungsreserven* share | **1,0 %** of the account at *Rentenbeginn*, the *hälftige* participation of § 153 Abs. 3 VVG | [REG-R24]; level **[std]** (6) |
-| Acquisition charge | **2,5 %** of `beitragssumme`, in five equal instalments in contract years 1 to 5, **whether or not contributions are paid** | [R1] [REG-R16]; level **[std]** (7) — against **1,0 % of the *Eigenbeiträge*** at the one carrier now in hand [S4] |
-| Administration charge | **4,0 %** of each contribution credited, Zulagen **included**, plus a fixed **12,00** per year | Charging the Zulagen is **confirmed** [S2] [S4] [S6] [S9], gap 14 closed; the **rate** is contradicted — 2,1 % on contributions against **6,0 % on Zulagen** at [S4] — and the levels stay **[std]** (7) |
+| *Schlussüberschussanteil* | **2,0 %** (`slueb_rate`, a row of `param_tariff_type.csv`) of contributions credited, declared at *Rentenbeginn*, and **counted toward the guarantee** | **[std]** (6), gap 9 |
+| *Bewertungsreserven* share | **1,0 %** (`bwr_rate`, a row of `param_tariff_type.csv`) of the account at *Rentenbeginn*, the *hälftige* participation of § 153 Abs. 3 VVG | [REG-R24]; level **[std]** (6) |
+| Acquisition charge | **2,5 %** (`charge_acq_bsum_once`, a row of `param_tariff_type.csv`) of `beitragssumme`, in five equal instalments in contract years 1 to 5, **whether or not contributions are paid** | [R1] [REG-R16]; level **[std]** (7) — against **1,0 % of the *Eigenbeiträge*** at the one carrier now in hand [S4] |
+| Administration charge | **4,0 %** of each contribution credited, Zulagen **included**, plus a fixed **12,00** per year (`charge_admin_prem_inst`, `charge_admin_pp_ann`, rows of `param_tariff_type.csv`) | Charging the Zulagen is **confirmed** [S2] [S4] [S6] [S9], gap 14 closed; the **rate** is contradicted — 2,1 % on contributions against **6,0 % on Zulagen** at [S4] — and the levels stay **[std]** (7) |
 | Frequency loading | 1.0000 / 1.0100 / 1.0200 / 1.0300 for annual / half-yearly / quarterly / monthly, treated as a **charge** and never credited to the account | **[std]** (7). One scale is now observed and has a different **mechanic**: +1,0 / +2,0 / +3,0 percentage points on the administration **rate** for half-yearly / quarterly / monthly [S4] |
 | *Risikobeitrag* | **Zero** — the death benefit is the account value, so there is no sum at risk | design consequence **[std]** |
-| *Stornoabzug*; transfer charge | **2,0 %** of the account on surrender; **50,00** flat on an *Anbieterwechsel*, with **no** *Stornoabzug* | § 169 Abs. 5 VVG requires a deduction to be "vereinbart, **beziffert** und angemessen" [REG-R28]. **The transfer-charge ceiling is 150,00 and gap 8 closes** — AltZertG § 1 Abs. 1 Satz 3 [R1]; 50,00 is what one fund provider charges [S9] and one insurer charges nothing [S4]. Levels **[std]** (7) |
-| *Rentenfaktor* margin | **30 %** off the actuarially fair factor, carrying the *Sicherheitsabschlag* and the whole payout-phase loading | **[std]** (8). The construction — per 10 000 €, monthly, higher of guaranteed and current — is now established in a Riester wording [S6]; the **margin** is not |
-| Annuitisation interest basis | **1,00 %**, the *Höchstrechnungszins* in force from 1 January 2025 | [REG-R15]; use of the cap **[std]** (8) |
+| *Stornoabzug*; transfer charge | **2,0 %** of the account on surrender; **50,00** flat on an *Anbieterwechsel*, with **no** *Stornoabzug* (`stornoabzug_rate`, `charge_transfer_pp_once`, rows of `param_tariff_type.csv`) | § 169 Abs. 5 VVG requires a deduction to be "vereinbart, **beziffert** und angemessen" [REG-R28]. **The transfer-charge ceiling is 150,00 and gap 8 closes** — AltZertG § 1 Abs. 1 Satz 3 [R1]; 50,00 is what one fund provider charges [S9] and one insurer charges nothing [S4]. Levels **[std]** (7) |
+| *Rentenfaktor* margin | **30 %** (`rentenfaktor_margin`, a row of `param_tariff_type.csv`) off the actuarially fair factor, carrying the *Sicherheitsabschlag* and the whole payout-phase loading | **[std]** (8). The construction — per 10 000 €, monthly, higher of guaranteed and current — is now established in a Riester wording [S6]; the **margin** is not |
+| Annuitisation interest basis | **1,00 %** (`annuity_rechnungszins`, a row of `param_tariff_type.csv`), the *Höchstrechnungszins* in force from 1 January 2025 | [REG-R15]; use of the cap **[std]** (8) |
 
 3. The *Höchstzinssatz* caps the rate at which the **Deckungsrückstellung** is computed, not the rate
    a policy guarantees [R22] [REG-R14]; a tariff may guarantee less, and DeckRV § 2 Abs. 2 fixes
@@ -391,7 +391,7 @@ documents now show to be wrong.
 
 | What the model does | What the retrieved document says | Direction of the error |
 |---|---|---|
-| `kleinbetrag_threshold_mth = 39.55`, being **1 %** of the monthly *Bezugsgröße* | § 93 Abs. 3 Satz 2 Nr. 1 EStG: "eine monatliche Rente …, die **1,5 Prozent** der monatlichen Bezugsgröße nach § 18 des Vierten Buches Sozialgesetzbuch nicht übersteigt" [R15]. On the 3 955,00 € used here, **59,33 €** | The threshold is **a third too low**, so **too few** model points commute and the projected liability is **too long-tailed**. Model points 4, 5, 10 and 13 already commute; on a 59,33 € threshold others would join them |
+| `kleinbetrag_threshold_mth = 39.55` (a row of `param_tariff_type.csv`), being **1 %** of the monthly *Bezugsgröße* | § 93 Abs. 3 Satz 2 Nr. 1 EStG: "eine monatliche Rente …, die **1,5 Prozent** der monatlichen Bezugsgröße nach § 18 des Vierten Buches Sozialgesetzbuch nicht übersteigt" [R15]. On the 3 955,00 € used here, **59,33 €** | The threshold is **a third too low**, so **too few** model points commute and the projected liability is **too long-tailed**. Model points 4, 5, 10 and 13 already commute; on a 59,33 € threshold others would join them |
 | `is_kleinbetrag()` tests the annuity payable **after** the elected *Teilkapitalauszahlung* | [S2] § 1 Abs. 3: "**Eine Abfindung erfolgt nicht, wenn die Leistung nur aufgrund einer Teilkapitalauszahlung gemäß Absatz 4 auf eine Kleinbetragsrente sinkt.**" The test belongs on the annuity the whole conversion capital would buy | The test trips **less often** than the wording allows, in the same direction as the threshold error and compounding it on any point that elects the 30 % lump sum |
 | Administration charge of **4,0 %** applied to the *Eigenbeitrag* and the Zulage **at the same rate** | [S4] § 11 Abs. 2: **2,1 %** of each *Eigenbeitrag* and **6,0 %** of each Zulage — the Zulagen charged at nearly three times the rate | The composite **undercharges** the Zulagen relative to the one tariff observed, which matters most on the low-income cells where the Zulagen are the majority of the contribution |
 
@@ -411,7 +411,7 @@ not from data.
 | Input | Value | Rationale |
 |---|---|---|
 | Accumulation mortality `mort_table_accum.csv` | **[std]** proxy standing in for **DAV 2008 T** [REG-R48], applied with `mort_be_factor = 0.80` | The DAV tables are proprietary and **not redistributed** [REG-R47]. A death-benefit basis carries **no** improvement projection, because for death cover improvement favours the insurer |
-| Annuity mortality `annuity_mort_table.csv` | **[std]** **generational** proxy standing in for **DAV 2004 R** [REG-R49]: `q(x, τ) = qx_base(x) · (1 − improvement(x))^(τ − 2027)`, applied with `annuity_mort_be_factor = 1.15` | The one structural property that is **not optional** is that the basis is two-dimensional in age and calendar year; a period-table proxy understates a twenty-year-deferred annuitisation by a margin that dwarfs every other assumption [REG-R49] |
+| Annuity mortality `annuity_mort_table.csv` | **[std]** **generational** proxy standing in for **DAV 2004 R** [REG-R49]: `q(x, τ) = qx_base(x) · (1 − improvement(x))^(τ − 2027)`, applied with `annuity_mort_be_factor = 1.15`, its base year `mort_base_year = 2027`, both rows of `param_tariff_type.csv` | The one structural property that is **not optional** is that the basis is two-dimensional in age and calendar year; a period-table proxy understates a twenty-year-deferred annuitisation by a margin that dwarfs every other assumption [REG-R49] |
 | Why two factors, in opposite directions | 0.80 on the death basis, 1.15 on the annuity basis | The direction of prudence **forks by product** [REG-R47]: a first-order death table assumes mortality **higher** than expected, a first-order annuity table **lower**. The best estimate therefore sits below the one and above the other |
 | Surrender `lapse_rate(t)` | **0,8 %** p.a. at contract durations 1–5, **0,6 %** at 6–10, **0,4 %** from 11 | Materially **below** a Schicht-3 rate, because a *Kündigung* repays all Zulagen and all § 10a relief (§ 93 Abs. 1 Satz 1) and taxes the growth (§ 22 Nr. 5 Satz 3) [R14] [REG-R42], and because EStG § 97 makes the subsidised capital non-transferable and ZPO § 851 Abs. 1 therefore unattachable [R16] [REG-R40] |
 | Transfer out `transfer_rate(t)` | **1,2 %** p.a. at durations 1–5, **0,9 %** at 6–10, **0,6 %** from 11 | Set **above** surrender, because the *Wechselrecht* is free of subsidy consequences (§ 93 Abs. 2 Satz 1 EStG) [R1] [R14] and is therefore the rational exit; the ceding provider may charge at most 150,00 € for it and one retrieved insurer charges nothing [S4]. A model carrying only a lapse rate has mis-specified the book |
@@ -419,8 +419,8 @@ not from data.
 | Income growth | **2,0 %** p.a. on the anchor's `income_schedule` path | A round real-plus-inflation number; it decides when the 2 100 € ceiling binds and so the shape of the contribution stream |
 | Commutation take-up | **Computed, not assumed** — the model tests the annuity against the threshold | The one behavioural quantity here that does not need a rate |
 | *Teilkapitalauszahlung* take-up | **30 %** on the anchor, 0 % on model point 12 | German commentary reports the lump sum as usual `[unverified]`; **gap 10 records that this rests on nothing** |
-| Expenses `expense_maint`, `expense_annuity`, `expense_claim`, `expense_acq` | **30.00** p.a. per in-force policy inflating at **2,0 %** (`expense_infl`, a row of `param_tariff_type.csv`); **24.00** p.a. per annuitant; **80.00** per claim; **150.00 + 2,0 %** of `beitragssumme` at issue | No German insurer publishes a unit cost. The per-policy maintenance figure carries the Zulage administration — the *Dauerzulageantrag* (§ 89 Abs. 1a), the annual data transmission (§ 89 Abs. 3), the quarterly reclaim remittance (§ 90 Abs. 3), the *Leistungsmitteilung* (§ 22 Nr. 5 Satz 7, due on first receipt and on change rather than annually) and the separate annual information duty of AltZertG § 7a [R4] [R11] [R12] — which is a real and product-specific cost |
-| Commission | **2,5 %** of `beitragssumme` at issue, **1,5 %** of contributions thereafter | The initial rate is set at the *Höchstzillmersatz* [REG-R16] [REG-R20]. **The cash leaves at issue while the charge is recovered over five years** [R1]; that gap is the new-business strain and it is carried by the insurer |
+| Expenses `expense_admin_pp_ann`, `expense_annuity_pp_ann`, `expense_claim_pp_once`, `expense_acq_pp_once`, `expense_acq_bsum_once`, rows of `param_tariff_type.csv` | **30.00** p.a. per in-force policy inflating at **2,0 %** (`expense_infl`, a row of `param_tariff_type.csv`); **24.00** p.a. per annuitant; **80.00** per claim; **150.00 + 2,0 %** of `beitragssumme` at issue | No German insurer publishes a unit cost. The per-policy maintenance figure carries the Zulage administration — the *Dauerzulageantrag* (§ 89 Abs. 1a), the annual data transmission (§ 89 Abs. 3), the quarterly reclaim remittance (§ 90 Abs. 3), the *Leistungsmitteilung* (§ 22 Nr. 5 Satz 7, due on first receipt and on change rather than annually) and the separate annual information duty of AltZertG § 7a [R4] [R11] [R12] — which is a real and product-specific cost |
+| Commission | **2,5 %** of `beitragssumme` at issue, **1,5 %** of contributions thereafter (`comm_acq_bsum_once`, `comm_renew_prem_inst`, rows of `param_tariff_type.csv`) | The initial rate is set at the *Höchstzillmersatz* [REG-R16] [REG-R20]. **The cash leaves at issue while the charge is recovered over five years** [R1]; that gap is the new-business strain and it is carried by the insurer |
 
 9. ***Beitragsfreistellung* is the German Riester book's dominant exit** [R25], and the model
    represents it as a **switch on the model point** rather than as a decrement. The reason is
@@ -497,10 +497,10 @@ All of it is **annual** and takes `k`: one contribution, two charges, one *Sparb
 
     B(k)   = E(k) + Z(k) + contrib_extra_pp · 1{is_accum_y(k)}      charge base, unloaded
     C(k)   = E(k)·φ + Z(k) + contrib_extra_pp · 1{is_accum_y(k)}    cash actually received
-    K_a(k) = acq_charge_rate · beitragssumme / 5      if d(k) < 5 and k ≤ T, else 0
-    K_v(k) = admin_charge_prem_rate · B(k) + admin_charge_fixed + E(k)·(φ − 1)
+    K_a(k) = charge_acq_bsum_once · beitragssumme / 5      if d(k) < 5 and k ≤ T, else 0
+    K_v(k) = charge_admin_prem_inst · B(k) + charge_admin_pp_ann + E(k)·(φ − 1)
     S(k)   = C(k) − K_a(k) − K_v(k)
-           = B(k) − K_a(k) − admin_charge_prem_rate · B(k) − admin_charge_fixed
+           = B(k) − K_a(k) − charge_admin_prem_inst · B(k) − charge_admin_pp_ann
 
 `E(k)·(φ − 1)` is the frequency loading: the saver pays `E(k)·φ` and only `E(k)` reaches the
 *Sparbeitrag* base, so the loading is a charge and never enlarges the account or the guarantee
@@ -571,7 +571,7 @@ that a reader should see — but it is a diagnostic: **the guarantee is tested o
 
     account_conv_pp() = D(T) + S(T) + U(T) + slueb_pp() + bewres_pp()
     slueb_pp()        = slueb_rate · ( G(T + 1) − guar_pp_init + contributions credited before t = 0 )
-    bewres_pp()       = bewres_rate · ( D(T) + S(T) + U(T) )
+    bewres_pp()       = bwr_rate · ( D(T) + S(T) + U(T) )
     V                 = max( account_conv_pp() , G(T + 1) )
     Λ                 = max( 0 , G(T + 1) − account_conv_pp() )
 
@@ -586,7 +586,7 @@ that a reader should see — but it is a diagnostic: **the guarantee is tested o
     else:                 teilkapital_pp() = teilkapital_share · V ;
                           annuity_capital_pp() = V − teilkapital_pp() ; commutation_pp() = 0
 
-    annuity_month_pp() = annuity_capital_pp() / 10 000 · R       the instalment, paid monthly
+    annuity_month_pp() = annuity_capital_pp() / rf_unit · R      the instalment, paid monthly; rf_unit = 10 000, a row of param_tariff_type.csv
     a(k)               = 12 · annuity_month_pp()   for is_payout_y(k) and not commuted
 
 `k p(x, τ)` is survivorship on the **first-order** annuity basis — the same basis the market's
@@ -647,9 +647,9 @@ account is struck; the cash flows that pay them are **monthly**, with `k = proj_
 
     db_pp(k)            = A(k + 1)                                    death, gross
     cv_pp(k)            = A(k + 1) · ( 1 − stornoabzug_rate )         surrender, gross
-    transfer_value_pp(k)= max( 0 , A(k + 1) − transfer_charge )       Anbieterwechsel
+    transfer_value_pp(k)= max( 0 , A(k + 1) − charge_transfer_pp_once )       Anbieterwechsel
     exit_charge_pp(t)   = stornoabzug_rate · A(k + 1) · pols_lapse(t)
-                          + min( transfer_charge, A(k + 1) ) · pols_transfer(t)
+                          + min( charge_transfer_pp_once, A(k + 1) ) · pols_transfer(t)
 
     claims(t, "DEATH")       = db_pp(k) · pols_death(t)
     claims(t, "LAPSE")       = cv_pp(k) · pols_lapse(t)
@@ -660,12 +660,12 @@ account is struck; the cash flows that pay them are **monthly**, with `k = proj_
 
     premiums(t)   = ( E(k)·φ + contrib_extra_pp·1{is_accum_y(k)} ) · l(t)   if prem_due(t), else 0
     zulagen(t)    = Z(k) · l(t)                                             if prem_due(t), else 0
-    expenses(t)   = expense_acq · 1{t = 0 and duration_init = 0}
-                    + expense_maint / 12 · (1 + expense_infl)^d(t) · l(t) · 1{is_accum(t)}
-                    + expense_annuity / 12 · pols_annuity_pay(t)
-                    + expense_claim · ( pols_death(t) + pols_lapse(t) + pols_transfer(t) )
-    commissions(t)= comm_rate_init · beitragssumme · l(0) · 1{t = 0 and duration_init = 0}
-                    + comm_rate_renew · ( E(k) + Z(k) ) · l(t)   in the month the contribution falls
+    expenses(t)   = expense_acq_pp_once · 1{t = 0 and duration_init = 0}
+                    + expense_admin_pp_ann / 12 · (1 + expense_infl)^d(t) · l(t) · 1{is_accum(t)}
+                    + expense_annuity_pp_ann / 12 · pols_annuity_pay(t)
+                    + expense_claim_pp_once · ( pols_death(t) + pols_lapse(t) + pols_transfer(t) )
+    commissions(t)= comm_acq_bsum_once · beitragssumme · l(0) · 1{t = 0 and duration_init = 0}
+                    + comm_renew_prem_inst · ( E(k) + Z(k) ) · l(t)   in the month the contribution falls
 
     net_cf(t)     = premiums(t) + zulagen(t)
                     − claims_death(t) − claims_lapse(t) − claims_transfer(t)
@@ -679,7 +679,7 @@ collection, not a reduction in the insurer's obligation**, and netting it would 
 (pitfall 18). `zulage_cum_pp(k)` publishes the reclaimable Zulage limb as a diagnostic; the § 10a
 limb depends on the saver's marginal rate and cannot be computed from contract data at all.
 
-A per-**event** cost such as `expense_claim` falls whole in the month of the event; a per-**year**
+A per-**event** cost such as `expense_claim_pp_once` falls whole in the month of the event; a per-**year**
 cost is a twelfth in each month, so a policy exiting in the fourth month of a contract year bears
 four twelfths of that year's maintenance rather than all of it.
 
@@ -759,7 +759,7 @@ and it is stated here so that an implementation can be compared against it line 
    rates. Strike `claims_death`, `claims_lapse` and `claims_transfer` on the **annual** `A(k + 1)`,
    and retain `exit_charge_pp(t)`.
 10. **Payout, each month.** Pay `claims_annuity(t) = annuity_month_pp() · pols_annuity_pay(t)` in
-    advance, charge a twelfth of `expense_annuity` on the same count, then apply annuitant mortality
+    advance, charge a twelfth of `expense_annuity_pp_ann` on the same count, then apply annuitant mortality
     at the end of the month: `l(t + 1) = l(t) · (1 − q_mth(t))`; no surrender, a contract in payment cannot be surrendered.
 11. Assemble `expenses(t)`, `commissions(t)`, `net_cf(t)` and `liability_cf(t)`, in every month.
 

@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The seven input CSVs are read here, **once per model**, and referenced from
+The eight input CSVs are read here, **once per model**, and referenced from
 :mod:`~.FRV_DE_S.Projection` as ``data``. :mod:`~.FRV_DE_S.Projection` is parameterized
 by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells
 cache; if the readers lived there, every model point would re-read every file. Holding
@@ -36,14 +36,15 @@ lapse_file                lapse_table()                 lapse_table.csv
 charge_file               charge_table()                charge_table.csv
 fund_scenario_file        fund_scenario_table()         fund_scenario_table.csv
 rentenfaktor_file         rentenfaktor_table()          rentenfaktor_table.csv
-param_file                param_table()                 param_tariff_type.csv
+prem_freq_file            prem_freq_table()             prem_freq_table.csv
+param_file                param()                       param_tariff_type.csv
 ========================  ============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.loc``: the core's for ``model_point_table``, ``param_table``, ``mort_table``,
-``lapse_table`` and ``rentenfaktor_table``, this space's ``fund_scenario_table_dict``, and
-``charge_table_rows``, the charge table by row.
+``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table``,
+``lapse_table``, ``rentenfaktor_table`` and ``prem_freq_table``, this space's
+``fund_scenario_table_dict`` and ``charge_table_rows``, the charge table by row.
 
 **Every file but ``model_point_table.csv`` carries a ``provenance`` column**, one tag per
 row, and the library's conventions suite asserts it. That is this library's second
@@ -195,6 +196,8 @@ charge_file = "charge_table.csv"
 fund_scenario_file = "fund_scenario_table.csv"
 
 rentenfaktor_file = "rentenfaktor_table.csv"
+
+prem_freq_file = "prem_freq_table.csv"
 
 param_file = "param_tariff_type.csv"
 

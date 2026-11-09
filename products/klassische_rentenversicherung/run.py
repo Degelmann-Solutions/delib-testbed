@@ -23,7 +23,7 @@ n = int(mp["aufschub_y"])
 
 print("model point {}: {} - {}{} issued {}, duration {}, {} EUR {} to age {}".format(
     point_id, mp["policy_id"], mp["sex"], mp["issue_age"], mp["issue_year"],
-    mp["duration_init"], mp["premium_form"], mp["prem_freq"],
+    mp["duration_init"], mp["prem_form"], mp["prem_freq"],
     int(mp["issue_age"]) + n))
 print("premium {:,.2f} EUR p.a. x {} y (freq load {:.3f})   Beitragssumme {:,.2f}   "
       "alpha {:,.2f}".format(

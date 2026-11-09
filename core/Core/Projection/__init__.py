@@ -71,26 +71,58 @@ def pols_if_init():
 
 
 def prem_freq():
-    """The payment frequency, a key into the product's *freq_loading_table.csv*.
+    """The premium payment frequency, a key into the product's *prem_freq_table.csv*.
 
-    Raises ``ValueError`` for a frequency the table has no row for.
+    ``annual``, ``half_yearly``, ``quarterly`` or ``monthly``, from the model point's
+    ``prem_freq`` column.  Raises ``ValueError`` for a frequency the table has no row for.
     """
     v = model_point()["prem_freq"]                                   # noqa: F821
-    if v not in data.freq_loading_table_dict()["prem_freq_load"]:    # noqa: F821
-        raise ValueError("no frequency loading for prem_freq " + str(v))
+    if v not in data.prem_freq_table_dict()["instalments"]:          # noqa: F821
+        raise ValueError("invalid prem_freq " + str(v))
     return v
 
 
 def prem_freq_load():
-    """phi: the *Ratenzahlungszuschlag* for ``prem_freq()``, from *freq_loading_table.csv*."""
-    return float(data.freq_loading_table_dict()[                     # noqa: F821
+    """phi: the *Ratenzahlungszuschlag* for ``prem_freq()``, from *prem_freq_table.csv*.
+
+    1.0 for a single premium, ``prem_form() == "single"``: the loading prices the
+    instalments of a *laufender Beitrag*, and an *Einmalbeitrag* has none, so the frequency
+    is not read.
+    """
+    if prem_form() == "single":
+        return 1.0
+    return float(data.prem_freq_table_dict()[                        # noqa: F821
         "prem_freq_load"][prem_freq()])                              # noqa: F821
 
 
 def instalments():
     """The number of premium instalments a year for ``prem_freq()``: 1, 2, 4 or 12."""
-    return int(data.freq_loading_table_dict()[                       # noqa: F821
+    return int(data.prem_freq_table_dict()[                          # noqa: F821
         "instalments"][prem_freq()])                                 # noqa: F821
+
+
+def prem_cycle():
+    """Months between premium instalments: 12 annual, 6 half-yearly, 3 quarterly, 1 monthly.
+
+    ``12 // instalments()``, the months of a year over the instalments in it: arithmetic of
+    the elected frequency rather than an assumption, so no table holds it.
+    """
+    return 12 // instalments()
+
+
+def prem_form():
+    """The premium form: ``regular`` (*laufender Beitrag*) or ``single`` (*Einmalbeitrag*).
+
+    From the model point's ``prem_form`` column; raises ``ValueError`` for another value.
+    A product whose model points have no such column writes regular premiums only and
+    reads ``regular``.  A ``single`` premium carries no
+    *Ratenzahlungszuschlag* (``prem_freq_load``), and its model point's ``prem_freq`` is
+    ``annual``, the one payment of its year.
+    """
+    v = model_point().get("prem_form", "regular")                    # noqa: F821
+    if v not in ("regular", "single"):
+        raise ValueError("invalid prem_form")
+    return v
 
 
 def issue_age():

@@ -198,7 +198,7 @@ because no carrier-level observation was available:
 | Design type | Fondsgebundene Rentenversicherung, deferred, single life, *Schicht 3*; no *Beitragsgarantie*; unit-linked accumulation converted at *Rentenbeginn* | [S1] [S2] [S3]; design **[std]** (1) |
 | *Versicherungssparte* | ***Fondsgebundene Lebensversicherung***, Nr. 21 of Anlage 1 VAG, a *Sparte* in its own right, with a segregated *Anlagestock* — a division **of** the *Sicherungsvermögen* under § 125 Abs. 5 VAG | [R15] [REG-R5] [REG-R7] |
 | Legal wrapper | Individual contract on the applicant's own life; the *Versicherungsnehmer* and the *versicherte Person* coincide | [S1] |
-| Premium form (model-point parameter) | (i) `laufend` — level recurring *Beitrag*, the dominant form; (ii) `einmal` — *Einmalbeitrag* | (i) [S1] [S2]; (ii) **[std]** (2) |
+| Premium form (model-point parameter) | (i) `regular` — level recurring *Beitrag*, the dominant form; (ii) `single` — *Einmalbeitrag* | (i) [S1] [S2]; (ii) **[std]** (2) |
 | Payment frequency | Monthly, quarterly, half-yearly or annual; monthly by *SEPA-Lastschrift* is the dominant mode | [S1]; dominance `[unverified]` |
 | Entry ages | 18 to 60 | envelope **[std]** (3) |
 | *Rentenbeginn* age | 67; the contract may fix any age from 62 to 85 | **62 to 85 confirmed at one carrier** [S2]; tax floor 62 [R20] [REG-R45]; choice **[std]** (4) |
@@ -271,7 +271,7 @@ Footnotes to **[std]** rows:
 | Parameter | Representative value | Basis |
 |---|---|---|
 | *Beitrag* | 200,00 EUR per month, level, payable for 30 years to *Rentenbeginn* | **[std]** (8) |
-| *Beitragssumme* | `Beitrag × (12 / prem_mode_months) × premium term` = 72,000.00 EUR — the sum of all premiums **payable**, not paid | definition [R12] [REG-R16] |
+| *Beitragssumme* | `Beitrag × instalments a year × premium term` = 72,000.00 EUR — the sum of all premiums **payable**, not paid | definition [R12] [REG-R16] |
 | Premium timing | In advance, at the start of each payment period | **[std]** (9) |
 | *Ratenzahlungszuschlag* | A loading for paying more often than annually; the composite reads the **instalment stated in the policy** and does not re-apply a loading | mechanic [S1]; level `[unverified]`; treatment **[std]** (9) |
 | Premium-paying term | Equal to the *Aufschubzeit* in the base case; a shorter term is permitted and shortens the acquisition-charge spread | **[std]** (10) |

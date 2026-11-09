@@ -86,8 +86,8 @@ the library's retired-names register.
   `issue_age + policy_term − 1`. `cover_end_age` is **derived**, not carried, so the two cannot
   disagree.
 - **Timing conventions [std].** A *Zahlbeitrag* **instalment** on the *Zahlweise*'s own cycle at the
-  **beginning** of month `t` — one month in twelve for a *jaehrlich* payer, every month for a
-  *monatlich* one; acquisition cost and initial commission at issue, i.e. in month `t = 0` of a
+  **beginning** of month `t` — one month in twelve for an `annual` payer, every month for a
+  `monthly` one; acquisition cost and initial commission at issue, i.e. in month `t = 0` of a
   new-business point and **never** on an in-force point, where they are sunk; a twelfth of the
   sum-related admin charge, the collection cost on the instalment actually collected, and the
   renewal commission on it, at the beginning of the month on the opening in-force; **death claims
@@ -141,12 +141,12 @@ carries a per-row `provenance` column**, which is delib's second ruling and is m
 | `benefit_schedule.csv` | `schedule_id`, `policy_year` | `benefit_factor` | per row |
 | `nvg_schedule.csv` | `nvg_id`, `policy_year` | `sum_uplift` (cumulative multiplier on the sum insured) | per row |
 | `lapse_table.csv` | `policy_year` | `lapse_rate` | per row |
-| `freq_loading_table.csv` | `prem_freq` | `instalments`, `prem_freq_load` | per row |
+| `prem_freq_table.csv` | `prem_freq` | `instalments`, `prem_freq_load` | per row |
 
 Six files, no orphans: the conventions suite asserts that every CSV beside the model backs a
 filename Reference in `Data` and that the set read by a full sweep is exactly the set registered in
-`tests/de_registry.py`. Scalar assumptions are **References on `Projection`**, not rows in a table,
-following `TradLife_A`; their values and tags are the assumption tables below. The exceptions are
+`tests/de_registry.py`. Scalar assumptions are **rows of `param_tariff_type.csv`**, read by `data.param`,
+not References on `Projection` as in `TradLife_A`; their values and tags are the assumption tables below. The exceptions are
 `rechnungszins`, a model-point column since phase 3, and `mort_be_factor`, the core's neutral 1.00.
 
 ---
@@ -163,8 +163,8 @@ following `TradLife_A`; their values and tags are the assumption tables below. T
 | `sum_assured` | float EUR | Initial *Versicherungssumme*, `S0` | all |
 | `policy_term` | int | *Versicherungsdauer* in whole years; equals `proj_len_y()`, and `proj_len() = 12 × it` | all |
 | `prem_term` | int | *Beitragszahlungsdauer* in whole years, `≤ policy_term` | 6 (12 < 20) |
-| `premium_form` | enum {laufend, einmal} | Level *Bruttobeitrag* over `prem_term`, or a single *Einmalbeitrag* at issue | 7 |
-| `prem_freq` | enum {jaehrlich, halbjaehrlich, vierteljaehrlich, monatlich} | *Zahlweise*; drives the *Ratenzahlungszuschlag* | 4, 5, 6, 10 |
+| `prem_form` | enum {regular, single} | Level *Bruttobeitrag* over `prem_term`, or a single *Einmalbeitrag* at issue | 7 |
+| `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | *Zahlweise*; drives the *Ratenzahlungszuschlag* | 4, 5, 6, 10 |
 | `benefit_schedule_id` | str | Key into `benefit_schedule.csv`: `konstant`, `linear_fallend`, `annuitaet_fallend_3pct` | 4, 5 |
 | `nvg_schedule_id` | str | Key into `nvg_schedule.csv`: `keine`, `nvg_zwei_erhoehungen` | 9 |
 | `surplus_form` | enum {beitragsverrechnung, keine} | Participating with *Beitragsverrechnung*, or the § 153-excluded non-participating tariff [R5] | 12 |
@@ -197,16 +197,16 @@ anchor cell.**
 
 | # | Configuration | What it exercises |
 |---|---|---|
-| 1 | 35 M N, 300 000 € `konstant`, 25/25 y, `laufend`, `jaehrlich`, participating | **The anchor.** The representative composite |
+| 1 | 35 M N, 300 000 € `konstant`, 25/25 y, `regular`, `annual`, participating | **The anchor.** The representative composite |
 | 2 | As 1 but `sex = F` | The unisex cross-subsidy: identical tariff, different projected claims |
 | 3 | As 1 but `smoker = R` | The smoker split; the derived premium ratio against point 1 |
-| 4 | 40 M N, 250 000 € `linear_fallend`, 20/20 y, `monatlich` | Falling sum; the 5 % *Ratenzahlungszuschlag* |
-| 5 | 33 F N, 400 000 € `annuitaet_fallend_3pct`, 30/30 y, `vierteljaehrlich` | *Darlehensabsicherung* schedule; the 3 % loading |
-| 6 | 45 M N, 200 000 € `konstant`, 20/**12** y, `halbjaehrlich` | *Abgekürzte Beitragszahlungsdauer*; the largest *Deckungskapital*; the 2 % loading |
-| 7 | 50 M N, 100 000 € `konstant`, 10/**1** y, `einmal`, `jaehrlich` | The second premium form; the equivalence at its boundary |
+| 4 | 40 M N, 250 000 € `linear_fallend`, 20/20 y, `monthly` | Falling sum; the 5 % *Ratenzahlungszuschlag* |
+| 5 | 33 F N, 400 000 € `annuitaet_fallend_3pct`, 30/30 y, `quarterly` | *Darlehensabsicherung* schedule; the 3 % loading |
+| 6 | 45 M N, 200 000 € `konstant`, 20/**12** y, `half_yearly` | *Abgekürzte Beitragszahlungsdauer*; the largest *Deckungskapital*; the 2 % loading |
+| 7 | 50 M N, 100 000 € `konstant`, 10/**1** y, `single`, `annual` | The second premium form; the equivalence at its boundary |
 | 8 | 30 F N, 150 000 € `konstant`, 30/30 y, `duration_init = 12` | **In force.** The frame opens at `t = 144`; past the § 161 window and the elevated lapse durations |
 | 9 | 32 M N, 200 000 € `konstant`, 28/28 y, `nvg_zwei_erhoehungen` | *Nachversicherungsgarantie*; the § 161 clock restarting per increment |
-| 10 | 38 M N + 36 F N, 300 000 € `konstant`, 22/22 y, `monatlich`, `lives = 2` | *Verbundene Leben*; the first-death rate |
+| 10 | 38 M N + 36 F N, 300 000 € `konstant`, 22/22 y, `monthly`, `lives = 2` | *Verbundene Leben*; the first-death rate |
 | 11 | 42 M R, 250 000 € `konstant`, 18/18 y, `rating_factor = 1.75` | *Risikozuschlag* on an impaired smoker |
 | 12 | 36 F N, 300 000 € `konstant`, 25/25 y, `surplus_form = keine` | The § 153-excluded tariff: `prem_rebate ≡ 0`, billed = guaranteed |
 | 13 | 60 M N, 50 000 € `konstant`, 5/5 y | **Boundary.** Oldest entry, shortest term; the § 161 window covers three of five years |
@@ -282,10 +282,10 @@ Thin, but decisive — on this product the discretion **is** the customer's bill
 
 | Input | Snapshot value | Basis |
 |---|---|---|
-| Declaration scaling `decl_scale` | **1.00**, i.e. the insurer declares exactly the MindZV minimum | **[std]** (1) |
-| Surplus share `surplus_share` | **0.90** of the tariff mortality margin | [R9] [REG-R18]; choice of the minimum **[std]** (1) |
+| Declaration scaling `decl_scale` | **1.00**, a row of `param_tariff_type.csv`, i.e. the insurer declares exactly the MindZV minimum | **[std]** (1) |
+| Surplus share `surplus_share` | **0.90** of the tariff mortality margin, a row of `param_tariff_type.csv` | [R9] [REG-R18]; choice of the minimum **[std]** (1) |
 | Resulting `v_decl` (*Beitragsverrechnungssatz*) | **Derived, not assumed** — see the recursion section. Lands at about 0.43 on the anchor, so `Zahl / Brutto ≈ 0.57` | derived; inputs **[std]** |
-| Cap on the declared rate `v_max` | **0.95** — a rebate may not exceed the premium | **[std]** (2) |
+| Cap on the declared rate `v_max` | **0.95**, a row of `param_tariff_type.csv` — a rebate may not exceed the premium | **[std]** (2) |
 | *Kostenüberschuss* | **Not returned.** The tariff's β is 5,0 % and the modelled collection cost 3,0 %, so a cost result emerges in `net_cf` and stays there | **[std]** (3) |
 | *Summenzuwachs*, *verzinsliche Ansammlung*, *Todesfallbonus* | **Off.** Only *Beitragsverrechnung* is implemented | mechanic 6; **[std]** |
 | § 163 premium adjustment | **Off.** The *Bruttobeitrag* is fixed for the term — [S3]: "bleibt Ihre Absicherung sowie der vereinbarte Bruttobeitrag über die gesamte Versicherungsdauer unverändert" | [R6] [REG-R27] [S3]; non-use in practice still [unverified] |
@@ -340,8 +340,8 @@ selection adjustment overstates claims by a wide margin at issue ages 25–45 [R
     mort_rate_tariff(t) = (1 + m) × [ ω·q_tab(M, smoker, x(t)) + (1 − ω)·q_tab(F, smoker, x(t)) ]
                        × rating_factor
 
-with the *Sicherheitszuschlag* `m = 1.25` **[std]** and the unisex mix `ω = sex_mix_male = 0.50`
-**[std]**. So `q1 = 2.25 × q2` **for the tariff's own unisex life**, and for a real policy the ratio
+with the *Sicherheitszuschlag* `m = 1.25` **[std]** and the unisex mix `ω = unisex_mix_male = 0.50`
+**[std]**, both rows of `param_tariff_type.csv`. So `q1 = 2.25 × q2` **for the tariff's own unisex life**, and for a real policy the ratio
 is `2.25 × (unisex blend / own-sex rate)`. On the shipped proxy the blend is `0.75 × q̃(M)`, so the
 ratio is **1.6875 for a male and 3.375 for a female**. That asymmetry is the unisex cross-subsidy, and it is a product fact, not a modelling
 artefact. `m` is the single parameter that sets the *Brutto*/*Zahlbeitrag* spread; **its level is not
@@ -377,7 +377,7 @@ rather than a silent choice.
 inside three years, substituting a *Rückkaufswert* that is nil here [R1] [R2]. The model applies
 
     suicide_factor(t) = 1 − suicide_share   for the first three periods of a cover tranche
-                      = 1                   thereafter,           suicide_share = 0.03  **[std]**
+                      = 1                   thereafter,           suicide_share = 0.03  **[std]**, a row of `param_tariff_type.csv`
 
 to **death claims only**. No German cause-of-death share was retrieved, and none is asserted; 0,03
 stands for "about three per cent of deaths at these ages are suicides", with an argued range of
@@ -389,15 +389,15 @@ rather than buried.
 
 | Input | Value | Basis |
 |---|---|---|
-| Acquisition cost, total | `zillmer_rate × prem_term × G` = **25 ‰ of the *Beitragssumme***, at issue | ceiling [R10] [REG-R16]; level **[std]** (4) |
-| — of which initial commission `comm_rate_init` | **20 ‰ of the *Beitragssumme*** | **[std]** (4) |
+| Acquisition cost, total | `load_acq_bsum_once × prem_term × G` = **25 ‰ of the *Beitragssumme***, at issue, `load_acq_bsum_once` a row of `param_tariff_type.csv` | ceiling [R10] [REG-R16]; level **[std]** (4) |
+| — of which initial commission `comm_acq_bsum_once` | **20 ‰ of the *Beitragssumme***, a row of `param_tariff_type.csv` | **[std]** (4) |
 | — of which other acquisition cost | **5 ‰ of the *Beitragssumme*** | **[std]** (4) |
-| Tariff premium loading `beta_tariff` | **5,0 %** of each *Bruttobeitrag*, inside the equivalence | **[std]** (4) |
-| Modelled collection cost `maint_prem_pct` | **3,0 %** of each *Zahlbeitrag* | **[std]** (4) |
-| Renewal commission `comm_rate_renew` | **1,0 %** of each *Zahlbeitrag* from policy year 2 | **[std]** (4) |
-| Sum-related admin `gamma_rate` | **0,30 ‰** of `benefit_pp(t)` a year | **[std]** (4) |
+| Tariff premium loading `load_admin_prem_inst` | **5,0 %** of each *Bruttobeitrag*, a row of `param_tariff_type.csv`, inside the equivalence | **[std]** (4) |
+| Modelled collection cost `expense_collect_prem_inst` | **3,0 %** of each *Zahlbeitrag*, a row of `param_tariff_type.csv` | **[std]** (4) |
+| Renewal commission `comm_renew_prem_inst` | **1,0 %** of each *Zahlbeitrag* from policy year 2, a row of `param_tariff_type.csv` | **[std]** (4) |
+| Sum-related admin `load_admin_sum_ann` | **0,30 ‰** of `benefit_pp(t)` a year, a row of `param_tariff_type.csv` | **[std]** (4) |
 | Expense inflation `expense_infl` | **2,0 %** a year, a row of `param_tariff_type.csv`, on the sum-related admin only; the tariff's γ is level | **[std]** (5) |
-| Claim expense `claim_expense` | **250 €** per death claim, a row of `param_tariff_type.csv` | **[std]** (4) |
+| Claim expense `expense_claim_pp_once` | **250 €** per death claim, a row of `param_tariff_type.csv` | **[std]** (4) |
 | Best-estimate mortality factor `mort_be_factor` | **1.00** | **[std]** (6) |
 | *Ratenzahlungszuschlag* `prem_freq_load` | 1.000 annual · **1.02** half-yearly · **1.03** quarterly · **1.05** monthly | convention **[std]** (7) |
 
@@ -443,8 +443,8 @@ rather than buried.
 | `u(y)` | `sum_uplift_y(y)` from `nvg_schedule.csv`, read at `policy_year = y + 1`; `u ≡ 1` for `nvg_schedule_id = keine`; defined on `y ≥ 0` only. `sum_uplift(t) = u(duration(t))` |
 | `B(t)` | `benefit_pp(t) = S0 · f(t) · u(t)` |
 | `q̃(x)` | `mort_rate_at_age(table_id, sex, smoker, x)`, the shipped second-order table rate |
-| `ω` | `sex_mix_male` = 0.50, the tariff's unisex mix **[std]** |
-| `m` | `sicherheitszuschlag_m` = 1.25 **[std]** |
+| `ω` | `unisex_mix_male` = 0.50, the tariff's unisex mix **[std]** |
+| `m` | `mort_load_first` − 1 = 1.25 **[std]**; the row is the factor `1 + m` = 2.25 |
 | `rf` | `rating_factor` |
 | `q₂(t)` | `mort_rate(t)`, the projected second-order **annual** rate of month `t`'s policy year |
 | `q₂ᵐ(t)` | `mort_rate_mth(t) = 1 − (1 − q₂(t))^(1/12)` **[std]**, the rate actually applied |
@@ -458,9 +458,9 @@ rather than buried.
 | `G`, `Gn` | `prem_gross_pp` before frequency loading; `prem_net_level_pp`, the actuarial *Nettoprämie* |
 | `φ` | `prem_freq_load`, the *Ratenzahlungszuschlag* multiplier |
 | `v_d` | `beitragsverrechnung_rate()`, the declared *Beitragsverrechnungssatz*, struck once at issue |
-| `z`, `β`, `γ` | `zillmer_rate` = 0.025; `beta_tariff` = 0.05; `gamma_rate` = 0.00030 |
-| `c₀`, `c_r` | `comm_rate_init` = 0.020 of the *Beitragssumme*; `comm_rate_renew` = 0.010 of the *Zahlbeitrag* |
-| `a`, `π`, `ec` | `maint_prem_pct` = 0.03; `expense_infl` = 0.02; `claim_expense` = 250 |
+| `z`, `β`, `γ` | `load_acq_bsum_once` = 0.025; `load_admin_prem_inst` = 0.05; `load_admin_sum_ann` = 0.00030 |
+| `c₀`, `c_r` | `comm_acq_bsum_once` = 0.020 of the *Beitragssumme*; `comm_renew_prem_inst` = 0.010 of the *Zahlbeitrag* |
+| `a`, `π`, `ec` | `expense_collect_prem_inst` = 0.03; `expense_infl` = 0.02; `expense_claim_pp_once` = 250 |
 | `r` | `instalments()` ∈ {1, 2, 4, 12}, the number of premium instalments a policy year |
 | `P_inst(t)` | `prem_inst_pp(t)`, the *Zahlbeitrag* instalment collected in month `t`, or zero |
 
@@ -514,7 +514,7 @@ is linear in `G` and solves in closed form:
 
     G = ( A + γ·Γ ) / ( (1 − β)·ä − z·k )
 
-For `premium_form = einmal`, `k = 1` and `ä = 1`, so the same expression returns the
+For `prem_form = single`, `k = 1` and `ä = 1`, so the same expression returns the
 *Einmalbeitrag* — the second premium form is the same engine at a boundary, not a second engine. The
 actuarial *Nettoprämie* is `Gn = A / ä`, and it is what the reserve recursion below uses; it is
 **not** a cash flow and never appears in `result_cf()`.
@@ -631,11 +631,11 @@ The sum-related administration charge is an annual amount and accrues a twelfth 
 that runs a full year carries the same charge as it did — but it is borne by the in-force of **each
 month** rather than of the anniversary, which is what makes a decrementing block cost less. The
 collection cost follows the *Zahlweise*: it is charged when a bill is actually collected, once a
-year on a *jaehrlich* payer and twelve times on a *monatlich* one, which is what a collection cost
+year on an `annual` payer and twelve times on a `monthly` one, which is what a collection cost
 is and what the *Ratenzahlungszuschlag* was pricing all along.
 
 **The *Zahlweise* is now a cash-flow fact rather than a loading with nothing behind it.** On the
-annual grid the `instalments` column of `freq_loading_table.csv` could not be used for anything: the
+annual grid the `instalments` column of `prem_freq_table.csv` could not be used for anything: the
 whole loaded annual premium was collected at the anniversary whatever the mode. Here it sets the
 cycle, so a fractionated payer's later instalments are collected on a block that has already lost
 lives, and § 168 VVG's *Versicherungsperiode* is expressed rather than approximated. The instalments
@@ -814,7 +814,7 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
    `prem_paid_pp(t)` and `beitragsverrechnung_rate()` are identical to 1e-12, while their
    `claims_death` totals differ by a factor near two.
 7. **Applying the *Sicherheitszuschlag* to the projection.** `q₁` prices, `q₂` projects. Assert that
-   `claims_death` is invariant to `sicherheitszuschlag_m` while `prem_gross` is not, and that
+   `claims_death` is invariant to `mort_load_first` while `prem_gross` is not, and that
    `mort_rate_tariff(t) / mort_rate(t)` equals `2.25 × (unisex blend / own-sex rate)` — 1.6875 for a
    male, 3.375 for a female on the shipped proxy, the blend being `0.75 × q̃(M)` — rather than 2.25
    for both.
@@ -834,7 +834,7 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
 10. **Mishandling the *Ratenzahlungszuschlag*.** `φ` multiplies the **annual** billed amount, so
     both premium streams and the rebate carry it once, and the instalment is that loaded amount
     divided by `r`. Assert `check_prem_split()` on every model point; that `prem_gross_pp(0)` on
-    model point 4 (*monatlich*) is exactly `1.05 ×` the same cell recomputed at `jaehrlich`; and
+    model point 4 (`monthly`) is exactly `1.05 ×` the same cell recomputed at `annual`; and
     that the twelve instalments of a policy year sum to exactly the year's annual amount — a single
     loading, not one applied to each stream separately and not one applied again to each instalment.
 11. **Double-counting premium cessation at death.** Instalments are collected at the beginning of
@@ -846,7 +846,7 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
     `n = 20`) assert `prem_gross_pp(t) == premiums(t) == prem_rebate_pp(t) == 0` for
     `t = 144…239`, while `claims_death(t) > 0` there and `res_pp_at(y,"BEF_PREM")` is falling. The
     boundary is an anniversary, the *Beitragszahlungsdauer* being stated in whole years; the last
-    instalment of this *halbjaehrlich* cell falls in month 138.
+    instalment of this `half_yearly` cell falls in month 138.
 13. **Hard-coding a constant sum insured.** Two of the three German shapes fall (mechanic 3). Assert
     `benefit_pp(t)` is flat on point 1; falls linearly to `S0/n` on point 4; and on point 5 falls
     **slowly then fast**, `benefit_pp(12) − benefit_pp(0) < benefit_pp(12(n−1)) − benefit_pp(12(n−2))`
@@ -858,7 +858,7 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
     `(1+m)·rf` times the combined **blend**, not the combination of two separately loaded rates.
 15. **Returning the *Kostenüberschuss* as well as the *Risikoüberschuss*.** The model returns only
     the mortality margin; the cost result emerges in `net_cf` and stays there. Assert that
-    `prem_rebate` is invariant to `maint_prem_pct` and `comm_rate_renew`, while `net_cf` is not.
+    `prem_rebate` is invariant to `expense_collect_prem_inst` and `comm_renew_prem_inst`, while `net_cf` is not.
 16. **Taking the whole-market *Stornoquote* as the term-life lapse rate.** Structurally wrong
     [R18] (research gap 13). Assert the **annual** `lapse_rate(t) == 0.06` through months 0–11,
     `== 0.04` through months 12–35 and `== 0.03` from month 36; that `lapse_rate(t) == 0` through
@@ -921,7 +921,7 @@ evidence for any of them** (research gap 13).
 **Configuration.** Model point 1, the anchor cell, in full: `point_id = 1`,
 `policy_id = RLV-000001`, `issue_age = 35`, `sex = M`, `smoker = N`,
 `sum_assured = 300 000 €`, `policy_term = 25`, `prem_term = 25`,
-`premium_form = laufend`, `prem_freq = jaehrlich` (`prem_freq_load = 1.000`,
+`prem_form = regular`, `prem_freq = annual` (`prem_freq_load = 1.000`,
 `instalments = 1`), `benefit_schedule_id = konstant` (`benefit_factor = 1.0` at every `t`),
 `nvg_schedule_id = keine` (`sum_uplift = 1.0` at every `t`),
 `surplus_form = beitragsverrechnung`, `lives = 1`, `issue_age2 = 0`, `smoker2 = -`,
@@ -934,21 +934,21 @@ frame summed into policy years by `result_cf_annual()` — is the **entire** pro
 `mort_rate(M, N, x) = 0.00040 × 1.095^(x − 30)` at attained ages 35 to 59, so
 `mort_rate(0) = 0.00040 × 1.095^5` and `mort_rate(24) = 0.00040 × 1.095^29` **[std]**;
 `mort_be_factor = 1.00` **[std]**. *Tariff mortality*: the unisex 50/50 blend
-`0.00030 × 1.095^(x − 30)` **[std]** loaded by `1 + m` with `sicherheitszuschlag_m = 1.25`
-**[std]**, and `sex_mix_male = 0.50` **[std]** [R13] [REG-R34]. *Interest*:
+`0.00030 × 1.095^(x − 30)` **[std]** loaded by `1 + m` = `mort_load_first` = 2.25, `m = 1.25`
+**[std]**, and `unisex_mix_male = 0.50` **[std]** [R13] [REG-R34]. *Interest*:
 `rechnungszins = 1,00 %`, a model-point column fixed at conclusion for the whole term (DeckRV § 2 Abs. 2), 1,00 % on every shipped point — the DeckRV ***Höchstzinssatz***, a **ceiling the model adopts as the
 rate**; a retrieved carrier prices its term tariff at 0,25 % instead **[R10] [REG-R14] [REG-R15]
 [S3]** — used only in the premium equivalence and the first-order reserve and **never** to discount
-a published cash flow. *Loadings*: `zillmer_rate = 0.025` of the *Beitragssumme* at the
+a published cash flow. *Loadings*: `load_acq_bsum_once = 0.025` of the *Beitragssumme* at the
 *Höchstzillmersatz* ceiling **[R10] [REG-R16]**, which bounds the *zillmerbare* part rather than the
-whole acquisition cost **[S1] [S3]**, level **[std]**; `comm_rate_init = 0.020` of the *Beitragssumme* **[std]**;
-`beta_tariff = 0.05` of each *Bruttobeitrag* **[std]**; `gamma_rate = 0.00030` of the
+whole acquisition cost **[S1] [S3]**, level **[std]**; `comm_acq_bsum_once = 0.020` of the *Beitragssumme* **[std]**;
+`load_admin_prem_inst = 0.05` of each *Bruttobeitrag* **[std]**; `load_admin_sum_ann = 0.00030` of the
 *Versicherungssumme* a year **[std]**. *Surplus*: `surplus_share = 0.90`, the MindZV minimum
 allocation from the *Risikoergebnis* **[R9] [REG-R18]** with the choice of the minimum **[std]**;
 `decl_scale = 1.00` **[std]**; `v_max = 0.95` **[std]**; so `v_d` is derived, not assumed.
-*Modelled expenses*: `maint_prem_pct = 0.03` of each *Zahlbeitrag* **[std]**;
-`comm_rate_renew = 0.010` of each *Zahlbeitrag* instalment from policy year 2 **[std]**;
-`expense_infl = 0.02` on the sum-related admin only **[std]**; `claim_expense = 250 €` per death
+*Modelled expenses*: `expense_collect_prem_inst = 0.03` of each *Zahlbeitrag* **[std]**;
+`comm_renew_prem_inst = 0.010` of each *Zahlbeitrag* instalment from policy year 2 **[std]**;
+`expense_infl = 0.02` on the sum-related admin only **[std]**; `expense_claim_pp_once = 250 €` per death
 claim **[std]**. *Behaviour*: lapse 6 % in policy year 1, 4 % in policy years 2 and 3, 3 % from
 policy year 4, with `lapse_rate ≡ 0` through the whole of policy year 25 because that year ends at
 expiry **[std]**, and each annual rate spread to the month at `1 − (1 − w)^(1/12)` **[std]**;
@@ -999,7 +999,7 @@ required columns of `result_cf()` and `check_no_cash_value()` asserts them. `lia
 −net_cf(t)` is omitted for the same reason — it is the last column with its sign turned over.
 
 **The monthly view**, the twelve months of policy year 1 on `result_cf()` — the shape the annual
-grid could not show. Month 0 collects the whole year's *Zahlbeitrag*, this cell being a *jaehrlich*
+grid could not show. Month 0 collects the whole year's *Zahlbeitrag*, this cell being an `annual`
 payer, and bears the acquisition cost and the initial commission; the other eleven collect nothing
 and carry a death claim and a twelfth of the sum-related admin charge:
 
@@ -1045,7 +1045,7 @@ model's to the last displayed digit, and to 4e-15 across all fourteen model poin
 | crossover to negative | policy year 14 | policy year 14 |
 | deaths / lapses over the run | 0,03305608 / 0,53554078 | **0,03261764 / 0,53597922** |
 | expiries | 0,43140314 | 0,43140314 |
-| model point 4 (*monatlich*) `premiums` | 4 471,82 € | **4 400,26 €** |
+| model point 4 (`monthly`) `premiums` | 4 471,82 € | **4 400,26 €** |
 
 Death claims fall because a claim now falls in the month of death rather than at the year end, so
 it is borne by a block that has decremented for part of the year — except in the final policy year,
@@ -1053,7 +1053,7 @@ where lapse is zero under both grids and the year's deaths are therefore identic
 because a twelfth of the admin charge accrues each month on that month's in-force. The premium
 columns are unchanged on the ten annual-*Zahlweise* points and lower on the four fractionated ones,
 where instalments after the first are collected on a block that has already lost lives: 0,95 % less
-on the *halbjaehrlich* point 6, 1,67 % less on the *monatlich* point 10. And the closure identity's
+on the `half_yearly` point 6, 1,67 % less on the `monthly` point 10. And the closure identity's
 **total** is unchanged at 1,00000000 while its **split** moves, deaths and lapses now interleaving
 month by month instead of the whole year's lapses being taken after the whole year's mortality.
 
@@ -1176,12 +1176,12 @@ is `premiums`, 12 243,75 € → 21 303,65 €, a **74,0 % increase in the custo
 whatever in cover**, and with it the two flows that scale with the billed premium: `expenses`
 +271,80 € (collection at 3 %) and `commissions` +85,18 € (renewal at 1 %). `net_cf` goes from
 −644,78 € to +8 058,16 €. **No § 163 procedure, no *Treuhänder*, no right of objection**, because no
-guaranteed term has moved — and it is a one-Reference change. The stress runs with the
+guaranteed term has moved — and it is a one-row change in `param_tariff_type.csv`. The stress runs with the
 premium-shock lapse module **off**, so the table shows the mechanical effect alone; switching
 `shock_lapse_lambda` on is what a stress of this shape should carry, and its omission is why the
 base run's `λ_s = 0` is stated rather than assumed.
 
-### Variant — the second premium form (`einmal`, model point 7)
+### Variant — the second premium form (`single`, model point 7)
 
 The same engine at `k = 1`: 50 M N, 100 000 € `konstant`, ten years' cover, a single
 *Einmalbeitrag*, annual mode, participating. With `ä = 1` exactly the equivalence collapses to

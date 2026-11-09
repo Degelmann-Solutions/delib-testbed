@@ -1,0 +1,5 @@
+prem_freq,instalments,prem_freq_load,provenance
+annual,1,1.00,"[std] Ratenzahlungszuschlag reference mode, no loading [unverified] market convention"
+half_yearly,2,1.02,[std] Ratenzahlungszuschlag on the tariff premium; the 2/3/5 per cent ladder is the recalled German market convention [unverified]
+quarterly,4,1.03,[std] Ratenzahlungszuschlag on the tariff premium; the 2/3/5 per cent ladder is the recalled German market convention [unverified]
+monthly,12,1.05,[std] Ratenzahlungszuschlag on the tariff premium; the 2/3/5 per cent ladder is the recalled German market convention [unverified]

@@ -1,3 +1,8 @@
 item,value,basis,provenance
 mort_be_factor,0.85,,"[std] [R17] [REG-R47] a round step from the shipped first-order table, which carries the DAV's prudential margins, to a best estimate; the single largest unanchored number in the payout phase"
 roll_fwd_tol,1e-09,,"[std] tolerance of the check_* identities, scaled by the magnitude each check compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
+elig_surv_prob,0.55,,"[std] [R1] probability that a spouse or registered partner, or a Kindergeld-eligible child, exists at the moment of death, in substance a marriage-survival probability; one of the most consequential [std] numbers in the library; inert on the anchor, where the survivor rider is off; was a Reference on Projection"
+mort_base_year,2005,,"[REG-R49] calendar base year from which the flat improvement trend of 1.5 % p.a. is applied, keeping the table generational; was a Reference on Projection"
+acq_spread_years,5,,"[R10] [R14] [S1] [S12] the Zillmerung is amortised over the contract's first 5 years: section 165 (2) VVG computes the paid-up benefit on the Rueckkaufswert of section 169 (3) VVG, whose floor spreads acquisition costs over the first five years; cited, not [std] (gap 8 closed); was a Reference on Projection"
+rf_unit,10000.0,,"[std] the Rentenfaktor is quoted per 10 000 EUR of fund at conversion; a unit convention, not an assumption; was a Reference on Projection"
+ann_freq,12,,"[std] the annuity is paid monthly and the Rentenfaktor is quoted in EUR a month: ann_pp multiplies by 12 to the annual amount, ann_mth_pp divides it back to the monthly instalment; a unit convention, not an assumption; was a Reference on Projection"

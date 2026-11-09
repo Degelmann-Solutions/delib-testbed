@@ -82,7 +82,8 @@ rentenfaktor_file          data.rentenfaktor_table()            rentenfaktor_tab
 charge_file                data.charge_table()                  charge_table.csv
 behaviour_file             data.behaviour_table()               behaviour_table.csv
 option_file                data.option_table()                  option_table.csv
-param_file                 data.param_table()                   param_tariff_type.csv
+prem_freq_file             data.prem_freq_table()               prem_freq_table.csv
+param_file                 data.param()                         param_tariff_type.csv
 =========================  ===================================  ==========================
 
 .. rubric:: Naming
@@ -497,45 +498,14 @@ def beitragssumme():
     so an in-force model point carries the same S it was written with.
 
     Override reason: the premiums escalate with the *Beitragsdynamik*, so the sum runs over
-    the schedule, not a level premium times the years, products/basisrente/technical-notes.md:431
+    the schedule, not a level premium times the years, products/basisrente/technical-notes.md:432
     """
     dyn = float(model_point()["prem_dyn_rate"])
     base = float(model_point()["prem_base_pp"])
-    if model_point()["prem_form"] == "single":
+    if prem_form() == "single":
         return base
     m = ret_age() - issue_age()
     return sum(base * (1.0 + dyn) ** u for u in range(max(m, 0)))
-
-
-def prem_freq():
-    """The payment frequency, from the model point's ``prem_mode`` column.
-
-    ``annual``, ``half_yearly``, ``quarterly`` or ``monthly``; the key into
-    *option_table.csv* under ``option_id = "prem_mode"``.
-
-    Override reason: the product has no frequency loading table; the frequency keys the
-    option table, products/basisrente/technical-notes.md:167
-    """
-    return model_point()["prem_mode"]
-
-
-def prem_freq_load():
-    """phi: the *Ratenzahlungszuschlag* for the model point's payment frequency.
-
-    Read from *option_table.csv* under ``option_id = "prem_mode"``: 1.000 annual, 1.020
-    half-yearly, 1.030 quarterly, 1.050 monthly **[std]**.  It multiplies the *laufender
-    Beitrag* and **nothing else** — not the *Zuzahlung*, which carries no frequency
-    loading because it is a single payment, and not a single premium, which is why
-    :func:`prem_freq_load` returns 1.0 for ``prem_form = "single"``.  Applying it twice, or
-    to the *Zuzahlung*, is the eighth pitfall.
-
-    Override reason: the loading is a factor of *option_table.csv*, 1 on a single premium,
-    products/basisrente/technical-notes.md:388
-    """
-    if model_point()["prem_form"] == "single":
-        return 1.0
-    return float(data.option_table_dict()["factor"][                 # noqa: F821
-        ("prem_mode", prem_freq())])
 
 
 def prem_base_pp(k):
@@ -550,7 +520,7 @@ def prem_base_pp(k):
     This is the contractual amount.  What is actually charged is :func:`prem_pp`, which
     applies phi and stops at *Rentenbeginn*.
     """
-    if model_point()["prem_form"] == "single":
+    if prem_form() == "single":
         if k == 0 and duration_init() == 0:
             return float(model_point()["prem_base_pp"])
         return 0.0
@@ -656,8 +626,8 @@ def alpha_rate():
 def alpha_amort_pp(k):
     """alpha(k): the *Zillmerung* instalment struck against the account in year k.
 
-    ``zillmer_amount() / zill_spread_y`` in equal instalments over the contract's first
-    ``zill_spread_y = 5`` years of *Aufschubphase* — **of the contract**, not of the
+    ``zillmer_amount() / acq_spread_years`` in equal instalments over the contract's first
+    ``acq_spread_years = 5`` years of *Aufschubphase* — **of the contract**, not of the
     projection — and zero thereafter.  An in-force model point past duration 5 therefore
     sees none of it at any ``k``: model point 6, at ``duration_init = 17``, sees zero
     throughout.  A single-premium contract runs the same five instalments, so the total
@@ -676,9 +646,9 @@ def alpha_amort_pp(k):
         return 0.0
     if int(model_point()["paidup_at_init"]) == 1:
         return 0.0
-    if duration_y(k) >= zill_spread_y:                                 # noqa: F821
+    if duration_y(k) >= data.param("acq_spread_years"):                # noqa: F821
         return 0.0
-    return zillmer_amount() / zill_spread_y                          # noqa: F821
+    return zillmer_amount() / data.param("acq_spread_years")         # noqa: F821
 
 
 def alpha_zuz_pp(k):
@@ -713,7 +683,7 @@ def inflation_years(t):
     ``k``, stepping on the anniversary; ``inflation_factor(12 k)`` is the factor of year ``k``.
 
     Override reason: the expense inflation compounds over the projection years ``k``,
-    products/basisrente/technical-notes.md:608
+    products/basisrente/technical-notes.md:609
     """
     return proj_year(t)                                              # noqa: F821
 
@@ -793,7 +763,7 @@ def pols_prem(t):
     ``(1 - mort_rate(t))`` here applies the death rule twice.
 
     Override reason: the premium is paid by the premium-paying cohort only, the paid-up
-    cohort pays none, products/basisrente/technical-notes.md:647
+    cohort pays none, products/basisrente/technical-notes.md:648
     """
     return pols_paying(t)
 
@@ -830,7 +800,7 @@ def mort_rate_at_age(x, y):
     """
     table = data.mort_table_dict()                                   # noqa: F821
     rate = (float(table["qx"][x])
-            * (1.0 - float(table["trend"][x])) ** (y - mort_base_year))   # noqa: F821
+            * (1.0 - float(table["trend"][x])) ** (y - data.param("mort_base_year")))  # noqa: F821
     return min(max(rate, 0.0), 1.0)
 
 
@@ -844,7 +814,7 @@ def mort_rate_base(t):
     year share one table rate.
 
     Override reason: the first-order table is generational, read at the attained age and the
-    calendar year, products/basisrente/technical-notes.md:923
+    calendar year, products/basisrente/technical-notes.md:924
     """
     return mort_rate_at_age(age(t), calendar_year(t))
 
@@ -853,7 +823,7 @@ def mort_be_factor():
     """The step from the first-order table to the best estimate, 0.85, from *param_tariff_type.csv*.
 
     Override reason: the best estimate is a round 0.85 of the shipped first-order table, a
-    tariff parameter in *param_tariff_type.csv*, products/basisrente/technical-notes.md:321
+    tariff parameter in *param_tariff_type.csv*, products/basisrente/technical-notes.md:322
     """
     return float(data.param("mort_be_factor"))                       # noqa: F821
 
@@ -913,7 +883,7 @@ def bf_rate(t):
     """
     if t < 0 or t >= t_conv() or t >= proj_len():
         return 0.0
-    if model_point()["prem_form"] == "single":
+    if prem_form() == "single":
         return 0.0
     key = model_point()["beh_table_id"]
     d = min(policy_year(t), data.behaviour_table_durs()[key])        # noqa: F821
@@ -982,7 +952,7 @@ def pols_if(t):
 
     Override reason: the count is the sum of the paying and the paid-up ledger, between
     which the *Beitragsfreistellung* moves policies,
-    products/basisrente/technical-notes.md:227
+    products/basisrente/technical-notes.md:228
     """
     return pols_paying(t) + pols_paidup(t)
 
@@ -1008,7 +978,7 @@ def pols_if_at(t, timing):
 
     Override reason: the timing ``"AFT_FREEZE"``, after the *Beitragsfreistellung* has moved
     policies between the paying and the paid-up cohort, stands where the core has
-    ``"AFT_DECR"``, products/basisrente/technical-notes.md:230
+    ``"AFT_DECR"``, products/basisrente/technical-notes.md:231
     """
     if timing == "BEF_DECR":
         return pols_if(t)
@@ -1048,7 +1018,7 @@ def pols_death(t):
     running.
 
     Override reason: the deaths are summed over the two cohorts, paying and paid-up, whose
-    deaths release different reserves, products/basisrente/technical-notes.md:507
+    deaths release different reserves, products/basisrente/technical-notes.md:508
     """
     return pols_death_paying(t) + pols_death_paidup(t)
 
@@ -1105,7 +1075,7 @@ def pols_gtd(t):
         return 0.0
     if t == start:
         return 0.0
-    return pols_gtd(t - 1) + pols_death(t - 1) * elig_surv_prob      # noqa: F821
+    return pols_gtd(t - 1) + pols_death(t - 1) * data.param("elig_surv_prob")  # noqa: F821
 
 
 def decl_rate(k):
@@ -1415,8 +1385,8 @@ def ann_pp(k):
             return float(model_point()["ann_pp_init"])
         if pols_if(max(0, t_conv())) <= 0.0:
             return 0.0
-        return (fund_at_conv() / pols_if(max(0, t_conv())) / rf_unit  # noqa: F821
-                * rentenfaktor_applied() * ann_freq)                 # noqa: F821
+        return (fund_at_conv() / pols_if(max(0, t_conv())) / data.param("rf_unit")  # noqa: F821
+                * rentenfaktor_applied() * data.param("ann_freq"))   # noqa: F821
     return ann_pp(k - 1) * (1.0 + ann_bonus_rate(k - 1))
 
 
@@ -1444,7 +1414,7 @@ def ann_mth_pp(t):
         return 0.0
     if t < max(0, t_conv()):
         return 0.0
-    return ann_pp(proj_year(t)) / ann_freq                           # noqa: F821
+    return ann_pp(proj_year(t)) / data.param("ann_freq")             # noqa: F821
 
 
 def db_pp(k):
@@ -1476,7 +1446,7 @@ def claim_kinds():
     """The three benefit kinds of :func:`claims`: death, annuity and survivor.
 
     Override reason: the claim kinds are death, annuity and the *Rentengarantiezeit*
-    survivor stream, products/basisrente/technical-notes.md:613
+    survivor stream, products/basisrente/technical-notes.md:614
     """
     return ("DEATH", "ANNUITY", "SURVIVOR")
 
@@ -1517,7 +1487,7 @@ def claims(t, kind=None):
 
     Override reason: the death benefit releases the reserve of two cohorts, the paying and
     the paid-up, weighted by the survivor's eligibility, and the annuity kinds are no
-    per-policy amount times a decrement, products/basisrente/technical-notes.md:604
+    per-policy amount times a decrement, products/basisrente/technical-notes.md:605
     """
     if kind is None:
         return sum(claims(t, k) for k in claim_kinds())
@@ -1527,7 +1497,7 @@ def claims(t, kind=None):
         if t < 0 or t >= t_conv() or t >= proj_len():
             return 0.0
         k = proj_year(t)
-        return elig_surv_prob * (                                    # noqa: F821
+        return data.param("elig_surv_prob") * (                      # noqa: F821
             db_pp(k) * pols_death_paying(t) + db_pu_pp(k) * pols_death_paidup(t))
     if kind == "ANNUITY":
         if t < max(0, t_conv()) or t >= proj_len():
@@ -1553,7 +1523,7 @@ def expenses_acq(t):
     *Rentenbeginn*.  Booking a charge as an expense as well is the fourth pitfall.
 
     Override reason: the acquisition expense falls at inception on new business only,
-    products/basisrente/technical-notes.md:607
+    products/basisrente/technical-notes.md:608
     """
     if t < 0 or t >= proj_len():
         return 0.0
@@ -1580,8 +1550,8 @@ def expenses_maint(t):
     the whole of it, which is the second thing the finer grid changes on this product.
 
     Override reason: the maintenance falls per in-force policy before *Rentenbeginn*,
-    products/basisrente/technical-notes.md:608, and per annuitant and guarantee
-    continuation after it, products/basisrente/technical-notes.md:609
+    products/basisrente/technical-notes.md:609, and per annuitant and guarantee
+    continuation after it, products/basisrente/technical-notes.md:610
     """
     if t < 0 or t >= proj_len():
         return 0.0
@@ -1605,7 +1575,7 @@ def comm_init_rate():
     flow.
 
     Override reason: the initial commission is the tariff's ``comm_init_rate`` of the
-    *Beitragssumme*, products/basisrente/technical-notes.md:610
+    *Beitragssumme*, products/basisrente/technical-notes.md:611
     """
     return float(data.charge_table_dict()["comm_init_rate"][         # noqa: F821
         model_point()["tariff_id"]])
@@ -1620,7 +1590,7 @@ def comm_renew(t):
     exactly the annual-step model's rule.  **[std]**.
 
     Override reason: the renewal commission is a rate on the premiums and *Zuzahlungen*
-    from ``t = 1``, products/basisrente/technical-notes.md:611
+    from ``t = 1``, products/basisrente/technical-notes.md:612
     """
     if t < 1 or t >= proj_len():
         return 0.0
@@ -1641,7 +1611,7 @@ def income_other(t):
     :func:`result_cf`'s own published columns.
 
     Override reason: the *Zuzahlungen* are income beside the premiums,
-    products/basisrente/technical-notes.md:612
+    products/basisrente/technical-notes.md:613
     """
     return zuzahlungen(t)
 
@@ -1662,7 +1632,7 @@ def check_net_cf_resid(t):
     annual clock and is not a column of this frame at all.
 
     Override reason: the identity adds the *Zuzahlungen* to the premium as income and is
-    taken as the rebuilt flow less ``net_cf``, products/basisrente/technical-notes.md:685
+    taken as the rebuilt flow less ``net_cf``, products/basisrente/technical-notes.md:686
     """
     cf = result_cf_dict()
     return float(cf["premiums"][t] + cf["zuzahlungen"][t]
@@ -1784,8 +1754,8 @@ def check_conversion_resid(k):
         return 0.0
     if rentenfaktor_applied() <= 0.0:
         return 0.0
-    return (ann_pp(k) * pols_if(max(0, t_conv())) * rf_unit           # noqa: F821
-            / (rentenfaktor_applied() * ann_freq)                    # noqa: F821
+    return (ann_pp(k) * pols_if(max(0, t_conv())) * data.param("rf_unit")  # noqa: F821
+            / (rentenfaktor_applied() * data.param("ann_freq"))      # noqa: F821
             - fund_at_conv())
 
 
@@ -1862,7 +1832,7 @@ def check_annuity_roll_fwd_resid(k):
         if k < start or t > gtd_end_t():
             resid += abs(pols_gtd(t))
         if k >= start:
-            resid += abs(ann_freq * ann_mth_pp(t) - ann_pp(k))       # noqa: F821
+            resid += abs(data.param("ann_freq") * ann_mth_pp(t) - ann_pp(k))  # noqa: F821
     return resid
 
 
@@ -1902,7 +1872,7 @@ def result_cf_columns():
     same stream summed into projection years, which is the view the technical notes print.
 
     Override reason: the statement carries the premium-paying count, the *Zuzahlungen* and
-    the three claim kinds of a *Basisrente*, products/basisrente/technical-notes.md:646-656
+    the three claim kinds of a *Basisrente*, products/basisrente/technical-notes.md:647-657
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821
@@ -1942,7 +1912,7 @@ def result_cf_annual():
 
     Override reason: indexed by the projection year k of the valuation clock, the
     annual-step model's own t, and summed over each year's twelve-month slice,
-    products/basisrente/technical-notes.md:668
+    products/basisrente/technical-notes.md:669
     """
     ks = list(range(proj_len_y()))
     flows = ["premiums", "zuzahlungen", "claims_death", "claims_annuity",
@@ -1975,7 +1945,7 @@ def result_pols():
     point projected from issue.
 
     Override reason: the frame is the annual state, indexed by the projection year k, with the
-    year's deaths and freezes summed over its months, products/basisrente/technical-notes.md:671
+    year's deaths and freezes summed over its months, products/basisrente/technical-notes.md:672
     """
     ks = list(range(proj_len_y()))
     return pd.DataFrame(                                             # noqa: F821
@@ -2011,16 +1981,6 @@ def result_pols():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-elig_surv_prob = 0.55
-
-mort_base_year = 2005
-
-zill_spread_y = 5
-
-rf_unit = 10000.0
-
-ann_freq = 12
 
 
 pd = ("Module", "pandas")

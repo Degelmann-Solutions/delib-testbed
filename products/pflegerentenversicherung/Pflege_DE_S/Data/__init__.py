@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The eight input CSVs are read here, **once per model**, and referenced from
+The nine input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Pflege_DE_S.Projection` as ``data``. :mod:`~.Pflege_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its
 own cells cache; if the readers lived there, every model point would re-read every file.
@@ -37,14 +37,17 @@ incidence_file             incidence_table()               incidence_table.csv
 care_file                  care_table()                    care_table.csv
 lapse_file                 lapse_table()                   lapse_table.csv
 surrender_file             surrender_table()               surrender_table.csv
-param_file                 param_table()                   param_tariff_type.csv
+prem_freq_file             prem_freq_table()               prem_freq_table.csv
+param_file                 param()                         param_tariff_type.csv
 =========================  ==============================  =========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.at``: the core's for ``model_point_table``, ``param_table``, ``mort_table``
-and ``lapse_table``, this space's for ``benefit_scale_table``, ``incidence_table``,
-``care_table`` and ``surrender_table``.
+``DataFrame.at``: the core's for ``model_point_table``, ``mort_table``, ``lapse_table``
+and ``prem_freq_table``, this space's for ``benefit_scale_table``, ``incidence_table``,
+``care_table`` and ``surrender_table``, with ``surrender_table_last_year``, the policy
+year the surrender lookup caps at, and ``pflegegrad_count``, the number of grades of
+``care_table``.
 
 Every file but ``model_point_table.csv`` carries a final ``provenance`` column, one tag
 per row — the library's second ruling, asserted by
@@ -89,16 +92,16 @@ parameters by ``item``. Its first twelve rows are the bases and conventions: the
 terminal age ``omega_age``, the unisex mix ``unisex_mix_male``, the
 recovery-damping shape ``rec_age_ref`` / ``rec_age_decay``, the ``inc_cap`` shape device,
 the *Beitragssumme* convention ``beitragssumme_cap_age``, the check tolerance
-``roll_fwd_tol`` and the five first-order prudence margins ``inc_margin``, ``det_margin``,
-``rec_margin``, ``care_mort_margin`` and ``act_mort_margin``, none of them cited; the
-*Rechnungszins* is a model-point column. The last five rows are the expense assumptions with their ``unit``:
-``acq_permille`` (‰ of *Beitragssumme*, charged once at ``t = 0``), ``admin_prem_pct``
-(fraction of each *Beitrag* collected), ``admin_mth_pp`` (EUR per policy in force per month
-at ``t = 0`` prices), ``claim_expense_pp`` (EUR per annuity payment made) and
+``roll_fwd_tol`` and the five first-order prudence margins ``inc_load_first``,
+``det_load_first``, ``recov_load_first``, ``mort_care_load_first`` and
+``mort_actv_load_first``, none of them cited; the *Rechnungszins* is a model-point column. The last five rows are the expense assumptions with their ``unit``:
+``load_acq_bsum_once`` (fraction of *Beitragssumme*, charged once at ``t = 0``), ``load_admin_prem_inst``
+(fraction of each *Beitrag* collected), ``load_admin_pp_mth`` (EUR per policy in force per month
+at ``t = 0`` prices), ``load_claim_pp_inst`` (EUR per annuity payment made) and
 ``expense_infl`` (annual); they are placeholder levels whose only cited element is the
 25 ‰ ceiling the acquisition charge is set exactly at. The two groups were the files
 ``basis_table.csv`` and ``expense_table.csv`` upstream; phase 3 merged them so that the
-loader ``param_table()`` is the common core's.
+loader ``param()`` is the common core's.
 """
 
 from modelx.serialize.jsonvalues import *
@@ -212,6 +215,26 @@ def surrender_table_dict():
     return surrender_table().to_dict()
 
 
+def surrender_table_last_year():
+    """The last policy year of ``surrender_table()``, its largest ``policy_year``: 40.
+
+    Built once per model from its index, which runs from 1 without a gap;
+    ``Projection.rkw_pp`` caps the policy year at it, so that the last row's ratio applies
+    to every later year.
+    """
+    return int(surrender_table().index.max())
+
+
+def pflegegrad_count():
+    """The number of *Pflegegrade*, the rows of ``care_table()``: 5.
+
+    Built once per model; the grades run from 1 without a gap, as the table's index
+    ``pflegegrad`` does.  The projection's state ledgers, their checks and the frame of
+    ``result_states`` loop over ``1 .. pflegegrad_count()`` and read the top grade as it.
+    """
+    return len(care_table())
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -228,6 +251,8 @@ care_file = "care_table.csv"
 lapse_file = "lapse_table.csv"
 
 surrender_file = "surrender_table.csv"
+
+prem_freq_file = "prem_freq_table.csv"
 
 param_file = "param_tariff_type.csv"
 

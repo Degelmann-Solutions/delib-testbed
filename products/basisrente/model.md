@@ -97,7 +97,7 @@ rather than the whole of it, worth −35,45 € on the anchor.
 What the grid deliberately does **not** change is the contribution. The *Ratenzahlungszuschlag*
 is how a German tariff prices a fractionated mode — it loads the **amount**, not the
 *Versicherungsperiode* — so `prem_due(t)` puts the whole year's *Beitrag* and *Zuzahlung* in the
-first month of the projection year whatever `prem_mode` says, and the account they are credited
+first month of the projection year whatever `prem_freq` says, and the account they are credited
 to is a *Deckungskapital* struck per *Versicherungsjahr*. Splitting the cash into instalments
 while crediting the account annually would make the fund's cash and the account's credit
 disagree inside the year for no gain in fidelity.
@@ -326,14 +326,14 @@ still zero.
 
 ## Inputs are external files
 
-The eight input CSVs live **in this directory**, beside `run.py`; `Basis_DE_S/` holds only
+The nine input CSVs live **in this directory**, beside `run.py`; `Basis_DE_S/` holds only
 formulas:
 
 ```
 products/basisrente/
   model_point_table.csv  mort_table.csv  surplus_table.csv    <- inputs live here
   rentenfaktor_table.csv  charge_table.csv  behaviour_table.csv  option_table.csv
-  param_tariff_type.csv
+  prem_freq_table.csv  param_tariff_type.csv
   run.py  model.md  product-spec.md  technical-notes.md  sources.md
   Basis_DE_S/  <- formulas only: __init__.py  _system.json  Data/  Projection/
 ```
@@ -359,7 +359,8 @@ suite counts the reads and asserts the file set.
 | `charge_file` | `charge_table()` | `charge_table.csv` |
 | `behaviour_file` | `behaviour_table()` | `behaviour_table.csv` |
 | `option_file` | `option_table()` | `option_table.csv` |
-| `param_file` | `param_table()` | `param_tariff_type.csv` |
+| `prem_freq_file` | `prem_freq_table()` | `prem_freq_table.csv` |
+| `param_file` | `param()` | `param_tariff_type.csv` |
 `Data.input_dir()` resolves the location from `_model.path.parent` when the model is read, so it
 works wherever the repository is checked out. **The trade-off:** the model is not portable on its
 own — copy `Basis_DE_S/` without the CSVs and it reads fine, then fails on first evaluation —
@@ -368,7 +369,7 @@ and what you gain is that a diff shows logic changes only and an input can be sw
 delib's second ruling, asserted by the conventions suite; a model point is a *configuration*
 rather than an assumption, and that is the only exemption.
 
-**Two of the eight carry a time-like key, and they are keyed differently.** `surplus_table.csv`
+**Two of the nine carry a time-like key, and they are keyed differently.** `surplus_table.csv`
 is keyed on `t` itself — the model's projection index, read as the projection **year** `k`, the
 grid the declared rate is quoted on — so it is **0-based** like the frame and its first row is
 `t = 0`; `behaviour_table.csv` is keyed on `dur`, the contractual **policy year**
@@ -387,8 +388,9 @@ neither shifts; `issue_year` is a calendar year, and `issue_age` and `ret_age` a
 | `rentenfaktor_table.csv` | `rf_curr` by scenario and conversion age 60–75 | **[std]** — 31,50 € at 67, graded 3,5 % per year of age; the `low` scenario is 0.88 of it, and exists so model point 13 exercises the other branch of the `max`. **No *Rentenfaktor* level, range or time series exists anywhere in the delib corpus**, for this or any product (gap 4) |
 | `charge_table.csv` | One row per tariff: the four account charges, the *Schlussüberschussanteil*, and the insurer's own expense and commission scale | `zill_rate` 25 ‰ (and 40 ‰ pre-LVRG) is [R16] [REG-R16] [REG-R20]; **everything else on the row is [std]**. Two tariffs ship, differing only in `zill_rate`, so the in-force cohorts carry their own cap |
 | `behaviour_table.csv` | `bf_rate` and `zuz_take_up` by `dur`, the **policy year** `policy_year(t)`. `dur` is a contractual 1-based label and **not** the frame's `t`, so the file starts at `dur = 1` and is unaffected by the 0-based index | **[std]**, and **no observed range exists**: no German insurer publishes a *Beitragsfreistellung* rate or a *Zuzahlung* take-up for this product (gap 3). The shape is argued from the product's structure; the levels are invented |
-| `option_table.csv` | One multiplicative factor per option key | **[std]** — the *Ratenzahlungszuschlag* on the *laufender Beitrag* alone, and the *Rentenfaktor* reductions for a *Rentengarantiezeit* and a survivor's annuity, anchored on a Schicht-3 illustration that is [unverified] and expressly not transferable |
-| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.85 | **[std]**, the round step from the first-order table to a best estimate [R17] [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads |
+| `prem_freq_table.csv` | The instalments a year and the *Ratenzahlungszuschlag* by payment frequency: 1,000 / 1,020 / 1,030 / 1,050 | **[std]** — the *Ratenzahlungszuschlag* on the *laufender Beitrag* alone; German market convention, no tariff sheet was reached |
+| `option_table.csv` | One multiplicative factor per option key | **[std]** — the *Rentenfaktor* reductions for a *Rentengarantiezeit* and a survivor's annuity, anchored on a Schicht-3 illustration that is [unverified] and expressly not transferable |
+| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.85, `roll_fwd_tol` 1e-09, and the 5 that were References on `Projection`: `elig_surv_prob` 0.55, `mort_base_year` 2005, `acq_spread_years` 5, `rf_unit` 10000.0 and `ann_freq` 12 | `mort_be_factor`: **[std]**, the round step from the first-order table to a best estimate [R17] [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads; each later row with its basis tags in its provenance |
 
 ## The published checks
 
@@ -434,7 +436,7 @@ worked example while the machinery stays visible and testable.
 | *Rentengarantiezeit* | `guarantee_period_y` (model point) | `0` | Turns on the `pols_gtd` ledger and `claims_survivor`, and reduces the *Rentenfaktor*. Model points 4 and 12 set it to 10 and 20 years |
 | BUZ | `buz_prem_share` (model point) | `0.00` | Read by `prem_total_pp` alone, which enters no cash flow. Model point 11 sits at 0.49, the statutory boundary [R1] |
 
-`elig_surv_prob = 0.55` is a `Projection` Reference and is **inert on the anchor**, carried so
+`elig_surv_prob = 0.55` is a row of `param_tariff_type.csv` and is **inert on the anchor**, carried so
 that model points 3, 4 and 12 can exercise it: on model point 3, setting it to zero removes the
 whole of `claims_death` and moves no other column, the annuity staying reduced by the option
 factor because a German tariff pays for the cover out of the annuity whether or not a survivor
@@ -528,7 +530,7 @@ proprietary or unreachable. Nothing here is a market observation.
 | Guaranteed *Rentenfaktoren* | 26,00 € to 34,00 € across the model points | Inside the argued 24 € – 34 € band for a *klassisch* tariff converting at 67. **One market level now exists and it sits at the bottom of that band**: a guaranteed 24,94 € per 10 000 € at 67 on a 2025 fund-linked contract [S13]. The shipped values were **not** re-calibrated in this pass — a change would move the worked example and its golden tests — so the anchor's 28,00 € should be read as above the one observed level (gap 4) |
 | Account charges β, γ, u | 7,5 % of each *Beitrag* and *Zuzahlung*; 0,35 % p.a. of the *Deckungskapital*; 36,00 € p.a. per policy, inflating | Mid-points of the argued 5 % – 10 % and 0,2 % – 0,6 % bands, and a placeholder *Stückkosten* charged to **both** ledgers, which is the economic content of a freeze |
 | *Zuzahlung* acquisition charge | 2,5 % of each *Zuzahlung* | A top-up carries its own single charge instead of a share of the *Zillmerung*; whether *Zuzahlungen* enter the *Beitragssumme* at all was not established (gap 8) |
-| *Zillmerung* spread, and the *Beitragssumme* it runs on | `zill_spread_y = 5` years of the **contract**; `S` = the escalating premiums to `ret_age`, **excluding** *Zuzahlungen* | **The five years are no longer [std].** The AltZertG's own rule does not reach a Basisrente, but VVG § 165 Abs. 2 with § 169 Abs. 3 does, and two retrieved wordings state it [R10] [R14] [S1] [S12] — with the qualification, from the GDV conditions, that a premium term shorter than five years shortens the spread, which this model does not implement. **Whether *Zuzahlungen* enter `S`** is still not established (gap 8); excluding them is the conservative reading, and `S` is the base of both the 25 ‰ cap and the initial commission |
+| *Zillmerung* spread, and the *Beitragssumme* it runs on | `acq_spread_years = 5` years of the **contract**; `S` = the escalating premiums to `ret_age`, **excluding** *Zuzahlungen* | **The five years are no longer [std].** The AltZertG's own rule does not reach a Basisrente, but VVG § 165 Abs. 2 with § 169 Abs. 3 does, and two retrieved wordings state it [R10] [R14] [S1] [S12] — with the qualification, from the GDV conditions, that a premium term shorter than five years shortens the spread, which this model does not implement. **Whether *Zuzahlungen* enter `S`** is still not established (gap 8); excluding them is the conservative reading, and `S` is the base of both the 25 ‰ cap and the initial commission |
 | The option factors | *Ratenzahlungszuschlag* 1,000 / 1,020 / 1,030 / 1,050; `guarantee_period` 1,000 / 0,995 / 0,974; `survivor` 1,000 / 0,930 | The frequency ladder is a German market convention carried from the sibling delib corpus, with no tariff sheet behind it. The two *Rentenfaktor* reductions are anchored on a Schicht-3 illustration that is [unverified] and expressly not transferable, and the survivor factor has no anchor at all |
 | Insurer expense scale | Acquisition 250,00 € at inception; maintenance 60,00 € and annuity administration 36,00 € p.a., inflating at 1,5 % | Round-number placeholders; the payout phase is administratively cheaper than the accumulation phase |
 | Commission scale | 2,5 % of `beitragssumme()` at inception, 1,5 % of premiums plus *Zuzahlungen* from the second projection year | The initial rate is sized to the *Zillmerung* cap, which is the German design — and a carrier's published *Abschluss- und Vertriebskosten* of "*2,50 % der vereinbarten Beiträge*" now sits exactly on it [S13]. [S2]'s 1 575 € specimen stays [unverified]; **no renewal level was established**, and the one retrieved schedule has no renewal line at all |

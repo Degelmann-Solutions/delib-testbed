@@ -84,9 +84,9 @@ mort_file                 data.mort_table()                  mort_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 surplus_rate_file         data.surplus_rate_table()          surplus_rate_table.csv
 charge_file               data.charge_table()                cost_table.csv
-freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
+prem_freq_file            data.prem_freq_table()             prem_freq_table.csv
 deckrv_file               data.deckrv_table()                deckrv_table.csv
-param_file                data.param_table()                 param_tariff_type.csv
+param_file                data.param()                       param_tariff_type.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -331,8 +331,8 @@ premium, the surplus offset being a policyholder rebate.
 
 .. rubric:: Modules that are off in the base run
 
-Two dynamic lapse constructions ship switched off, so the base run reproduces the worked
-example while the machinery stays visible. **Premium-shock lapse**, ``beta_shock = 0``:
+Two dynamic lapse constructions are specified and not built, so the base run reproduces the
+worked example; their unread switches are removed. **Premium-shock lapse**, ``beta_shock = 0``:
 ``1 + beta_shock * max(0, prem_paid_pp(k)/prem_paid_pp(k-1) - 1 - 0.05)`` on the **annual**
 *Zahlbeitrag* of consecutive policy years, inert on a level *Bruttobeitrag* but live under
 *Beitragsverrechnung*, where a fall in the declared rate raises the *Zahlbeitrag*.
@@ -340,9 +340,9 @@ example while the machinery stays visible. **Premium-shock lapse**, ``beta_shock
 ``lapse_gap_a * max(0, ref_rate - decl_rate(k) - 0.005)``, keyed on the gap between the
 declared rate and what is available elsewhere. Both compare **annual** declarations, which is
 what they are about; neither becomes a monthly comparison. **No German calibration of any of these numbers
-exists**, which is why both ship off. ``bwr_rate = 0`` likewise switches off the
-*Beteiligung an den Bewertungsreserven*, on the reasoning that the *Sicherungsbedarf* has
-routinely exhausted the half share.
+exists**, which is why neither is built. ``bwr_rate = 0``, a row of *param_tariff_type.csv*,
+switches off the *Beteiligung an den Bewertungsreserven*, on the reasoning that the
+*Sicherungsbedarf* has routinely exhausted the half share.
 
 .. rubric:: Sign convention
 
@@ -625,7 +625,7 @@ def prem_freq_load():
     """
     if unterjaehrig_form() == "echt":
         return 1.0
-    return float(data.freq_loading_table_dict()["prem_freq_load"][   # noqa: F821
+    return float(data.prem_freq_table_dict()["prem_freq_load"][      # noqa: F821
         prem_freq()])
 
 
@@ -834,7 +834,8 @@ def res_min_pp(k):
     :func:`res_zill_pp` only at durations 0 and ``m``.  A model publishing only the Zillmer
     reserve as the surrender value understates it at essentially every duration.
     """
-    return res_net_pp(k) - zillmer_amount() * max(0.0, 1.0 - k / 5.0)
+    return (res_net_pp(k) - zillmer_amount()
+            * max(0.0, 1.0 - k / data.param("surr_spread_years")))   # noqa: F821
 
 
 def is_paid_up(k):
@@ -856,7 +857,7 @@ def is_paid_up(k):
     :func:`res_guar_pp` can price the purchase without depending on its own result.
     """
     return (bfz_year() > 0 and k >= bfz_year()
-            and bfz_si_pp() >= bfz_min_si)                           # noqa: F821
+            and bfz_si_pp() >= data.param("bfz_min_si"))             # noqa: F821
 
 
 def res_pp(k):
@@ -1242,14 +1243,6 @@ def prem_paid_pp(k):
     return prem_charged_pp(k) - prem_offset_pp(k)
 
 
-def prem_cycle():
-    """Months between premium instalments: 12 annual, 6 half-yearly, 3 quarterly, 1 monthly.
-
-    ``12 // instalments()`` — arithmetic of the elected *Zahlweise* rather than an assumption.
-    """
-    return 12 // instalments()
-
-
 def prem_due(t):
     """Whether a premium instalment falls due at the **beginning** of month t.
 
@@ -1515,9 +1508,9 @@ def benefit_death_pp(t):
     Override reason: a death pays the full benefit, with the *Rückkaufswert* on the suicide
     share in the first three years, products/kapitallebensversicherung/technical-notes.md:620
     """
-    if duration(t) < 3:
-        return ((1.0 - suicide_share) * benefit_full_pp(t)            # noqa: F821
-                + suicide_share * surr_value_pp(t))                   # noqa: F821
+    if duration(t) < data.param("suicide_years"):                    # noqa: F821
+        return ((1.0 - data.param("suicide_share")) * benefit_full_pp(t)  # noqa: F821
+                + data.param("suicide_share") * surr_value_pp(t))    # noqa: F821
     return benefit_full_pp(t)
 
 
@@ -1546,7 +1539,7 @@ def benefit_maturity_pp(t):
     si = bfz_si_pp() if is_paid_up(duration(t)) else sum_assured()
     return (si + av_sur_close_pp(t) + bonus_si_close_pp(t)
             + term_bonus_close_pp(t)
-            + bwr_rate * res_guar_close_pp(t))                        # noqa: F821
+            + data.param("bwr_rate") * res_guar_close_pp(t))         # noqa: F821
 
 
 def surr_value_pp(t):
@@ -1570,7 +1563,7 @@ def surr_value_pp(t):
     """
     return (res_guar_close_pp(t) * (1.0 - storno_rate(duration(t)))
             + av_sur_close_pp(t)
-            + term_surr_share * term_bonus_close_pp(t))               # noqa: F821
+            + data.param("term_surr_share") * term_bonus_close_pp(t))  # noqa: F821
 
 
 def claim_kinds():
@@ -2043,20 +2036,5 @@ def result_surplus():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-suicide_share = 0.02
-
-bfz_min_si = 2500.0
-
-term_surr_share = 0.0
-
-bwr_rate = 0.0
-
-beta_shock = 0.0
-
-lapse_gap_a = 0.0
-
-ref_rate = 0.03
-
 
 pd = ("Module", "pandas")

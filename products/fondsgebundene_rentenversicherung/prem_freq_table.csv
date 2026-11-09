@@ -1,0 +1,5 @@
+prem_freq,instalments,provenance
+annual,1,"[S1] annual payment, one instalment every 12 months; was a literal in prem_mode_months on Projection"
+half_yearly,2,"[S1] half-yearly payment, one instalment every 6 months; was a literal in prem_mode_months on Projection"
+quarterly,4,"[S1] quarterly payment, one instalment every 3 months; was a literal in prem_mode_months on Projection"
+monthly,12,"[S1] monthly payment, one instalment a month; the dominant mode, by SEPA-Lastschrift [unverified]; was a literal in prem_mode_months on Projection"

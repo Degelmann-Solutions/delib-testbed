@@ -79,8 +79,8 @@ BASELINE = {
         13,
         ("check_av_roll_fwd", "check_conversion", "check_guar_roll_fwd", "check_net_cf",
          "check_pols_roll_fwd", "check_zulage_lag"),
-        "94593045c9c656d61c26b518ebac25866b3fc4525da6ca29f72e9f0b26abaf13",
-        "9c2a53f70a80f871d59bc20c39949972be68efa1b1ea007e3c4e56fe45aca123",
+        "91b6a3faf175b0d437c1ccf19113f6543a73cc8add4c07ad1c58d231ed6be03a",
+        "736388e3f32fa5593af50116e88d4b2a5935efe61f80cba50105b7d861e673d7",
     ),
     "risikolebensversicherung": (
         14,

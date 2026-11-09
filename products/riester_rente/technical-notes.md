@@ -285,7 +285,7 @@ consequential, because the declared rate is what decides whether the guarantee c
 | Earliest *Rentenbeginn* | Completed **62nd** year — § 1 Abs. 1 Satz 1 Nr. 2. The **60th** for contracts concluded before 1 Jan 2012 is the transitional rule of **§ 14 Abs. 2**, not § 1 | [R1] [REG-R43] |
 | *Teilkapitalauszahlung* cap | **30 %** (`teilkapital_cap`, an item of the core file `param_core.csv`) of "des zu Beginn der Auszahlungsphase zur Verfügung stehenden Kapitals" — § 1 Abs. 1 Satz 1 Nr. 4 Buchst. a | [R1] [REG-R43] |
 | Acquisition-cost spreading | "gleichmäßig mindestens auf die ersten **fünf Vertragsjahre** …, soweit sie nicht als Prozentsatz von den Altersvorsorgebeiträgen abgezogen werden" — § 1 Abs. 1 Satz 1 Nr. 8 (`acq_spread_years = 5`, a row of `param_tariff_type.csv`). The qualifier is why the charge on a Zulage is taken once at inflow in every retrieved wording | [R1] [REG-R43] [S2] [S4] [S6]; *Höchstzillmersatz* 25 ‰, DeckRV § 4 Abs. 1 [REG-R16] |
-| *Kleinbetragsrente* threshold | **The statutory rate is 1,5 %**, not 1 %: § 93 Abs. 3 Satz 2 Nr. 1 EStG, aggregated across the saver's contracts at that provider (Satz 3). On the 3 955.00 monthly *Bezugsgröße* used here that is **59.33**. `kleinbetrag_threshold_mth`, a row of `param_tariff_type.csv`, is **39.55** and is therefore **too low**; the model is unchanged | [R15] [REG-R42] [REG-R46]; the *Bezugsgröße* `[unverified]`; see (2) |
+| *Kleinbetragsrente* threshold | **The statutory rate is 1,5 %**: § 93 Abs. 3 Satz 2 Nr. 1 EStG, aggregated across the saver's contracts at that provider (Satz 3). On the 2026 monthly *Bezugsgröße* of 3 955,00 € (SVBezGrV 2026 § 1, checked 2026-11-09) that is 59,325 €, **59.33** rounded half up to the cent. `kleinbetrag_threshold_mth`, a row of `param_tariff_type.csv`, is **59.33** since the acceptance of 2026-11-09; it was 39.55, the 1 % reading, too low | [R15] [REG-R42] [REG-R46]; see (2) |
 | *Rückkaufswert* floor | "mindestens der Betrag des Deckungskapitals, das sich bei gleichmäßiger Verteilung der angesetzten Abschluss- und Vertriebskosten auf die ersten fünf Vertragsjahre ergibt" — § 169 Abs. 3 VVG; satisfied by construction here, and both retrieved wordings compute it that way | [REG-R28] [S2] [S4] |
 | Annuity form | Lifelong, monthly (`ann_freq = 12`, a row of `param_tariff_type.csv`), "gleich bleiben oder steigen" over the whole payout phase; up to twelve monthly payments may be combined into one | [R1] [REG-R43] |
 | Unisex | "eine lebenslange und **unabhängig vom Geschlecht berechnete** Altersversorgung" — § 1 Abs. 1 Satz 1 Nr. 2, and in the wordings at [S2] § 1 Abs. 1, [S4] § 1 Abs. 1 and a "geschlechtsunabhängige Sterbetafel" at [S6]. The **dates** — 1 Jan 2006 for Riester, 21 Dec 2012 for the general market — are `[unverified]` | [R1] [R23] [REG-R34] |
@@ -300,13 +300,14 @@ consequential, because the declared rate is what decides whether the guarantee c
    compression of a mid-May credit onto the first month of the projection year; the *frequency* of
    reversals is
    established, their *rate* is experience data and is not (gap 16).
-2. **The statute settles it, and against the model.** § 93 Abs. 3 Satz 2 Nr. 1 EStG defines a
+2. **The statute settles it, and the model now follows it.** § 93 Abs. 3 Satz 2 Nr. 1 EStG defines a
    *Kleinbetragsrente* as one that "**1,5 Prozent** der monatlichen Bezugsgröße nach § 18 des Vierten
-   Buches Sozialgesetzbuch nicht übersteigt" [R15]. On the *Bezugsgröße* this file uses the threshold
-   is **59,33 €**, and `kleinbetrag_threshold_mth = 39.55` is a third of the way below it. Raising it
-   would make **more** contracts commute and shorten the liability, so the direction of the error is
-   toward a longer tail. **This is a model change and has not been made** (see the note under
-   *Model-relevant contradictions* below). Two further points stand unchanged: the threshold is held
+   Buches Sozialgesetzbuch nicht übersteigt" [R15]. On the 2026 monthly *Bezugsgröße* of 3 955,00 €
+   (SVBezGrV 2026 § 1) the threshold is **59,33 €**, and `kleinbetrag_threshold_mth` is 59.33 since
+   the acceptance of 2026-11-09; the 39.55 it replaced, a third of the way below, made too few
+   contracts commute. Raising it made model points 7, 9 and 11 commute beside 4, 5, 10 and 13. The
+   2027 figure follows as its own value change once the SVBezGrV 2027 is published. Two further
+   points stand unchanged: the threshold is held
    **flat in nominal terms** while the *Bezugsgröße* is reset annually, which understates the
    commutation rate on a long deferral (sensitivity 7); and the test is applied **after** the elected
    lump sum, which the GDV model wording forbids [S2] — also a model change, also deferred. What is
@@ -384,15 +385,17 @@ consequential, because the declared rate is what decides whether the guarantee c
 
 ### Model-relevant contradictions found in the 2026-08-30 provenance pass
 
-**Three retrieved documents contradict rules this model implements. None of them has been applied,
-because each is a model change: it moves the worked example below and the golden tests with it.**
+**Three retrieved documents contradicted rules this model implemented. The first, the
+*Kleinbetragsrente* threshold, was applied on the acceptance of 2026-11-09; the other two have not
+been, because each is a model change: it moves the worked example below and the golden tests with
+it.**
 They are set out here so that a reader of the anchor's numbers knows which of them rest on a rule the
 documents now show to be wrong.
 
 | What the model does | What the retrieved document says | Direction of the error |
 |---|---|---|
-| `kleinbetrag_threshold_mth = 39.55` (a row of `param_tariff_type.csv`), being **1 %** of the monthly *Bezugsgröße* | § 93 Abs. 3 Satz 2 Nr. 1 EStG: "eine monatliche Rente …, die **1,5 Prozent** der monatlichen Bezugsgröße nach § 18 des Vierten Buches Sozialgesetzbuch nicht übersteigt" [R15]. On the 3 955,00 € used here, **59,33 €** | The threshold is **a third too low**, so **too few** model points commute and the projected liability is **too long-tailed**. Model points 4, 5, 10 and 13 already commute; on a 59,33 € threshold others would join them |
-| `is_kleinbetrag()` tests the annuity payable **after** the elected *Teilkapitalauszahlung* | [S2] § 1 Abs. 3: "**Eine Abfindung erfolgt nicht, wenn die Leistung nur aufgrund einer Teilkapitalauszahlung gemäß Absatz 4 auf eine Kleinbetragsrente sinkt.**" The test belongs on the annuity the whole conversion capital would buy | The test trips **less often** than the wording allows, in the same direction as the threshold error and compounding it on any point that elects the 30 % lump sum |
+| `kleinbetrag_threshold_mth = 39.55` (a row of `param_tariff_type.csv`), being **1 %** of the monthly *Bezugsgröße*; **corrected** to 59.33 on the acceptance of 2026-11-09 | § 93 Abs. 3 Satz 2 Nr. 1 EStG: "eine monatliche Rente …, die **1,5 Prozent** der monatlichen Bezugsgröße nach § 18 des Vierten Buches Sozialgesetzbuch nicht übersteigt" [R15]. On the 2026 *Bezugsgröße* of 3 955,00 €, **59,33 €** | The threshold was **a third too low**, so **too few** model points commuted. Model points 4, 5, 10 and 13 commuted at 39,55 €; at 59,33 € model points 7, 9 and 11 join them |
+| `is_kleinbetrag()` tests the annuity payable **after** the elected *Teilkapitalauszahlung* | [S2] § 1 Abs. 3: "**Eine Abfindung erfolgt nicht, wenn die Leistung nur aufgrund einer Teilkapitalauszahlung gemäß Absatz 4 auf eine Kleinbetragsrente sinkt.**" The test belongs on the annuity the whole conversion capital would buy | The test trips **more often** than the wording allows: a point whose lump sum alone takes the annuity under the threshold commutes, as model point 11 does (60,90 € a month on its whole capital, 42,63 € after the lump sum) |
 | Administration charge of **4,0 %** applied to the *Eigenbeitrag* and the Zulage **at the same rate** | [S4] § 11 Abs. 2: **2,1 %** of each *Eigenbeitrag* and **6,0 %** of each Zulage — the Zulagen charged at nearly three times the rate | The composite **undercharges** the Zulagen relative to the one tariff observed, which matters most on the low-income cells where the Zulagen are the majority of the contribution |
 
 Two further differences are **not** contradictions but are worth recording beside them: the model's
@@ -943,9 +946,9 @@ at `mort_be_factor = 0.75`. Annuity mortality: the shipped **[std]** **generatio
 `annuity_mort_be_factor = 1.15` for the projection and at **1.00** — the first-order basis — inside
 `ann_factor()`. Annuitisation interest **1,00 %** [REG-R15] **[std]**, with the Woolhouse
 `−11/24` correction **[std]**; *Rentenfaktor* margin **30 %** **[std]**; guaranteed *Rentenfaktor*
-**29,00 €** per 10 000 € per month **[std]** (gap 9). *Kleinbetragsrente* threshold **39,55 €** per
-month **[std]** [REG-R42] [REG-R46] — **below the 59,33 € the statute implies** [R15], a discrepancy
-recorded under *Model-relevant contradictions* and deliberately not fixed here. Surrender
+**29,00 €** per 10 000 € per month **[std]** (gap 9). *Kleinbetragsrente* threshold **59,33 €** per
+month, 1,5 % of the 2026 monthly *Bezugsgröße* of 3 955,00 € [R15] [REG-R42] [REG-R46] (it was
+39,55 € until the acceptance of 2026-11-09). Surrender
 **0,8 % / 0,6 % / 0,4 %** and transfer out **1,2 % / 0,9 % / 0,6 %** by duration band, both
 **[std]**; *Stornoabzug* **2,0 %** [REG-R28] **[std]**; transfer charge **50,00 €** **[std]**,
 now known to sit inside a statutory ceiling of **150,00 €** [R1] and to be the figure one fund
@@ -1132,9 +1135,9 @@ calendar 2044 on the first-order generational basis is `ä = 20,8722287915`, so 
 `0,70 × 10 000 / (12 × 20,8722287915) = 7 000 / 250,466746 = 27,947822`, **below** the
 guaranteed 29,00, and the guaranteed factor applies. The lump sum is
 `0,30 × 45 756,383140 = 13 726,914942 €`, leaving 32 029,468198 € to annuitise; the monthly
-instalment is `32 029,468198 / 10 000 × 29,00 = 92,885458 €`, comfortably above the 39,55 €
-*Kleinbetragsrente* threshold the model uses — and above the 59,33 € the statute implies, so this
-cell is unaffected by that error — so the contract annuitises. That instalment is paid **monthly**,
+instalment is `32 029,468198 / 10 000 × 29,00 = 92,885458 €`, comfortably above the 59,33 €
+*Kleinbetragsrente* threshold — and above the 39,55 € the model used until the acceptance of
+2026-11-09, so this cell did not move with it — so the contract annuitises. That instalment is paid **monthly**,
 in advance, from `t = t_conv() = 204`; `annuity_pp(17) = 12 × 92,885458 = 1 114,625493 €` is the
 annual figure it sums to. Weighted on `pols_conv() = 0,7699332357`, that is
 `claims_lumpsum(204) = 10 568,81 €` and, over the conversion year's twelve months — all inside the
@@ -1187,26 +1190,23 @@ so the cell opens 725,00 € under water; `teilkapital_share = 0.30`,
 `rentenfaktor_guar = 29,00`, `rentengarantie_years = 10`; `proj_len_y() = 51` years and
 `proj_len() = 612` months.
 
-| k | pols_if | premiums | zulagen | int_credited | claims_death | claims_lapse | claims_transfer | claims_lumpsum | claims_annuity | expenses | commissions | net_cf |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 0 | 1.000000 | 1,625.00 | 475.00 | 35.08 | 20.39 | 54.89 | 83.52 | 0.00 | 0.00 | 33.32 | 31.50 | 1,876.37 |
-| 1 | 0.977236 | 1,588.01 | 464.19 | 43.82 | 28.01 | 68.55 | 104.47 | 0.00 | 0.00 | 33.20 | 30.78 | 1,787.18 |
-| 2 | 0.954711 | 1,837.82 | 453.49 | 53.96 | 38.03 | 63.40 | 96.69 | 0.00 | 0.00 | 32.76 | 34.37 | 2,026.05 |
-| 3 | 0.937121 | 1,803.96 | 164.00 | 62.63 | 48.55 | 73.56 | 112.26 | 0.00 | 0.00 | 32.79 | 29.52 | 1,671.27 |
-| 4 | 0.919530 | 1,770.10 | 160.92 | 70.97 | 60.52 | 83.34 | 127.26 | 0.00 | 0.00 | 32.82 | 28.97 | 1,598.10 |
-| 5 | 0.901917 | 1,736.19 | 157.84 | 79.00 | 74.11 | 92.74 | 141.67 | 0.00 | 0.00 | 32.83 | 28.41 | 1,524.26 |
-| 6 | 0.884262 | 1,702.20 | 154.75 | 86.70 | 89.46 | 101.76 | 155.49 | 0.00 | 0.00 | 32.83 | 27.85 | 1,449.55 |
-| 7 | 0.866543 | 0.00 | 151.65 | 0.00 | 0.00 | 0.00 | 0.00 | 5,459.22 | 443.29 | 21.32 | 0.00 | −5,772.19 |
-| 8 | 0.859955 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 443.29 | 21.37 | 0.00 | −464.66 |
-| 19 | 0.732921 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 370.56 | 18.87 | 0.00 | −389.43 |
-| 50 | 0.000061 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.03 | 0.01 | 0.00 | −0.04 |
-| **Total, k = 0 … 50** | | **12,063.28** | **2,181.82** | **432.16** | **359.08** | **538.24** | **821.38** | **5,459.22** | **9,956.40** | **766.99** | **211.40** | **−3,867.62** |
+| k | pols_if | premiums | zulagen | int_credited | claims_death | claims_lapse | claims_transfer | claims_commutation | expenses | commissions | net_cf |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 1.000000 | 1,625.00 | 475.00 | 35.08 | 20.39 | 54.89 | 83.52 | 0.00 | 33.32 | 31.50 | 1,876.37 |
+| 1 | 0.977236 | 1,588.01 | 464.19 | 43.82 | 28.01 | 68.55 | 104.47 | 0.00 | 33.20 | 30.78 | 1,787.18 |
+| 2 | 0.954711 | 1,837.82 | 453.49 | 53.96 | 38.03 | 63.40 | 96.69 | 0.00 | 32.76 | 34.37 | 2,026.05 |
+| 3 | 0.937121 | 1,803.96 | 164.00 | 62.63 | 48.55 | 73.56 | 112.26 | 0.00 | 32.79 | 29.52 | 1,671.27 |
+| 4 | 0.919530 | 1,770.10 | 160.92 | 70.97 | 60.52 | 83.34 | 127.26 | 0.00 | 32.82 | 28.97 | 1,598.10 |
+| 5 | 0.901917 | 1,736.19 | 157.84 | 79.00 | 74.11 | 92.74 | 141.67 | 0.00 | 32.83 | 28.41 | 1,524.26 |
+| 6 | 0.884262 | 1,702.20 | 154.75 | 86.70 | 89.46 | 101.76 | 155.49 | 0.00 | 32.83 | 27.85 | 1,449.55 |
+| 7 | 0.866543 | 0.00 | 151.65 | 0.00 | 0.00 | 0.00 | 0.00 | 18,197.40 | 0.00 | 0.00 | −18,045.76 |
+| 8 | 0.000000 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| **Total, k = 0 … 50** | | **12,063.28** | **2,181.82** | **432.16** | **359.08** | **538.24** | **821.38** | **18,197.40** | **230.55** | **211.40** | **−6,112.97** |
 
 Again the Total is summed at full precision and then rounded; the two differ on `zulagen`,
-`claims_death`, `claims_lapse`, `claims_annuity`, `int_credited`, `expenses`, `commissions` and
-`net_cf`. Every accumulation figure here is the annual-step model's; the annuity falls from
-10 140,57 € to 9 956,40 € for the reason the anchor's does, and the exits redistribute the same
-way.
+`claims_death`, `claims_transfer` and `net_cf`. Every accumulation figure here is the annual-step
+model's, and the exits redistribute the way the anchor's do. The cell pays no annuity: from `k = 8`
+the frame carries zeros to `t = 611`.
 
 **The guarantee binds, and this is the number the product exists to produce.** At `k = 7` the
 raw account is 19 863,088636 €; the *Schlussüberschussanteil* adds 420,00 € and the
@@ -1215,11 +1215,16 @@ guarantee accumulator is `guar_pp(8) = 21 000,000000 €` — the ceiling binds 
 year, so the contributions credited are a round 2 100,00 € a year and the accumulator lands on a
 round number. So `capital_conv_pp() = 21 000,000000 €` and
 **`garantieluecke_conv_pp() = 518,280477 €`**: the insurer funds 518,28 € per policy out of its
-own resources, 2,5 % of the capital, so that the saver receives at least what was paid in. The
-annuity is then struck on the guaranteed capital rather than on the account —
-`teilkapital_pp() = 6 300,00 €`, `annuity_capital_pp() = 14 700,00 €`, monthly instalment
-`14 700 / 10 000 × 29,00 = 42,63 €` paid monthly, 511,56 € a year — and
-`claims_lumpsum(t_conv()) = 6 300,00 × 0,8665429082 = 5 459,22 €`.
+own resources, 2,5 % of the capital, so that the saver receives at least what was paid in. **The
+guaranteed capital is then commuted.** After the elected 30 % lump sum it would buy
+`14 700 / 10 000 × 29,00 = 42,63 €` a month, below the 59,33 € *Kleinbetragsrente* threshold, so
+`is_kleinbetrag()` holds and the whole capital is paid as an *Abfindung*,
+`claims_commutation(t_conv()) = 21 000,00 × 0,8665429082 = 18 197,40 €`, with no
+*Teilkapitalauszahlung* beside it. On the whole capital the annuity would be
+`21 000 / 10 000 × 29,00 = 60,90 €`, above the threshold: the cell commutes only because the model
+tests the annuity **after** the lump sum, which the GDV model wording excludes (*Model-relevant
+contradictions*). At the former 39,55 € threshold this cell annuitised, paying a lump sum of
+6 300,00 € per policy and 42,63 € a month.
 
 Two sensitivities follow, both reproducible by flipping `scenario_id` in
 `model_point_table.csv`. On `base` this same cell's account reaches 22 271,80 € against the same
@@ -1260,8 +1265,8 @@ The saver pays 610,34 € over the whole projection and the state pays 1 928,19 
 is 76 % of the contribution**, which is why a statement that folded `zulagen` into `premiums`
 would be describing a different product. The contract never produces an annuity: at `k = 11` the
 capital is 4 537,217342 €, and the annuity after the elected 30 % lump sum would be
-`0,70 × 4 537,217342 / 10 000 × 29,00 = 9,21 €` a month against the model's 39,55 € threshold — and
-it would fail the statutory 59,33 € threshold too, so this cell is likewise unaffected — so the
+`0,70 × 4 537,217342 / 10 000 × 29,00 = 9,21 €` a month against the 59,33 € threshold — and it
+failed the former 39,55 € threshold too, so this cell did not move with it — so the
 *Kleinbetragsrente* test commutes it and the whole capital is paid as an *Abfindung*,
 `3 837,79 € = 4 537,217342 × 0,84584567`. There is **no** *Teilkapitalauszahlung* beside it,
 `pols_if` is zero from `t_conv() + 1` because the *Abfindung* discharges the contract outright — an
@@ -1290,7 +1295,7 @@ Six, each because the model and the notes as drafted disagreed and the model was
 3. **`check_pols_roll_fwd()` did not account for a commuted cohort.** An *Abfindung* discharges
    the contract, so `pols_if(t_conv() + 1) = 0` with no decrement having removed the population.
    The identity now carries `pols_conv()` as a fourth exit in the conversion **month** of a
-   commuted contract; without it the check is false on model points 4, 5, 10 and 13.
+   commuted contract; without it the check is false on model points 4, 5, 7, 9, 10, 11 and 13.
 4. **The guarantee accumulator's unsubsidised limb is gated on `is_accum_y(k)`**, matching
    `premiums(t)`. As drafted it added `contrib_extra_pp` in the conversion year, in which no
    contribution is paid.
@@ -1414,13 +1419,14 @@ In rough order of leverage on a German Riester block.
    represented as a per-model-point switch. A book projection built from these model points will
    therefore over-state future contributions and Zulagen unless the point weights carry the paid-up
    share — and **there is no official statistic for that share at all** (gap 2).
-6. **The *Kleinbetragsrente* test — now a known error rather than an open question.** The threshold
-   is **1,5 %** of the monthly *Bezugsgröße*, § 93 Abs. 3 Satz 2 Nr. 1 EStG [R15], and the model uses
-   a 1 % figure; and the test belongs on the annuity **before** the elected lump sum, the GDV model
-   wording excluding a commutation caused only by the *Teilkapitalauszahlung* [S2]. **Both of the
-   model's choices push toward fewer commutations and a longer-tailed liability, and both are
-   wrong in that direction.** Neither has been changed here — see *Model-relevant contradictions* —
-   so this remains the largest single correction outstanding against the model.
+6. **The *Kleinbetragsrente* test — one known error left.** The threshold is **1,5 %** of the
+   monthly *Bezugsgröße*, § 93 Abs. 3 Satz 2 Nr. 1 EStG [R15], 59,33 € since the acceptance of
+   2026-11-09, where the model had used a 1 % figure. The test still belongs on the annuity
+   **before** the elected lump sum, the GDV model wording excluding a commutation caused only by
+   the *Teilkapitalauszahlung* [S2]; testing it after the lump sum makes the model commute **more**
+   than the wording allows, as on model point 11, whose whole capital would buy 60,90 € a month.
+   That error has not been changed here — see *Model-relevant contradictions* — and remains the
+   largest single correction outstanding against the model.
 7. **Holding the *Kleinbetragsrente* threshold flat in nominal terms.** The *Bezugsgröße* is reset
    annually; on a seventeen-year deferral a flat threshold **understates** the commutation rate, and
    the direction of the error is stated rather than hidden.

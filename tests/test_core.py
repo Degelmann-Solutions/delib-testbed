@@ -1767,7 +1767,7 @@ EMPTY_BASIS = {
     "kapitallebensversicherung": {"check_tol"},
     "klassische_rentenversicherung": {"check_tol"},
     "pflegerentenversicherung": {"check_tol", "expense_infl"},
-    "riester_rente": {"check_tol", "kleinbetrag_threshold_mth"},
+    "riester_rente": {"check_tol"},
     "risikolebensversicherung": {"check_tol", "val_tol"},
     "sofortrente": {"expense_infl"},
 }
@@ -1816,7 +1816,8 @@ def param_layer_of(item):
     return "core" if item in CORE_ITEMS else "tariff_type"
 
 
-# The 32 numeric References Riester's ``Projection`` held, as their former Python literals.
+# The 32 numeric References Riester's ``Projection`` held, as their former Python literals, with
+# the value entry 12 of epic-parameter-files aligned (``kleinbetrag_threshold_mth`` 39.55 to 59.33).
 RIESTER_MOVED_REFERENCES = {
     "valuation_year": 2027,
     "grundzulage": 175.0,
@@ -1835,7 +1836,7 @@ RIESTER_MOVED_REFERENCES = {
     "slueb_rate": 0.02,
     "bwr_rate": 0.01,
     "teilkapital_cap": 0.3,
-    "kleinbetrag_threshold_mth": 39.55,
+    "kleinbetrag_threshold_mth": 59.33,
     "rentenfaktor_margin": 0.3,
     "annuity_rechnungszins": 0.01,
     "woolhouse": 0.4583333333333333,

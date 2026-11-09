@@ -1389,10 +1389,11 @@ def is_kleinbetrag():
     """True where the annuity is small enough to be commuted as a *Kleinbetragsrente*.
 
     The provider may pay the whole capital as an *Abfindung*, without *schädliche
-    Verwendung*, where the monthly annuity would not exceed 1 % of the monthly
-    *Bezugsgröße* of § 18 SGB IV.  Two standardizations sit here and both are stated rather
-    than buried.  The test is applied to the annuity **actually payable after the elected
-    lump sum**, which is the reading that trips *less* often; and the threshold is held
+    Verwendung*, where the monthly annuity would not exceed 1.5 % of the monthly
+    *Bezugsgröße* of § 18 SGB IV, ``kleinbetrag_threshold_mth`` 59.33 on the 2026 figure.
+    Two standardizations sit here and both are stated rather than buried.  The test is
+    applied to the annuity **actually payable after the elected lump sum**, which is the
+    reading that trips *more* often than the GDV model wording allows; and the threshold is held
     **flat in nominal terms**, while the *Bezugsgröße* is reset annually — on a
     seventeen-year deferral that **understates** the commutation rate, and the direction of
     the error is said out loud.

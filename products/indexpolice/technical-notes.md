@@ -119,7 +119,7 @@ final `provenance` column**, one tag per row — delib's second ruling, asserted
 | `election_table.csv` | `elect_id`, `t` | `w` — the fraction of the year's surplus directed to the index arm; `provenance` |
 | `mort_table.csv` | `sex`, `age` | `qx`; `provenance` |
 | `lapse_table.csv` | `t` | `lapse_rate` (the base rate before the terminal-year override); `provenance` |
-| `freq_load_table.csv` | `prem_freq` | `prem_freq_load` (the *Ratenzahlungszuschlag* multiplier); `provenance` |
+| `prem_freq_table.csv` | `prem_freq` | `instalments` (a year, not read); `prem_freq_load` (the *Ratenzahlungszuschlag* multiplier); `provenance` |
 
 Three index paths are shipped, all **[std]**, and their construction is stated so that a reader can
 rebuild them exactly rather than take them on trust:
@@ -169,7 +169,7 @@ from its base value, so that no column is carried without being tested.
 | `duration_init` | int | completed policy years at the valuation date; 0 = new business; the frame starts at `t_start() = 12 × duration_init`, `duration_init` already being a 0-based elapsed count of policy **years** | 8, 13 |
 | `pols_if_init` | float | policies represented at `t_start()` | — (1.0 everywhere) |
 | `ret_age` | int | attained age at *Rentenbeginn*; `proj_len() = ret_age − issue_age` | 6 |
-| `prem_form` | enum {level, single} | *laufender Beitrag* or *Einmalbeitrag* | 7 |
+| `prem_form` | enum {regular, single} | *laufender Beitrag* or *Einmalbeitrag* | 7 |
 | `prem_gross_pp` | EUR | the **annual-mode** premium (the *Jahresbeitrag*), or the single premium | 5, 6, 7, 8, 12, 13 |
 | `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | payment frequency; drives `prem_freq_load()` | 4, 5, 6 |
 | `prem_term_y` | int | *Beitragszahlungsdauer* in policy years, ≤ `proj_len()` | 6, 7, 9, 13 |
@@ -255,7 +255,7 @@ changed on the strength of what it established; `model.md` records each comparis
 | *Höchststandsicherung* | a credit, once made, is permanently added to the guaranteed capital and enters `G` of every later year | mechanic firm |
 | Guarantee at *Rentenbeginn* | `max( av_pp(n), guar_level × prem_sum_paid + credit_cum_pp(n) )`, the time-`n` values; **not** an annual guaranteed rate on the reserve | [R11] [R12]; composition **[std]** |
 | Death benefit | `max( av_pp_at(k,"AFT_GUAR"), death_min_rate × prem_sum() )` — the account **excluding the running *Indexjahr***, floored at 50 % of the *Beitragssumme* | shape [S7] § 1 Ziffer 5 (*Policenwert*, min. 90 % of premiums), **not** [S9], whose default is no death benefit at all; floor **[std]** [R14] [REG-R45] |
-| Surrender value | `max( av_pp_at(k,"AFT_GUAR"), av_min_pp(k) ) × (1 − storno_rate × surr_charge_on)` | [R2] [REG-R28]; level **[std]** |
+| Surrender value | `max( av_pp_at(k,"AFT_GUAR"), av_min_pp(k) ) × (1 − stornoabzug_rate × surr_charge_on)` | [R2] [REG-R28]; level **[std]** |
 | § 169 Abs. 3 floor | the *Deckungskapital* with acquisition costs spread evenly over the **first five contract years** | [R2] [REG-R28] |
 | *Höchstzillmersatz* | acquisition charge capped at **25 ‰** — "Der Zillmersatz darf 25 Promille der Summe aller Prämien nicht überschreiten", DeckRV § 4 Abs. 1 | [R7] [REG-R16] |
 | No credit in the year of exit | death, surrender and (for the year's decrements) the terminal year forfeit the running *Indexjahr* | **confirmed by clause** — [S2] Ziffer 3.3 and 9.2, [S7] § 3 Ziffer 5; spec footnote 18 |
@@ -390,11 +390,11 @@ an expense is the insurer's cash outgo in `net_cf`. All levels **[std]**.
 
 | Input | Value | Note |
 |---|---|---|
-| Acquisition charge `acq_cost_rate` | 2,5 % of the *Beitragssumme*, spread over `zill_years = 5` premium-paying years, both rows of `param_tariff_type.csv` | at the *Höchstzillmersatz* [REG-R16] |
-| Acquisition expense `acq_expense_rate` | 2,5 % of the *Beitragssumme*, a row of `param_tariff_type.csv`, incurred **in full at inception** | the *Zillmer* strain: paid out at once, recovered over five years |
-| Premium charge `β` (`exp_prem_rate`) | 3 % of each gross premium collected, a row of `param_tariff_type.csv` | *Verwaltungskosten* |
-| Reserve charge `γ` (`exp_av_rate`) | 0,25 % a year of the post-premium balance, a row of `param_tariff_type.csv` | *Verwaltungskosten* |
-| Maintenance expense | 36,00 € per policy a year (`exp_fixed_pp`), inflating at `expense_infl` = 1,5 %, both rows of `param_tariff_type.csv` | *Stückkosten* |
+| Acquisition charge `charge_acq_bsum_once` | 2,5 % of the *Beitragssumme*, spread over `acq_spread_years = 5` premium-paying years, both rows of `param_tariff_type.csv` | at the *Höchstzillmersatz* [REG-R16] |
+| Acquisition expense `expense_acq_bsum_once` | 2,5 % of the *Beitragssumme*, a row of `param_tariff_type.csv`, incurred **in full at inception** | the *Zillmer* strain: paid out at once, recovered over five years |
+| Premium charge `β` (`charge_admin_prem_inst`) | 3 % of each gross premium collected, a row of `param_tariff_type.csv` | *Verwaltungskosten* |
+| Reserve charge `γ` (`charge_admin_av_ann`) | 0,25 % a year of the post-premium balance, a row of `param_tariff_type.csv` | *Verwaltungskosten* |
+| Maintenance expense | 36,00 € per policy a year (`expense_admin_pp_ann`), inflating at `expense_infl` = 1,5 %, both rows of `param_tariff_type.csv` | *Stückkosten* |
 | Claim expense | **none** — not modeled | no source, and immaterial beside the benefit |
 
 The charge income (`β` plus `γ` plus the amortised acquisition charge) and the expense outgo are
@@ -424,7 +424,7 @@ oversight.
 | `β·P(k)` | `prem_charge_adm_pp(k)` | the premium-based administration charge |
 | `P⁺(k)` | `prem_to_av_pp(k)` | the premium credited to the account, `P(k) − α(k) − β·P(k)` |
 | `A(k)` | `av_pp(k)` | *Deckungskapital* per policy at time `k`, the start of policy year `k` |
-| `γ`, `F(k)` | `exp_av_rate`, `av_charge_pp(k)` | the reserve charge rate; the amount charged, `γ·(A(k) + P⁺(k))` |
+| `γ`, `F(k)` | `charge_admin_av_ann`, `av_charge_pp(k)` | the reserve charge rate; the amount charged, `γ·(A(k) + P⁺(k))` |
 | `i_g`, `I(k)` | `rechnungszins`, `guar_int_pp(k)` | the guaranteed rate; the guaranteed interest, `i_g·av_pp_at(k,"AFT_CHARGE")` |
 | `G(k)` | `index_base_pp(k)` | the participating capital of the *Indexjahr* of policy year `k` = `A(k)` |
 | `b(k)`, `w(k)` | `surplus_rate(k)`, `elect_index(k)` | the declared surplus rate; the fraction of it directed to the index arm |
@@ -452,11 +452,11 @@ amount times the count it is struck on.
            = prem_gross_pp        for k = k₀ only      (single form)
            = 0                    otherwise
     P(k)   = P_b(k) · φ
-    α(k)   = min(acq_cost_rate, zill_cap_rate) · BS / min(zill_years, prem_term_y)   for
-             k < min(zill_years, prem_term_y), i.e. the first that many premium-paying
+    α(k)   = min(charge_acq_bsum_once, zillmer_cap_bsum) · BS / min(acq_spread_years, prem_term_y)   for
+             k < min(acq_spread_years, prem_term_y), i.e. the first that many premium-paying
              years, 0 afterwards
-    α₅(k)  = the same with zill_years replaced by 5, unconditionally
-    P⁺(k)  = P(k) − α(k) − exp_prem_rate · P(k)
+    α₅(k)  = the same with acq_spread_years replaced by 5, unconditionally
+    P⁺(k)  = P(k) − α(k) − charge_admin_prem_inst · P(k)
     Π(k+1) = Π(k) + P_b(k),      Π(k₀) = prem_paid_init
 
     prem_due(t) = ( t mod 12 == 0 )     the first month of each policy year, and no other
@@ -535,8 +535,8 @@ timings, with `α₅` in place of `α` — the credits are the same, so only the
     av_min_pp_at(k, "AFT_GUAR") = ( av_min_pp(k) + P(k) − α₅(k) − β·P(k) ) · (1 − γ) · (1 + i_g)
     av_min_pp(k+1)              = av_min_pp_at(k, "AFT_GUAR") + X(k) + U(k)
 
-With `zill_years = 5` the two accounts coincide exactly and the floor is a no-op, which is the point:
-delib's charge profile is already at the statutory floor. Set `zill_years = 1` and the floor bites.
+With `acq_spread_years = 5` the two accounts coincide exactly and the floor is a no-op, which is the point:
+delib's charge profile is already at the statutory floor. Set `acq_spread_years = 1` and the floor bites.
 
 ### Decrements
 
@@ -575,7 +575,7 @@ not modelled, no source establishing one.
 ### Benefits
 
     D(k) = max( av_pp_at(k, "AFT_GUAR"), death_min_rate · BS )
-    V(k) = max( av_pp_at(k, "AFT_GUAR"), av_min_pp_at(k, "AFT_GUAR") ) · (1 − storno_rate · surr_charge_on)
+    V(k) = max( av_pp_at(k, "AFT_GUAR"), av_min_pp_at(k, "AFT_GUAR") ) · (1 − stornoabzug_rate · surr_charge_on)
     M(n−1) = max( A(n), Γ(n) )
 
     claims(t, "DEATH")    = D(duration(t)) · pols_death(t)
@@ -599,12 +599,12 @@ that was established — so the forfeiture remains all-or-nothing [std] and the 
 Two reported quantities that are not cash flows:
 
     rentenfaktor()   = max( rentenfaktor_guar, rentenfaktor_curr )
-    ann_monthly_pp() = M(n−1) / 10 000 × rentenfaktor()  if ann_option == "annuity", else 0.0
+    ann_monthly_pp() = M(n−1) / rf_unit × rentenfaktor()  if ann_option == "annuity", else 0.0   (rf_unit = 10 000, a row of param_tariff_type.csv)
 
 ### Expenses and the cash flow statement
 
-    exp_acq_pp(t)   = acq_expense_rate · BS      at t = t₀ and only if duration_init == 0
-    exp_maint_pp(k) = exp_fixed_pp · (1 + expense_infl)^k      the YEAR's amount
+    exp_acq_pp(t)   = expense_acq_bsum_once · BS      at t = t₀ and only if duration_init == 0
+    exp_maint_pp(k) = expense_admin_pp_ann · (1 + expense_infl)^k      the YEAR's amount
     expenses(t)     = ( exp_acq_pp(t) + exp_maint_pp(duration(t)) / 12 ) · l(t)
 
     net_cf(t)          = premiums(t) − claims(t,"DEATH") − claims(t,"LAPSE") − claims(t,"MATURITY")
@@ -805,7 +805,7 @@ take deliberately and is not made in a provenance pass.
     the thirteen points.
 13. **Confusing the § 169 Abs. 3 floor with the *Höchstzillmersatz*.** Two different rules with two
     different functions: the DeckRV governs what may be **reserved**, § 169 VVG what must be **paid**
-    [REG-R16] [REG-R28]. Assert that with `zill_years = 5` the shadow account equals the tariff account
+    [REG-R16] [REG-R28]. Assert that with `acq_spread_years = 5` the shadow account equals the tariff account
     in every policy year (the floor is a no-op) while the 2 % *Stornoabzug* still bites, and that
     `cv_pp(k) < av_pp_at(k,"AFT_GUAR")` on every point with `surr_charge_on = 1`.
 14. **Double-charging or mis-basing the *Ratenzahlungszuschlag*.** `φ` multiplies the premium
@@ -871,7 +871,7 @@ them, and none for this product specifically.
 `policy_id = "DE-IDX-0001"`; `sex = M`; `issue_age = 40`; `duration_init = 0`, so `t_start() = 0` and the
 table below is the **entire** projection; `pols_if_init = 1.0`; `ret_age = 67`, hence
 `proj_len_y() = 67 − 40 = 27` policy years and `proj_len() = 324` months, `t = 0 … 323`;
-`prem_form = level`; `prem_gross_pp = 2 400,00 €` (the annual-mode
+`prem_form = regular`; `prem_gross_pp = 2 400,00 €` (the annual-mode
 *Jahresbeitrag*, i.e. the research file's 200,00 € a month taken annually); `prem_freq = annual`, so
 `prem_freq_load() = 1,000` and the premium collected equals the premium due; `prem_term_y = 27`, premiums
 payable throughout, so `prem_sum() = 27 × 2 400,00 = 64 800,00 €`; `av_pp_init = 0,00 €`;
@@ -901,13 +901,13 @@ and DAV 2004 R are cited by name and never shipped [REG-R48] [REG-R49]. Surrende
 `lapse_rate_base` = 5 % in policy years 1–2 (`k = 0, 1`), 3 % in policy years 3–11, 6 % in policy year
 12 (`k = 11`), 2 % from policy year 13 **[std]**, with `lapse_rate` zero through the whole final policy
 year `k = 26` because its end is *Rentenbeginn*. Acquisition charge
-`acq_cost_rate = 2,5 %` of the *Beitragssumme* **[std]** — `0,025 × 64 800,00 = 1 620,00 €` — spread
-over `zill_years = 5` premium-paying years at `324,00 €` a year, inside the DeckRV § 4
+`charge_acq_bsum_once = 2,5 %` of the *Beitragssumme* **[std]** — `0,025 × 64 800,00 = 1 620,00 €` — spread
+over `acq_spread_years = 5` premium-paying years at `324,00 €` a year, inside the DeckRV § 4
 *Höchstzillmersatz* of 25 ‰ [REG-R16]. Premium charge `β = 3 %` of each gross premium **[std]**, i.e.
 `72,00 €` a year. Reserve charge `γ = 0,25 %` a year of the post-premium balance **[std]**. Acquisition
-expense `acq_expense_rate = 2,5 %` of the *Beitragssumme* **[std]**, `1 620,00 €` incurred in full at
+expense `expense_acq_bsum_once = 2,5 %` of the *Beitragssumme* **[std]**, `1 620,00 €` incurred in full at
 inception. Maintenance expense `36,00 €` a year inflating at `expense_infl = 1,5 %` **[std]**. *Stornoabzug*
-`storno_rate = 2 %` of the base surrender value **[std]**. *Rentenfaktor* `25,00 €` per 10 000 € per
+`stornoabzug_rate = 2 %` of the base surrender value **[std]**. *Rentenfaktor* `25,00 €` per 10 000 € per
 month, guaranteed and current equal **[std]**. No claim expense, no *Dynamik*, no *Beitragsfreistellung*,
 no dynamic behaviour module, no discounting.
 

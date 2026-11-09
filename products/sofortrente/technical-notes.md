@@ -60,7 +60,7 @@ repeated in prose.
   and it selects the **contract's own *Höchstrechnungszins* vintage** [REG-R14] [REG-R15].
 - **Timing conventions [std].** The *Einmalbeitrag* arrives at the **start of month 0**. Instalments
   are paid at the **start** of a payment month; under `advance` (*vorschüssig*) the first falls at
-  `t = defer_mths()`, under `arrears` (*nachschüssig*) at `t = defer_mths() + 12/payment_freq`. A
+  `t = defer_mths()`, under `arrears` (*nachschüssig*) at `t = defer_mths() + 12/ann_freq`. A
   payment is made if the payee is alive at the **start** of that month — the same instant — so the
   survival index of a payment is always `t` and the two timings differ **only in which months carry
   an instalment**. Deaths fall **during** month `t`, so a life dying in month `t` has already
@@ -106,7 +106,7 @@ repeated in prose.
 | `surv_age` | int | Second life's age last birthday at *Vertragsbeginn* | 4, 5 |
 | `surv_birth_year` | int | Second life's *Geburtsjahr* | 4, 5 |
 | `surv_sex` | enum {M, F} | Second life's sex, decrement only | 4, 5 |
-| `payment_freq` | int {12, 4, 2, 1} | Instalments per year, `m` | 7 (4), 8 (1), 11 (2) |
+| `ann_freq` | int, a key of `ann_freq_table.csv` {12, 4, 2, 1} | Instalments per year, `m` | 7 (4), 8 (1), 11 (2) |
 | `payment_timing` | enum {advance, arrears} | *vorschüssig* / *nachschüssig* **[std]** | 9 |
 | `rechnungszins` | float | The tariff *Rechnungszins* `i`, at or below the vintage cap | 10, 13 |
 | `surplus_form` | enum {none, konstant, teildynamisch, volldynamisch} | *Überschussverwendung* | 5, 8, 11, 13 (konstant); 6, 12 (voll); 14 (none) |
@@ -216,7 +216,7 @@ minimum [REG-R18] [REG-R24]; class (c) is the modeller's view of experience.
 | Tariff *Rechnungszins* | Model-point attribute; **1,00 %** for 2025–2026 business, at or below the vintage cap. Every retrieved tariff prices **at** its vintage's cap; no below-cap pricing was observed | [S2] [S3] [S4] [S6]; [REG-R14] [REG-R15] |
 | Guarantee | The *garantierte Rente* is immutable for life; § 163 VVG is the only channel and it is narrow — and narrower here, Abs. 1 re-setting a *premium* this product does not have | [R4] [REG-R27] |
 | Payment frequency and timing | Monthly, *vorschüssig*, first instalment at inception. Frequencies read at four sources; **timing contradicted — two AVB pay in arrears**, and the model's convention is retained in this pass | [S1] [S2] [S6] [S7]; timing **[std]**, contradicted by [S4] [S6] |
-| *Rentengarantiezeit* | `guar_years × payment_freq` instalments payable **regardless of survival** from *Rentenbeginn*: "Stirbt die versicherte Person während der Rentengarantiezeit, so wird die monatliche Rente bis zum Ablauf der Rentengarantiezeit weiter gezahlt" | [S4]; also [S1] [S5] [S6] [S8] [R23] |
+| *Rentengarantiezeit* | `guar_years × ann_freq` instalments payable **regardless of survival** from *Rentenbeginn*: "Stirbt die versicherte Person während der Rentengarantiezeit, so wird die monatliche Rente bis zum Ablauf der Rentengarantiezeit weiter gezahlt" | [S4]; also [S1] [S5] [S6] [S8] [R23] |
 | *Kapital-/Beitragsrückgewähr* | `max(SP − guaranteed instalments already paid, 0)` on death — and two AVB confirm the netting is on the **guaranteed** annuity, so this is no longer a **[std]** argument | [S2] [S6] [R23] |
 | *Hinterbliebenenrente* | `surv_pct` of the annuitant's annuity to a named second life, from the annuitant's death, for that life's remaining lifetime; lapses if the second life predeceases; and it begins only **after** any *Rentengarantiezeit* has expired | [S1] [S9]; percentages [unverified] — the model conditions state none |
 | Death-benefit exclusivity | The refund is **not** combined with a guarantee period or a survivor's annuity | **[std]**, research gap 10 |
@@ -333,7 +333,7 @@ systematic *Risikoüberschuss* this product's surplus is largely financed from [
 collapsing them destroys both halves of the mechanic and is pitfall 9.
 
 **Unisex blend.** `mort_rate_at_age(x, "U", basis) = ρ_M · q(x, "M", basis) + (1 − ρ_M) · q(x, "F", basis)`
-with `ρ_M = mix_male = 0.45` **[std]**. The direction is argued rather than observed: a unisex tariff
+with `ρ_M = unisex_mix_male = 0.45` **[std]**. The direction is argued rather than observed: a unisex tariff
 struck on sex-distinct tables is a better deal for women than for men, so the realised female share of
 a voluntary annuitant portfolio sits above the population share [REG-R34]. **No German carrier
 publishes a portfolio mix** (research gap 13).
@@ -344,17 +344,17 @@ three-class split, and confusing them is pitfall 12's neighbour.
 
 | Input | Value | Basis |
 |---|---|---|
-| `expense_load_alpha` α — acquisition loading in the tariff | **2,5 %** of `SP`, a row of `param_tariff_type.csv` | **[std]** (c1) |
-| `expense_load_beta` β — administration loading on the annuity value | **2,0 %**, a row of `param_tariff_type.csv` | **[std]** (c1) |
-| `expense_acq_rate`, `expense_acq_fixed` — acquisition expense actually incurred at `t = 0` | **2,0 %** of `SP` **plus 200 €**, two rows of `param_tariff_type.csv` | **[std]** (c1) |
-| `expense_maint_pp` — maintenance expense per annum, per unit of `pols_if` | **60 €**, a row of `param_tariff_type.csv`, accrued monthly | **[std]** (c1) |
-| `expense_pay_pp` — cost of running one instalment | **1,50 €** per instalment paid, a row of `param_tariff_type.csv` | **[std]** (c1) |
+| `load_acq_sp_once` α — acquisition loading in the tariff | **2,5 %** of `SP`, a row of `param_tariff_type.csv` | **[std]** (c1) |
+| `load_admin_annval_once` β — administration loading on the annuity value | **2,0 %**, a row of `param_tariff_type.csv` | **[std]** (c1) |
+| `expense_acq_sp_once`, `expense_acq_pp_once` — acquisition expense actually incurred at `t = 0` | **2,0 %** of `SP` **plus 200 €**, two rows of `param_tariff_type.csv` | **[std]** (c1) |
+| `expense_admin_pp_ann` — maintenance expense per annum, per unit of `pols_if` | **60 €**, a row of `param_tariff_type.csv`, accrued monthly | **[std]** (c1) |
+| `expense_pay_pp_inst` — cost of running one instalment | **1,50 €** per instalment paid, a row of `param_tariff_type.csv` | **[std]** (c1) |
 | `expense_infl` — expense inflation | **1,5 %** p.a., a row of `param_tariff_type.csv`, stepping at the policy anniversary | **[std]** (c1) |
-| `mix_male` ρ_M | **0.45**, a row of `param_tariff_type.csv` | **[std]** |
+| `unisex_mix_male` ρ_M | **0.45**, a row of `param_tariff_type.csv` | **[std]** |
 | `mort_base_year` | **2025**, a row of `param_tariff_type.csv` | **[std]** |
 | `omega_age` ω | **121**, a row of `param_tariff_type.csv` | **[std]** |
 | `roll_fwd_tol` | **1e-8**, a row of `param_tariff_type.csv`, the tolerance every `check_*` closes to | **[std]** |
-| `solve_tol`, `solve_max_iter` | **1e-10**, **200**, rows of `param_tariff_type.csv` — the bisection controls for the refund solve | **[std]** |
+| Bisection tolerance and iteration cap | **1e-10**, **200**, literals in `annuity_pp_derived()` — the bisection controls for the refund solve, solver settings and so code | **[std]** |
 
 (c1) **No charge or expense parameter was established at any carrier** (research gap 8), so none of
 these has an observed range. The loadings are argued in `product-spec.md` footnote 6. The incurred
@@ -377,7 +377,7 @@ Inputs are **external CSVs in the model folder's parent**, read once per model b
 | `improvement_table.csv` | `basis`, `age` | `improve_rate` | `Data.improvement_table()` |
 | `surplus_scale_table.csv` | `surplus_form` | `surplus_init_pct`, `surplus_growth` | `Data.surplus_scale_table()` |
 | `hoechstrechnungszins_table.csv` | `year_from` | `year_to`, `max_rate` | `Data.hoechstrechnungszins_table()` |
-| `param_tariff_type.csv` | `item` | `value` | `Data.param_table()`, the core's loader |
+| `param_tariff_type.csv` | `item` | `value` | `Data.param()`, the core's loader |
 
 `basis` takes `FIRST` or `SECOND`, `sex` takes `M` or `F` — the unisex blend is a model construction,
 not a table row, so the CSV never carries a rate no real table would. Every file **except**
@@ -396,10 +396,10 @@ tagged in the tables above.
 |---|---|---|
 | `t` | — | month index from *Vertragsbeginn*, 0-based, `t = t₀ … n − 1` |
 | `t₀`, `n` | `t_start`, `proj_len` | first projected month index; **exclusive end** of the frame |
-| `m`, `p` | `payment_freq`, `pay_period_mths` | instalments per year; months between them, `p = 12/m` |
+| `m`, `p` | `ann_freq`, `pay_period_mths` | instalments per year; months between them, `p = 12/m` |
 | `D`, `G` | `defer_mths`, `guar_years` | deferment in months; guarantee period in years |
 | `SP`, `SP_net` | `single_prem`, `net_single_prem` | *Einmalbeitrag*; `SP(1 − α)` |
-| `α`, `β` | `expense_load_alpha`, `expense_load_beta` | acquisition and annuity-administration loadings |
+| `α`, `β` | `load_acq_sp_once`, `load_admin_annval_once` | acquisition and annuity-administration loadings |
 | `i`, `v` | `rechnungszins` | tariff *Rechnungszins*; `v = 1/(1 + i)` |
 | `R` | `annuity_pp_derived`, `annuity_guar_pp(t)` | the *garantierte Rente* per instalment |
 | `U(t)`, `A(t)` | `annuity_surp_pp`, `annuity_pp` | *Überschussrente* instalment; total instalment `R + U(t)` |
@@ -416,8 +416,8 @@ tagged in the tables above.
 | `F(t)` | `payment_factor` | expected instalments payable at `t`, per unit of `pols_if_init` |
 | `C(t)`, `K(t)` | `cum_annuity_guar_pp`, `refund_pp` | cumulative guaranteed instalments; the refund then due |
 | `ä` | `annuity_factor` | value at `t = 0` of one unit of instalment on the tariff basis |
-| `ω`, `ρ_M` | `omega_age`, `mix_male` | limiting age; portfolio male share |
-| `c_e`, `c_p`, `π` | `expense_maint_pp`, `expense_pay_pp`, `expense_infl` | maintenance p.a.; per-instalment cost; inflation |
+| `ω`, `ρ_M` | `omega_age`, `unisex_mix_male` | limiting age; portfolio male share |
+| `c_e`, `c_p`, `π` | `expense_admin_pp_ann`, `expense_pay_pp_inst`, `expense_infl` | maintenance p.a.; per-instalment cost; inflation |
 | `E₀` | — | acquisition expense incurred at `t = 0` |
 
 `q`, `λ`, `l`, `γ`, `F` are dimensionless; `SP`, `R`, `U`, `A`, `K`, `C` and every cash flow are EUR;
@@ -478,7 +478,7 @@ two it is.
 
 ### Payment months, the certain floor and the payment factors
 
-    pay_period_mths()   = 12 // payment_freq()                                  ( p )
+    pay_period_mths()   = 12 // ann_freq()                                      ( p )
     first_pay_mth()     = defer_mths()                    under `advance`
                         = defer_mths() + pay_period_mths()  under `arrears`
     is_payment_mth(t)   = ( t ≥ first_pay_mth() )  and  ( (t − first_pay_mth()) mod p == 0 )
@@ -556,7 +556,7 @@ with `n(t)` the number of instalments paid by month `t` and `d̃_a` the first-or
 `g` is increasing in `R` on `(0, R_max]` where `R_max = SP_net / (ä (1 + β))` is the no-refund
 annuity, and `g(0) = SP · Σ v^(t/12) d̃_a(t) < SP_net` on any basis with a positive interest rate, so
 a root exists and **bisection on `[0, R_max]` converges**. The reference implementation bisects to
-`solve_tol` in at most `solve_max_iter` steps, evaluating the sum inline from the cached
+a bracket of `1e-10` in at most `200` steps, evaluating the sum inline from the cached
 `tariff_lives` path rather than through a cells parameterized by the trial `R`.
 
 **Computing `R_max` and then subtracting a refund cost is a different — and wrong — answer** (pitfall
@@ -614,7 +614,7 @@ buried in a total.
 
 **Expenses.**
 
-    expenses(t) = 1{t = 0} · pols_if_init · ( expense_acq_rate · SP + expense_acq_fixed )
+    expenses(t) = 1{t = 0} · pols_if_init · ( expense_acq_sp_once · SP + expense_acq_pp_once )
                 + ( c_e / 12 ) · inflation_factor(t) · pols_if(t)
                 + 1{payment month} · c_p · inflation_factor(t) · pols_if_init · payment_factor(t)
 
@@ -806,7 +806,7 @@ with every attribute stated: `policy_id = SOF-000001`; `single_prem = 100,000.00
 `issue_age = 65`; `issue_year = 2025`; `birth_year = 1960`; `sex = M`; `defer_years = 0`, so
 `defer_mths() = 0` and `first_pay_mth() = 0`; `guar_years = 10`, so `guar_end_mth() = 120` and the
 first 120 monthly instalments are certain; `refund_form = none`; `surv_pct = 0.00`, with `surv_age`,
-`surv_birth_year` and `surv_sex` unused and carried as zeros; `payment_freq = 12` and
+`surv_birth_year` and `surv_sex` unused and carried as zeros; `ann_freq = 12` and
 `payment_timing = advance`, so an instalment falls at the start of every month from `t = 0`;
 `rechnungszins = 0.0100`, the *Höchstrechnungszins* in force for 2025 business [REG-R15];
 `surplus_form = teildynamisch`; `annuity_pp_init = 0.00`, so the guaranteed annuity is **derived by
@@ -820,7 +820,7 @@ Hence `horizon_mths(1) = 12 × (121 − 65) = 672`, `proj_len() = 672`, and the 
 at `v^(k/12)` with `v = 1/1.01`. *Mortality.* The base tables are the research file's Gompertz–Makeham
 law `q_base(x) = 1 − exp(−(A + B·c^x·(c − 1)/ln c))` with `A = 0.0002`, `B = 1.5 × 10⁻⁵`, `c = 1.10`
 **[std]**, split by sex as `FIRST/M = 1.250000 × q_base` and `FIRST/F = 0.795455 × q_base` so that the
-`mix_male = 0.45` **[std]** unisex blend reproduces `q_base` exactly, and the second-order series
+`unisex_mix_male = 0.45` **[std]** unisex blend reproduces `q_base` exactly, and the second-order series
 `SECOND = 1.20 × FIRST` **[std]**; improvement `λ_SECOND(x) = 1,5 %` to age 70, tapering linearly to
 zero at 105, with `λ_FIRST = 1.25 × λ_SECOND` **[std]**; base year `mort_base_year = 2025` **[std]**,
 so the annuitant's cohort exponent at age 65 is `1960 + 65 − 2025 = 0` and the anchor's first-year
@@ -1245,12 +1245,12 @@ In rough order of leverage for a German payout-annuity block:
    life annuity on the [std] basis, and the reduction is sensitive to the interest rate in a way the
    plain annuity is not, because the refund is a *death* benefit discounted from an earlier date than
    the annuity payments it displaces. It is also the only place in the model where a numerical solve
-   sits inside the pricing, so a change of `solve_tol` is a change of answer, not of runtime.
+   sits inside the pricing, so a change of its tolerance, 1e-10, is a change of answer, not of runtime.
 6. **The second life and the independence assumption.** The *Hinterbliebenenrente* is priced with both
    lives independent **[std]**; real joint lives are positively dependent, so the model **overstates**
    the joint-life annuity value and understates the cost of the rider. No delib source quantifies the
    dependence.
-7. **`mix_male` and the unisex tariff.** The realised portfolio mix drives the *Risikoergebnis* the
+7. **`unisex_mix_male` and the unisex tariff.** The realised portfolio mix drives the *Risikoergebnis* the
    MindZV then shares [REG-R18] [REG-R34], and `ρ_M = 0.45` is a direction with no magnitude behind
    it. It moves the tariff annuity factor directly, so it moves every derived annuity in the table.
 8. **Expense levels on small tickets.** At model point 11's 25 000 € the [std] acquisition expense of

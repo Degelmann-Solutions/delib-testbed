@@ -93,8 +93,8 @@ surplus_rate_file      data.surplus_rate_table()          surplus_rate_table.csv
 election_file          data.election_table()              election_table.csv
 mort_file              data.mort_table()                  mort_table.csv
 lapse_file             data.lapse_table()                 lapse_table.csv
-freq_loading_file      data.freq_loading_table()          freq_load_table.csv
-param_file             data.param_table()                 param_tariff_type.csv
+prem_freq_file         data.prem_freq_table()             prem_freq_table.csv
+param_file             data.param()                       param_tariff_type.csv
 =====================  =================================  ==========================
 
 .. rubric:: Naming
@@ -151,7 +151,7 @@ A(k)                       av_pp(k)                        Deckungskapital at th
 (within year)              av_pp_at(k, timing)             BEF_PREM / AFT_PREM /
                                                            AFT_CHARGE / AFT_GUAR /
                                                            AFT_CREDIT
-gamma, F(k)                exp_av_rate, av_charge_pp(k)    Reserve charge rate; amount
+gamma, F(k)                charge_admin_av_ann, av_charge_pp(k)    Reserve charge rate; amount
 i_g, I(k)                  rechnungszins(), guar_int_pp(k) Rechnungszins; guaranteed
                                                            interest
 (shadow)                   av_min_pp(k), av_min_pp_at(..)  The 169 Abs. 3 account
@@ -263,14 +263,6 @@ _spaces = []
 # Cells
 
 # --- the model point ---------------------------------------------------------
-
-def prem_form():
-    """``"level"`` (*laufender Beitrag*) or ``"single"`` (*Einmalbeitrag*)."""
-    v = model_point()["prem_form"]
-    if v not in ("level", "single"):
-        raise ValueError("invalid prem_form")
-    return v
-
 
 def av_pp_init():
     """The *Deckungskapital* per policy at ``t_start()``; 0 for new business."""
@@ -443,8 +435,8 @@ def prem_gross_pp(k):
 def prem_charge_acq_pp(k):
     """``alpha(k)``: the acquisition charge deducted from the premium in period k.
 
-    ``min(acq_cost_rate, zill_cap_rate) x BS`` spread evenly over the first
-    ``min(zill_years, prem_term_y())`` premium-paying years, i.e. over ``k < spread`` —
+    ``min(charge_acq_bsum_once, zillmer_cap_bsum) x BS`` spread evenly over the first
+    ``min(acq_spread_years, prem_term_y())`` premium-paying years, i.e. over ``k < spread`` —
     2.5 % of the *Beitragssumme* at the DeckRV *Höchstzillmersatz* of 25 per mille, over
     five years, so 324.00 EUR a year on the anchor's 64,800.00 EUR.  On a single premium
     it is taken in full in the first projected period, there being only one premium to
@@ -456,11 +448,11 @@ def prem_charge_acq_pp(k):
     """
     if k < k_start() or k >= proj_len_y():
         return 0.0
-    charge = min(data.param("acq_cost_rate"),                         # noqa: F821
-                 data.param("zill_cap_rate")) * prem_sum()            # noqa: F821
+    charge = min(data.param("charge_acq_bsum_once"),                  # noqa: F821
+                 data.param("zillmer_cap_bsum")) * prem_sum()         # noqa: F821
     if prem_form() == "single":
         return charge if k == k_start() else 0.0
-    spread = min(data.param("zill_years"), prem_term_y())            # noqa: F821
+    spread = min(data.param("acq_spread_years"), prem_term_y())      # noqa: F821
     return charge / spread if k < spread else 0.0
 
 
@@ -469,18 +461,18 @@ def prem_charge_acq_min_pp(k):
 
     Acquisition and distribution costs must be spread over at least the first five years
     for the purpose of the *Mindestrückkaufswert*, whatever the tariff does — so this
-    profile reads the row ``surr_spread_years`` and not ``zill_years``, which is a tariff
-    parameter and not a statutory one.  With ``zill_years = 5`` the two coincide exactly
+    profile reads the row ``surr_spread_years`` and not ``acq_spread_years``, which is a tariff
+    parameter and not a statutory one.  With ``acq_spread_years = 5`` the two coincide exactly
     and the floor is a no-op, which is the point: delib's charge profile is already at the
-    statutory floor.  Set ``zill_years = 1`` and the floor bites.
+    statutory floor.  Set ``acq_spread_years = 1`` and the floor bites.
 
     A single premium is taken once, so there is no second premium over which to spread
     anything and the two profiles coincide there by construction rather than by parameter.
     """
     if k < k_start() or k >= proj_len_y():
         return 0.0
-    charge = min(data.param("acq_cost_rate"),                         # noqa: F821
-                 data.param("zill_cap_rate")) * prem_sum()            # noqa: F821
+    charge = min(data.param("charge_acq_bsum_once"),                  # noqa: F821
+                 data.param("zillmer_cap_bsum")) * prem_sum()         # noqa: F821
     if prem_form() == "single":
         return charge if k == k_start() else 0.0
     spread = min(data.param("surr_spread_years"), prem_term_y())     # noqa: F821
@@ -493,7 +485,7 @@ def prem_charge_adm_pp(k):
     *Verwaltungskosten* taken as the premium is credited.  **[std]**: no German insurer
     publishes a charge level for this product.
     """
-    return data.param("exp_prem_rate") * prem_gross_pp(k)            # noqa: F821
+    return data.param("charge_admin_prem_inst") * prem_gross_pp(k)   # noqa: F821
 
 
 def prem_to_av_pp(k):
@@ -909,7 +901,7 @@ def av_charge_pp(k):
     from the account rather than from the premium.  A **charge**, not an expense: it
     reduces the policyholder's *Deckungskapital* and does not appear in ``net_cf``.
     """
-    return data.param("exp_av_rate") * av_pp_at(k, "AFT_PREM")       # noqa: F821
+    return data.param("charge_admin_av_ann") * av_pp_at(k, "AFT_PREM")  # noqa: F821
 
 
 def av_charge(k):
@@ -1018,7 +1010,8 @@ def av_min_pp_at(k, timing):
         return (av_min_pp(k) + prem_gross_pp(k) - prem_charge_acq_min_pp(k)
                 - prem_charge_adm_pp(k))
     if timing == "AFT_CHARGE":
-        return av_min_pp_at(k, "AFT_PREM") * (1.0 - data.param("exp_av_rate"))  # noqa: F821
+        return (av_min_pp_at(k, "AFT_PREM")
+                * (1.0 - data.param("charge_admin_av_ann")))         # noqa: F821
     if timing == "AFT_GUAR":
         return av_min_pp_at(k, "AFT_CHARGE") * (1.0 + rechnungszins())
     if timing == "AFT_CREDIT":
@@ -1188,7 +1181,7 @@ def min_surr_pp(k):
 
     It is a different rule from the DeckRV *Höchstzillmersatz* with a different function —
     the DeckRV governs what may be **reserved**, § 169 VVG what must be **paid** — and
-    conflating the two is a numbered pitfall.  With ``zill_years = 5`` they coincide and
+    conflating the two is a numbered pitfall.  With ``acq_spread_years = 5`` they coincide and
     this floor is a no-op.
     """
     return av_min_pp_at(k, "AFT_GUAR")
@@ -1203,7 +1196,7 @@ def surr_charge_pp(k):
     research was a 5 % base deduction plus a capital-market-dependent component, and the
     observed band runs from 0 % to 20 %, so 2 % is a deliberately mild **[std]**.
     """
-    return (data.param("storno_rate") * surr_charge_on()             # noqa: F821
+    return (data.param("stornoabzug_rate") * surr_charge_on()        # noqa: F821
             * max(av_pp_at(k, "AFT_GUAR"), min_surr_pp(k)))
 
 
@@ -1301,15 +1294,15 @@ def ann_monthly_pp():
     contract state and a separate model.
 
     **Neither this number nor the factor behind it is authoritative.**  The factor is a
-    **[std]** 25.00 EUR per 10,000 EUR and the mortality it is quoted against is a **[std]**
-    period-table proxy, while the real basis is DAV 2004 R, generational in age *and*
-    calendar year.  A period proxy priced at a 40-year-old's annuitisation twenty-seven
+    **[std]** 25.00 EUR per ``rf_unit`` = 10,000 EUR (a row of *param_tariff_type.csv*) and
+    the mortality it is quoted against is a **[std]** period-table proxy, while the real
+    basis is DAV 2004 R, generational in age *and* calendar year.  A period proxy priced at a 40-year-old's annuitisation twenty-seven
     years out understates the liability by a margin that dwarfs every other assumption here,
     which is why the model **reports** an annuity and does not compute one.
     """
     if ann_option() != "annuity":
         return 0.0
-    return mat_pp(proj_len_y() - 1) / 10000.0 * rentenfaktor()
+    return mat_pp(proj_len_y() - 1) / data.param("rf_unit") * rentenfaktor()  # noqa: F821
 
 
 # --- expenses and the cash flow statement ------------------------------------
@@ -1325,19 +1318,19 @@ def exp_acq_pp(t):
     """
     if t != t_start() or duration_init() != 0:
         return 0.0
-    return data.param("acq_expense_rate") * prem_sum()               # noqa: F821
+    return data.param("expense_acq_bsum_once") * prem_sum()          # noqa: F821
 
 
 def exp_maint_pp(k):
     """Maintenance expense per policy: 36.00 EUR a year inflating at 1.5 % **[std]**.
 
-    *Stückkosten*, ``exp_fixed_pp x (1 + expense_infl())^k``, inflated from **issue** and not
-    from the valuation date — ``k`` is the elapsed policy years, so an in-force point
+    *Stückkosten*, ``expense_admin_pp_ann x (1 + expense_infl())^k``, inflated from **issue**
+    and not from the valuation date — ``k`` is the elapsed policy years, so an in-force point
     carries the inflation its duration has already accumulated.  It is the **year's**
     amount; :func:`expenses` charges a twelfth of it each month, and the inflation factor
     steps on the anniversary because it compounds in policy years.
     """
-    return data.param("exp_fixed_pp") * inflation_factor(12 * k)     # noqa: F821
+    return data.param("expense_admin_pp_ann") * inflation_factor(12 * k)  # noqa: F821
 
 
 def expenses_maint(t):

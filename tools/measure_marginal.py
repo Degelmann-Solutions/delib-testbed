@@ -138,18 +138,18 @@ DEFAULT_WORKERS = (1, 4, 8, 12, 16, 24)
 # section "The new M", prints on this code (the roadmap records them at 790706b, the merge of
 # PR #38). Every commit that moves a literal out of O6 updates them; recounting is the roadmap's
 # command, not this tool's, and tests/test_measure_marginal.py runs it against these constants.
-M_CORE = 186
+M_CORE = 190
 M_PRODUCT = {
-    "basisrente": 630,
-    "berufsunfaehigkeit": 507,
-    "fondsgebundene_rentenversicherung": 421,
-    "indexpolice": 344,
-    "kapitallebensversicherung": 419,
-    "klassische_rentenversicherung": 586,
-    "pflegerentenversicherung": 811,
-    "riester_rente": 598,
-    "risikolebensversicherung": 295,
-    "sofortrente": 485,
+    "basisrente": 628,
+    "berufsunfaehigkeit": 506,
+    "fondsgebundene_rentenversicherung": 414,
+    "indexpolice": 343,
+    "kapitallebensversicherung": 417,
+    "klassische_rentenversicherung": 582,
+    "pflegerentenversicherung": 807,
+    "riester_rente": 590,
+    "risikolebensversicherung": 292,
+    "sofortrente": 480,
 }
 M_NEW = M_CORE + sum(M_PRODUCT.values())
 

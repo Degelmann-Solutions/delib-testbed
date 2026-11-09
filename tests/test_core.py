@@ -33,26 +33,39 @@
   net-cash-flow residual is rebuilt from its frame's columns; KLV's ``check_net_cf`` closes to
   the scaled tolerance and fails above it.
 - The parameter files: ``param(item)`` reads RLV's tariff-type file without a tariff file,
-  ``claim_expense`` among it and no longer a Reference of its ``Projection``,
+  ``expense_claim_pp_once`` among it and no longer a Reference of its ``Projection``,
   keeps an integer literal ``int``, reads a fixture core item and a tariff item in a scratch
   copy, and raises on an unknown item and on a missing core file; it equals the
-  ``param_table_dict()`` value of every product's every item, and no source reads
-  ``param_table_dict()["value"]`` any more; every product's ``param_file`` is its
-  ``param_tariff_type.csv`` with the layer columns, and no ``param_table.csv`` is left.
+  file's value of every product's every item, and the core's former readers
+  ``param_table()`` and ``param_table_dict()`` are gone with every read of them; every
+  product's ``param_file`` is its ``param_tariff_type.csv`` with the layer columns, and no
+  ``param_table.csv`` is left.
   Riester's 32 former numeric References are rows of its tariff-type file with their
   literals' types and values, and no numeric Reference but ``point_id`` is left on its
   ``Projection``. RLV's 17 likewise, and its premium-shock test switches the module on
   through a row of a scratch copy's tariff-type file. KLV's 4 read ones likewise; its
   three References of the lapse modules that were never built, read by no cell, are in
   neither its ``Projection`` nor its parameter files. BU's 11, FRV's 12, Basis' 5,
-  Index' 10 and Sofort's 10 likewise; RV and Pflege never had one.
+  Index' 10 and 8 of Sofort's 10 likewise; Sofort's other 2, the bisection settings of its
+  refund solve, are literals in its formula. RV and Pflege never had one.
   Every product's core layer is ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's eleven
-  guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 5 actuarial
-  formula literals (the tax step and the bracket of ``irr_ann``) are rows of its
+  guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 3 actuarial
+  formula literals (the tax step of ``lapse_tax_step``) are rows of its
   tariff-type file with their literals' types and values; Index' five-year spread and KLV's
   five-year spread and three-year suicide window likewise. Every other numeric literal of a
   formula cell of the core and the ten products, but 0, 1, 0.0 and 1.0, is structural and
   listed for its space in ``STRUCTURAL_LITERALS``, and every listed value occurs there.
+  BU's claim-year caps are the last ``dur_year`` of its claim-duration table, so a scratch
+  copy with a twelfth row reads it; Pflege's surrender cap is the last policy year of its
+  surrender table likewise. The nine products with a regular premium read their premium
+  frequencies from one ``prem_freq_table.csv``, keyed ``annual`` to ``monthly``, with
+  ``instalments`` an ``int`` a year, and every model point's ``prem_freq`` is a key; Basis'
+  single premium reads no loading, Pflege's is the premium form ``single``, not a frequency.
+  ``prem_form`` is ``regular`` or ``single`` in the six products that have it, and an unknown
+  form raises. Sofort's annuity frequencies are the keys of its ``ann_freq_table.csv``. A
+  frequency outside its table raises (FRV, Pflege, Sofort), and a row added to a scratch copy
+  admits it. Riester's annuity frequency is a row ``ann_freq``, 12 as an ``int`` as Basis', and
+  the *Rentenfaktor* unit of FRV, Index, RV and Riester a row ``rf_unit``, 10000.0 as Basis'.
   Every product's ``param_layers()`` holds each item once and merges into ``param_dict()``;
   the loader raises ``ValueError`` on an item in two layers, twice in one file, and on a core
   item in the tariff-type or the tariff file.
@@ -70,7 +83,7 @@
   *Höchstrechnungszins* band), and a table the product lacks is never read.
 - Pflege's own dict cells equal their readers; its care-grade rates are keyed by attained
   age and grade, not by month, and keep their limiting-age, recovery-damping and grade-5
-  values; a missing ``rec_margin`` row raises; its entrants and graduations are the ledger's
+  values; a missing ``recov_load_first`` row raises; its entrants and graduations are the ledger's
   own and equal the formulas they had beside it; its month-keyed rates depend on the month only
   through the attained age, as the age-keyed transitions assume.
 - The shared caches are read-only: every product's ``model_point()``, FRV's ``charge_row()``
@@ -229,13 +242,6 @@ CORE_CELLS = {
     "Data": {
         "input_dir": dict.fromkeys(MODELS, "derived"),
         "model_point_table": dict.fromkeys(MODELS, "derived"),
-        "param_table": {"basisrente": "derived",
-                        "fondsgebundene_rentenversicherung": "derived",
-                        "kapitallebensversicherung": "derived",
-                        "klassische_rentenversicherung": "derived",
-                        "pflegerentenversicherung": "derived",
-                        "riester_rente": "derived",
-                        "sofortrente": "derived"},
         "mort_table_index": {"basisrente": "override",
                              "berufsunfaehigkeit": "override",
                              "fondsgebundene_rentenversicherung": "override",
@@ -269,12 +275,15 @@ CORE_CELLS = {
         "rentenfaktor_table": {"basisrente": "derived",
                                "fondsgebundene_rentenversicherung": "derived",
                                "klassische_rentenversicherung": "derived"},
-        "freq_loading_table": {"berufsunfaehigkeit": "derived",
-                               "indexpolice": "derived",
-                               "kapitallebensversicherung": "derived",
-                               "klassische_rentenversicherung": "derived",
-                               "riester_rente": "derived",
-                               "risikolebensversicherung": "derived"},
+        "prem_freq_table": {"basisrente": "derived",
+                            "berufsunfaehigkeit": "derived",
+                            "fondsgebundene_rentenversicherung": "derived",
+                            "indexpolice": "derived",
+                            "kapitallebensversicherung": "derived",
+                            "klassische_rentenversicherung": "derived",
+                            "pflegerentenversicherung": "derived",
+                            "riester_rente": "derived",
+                            "risikolebensversicherung": "derived"},
         "surplus_table_index": {"basisrente": "derived",
                                 "riester_rente": "derived"},
         "surplus_table": {"basisrente": "derived",
@@ -289,7 +298,6 @@ CORE_CELLS = {
                          "klassische_rentenversicherung": "derived"},
         "hoechstrechnungszins_table": {"sofortrente": "derived"},
         "model_point_table_dict": dict.fromkeys(MODELS, "derived"),
-        "param_table_dict": dict.fromkeys(MODELS, "derived"),
         "param_core_path": dict.fromkeys(MODELS, "derived"),
         "param_tariff_path": dict.fromkeys(MODELS, "derived"),
         "param_layers": dict.fromkeys(MODELS, "derived"),
@@ -299,7 +307,7 @@ CORE_CELLS = {
         "mort_table_dict": dict.fromkeys(MODELS, "derived"),
         "lapse_table_dict": dict.fromkeys(MODELS, "derived"),
         "rentenfaktor_table_dict": dict.fromkeys(MODELS, "derived"),
-        "freq_loading_table_dict": dict.fromkeys(MODELS, "derived"),
+        "prem_freq_table_dict": dict.fromkeys(MODELS, "derived"),
         "surplus_table_dict": dict.fromkeys(MODELS, "derived"),
         "charge_table_dict": dict.fromkeys(MODELS, "derived"),
         "hoechstrechnungszins_table_dict": dict.fromkeys(MODELS, "derived"),
@@ -326,23 +334,38 @@ CORE_CELLS = {
                         "riester_rente": "derived"},
         "karenz_months": {"berufsunfaehigkeit": "derived",
                           "pflegerentenversicherung": "derived"},
-        "prem_freq": {"basisrente": "override",
+        "prem_freq": {"basisrente": "derived",
                       "berufsunfaehigkeit": "derived",
+                      "fondsgebundene_rentenversicherung": "derived",
                       "indexpolice": "derived",
                       "kapitallebensversicherung": "derived",
                       "klassische_rentenversicherung": "derived",
-                      "pflegerentenversicherung": "override",
+                      "pflegerentenversicherung": "derived",
                       "riester_rente": "derived",
                       "risikolebensversicherung": "derived"},
-        "prem_freq_load": {"basisrente": "override",
+        "prem_freq_load": {"basisrente": "derived",
                            "berufsunfaehigkeit": "derived",
                            "indexpolice": "derived",
                            "kapitallebensversicherung": "override",
                            "klassische_rentenversicherung": "derived",
                            "riester_rente": "derived",
                            "risikolebensversicherung": "derived"},
-        "instalments": {"kapitallebensversicherung": "derived",
+        "instalments": {"berufsunfaehigkeit": "derived",
+                        "fondsgebundene_rentenversicherung": "derived",
+                        "kapitallebensversicherung": "derived",
+                        "pflegerentenversicherung": "derived",
                         "risikolebensversicherung": "derived"},
+        "prem_form": {"basisrente": "derived",
+                      "fondsgebundene_rentenversicherung": "derived",
+                      "indexpolice": "derived",
+                      "klassische_rentenversicherung": "derived",
+                      "pflegerentenversicherung": "derived",
+                      "risikolebensversicherung": "override"},
+        "prem_cycle": {"berufsunfaehigkeit": "derived",
+                       "fondsgebundene_rentenversicherung": "derived",
+                       "kapitallebensversicherung": "derived",
+                       "pflegerentenversicherung": "derived",
+                       "risikolebensversicherung": "derived"},
         "issue_age": {**dict.fromkeys(MODELS, "derived"), "sofortrente": "override"},
         "sex": {"berufsunfaehigkeit": "derived",
                 "fondsgebundene_rentenversicherung": "derived",
@@ -534,7 +557,9 @@ CORE_CELLS = {
         "disc_factor": {"kapitallebensversicherung": "derived",
                         "risikolebensversicherung": "derived"},
         "unisex_mix_male": {"kapitallebensversicherung": "derived",
-                            "pflegerentenversicherung": "derived"},
+                            "pflegerentenversicherung": "derived",
+                            "risikolebensversicherung": "derived",
+                            "sofortrente": "derived"},
         "unisex_blend": {"kapitallebensversicherung": "derived",
                          "pflegerentenversicherung": "derived"},
         "mort_load_tariff": {"fondsgebundene_rentenversicherung": "derived",
@@ -1047,13 +1072,37 @@ def upstream_table(product: str, name: str, **read_csv) -> pd.DataFrame:
     return pd.read_csv(io.BytesIO(data), **read_csv)
 
 
-def test_pflege_param_table_holds_the_two_merged_tables(product_models):
+def tariff_type_table(product):
+    """The product's ``param_tariff_type.csv`` as pandas reads it, by ``item``."""
+    return pd.read_csv(PRODUCTS_DIR / product / "param_tariff_type.csv", index_col="item")
+
+
+# Pflege's items renamed after the merge (docs/core.md, "Parameter names"): upstream name ->
+# current name. ``acq_permille`` 25 (per mille) is the fraction ``load_acq_bsum_once`` 0.025.
+PFLEGE_RENAMED = {
+    "acq_permille": "load_acq_bsum_once",
+    "inc_margin": "inc_load_first",
+    "det_margin": "det_load_first",
+    "rec_margin": "recov_load_first",
+    "care_mort_margin": "mort_care_load_first",
+    "act_mort_margin": "mort_actv_load_first",
+    "admin_prem_pct": "load_admin_prem_inst",
+    "admin_mth_pp": "load_admin_pp_mth",
+    "claim_expense_pp": "load_claim_pp_inst",
+}
+
+
+def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     product = "pflegerentenversicherung"
     model = product_models(product)
-    assert model.Data.param_table._is_derived()
-    merged = model.Data.param_table()
+    merged = tariff_type_table(product)
     basis = upstream_table(product, "basis_table.csv", index_col="param")
     expense = upstream_table(product, "expense_table.csv", index_col="item")
+    basis = basis.rename(index=PFLEGE_RENAMED)
+    expense = expense.rename(index=PFLEGE_RENAMED)
+    assert expense.at["load_acq_bsum_once", "unit"] == "permille_of_beitragssumme"
+    expense.at["load_acq_bsum_once", "value"] /= 1000.0
+    expense.at["load_acq_bsum_once", "unit"] = "fraction_of_beitragssumme"
     # The Rechnungszins moved from the table to the model point (a contract attribute).
     moved = ["rechnungszins"]
     points = model.Data.model_point_table()
@@ -1286,12 +1335,12 @@ def test_bu_mort_rate_is_its_table_rate_at_the_neutral_factor(product_models):
             assert item.mort_rate(t) == item.mort_rate_at_age(item.age(t)), (point_id, t)
 
 
-def test_klv_mort_rate_steps_its_table_by_the_factor_from_param_table(product_models):
+def test_klv_mort_rate_steps_its_table_by_the_factor_from_its_tariff_type_file(product_models):
     model = product_models("kapitallebensversicherung")
     projection = model.Projection
     assert projection.mort_rate._is_derived()
     assert projection.mort_be_factor._is_defined()
-    assert model.Data.param_table().at["mort_be_factor", "value"] == 0.75
+    assert model.Data.param("mort_be_factor") == 0.75
     item = projection[model.Data.model_point_table().index[0]]
     assert item.mort_be_factor() == 0.75
     for t in range(item.proj_len()):
@@ -1594,7 +1643,7 @@ ROLL_FWD_TOL = {
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
-def test_roll_fwd_tol_is_read_from_param_table(product, product_models):
+def test_roll_fwd_tol_is_read_from_its_tariff_type_file(product, product_models):
     model = product_models(product)
     projection = model.Projection
     assert projection.roll_fwd_tol._is_derived()
@@ -1626,39 +1675,35 @@ def test_param_reads_the_tariff_type_layer(product_models):
     assert data.param_core_path().is_file()
     for item in ("roll_fwd_tol", "expense_infl"):
         value = data.param(item)
-        assert type(value) is float and value == data.param_table_dict()["value"][item], item
+        assert type(value) is float and value == tariff_type_table(
+            "risikolebensversicherung").at[item, "value"], item
 
 
-PARAM_TABLE_DICT_RE = re.compile(r"(?<!\w)param_table_dict\(")
-PARAM_TABLE_DICT_DEF = "def param_table_dict():"
+PARAM_TABLE_RE = re.compile(r"(?<!\w)param_table(_dict)?\(")
 
 
-def test_no_param_table_dict_read_remains():
-    """Every parameter is read through ``param("<item>")``; no source reads the old path.
-
-    The only ``param_table_dict(`` left is its definition in the core's ``Data``.
-    """
+def test_no_param_table_reader_remains(product_models):
+    """Every parameter is read through ``param("<item>")``; the core's former readers
+    ``param_table()`` and ``param_table_dict()`` are gone, and no source names them."""
+    data = product_models("risikolebensversicherung").Data
+    assert "param_table" not in data.cells and "param_table_dict" not in data.cells
     sources = sorted(p for folder in (CORE_DIR, PRODUCTS_DIR) for p in folder.rglob("*.py")
                      if "__pycache__" not in p.parts)
     assert sources
-    core_data = CORE_MODEL / "Data" / "__init__.py"
     hits = []
     for path in sources:
         text = path.read_text(encoding="utf-8")
-        for match in PARAM_TABLE_DICT_RE.finditer(text):
-            line = text[text.rfind("\n", 0, match.start()) + 1:text.find("\n", match.end())]
-            if path.resolve() == core_data.resolve() and line == PARAM_TABLE_DICT_DEF:
-                continue
+        for match in PARAM_TABLE_RE.finditer(text):
             number = text.count("\n", 0, match.start()) + 1
             hits.append(f"{path.relative_to(ROOT)}:{number}")
     assert not hits, hits
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
-def test_param_equals_the_param_table_dict_value(product, product_models):
-    """``param(item)`` is the value ``param_table_dict()`` held for every item of the file."""
+def test_param_equals_the_file_value(product, product_models):
+    """``param(item)`` is the value pandas reads for every item of the tariff-type file."""
     data = product_models(product).Data
-    values = data.param_table_dict()["value"]
+    values = tariff_type_table(product)["value"].to_dict()
     assert values
     for item, value in values.items():
         assert data.param(item) == value, item
@@ -1667,18 +1712,32 @@ def test_param_equals_the_param_table_dict_value(product, product_models):
 @pytest.mark.parametrize("product, omega", [("klassische_rentenversicherung", 121),
                                              ("pflegerentenversicherung", 110),
                                              ("sofortrente", 121)])
-def test_omega_age_is_an_int_from_int_or_float_text(product, omega, product_models):
-    """``omega_age()`` is ``int`` whether the file writes ``121`` (an ``int`` from ``param``)
-    or Pflege's ``110.0`` (a ``float``); so is Pflege's ``beitragssumme_cap_age`` (``85.0``)."""
+def test_omega_age_is_an_int(product, omega, product_models):
+    """Every file writes ``omega_age`` as an integer, so ``param`` gives an ``int``; so does
+    Pflege's ``beitragssumme_cap_age`` (``85``)."""
     model = product_models(product)
-    text = {"klassische_rentenversicherung": int, "sofortrente": int,
-            "pflegerentenversicherung": float}[product]
-    assert type(model.Data.param("omega_age")) is text
+    assert type(model.Data.param("omega_age")) is int
     item = model.Projection[model.Data.model_point_table().index[0]]
     assert item.omega_age() == omega and type(item.omega_age()) is int
     if product == "pflegerentenversicherung":
-        assert model.Data.param("beitragssumme_cap_age") == 85.0
+        assert model.Data.param("beitragssumme_cap_age") == 85
+        assert type(model.Data.param("beitragssumme_cap_age")) is int
         assert type(item.beitragssumme_years()) is int
+
+
+def test_an_item_of_several_files_has_one_type():
+    """An item named in several parameter files is one quantity: every file writes its
+    value as the same type, an integer literal everywhere or a decimal one everywhere."""
+    files = sorted(PRODUCTS_DIR.glob("*/param_tariff_type.csv"))
+    files.append(CORE_MODEL / "Data" / "param_core.csv")
+    types = {}
+    for path in files:
+        for item, text in pd.read_csv(path, dtype=str, keep_default_na=False)[
+                ["item", "value"]].itertuples(index=False):
+            kind = "int" if text.strip().lstrip("+-").isdigit() else "float"
+            types.setdefault(item, {}).setdefault(kind, []).append(path.parent.name)
+    mixed = {item: kinds for item, kinds in types.items() if len(kinds) > 1}
+    assert not mixed, mixed
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
@@ -1698,13 +1757,17 @@ def test_rlv_claim_expense_is_a_tariff_type_row(product_models):
     model = product_models("risikolebensversicherung")
     data = model.Data
     assert data.param_file == "param_tariff_type.csv"
-    value = data.param("claim_expense")
+    value = data.param("expense_claim_pp_once")
     assert type(value) is float and value == 250.0
     assert "claim_expense" not in model.Projection.refs
+    assert "expense_claim_pp_once" not in model.Projection.refs
     item = model.Projection[model.Data.model_point_table().index[0]]
     for t in range(item.t_start(), item.t_start() + 24):
         assert item.expenses_claim(t) == 250.0 * item.pols_death(t), t
 
+
+# The moved References and literals below are keyed by their current item names, which may
+# differ from the References' names (docs/core.md, "Parameter names").
 
 # The 32 numeric References Riester's ``Projection`` held, as their former Python literals.
 RIESTER_MOVED_REFERENCES = {
@@ -1717,44 +1780,45 @@ RIESTER_MOVED_REFERENCES = {
     "foerder_ceiling": 2100.0,
     "sockelbeitrag": 60.0,
     "zulage_lag": 1,
-    "acq_charge_rate": 0.025,
-    "acq_charge_years": 5,
-    "admin_charge_prem_rate": 0.04,
-    "admin_charge_fixed": 12.0,
+    "charge_acq_bsum_once": 0.025,
+    "acq_spread_years": 5,
+    "charge_admin_prem_inst": 0.04,
+    "charge_admin_pp_ann": 12.0,
     "guar_carve_out_cap": 0.2,
     "slueb_rate": 0.02,
-    "bewres_rate": 0.01,
+    "bwr_rate": 0.01,
     "teilkapital_cap": 0.3,
     "kleinbetrag_threshold_mth": 39.55,
     "rentenfaktor_margin": 0.3,
     "annuity_rechnungszins": 0.01,
     "woolhouse": 0.4583333333333333,
     "annuity_mort_be_factor": 1.15,
-    "annuity_base_year": 2027,
+    "mort_base_year": 2027,
     "stornoabzug_rate": 0.02,
-    "transfer_charge": 50.0,
-    "expense_maint": 30.0,
-    "expense_annuity": 24.0,
-    "expense_claim": 80.0,
-    "expense_acq": 150.0,
-    "expense_acq_rate": 0.02,
-    "comm_rate_init": 0.025,
-    "comm_rate_renew": 0.015,
+    "charge_transfer_pp_once": 50.0,
+    "expense_admin_pp_ann": 30.0,
+    "expense_annuity_pp_ann": 24.0,
+    "expense_claim_pp_once": 80.0,
+    "expense_acq_pp_once": 150.0,
+    "expense_acq_bsum_once": 0.02,
+    "comm_acq_bsum_once": 0.025,
+    "comm_renew_prem_inst": 0.015,
 }
 
-# The 17 numeric References RLV's ``Projection`` held, as their former Python literals.
+# The 17 numeric References RLV's ``Projection`` held, as their former Python literals; the
+# *Sicherheitszuschlag* ``sicherheitszuschlag_m`` 1.25 is the factor ``mort_load_first``, 1 + m.
 RLV_MOVED_REFERENCES = {
-    "sicherheitszuschlag_m": 1.25,
-    "sex_mix_male": 0.5,
+    "mort_load_first": 1.0 + 1.25,
+    "unisex_mix_male": 0.5,
     "surplus_share": 0.9,
     "decl_scale": 1.0,
     "v_max": 0.95,
-    "zillmer_rate": 0.025,
-    "comm_rate_init": 0.02,
-    "beta_tariff": 0.05,
-    "gamma_rate": 0.0003,
-    "maint_prem_pct": 0.03,
-    "comm_rate_renew": 0.01,
+    "load_acq_bsum_once": 0.025,
+    "comm_acq_bsum_once": 0.02,
+    "load_admin_prem_inst": 0.05,
+    "load_admin_sum_ann": 0.0003,
+    "expense_collect_prem_inst": 0.03,
+    "comm_renew_prem_inst": 0.01,
     "suicide_share": 0.03,
     "suicide_years": 3,
     "shock_lapse_lambda": 0.0,
@@ -1779,11 +1843,11 @@ BU_MOVED_REFERENCES = {
     "recov_load_first": 0.7,
     "mort_dis_load_first": 0.8,
     "mort_actv_load_first": 0.8,
-    "acq_rate": 0.025,
-    "admin_prem_rate": 0.09,
-    "admin_flat_ann": 18.0,
-    "claim_assess_cost": 800.0,
-    "claim_maint_cost_mth": 12.0,
+    "load_acq_bsum_once": 0.025,
+    "load_admin_prem_inst": 0.09,
+    "load_admin_pp_ann": 18.0,
+    "load_claim_assess_pp_once": 800.0,
+    "load_claim_admin_pp_mth": 12.0,
     "runoff_months": 3,
 }
 
@@ -1793,66 +1857,64 @@ FRV_MOVED_REFERENCES = {
     "lapse_dyn_beta": 0.0,
     "mmkt_return_ann": 0.015,
     "glide_months": 60,
-    "comm_acq_rate": 0.025,
-    "expense_issue": 200.0,
-    "expense_maint_mth": 4.0,
-    "comm_renew_rate": 0.015,
-    "expense_claim": 150.0,
-    "expense_surr": 50.0,
-    "expense_annuitisation": 100.0,
+    "comm_acq_bsum_once": 0.025,
+    "expense_acq_pp_once": 200.0,
+    "expense_admin_pp_mth": 4.0,
+    "comm_renew_prem_inst": 0.015,
+    "expense_claim_pp_once": 150.0,
+    "expense_surr_pp_once": 50.0,
+    "expense_conv_pp_once": 100.0,
     "val_tol": 1e-10,
 }
 
-# The 5 actuarial literals FRV's formulas held (``lapse_tax_step``, ``irr_ann``), as written there.
+# The 3 actuarial literals FRV's formulas held (``lapse_tax_step``), as written there.
 FRV_MOVED_LITERALS = {
     "tax_step_min_year": 13,
     "tax_step_age": 62,
     "tax_step_factor": 2.5,
-    "irr_lo": -0.99,
-    "irr_hi": 5.0,
 }
 
 # The actuarial literal Index' formulas held (``prem_charge_acq_min_pp``), as written there.
 INDEX_MOVED_LITERALS = {"surr_spread_years": 5}
 
-# The actuarial literals KLV's formulas held (``res_min_pp``, ``benefit_death_pp``), as written.
-KLV_MOVED_LITERALS = {"surr_spread_years": 5.0, "suicide_years": 3}
+# The actuarial literals KLV's formulas held (``res_min_pp``, ``benefit_death_pp``), as rows.
+# ``surr_spread_years`` was ``5.0`` there; its row is ``5``, an ``int`` as Index' row.
+KLV_MOVED_LITERALS = {"surr_spread_years": 5, "suicide_years": 3}
 
 # The 5 numeric References Basis' ``Projection`` held, as their former Python literals.
 BASIS_MOVED_REFERENCES = {
     "elig_surv_prob": 0.55,
     "mort_base_year": 2005,
-    "zill_spread_y": 5,
+    "acq_spread_years": 5,
     "rf_unit": 10000.0,
     "ann_freq": 12,
 }
 
 # The 10 numeric References Index' ``Projection`` held, as their former Python literals.
 INDEX_MOVED_REFERENCES = {
-    "acq_cost_rate": 0.025,
-    "acq_expense_rate": 0.025,
-    "zill_years": 5,
-    "zill_cap_rate": 0.025,
-    "exp_prem_rate": 0.03,
-    "exp_av_rate": 0.0025,
-    "exp_fixed_pp": 36.0,
-    "storno_rate": 0.02,
+    "charge_acq_bsum_once": 0.025,
+    "expense_acq_bsum_once": 0.025,
+    "acq_spread_years": 5,
+    "zillmer_cap_bsum": 0.025,
+    "charge_admin_prem_inst": 0.03,
+    "charge_admin_av_ann": 0.0025,
+    "expense_admin_pp_ann": 36.0,
+    "stornoabzug_rate": 0.02,
     "rentenfaktor_guar": 25.0,
     "rentenfaktor_curr": 25.0,
 }
 
-# The 10 numeric References Sofort's ``Projection`` held, as their former Python literals.
+# 8 of the 10 numeric References Sofort's ``Projection`` held, as their former Python literals;
+# the other 2, ``solve_tol`` 1e-10 and ``solve_max_iter`` 200, are literals of ``annuity_pp_derived``.
 SOFORT_MOVED_REFERENCES = {
-    "expense_load_alpha": 0.025,
-    "expense_load_beta": 0.02,
-    "expense_acq_rate": 0.02,
-    "expense_acq_fixed": 200.0,
-    "expense_maint_pp": 60.0,
-    "expense_pay_pp": 1.5,
-    "mix_male": 0.45,
+    "load_acq_sp_once": 0.025,
+    "load_admin_annval_once": 0.02,
+    "expense_acq_sp_once": 0.02,
+    "expense_acq_pp_once": 200.0,
+    "expense_admin_pp_ann": 60.0,
+    "expense_pay_pp_inst": 1.5,
+    "unisex_mix_male": 0.45,
     "mort_base_year": 2025,
-    "solve_tol": 1e-10,
-    "solve_max_iter": 200,
 }
 
 # The products whose numeric References have all moved into their parameter files: all ten,
@@ -1882,6 +1944,7 @@ def test_rlv_references_are_tariff_type_rows(product_models):
     data = model.Data
     layer = data.param_layers()["tariff_type"]
     assert len(RLV_MOVED_REFERENCES) == 17
+    assert "sicherheitszuschlag_m" not in model.Projection.refs
     for item, literal in RLV_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
@@ -1928,7 +1991,7 @@ def test_frv_references_are_tariff_type_rows(product_models):
 def test_frv_literals_are_tariff_type_rows(product_models):
     data = product_models("fondsgebundene_rentenversicherung").Data
     layer = data.param_layers()["tariff_type"]
-    assert len(FRV_MOVED_LITERALS) == 5
+    assert len(FRV_MOVED_LITERALS) == 3
     for item, literal in FRV_MOVED_LITERALS.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
@@ -1950,6 +2013,28 @@ def test_klv_literals_are_tariff_type_rows(product_models):
     layer = data.param_layers()["tariff_type"]
     assert len(KLV_MOVED_LITERALS) == 2
     for item, literal in KLV_MOVED_LITERALS.items():
+        value = data.param(item)
+        assert type(value) is type(literal) and value == literal, item
+        assert item in layer, item
+
+
+# The units and annuity frequencies that are rows rather than literals: product -> item ->
+# value. Basis' were References; the others were literals in formulas. One quantity has one
+# item name and one type in every product.
+UNIT_AND_FREQUENCY_ROWS = {
+    "basisrente": {"rf_unit": 10000.0, "ann_freq": 12},
+    "fondsgebundene_rentenversicherung": {"rf_unit": 10000.0},
+    "indexpolice": {"rf_unit": 10000.0},
+    "klassische_rentenversicherung": {"rf_unit": 10000.0},
+    "riester_rente": {"rf_unit": 10000.0, "ann_freq": 12},
+}
+
+
+@pytest.mark.parametrize("product", sorted(UNIT_AND_FREQUENCY_ROWS))
+def test_units_and_frequencies_are_tariff_type_rows(product, product_models):
+    data = product_models(product).Data
+    layer = data.param_layers()["tariff_type"]
+    for item, literal in UNIT_AND_FREQUENCY_ROWS[product].items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
         assert item in layer, item
@@ -1983,7 +2068,7 @@ def test_sofort_references_are_tariff_type_rows(product_models):
     model = product_models("sofortrente")
     data = model.Data
     layer = data.param_layers()["tariff_type"]
-    assert len(SOFORT_MOVED_REFERENCES) == 10
+    assert len(SOFORT_MOVED_REFERENCES) == 8
     for item, literal in SOFORT_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
@@ -2019,15 +2104,15 @@ def test_pflege_guards_read_the_core_epsilon():
 STRUCTURAL_LITERALS = {
     "core": {"11", "12", "12.0"},
     "basisrente": {"12", "12.0"},
-    "berufsunfaehigkeit": {"2", "10", "11", "12", "12.0"},
-    "fondsgebundene_rentenversicherung": {"0.5", "3", "6", "12", "12.0", "200", "10000.0"},
-    "indexpolice": {"11", "12", "12.0", "13", "10000.0"},
+    "berufsunfaehigkeit": {"2", "12", "12.0"},
+    "fondsgebundene_rentenversicherung": {"0.5", "0.99", "5.0", "12", "12.0", "200"},
+    "indexpolice": {"11", "12", "12.0", "13"},
     "kapitallebensversicherung": {"11", "12", "12.0"},
-    "klassische_rentenversicherung": {"2", "12", "12.0", "10000.0"},
-    "pflegerentenversicherung": {"2", "3", "4", "5", "6", "12", "12.0", "40", "1000.0"},
-    "riester_rente": {"12", "12.0", "10000.0"},
+    "klassische_rentenversicherung": {"2", "12", "12.0"},
+    "pflegerentenversicherung": {"2", "3", "4", "5", "12", "12.0"},
+    "riester_rente": {"12", "12.0"},
     "risikolebensversicherung": {"2", "12", "12.0"},
-    "sofortrente": {"0.5", "2", "4", "12", "12.0"},
+    "sofortrente": {"0.5", "1e-10", "2", "12", "12.0", "200"},
 }
 
 
@@ -2280,7 +2365,7 @@ def test_the_usage_scan_counts_a_core_cell_only_where_it_is_reachable(product_mo
     assert "expense_infl" in pflege.reads["expense_infl"]
     rlv = param_usage.scan(product_models("risikolebensversicherung"))
     assert "omega_age" not in rlv.reachable and "omega_age" not in rlv.reads
-    assert "expenses_claim" in rlv.reads["claim_expense"]
+    assert "expenses_claim" in rlv.reads["expense_claim_pp_once"]
 
 
 def test_the_usage_scan_reports_an_unused_item_in_each_product_layer(tmp_path):
@@ -2304,7 +2389,7 @@ def test_the_usage_scan_reports_a_call_to_a_missing_item(tmp_path):
     def edit(folder):
         table = folder / "param_tariff_type.csv"
         params = pd.read_csv(table, dtype=str, keep_default_na=False, index_col="item")
-        params.drop(index="claim_expense").to_csv(table)
+        params.drop(index="expense_claim_pp_once").to_csv(table)
 
     copy = _usage_copy(tmp_path, "MissingProbe", edit)
     try:
@@ -2312,7 +2397,7 @@ def test_the_usage_scan_reports_a_call_to_a_missing_item(tmp_path):
     finally:
         copy.close()
     assert len(problems) == 1, problems
-    assert "'claim_expense'" in problems[0] and "expenses_claim" in problems[0]
+    assert "'expense_claim_pp_once'" in problems[0] and "expenses_claim" in problems[0]
     assert "no layer" in problems[0]
 
 
@@ -2375,8 +2460,7 @@ def test_the_usage_scan_reports_a_declared_cell_that_does_not_exist(tmp_path):
     assert "probe_nowhere" in problems[0] and "no cell" in problems[0]
 
 
-@pytest.mark.parametrize("reader", ["param_dict", "param_layers", "param_table",
-                                    "param_table_dict"])
+@pytest.mark.parametrize("reader", ["param_dict", "param_layers"])
 def test_the_usage_scan_reports_a_read_around_param(tmp_path, reader):
     copy = _usage_copy(tmp_path, "BypassProbe")
     try:
@@ -2571,11 +2655,10 @@ def test_pflege_inflation_factor_compounds_continuously(product_models):
 # The core's dict cells: reader -> the file Reference whose presence says a product has it.
 DICT_READERS = {
     "model_point_table": "model_point_file",
-    "param_table": "param_file",
     "mort_table": "mort_file",
     "lapse_table": "lapse_file",
     "rentenfaktor_table": "rentenfaktor_file",
-    "freq_loading_table": "freq_loading_file",
+    "prem_freq_table": "prem_freq_file",
     "surplus_table": "surplus_file",
     "charge_table": "charge_file",
     "hoechstrechnungszins_table": "hoechstrechnungszins_file",
@@ -2590,7 +2673,7 @@ def same_value(a, b) -> bool:
 def test_every_dict_cell_equals_its_reader(product, product_models):
     data = product_models(product).Data
     readers = [r for r, ref in DICT_READERS.items() if ref in data.refs]
-    assert "model_point_table" in readers and "param_table" in readers
+    assert "model_point_table" in readers
     for reader in readers:
         df = data.cells[reader]()
         table = data.cells[reader + "_dict"]()
@@ -2647,16 +2730,16 @@ def test_frv_charge_row_is_read_only(product_models):
     assert shared == before and dict(row) == before
 
 
-def test_a_prem_freq_without_a_loading_raises(tmp_path):
+def test_a_prem_freq_outside_the_table_raises(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     table = folder / "model_point_table.csv"
     points = pd.read_csv(table, index_col="point_id")
     point_id = points.index[0]
-    points.loc[point_id, "prem_freq"] = "woechentlich"
+    points.loc[point_id, "prem_freq"] = "weekly"
     points.to_csv(table)
     copy = mx.read_model(folder / MODELS["risikolebensversicherung"], name="FreqProbe")
     try:
-        message = "no frequency loading for prem_freq woechentlich"
+        message = "invalid prem_freq weekly"
         with pytest.raises(Exception, match=message) as raised:
             copy.Projection[point_id].prem_freq()
         assert raised_value_error(raised, message)
@@ -2727,6 +2810,51 @@ def test_pflege_product_dict_cells_equal_their_readers(product_models):
             assert list(values) == list(df.index), (reader, column)
             for key in df.index:
                 assert same_value(values[key], df.at[key, column]), (reader, key, column)
+
+
+def test_pflege_grade_count_is_read_from_the_care_table(product_models):
+    """Pflege's number of care grades is the rows of ``care_table.csv``, and no formula
+    holds it as ``range(1, 6)``, ``(0.0,) * 5``, ``g < 5`` or ``min(5, ...)``."""
+    data = product_models("pflegerentenversicherung").Data
+    table = data.care_table()
+    count = data.pflegegrad_count()
+    assert type(count) is int and count == len(table) == 5
+    assert list(table.index) == list(range(1, count + 1))
+    path = PRODUCTS_DIR / "pflegerentenversicherung" / MODELS["pflegerentenversicherung"]
+    text = (path / "Projection" / "__init__.py").read_text(encoding="utf-8")
+    for literal in ("range(1, 6)", "(0.0,) * 5", "g < 5", "min(5, "):
+        assert literal not in text, literal
+    columns = [label for label, _ in
+               product_models("pflegerentenversicherung").Projection[1].result_states_columns()]
+    assert columns[:count] == ["pols_pg%d" % g for g in range(1, count + 1)]
+    assert "mort_rate_care_pg%d" % count in columns
+
+
+def test_pflege_surrender_cap_is_read_from_the_surrender_table(tmp_path, product_models):
+    """The policy-year cap of ``rkw_pp`` is the table's last row, so a 41st row is read too."""
+    data = product_models("pflegerentenversicherung").Data
+    table = data.surrender_table()
+    last = data.surrender_table_last_year()
+    assert type(last) is int and last == int(table.index.max()) == len(table) == 40
+    folder = product_copy(tmp_path, "pflegerentenversicherung")
+    path = folder / "surrender_table.csv"
+    path.write_text(path.read_text(encoding="utf-8") + '41,0.900000,"[std] test fixture"\n',
+                    encoding="utf-8")
+    copy = mx.read_model(folder / MODELS["pflegerentenversicherung"], name="SurrenderProbe")
+    try:
+        assert copy.Data.surrender_table_last_year() == 41
+        checked = 0
+        for point_id in copy.Data.model_point_table().index:
+            item = copy.Projection[point_id]
+            for t in range(item.t_start(), item.proj_len()):
+                if item.policy_year(t) < 41 or item.cum_prem_max_pp(t) <= 0.0:
+                    continue
+                expected = 0.9 * item.cum_prem_max_pp(t) * (1.0 - item.stornoabzug_rate())
+                assert item.rkw_pp(t) == expected, (point_id, t)
+                checked += 1
+        assert checked
+    finally:
+        copy.close()
 
 
 # Pflege's care-grade rates keyed by attained age (and grade), not by month: cell -> whether
@@ -2864,15 +2992,15 @@ def test_pflege_tariff_deterioration_is_zero_at_grade_5(product_models):
     assert item.tar_det_rate(1) == min(1.0 - 1e-12, 1.15 * item.det_rate(1))
 
 
-def test_pflege_rec_margin_without_its_row_raises_key_error(tmp_path):
+def test_pflege_recov_load_first_without_its_row_raises_key_error(tmp_path):
     folder = product_copy(tmp_path, "pflegerentenversicherung")
     table = folder / "param_tariff_type.csv"
     params = pd.read_csv(table, index_col="item")
-    params.drop(index="rec_margin").to_csv(table)
+    params.drop(index="recov_load_first").to_csv(table)
     copy = mx.read_model(folder / MODELS["pflegerentenversicherung"], name="RecProbe")
     try:
         point_id = copy.Data.model_point_table().index[0]
-        with pytest.raises(Exception, match="rec_margin") as raised:
+        with pytest.raises(Exception, match="recov_load_first") as raised:
             copy.Projection[point_id].tar_rec_rate(60, 1)
         assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
     finally:
@@ -3056,7 +3184,7 @@ def test_klv_surplus_rates_and_stornoabzug_hold_their_last_policy_year(product_m
 
 def test_klv_echt_instalments_carry_no_loading(product_models):
     model = product_models("kapitallebensversicherung")
-    loading = model.Data.freq_loading_table()
+    loading = model.Data.prem_freq_table()
     unecht, echt = model.Projection[4], model.Projection[5]
     assert (unecht.prem_freq(), echt.prem_freq()) == ("monthly", "monthly")
     assert (unecht.unterjaehrig_form(), echt.unterjaehrig_form()) == ("unecht", "echt")
@@ -3190,18 +3318,193 @@ def test_basis_unknown_surplus_scenario_raises_key_error(tmp_path):
 
 def test_basis_single_premium_reads_no_loading(tmp_path):
     folder = product_copy(tmp_path, "basisrente")
-    table = folder / "option_table.csv"
-    options = pd.read_csv(table, index_col=["option_id", "option_key"])
-    options.drop(index="prem_mode", level="option_id").to_csv(table)
+    table = folder / "prem_freq_table.csv"
+    table.write_text(table.read_text(encoding="utf-8").splitlines()[0] + "\n", encoding="utf-8")
     copy = mx.read_model(folder / MODELS["basisrente"], name="LoadProbe")
     try:
         points = copy.Data.model_point_table()
         single = points.index[points["prem_form"] == "single"][0]
         regular = points.index[points["prem_form"] == "regular"][0]
         assert copy.Projection[single].prem_freq_load() == 1.0
-        with pytest.raises(Exception, match="prem_mode") as raised:
+        message = "invalid prem_freq " + str(points.at[regular, "prem_freq"])
+        with pytest.raises(Exception, match=message) as raised:
             copy.Projection[regular].prem_freq_load()
-        assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
+        assert raised_value_error(raised, message)
+    finally:
+        copy.close()
+
+
+# The premium payment frequencies, one name and one table in every product with a regular
+# premium: key -> instalments a year.
+PREM_FREQ_INSTALMENTS = {"annual": 1, "half_yearly": 2, "quarterly": 4, "monthly": 12}
+PREM_FREQ_PRODUCTS = sorted(["basisrente", "berufsunfaehigkeit",
+                             "fondsgebundene_rentenversicherung", "indexpolice",
+                             "kapitallebensversicherung", "klassische_rentenversicherung",
+                             "pflegerentenversicherung", "riester_rente",
+                             "risikolebensversicherung"])
+
+
+def test_the_products_with_a_premium_frequency_table_are_listed(product_models):
+    having = [product for product in sorted(MODELS)
+              if "prem_freq_file" in product_models(product).Data.refs]
+    assert having == PREM_FREQ_PRODUCTS
+
+
+@pytest.mark.parametrize("product", PREM_FREQ_PRODUCTS)
+def test_premium_frequencies_are_one_table_with_instalments(product, product_models):
+    """``prem_freq_table.csv`` keyed by ``prem_freq``, its ``instalments`` an ``int`` a year,
+    and every model point's ``prem_freq`` one of its keys."""
+    model = product_models(product)
+    data = model.Data
+    assert data.prem_freq_file == "prem_freq_table.csv"
+    table = data.prem_freq_table()
+    assert table.index.name == "prem_freq"
+    assert set(table.index) <= set(PREM_FREQ_INSTALMENTS)
+    assert table.columns[0] == "instalments" and table.columns[-1] == "provenance"
+    assert set(table.columns) <= {"instalments", "prem_freq_load", "provenance"}
+    instalments = data.prem_freq_table_dict()["instalments"]
+    assert all(type(n) is int for n in instalments.values())
+    assert instalments == {key: PREM_FREQ_INSTALMENTS[key] for key in table.index}
+    points = data.model_point_table()
+    assert not {"prem_mode", "prem_mode_months"} & set(points.columns)
+    assert set(points["prem_freq"]) <= set(table.index)
+    for point_id in points.index:
+        item = model.Projection[point_id]
+        assert type(item.instalments()) is int
+        assert item.prem_cycle() == 12 // PREM_FREQ_INSTALMENTS[points.at[point_id, "prem_freq"]]
+
+
+# The products with a single and a regular premium form, one model-point column prem_form.
+PREM_FORM_PRODUCTS = sorted(["basisrente", "fondsgebundene_rentenversicherung", "indexpolice",
+                             "klassische_rentenversicherung", "pflegerentenversicherung",
+                             "risikolebensversicherung"])
+
+
+def test_the_premium_form_is_one_column_with_two_values(product_models):
+    """``prem_form`` is ``regular`` or ``single`` wherever a product has the column, the core's
+    ``prem_form()`` reads it, and no ``premium_form`` of that meaning is left (BU's
+    ``premium_form``, *Dynamik* or level, is another quantity)."""
+    having = []
+    for product in sorted(MODELS):
+        model = product_models(product)
+        points = model.Data.model_point_table()
+        if "prem_form" not in points.columns:
+            continue
+        having.append(product)
+        assert set(points["prem_form"]) == {"regular", "single"}, product
+        for point_id in points.index:
+            assert model.Projection[point_id].prem_form() == points.at[point_id, "prem_form"]
+        assert "premium_form" not in points.columns, product
+    assert having == PREM_FORM_PRODUCTS
+    bu = product_models("berufsunfaehigkeit").Data.model_point_table()
+    assert set(bu["premium_form"]) == {"dynamik", "level"}
+
+
+def test_an_unknown_premium_form_raises(tmp_path):
+    folder = product_copy(tmp_path, "indexpolice")
+    table = folder / "model_point_table.csv"
+    points = pd.read_csv(table, index_col="point_id")
+    point_id = points.index[0]
+    points.loc[point_id, "prem_form"] = "level"
+    points.to_csv(table)
+    copy = mx.read_model(folder / MODELS["indexpolice"], name="FormProbe")
+    try:
+        message = "invalid prem_form"
+        with pytest.raises(Exception, match=message) as raised:
+            copy.Projection[point_id].prem_form()
+        assert raised_value_error(raised, message)
+    finally:
+        copy.close()
+
+
+# The payment frequencies a product allows, a table of its own: product -> (keys cell, keys).
+FREQUENCY_KEYS = {
+    "sofortrente": ("ann_freq_table_keys", frozenset({1, 2, 4, 12})),
+}
+
+# A frequency the shipped table lacks: product -> (table file, model-point column, value,
+# row that admits it, cell that checks it, its error message, the cell's value once admitted).
+FREQUENCY_PROBES = {
+    "fondsgebundene_rentenversicherung": (
+        "prem_freq_table.csv", "prem_freq", "bimonthly", 'bimonthly,6,"[std] test fixture"',
+        "prem_freq", "invalid prem_freq bimonthly", "bimonthly"),
+    "pflegerentenversicherung": (
+        "prem_freq_table.csv", "prem_freq", "bimonthly", 'bimonthly,6,"[std] test fixture"',
+        "prem_freq", "invalid prem_freq bimonthly", "bimonthly"),
+    "sofortrente": (
+        "ann_freq_table.csv", "ann_freq", 3, '3,"[std] test fixture"',
+        "ann_freq", "invalid ann_freq", 3),
+}
+
+
+def test_a_single_premium_is_annual_and_carries_no_frequency_loading(product_models):
+    """Every single-premium point carries ``prem_freq = annual`` and ``prem_freq_load`` 1.0,
+    the core's rule for every product; Basis no longer overrides ``prem_freq_load``."""
+    checked = 0
+    for product in sorted(MODELS):
+        model = product_models(product)
+        points = model.Data.model_point_table()
+        if "prem_form" not in points.columns:
+            assert model.Projection[int(points.index[0])].prem_form() == "regular"
+            continue
+        for point_id in points.index[points["prem_form"] == "single"]:
+            assert points.at[point_id, "prem_freq"] == "annual", (product, point_id)
+            assert model.Projection[int(point_id)].prem_freq_load() == 1.0, (product, point_id)
+            checked += 1
+    assert checked == 6
+    path = PRODUCTS_DIR / "basisrente" / MODELS["basisrente"] / "Projection" / "__init__.py"
+    assert "def prem_freq_load" not in path.read_text(encoding="utf-8")
+
+
+def test_pflege_single_premium_is_a_premium_form_not_a_frequency(product_models):
+    """Pflege's *Einmalbeitrag* is ``prem_form = single``, paid at ``t = 0`` alone, and its
+    ``prem_freq`` (shipped as ``annual``) is a key of the table; a ``regular`` premium falls
+    due every ``prem_cycle()`` months, over all four frequencies."""
+    model = product_models("pflegerentenversicherung")
+    assert "single" not in model.Data.prem_freq_table().index
+    points = model.Data.model_point_table()
+    forms, freqs = set(), set()
+    for point_id in points.index:
+        item = model.Projection[point_id]
+        forms.add(item.prem_form())
+        if item.prem_form() == "single":
+            assert points.at[point_id, "prem_freq"] == "annual"
+            assert [t for t in range(24) if item.premium_due(t)] == [0]
+        else:
+            freqs.add(item.prem_freq())
+            assert item.prem_cycle() == 12 // PREM_FREQ_INSTALMENTS[item.prem_freq()]
+    assert forms == {"regular", "single"}
+    assert freqs == set(PREM_FREQ_INSTALMENTS)
+
+
+@pytest.mark.parametrize("product", sorted(FREQUENCY_KEYS))
+def test_annuity_frequencies_are_the_keys_of_their_table(product, product_models):
+    data = product_models(product).Data
+    cell, keys = FREQUENCY_KEYS[product]
+    assert data.cells[cell]() == keys
+    assert all(type(key) is int for key in data.cells[cell]())
+
+
+@pytest.mark.parametrize("product", sorted(FREQUENCY_PROBES))
+def test_a_frequency_outside_the_table_raises_and_a_row_admits_it(product, tmp_path):
+    table, column, value, row, cell, message, admitted = FREQUENCY_PROBES[product]
+    folder = product_copy(tmp_path, product)
+    points = pd.read_csv(folder / "model_point_table.csv", dtype=str, keep_default_na=False)
+    points.loc[0, column] = str(value)
+    points.to_csv(folder / "model_point_table.csv", index=False)
+    point_id = int(points.loc[0, "point_id"])
+    copy = mx.read_model(folder / MODELS[product], name="FreqProbe")
+    try:
+        with pytest.raises(Exception, match=message) as raised:
+            copy.Projection[point_id].cells[cell]()
+        assert raised_value_error(raised, message)
+    finally:
+        copy.close()
+    path = folder / table
+    path.write_text(path.read_text(encoding="utf-8") + row + "\n", encoding="utf-8")
+    copy = mx.read_model(folder / MODELS[product], name="FreqProbeAdmitted")
+    try:
+        assert copy.Projection[point_id].cells[cell]() == admitted
     finally:
         copy.close()
 
@@ -3429,6 +3732,29 @@ def test_bu_cohort_index_and_step_are_read_only(product_models):
                 array[:13] *= 2
             assert array.tolist() == before
     assert item.cohort_year_idx(item.max_claim_dur())[0] == 0
+
+
+def test_bu_claim_years_are_read_from_the_claim_duration_table(tmp_path, product_models):
+    """The claim-year cap is the table's last ``dur_year``, so a twelfth row is read too."""
+    data = product_models("berufsunfaehigkeit").Data
+    table = data.claim_duration_table()
+    last = data.claim_duration_last_year()
+    assert type(last) is int and last == int(table.index.max()) == len(table) == 11
+    folder = product_copy(tmp_path, "berufsunfaehigkeit")
+    path = folder / "claim_duration_table.csv"
+    path.write_text(path.read_text(encoding="utf-8") + '12,0.005,1.1,"[std] test fixture"\n',
+                    encoding="utf-8")
+    copy = mx.read_model(folder / MODELS["berufsunfaehigkeit"], name="ClaimYearProbe")
+    try:
+        assert copy.Data.claim_duration_last_year() == 12
+        item = copy.Projection[copy.Data.model_point_table().index[0]]
+        assert [item.claim_year(z) for z in (1, 12, 13, 132, 133, 144, 145, 999)] == [
+            1, 1, 2, 11, 12, 12, 12, 12]
+        assert item.recov_rates()[11] == 0.005 and len(item.recov_rates()) == 12
+        assert item.mort_dis_sel_factors()[11] == 1.1 and len(item.mort_dis_sel_factors()) == 12
+        assert item.cohort_year_idx(300).tolist() == np.minimum(np.arange(300) // 12, 11).tolist()
+    finally:
+        copy.close()
 
 
 def test_bu_rate_arrays_by_age_equal_the_tuples(product_models):

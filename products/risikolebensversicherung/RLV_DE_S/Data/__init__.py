@@ -35,8 +35,8 @@ mort_file                 mort_table()                  mort_table.csv
 benefit_schedule_file     benefit_schedule()            benefit_schedule.csv
 nvg_schedule_file         nvg_schedule()                nvg_schedule.csv
 lapse_file                lapse_table()                 lapse_table.csv
-freq_loading_file         freq_loading_table()          freq_loading_table.csv
-param_file                param_table()                 param_tariff_type.csv
+prem_freq_file            prem_freq_table()             prem_freq_table.csv
+param_file                param()                       param_tariff_type.csv
 ========================  ============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
@@ -128,7 +128,7 @@ is deliberately **not** used. The table's own row for the final policy year stil
 3 %; the model zeroes it, because a lapse and an expiry at the end of the last period
 ``t = n - 1`` are the same event paying the same nothing.
 
-``freq_loading_table.csv`` carries the *Ratenzahlungszuschlag* — 1.000 annual, 1.02
+``prem_freq_table.csv`` carries the *Ratenzahlungszuschlag* — 1.000 annual, 1.02
 half-yearly, 1.03 quarterly, 1.05 monthly — a German market convention with no carrier
 attribution, and the instalment count that goes with it. Whether carriers strike the
 loading on the *Bruttobeitrag* or the *Zahlbeitrag* was not established; this model loads
@@ -228,7 +228,7 @@ nvg_schedule_file = "nvg_schedule.csv"
 
 lapse_file = "lapse_table.csv"
 
-freq_loading_file = "freq_loading_table.csv"
+prem_freq_file = "prem_freq_table.csv"
 
 param_file = "param_tariff_type.csv"
 

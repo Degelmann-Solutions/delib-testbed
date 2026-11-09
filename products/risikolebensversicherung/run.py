@@ -29,7 +29,7 @@ print("model point {}: {} - {}{} {}{} - Versicherungssumme {:,.0f} EUR {}, "
           proj.policy_term(), proj.cover_end_age(), proj.prem_term()))
 print("premium form = {}   Zahlweise = {} ({} instalments, load {:.3f})   "
       "surplus = {}".format(
-          proj.premium_form(), proj.prem_freq(), proj.instalments(),
+          proj.prem_form(), proj.prem_freq(), proj.instalments(),
           proj.prem_freq_load(), proj.surplus_form()))
 print("rating factor = {:.2f}   NVG schedule = {}   duration = {} y   "
       "frame t = {} .. {} months ({} policy years)".format(

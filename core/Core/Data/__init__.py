@@ -38,18 +38,6 @@ def model_point_table():
         input_dir() / model_point_file, index_col="point_id")        # noqa: F821
 
 
-def param_table():
-    """The product's scalar parameters by ``item``, read from its ``param_file``.
-
-    Columns ``value``, ``basis`` and ``provenance``, and an optional ``unit``: the
-    product's tariff-type file ``param_tariff_type.csv`` (``docs/core.md``, "The parameter
-    files").  The values are read with pandas' default float parsing, which round-trips
-    the decimal literals.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / param_file, index_col="item")                  # noqa: F821
-
-
 def param_core_path():
     """The core parameter file, ``param_core.csv`` beside the core's loaders.
 
@@ -166,10 +154,14 @@ def rentenfaktor_table():
         index_col=rentenfaktor_table_index())
 
 
-def freq_loading_table():
-    """The *Ratenzahlungszuschlag* by ``prem_freq``, from ``freq_loading_file``."""
+def prem_freq_table():
+    """The premium payment frequencies by ``prem_freq``, from ``prem_freq_file``.
+
+    One row per frequency the product allows, with its ``instalments`` a year and, where the
+    product charges one, its *Ratenzahlungszuschlag* ``prem_freq_load``.
+    """
     return pd.read_csv(                                              # noqa: F821
-        input_dir() / freq_loading_file, index_col="prem_freq")      # noqa: F821
+        input_dir() / prem_freq_file, index_col="prem_freq")         # noqa: F821
 
 
 def surplus_table_index():
@@ -214,15 +206,6 @@ def model_point_table_dict():
     return model_point_table().to_dict("index")
 
 
-def param_table_dict():
-    """The parameter table as a dict by column: ``{column: {item: value}}``.
-
-    Built once per model from ``param_table()``.  No cell reads it: every parameter is
-    read through ``param(item)``.
-    """
-    return param_table().to_dict()
-
-
 def mort_table_dict():
     """The mortality table as a dict by column: ``{column: {key: rate}}``.
 
@@ -250,13 +233,13 @@ def rentenfaktor_table_dict():
     return rentenfaktor_table().to_dict()
 
 
-def freq_loading_table_dict():
-    """The frequency loading table as a dict by column: ``{column: {prem_freq: value}}``.
+def prem_freq_table_dict():
+    """The premium frequency table as a dict by column: ``{column: {prem_freq: value}}``.
 
     ``Projection.prem_freq`` checks the frequency against its keys,
     ``prem_freq_load`` and ``instalments`` read the columns of their names.
     """
-    return freq_loading_table().to_dict()
+    return prem_freq_table().to_dict()
 
 
 def surplus_table_dict():

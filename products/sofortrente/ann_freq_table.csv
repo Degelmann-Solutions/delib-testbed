@@ -1,0 +1,5 @@
+ann_freq,provenance
+12,"[S1] [S2] [S6] [S7] monthly payment, 12 instalments a year; the market standard; was a literal in payment_freq on Projection"
+4,"[S1] [S2] [S6] [S7] quarterly payment, 4 instalments a year; was a literal in payment_freq on Projection"
+2,"[S1] [S2] [S6] [S7] half-yearly payment, 2 instalments a year; was a literal in payment_freq on Projection"
+1,"[S1] [S2] [S6] [S7] annual payment, 1 instalment a year; was a literal in payment_freq on Projection"

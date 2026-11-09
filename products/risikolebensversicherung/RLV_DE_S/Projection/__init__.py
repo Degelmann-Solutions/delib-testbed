@@ -70,8 +70,8 @@ mort_file                 data.mort_table()                  mort_table.csv
 benefit_schedule_file     data.benefit_schedule()            benefit_schedule.csv
 nvg_schedule_file         data.nvg_schedule()                nvg_schedule.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
-freq_loading_file         data.freq_loading_table()          freq_loading_table.csv
-param_file                data.param_table()                 param_tariff_type.csv
+prem_freq_file            data.prem_freq_table()             prem_freq_table.csv
+param_file                data.param()                       param_tariff_type.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -183,14 +183,14 @@ that loading is handed straight back as *Beitragsverrechnung*. A test asserting
 ``Gn < P`` is asserting the absence of the product's central mechanic.
 
 **``q1`` prices and ``q2`` projects.** :func:`mort_rate_tariff` is the first-order tariff
-rate — the unisex 50/50 blend, loaded by ``(1 + sicherheitszuschlag_m)`` and by the
-*Risikozuschlag* — and it enters the premium and the reserve and **nothing else**.
+rate — the unisex 50/50 blend, loaded by ``mort_load_first``, the factor ``1 + m`` of the
+*Sicherheitszuschlag* ``m``, and by the *Risikozuschlag* — and it enters the premium and the reserve and **nothing else**.
 :func:`mort_rate` is the second-order rate on the policy's own sex and smoker status and
 it drives every decrement and every claim. The ratio between them is *not* ``1 + m``: it
 is ``2.25 x (unisex blend / own-sex rate)``, which on the shipped proxy is **1.6875 for a
 male and 3.375 for a female**. That asymmetry is the unisex cross-subsidy and it is a
 product fact, not a modelling artefact. Applying the *Sicherheitszuschlag* to the
-projection is the pitfall; ``claims_death`` must be invariant to ``sicherheitszuschlag_m``
+projection is the pitfall; ``claims_death`` must be invariant to ``mort_load_first``
 while ``prem_gross`` is not.
 
 **``B(t)`` is the contractual sum; what a claim pays is not always ``B(t)``.**
@@ -218,7 +218,7 @@ behavioural::
 
     G = ( A + gamma Gamma ) / ( (1 - beta) ae - z k )
 
-With ``premium_form = einmal`` the paying term ``k`` is 1 and ``ae`` is 1, so the same
+With ``prem_form = single`` the paying term ``k`` is 1 and ``ae`` is 1, so the same
 expression returns the *Einmalbeitrag*: the second premium form is this engine at a
 boundary, not a second engine.
 
@@ -366,7 +366,7 @@ What the finer grid does resolve is everything that is **not** a contract term. 
 *Zahlweise* is now real: a modal *Zahlbeitrag* is collected in instalments on its own
 cycle (:func:`prem_inst_pp`) instead of whole at the anniversary, so the four
 fractionated model points collect 0,95 %-1,67 % less over the run — model point 4's
-*monatlich* premium income falls from 4 471,82 € to 4 400,26 € — which is the
+`monthly` premium income falls from 4 471,82 € to 4 400,26 € — which is the
 premium-cessation rule biting where an annual grid could not express it, and the
 *Ratenzahlungszuschlag* at last charging for a service the model renders. Claims fall in
 the month of claim rather than at the year end, so the anchor's death claims fall from
@@ -416,21 +416,24 @@ def smoker_codes():
     return ("N", "R")
 
 
-def premium_form():
-    """The premium form: ``laufend`` or ``einmal``.
+def prem_form():
+    """The premium form: ``regular`` or ``single``.
 
-    ``laufend`` is a level *Bruttobeitrag* over ``prem_term`` years and is the German
-    market form.  ``einmal`` is a **[std]** construction — no German standalone
+    ``regular`` is a level *Bruttobeitrag* over ``prem_term`` years and is the German
+    market form.  ``single`` is a **[std]** construction — no German standalone
     *Risikolebensversicherung* in the research corpus is written on a single premium — and
     is carried because it is the degenerate case ``k = 1`` of the same equivalence, so it
     exercises the premium engine at a boundary rather than adding a second engine.  The
-    cells is a stated consistency gate: ``einmal`` requires ``prem_term = 1``.
+    cells is a stated consistency gate: ``single`` requires ``prem_term = 1``.
+
+    Override reason: a single premium is the paying term ``k = 1`` of the same equivalence,
+    so it requires ``prem_term = 1``, products/risikolebensversicherung/technical-notes.md:166
     """
-    v = model_point()["premium_form"]
-    if v not in ("laufend", "einmal"):
-        raise ValueError("invalid premium_form")
-    if v == "einmal" and prem_term() != 1:
-        raise ValueError("einmal requires prem_term = 1")
+    v = model_point()["prem_form"]
+    if v not in ("regular", "single"):
+        raise ValueError("invalid prem_form")
+    if v == "single" and prem_term() != 1:
+        raise ValueError("single requires prem_term = 1")
     return v
 
 
@@ -561,14 +564,14 @@ def mort_rate_base(t):
 def mort_rate_blend(t):
     """The unisex 50/50 blend of the sex-distinct table rates — the **tariff's** life.
 
-    ``sex_mix_male`` weights the male table and its complement the female one, and for
-    ``lives = 2`` the two blends are combined by the same first-death rule as
+    ``unisex_mix_male()``, the core's, weights the male table and its complement the female
+    one, and for ``lives = 2`` the two blends are combined by the same first-death rule as
     :func:`mort_rate_base`, again **before** any loading.  This is what a German tariff is
     priced on, because sex may not enter the premium while the underlying tables remain
     sex-distinct.  The mixing ratio is proprietary at every carrier and the 50/50 here is
     **[std]**.
     """
-    w_m = data.param("sex_mix_male")                                 # noqa: F821
+    w_m = unisex_mix_male()
     q_a = (w_m * mort_rate_at_age("M", smoker(), age(t))
            + (1.0 - w_m) * mort_rate_at_age("F", smoker(), age(t)))
     if lives() == 1:
@@ -601,7 +604,7 @@ def mort_rate(t):
     policy's own sex and smoker status, rated, first-death where there are two lives, and
     loaded for selective lapse where that module is on.  This drives every decrement and
     every claim, and the *Sicherheitszuschlag* must not appear in it: ``claims_death`` is
-    invariant to ``sicherheitszuschlag_m`` while ``prem_gross`` is not, and an
+    invariant to ``mort_load_first`` while ``prem_gross`` is not, and an
     implementation that projects on ``q1`` overstates claims by a factor of about two.
 
     ``mort_be_factor`` is 1.00, so the shipped proxy **is** the best estimate and there is
@@ -621,11 +624,12 @@ def mort_rate(t):
 
 
 def mort_load_tariff(t):
-    """The loading of the first-order tariff rate, ``(1 + m) x rf``.
+    """The loading of the first-order tariff rate, ``mort_load_first x rf = (1 + m) x rf``.
 
     q1(t), :func:`mort_rate_tariff`, is this times the unisex blend, its base.  It prices
     the *Bruttobeitrag* and the first-order *Deckungskapital* and enters nothing else.  The
-    *Sicherheitszuschlag* ``m = 1.25`` is **[std]**: the DAV *Richtlinie* regulates the
+    *Sicherheitszuschlag* ``m = 1.25``, the row ``mort_load_first = 1 + m = 2.25`` of
+    *param_tariff_type.csv*, is **[std]**: the DAV *Richtlinie* regulates the
     **procedure** for setting the *Sicherheitszuschläge*, not the level, which is not
     public, and the argued range is 1.0 to 1.5.  It is the single parameter that sets the
     *Brutto* / *Zahlbeitrag* spread — and, because 90 % of the extra margin is returned as
@@ -640,7 +644,7 @@ def mort_load_tariff(t):
     Override reason: the tariff rate is the unisex blend loaded by ``1 + m`` and the rating
     factor, products/risikolebensversicherung/technical-notes.md:231
     """
-    return (1.0 + data.param("sicherheitszuschlag_m")) * rating_factor()  # noqa: F821
+    return data.param("mort_load_first") * rating_factor()           # noqa: F821
 
 
 def mort_rate_tariff_base(t):
@@ -909,12 +913,12 @@ def prem_gross_level_pp():
     **This is the guaranteed premium** — the maximum the policyholder can ever be required
     to pay, unchanged for the term.  It is not what is billed.
     """
-    denom = ((1.0 - data.param("beta_tariff")) * tariff_annuity()    # noqa: F821
-             - data.param("zillmer_rate") * prem_term())             # noqa: F821
+    denom = ((1.0 - data.param("load_admin_prem_inst")) * tariff_annuity()  # noqa: F821
+             - data.param("load_acq_bsum_once") * prem_term())       # noqa: F821
     if denom <= 0.0:
         raise ValueError("degenerate premium equivalence: loadings exceed the annuity")
     return (tariff_benefit_pv()
-            + data.param("gamma_rate") * tariff_term_annuity()) / denom  # noqa: F821
+            + data.param("load_admin_sum_ann") * tariff_term_annuity()) / denom  # noqa: F821
 
 
 def beitragsverrechnung_rate():
@@ -922,8 +926,9 @@ def beitragsverrechnung_rate():
 
     **Derived from the surplus mechanic, not assumed.**  The tariff's own mortality margin
     in year ``t`` is ``(q1 - q1/(1+m)) B = (m/(1+m)) q1 B`` per in-force policy, so its
-    actuarial value at issue is exactly ``(m/(1+m)) A``.  The declaration returns
-    ``surplus_share`` of it over the paying term::
+    actuarial value at issue is exactly ``(m/(1+m)) A``, with ``1 + m`` the row
+    ``mort_load_first`` and so ``m/(1+m) = (mort_load_first - 1) / mort_load_first``.  The
+    declaration returns ``surplus_share`` of it over the paying term::
 
         v_d = min( v_max, decl_scale surplus_share (m/(1+m)) A / (G ae) )
 
@@ -942,8 +947,9 @@ def beitragsverrechnung_rate():
     """
     if surplus_form() == "keine":
         return 0.0
-    m = data.param("sicherheitszuschlag_m")                          # noqa: F821
-    raw = (data.param("decl_scale") * data.param("surplus_share") * (m / (1.0 + m))  # noqa: F821
+    load = data.param("mort_load_first")                             # noqa: F821
+    raw = (data.param("decl_scale") * data.param("surplus_share")    # noqa: F821
+           * ((load - 1.0) / load)
            * tariff_benefit_pv()
            / (prem_gross_level_pp() * tariff_annuity()))
     return min(data.param("v_max"), raw)                             # noqa: F821
@@ -951,15 +957,6 @@ def beitragsverrechnung_rate():
 
 # ==========================================================================
 # What is billed
-
-
-def prem_cycle():
-    """Months between premium instalments: 12 annual, 6 half-yearly, 3 quarterly, 1 monthly.
-
-    ``12 // instalments()`` — arithmetic of the elected *Zahlweise* rather than an
-    assumption, so it is written here rather than held in a Reference or a column.
-    """
-    return 12 // instalments()
 
 
 def prem_due(t):
@@ -1054,7 +1051,7 @@ def prem_inst_pp(t):
     the split identity holds instalment by instalment as well as year by year.  An annual
     payer therefore collects the whole 733,01 € of the anchor cell in the first month of
     each policy year and nothing in the other eleven; model point 4 is the contrast,
-    twelve instalments on a *monatlich* *Zahlweise*.
+    twelve instalments on a `monthly` *Zahlweise*.
 
     **This is the one place the finer grid changes an answer rather than its resolution.**
     On a fractionated point the instalments after the first are collected on a block that
@@ -1138,7 +1135,7 @@ def res_zill_pp_at(y, timing):
     p_y = pols_tariff(y) if y < proj_len_y() else 1.0
     remaining = sum(disc_factor(u - y) * (pols_tariff(u) / p_y)
                     for u in range(max(y, 0), prem_term()))
-    zill = (data.param("zillmer_rate") * prem_term() * prem_gross_level_pp()  # noqa: F821
+    zill = (data.param("load_acq_bsum_once") * prem_term() * prem_gross_level_pp()  # noqa: F821
             * remaining / tariff_annuity())
     return res_pp_at(y, timing) - zill
 
@@ -1204,7 +1201,7 @@ def acq_cost_pp():
     is the economic reason an early lapse hurts on a product with no surrender value to
     forfeit.  On an **in-force** model point it is sunk and is not incurred at all.
     """
-    return data.param("zillmer_rate") * prem_term() * prem_gross_level_pp()  # noqa: F821
+    return data.param("load_acq_bsum_once") * prem_term() * prem_gross_level_pp()  # noqa: F821
 
 
 def comm_init_pp():
@@ -1217,7 +1214,7 @@ def comm_init_pp():
     *Bruttobeitrag* available for *Beitragsverrechnung*.  **[std]**: no German scale is
     public.
     """
-    return data.param("comm_rate_init") * prem_term() * prem_gross_level_pp()  # noqa: F821
+    return data.param("comm_acq_bsum_once") * prem_term() * prem_gross_level_pp()  # noqa: F821
 
 
 def maint_pp(t):
@@ -1234,7 +1231,7 @@ def maint_pp(t):
     carries the same annual charge as it did — but it is now borne by the in-force of
     **each month** rather than of the anniversary, which is what makes a decrementing
     block cost less.  The collection cost follows the *Zahlweise*: it is charged when a
-    bill is collected, which on an annual payer is once a year and on a *monatlich* one is
+    bill is collected, which on an annual payer is once a year and on a `monthly` one is
     twelve times, and that is what a collection cost is.
 
     The tariff loads 5,0 % of each *Bruttobeitrag* against a modelled collection cost of
@@ -1242,11 +1239,12 @@ def maint_pp(t):
     **not** return it: splitting the MindZV's *übriges Ergebnis* limb, whose minimum share
     is different, has no basis in the research corpus, so the cost result emerges in
     :func:`net_cf` and stays there.  That is a stated simplification — ``prem_rebate`` is
-    invariant to ``maint_prem_pct`` and ``comm_rate_renew`` while ``net_cf`` is not — and
-    not an oversight.
+    invariant to ``expense_collect_prem_inst`` and ``comm_renew_prem_inst`` while ``net_cf``
+    is not — and not an oversight.
     """
-    return (data.param("gamma_rate") * benefit_pp(t) * inflation_factor(t) / 12.0  # noqa: F821
-            + data.param("maint_prem_pct") * prem_inst_pp(t))        # noqa: F821
+    return (data.param("load_admin_sum_ann")                         # noqa: F821
+            * benefit_pp(t) * inflation_factor(t) / 12.0
+            + data.param("expense_collect_prem_inst") * prem_inst_pp(t))  # noqa: F821
 
 
 def expenses_acq(t):
@@ -1276,13 +1274,13 @@ def expenses_maint(t):
 
 
 def expenses_claim(t):
-    """The claim expense on the month's deaths, 250 € each **[std]**, ``claim_expense`` of
+    """The claim expense on the month's deaths, 250 € each **[std]**, ``expense_claim_pp_once`` of
     *param_tariff_type.csv*.
 
     Override reason: the claim expense is an amount per death claim,
     products/risikolebensversicherung/technical-notes.md:400
     """
-    return data.param("claim_expense") * pols_death(t)               # noqa: F821
+    return data.param("expense_claim_pp_once") * pols_death(t)       # noqa: F821
 
 
 def comm_init(t):
@@ -1309,7 +1307,7 @@ def comm_renew(t):
     Override reason: the renewal commission is a rate on each *Zahlbeitrag* instalment from
     policy year 2, products/risikolebensversicherung/technical-notes.md:397
     """
-    return (data.param("comm_rate_renew") * prem_inst_pp(t) * pols_if(t)  # noqa: F821
+    return (data.param("comm_renew_prem_inst") * prem_inst_pp(t) * pols_if(t)  # noqa: F821
             if duration(t) >= 1 else 0.0)
 
 

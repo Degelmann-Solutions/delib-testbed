@@ -47,7 +47,8 @@ incidence_file             data.incidence_table()               incidence_table.
 care_file                  data.care_table()                    care_table.csv
 lapse_file                 data.lapse_table()                   lapse_table.csv
 surrender_file             data.surrender_table()               surrender_table.csv
-param_file                 data.param_table()                   param_tariff_type.csv
+prem_freq_file             data.prem_freq_table()               prem_freq_table.csv
+param_file                 data.param()                         param_tariff_type.csv
 =========================  ===================================  =========================
 
 .. rubric:: Naming
@@ -73,7 +74,7 @@ pi_g                        benefit_pct(g)                  Leistungsstaffel per
 (none)                      waiver_flag(g)                  Is an annuity payable at g?
 P                           premium_mth_pp()                Level monthly gross Beitrag
 (none)                      prem_net_level_pp()             Net level premium, A / U
-m                           prem_mode_months()              1, 3, 6, 12, or 0 for single
+m                           prem_cycle()                    1, 3, 6, 12; prem_form single
 (table)                     mort_rate_at_age(x)             Active table rate at age x
 (table)                     mort_rate_base(t)               Its value at age(t)
 q_A(x)                      mort_rate(t)                    Active annual death rate
@@ -336,37 +337,6 @@ def prem_end_age():
     is paid up: no premium, no lapse, and the cover runs on.
     """
     return int(model_point()["prem_end_age"])
-
-
-def prem_freq():
-    """The instalment frequency: monthly, quarterly, half_yearly, annual or single.
-
-    Read from the model point's ``prem_mode`` column.
-
-    Override reason: the product has no frequency loading table and its frequencies include
-    ``single``, the *Einmalbeitrag*, products/pflegerentenversicherung/technical-notes.md:106
-    """
-    v = str(model_point()["prem_mode"])
-    if v not in ("monthly", "quarterly", "half_yearly", "annual", "single"):
-        raise ValueError("invalid prem_mode")
-    return v
-
-
-def prem_mode_months():
-    """m: the number of months one instalment covers; ``0`` for the *Einmalbeitrag*.
-
-    1, 3, 6 or 12, and ``0`` for ``single``, which is the sentinel the premium cells read
-    as "one payment at ``t = 0`` and nothing thereafter".
-
-    The model charges **no separate** *Ratenzahlungszuschlag*: the instalment loading is
-    folded into ``admin_prem_pct``, which is a percentage of the premium collected and so
-    is invariant to the mode.  The consequence is worth stating because a user will read
-    it the wrong way round — in this model annual mode prices very slightly *below*
-    monthly, through the timing of the discounting alone, which is the opposite sign to a
-    real German tariff.
-    """
-    return {"monthly": 1, "quarterly": 3, "half_yearly": 6,
-            "annual": 12, "single": 0}[prem_freq()]
 
 
 def premium_mth():
@@ -794,28 +764,29 @@ def pols_ledger(t):
     the published cells, :func:`pols_entry` and :func:`pols_grad` among them, read their
     component.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     k = karenz_months()
     if t <= t_start():
         status = status_init()
         act = pols_if_init() if status == "aktiv" else 0.0
-        pg = tuple(pols_if_init() if status == "pg%d" % g else 0.0 for g in range(1, 6))
-        none = (0.0,) * 5
-        return (act, pg, pg, tuple((0.0,) * k for g in range(1, 6)), none, none)
+        pg = tuple(pols_if_init() if status == "pg%d" % g else 0.0 for g in range(1, n + 1))
+        none = (0.0,) * n
+        return (act, pg, pg, tuple((0.0,) * k for g in range(1, n + 1)), none, none)
     act0, pg0, esc0, kar0, _, _ = pols_ledger(t - 1)
     x = age(t - 1)
-    p = tuple(p_pg_age(x, g) for g in range(1, 6))
+    p = tuple(p_pg_age(x, g) for g in range(1, n + 1))
     pa = p_act_age(age(t - 1), duration_mth(t - 1) < wartezeit_months())
     care = act0 * pa[2]
-    entry = tuple(care * inc_share(g) for g in range(1, 6))
+    entry = tuple(care * inc_share(g) for g in range(1, n + 1))
     if k <= 0:
         grad = entry
         kar = kar0
     else:
         grad = []
         kar = []
-        for g in range(1, 6):
+        for g in range(1, n + 1):
             total = 0.0
-            for h in range(max(1, g - 1), min(5, g + 1) + 1):
+            for h in range(max(1, g - 1), min(n, g + 1) + 1):
                 w = kar0[h - 1][k - 1]
                 if w == 0.0:
                     continue
@@ -829,7 +800,7 @@ def pols_ledger(t):
             row = [entry[g - 1]]
             for z in range(2, k + 1):
                 total = 0.0
-                for h in range(max(1, g - 1), min(5, g + 1) + 1):
+                for h in range(max(1, g - 1), min(n, g + 1) + 1):
                     w = kar0[h - 1][z - 2]
                     if w == 0.0:
                         continue
@@ -850,13 +821,13 @@ def pols_ledger(t):
     factor = (1.0 + leistungsdynamik()) ** (1.0 / 12.0)
     pg = []
     esc = []
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         total = pg0[g - 1] * p[g - 1][0] + grad[g - 1]
         carried = esc0[g - 1] * p[g - 1][0]
         if g > 1:
             total += pg0[g - 2] * p[g - 2][2]
             carried += esc0[g - 2] * p[g - 2][2]
-        if g < 5:
+        if g < n:
             total += pg0[g] * p[g][3]
             carried += esc0[g] * p[g][3]
         pg.append(total)
@@ -999,11 +970,12 @@ def pols_care(t):
     its *Karenzzeit* is here and is paid nothing, and a life at *Pflegegrad* 1 on the
     ``delib_std`` grid is here, is paid nothing and keeps paying.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     state = pols_ledger(t)
     total = 0.0
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         total += state[1][g - 1]
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         for z in range(1, karenz_months() + 1):
             total += state[3][g - 1][z - 1]
     return total
@@ -1048,10 +1020,11 @@ def pols_waived(t):
     ``bahr``; and a life downgraded out of the insured grades **leaves** here and starts
     paying again.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     if age(t) >= prem_end_age():
         return 0.0
     total = 0.0
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         if waiver_flag(g):
             total += pols_ledger(t)[1][g - 1]
     return total
@@ -1084,9 +1057,10 @@ def pols_death(t):
     Override reason: the deaths come from every state, the active state and each *Pflegegrad*
     at its own rate, products/pflegerentenversicherung/technical-notes.md:207
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     state = pols_ledger(t)
     total = state[0] * p_act_age(age(t), duration_mth(t) < wartezeit_months())[1]
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         in_grade = state[1][g - 1]
         for z in range(1, karenz_months() + 1):
             in_grade += state[3][g - 1][z - 1]
@@ -1135,7 +1109,7 @@ def pols_lapse_cum(t):
 def premium_due(t):
     """Whether an instalment falls due at the start of month ``t``.
 
-    ``t % prem_mode_months() == 0`` inside the premium term, and for the *Einmalbeitrag*
+    ``t % prem_cycle() == 0`` inside the premium term, and for the *Einmalbeitrag*
     only at ``t = 0``.  The instalment months key off **issue**, not off the frame's first
     row, so an in-force quarterly point opening at ``t = 240`` still pays in the months the
     contract always paid in.
@@ -1147,24 +1121,32 @@ def premium_due(t):
     """
     if age(t) >= prem_end_age():
         return False
-    m = prem_mode_months()
-    if m == 0:
+    if prem_form() == "single":
         return t == 0
-    return t % m == 0
+    return t % prem_cycle() == 0
 
 
 def premium_pp(t):
     """The instalment charged per paying policy at the start of month ``t``.
 
-    ``premium_mth_pp() x prem_mode_months()`` on a due month and zero otherwise, so a
+    ``premium_mth_pp() x prem_cycle()`` on a due month and zero otherwise, so a
     quarterly contract pays three months' worth three times a year rather than a twelfth of
-    the annual amount every month.  For the *Einmalbeitrag* it is the whole
-    *Einmalbeitrag*, once, at ``t = 0``.
+    the annual amount every month.  For the *Einmalbeitrag*, ``prem_form() == "single"``,
+    it is the whole *Einmalbeitrag*, once, at ``t = 0``, and ``prem_freq`` is not read: the
+    premium cells test the form before the frequency.
+
+    The model charges **no separate** *Ratenzahlungszuschlag*: the instalment loading is
+    folded into ``load_admin_prem_inst``, which is a percentage of the premium collected and so
+    is invariant to the mode.  The consequence is worth stating because a user will read
+    it the wrong way round — in this model annual mode prices very slightly *below*
+    monthly, through the timing of the discounting alone, which is the opposite sign to a
+    real German tariff.
     """
     if not premium_due(t):
         return 0.0
-    m = prem_mode_months()
-    return premium_mth_pp() * (m if m > 0 else 1)
+    if prem_form() == "single":
+        return premium_mth_pp()
+    return premium_mth_pp() * prem_cycle()
 
 
 def cum_prem_max_pp(t):
@@ -1180,9 +1162,9 @@ def cum_prem_max_pp(t):
     in-force model point carry the right base at the frame's first row: the premiums paid
     before the valuation date were paid, whether or not the model projected them.
     """
-    m = prem_mode_months()
-    if m == 0:
+    if prem_form() == "single":
         return premium_mth_pp() if t >= 0 else 0.0
+    m = prem_cycle()
     last = min(t, 12 * (prem_end_age() - issue_age()) - 1)
     if last < 0:
         return 0.0
@@ -1205,7 +1187,8 @@ def prem_inst_pp(t):
 def rkw_pp(t):
     """The *Rückkaufswert* per surrendering policy at the end of month ``t``.
 
-    ``rkw_prem_ratio(min(y(t), 40)) x cum_prem_max_pp(t) x (1 - stornoabzug_rate())`` — the
+    ``rkw_prem_ratio(min(y(t), Y)) x cum_prem_max_pp(t) x (1 - stornoabzug_rate())``, with
+    ``Y = data.surrender_table_last_year()`` the table's last policy year, 40 — the
     guaranteed surrender value as a fraction of premiums paid to date, which is the
     scale-free form a German contract states, less any contractual *Stornoabzug*.
 
@@ -1217,7 +1200,7 @@ def rkw_pp(t):
     assumes away; the table encodes the answer for a contract that does.
     """
     ratio = float(data.surrender_table_dict()["rkw_prem_ratio"][     # noqa: F821
-        min(policy_year(t), 40)])
+        min(policy_year(t), data.surrender_table_last_year())])     # noqa: F821
     return ratio * cum_prem_max_pp(t) * (1.0 - stornoabzug_rate())
 
 
@@ -1253,12 +1236,13 @@ def claims(t, kind=None):
     core's ``sum`` over the kinds rounds otherwise (compensated summation),
     products/pflegerentenversicherung/technical-notes.md:570
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     if kind is None:
         return (claims(t, "ANNUITY") + claims(t, "LAPSE")
                 + claims(t, "DEATH"))
     elif kind == "ANNUITY":
         total = 0.0
-        for g in range(1, 6):
+        for g in range(1, n + 1):
             pct = benefit_pct(g)
             if pct > 0.0:
                 total += pct * pols_ledger(t)[2][g - 1]
@@ -1280,7 +1264,7 @@ def beitragssumme_prem():
     Override reason: the premium is monthly, ``premium_mth_pp()``, or a single premium,
     products/pflegerentenversicherung/technical-notes.md:403
     """
-    if prem_mode_months() == 0:
+    if prem_form() == "single":
         return premium_mth_pp()
     return premium_mth_pp() * 12.0
 
@@ -1290,25 +1274,25 @@ def beitragssumme_years():
 
     A lifelong-premium contract has no finite *Beitragssumme* without a convention, and
     ``beitragssumme_cap_age = 85`` **[std]** is that convention.  It is a parameter, not a
-    citation: what is cited is the 25 ‰ ceiling of DeckRV § 4 that the per-mille is set
+    citation: what is cited is the 25 ‰ ceiling of DeckRV § 4 that the rate is set
     exactly at, cut from 40 ‰ by the LVRG from 1 January 2015.  1 for the *Einmalbeitrag*.
 
     Override reason: the premium runs to ``prem_end_age``, capped at
     ``beitragssumme_cap_age``, products/pflegerentenversicherung/technical-notes.md:403
     """
-    if prem_mode_months() == 0:
+    if prem_form() == "single":
         return 1
     cap = int(data.param("beitragssumme_cap_age"))                   # noqa: F821
     return max(0, min(prem_end_age(), cap) - issue_age())
 
 
 def alpha_rate():
-    """The acquisition per-mille as a rate, ``acq_permille / 1000``.
+    """The acquisition rate on the *Beitragssumme*, ``load_acq_bsum_once``.
 
     :func:`zillmer_amount`, the acquisition and distribution charge per policy, incurred
-    once at ``t = 0``, is ``acq_permille / 1000 x beitragssumme()``, with the per-mille set
+    once at ``t = 0``, is ``load_acq_bsum_once x beitragssumme()``, with the rate set
     **exactly at** the § 4 DeckRV *Höchstzillmersatz* so the ceiling binds visibly.  The
-    base is the *Beitragssumme*, **not** the annual premium — charging the per-mille on an
+    base is the *Beitragssumme*, **not** the annual premium — charging the rate on an
     annual premium understates it by a factor of the paying term and is a listed pitfall.
 
     Because it falls at ``t = 0`` only, an in-force model point never incurs it: its frame
@@ -1316,8 +1300,7 @@ def alpha_rate():
     date.  That is correct, and it is worth knowing before comparing an in-force point's
     first row with a new-business point's.
     """
-    permille = float(data.param("acq_permille"))                     # noqa: F821
-    return permille / 1000.0
+    return float(data.param("load_acq_bsum_once"))                   # noqa: F821
 
 
 def inflation_years(t):
@@ -1348,8 +1331,8 @@ def expenses(t):
     products/pflegerentenversicherung/technical-notes.md:593, added after the two
     administration terms, an order the core's sum of its terms would reassociate
     """
-    admin_pp = float(data.param("admin_mth_pp"))                     # noqa: F821
-    admin_pct = float(data.param("admin_prem_pct"))                  # noqa: F821
+    admin_pp = float(data.param("load_admin_pp_mth"))                # noqa: F821
+    admin_pct = float(data.param("load_admin_prem_inst"))            # noqa: F821
     total = admin_pp * inflation_factor(t) * pols_if(t)
     total += admin_pct * premiums(t)
     if t == 0:
@@ -1360,7 +1343,7 @@ def expenses(t):
 def claim_expenses(t):
     """The claims-handling cost of month ``t``, per **annuity payment made**.
 
-    ``claim_expense_pp x inflation_factor(t) x sum_{g : waiver_flag(g)} pols_pg(t, g)``,
+    ``load_claim_pp_inst x inflation_factor(t) x sum_{g : waiver_flag(g)} pols_pg(t, g)``,
     so it is weighted on the paying grades only: a *Pflegegrad* 1 life on ``delib_std``
     generates none, and neither does a life inside its *Karenzzeit*.
 
@@ -1369,9 +1352,10 @@ def claim_expenses(t):
     by the insurer, so the *Nachprüfung* is a documentation exercise rather than the
     adversarial re-assessment that drives a *Berufsunfähigkeitsrente*'s claims cost.
     """
-    per_payment = float(data.param("claim_expense_pp"))              # noqa: F821
+    n = data.pflegegrad_count()                                      # noqa: F821
+    per_payment = float(data.param("load_claim_pp_inst"))            # noqa: F821
     total = 0.0
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         if waiver_flag(g):
             total += pols_ledger(t)[1][g - 1]
     return per_payment * inflation_factor(t) * total
@@ -1397,28 +1381,28 @@ def net_cf(t):
     return premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
 
 
-def act_mort_margin():
+def mort_actv_load_first():
     """The first-order prudence margin on active mortality, from *param_tariff_type.csv*.
 
     Read by :func:`mort_rate_tariff`.
     """
-    return float(data.param("act_mort_margin"))                      # noqa: F821
+    return float(data.param("mort_actv_load_first"))                 # noqa: F821
 
 
-def care_mort_margin():
+def mort_care_load_first():
     """The first-order prudence margin on in-care mortality, from *param_tariff_type.csv*.
 
     Read by :func:`tar_mort_rate_care`.
     """
-    return float(data.param("care_mort_margin"))                     # noqa: F821
+    return float(data.param("mort_care_load_first"))                 # noqa: F821
 
 
-def inc_margin():
+def inc_load_first():
     """The first-order prudence margin on incidence, from *param_tariff_type.csv*.
 
     Read by :func:`tar_inc_rate`.
     """
-    return float(data.param("inc_margin"))                           # noqa: F821
+    return float(data.param("inc_load_first"))                       # noqa: F821
 
 
 def inc_cap():
@@ -1429,26 +1413,26 @@ def inc_cap():
     return float(data.param("inc_cap"))                              # noqa: F821
 
 
-def det_margin():
+def det_load_first():
     """The first-order prudence margin on deterioration, from *param_tariff_type.csv*.
 
     Read by :func:`tar_det_rate`.
     """
-    return float(data.param("det_margin"))                           # noqa: F821
+    return float(data.param("det_load_first"))                       # noqa: F821
 
 
-def rec_margin():
+def recov_load_first():
     """The first-order prudence margin on recovery, from *param_tariff_type.csv*.
 
     Read by :func:`tar_rec_rate`.
     """
-    return float(data.param("rec_margin"))                           # noqa: F821
+    return float(data.param("recov_load_first"))                     # noqa: F821
 
 
 def mort_rate_tariff(t):
     """The first-order active-life death rate: blended across the sexes, margined.
 
-    ``act_mort_margin x [ mix q_M(x) + (1 - mix) q_F(x) ]``, forced to 1.0 at the limiting
+    ``mort_actv_load_first x [ mix q_M(x) + (1 - mix) q_F(x) ]``, forced to 1.0 at the limiting
     age.  Two separate things are happening and both are deliberate.
 
     The **blend** is the unisex constraint: sex may not enter the premium of a contract
@@ -1468,7 +1452,7 @@ def mort_rate_tariff(t):
     """
     if age(t) >= omega_age() - 1:
         return 1.0
-    margin = act_mort_margin()
+    margin = mort_actv_load_first()
     q_m = float(data.mort_table_dict()["mort_rate"][("M", age(t))])  # noqa: F821
     q_f = float(data.mort_table_dict()["mort_rate"][("F", age(t))])  # noqa: F821
     return min(1.0 - data.param("rate_cap_eps"), margin * unisex_blend(q_m, q_f))  # noqa: F821
@@ -1477,11 +1461,11 @@ def mort_rate_tariff(t):
 def tar_mort_rate_care(x, g):
     """The first-order in-care death rate at *Pflegegrad* ``g`` and attained age ``x``.
 
-    ``care_mort_margin x [ 1 - exp(-mort_mult(g) mu_blend) ]``, where ``mu_blend`` is the
+    ``mort_care_load_first x [ 1 - exp(-mort_mult(g) mu_blend) ]``, where ``mu_blend`` is the
     force of the **unmargined** blended active rate.  Taking the multiple on the unmargined
     force is what keeps the two mortality margins from compounding: the active margin
     lengthens the pre-claim period and the in-care margin lengthens the annuity, and they
-    are separate prudence statements about separate risks.  ``care_mort_margin = 0.85``
+    are separate prudence statements about separate risks.  ``mort_care_load_first = 0.85``
     lowers in-care mortality, which lengthens the annuity — prudent in the direction that
     costs money here, and the opposite of what an annuity table would do.
 
@@ -1490,7 +1474,7 @@ def tar_mort_rate_care(x, g):
     """
     if x >= omega_age() - 1:
         return 1.0
-    margin = care_mort_margin()
+    margin = mort_care_load_first()
     mult = float(data.care_table_dict()["mort_mult"][g])             # noqa: F821
     q_m = float(data.mort_table_dict()["mort_rate"][("M", x)])       # noqa: F821
     q_f = float(data.mort_table_dict()["mort_rate"][("F", x)])       # noqa: F821
@@ -1503,8 +1487,8 @@ def tar_mort_rate_care(x, g):
 def tar_inc_rate(x):
     """The first-order incidence rate: blended across the sexes, margined, capped.
 
-    ``min(inc_margin x [ mix i_M(x) + (1 - mix) i_F(x) ], inc_cap)``.  ``inc_margin = 1.25``
-    is prudence in the obvious direction — more claims — and it is the margin the whole
+    ``min(inc_load_first x [ mix i_M(x) + (1 - mix) i_F(x) ], inc_cap)``.
+    ``inc_load_first = 1.25`` is prudence in the obvious direction — more claims — and it is the margin the whole
     product's basis risk sits behind: DAV 2008 P was built on the superseded *Pflegestufen*
     and the 2017 reform widened the insured population, and no margin is a substitute for
     that.  The cap binds only at the very oldest ages, where the exponential proxy would
@@ -1513,7 +1497,7 @@ def tar_inc_rate(x):
     Keyed by attained age ``x``, not by month: the *Wartezeit* gate, which does depend on
     the month, is applied by :func:`tar_p_act`, which reads this at ``age(t)``.
     """
-    margin = inc_margin()
+    margin = inc_load_first()
     cap = inc_cap()
     i_m = float(data.incidence_table_dict()["inc_rate"][("M", x)])   # noqa: F821
     i_f = float(data.incidence_table_dict()["inc_rate"][("F", x)])   # noqa: F821
@@ -1521,23 +1505,23 @@ def tar_inc_rate(x):
 
 
 def tar_det_rate(g):
-    """The first-order deterioration rate: ``det_margin x det_rate(g)``, capped below 1.
+    """The first-order deterioration rate: ``det_load_first x det_rate(g)``, capped below 1.
 
-    ``det_margin = 1.15`` moves lives faster into the higher-paying grades, which is
+    ``det_load_first = 1.15`` moves lives faster into the higher-paying grades, which is
     prudence on a schedule whose top steps pay most.  Keyed by the grade alone, since
     neither factor depends on the age or the month.
     """
-    return min(1.0 - data.param("rate_cap_eps"), det_margin() * det_rate(g))  # noqa: F821
+    return min(1.0 - data.param("rate_cap_eps"), det_load_first() * det_rate(g))  # noqa: F821
 
 
 def tar_rec_rate(x, g):
-    """The first-order recovery rate at attained age ``x``: ``rec_margin x rec_rate(x, g)``.
+    """The first-order recovery rate at attained age ``x``: ``recov_load_first x rec_rate(x, g)``.
 
-    ``rec_margin = 0.80`` produces **fewer** recoveries and so longer spells in payment,
+    ``recov_load_first = 0.80`` produces **fewer** recoveries and so longer spells in payment,
     which is the prudent direction for a benefit that stops on recovery.  Keyed by age and
     grade, like :func:`rec_rate`.
     """
-    return rec_margin() * rec_rate(x, g)
+    return recov_load_first() * rec_rate(x, g)
 
 
 def tar_p_act(t):
@@ -1599,23 +1583,24 @@ def tar_ledger(t):
     state.  One evaluation per month instead of one per month, grade and clock; the
     published cells read their component.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     k = karenz_months()
     if t <= 0:
-        zero = (0.0,) * 5
-        return (1.0, zero, zero, tuple((0.0,) * k for g in range(1, 6)))
+        zero = (0.0,) * n
+        return (1.0, zero, zero, tuple((0.0,) * k for g in range(1, n + 1)))
     act0, pg0, esc0, kar0 = tar_ledger(t - 1)
     x = age(t - 1)
-    p = tuple(tar_p_pg(x, g) for g in range(1, 6))
+    p = tuple(tar_p_pg(x, g) for g in range(1, n + 1))
     pa = tar_p_act(t - 1)
     if k <= 0:
-        grad = tuple(act0 * pa[2] * inc_share(g) for g in range(1, 6))
+        grad = tuple(act0 * pa[2] * inc_share(g) for g in range(1, n + 1))
         kar = kar0
     else:
         grad = []
         kar = []
-        for g in range(1, 6):
+        for g in range(1, n + 1):
             total = 0.0
-            for h in range(max(1, g - 1), min(5, g + 1) + 1):
+            for h in range(max(1, g - 1), min(n, g + 1) + 1):
                 w = kar0[h - 1][k - 1]
                 if w == 0.0:
                     continue
@@ -1629,7 +1614,7 @@ def tar_ledger(t):
             row = [act0 * pa[2] * inc_share(g)]
             for z in range(2, k + 1):
                 total = 0.0
-                for h in range(max(1, g - 1), min(5, g + 1) + 1):
+                for h in range(max(1, g - 1), min(n, g + 1) + 1):
                     w = kar0[h - 1][z - 2]
                     if w == 0.0:
                         continue
@@ -1649,13 +1634,13 @@ def tar_ledger(t):
     factor = (1.0 + leistungsdynamik()) ** (1.0 / 12.0)
     pg = []
     esc = []
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         total = pg0[g - 1] * p[g - 1][0] + grad[g - 1]
         carried = esc0[g - 1] * p[g - 1][0]
         if g > 1:
             total += pg0[g - 2] * p[g - 2][2]
             carried += esc0[g - 2] * p[g - 2][2]
-        if g < 5:
+        if g < n:
             total += pg0[g] * p[g][3]
             carried += esc0[g] * p[g][3]
         pg.append(total)
@@ -1692,12 +1677,13 @@ def tar_pols_karenz(t, g, z):
 
 def tar_pols_grad(t, g):
     """First-order graduations into *Pflegegrad* ``g``; the entrants themselves when K = 0."""
+    n = data.pflegegrad_count()                                      # noqa: F821
     state = tar_ledger(t)
     k = karenz_months()
     if k <= 0:
         return state[0] * tar_p_act(t)[2] * inc_share(g)
     total = 0.0
-    for h in range(max(1, g - 1), min(5, g + 1) + 1):
+    for h in range(max(1, g - 1), min(n, g + 1) + 1):
         w = state[3][h - 1][k - 1]
         if w == 0.0:
             continue
@@ -1728,9 +1714,10 @@ def tar_esc_pg(t, g):
 
 def tar_pols_if(t):
     """The first-order in-force count: active, deferred and paying together."""
+    n = data.pflegegrad_count()                                      # noqa: F821
     state = tar_ledger(t)
     total = state[0]
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         total += state[1][g - 1]
         for z in range(1, karenz_months() + 1):
             total += state[3][g - 1][z - 1]
@@ -1746,10 +1733,11 @@ def tar_pols_prem(t):
     year of benefit — and that cost sits inside the level premium.  It is one of the
     reasons a *Pflegerente* is dearer than a *Pflegetagegeld* of nominally equal benefit.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     if age(t) >= prem_end_age():
         return 0.0
     total = tar_pols_if(t)
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         if waiver_flag(g):
             total -= tar_ledger(t)[1][g - 1]
     return total
@@ -1761,9 +1749,10 @@ def tar_pols_death(t):
     Read only by the *Beitragsrückgewähr* leg of the equivalence: a death benefit written
     into a *Pflegerente* is a death cover and has to be priced as one.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     state = tar_ledger(t)
     total = state[0] * tar_p_act(t)[1]
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         in_grade = state[1][g - 1]
         for z in range(1, karenz_months() + 1):
             in_grade += state[3][g - 1][z - 1]
@@ -1782,10 +1771,11 @@ def tariff_benefit_pv():
     ledger, monthly, not a death or survival benefit,
     products/pflegerentenversicherung/technical-notes.md:617
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     total = 0.0
     for t in range(proj_len()):
         row = 0.0
-        for g in range(1, 6):
+        for g in range(1, n + 1):
             pct = benefit_pct(g)
             if pct > 0.0:
                 row += pct * tar_ledger(t)[2][g - 1]
@@ -1805,8 +1795,7 @@ def tariff_annuity():
     multi-state tariff ledger ``tar_pols_prem`` in units of the monthly premium, not an
     annual annuity-due, products/pflegerentenversicherung/technical-notes.md:618
     """
-    m = prem_mode_months()
-    mult = m if m > 0 else 1
+    mult = 1 if prem_form() == "single" else prem_cycle()
     total = 0.0
     for t in range(proj_len()):
         if premium_due(t):
@@ -1816,7 +1805,7 @@ def tariff_annuity():
 
 def epv_admin():
     """G: the expected present value of the per-policy administration cost, first order."""
-    admin_pp = float(data.param("admin_mth_pp"))                     # noqa: F821
+    admin_pp = float(data.param("load_admin_pp_mth"))                # noqa: F821
     total = 0.0
     for t in range(proj_len()):
         total += disc_factor_mth(t) * admin_pp * inflation_factor(t) * tar_pols_if(t)
@@ -1825,11 +1814,12 @@ def epv_admin():
 
 def epv_claim_expense():
     """C: the expected present value of the per-annuity-payment claims cost, first order."""
-    per_payment = float(data.param("claim_expense_pp"))              # noqa: F821
+    n = data.pflegegrad_count()                                      # noqa: F821
+    per_payment = float(data.param("load_claim_pp_inst"))            # noqa: F821
     total = 0.0
     for t in range(proj_len()):
         row = 0.0
-        for g in range(1, 6):
+        for g in range(1, n + 1):
             if waiver_flag(g):
                 row += tar_ledger(t)[1][g - 1]
         if row:
@@ -1868,15 +1858,14 @@ def premium_mth_pp():
     """
     if premium_mth() > 0.0:
         return premium_mth()
-    permille = float(data.param("acq_permille")) / 1000.0            # noqa: F821
-    admin_pct = float(data.param("admin_prem_pct"))                  # noqa: F821
-    m = prem_mode_months()
-    if m == 0:
-        a1 = permille
+    acq_load = float(data.param("load_acq_bsum_once"))               # noqa: F821
+    admin_pct = float(data.param("load_admin_prem_inst"))            # noqa: F821
+    if prem_form() == "single":
+        a1 = acq_load
     else:
         cap = int(data.param("beitragssumme_cap_age"))               # noqa: F821
         years = max(0, min(prem_end_age(), cap) - issue_age())
-        a1 = permille * 12.0 * years
+        a1 = acq_load * 12.0 * years
     d1 = 0.0
     if beitragsrueckgewaehr():
         for t in range(proj_len()):
@@ -1893,9 +1882,9 @@ def prem_units_at(t):
     equivalence can be assembled before the premium it would otherwise depend on is known.
     Breaking that circularity is the only reason this cells exists.
     """
-    m = prem_mode_months()
-    if m == 0:
+    if prem_form() == "single":
         return 1.0 if t >= 0 else 0.0
+    m = prem_cycle()
     last = min(t, 12 * (prem_end_age() - issue_age()) - 1)
     if last < 0:
         return 0.0
@@ -1983,9 +1972,10 @@ def check_states_resid(t):
     1 at the limiting age, it also closes at the far end: the decrements account for the
     whole policy rather than leaving a truncation residue.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     state = pols_ledger(t)
     total = state[0] + pols_dead_cum(t) + pols_lapse_cum(t)
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         total += state[1][g - 1]
         for z in range(1, karenz_months() + 1):
             total += state[3][g - 1][z - 1]
@@ -2040,10 +2030,11 @@ def check_esc_ledger_resid(t):
     escalated before rather than after the transition — the benefit would be understated and
     no total in the frame would look wrong.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     state = pols_ledger(t)
     if leistungsdynamik() == 0.0:
-        return sum(state[2][g - 1] - state[1][g - 1] for g in range(1, 6))
-    return sum(min(0.0, state[2][g - 1] - state[1][g - 1]) for g in range(1, 6))
+        return sum(state[2][g - 1] - state[1][g - 1] for g in range(1, n + 1))
+    return sum(min(0.0, state[2][g - 1] - state[1][g - 1]) for g in range(1, n + 1))
 
 
 def check_esc_ledger():
@@ -2074,22 +2065,23 @@ def check_prem_equiv_resid(t):
     supplies its own *Beitrag* no equivalence was struck, and the residual is zero by
     construction: an equivalence that was never struck cannot be checked.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     if premium_mth() > 0.0:
         return 0.0
     p0 = premium_mth_pp() / rating_factor()
-    m = prem_mode_months()
-    mult = m if m > 0 else 1
-    admin_pct = float(data.param("admin_prem_pct"))                  # noqa: F821
-    admin_pp = float(data.param("admin_mth_pp"))                     # noqa: F821
-    per_payment = float(data.param("claim_expense_pp"))              # noqa: F821
-    permille = float(data.param("acq_permille")) / 1000.0            # noqa: F821
+    single = prem_form() == "single"
+    mult = 1 if single else prem_cycle()
+    admin_pct = float(data.param("load_admin_prem_inst"))            # noqa: F821
+    admin_pp = float(data.param("load_admin_pp_mth"))                # noqa: F821
+    per_payment = float(data.param("load_claim_pp_inst"))            # noqa: F821
+    acq_load = float(data.param("load_acq_bsum_once"))               # noqa: F821
 
     prem_leg = p0 * mult * tar_pols_prem(t) if premium_due(t) else 0.0
 
     state = tar_ledger(t)
     ben_leg = 0.0
     paying = 0.0
-    for g in range(1, 6):
+    for g in range(1, n + 1):
         pct = benefit_pct(g)
         if pct > 0.0:
             ben_leg += pct * state[2][g - 1]
@@ -2102,12 +2094,12 @@ def check_prem_equiv_resid(t):
                + per_payment * inflation_factor(t) * paying
                + admin_pct * prem_leg)
     if t == 0:
-        if m == 0:
-            exp_leg += p0 * permille
+        if single:
+            exp_leg += p0 * acq_load
         else:
             cap = int(data.param("beitragssumme_cap_age"))           # noqa: F821
             years = max(0, min(prem_end_age(), cap) - issue_age())
-            exp_leg += p0 * permille * 12.0 * years
+            exp_leg += p0 * acq_load * 12.0 * years
 
     return disc_factor_mth(t) * (prem_leg - ben_leg - exp_leg)
 
@@ -2182,25 +2174,23 @@ def result_states_columns():
     between them, the two decrements and the four annual rates,
     products/pflegerentenversicherung/technical-notes.md:662
     """
-    return (
-        ("pols_pg1", lambda t: pols_pg(t, 1)),                       # noqa: F821
-        ("pols_pg2", lambda t: pols_pg(t, 2)),                       # noqa: F821
-        ("pols_pg3", lambda t: pols_pg(t, 3)),                       # noqa: F821
-        ("pols_pg4", lambda t: pols_pg(t, 4)),                       # noqa: F821
-        ("pols_pg5", lambda t: pols_pg(t, 5)),                       # noqa: F821
+    n = data.pflegegrad_count()                                      # noqa: F821
+    return tuple(
+        ("pols_pg%d" % g, lambda t, g=g: pols_pg(t, g))              # noqa: F821
+        for g in range(1, n + 1)) + (
         ("pols_karenz",
          lambda t: sum(pols_karenz(t, g, z)                          # noqa: F821
-                       for g in range(1, 6)
+                       for g in range(1, n + 1)
                        for z in range(1, karenz_months() + 1))),     # noqa: F821
         ("pols_entry",
-         lambda t: sum(pols_entry(t, g) for g in range(1, 6))),      # noqa: F821
+         lambda t: sum(pols_entry(t, g) for g in range(1, n + 1))),  # noqa: F821
         ("pols_grad",
-         lambda t: sum(pols_grad(t, g) for g in range(1, 6))),       # noqa: F821
+         lambda t: sum(pols_grad(t, g) for g in range(1, n + 1))),   # noqa: F821
         ("pols_reactiv", pols_reactiv),                              # noqa: F821
         ("pols_death", pols_death),                                  # noqa: F821
         ("pols_lapse", pols_lapse),                                  # noqa: F821
         ("mort_rate", mort_rate),                                    # noqa: F821
-        ("mort_rate_care_pg5", lambda t: mort_rate_care(t, 5)),      # noqa: F821
+        ("mort_rate_care_pg%d" % n, lambda t: mort_rate_care(t, n)), # noqa: F821
         ("inc_rate", inc_rate),                                      # noqa: F821
         ("lapse_rate", lapse_rate),                                  # noqa: F821
         ("premium_pp", premium_pp),                                  # noqa: F821

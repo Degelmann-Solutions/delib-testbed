@@ -37,13 +37,13 @@ lapse_file                 lapse_table()                   lapse_table.csv
 zulage_file                zulage_schedule()               zulage_schedule.csv
 income_file                income_schedule()               income_schedule.csv
 surplus_file               surplus_table()                 surplus_scenario.csv
-freq_loading_file          freq_loading_table()            freq_loading.csv
-param_file                 param_table()                   param_tariff_type.csv
+prem_freq_file             prem_freq_table()               prem_freq_table.csv
+param_file                 param()                         param_tariff_type.csv
 =========================  ==============================  ==========================
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.at`` and ``.loc``: the core's for ``mort_table``, ``param_table``,
+``DataFrame.at`` and ``.loc``: the core's for ``mort_table``,
 ``lapse_table`` and ``surplus_table``, this space's ``annuity_mort_table_dict``,
 ``zulage_schedule_dict`` and ``income_schedule_dict``.
 
@@ -70,8 +70,8 @@ the slope is a placeholder and nothing in the corpus fixes it.
 ``annuity_mort_table.csv`` stands in for **DAV 2004 R**, the annuitant table, and the one
 structural property that is *not* optional is that it is **two-dimensional**: a
 generational basis in age and calendar year,
-``q(x, tau) = qx_base(x) x (1 - improvement(x))^(tau - annuity_base_year)`` with
-``annuity_base_year = 2027``. A period-table proxy understates a twenty-year-deferred
+``q(x, tau) = qx_base(x) x (1 - improvement(x))^(tau - mort_base_year)`` with
+``mort_base_year = 2027``. A period-table proxy understates a twenty-year-deferred
 annuitisation by a margin that dwarfs every other assumption in the model, so a
 replacement may change the level and the improvement scale but must keep both arguments.
 The shipped base is ``qx_base = 0.006000 x 1.115^(age - 65)`` over ages 55 to 109, capped
@@ -209,7 +209,7 @@ income_file = "income_schedule.csv"
 
 surplus_file = "surplus_scenario.csv"
 
-freq_loading_file = "freq_loading.csv"
+prem_freq_file = "prem_freq_table.csv"
 
 param_file = "param_tariff_type.csv"
 

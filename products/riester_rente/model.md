@@ -183,7 +183,7 @@ year, like the two balances it moves between, so it sits in `result_acct()` with
 
 The AltZertG requires acquisition costs to be spread over **at least five years** [R1] — a
 tighter cap on *Zillmerung* than anything the VVG imposes on a Schicht-3 contract. So
-`acq_charge_pp(k)` is one fifth of `acq_charge_rate × beitragssumme` in contract years 1 to 5
+`acq_charge_pp(k)` is one fifth of `charge_acq_bsum_once × beitragssumme` in contract years 1 to 5
 and zero after: on the anchor, 168,00 € at `k = 0` and `k = 1` and nothing from `k = 2`.
 It never appears in `result_cf()`, being a deduction *before* the account, but 168,00 € of the
 488,90 € rise in the *Sparbeitrag* between `k = 1` and `k = 2` is the charge ending rather
@@ -223,7 +223,7 @@ independent, one a contract term struck at inception and the other a function of
 table, and the model states which is authoritative rather than leaving it to be inferred. The
 whole payout loading sits in `rentenfaktor_margin` (30 % **[std]**) rather than being split
 between the factor and each instalment, which would double-count; payout administration is an
-explicit `expense_annuity` flow instead. `check_conversion()` asserts
+explicit `expense_annuity_pp_ann` flow instead. `check_conversion()` asserts
 `rentenfaktor_curr() · 12 · ann_factor() = (1 − rentenfaktor_margin) · 10 000` on every model
 point, whether or not the current factor applies. `teilkapital_pp()` is the elected share
 clamped at the statutory 30 % [R1]: 13 726,91 € on the anchor, leaving 32 029,47 € to annuitise
@@ -330,7 +330,7 @@ folder. `Riester_DE_S/` holds nothing but formulas:
 products/riester_rente/
   model_point_table.csv  mort_table_accum.csv  annuity_mort_table.csv   <- inputs live here
   lapse_table.csv  zulage_schedule.csv  income_schedule.csv
-  surplus_scenario.csv  freq_loading.csv  param_tariff_type.csv
+  surplus_scenario.csv  prem_freq_table.csv  param_tariff_type.csv
   run.py  model.md  product-spec.md  technical-notes.md  sources.md
   Riester_DE_S/                <- formulas only
     __init__.py  _system.json
@@ -356,12 +356,12 @@ Each file has one string Reference and one reader cells on `Data`, named alike:
 `model_point_file` → `model_point_table()`, `mort_file` → `mort_table()`,
 `annuity_mort_file` → `annuity_mort_table()`, `lapse_file` → `lapse_table()`, `zulage_file` →
 `zulage_schedule()`, `income_file` → `income_schedule()`, `surplus_file` →
-`surplus_table()`, `freq_loading_file` → `freq_loading_table()` and `param_file` →
-`param_table()`.
+`surplus_table()`, `prem_freq_file` → `prem_freq_table()`; `param_file` is read
+by the core's loader `param()`.
 
 **The trade-off:** the model is not portable on its own — copy `Riester_DE_S/` without the CSVs
 and it reads fine, then fails on first evaluation. What you gain is a diff that shows logic
-changes only, and an input that can be swapped in place: point `Data.freq_loading_file` at
+changes only, and an input that can be swapped in place: point `Data.prem_freq_file` at
 another same-schema file and the projection follows with no formula change, which is how the
 frequency-loading invariance is tested.
 
@@ -374,8 +374,8 @@ frequency-loading invariance is tested.
 | `zulage_schedule.csv` | `unmittelbar`, `n_kinder_pre2008`, `n_kinder_post2008`, `bonus` by schedule id and `t`, 0–59 | [R9] [REG-R42]. Exogenous because *Kindergeld* is a household fact the contract does not observe — the most awkward feature of this product for a per-policy model |
 | `income_schedule.csv` | Contribution-liable earnings by schedule id and `t`, 0–59 | **[std]** 2 % nominal growth paths plus a `zero` path for the *mittelbar* eligible spouse. It decides when the 2 100 € ceiling binds |
 | `surplus_scenario.csv` | `decl_rate` by scenario id and `t`, 0–89: `base` 2,30 %, `low` 0,50 % | **[std]**, the **largest single lever in the model** and the least supported (gap 12). The rate **includes** the *Rechnungszins* [REG-R53] |
-| `freq_loading.csv` | The *Ratenzuschlag* multiplier by payment frequency | **[std]** 1.0000 / 1.0100 / 1.0200 / 1.0300, a charge and never a credit |
-| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.80, `expense_infl` 0.02, and the 32 scalar tariff parameters that were References on `Projection`, `valuation_year` and `grundzulage` … `comm_rate_renew` | `mort_be_factor` **[std]**, the step from the first-order death table to the best estimate, below it because a death table carries its margin above [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads. The 32 moved References carry their own basis tags in their provenance, statutory or **[std]** per row, as in `technical-notes.md` "Assumption inputs" |
+| `prem_freq_table.csv` | The *Ratenzuschlag* multiplier by payment frequency | **[std]** 1.0000 / 1.0100 / 1.0200 / 1.0300, a charge and never a credit |
+| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.80, `expense_infl` 0.02, and the 32 scalar tariff parameters that were References on `Projection`, `valuation_year` and `grundzulage` … `comm_renew_prem_inst` | `mort_be_factor` **[std]**, the step from the first-order death table to the best estimate, below it because a death table carries its margin above [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads. The 32 moved References carry their own basis tags in their provenance, statutory or **[std]** per row, as in `technical-notes.md` "Assumption inputs" |
 
 ### How the time-like input columns are keyed
 
@@ -391,7 +391,7 @@ to a monthly grid re-keyed none of them: each is read through `k` rather than `t
 | `surplus_scenario.csv` | `t` | The model's own **annual** index `k`; values run **0 … 89** | `decl_rate(k)` reads the row at `k` directly |
 | `lapse_table.csv` | `policy_year` | **Values unchanged, 1 … 60; header renamed `duration` → `policy_year` in phase 3** | It is a contractual **contract-year band**, not the frame's `t` and not its `k` either. The projection maps into it with `policy_year(t) = duration(t) + 1 = duration_init() + t // 12 + 1`, which is 4 on the anchor's first period exactly as before; the cells `duration(t)` is itself the 0-based count of completed contract years, as in `Basis_DE_S` and `KLV_DE_S` |
 | `mort_table_accum.csv`, `annuity_mort_table.csv` | `age` | Unchanged | Attained age, not a time index |
-| `freq_loading.csv` | `prem_freq` | Unchanged | Not a time index |
+| `prem_freq_table.csv` | `prem_freq` | Unchanged | Not a time index |
 | `model_point_table.csv` | `duration_init` | **Unchanged** | An elapsed count of completed contract years, 0-based by nature |
 | `model_point_table.csv` | `bfs_year` | Shifted with the frame: point 10 moves from `4` to `3`, and the "never" sentinel from `0` to **`-1`** | It is a point on the frame's own **annual** axis, compared as `k >= bfs_year()`. The old sentinel `0` would now collide with the first projected period, so it had to move |
 

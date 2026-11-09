@@ -91,8 +91,8 @@ lapse_file                 data.lapse_table()                     lapse_table.cs
 zulage_file                data.zulage_schedule()                 zulage_schedule.csv
 income_file                data.income_schedule()                 income_schedule.csv
 surplus_file               data.surplus_table()                   surplus_scenario.csv
-freq_loading_file          data.freq_loading_table()              freq_loading.csv
-param_file                 data.param_table()                     param_tariff_type.csv
+prem_freq_file             data.prem_freq_table()                 prem_freq_table.csv
+param_file                 data.param()                           param_tariff_type.csv
 =========================  =====================================  ==========================
 
 .. rubric:: Naming
@@ -211,7 +211,7 @@ a(k)                       annuity_pp(k)                   Annual annuity, 12 in
 (none)                     expenses_maint(t)               Maintenance + annuity expense
 (none)                     expenses_claim(t)               Per death, surrender, transfer
 (none)                     expenses(t)                     Expense outgo
-(none)                     comm_init_rate()                comm_rate_init
+(none)                     comm_init_rate()                comm_acq_bsum_once
 (none)                     comm_renew(t)                   Renewal on the contributions
 (none)                     commissions(t)                  Commission outgo
 (none)                     income_other(t)                 zulagen(t), in net_cf
@@ -632,7 +632,7 @@ def mort_rate_at_age(x):
 def annuity_mort_rate(x, tau):
     """q(x, tau): the **generational** annuitant death rate at age x in calendar year tau.
 
-    ``qx_base(x) x (1 - improvement(x))^(tau - annuity_base_year)`` from
+    ``qx_base(x) x (1 - improvement(x))^(tau - mort_base_year)`` from
     *annuity_mort_table.csv*, a **[std]** proxy for DAV 2004 R.  It depends on **both**
     arguments, and that is the property a replacement may not drop: a twenty-year-deferred
     annuitisation happens on the mortality of its own conversion year, and a period-table
@@ -644,7 +644,7 @@ def annuity_mort_rate(x, tau):
     tab = data.annuity_mort_table_dict()                             # noqa: F821
     qb = float(tab["qx_base"][x])
     im = float(tab["improvement"][x])
-    return qb * (1.0 - im) ** (tau - data.param("annuity_base_year"))  # noqa: F821
+    return qb * (1.0 - im) ** (tau - data.param("mort_base_year"))     # noqa: F821
 
 
 def mort_be_factor():
@@ -974,18 +974,18 @@ def contrib_total_pp(k):
 
 
 def alpha_rate():
-    """The acquisition charge rate on the *Beitragssumme*, ``acq_charge_rate``.
+    """The acquisition charge rate on the *Beitragssumme*, ``charge_acq_bsum_once``.
 
     So the core's :func:`zillmer_amount` is the whole acquisition charge,
-    ``acq_charge_rate x beitragssumme()``, which :func:`acq_charge_pp` spreads.
+    ``charge_acq_bsum_once x beitragssumme()``, which :func:`acq_charge_pp` spreads.
     """
-    return data.param("acq_charge_rate")                             # noqa: F821
+    return data.param("charge_acq_bsum_once")                        # noqa: F821
 
 
 def acq_charge_pp(k):
     """K_a(k): the acquisition charge deducted in period k, per policy.
 
-    ``zillmer_amount() / acq_charge_years``, ``acq_charge_rate x beitragssumme()`` spread
+    ``zillmer_amount() / acq_spread_years``, ``charge_acq_bsum_once x beitragssumme()`` spread
     over its years, in contract years 1 to 5 and
     zero afterwards.  The AltZertG requires acquisition and distribution costs to be spread
     over **at least five years**, which is a materially tighter constraint on *Zillmerung*
@@ -994,18 +994,18 @@ def acq_charge_pp(k):
     contract it drives :func:`prem_to_av_pp` negative; stopping it at *Beitragsfreistellung*
     is a listed pitfall.
     """
-    if k > k_conv() or duration_y(k) >= data.param("acq_charge_years"):  # noqa: F821
+    if k > k_conv() or duration_y(k) >= data.param("acq_spread_years"):  # noqa: F821
         return 0.0
-    return zillmer_amount() / data.param("acq_charge_years")         # noqa: F821
+    return zillmer_amount() / data.param("acq_spread_years")         # noqa: F821
 
 
 def admin_charge_pp(k):
     """K_v(k): the administration charge deducted in period k, per policy.
 
-    ``admin_charge_prem_rate`` of the contribution credited — **Zulagen included**, which
+    ``charge_admin_prem_inst`` of the contribution credited — **Zulagen included**, which
     is a standardization the German corpus does not settle and which matters most on
     exactly the low-income cells the product was designed for — plus a fixed
-    ``admin_charge_fixed`` a year, plus the *Ratenzuschlag* ``E(k)(phi - 1)`` that
+    ``charge_admin_pp_ann`` a year, plus the *Ratenzuschlag* ``E(k)(phi - 1)`` that
     :func:`contrib_total_pp` collected.  The percentage base is the **unloaded**
     contribution, so the loading is neither charged twice nor credited.
     """
@@ -1015,8 +1015,8 @@ def admin_charge_pp(k):
             + (contrib_extra_pp() if (is_accum_y(k) and not
                                       (bfs_year() >= 0 and k >= bfs_year()))
                else 0.0))
-    return (data.param("admin_charge_prem_rate") * base              # noqa: F821
-            + data.param("admin_charge_fixed")                       # noqa: F821
+    return (data.param("charge_admin_prem_inst") * base              # noqa: F821
+            + data.param("charge_admin_pp_ann")                      # noqa: F821
             + eigenbeitrag_pp(k) * (prem_freq_load() - 1.0))
 
 
@@ -1276,13 +1276,13 @@ def slueb_pp():
 def bewres_pp():
     """The *Bewertungsreserven* share allocated at *Rentenbeginn*, per policy.
 
-    ``bewres_rate`` of the account at conversion — the individual entitlement to the
+    ``bwr_rate`` of the account at conversion — the individual entitlement to the
     *hälftige* participation in unrealised gains that § 153 Abs. 3 VVG gives on
     termination.  Like the *Schlussüberschussanteil* it is counted toward the guarantee
     here, and the level is a standardization.
     """
     T = k_conv()
-    return data.param("bewres_rate") * (dk_pp(T) + prem_to_av_pp(T)  # noqa: F821
+    return data.param("bwr_rate") * (dk_pp(T) + prem_to_av_pp(T)     # noqa: F821
                                         + surplus_acct_pp(T))
 
 
@@ -1350,15 +1350,16 @@ def ann_factor():
 def rentenfaktor_curr():
     """R_c: the current *Rentenfaktor* implied by the model's own annuity basis.
 
-    ``(1 - rentenfaktor_margin) x 10 000 / (12 x ann_factor())``.  The whole payout-phase
+    ``(1 - rentenfaktor_margin) x 10 000 / (ann_freq x ann_factor())``, ``ann_freq = 12``
+    instalments a year.  The whole payout-phase
     loading — the *Sicherheitsabschlag* and the administration margin — sits in this one
     deduction rather than being taken partly here and partly out of each instalment, which
     would double-count; the insurer's real payout administration is instead an explicit
     expense cash flow.  On the anchor it is 27,947822, **below** the guaranteed 29,00, so
     the guarantee binds.
     """
-    return ((1.0 - data.param("rentenfaktor_margin")) * 10000.0      # noqa: F821
-            / (12.0 * ann_factor()))
+    return ((1.0 - data.param("rentenfaktor_margin")) * data.param("rf_unit")  # noqa: F821
+            / (data.param("ann_freq") * ann_factor()))               # noqa: F821
 
 
 def rentenfaktor_applied():
@@ -1376,11 +1377,12 @@ def rentenfaktor_applied():
 def annuity_month_pp():
     """The monthly annuity instalment per policy, in euros.
 
-    ``annuity_capital_pp() / 10 000 x rentenfaktor_applied()`` — the *Rentenfaktor* is
-    quoted per 10 000 € of capital, which is the German market's convention and the reason
-    a factor of 29,00 is a monthly and not an annual amount.  Zero on a commuted contract.
+    ``annuity_capital_pp() / rf_unit x rentenfaktor_applied()`` — the *Rentenfaktor* is
+    quoted per ``rf_unit`` = 10 000 € of capital (a row of *param_tariff_type.csv*), which
+    is the German market's convention and the reason a factor of 29,00 is a monthly and not
+    an annual amount.  Zero on a commuted contract.
     """
-    return annuity_capital_pp() / 10000.0 * rentenfaktor_applied()
+    return annuity_capital_pp() / data.param("rf_unit") * rentenfaktor_applied()  # noqa: F821
 
 
 def is_kleinbetrag():
@@ -1401,7 +1403,7 @@ def is_kleinbetrag():
     way round.
     """
     test = ((1.0 - min(teilkapital_share(), data.param("teilkapital_cap")))  # noqa: F821
-            * capital_conv_pp() / 10000.0
+            * capital_conv_pp() / data.param("rf_unit")              # noqa: F821
             * rentenfaktor_applied())
     return bool(test <= data.param("kleinbetrag_threshold_mth"))     # noqa: F821
 
@@ -1448,7 +1450,7 @@ def commutation_pp():
 def annuity_pp(k):
     """a(k): the **annual** annuity per policy in payout year k — twelve monthly instalments.
 
-    ``12 x annuity_month_pp()``, level for life.  It does **not** read
+    ``ann_freq x annuity_month_pp()``, ``ann_freq = 12``, level for life.  It does **not** read
     :func:`rentengarantie_years`: the guarantee period changes who is paid and never how
     much, and a model point with no guarantee period pays the *same* annuity to a smaller
     count.  Zero before *Rentenbeginn* and zero on a commuted contract.
@@ -1458,7 +1460,7 @@ def annuity_pp(k):
     """
     if not is_payout_y(k) or k >= proj_len_y() or is_kleinbetrag():
         return 0.0
-    return 12.0 * annuity_month_pp()
+    return data.param("ann_freq") * annuity_month_pp()               # noqa: F821
 
 
 def db_pp(k):
@@ -1493,8 +1495,8 @@ def cv_pp(k):
 def transfer_value_pp(k):
     """The *Anbieterwechsel* transfer value per policy in period k.
 
-    ``max(0, av_total_pp_at(k, "AFT_INT") - transfer_charge)``: the full account less a flat
-    charge, with **no** *Stornoabzug*.  That is the whole economic difference between a
+    ``max(0, av_total_pp_at(k, "AFT_INT") - charge_transfer_pp_once)``: the full account less
+    a flat charge, with **no** *Stornoabzug*.  That is the whole economic difference between a
     transfer and a surrender, and collapsing the two into one decrement is a listed
     pitfall — it would apply a percentage charge where a flat one belongs and, far worse,
     would attribute the *schädliche Verwendung* consequences of a *Kündigung* to an exit
@@ -1502,13 +1504,14 @@ def transfer_value_pp(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return max(0.0, av_total_pp_at(k, "AFT_INT") - data.param("transfer_charge"))  # noqa: F821
+    return max(0.0, av_total_pp_at(k, "AFT_INT")
+               - data.param("charge_transfer_pp_once"))              # noqa: F821
 
 
 def exit_charge_pp(t):
     """The charge the insurer retains on the month's exits — an **aggregate**, not per policy.
 
-    ``stornoabzug_rate x A(k+1) x pols_lapse(t) + min(transfer_charge, A(k+1)) x
+    ``stornoabzug_rate x A(k+1) x pols_lapse(t) + min(charge_transfer_pp_once, A(k+1)) x
     pols_transfer(t)``, with ``A(k+1)`` the **annual** end-of-year account value every exit
     of that contract year is struck on.  It is the residue that keeps the account
     roll-forward exact: the account released by an exiting policy either leaves as a benefit
@@ -1519,7 +1522,7 @@ def exit_charge_pp(t):
         return 0.0
     a = av_total_pp_at(proj_year(t), "AFT_INT")
     return (data.param("stornoabzug_rate") * a * pols_lapse(t)       # noqa: F821
-            + min(data.param("transfer_charge"), a) * pols_transfer(t))  # noqa: F821
+            + min(data.param("charge_transfer_pp_once"), a) * pols_transfer(t))  # noqa: F821
 
 
 def claim_kinds():
@@ -1658,7 +1661,8 @@ def int_credited(k):
 
 
 def expenses_acq(t):
-    """The acquisition expense ``expense_acq + expense_acq_rate x beitragssumme()`` at issue.
+    """The acquisition expense ``expense_acq_pp_once + expense_acq_bsum_once x beitragssumme()``
+    at issue.
 
     Only on a point with ``duration_init() == 0``.  All expense components are **[std]**
     because no German insurer publishes a unit cost; the commission is excluded.
@@ -1667,7 +1671,8 @@ def expenses_acq(t):
     *Beitragssumme* at issue, products/riester_rente/technical-notes.md:422
     """
     if t == 0 and duration_init() == 0:
-        return (data.param("expense_acq") + data.param("expense_acq_rate")  # noqa: F821
+        return (data.param("expense_acq_pp_once")                    # noqa: F821
+                + data.param("expense_acq_bsum_once")                # noqa: F821
                 * beitragssumme()) * pols_if(0)
     return 0.0
 
@@ -1675,9 +1680,9 @@ def expenses_acq(t):
 def expenses_maint(t):
     """Maintenance in accumulation plus the annuity expense in payout, in month t.
 
-    A **twelfth** of the annual per-policy maintenance ``expense_maint``, inflating at
+    A **twelfth** of the annual per-policy maintenance ``expense_admin_pp_ann``, inflating at
     ``expense_infl`` on **contract** duration and stepping on the anniversary, on the
-    in-force, in accumulation only; and a twelfth of ``expense_annuity`` per annuitant
+    in-force, in accumulation only; and a twelfth of ``expense_annuity_pp_ann`` per annuitant
     actually paid, in payout.  The maintenance figure carries the Zulage administration —
     the *Dauerzulageantrag*, the annual data exchange with the ZfA and the
     *Leistungsmitteilung* — which is a real and product-specific cost.  A policy that exits
@@ -1688,24 +1693,24 @@ def expenses_maint(t):
     products/riester_rente/technical-notes.md:664, and the annuity expense on the
     annuitants paid, products/riester_rente/technical-notes.md:665
     """
-    maint = (data.param("expense_maint") / 12.0                      # noqa: F821
+    maint = (data.param("expense_admin_pp_ann") / 12.0               # noqa: F821
              * inflation_factor(t)
              * pols_if(t)) if is_accum(t) else 0.0
-    return maint + data.param("expense_annuity") / 12.0 * pols_annuity_pay(t)  # noqa: F821
+    return maint + data.param("expense_annuity_pp_ann") / 12.0 * pols_annuity_pay(t)  # noqa: F821
 
 
 def expenses_claim(t):
-    """``expense_claim`` per death, surrender or transfer, whole in the month of the event.
+    """``expense_claim_pp_once`` per death, surrender or transfer, whole in the month of the event.
 
     Override reason: the claim expense is an amount per death, surrender or transfer,
     products/riester_rente/technical-notes.md:666
     """
-    return data.param("expense_claim") * (pols_death(t) + pols_lapse(t)  # noqa: F821
+    return data.param("expense_claim_pp_once") * (pols_death(t) + pols_lapse(t)  # noqa: F821
                                           + pols_transfer(t))
 
 
 def comm_init_rate():
-    """``comm_rate_init``, the initial commission rate on the *Beitragssumme* **[std]**.
+    """``comm_acq_bsum_once``, the initial commission rate on the *Beitragssumme* **[std]**.
 
     Paid at issue on a point written at the valuation date.  The initial rate sits at the
     *Höchstzillmersatz*; **the cash leaves at issue while the charge is recovered over five
@@ -1713,14 +1718,14 @@ def comm_init_rate():
     is a **separate** column from :func:`expenses` and :func:`net_cf` subtracts each exactly
     once.
 
-    Override reason: the initial commission is ``comm_rate_init`` of the *Beitragssumme* at
+    Override reason: the initial commission is ``comm_acq_bsum_once`` of the *Beitragssumme* at
     issue, products/riester_rente/technical-notes.md:667
     """
-    return data.param("comm_rate_init")                              # noqa: F821
+    return data.param("comm_acq_bsum_once")                          # noqa: F821
 
 
 def comm_renew(t):
-    """``comm_rate_renew`` of the contributions credited in month t **[std]**.
+    """``comm_renew_prem_inst`` of the contributions credited in month t **[std]**.
 
     The *Eigenbeitrag* and the Zulagen alike, because the provider is remunerated on what it
     administers.  The renewal commission is a percentage of a contribution, so it falls in
@@ -1735,7 +1740,7 @@ def comm_renew(t):
     if not is_accum(t) or not prem_due(t):
         return 0.0
     k = proj_year(t)
-    return (data.param("comm_rate_renew")                            # noqa: F821
+    return (data.param("comm_renew_prem_inst")                       # noqa: F821
             * (eigenbeitrag_pp(k) + zulage_pp(k)) * pols_if(t))
 
 
@@ -1932,11 +1937,11 @@ def check_conversion_resid(k):
     annuity_capital_pp() + commutation_pp()``, so a commuted contract pays no lump sum
     beside the *Abfindung* and an annuitised one pays no *Abfindung* beside the annuity.
     Third, the current *Rentenfaktor* and the annuity factor are consistent by
-    construction: ``rentenfaktor_curr() x 12 x ann_factor() = (1 - rentenfaktor_margin) x
-    10 000``, which is the identity that catches a Woolhouse correction applied twice, a
+    construction: ``rentenfaktor_curr() x ann_freq x ann_factor() = (1 - rentenfaktor_margin)
+    x 10 000``, which is the identity that catches a Woolhouse correction applied twice, a
     factor struck on the second-order basis, or a margin taken both in the factor and in the
     instalment.  Fourth, the instalment is the **monthly** one the factor quotes:
-    ``12 x annuity_month_pp() = annuity_pp(k)``, so an annual amount cannot reach a monthly
+    ``ann_freq x annuity_month_pp() = annuity_pp(k)``, so an annual amount cannot reach a monthly
     frame by accident.
 
     Unlike the other residuals this one is an absolute total rather than a signed
@@ -1949,9 +1954,9 @@ def check_conversion_resid(k):
     r1 = capital_conv_pp() - max(account_conv_pp(), guar_pp(k_conv() + 1))
     r2 = capital_conv_pp() - (teilkapital_pp() + annuity_capital_pp()
                               + commutation_pp())
-    r3 = (rentenfaktor_curr() * 12.0 * ann_factor()
-          - (1.0 - data.param("rentenfaktor_margin")) * 10000.0)     # noqa: F821
-    r4 = 12.0 * annuity_month_pp() - annuity_pp(k)
+    r3 = (rentenfaktor_curr() * data.param("ann_freq") * ann_factor()  # noqa: F821
+          - (1.0 - data.param("rentenfaktor_margin")) * data.param("rf_unit"))  # noqa: F821
+    r4 = data.param("ann_freq") * annuity_month_pp() - annuity_pp(k)  # noqa: F821
     return abs(r1) + abs(r2) + abs(r3) + abs(r4)
 
 

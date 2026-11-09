@@ -132,8 +132,8 @@ decl_rate_file            data.decl_rate_table()             decl_rate_table.csv
 rentenfaktor_file         data.rentenfaktor_table()          rentenfaktor_table.csv
 charge_file               data.charge_table()                charge_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
-freq_loading_file         data.freq_loading_table()          freq_load_table.csv
-param_file                data.param_table()                 param_tariff_type.csv
+prem_freq_file            data.prem_freq_table()             prem_freq_table.csv
+param_file                data.param()                       param_tariff_type.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -501,7 +501,7 @@ def prem_pp_sched(k):
     """P_sched(k): the premium schedule **as written at inception**, per policy.
 
     Zero after the *Rentenbeginn* and after the paying term; the *Einmalbeitrag* in the
-    first year (``k = 0``) on the ``einmal`` form; otherwise the loaded gross premium grown
+    first year (``k = 0``) on the ``single`` form; otherwise the loaded gross premium grown
     by the *Dynamik*.
 
     It ignores any later *Beitragsfreistellung* on purpose.  The § 4 DeckRV zillmer base is
@@ -512,7 +512,7 @@ def prem_pp_sched(k):
     mp = model_point()
     if k < 0 or k >= int(mp["aufschub_y"]) or k >= prem_term_y():
         return 0.0
-    if mp["premium_form"] == "einmal":
+    if prem_form() == "single":
         return float(mp["premium_single_pp"]) if k == 0 else 0.0
     return (float(mp["prem_gross_pp"]) * prem_freq_load()
             * (1.0 + float(mp["dynamik_rate"])) ** k)
@@ -1260,7 +1260,8 @@ def pup_cashout():
         return False
     threshold = float(data.charge_table_dict()["value"][             # noqa: F821
         (model_point()["charge_id"], "min_annuity_mth")])
-    return bool(pup_value_pp() / 10000.0 * annuity_rate_guar() < threshold)
+    return bool(pup_value_pp() / data.param("rf_unit") * annuity_rate_guar()  # noqa: F821
+                < threshold)
 
 
 def pup_uplift(k):
@@ -1428,14 +1429,14 @@ def capital_gross_pp():
 def val_reserve_pp():
     """The *Bewertungsreserven* crystallised at the *Rentenbeginn*, per policy.
 
-    ``val_reserve_rate x capital_gross_pp()``, 1,5 % **[std]**.  The mechanic is cited twice
+    ``bwr_rate x capital_gross_pp()``, 1,5 % **[std]**.  The mechanic is cited twice
     over — participation in the *Bewertungsreserven* is *hälftig* under § 153 Abs. 3 VVG and
     the transition to annuity payment is a key point for it — and **no amount, ratio or
     reserve level was established anywhere**, so the rate is a placeholder sized to be visible
     without dominating.  Policyholders also participate during the payout phase; that
     continuing participation is not modelled.
     """
-    return (float(data.param("val_reserve_rate"))                    # noqa: F821
+    return (float(data.param("bwr_rate"))                            # noqa: F821
             * capital_gross_pp())
 
 
@@ -1498,11 +1499,13 @@ def annuity_rate_appl():
 def annuity_guar_mth_pp():
     """G: the *garantierte Rente*, monthly, per policy.
 
-    ``capital_conv_pp() / 10 000 x annuity_rate_appl()`` — the conversion rule in one line.
+    ``capital_conv_pp() / rf_unit x annuity_rate_appl()`` — the conversion rule in one line,
+    the *Rentenfaktor* quoted per ``rf_unit`` = 10 000 € of capital, a row of
+    *param_tariff_type.csv*.
     Struck once, at the *Rentenbeginn*, and level for life thereafter; only this part is
     guaranteed, the *Überschussrente* beside it is not.
     """
-    return capital_conv_pp() / 10000.0 * annuity_rate_appl()
+    return capital_conv_pp() / data.param("rf_unit") * annuity_rate_appl()  # noqa: F821
 
 
 def annuity_sur_mth_pp(k):
@@ -1670,31 +1673,31 @@ def claims_other(t, kind):
     raise ValueError("invalid kind")
 
 
-def expense_acq_pp():
+def expense_acq_pp_once():
     """The acquisition expense at issue, from *param_tariff_type.csv*: 400,00 € **[std]**."""
-    return float(data.param("expense_acq_pp"))                       # noqa: F821
+    return float(data.param("expense_acq_pp_once"))                  # noqa: F821
 
 
-def expense_maint_pp():
+def expense_admin_pp_ann():
     """The maintenance expense per policy per year in the accumulation phase: 45,00 € **[std]**."""
-    return float(data.param("expense_maint_pp"))                     # noqa: F821
+    return float(data.param("expense_admin_pp_ann"))                 # noqa: F821
 
 
-def expense_annuity_pp():
+def expense_annuity_pp_ann():
     """The administration expense per policy per year in the payout phase: 30,00 € **[std]**."""
-    return float(data.param("expense_annuity_pp"))                   # noqa: F821
+    return float(data.param("expense_annuity_pp_ann"))               # noqa: F821
 
 
-def expense_claim_pp():
+def expense_claim_pp_once():
     """The settlement expense per death, surrender or commutation event: 120,00 € **[std]**."""
-    return float(data.param("expense_claim_pp"))                     # noqa: F821
+    return float(data.param("expense_claim_pp_once"))                # noqa: F821
 
 
 def expenses_pp(t):
     """The per-policy administration expense in **month** t, inflated: a twelfth of the year's.
 
-    ``expense_maint_pp()`` in the accumulation phase and ``expense_annuity_pp()`` in the payout
-    phase, **divided by twelve** and times ``(1 + expense_infl())^duration(t)``.
+    ``expense_admin_pp_ann()`` in the accumulation phase and ``expense_annuity_pp_ann()`` in the
+    payout phase, **divided by twelve** and times ``(1 + expense_infl())^duration(t)``.
 
     Two decisions are stated by that formula.  The level is a twelfth of the annual amount
     rather than a monthly amount of its own, so a year of it on a closed cohort is exactly the
@@ -1704,8 +1707,8 @@ def expenses_pp(t):
     leaves mid-year is now borne only for the months it was there, which is the refinement the
     finer grid buys here.
     """
-    level = (expense_maint_pp() if duration(t) < int(model_point()["aufschub_y"])
-             else expense_annuity_pp())
+    level = (expense_admin_pp_ann() if duration(t) < int(model_point()["aufschub_y"])
+             else expense_annuity_pp_ann())
     return level / 12.0 * inflation_factor(t)
 
 
@@ -1724,7 +1727,7 @@ def expenses_acq(t):
     only, products/klassische_rentenversicherung/technical-notes.md:659
     """
     if t == t_start() and k_start() == 0:
-        return expense_acq_pp() * pols_if(t)
+        return expense_acq_pp_once() * pols_if(t)
     return 0.0
 
 
@@ -1748,7 +1751,7 @@ def expenses_claim(t):
     Override reason: settlement is an amount per death, surrender or commutation,
     products/klassische_rentenversicherung/technical-notes.md:381
     """
-    return expense_claim_pp() * (pols_death(t) + pols_lapse(t)
+    return expense_claim_pp_once() * (pols_death(t) + pols_lapse(t)
                                  + pols_commutation(t))
 
 
@@ -1972,14 +1975,14 @@ def check_cv_floor():
 
 
 def check_annuity_conv_resid(t):
-    """The conversion residual: ``annuity_guar_mth_pp x 10 000 - capital_conv_pp x f``.
+    """The conversion residual: ``annuity_guar_mth_pp x rf_unit - capital_conv_pp x f``.
 
     A scalar identity — the conversion is struck once, at the *Rentenbeginn* — evaluated at
     every ``t`` so that it has the same shape as the other checks.  ``f`` is rebuilt here as
     ``max(annuity_rate_guar(), annuity_rate_curr())`` rather than read from
     :func:`annuity_rate_appl`, so the check is independent of the cells it is checking.
     """
-    return (annuity_guar_mth_pp() * 10000.0
+    return (annuity_guar_mth_pp() * data.param("rf_unit")             # noqa: F821
             - capital_conv_pp() * max(annuity_rate_guar(), annuity_rate_curr()))
 
 
@@ -1992,7 +1995,7 @@ def check_annuity_conv():
     general contract data.
     """
     scale = max(1.0, abs(capital_conv_pp()))
-    tol = roll_fwd_tol() * scale * 10000.0
+    tol = roll_fwd_tol() * scale * data.param("rf_unit")             # noqa: F821
     if abs(check_annuity_conv_resid(result_cf().index[0])) > tol:
         return False
     if annuity_rate_appl() < annuity_rate_guar() - roll_fwd_tol():

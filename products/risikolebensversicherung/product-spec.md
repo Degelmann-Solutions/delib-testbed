@@ -223,7 +223,7 @@ Footnotes to **[std]** rows:
 
 | Parameter | Representative value | Basis |
 |---|---|---|
-| Premium form (model-point parameter) | (i) `laufend` — a **level *Bruttobeitrag*** payable at the start of each of the first `prem_term` policy years; (ii) `einmal` — a single *Einmalbeitrag* at issue | (i) mechanic 4 [R6] [R10]; (ii) **[std]** (5) |
+| Premium form (model-point parameter) | (i) `regular` — a **level *Bruttobeitrag*** payable at the start of each of the first `prem_term` policy years; (ii) `single` — a single *Einmalbeitrag* at issue | (i) mechanic 4 [R6] [R10]; (ii) **[std]** (5) |
 | What is guaranteed | The ***Bruttobeitrag*** — the maximum the policyholder can ever be required to pay, unchanged for the term | [R6] [REG-R27]; mechanic 5 |
 | What is billed | The ***Zahlbeitrag*** = *Bruttobeitrag* × (1 − `v`), with `v` the declared *Beitragsverrechnungssatz*. **Not guaranteed** and revisable annually by declaration alone | [R5] [R6] [R9] [S5]; level **[std]** (6) |
 | Representative `Zahl / Brutto` ratio | **0.57** | **[std]** (6) |
@@ -233,13 +233,13 @@ Footnotes to **[std]** rows:
 | Unisex mixing ratio | **50 % male / 50 % female** blend of the sex-distinct base tables, applied to the **tariff** and never to the projection | **[std]** (8); [R13] [REG-R34] |
 | Rating factors | Entry age; *Versicherungsdauer*; sum insured; smoker status; occupation; declared hazardous pursuits; health evidence. **Sex may not be a rating factor** for contracts concluded from 21 December 2012 — AGG § 33 Abs. 5 confines the derogation to "Versicherungsverhältnisse, die vor dem 21. Dezember 2012 begründet werden", and § 20 Abs. 2 leaves no actuarial justification open for sex at all. [S3] § 18 confirms the smoker split and prices it, and [S3] § 13 Abs. 5 confirms that occupation, attained *rechnungsmäßiges Alter* and any agreed *Risikozuschlag* price an increase | mechanic 9; unisex [R13] [REG-R34]; [S3] |
 | *Risikozuschlag* (model-point parameter) | `rating_factor`, a multiplier on the **mortality basis**; 1.00 at standard rates | mechanics 9; value **[std]** (9) |
-| *Zahlweise* (model-point parameter) | `jaehrlich`, `halbjaehrlich`, `vierteljaehrlich`, `monatlich`; annually in advance is the actuarial base case, monthly by *SEPA-Lastschrift* the market's normal choice | mechanic 7 [unverified] |
+| *Zahlweise* (model-point parameter) | `annual`, `half_yearly`, `quarterly`, `monthly`; annually in advance is the actuarial base case, monthly by *SEPA-Lastschrift* the market's normal choice | mechanic 7 [unverified] |
 | *Ratenzahlungszuschlag* | Annual 1.000; half-yearly **1.02**; quarterly **1.03**; monthly **1.05** | **[std]** (10) |
 | Premium cessation | On death; at the end of the *Beitragszahlungsdauer*, which may precede the end of the *Versicherungsdauer* | mechanics 4, 17 |
 | Premium increase by the insurer | § 163 VVG — titled ***Prämien- und Leistungsänderung***, not *Anpassung der Prämie* — permits a *Neufestsetzung* only where the ***Leistungsbedarf*** has changed "nicht nur vorübergehend und nicht voraussehbar" against the bases of the agreed premium, where the new premium is "angemessen und erforderlich" for *dauernde Erfüllbarkeit*, and where "ein unabhängiger Treuhänder" has confirmed both; barred where the original calculation was inadequate and a careful actuary should have seen it. Abs. 2 gives the policyholder a right to a benefit reduction instead. **On a German RLV *Bruttobeitrag* this route is essentially never used** | [R6] [REG-R27]; non-use [unverified] — no retrieved document reports practice either way |
 | *Versicherungsteuer* | **None.** VersStG 2021 § 4 Abs. 1 Nr. 5 Buchst. a exempts a contract creating claims "im Fall des Todes", so the premium bears no insurance premium tax — unlike a French *cotisation* quoted "TTC" | [R16]; mechanic 7 |
 
-5. **The `einmal` form is a [std] construction and no German standalone RLV in the research file is
+5. **The `single` form is a [std] construction and no German standalone RLV in the research file is
    written on it.** It is carried because it is the degenerate case of the same equivalence that
    strikes the level premium, so it tests the premium engine at a boundary rather than adding a
    second engine; because the out-of-scope *Restschuldversicherung* is written on it; and because it

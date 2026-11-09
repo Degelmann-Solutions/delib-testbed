@@ -212,7 +212,7 @@ per row: delib's second ruling, machine-checked.
 | `lapse_table.csv` | `policy_year` (**1-based label**, read as `policy_year(t) = t + 1`) | `lapse_rate`, `storno_rate`, `provenance` |
 | `surplus_rate_table.csv` | `scenario_id`, `policy_year` (**1-based label**, read as `t + 1`) | `decl_rate`, `term_rate`, `ans_rate`, `provenance` |
 | `cost_table.csv` | `cost_id` | `alpha_rate`, `beta_rate`, `gamma_rate`, `acq_expense`, `maint_expense`, `expense_infl`, `claim_expense`, `comm_init_rate`, `comm_renew_rate`, `provenance` |
-| `freq_loading_table.csv` | `prem_freq` | `instalments`, `prem_freq_load`, `provenance` |
+| `prem_freq_table.csv` | `prem_freq` | `instalments`, `prem_freq_load`, `provenance` |
 | `deckrv_table.csv` | `issue_year` | `hoechstrechnungszins`, `hoechstzillmersatz`, `provenance` |
 | `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`, `unisex_mix_male`, `suicide_share`, `bfz_min_si`, `term_surr_share`, `bwr_rate`, `surr_spread_years`, `suicide_years`), `basis`, `provenance` |
 
@@ -223,7 +223,7 @@ assumptions on the same row**, because the difference between them *is* the *Kos
 [REG-R14] [REG-R15] [REG-R16]. The scalars that are not tables — `suicide_share`,
 `bfz_min_si`, `term_surr_share` and `bwr_rate` — are rows of `param_tariff_type.csv`, were `Projection`
 References (the two behaviour modules are not built, their unread switches removed), and their values and tags are in this section; `mort_be_factor` and `unisex_mix_male` are rows of
-it since phase 3, as are `surr_spread_years` 5.0 and `suicide_years` 3, formerly literals in its formulas, and all eight are read by the common core's loader.
+it since phase 3, as are `surr_spread_years` 5 and `suicide_years` 3, formerly literals in its formulas, and all eight are read by the common core's loader.
 
 Three classes. Class (a) is contractual or statutory and is cited; class (b) is the insurer's current
 discretionary declaration, revisable annually and capable of being zero [S3] [S9]; class (c) is the

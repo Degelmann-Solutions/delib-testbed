@@ -217,7 +217,7 @@ declared rate.
 
 | Input | Snapshot value | Basis |
 |---|---|---|
-| Charge scale (`charge_table.csv`) | `std_gross`: α 2.50 %, spread 60 months, β 4.00 %, γ 0.30 % p.a., *Stückkosten* 3.00 EUR/month, *Zuzahlungskosten* 2.50 %, *Stornoabzug* 0.00 % | levels **[std]** (1) |
+| Charge scale (`charge_table.csv`) | `std_gross`: α 2.50 %, spread 5 years, β 4.00 %, γ 0.30 % p.a., *Stückkosten* 3.00 EUR/month, *Zuzahlungskosten* 2.50 %, *Stornoabzug* 0.00 % | levels **[std]** (1) |
 | Charge variants | `std_netto` (α 0, β 1.00 %, γ 0.20 %, fee 2.00); `std_high` (β 10.00 %, γ 1.20 %, fee 5.00, *Stornoabzug* 2.00 %); `std_low` (α 1.00 %, β 2.00 %, γ 0.10 %, fee 0.00) | **[std]** (1) |
 | *Kickback* credited back | **0.00 % p.a.** — the composite's fund is passive and pays no trail | **[std]** (2) |
 | Current *Rentenfaktor* | `std_2026`: equal to the guaranteed factor, so the `max()` is exercised without injecting an unsourced uplift. `rich_current`: 12 % above it | **[std]** (3) |
@@ -422,7 +422,7 @@ with a PRIIPs performance scenario**.
 | `B(t)`, `Z(t)` | `prem_pp(t)`, `topup_pp(t)` | gross *Beitrag* due; *Zuzahlung* |
 | `A(t)` | `prem_to_av_pp(t)` | *Anlagebeitrag* — what actually buys units |
 | `α(t)` | `charge_acq_pp(t)` | acquisition instalment, plus *Zuzahlungskosten* on any `Z(t)` |
-| `β`, `γₘ`, `SK` | `beta_rate`, `gamma_rate_mth`, `policy_fee_mth` | premium-based rate; `gamma_rate_ann/12`; *Stückkosten* |
+| `β`, `γₘ`, `SK` | `charge_admin_prem_inst`, `gamma_rate_mth`, `charge_admin_pp_mth` | premium-based rate; `charge_admin_av_ann/12`; *Stückkosten* |
 | `S` | `beitragssumme()` | sum of premiums payable at the initial level |
 | `C(t)` | `cum_prem_pp(t)` | cumulative **gross** premiums paid to and including month `t` |
 | `D(t)`, `K(t)` | `db_floor_pp(t)`, `nar_pp(t)` | guaranteed minimum death benefit; *riskiertes Kapital* |
@@ -444,7 +444,7 @@ with a PRIIPs performance scenario**.
          = prem_pp_base                                              single
 
     N_α  = min(60, 12 × prem_term_y) / prem_cycle                acquisition instalments
-    α(t) = alpha_rate · S / N_α        on the first N_α premium dates      regular
+    α(t) = charge_acq_bsum_once · S / N_α        on the first N_α premium dates      regular
          = zuzahlung_rate · B(t₀)      at t = t₀, once                     single
          + zuzahlung_rate · Z(t)       whenever a Zuzahlung falls
 
@@ -658,7 +658,7 @@ Seven `check_*()` cells are published, each a `bool` over all `t` with a per-`t`
 | `check_av_roll_fwd()` | `F_BEF_DECR(t) = (F(t) + A(t))·(1 + i(t)) − charges − W(t)` — the price term, once |
 | `check_benefit_funding()` | `claims_death + claims_lapse + claims_maturity + withdrawals + stornoabzug = av_releases + death_strain` |
 | `check_pols_roll_fwd()` | `pols_if(t) = pols_death + pols_lapse + pols_maturity + pols_if(t+1)` |
-| `check_acq_charge()` | `cum_charge_acq_pp(t)` equals the instalments elapsed × the instalment, and the total equals `alpha_rate × beitragssumme()` exactly |
+| `check_acq_charge()` | `cum_charge_acq_pp(t)` equals the instalments elapsed × the instalment, and the total equals `charge_acq_bsum_once × beitragssumme()` exactly |
 
 `check_units_roll_fwd()` and `check_av_roll_fwd()` look redundant and are not: the unit identity
 has **no price term at all**, so it fails if a charge is taken in euro without cancelling the
@@ -734,7 +734,7 @@ one becomes a test.
    exceptions have to be stated rather than asserted away, and both follow from the `α(t)`
    definition above: `charge_acq(120)` is non-zero on model point 9, where the *Zuzahlung*
    pays 2.50 % *Zuzahlungskosten* — 500.00 per policy — which this model books in
-   `charge_acq`; and `Σ charge_acq_pp = alpha_rate × beitragssumme()` holds on eleven points
+   `charge_acq`; and `Σ charge_acq_pp = charge_acq_bsum_once × beitragssumme()` holds on eleven points
    but not on point 6, where the in-force frame opens past the window (0.00 against 2,775.00,
    which is pitfall 8), nor on point 9, where the *Zuzahlungskosten* make it 3,380.00 against
    2,880.00.
@@ -843,15 +843,15 @@ instalment is `1 800,00 / 60 = 30,00 € per month` — **15 % of each of the fi
 `t = 0 … 59`, and nothing from `t = 60`**.
 
 **Assumptions, each tagged.** *Charges*, from row `std_gross` of `charge_table.csv`, every level
-**[std]** except where noted: acquisition rate `alpha_rate = 2.50 %` of the *Beitragssumme*, which
+**[std]** except where noted: acquisition rate `charge_acq_bsum_once = 2.50 %` of the *Beitragssumme*, which
 is the *Höchstzillmersatz* [R12] [REG-R16] and, as it happens, the rate one real tariff charges
-[S15], spread over `alpha_spread_months = 60` — the statutory five-year shape of § 169 Abs. 3 VVG
+[S15], spread over the tariff's `acq_spread_years = 5`, set equal to the § 169 Abs. 3 VVG floor `surr_spread_years`
 [R1] [REG-R28], which a real tariff applies to only *part* of its acquisition cost, taking the
 rest as a percentage of every premium for the whole term [S2]; premium-based admin
-`beta_rate = 4.00 %` of each gross *Beitrag*, against 6,90 % observed [S15]; fund-based admin
-`gamma_rate_ann = 0.30 % p.a.`, taken monthly as `gamma_rate_mth = 0.30 %/12 = 0.025 %` of the
-*Fondsguthaben*; *Stückkosten* `policy_fee_mth = 3.00 €` per month, taken by cancelling units;
-*Zuzahlungskosten* `zuzahlung_charge_rate = 2.50 %` (not exercised on this cell);
+`charge_admin_prem_inst = 4.00 %` of each gross *Beitrag*, against 6,90 % observed [S15]; fund-based admin
+`charge_admin_av_ann = 0.30 % p.a.`, taken monthly as `gamma_rate_mth = 0.30 %/12 = 0.025 %` of the
+*Fondsguthaben*; *Stückkosten* `charge_admin_pp_mth = 3.00 €` per month, taken by cancelling units;
+*Zuzahlungskosten* `charge_acq_sp_once = 2.50 %` (not exercised on this cell);
 *Stornoabzug* `stornoabzug_rate = 0.00 %` [R1] [REG-R28]. *Fund*, from row `base` of
 `fund_scenario_table.csv`: gross return `5.00 % p.a.` **[std]**, fund `TER = 0.45 % p.a.`
 **[std]**, so `fund_return_net_ann = 4.55 % p.a.` and `fund_return_net_mth = (1.0455)^(1/12) − 1
@@ -1105,7 +1105,7 @@ in each the model was right:
    the cells has to be a column or the sign convention is unverifiable.
 2. **Pitfall 7's two assertions were too broad.** `charge_acq(t) = 0` for `t ≥ 60` fails on
    model point 9, whose *Zuzahlung* at `t = 120` pays 500.00 of *Zuzahlungskosten* that the
-   notes' own `alpha(t)` books there; and `sum charge_acq_pp = alpha_rate x beitragssumme()`
+   notes' own `alpha(t)` books there; and `sum charge_acq_pp = charge_acq_bsum_once x beitragssumme()`
    fails on point 6 (0.00 against 2,775.00, the in-force frame opening past the window) and
    on point 9 (3,380.00 against 2,880.00). The pitfall now asserts the **instalment** and
    names both exceptions.

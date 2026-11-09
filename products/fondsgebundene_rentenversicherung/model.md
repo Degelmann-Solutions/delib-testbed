@@ -88,7 +88,7 @@ t // 12`. Because a 0-based frame has no `t = −1`, the opening *Anteilspreis* 
 | `model_point_table.csv` | `issue_age`, `ret_age`, `prem_term_y`, `prem_freq` | **Unchanged.** Ages, a term in years and a payment frequency (a key of `prem_freq_table.csv`, read by `prem_freq_table()` beside the files below, the months between premiums `12 // instalments`) — none is a point on the frame |
 | `lapse_table.csv` | `policy_year` | **Unchanged.** The contractual 1-based label; `lapse_rate_base(t)` maps through `policy_year(t) = t // 12 + 1` |
 | `fund_scenario_table.csv` | `policy_year` | **Unchanged**, for the same reason |
-| `charge_table.csv` | `alpha_spread_months` | **Unchanged.** A count of months, not an index |
+| `charge_table.csv` | `acq_spread_years` | **Unchanged** by the shift, not an index; renamed from `alpha_spread_months` and changed from 60 months to 5 years later in phase 3 |
 | `mort_table.csv` | `age` | **Unchanged.** An attained age |
 | `rentenfaktor_table.csv` | `annuity_age` | **Unchanged.** An age at *Rentenbeginn* |
 
@@ -165,7 +165,7 @@ This is the distinction the product turns on and the model's most easily-hidden 
 administration charge **before** any unit exists:
 
 ```
-prem_to_av_pp(t) = B(t) + Z(t) − charge_acq_pp(t) − beta_rate × B(t)
+prem_to_av_pp(t) = B(t) + Z(t) − charge_acq_pp(t) − charge_admin_prem_inst × B(t)
 units_bought_pp(t) = prem_to_av_pp(t) / unit_price_open(t)
 ```
 
@@ -184,9 +184,9 @@ why `charge_acq(120)` is non-zero on model point 9.
 
 ## The acquisition charge, its window, and the in-force cell
 
-`zillmer_amount() = alpha_rate × beitragssumme()` — **2,50 % of the sum of premiums
+`zillmer_amount() = charge_acq_bsum_once × beitragssumme()` — **2,50 % of the sum of premiums
 payable, the *Höchstzillmersatz* itself** [R12] [REG-R16] — spread in equal instalments over
-`acq_window_months() = min(alpha_spread_months, 12 × prem_term_y)` months at the policy's own
+`acq_window_months() = 12 × min(acq_spread_years, prem_term_y)` months at the policy's own
 premium frequency [R1] [REG-R28]. The composite takes the cap rather than a guessed interior
 point, so the reference implementation demonstrates the binding constraint. On the anchor
 cell that is 1 800,00 € over 60 instalments of **30,00 €** — 15 % of each of the first sixty
@@ -249,7 +249,7 @@ The two monthly conversions are deliberately different. Mortality is split **lin
 risk result out of a rounding convention. Lapse is split **geometrically**,
 `1 − (1 − lapse_rate)^(1/12)`, because nothing is priced off it and the annual rate is the
 observable to reproduce; the fund return compounds geometrically for the same reason, while
-`gamma_rate_mth()` is `gamma_rate_ann() / 12` because a German tariff quotes charge rates
+`gamma_rate_mth()` is `charge_admin_av_ann() / 12` because a German tariff quotes charge rates
 nominally.
 
 ## The *Rückkaufswert* is the *Fondsguthaben*
@@ -359,7 +359,7 @@ being a *configuration* and not an assumption.
 | `model_point_table.csv` | Thirteen model points. **Point 1 is the anchor cell** (M37 / monthly 200,00 € / 30 years / *Rentenbeginn* at 67 / *Beitragsrückgewähr* / `std_gross` / `base`). Points 2–13 exercise the *Einmalbeitrag*, all four frequencies, a `pct_fund` and a `sum_assured` death benefit, an in-force cell opening at duration 96, a *beitragsfrei* cell on a zero-return fund, a *Zuzahlung* and a *Teilentnahme*, a *Beitragsdynamik*, a *Nettotarif* on an ETF, a two-year premium term on a stress path, a non-zero *Stornoabzug*, and a *Rentenbeginn* at 70 where the `max()` bites | anchor cell **[std]**, the notes' worked example |
 | `mort_table.csv` | First-order annual death rates, ages 18–100 | **[std]** Gompertz proxy `0.00080 × 1.10^(age − 37)`, **anchored at `q(37) = 0.00080`** — the value the worked example rests on. *Not* a DAV table; those are cited and never shipped [R17] [REG-R48]. It stands for whichever first-order death basis a tariff uses, which at the one carrier that could be read is 65 % of DAV 1994 T rather than DAV 2008 T [S2]. A replacement must preserve the anchor, an insured-lives gradient and a first-order margin **above** best estimate |
 | `lapse_table.csv` | Annual lapse: 6 % in years 1–5, 3 % in 6–10, 2 % in 11–12, 3 % from 13 | **[std]** — **no German unit-linked *Stornoquote* was established anywhere**. The front-loading is inferred from the exit terms [R1] [R2] [REG-R45]; the ×2.5 tax step is not here but rows of `param_tariff_type.csv` applied in `Projection`, depending on age as well as duration |
-| `charge_table.csv` | Four tariffs: `std_gross`, `std_netto`, `std_high`, `std_low` | **[std]** but for `alpha_rate` on `std_gross`, the 25 ‰ cap [R12] [R13] [REG-R16], and the 60-month spread [R1] [REG-R28]. **One carrier's levels are now known** — 2,50 % acquisition, 6,90 % of premium, 0,42 % p.a. of fund, 18 €/yr [S15] — and `std_gross` is lighter than that on every line but the policy fee; nine other named carriers still supply none. The `std_gross`-to-`std_netto` gap is the acquisition load [S18] |
+| `charge_table.csv` | Four tariffs: `std_gross`, `std_netto`, `std_high`, `std_low` | **[std]** but for `charge_acq_bsum_once` on `std_gross`, the 25 ‰ cap [R12] [R13] [REG-R16], and the five-year spread [R1] [REG-R28]. **One carrier's levels are now known** — 2,50 % acquisition, 6,90 % of premium, 0,42 % p.a. of fund, 18 €/yr [S15] — and `std_gross` is lighter than that on every line but the policy fee; nine other named carriers still supply none. The `std_gross`-to-`std_netto` gap is the acquisition load [S18] |
 | `fund_scenario_table.csv` | Gross return and TER by `(scenario_id, policy_year)`: `base`, `etf`, `zero`, `stress` | **[std]** deterministic paths. Not forecasts and **not PRIIPs scenarios** [R8] [R9] [REG-R32] — and note that on the profession's own standard a German Schicht-3 unit-linked annuity is a **PRIIP Kategorie 4** product whose scenarios come from a stochastic capital-market model, not from an underlying's own return history [R18] |
 | `rentenfaktor_table.csv` | Guaranteed and current factors by `(factor_id, annuity_age)`, ages 60–75 | **[std] and derived, not observed**: `10 000 / (12 · T_eff(x))` with `T_eff(x) = 100/3 − 0.75 (x − 67)` at a 0 % *Rechnungszins* — confirmed for a fondsgebundene tariff on DAV 2004 R [S2] [S10] [R16] [R22] [REG-R49] — giving exactly **25,00 at 67**. **Observed guaranteed factors at *Rentenbeginn* 67 are 25,22 / 24,12 / 22,91 / 21,83 € at deferments of 12 / 20 / 30 / 40 years** [S15], so the shipped table is about 9 % generous at the anchor cell and, being flat in the deferment, cannot reproduce the generational gradient. `std_2026` sets the current factor equal to the guaranteed one; `rich_current` 12 % higher |
 | `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.75 and 11 of the 12 that were References on `Projection`: `lapse_cap` 0.4, `lapse_dyn_beta` 0.0, `glide_months` 60, `comm_acq_bsum_once` 0.025, `expense_acq_pp_once` 200.0, `expense_admin_pp_mth` 4.0, `comm_renew_prem_inst` 0.015, `expense_claim_pp_once` 150.0, `expense_surr_pp_once` 50.0, `expense_conv_pp_once` 100.0 and the check tolerance, now the row `check_tol` above, and the tax step's magnitude `tax_step_factor` 2.5, a literal in its formulas until phase 3; the money-market rate `mmkt_return_ann` 0.015 and the tax step's `tax_step_min_year` 13 and `tax_step_age` 62 are items of the core file `param_core.csv` | **[std]**, the flat step from the first-order death table to the best estimate [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads; each later row with its basis tags in its provenance |
@@ -458,9 +458,9 @@ Every entry is **[std]**, and the rationale is what makes it honest.
 | Standardization | Value | Rationale |
 |---|---|---|
 | Acquisition rate, composite, and the *Zuzahlungskosten* | 2.50 % of the *Beitragssumme*; 2.50 % of a *Zuzahlung* | The rate is the *Höchstzillmersatz* — *"Der Zillmersatz darf 25 Promille der Summe aller Prämien nicht überschreiten"*, § 4 Abs. 1 Satz 2 DeckRV [R12] [REG-R16] — and taking **the cap** demonstrates the binding constraint instead of inventing a level. It turns out to be the level one real tariff charges: **2,50 % der kumulierten Anlage** [S15]. The *Zuzahlungskosten* is set equal to it, and on a single premium it is the whole acquisition charge, which is what a real wording does — *"Bei Verträgen gegen Einmalbeitrag und bei Zuzahlungen entnehmen wir alle Abschluss- und Vertriebskosten sofort"* [S2] |
-| Premium-based admin `beta_rate` | 4.00 % | Middle of an argued 2 %–10 % range. **6,90 % of each premium observed at one carrier** [S15]; no other carrier level was established |
-| Fund-based admin `gamma_rate_ann` | 0.30 % p.a., taken as `/12` | Middle of an argued 0.10 %–1.20 % range. **0,42 % p.a. of the fund observed at one carrier** [S15]. Divided, not compounded, because a German tariff quotes a nominal monthly charge |
-| *Stückkosten* `policy_fee_mth` | 3.00 € per month | Middle of an argued 0–5 € range; **18 € per year — 1,50 €/month — observed at one carrier** [S15], so the composite is the dearer of the two. A euro amount, which is why it consumes a small paid-up fund — and why BaFin warns that a large absolute *Stückkosten* charge makes the *Effektivkosten* vary sharply with premium size [R10] |
+| Premium-based admin `charge_admin_prem_inst` | 4.00 % | Middle of an argued 2 %–10 % range. **6,90 % of each premium observed at one carrier** [S15]; no other carrier level was established |
+| Fund-based admin `charge_admin_av_ann` | 0.30 % p.a., taken as `/12` | Middle of an argued 0.10 %–1.20 % range. **0,42 % p.a. of the fund observed at one carrier** [S15]. Divided, not compounded, because a German tariff quotes a nominal monthly charge |
+| *Stückkosten* `charge_admin_pp_mth` | 3.00 € per month | Middle of an argued 0–5 € range; **18 € per year — 1,50 €/month — observed at one carrier** [S15], so the composite is the dearer of the two. A euro amount, which is why it consumes a small paid-up fund — and why BaFin warns that a large absolute *Stückkosten* charge makes the *Effektivkosten* vary sharply with premium size [R10] |
 | *Stornoabzug*, composite | 0.00 % | § 169 Abs. 5 VVG permits one only where it is *vereinbart*, *beziffert* and *angemessen* and voids any deduction for unamortised acquisition cost [R1] [REG-R36]; zero avoids an unsourced number on a contested clause. **A real one exists and is a flat 150 €, not a percentage** [S2], so both the level and the shape are standardizations. 2.00 % on `std_high` exercises the machinery |
 | The three charge variants | `std_netto`, `std_high`, `std_low` | The ends of the argued range plus the commission-free tariff [S18]; the gap to `std_gross` **is** the acquisition load |
 | Mortality proxy | `0.00080 × 1.10^(x − 37)`, ages 18–100 | DAV tables are not redistributed [R17] [REG-R48]. Anchored at `q(37) = 0.00080` so the worked example reproduces; the 10 % gradient is insured-lives. It stands for **whichever first-order death table the tariff uses** — DAV 2008 T is the modern one, and the one fondsgebundene tariff whose bases could be read prices its *Risikobeiträge* on a unisex order at **65 % of DAV 1994 T** instead [S2] |

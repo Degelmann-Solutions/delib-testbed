@@ -390,12 +390,12 @@ neither shifts; `issue_year` is a calendar year, and `issue_age` and `ret_age` a
 | `behaviour_table.csv` | `bf_rate` and `zuz_take_up` by `dur`, the **policy year** `policy_year(t)`. `dur` is a contractual 1-based label and **not** the frame's `t`, so the file starts at `dur = 1` and is unaffected by the 0-based index | **[std]**, and **no observed range exists**: no German insurer publishes a *Beitragsfreistellung* rate or a *Zuzahlung* take-up for this product (gap 3). The shape is argued from the product's structure; the levels are invented |
 | `prem_freq_table.csv` | The instalments a year and the *Ratenzahlungszuschlag* by payment frequency: 1,000 / 1,020 / 1,030 / 1,050 | **[std]** — the *Ratenzahlungszuschlag* on the *laufender Beitrag* alone; German market convention, no tariff sheet was reached |
 | `option_table.csv` | One multiplicative factor per option key | **[std]** — the *Rentenfaktor* reductions for a *Rentengarantiezeit* and a survivor's annuity, anchored on a Schicht-3 illustration that is [unverified] and expressly not transferable |
-| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 1.15, `check_tol` 1e-09, and the 5 that were References on `Projection`: `elig_surv_prob` 0.55, `mort_base_year` 2005, `acq_spread_years` 5, `rf_unit` 10000.0 and `ann_freq` 12 | `mort_be_factor`: a Setzung, the step from the first-order annuitant table up to a best estimate, as RV's [R17] [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads; each later row with its basis tags in its provenance |
+| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 1.15, `check_tol` 1e-08, and the 5 that were References on `Projection`: `elig_surv_prob` 0.55, `mort_base_year` 2005, `acq_spread_years` 5, `rf_unit` 10000.0 and `ann_freq` 12 | `mort_be_factor`: a Setzung, the step from the first-order annuitant table up to a best estimate, as RV's [R17] [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads; each later row with its basis tags in its provenance |
 
 ## The published checks
 
 Six identities, each a `bool` over the whole projection with a per-period residual companion,
-compared against `roll_fwd_tol()` = 1e-9 (`check_tol`, `param_tariff_type.csv`) scaled by the run's own magnitude so the tolerance means
+compared against `roll_fwd_tol()` = 1e-8 (`check_tol`, `param_tariff_type.csv`) scaled by the run's own magnitude so the tolerance means
 the same thing on a 300 € contribution and on a 30 826 € one.
 
 **The residual's argument follows its cells' clock.** Three take a **month** — the cash flow

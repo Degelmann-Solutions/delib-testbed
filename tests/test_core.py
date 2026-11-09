@@ -1639,7 +1639,7 @@ def test_rlv_liability_cf_is_the_negated_net_cf(product_models):
 
 
 ROLL_FWD_TOL = {
-    "basisrente": 1e-09,
+    "basisrente": 1e-08,
     "berufsunfaehigkeit": 1e-10,
     "fondsgebundene_rentenversicherung": 1e-10,
     "indexpolice": 1e-08,
@@ -1767,7 +1767,7 @@ def test_basis_is_source_or_setzung_or_empty():
 # The rows whose value entry 12 of epic-parameter-files changes (proposal-parameter-files.md,
 # "Open points", 1): their ``basis`` stays empty until that commit; every other row has one.
 EMPTY_BASIS = {
-    "basisrente": {"check_tol"},
+    "basisrente": set(),
     "berufsunfaehigkeit": {"check_tol"},
     "fondsgebundene_rentenversicherung": {"check_tol"},
     "indexpolice": set(),

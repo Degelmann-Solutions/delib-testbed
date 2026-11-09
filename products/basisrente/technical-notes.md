@@ -691,7 +691,7 @@ with the other's index is a category error rather than a rounding question.
 | `check_annuity_roll_fwd()` | year | `ann_pp(k) = ann_pp(k−1) × (1 + ann_bonus_rate(k−1))` for `k > k_conv()`; `12 × ann_mth_pp(t) = ann_pp(k)` across the year's months, so the uplift steps on the anniversary and nowhere else; and `pols_gtd(t) = 0` for `t > gtd_end_t()` |
 
 Each returns a `bool` over the whole projection and has a per-period residual companion
-`check_*_resid`, compared against `roll_fwd_tol()` = 1e-9, `check_tol` of `param_tariff_type.csv`.
+`check_*_resid`, compared against `roll_fwd_tol()` = 1e-8, `check_tol` of `param_tariff_type.csv`.
 
 ---
 

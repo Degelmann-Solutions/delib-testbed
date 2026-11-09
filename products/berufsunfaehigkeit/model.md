@@ -128,7 +128,7 @@ credit returned out of it, so the cash collected is the difference and the
 *Überschussbeteiligung* is a visible line rather than a netting hidden inside the premium. A
 model carrying only the *Zahlbeitrag* silently assumes the credit is permanent; one carrying only
 the *Bruttobeitrag* overstates collected premium by `1/0,70 − 1 = 42,86 %`. Over the anchor
-cell's 444 months `Σ premiums / Σ (premiums − surplus_credit) = 23,296.6020 / 16,307.6214 =
+cell's 444 months `Σ premiums / Σ (premiums − surplus_credit) = 23,636.5239 / 16,545.5667 =
 1.428571428571429`, which is `1 / 0.70` to fifteen figures — necessarily so, because `prem_freq_load`
 scales *Bruttobeitrag* and *Beitragsverrechnung* **together** and cancels out of the ratio.
 
@@ -141,7 +141,7 @@ the one the product's own consumer literature warns about [S13] [S16].
 
 The `*_first` cells are a **second projection**, not a variant of the first: the same
 four-ledger chain on *Rechnungsgrundlagen erster Ordnung* — inception × 1,30, reactivation
-× 0,70, disabled-lives mortality × 0,80, active-lives mortality × 0,80, **no lapse** — run
+× 0,70, disabled-lives mortality × 0,70, active-lives mortality × 0,80, **no lapse** — run
 over the contract's **original** term from `issue_age` and indexed by `s` rather than `t`.
 Prudence for a disability product means a claim that starts more often, ends less often and
 lasts longer; it also means fewer premium-paying lives lost, because here an active death and
@@ -154,19 +154,19 @@ administration loadings are proportional to it:
 P = (PV_rente + PV_wgh + PV_cost + PV_admin)
     / ( PV_prem x (1 - load_admin_prem_inst) - load_acq_bsum_once x BS_unit )
 
-  = (22,992.6262362831 + 500.3821615273 + 316.1438291134 + 544.6579031022)
-    / (29.1496134236 x 0.91 - 0.025 x 37)
-  = 24,353.8101300260 / 25.6011482155  =    951.2780413236 EUR p.a.
+  = (23,343.4233891260 + 503.7539625017 + 318.4378872394 + 544.9704391415)
+    / (29.1512391470 x 0.91 - 0.025 x 37)
+  = 24,710.5856780086 / 25.6026276238  =    965.1581877099 EUR p.a.
 ```
 
-so the monthly instalment is `P × 1,05 / 12 = 83,2368` € and the *Zahlbeitrag* `0,70 ×` that
-`= 58,2658` €. **The recursion is acyclic**: no decrement depends on the premium, so nothing
+so the monthly instalment is `P × 1,05 / 12 = 84,4513` € and the *Zahlbeitrag* `0,70 ×` that
+`= 59,1159` €. **The recursion is acyclic**: no decrement depends on the premium, so nothing
 in the `pv_*` cells depends on `P`. The equivalence is struck **before** the *Risikozuschlag*
 and **without lapse**, deliberately on both counts, and `PV_prem` is struck on `P / 12` in
 every month — so `prem_freq_load` is a genuine loading on the tariff premium rather than a
 re-expression of it. Running the shadow from inception rather than from the valuation date is
 what gives an in-force point the premium its contract was struck at: **model point 6 is model
-point 1 fifteen years on, and the two price identically at 951,2780 € p.a.** Model point 13
+point 1 fifteen years on, and the two price identically at 965,1582 € p.a.** Model point 13
 supplies `gross_prem_ann = 2 400,00 €` instead, so the override branch ships too.
 
 ## The *Beitragsbefreiung* is the absence of a premium, not a benefit
@@ -344,9 +344,9 @@ arriving in another, or arrives in two. The first fixes the definition, the seco
 | *Risikozuschlag* | `rating_factor` | `1.00` | A multiplier on the *Bruttobeitrag* alone |
 | Premium override | `gross_prem_ann` | `0.0` = derive by equivalence | Model point 13 supplies 2 400,00 € p.a. instead |
 
-Model point 12 is the anchor with both escalations off: its equivalence gives 813,47 € against
-the anchor's 951,28 €, so the *Leistungsdynamik* and the *Wiedereingliederungshilfe* together
-are worth **137,81 € p.a.**, 14,5 % of the *Bruttobeitrag* — not additively, because both are
+Model point 12 is the anchor with both escalations off: its equivalence gives 824,59 € against
+the anchor's 965,16 €, so the *Leistungsdynamik* and the *Wiedereingliederungshilfe* together
+are worth **140,57 € p.a.**, 14,6 % of the *Bruttobeitrag* — not additively, because both are
 paid out of the same claim population.
 
 Three constructions the notes describe are **not implemented**, each because doing so would
@@ -368,9 +368,9 @@ structure, plus a risk margin [REG-R1] [REG-R2] [REG-R4]; **nothing in this libr
 and `rechnungszins` appears only inside the equivalence.
 
 The shape to expect is a large first-month strain — the whole acquisition charge falls in month
-0, 879,93 € of the 888,92 € of expense against an 83,24 € instalment, so `net_cf(0) = −830,71
-€` — then thin positive margins that decay, cross zero between months 264 and 265 at attained
-age 52, and reach −72,26 € in the last month. That crossing is the *Deckungsrückstellung* this
+0, 892,77 € of the 901,87 € of expense against an 84,45 € instalment, so `net_cf(0) = −842,81
+€` — then thin positive margins that decay, cross zero between months 265 and 266 at attained
+age 52, and reach −72,00 € in the last month. That crossing is the *Deckungsrückstellung* this
 model does not compute being built and run down.
 
 `expenses` is administration only — acquisition, the proportional loading and the flat charge.
@@ -429,7 +429,7 @@ only the *levels* that no retrievable document supplies.
 | Lapse table | 4,0 % falling to 2,0 % | No German insurer publishes a BU *Stornoquote*. The level is low, which is a product fact [S16]; **lapse selection is not modelled**, and the direction of that error is one-sided |
 | Monthly conversion | `p_m = 1 − (1 − p)^(1/12)` on every annual rate | One convention applied uniformly to `i`, `r`, `q^a`, `q^i` and `w` |
 | Processing order | mortality → lapse → inception; then disabled deaths → terminations; then the run-off | Taking incidence first gives `0.000068776010` against `0.000068540443` in month 0 — 0,34 %, compounding over 444 months |
-| First-order loads | 1,30 / 0,70 / 0,80 / 0,80, **no lapse** | Prudence for a disability product forks: higher incidence, lower reactivation, lower disabled and active mortality, and no anticipation of a favourable decrement |
+| First-order loads | 1,30 / 0,70 / 0,70 / 0,80, **no lapse** | Prudence for a disability product forks: higher incidence, lower reactivation, lower disabled and active mortality, and no anticipation of a favourable decrement |
 | `rechnungszins` | **1,00 % p.a.** | The *Höchstrechnungszins*. **The figure is sourced**: DeckRV § 2 Abs. 1 fixes it "auf 1 Prozent", and § 2 Abs. 2 makes the rate used at conclusion apply for the whole term [R13]. **The 1 January 2025 commencement is not in the consolidated text and stays `[unverified]`** [REG-R15]. Used only in the equivalence. A model-point column, fixed at conclusion for the whole term; every shipped point carries this rate |
 | `pols_if_init` | **1,0** on every model point | The policy count a model point stands for, the opening value of `pols_if`: the model is a per-policy probability projection. A model-point column since phase 3, where it was the literal 1.0 |
 | `load_acq_bsum_once` | **2,5 % of the *Beitragssumme***, once at issue | Sits **at** the § 4 DeckRV *Höchstzillmersatz*: "Der Zillmersatz darf 25 Promille der Summe aller Prämien nicht überschreiten" [R13] [REG-R16], restated by both retrieved AVB as 2,5 % of the premiums payable over the term [S1] [S6]. The ceiling is the only sourced number in the charge structure, and the level is a choice to sit at it |
@@ -461,7 +461,7 @@ conditions and four carrier AVB — see `sources.md`.
 list(range(proj_len()))`, so 444 rows `t = 0 … 443` on the anchor cell, ending at the last
 index `proj_len() − 1` — then all eighteen printed rows of the notes' worked
 example to the cent and the state ledgers to six decimals, the full-precision totals against
-the sum-of-rounded-cells the notes also print, the derived *Bruttobeitrag* of 951,2780 € p.a.
+the sum-of-rounded-cells the notes also print, the derived *Bruttobeitrag* of 965,1582 € p.a.
 reached two independent ways, month 0 rebuilt term by term with a calculator, the first
 inception and the first *BU-Rente* from the annual rates, the § 174 run-off traced through one
 cohort, the four-way decrement closure, the *Brutto* / *Zahl* ratio surviving aggregation, the

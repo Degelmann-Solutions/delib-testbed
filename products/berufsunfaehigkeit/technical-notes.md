@@ -308,7 +308,7 @@ basis does not anticipate them. The loads are **[std]**:
 |---|---|---|
 | `inc_load_first` | **1,30** | `i(x)` — higher incidence |
 | `recov_load_first` | **0,70** | `r(z)` — lower reactivation |
-| `mort_dis_load_first` | **0,80** | disabled-lives mortality — longer claims |
+| `mort_dis_load_first` | **0,70** | disabled-lives mortality — longer claims; set against the first-order loadings of the DAV tables (bib `DAV-Fortbildung/Tagungen/2021_04_Jahrestagung/e-JTG21_LEBEN_Präsentation_Boekenheide+Kurz.pdf` p. 31), chosen for DAV 1997 TI, the table the disabled-lives column proxies (acceptance of 2026-11-09, was 0,80) |
 | `mort_actv_load_first` | **0,80** | active-lives mortality — fewer premium-paying lives lost |
 | lapse | **0** | no lapse in the first-order basis |
 | `rechnungszins` | **1,00 % p.a.** | the *Höchstrechnungszins*: DeckRV § 2 Abs. 1 fixes it "auf 1 Prozent" and § 2 Abs. 2 makes the rate used at conclusion apply for the whole term [R13]. **The figure is sourced; the 1 January 2025 commencement is not** — the consolidated text carries no commencement date for it, so that date stays `[unverified]` [REG-R14] [REG-R15] |
@@ -386,7 +386,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | `V_r(t, k)` | `runoff_val(t, k)` — the run-off population times the *BU-Rente* it is being paid |
 | `L(t)`, `L_p(t)` | `pols_if(t)`, `pols_prem(t)` |
 | `v` | `(1 + rechnungszins)^(−1/12)`, used **only** in the equivalence, never to discount a published cash flow |
-| `λ_i, λ_r, λ_d, λ_a` | the four first-order safety loads: 1,30 / 0,70 / 0,80 / 0,80 |
+| `λ_i, λ_r, λ_d, λ_a` | the four first-order safety loads: 1,30 / 0,70 / 0,70 / 0,80 |
 | `A`, `β`, `γ` | `load_acq_bsum_once` 0,025; `load_admin_prem_inst` 0,09; `load_admin_pp_ann` 18,00 |
 | `c_a`, `c_m` | `load_claim_assess_pp_once` 800,00; `load_claim_admin_pp_mth` 12,00 |
 
@@ -737,7 +737,7 @@ four times the active rate, with duration select factors 3,0 / 2,0 / 1,6 / 1,4 /
 claim year 6 **[std]**. Lapse 4,0 % / 4,0 % / 3,5 % / 3,0 % / 2,5 % / 2,0 % from policy year 6
 **[std]**, with **no selection loading** (`λ = 0`). All annual rates converted by
 `p_m = 1 − (1 − p)^(1/12)` **[std]**. First-order loads for the equivalence: inception × **1,30**,
-reactivation × **0,70**, disabled-lives mortality × **0,80**, active-lives mortality × **0,80**,
+reactivation × **0,70**, disabled-lives mortality × **0,70**, active-lives mortality × **0,80**,
 **no lapse**, `rechnungszins` **1,00 % p.a.** **[std]** [R13] [REG-R14] [REG-R15]. Charges
 **[std]**: `load_acq_bsum_once` **2,5 % of the *Beitragssumme*** at issue, at the § 4 DeckRV cap [REG-R16];
 `load_admin_prem_inst` **9 % of the *Bruttobeitrag***; `load_admin_pp_ann` **18,00 €** per policy per year
@@ -750,22 +750,22 @@ constant **[std]**. *Ratenzahlungszuschlag* **1,05** for the monthly mode **[std
 
 **The *Bruttobeitrag* the equivalence produces.** No rate card exists, so the premium is an
 output. The first-order shadow ledgers — inception × 1,30, reactivation × 0,70, disabled-lives
-mortality × 0,80, active-lives mortality × 0,80, no lapse, discounted at 1,00 % — give, per
+mortality × 0,70, active-lives mortality × 0,80, no lapse, discounted at 1,00 % — give, per
 1 EUR p.a. of *Bruttobeitrag* and per policy at inception:
 
-    PV_prem  =     29.1496134236      PV_rente = 22,992.6262362831
-    PV_wgh   =    500.3821615273      PV_cost  =    316.1438291134
-    PV_admin =    544.6579031022      BS_unit  =         37.0000000000
+    PV_prem  =     29.1512391470      PV_rente = 23,343.4233891260
+    PV_wgh   =    503.7539625017      PV_cost  =    318.4378872394
+    PV_admin =    544.9704391415      BS_unit  =         37.0000000000
 
-    P = (22,992.6262362831 + 500.3821615273 + 316.1438291134 + 544.6579031022)
-        / (29.1496134236 x 0.91 - 0.025 x 37)
+    P = (23,343.4233891260 + 503.7539625017 + 318.4378872394 + 544.9704391415)
+        / (29.1512391470 x 0.91 - 0.025 x 37)
       = 25,863.8772642487 / 25.5302042134
-      =   951.2780413236 EUR p.a.
+      =   965.1581877099 EUR p.a.
 
-so the annual *Bruttobeitrag* is **951,28 €**, the monthly instalment
-`P x 1.05 / 12 = 83.2368286158` → **83,24 €**, and the *Zahlbeitrag* actually billed
-`0.70 x 83.2368286158 = 58.2657800311` → **58,27 €**. The *Beitragssumme* is
-`P x 37 = 35 197,29 €` and the acquisition charge 2,5 % of it. The figures are carried
+so the annual *Bruttobeitrag* is **965,16 €**, the monthly instalment
+`P x 1.05 / 12 = 84.4513414246` → **84,45 €**, and the *Zahlbeitrag* actually billed
+`0.70 x 84.4513414246 = 59.1159389972` → **59,12 €**. The *Beitragssumme* is
+`P x 37 = 35 710,85 €` and the acquisition charge 2,5 % of it. The figures are carried
 **unrounded** through the projection; every displayed row below is stable at two decimals under
 either treatment.
 
@@ -783,46 +783,46 @@ the **Total** row covers all of them.
 
 | t | age | pols_if | pols_dis | pols_runoff | premiums | surplus_credit | claims_bu_rente | claims_reintegration | expenses | claim_expenses | net_cf |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 0 | 30 | 1.000000 | 0.000000 | 0.000000 | 83.24 | 24.97 | 0.00 | 0.00 | 888.92 | 0.05 | −830.71 |
-| 1 | 30 | 0.996575 | 0.000069 | 0.000000 | 82.95 | 24.88 | 0.10 | 0.00 | 8.96 | 0.06 | 48.94 |
-| 2 | 30 | 0.993162 | 0.000135 | 0.000002 | 82.66 | 24.80 | 0.21 | 0.00 | 8.93 | 0.06 | 48.67 |
-| 3 | 30 | 0.989760 | 0.000200 | 0.000005 | 82.37 | 24.71 | 0.31 | 0.00 | 8.90 | 0.06 | 48.40 |
-| 4 | 30 | 0.986371 | 0.000263 | 0.000010 | 82.08 | 24.62 | 0.41 | 0.01 | 8.87 | 0.06 | 48.11 |
-| 5 | 30 | 0.982993 | 0.000324 | 0.000014 | 81.79 | 24.54 | 0.51 | 0.03 | 8.84 | 0.06 | 47.82 |
-| 6 | 30 | 0.979628 | 0.000384 | 0.000019 | 81.51 | 24.45 | 0.60 | 0.04 | 8.81 | 0.06 | 47.55 |
-| 11 | 30 | 0.962973 | 0.000657 | 0.000039 | 80.10 | 24.03 | 1.05 | 0.11 | 8.65 | 0.06 | 46.20 |
-| 12 | 31 | 0.959677 | 0.000708 | 0.000043 | 79.82 | 23.95 | 1.13 | 0.12 | 8.62 | 0.06 | 45.94 |
-| 59 | 34 | 0.841329 | 0.002794 | 0.000092 | 69.79 | 20.94 | 4.48 | 0.28 | 7.54 | 0.09 | 36.46 |
-| 119 | 39 | 0.757986 | 0.005512 | 0.000116 | 62.62 | 18.79 | 9.10 | 0.35 | 6.77 | 0.14 | 27.47 |
-| 179 | 44 | 0.682092 | 0.008581 | 0.000141 | 56.05 | 16.81 | 14.69 | 0.43 | 6.07 | 0.19 | 17.86 |
-| 239 | 49 | 0.612104 | 0.012710 | 0.000204 | 49.87 | 14.96 | 22.41 | 0.63 | 5.41 | 0.28 | 6.19 |
-| 299 | 54 | 0.546670 | 0.019230 | 0.000326 | 43.88 | 13.16 | 34.43 | 1.00 | 4.77 | 0.44 | −9.93 |
-| 359 | 59 | 0.483950 | 0.028807 | 0.000509 | 37.84 | 11.35 | 51.92 | 1.56 | 4.13 | 0.68 | −31.81 |
-| 419 | 64 | 0.421017 | 0.041602 | 0.000764 | 31.52 | 9.46 | 75.08 | 2.34 | 3.47 | 1.02 | −59.85 |
-| 442 | 66 | 0.395876 | 0.047115 | 0.000879 | 28.96 | 8.69 | 85.00 | 2.69 | 3.20 | 1.18 | −71.79 |
-| 443 | 66 | 0.394780 | 0.047329 | 0.000884 | 28.85 | 8.65 | 85.38 | 2.70 | 3.19 | 1.18 | −72.26 |
-| **Total** | | **286.957682** | **6.948290** | **0.126047** | **23,296.60** | **6,988.98** | **12,350.92** | **385.13** | **3,407.06** | **171.68** | **−7.17** |
+| 0 | 30 | 1.000000 | 0.000000 | 0.000000 | 84.45 | 25.34 | 0.00 | 0.00 | 901.87 | 0.05 | −842.81 |
+| 1 | 30 | 0.996575 | 0.000069 | 0.000000 | 84.16 | 25.25 | 0.10 | 0.00 | 9.07 | 0.06 | 49.68 |
+| 2 | 30 | 0.993162 | 0.000135 | 0.000002 | 83.86 | 25.16 | 0.21 | 0.00 | 9.04 | 0.06 | 49.40 |
+| 3 | 30 | 0.989760 | 0.000200 | 0.000005 | 83.57 | 25.07 | 0.31 | 0.00 | 9.01 | 0.06 | 49.13 |
+| 4 | 30 | 0.986371 | 0.000263 | 0.000010 | 83.28 | 24.98 | 0.41 | 0.01 | 8.97 | 0.06 | 48.84 |
+| 5 | 30 | 0.982993 | 0.000324 | 0.000014 | 82.99 | 24.90 | 0.51 | 0.03 | 8.94 | 0.06 | 48.55 |
+| 6 | 30 | 0.979628 | 0.000384 | 0.000019 | 82.70 | 24.81 | 0.60 | 0.04 | 8.91 | 0.06 | 48.27 |
+| 11 | 30 | 0.962973 | 0.000657 | 0.000039 | 81.27 | 24.38 | 1.05 | 0.11 | 8.76 | 0.06 | 46.92 |
+| 12 | 31 | 0.959677 | 0.000708 | 0.000043 | 80.98 | 24.29 | 1.13 | 0.12 | 8.73 | 0.06 | 46.65 |
+| 59 | 34 | 0.841329 | 0.002794 | 0.000092 | 70.81 | 21.24 | 4.48 | 0.28 | 7.63 | 0.09 | 37.08 |
+| 119 | 39 | 0.757986 | 0.005512 | 0.000116 | 63.54 | 19.06 | 9.10 | 0.35 | 6.86 | 0.14 | 28.03 |
+| 179 | 44 | 0.682092 | 0.008581 | 0.000141 | 56.87 | 17.06 | 14.69 | 0.43 | 6.14 | 0.19 | 18.36 |
+| 239 | 49 | 0.612104 | 0.012710 | 0.000204 | 50.60 | 15.18 | 22.41 | 0.63 | 5.47 | 0.28 | 6.63 |
+| 299 | 54 | 0.546670 | 0.019230 | 0.000326 | 44.52 | 13.35 | 34.43 | 1.00 | 4.83 | 0.44 | −9.54 |
+| 359 | 59 | 0.483950 | 0.028807 | 0.000509 | 38.39 | 11.52 | 51.92 | 1.56 | 4.18 | 0.68 | −31.47 |
+| 419 | 64 | 0.421017 | 0.041602 | 0.000764 | 31.98 | 9.59 | 75.08 | 2.34 | 3.51 | 1.02 | −59.57 |
+| 442 | 66 | 0.395876 | 0.047115 | 0.000879 | 29.38 | 8.81 | 85.00 | 2.69 | 3.24 | 1.18 | −71.54 |
+| 443 | 66 | 0.394780 | 0.047329 | 0.000884 | 29.27 | 8.78 | 85.38 | 2.70 | 3.23 | 1.18 | −72.00 |
+| **Total** | | **286.957682** | **6.948290** | **0.126047** | **23,636.52** | **7,090.96** | **12,350.92** | **385.13** | **3,450.49** | **171.68** | **187.34** |
 
 **The Total row is summed at full precision and then rounded**, which is not the same as adding
 the rounded cells, and on a 444-row frame the difference is visible rather than notional. Adding
-the 444 already-rounded cells instead gives premiums 23 296,51 €, *Beitragsverrechnung*
-6 988,90 €, *BU-Rente* 12 350,87 €, *Wiedereingliederungshilfe* 385,18 €, expenses 3 407,07 €,
-claim expense 171,74 € and `net_cf` −7,12 € — a discrepancy of up to 9 cents on a single column,
-and of 5 cents on `net_cf`, which at that magnitude is 0,7 % of the number itself. The same holds
+the 444 already-rounded cells instead gives premiums 23 636,55 €, *Beitragsverrechnung*
+7 090,98 €, *BU-Rente* 12 350,87 €, *Wiedereingliederungshilfe* 385,18 €, expenses 3 450,48 €,
+claim expense 171,74 € and `net_cf` 187,31 € — a discrepancy of up to 6 cents on a single column,
+and of 3 cents on `net_cf`, which at that magnitude is 0,02 % of the number itself. The same holds
 for the state columns: `pols_dis` sums to 6.948290 at full precision and to 6.948286 from the
 rounded cells. **Assert the full-precision totals.**
 
 Three features of the shape are worth naming. **Month 0 carries the whole acquisition charge** —
-888,92 € of expense against an 83,24 € instalment — so `net_cf(0)` is −830,71 € and nothing else
+901,87 € of expense against an 84,45 € instalment — so `net_cf(0)` is −842,81 € and nothing else
 in the projection is remotely like it. **The margin decays and then inverts**: `net_cf` runs from
-+48,94 € in month 1 down through zero between months 264 and 265 (attained age 52) to
-−72,26 € in the last month, which is the level *Bruttobeitrag* meeting an inception rate
++49,68 € in month 1 down through zero between months 265 and 266 (attained age 52) to
+−72,00 € in the last month, which is the level *Bruttobeitrag* meeting an inception rate
 that rises 13 % per year of age after 45. That crossing is the *Deckungsrückstellung* this model does not compute being
 built and then run down, and it is why a level-premium BU contract has a real reserve where a
 term-life contract of the same length has a small one [R9] [REG-R28]. And **the projection very
 nearly breaks even undiscounted**: total cash collected — premiums less the
-*Beitragsverrechnung* — is 16 307,62 € against 16 314,79 € of claims and expense, a shortfall of
-7,17 €. That is not an identity and must not be read as one: the equivalence is struck
+*Beitragsverrechnung* — is 16 545,57 € against 16 358,22 € of claims and expense, a residue of
+187,34 €, 1,1 % of it. That is not an identity and must not be read as one: the equivalence is struck
 **discounted at 1 %** on **first-order** bases with **no lapse**, and this total is
 **undiscounted** on best-estimate bases **with** lapse. The near-cancellation of those three
 differences against the 30 % *Beitragsverrechnung* is a property of the shipped [std] parameters,
@@ -830,16 +830,16 @@ and moving any of them moves it.
 
 **Checks.**
 
-*Month 0, rebuilt with a calculator.* The instalment is `951.2780413236 × 1.05 / 12 =
-83.2368286158`. The *Zahlbeitrag* is `0.70 ×` that `= 58.2657800311` and the
-*Beitragsverrechnung* the remaining `0.30 ×` that `= 24.9710485847`; the two add back to the
+*Month 0, rebuilt with a calculator.* The instalment is `965.1581877099 × 1.05 / 12 =
+84.4513414246`. The *Zahlbeitrag* is `0.70 ×` that `= 59.1159389972` and the
+*Beitragsverrechnung* the remaining `0.30 ×` that `= 25.3354024274`; the two add back to the
 instalment, which is the `check_prem_split` identity in one line. Expense is
-`0.025 × 951.2780413236 × 37 = 879.9321882243` of acquisition, plus
-`0.09 × 83.2368286158 = 7.4913145754` of proportional administration, plus `18 / 12 = 1.50` of
-flat administration — **888.9235027997**, the table's 888,92 €. Claim expense is
+`0.025 × 965.1581877099 × 37 = 892.7713236316` of acquisition, plus
+`0.09 × 84.4513414246 = 7.6006207282` of proportional administration, plus `18 / 12 = 1.50` of
+flat administration — **901.8719443599**, the table's 901,87 €. Claim expense is
 `800 × 0.000068540443 = 0.0548323547`. So
-`83.2368286158 − 24.9710485847 − 0 − 888.9235027997 − 0.0548323547 = −830.7125551233`, the
-table's −830,71 €. Every term of `net_cf(0)` is accounted for and none of it is the model's own
+`84.4513414246 − 25.3354024274 − 0 − 901.8719443599 − 0.0548323547 = −842.8108377173`, the
+table's −842,81 €. Every term of `net_cf(0)` is accounted for and none of it is the model's own
 `net_cf` formula restated.
 
 *The first inception and the first *BU-Rente*, from the annual rates.* The composed inception
@@ -898,7 +898,7 @@ already lost mass. Over the whole projection 6,89 % of the cohort dies, 53,74 % 
 2 % a year compounds over 37 years, not because German BU lapse is high.
 
 *The *Brutto* / *Zahl* ratio survives aggregation.* `Σ premiums / Σ (premiums − surplus_credit)
-= 23,296.6019802795 / 16,307.6213861957 = 1.428571428571429`, which is `1 / 0.70` to fifteen
+= 23,636.5238871706 / 16,545.5667210194 = 1.428571428571429`, which is `1 / 0.70` to fifteen
 figures. It has to be, because `prem_freq_load` scales the *Bruttobeitrag* and the
 *Beitragsverrechnung* together and `beitragsverrechnung` is constant — and a model that carried
 only one of the two premium streams would have no way to show it.
@@ -909,7 +909,7 @@ with `beitragsdyn_rate = 0,03`, and **annual** payment (`prem_cycle = 12`,
 `prem_freq_load = 1,00`). Everything else is the anchor's. Hence `proj_len() = 12 × (67 − 25) = 504`,
 so the frame is `t = 0 … 503`; `BS_unit = Σ_{y=1..42} 1,03^(y−1) = 82.0231964511`, and the
 equivalence gives
-`P = 1 090,40 €` — the *Bruttobeitrag* of the **first** year, not of the contract.
+`P = 1 106,35 €` — the *Bruttobeitrag* of the **first** year, not of the contract.
 
 Two things this table shows that the anchor's cannot. **The premium falls in months 0, 12, 24, …
 and nowhere else**, the whole policy year's *Bruttobeitrag* in one instalment and with no
@@ -917,37 +917,37 @@ and nowhere else**, the whole policy year's *Bruttobeitrag* in one instalment an
 exactly zero while claims and the flat administration charge run on. That is why the grid is
 monthly and the frequency a parameter rather than a smoothing. And **the insured *BU-Rente* and
 the annual *Bruttobeitrag* escalate by exactly 1,03 on each policy anniversary and on nothing
-else**: `1,236.00 / 1,200.00 = 1.03` and `1,123.113431 / 1,090.401390 = 1.03` to fourteen
+else**: `1,236.00 / 1,200.00 = 1.03` and `1,139.545084 / 1,106.354451 = 1.03` to fourteen
 figures, and both are flat within a policy year.
 
 | t | age | prem_gross_ann_pp | bu_rente_pp | pols_if | premiums | surplus_credit | claims_bu_rente | claims_reintegration | expenses | claim_expenses | net_cf |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 0 | 25 | 1,090.40 | 1,200.00 | 1.000000 | 1,090.40 | 327.12 | 0.00 | 0.00 | 2,335.59 | 0.06 | −1,572.37 |
-| 1 | 25 | 1,090.40 | 1,200.00 | 0.996585 | 0.00 | 0.00 | 0.09 | 0.00 | 1.49 | 0.06 | −1.64 |
-| 11 | 25 | 1,090.40 | 1,200.00 | 0.963087 | 0.00 | 0.00 | 0.88 | 0.09 | 1.44 | 0.06 | −2.47 |
-| 12 | 26 | 1,123.11 | 1,236.00 | 0.959801 | 1,077.08 | 323.12 | 0.94 | 0.10 | 98.38 | 0.07 | 654.47 |
-| 13 | 26 | 1,123.11 | 1,236.00 | 0.956524 | 0.00 | 0.00 | 1.02 | 0.11 | 1.43 | 0.07 | −2.63 |
-| 24 | 27 | 1,156.81 | 1,273.08 | 0.921226 | 1,064.04 | 319.21 | 1.74 | 0.17 | 97.15 | 0.08 | 645.70 |
-| 60 | 30 | 1,264.07 | 1,391.13 | 0.840194 | 1,058.18 | 317.46 | 4.08 | 0.26 | 96.50 | 0.10 | 639.79 |
-| 120 | 35 | 1,465.41 | 1,612.70 | 0.758240 | 1,102.36 | 330.71 | 9.03 | 0.38 | 100.35 | 0.15 | 661.75 |
-| 240 | 45 | 1,969.39 | 2,167.33 | 0.615570 | 1,186.51 | 355.95 | 25.65 | 0.74 | 107.71 | 0.27 | 696.19 |
-| 360 | 55 | 2,646.69 | 2,912.71 | 0.493834 | 1,237.15 | 371.15 | 68.66 | 2.27 | 112.08 | 0.61 | 682.38 |
-| 480 | 65 | 3,556.93 | 3,914.45 | 0.379155 | 1,157.07 | 347.12 | 189.20 | 6.97 | 104.70 | 1.35 | 507.73 |
-| 503 | 66 | 3,663.64 | 4,031.88 | 0.355604 | 0.00 | 0.00 | 224.82 | 8.40 | 0.53 | 1.44 | −235.20 |
-| **Total** | | | | **312.656940** | **48,759.06** | **14,627.72** | **26,990.99** | **942.91** | **7,093.26** | **227.74** | **−1,123.56** |
+| 0 | 25 | 1,106.35 | 1,200.00 | 1.000000 | 1,106.35 | 331.91 | 0.00 | 0.00 | 2,369.74 | 0.06 | −1,595.35 |
+| 1 | 25 | 1,106.35 | 1,200.00 | 0.996585 | 0.00 | 0.00 | 0.09 | 0.00 | 1.49 | 0.06 | −1.64 |
+| 11 | 25 | 1,106.35 | 1,200.00 | 0.963087 | 0.00 | 0.00 | 0.88 | 0.09 | 1.44 | 0.06 | −2.47 |
+| 12 | 26 | 1,139.55 | 1,236.00 | 0.959801 | 1,092.84 | 327.85 | 0.94 | 0.10 | 99.80 | 0.07 | 664.08 |
+| 13 | 26 | 1,139.55 | 1,236.00 | 0.956524 | 0.00 | 0.00 | 1.02 | 0.11 | 1.43 | 0.07 | −2.63 |
+| 24 | 27 | 1,173.73 | 1,273.08 | 0.921226 | 1,079.61 | 323.88 | 1.74 | 0.17 | 98.55 | 0.08 | 655.19 |
+| 60 | 30 | 1,282.57 | 1,391.13 | 0.840194 | 1,073.67 | 322.10 | 4.08 | 0.26 | 97.89 | 0.10 | 649.24 |
+| 120 | 35 | 1,486.85 | 1,612.70 | 0.758240 | 1,118.49 | 335.55 | 9.03 | 0.38 | 101.80 | 0.15 | 671.59 |
+| 240 | 45 | 1,998.20 | 2,167.33 | 0.615570 | 1,203.87 | 361.16 | 25.65 | 0.74 | 109.27 | 0.27 | 706.78 |
+| 360 | 55 | 2,685.41 | 2,912.71 | 0.493834 | 1,255.25 | 376.58 | 68.66 | 2.27 | 113.71 | 0.61 | 693.42 |
+| 480 | 65 | 3,608.97 | 3,914.45 | 0.379155 | 1,174.00 | 352.20 | 189.20 | 6.97 | 106.23 | 1.35 | 518.06 |
+| 503 | 66 | 3,717.24 | 4,031.88 | 0.355604 | 0.00 | 0.00 | 224.82 | 8.40 | 0.53 | 1.44 | −235.20 |
+| **Total** | | | | **312.656940** | **49,472.43** | **14,841.73** | **26,990.99** | **942.91** | **7,190.17** | **227.74** | **−721.12** |
 
 Again the **Total** row is the full-precision sum rounded; adding the 504 rounded cells gives
-premiums 48 759,05 €, *BU-Rente* 26 990,97 € and `net_cf` −1 123,65 €, and the largest
+premiums 49 472,44 €, *BU-Rente* 26 990,97 € and `net_cf` −721,20 €, and the largest
 single-column discrepancy is 20 cents. The month-0 acquisition charge is
-`0.025 × 1,090.4013897397 × 82.0231964511 = 2 235,96 €`, which is the whole of the 2 335,59 € in
+`0.025 × 1,106.3544509665 × 82.0231964511 = 2 268,67 €`, which is the whole of the 2 369,74 € in
 that row bar the 9 % proportional loading on the year's premium and one month of the flat charge:
 a 42-year escalating *Beitragssumme* is 82 times the first year's premium, not 42 times it, so
 the *Zillmerung* base grows with the escalation rate as well as with the term [R13] [REG-R16].
 
 **What the two options cost.** Model point 12 is the anchor with both escalations off —
 `leistungsdyn_rate = 0,00` and `wiedereingliederung_months = 0`, everything else identical — and
-its equivalence gives `P = 813,47 €` against the anchor's 951,28 €. The *Leistungsdynamik* and
-the *Wiedereingliederungshilfe* together are therefore worth **137,81 € p.a.**, 14,5 % of the
+its equivalence gives `P = 824,59 €` against the anchor's 965,16 €. The *Leistungsdynamik* and
+the *Wiedereingliederungshilfe* together are therefore worth **140,57 € p.a.**, 14,6 % of the
 anchor's *Bruttobeitrag*, and the split between them is not additive because both are paid out of
 the same claim population.
 

@@ -167,7 +167,7 @@ and is three months behind :func:`pols_recovery`.
 
 The ``*_first`` cells are a **second projection**, not a variant of the first. They run
 the same four-ledger chain on *Rechnungsgrundlagen erster Ordnung* — inception x 1.30,
-reactivation x 0.70, disabled-lives mortality x 0.80, active-lives mortality x 0.80,
+reactivation x 0.70, disabled-lives mortality x 0.70, active-lives mortality x 0.80,
 **no lapse** — over the contract's **original** term from ``issue_age``, indexed by
 ``s`` rather than ``t``. They exist only to fix :func:`prem_gross_level_pp` and never
 touch a published cash flow. Running them from inception rather than from the valuation

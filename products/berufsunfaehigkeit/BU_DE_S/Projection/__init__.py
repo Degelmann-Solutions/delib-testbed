@@ -1821,7 +1821,7 @@ def check_net_cf_resid(t):
     plausible.
 
     Override reason: the premium leg is rebuilt from the *Zahlbeitrag* billed times the
-    paying count, not from the frame, products/berufsunfaehigkeit/model.md:184
+    paying count, not from the frame, products/berufsunfaehigkeit/model.md:185
     """
     return net_cf(t) - (prem_zahl_pp(t) * pols_prem(t)
                         - claims(t, "BU_RENTE")

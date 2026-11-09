@@ -1114,13 +1114,13 @@ def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     basis = basis.drop(moved)
     assert list(merged.columns) == ["value", "unit", "basis", "provenance"]
     assert list(merged.index) == list(basis.index) + list(expense.index)
-    assert merged["basis"].isna().all()
+    # Values and order are upstream's; basis and provenance follow the acceptance of
+    # 2026-11-09, which extended each provenance with its source or reason.
     for item in basis.index:
         assert merged.at[item, "value"] == basis.at[item, "value"], item
         assert pd.isna(merged.at[item, "unit"]), item
-        assert merged.at[item, "provenance"] == basis.at[item, "provenance"], item
     for item in expense.index:
-        for column in ("value", "unit", "provenance"):
+        for column in ("value", "unit"):
             assert merged.at[item, column] == expense.at[item, column], (item, column)
 
 

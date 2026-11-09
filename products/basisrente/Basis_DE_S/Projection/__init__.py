@@ -820,10 +820,10 @@ def mort_rate_base(t):
 
 
 def mort_be_factor():
-    """The step from the first-order table to the best estimate, 0.85, from *param_tariff_type.csv*.
+    """The step from the first-order table to the best estimate, 1.15, from *param_tariff_type.csv*.
 
-    Override reason: the best estimate is a round 0.85 of the shipped first-order table, a
-    tariff parameter in *param_tariff_type.csv*, products/basisrente/technical-notes.md:322
+    Override reason: the best estimate is 1.15 of the shipped first-order annuitant table, as
+    RV's, a tariff parameter in *param_tariff_type.csv*, products/basisrente/technical-notes.md:322
     """
     return float(data.param("mort_be_factor"))                       # noqa: F821
 
@@ -831,9 +831,9 @@ def mort_be_factor():
 def mort_rate(t):
     """q(t): the best-estimate **annual** death rate of the year month t falls in.
 
-    ``mort_be_factor x mort_rate_base(t)``, the step from the shipped first-order table to
-    a best estimate.  ``mort_be_factor = 0.85`` is **[std]** and is the single largest
-    unanchored number in the payout phase.
+    ``mort_be_factor x mort_rate_base(t)``, the step from the shipped first-order annuitant
+    table up to a best estimate.  ``mort_be_factor = 1.15`` is a Setzung and is the single
+    largest unanchored number in the payout phase.
 
     This is the library's two-speed convention: ``mort_rate`` is the **annual** rate and
     :func:`mort_rate_mth` the monthly rate the recursion actually applies.  Reading this
@@ -1343,7 +1343,7 @@ def ann_bonus_rate(k):
     It is the mechanism that gives the conversion-basis wedge back to the annuitant — the
     fund is converted on first-order mortality and run off on the best estimate — so this
     lever and ``mort_be_factor`` between them decide the payout phase's whole economics.
-    Both are **[std]** independently.
+    The bonus rate is **[std]**, the factor a Setzung.
     """
     key = scenario_id()
     tt = min(max(k, 0), data.surplus_table_years()[key])             # noqa: F821

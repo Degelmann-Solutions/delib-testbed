@@ -138,7 +138,7 @@ laufenden Versicherungsperiode" and § 12 Abs. 1 VVG makes that period the *Vers
 so `pols_freeze(t)` is non-zero only where `is_anniv(t)` — which is also what keeps the paying
 ledger bit-identical to the annual-step model's at every anniversary.
 On the anchor the two series come apart completely: by `k = 22` the in-force count has fallen
-only to 0,932780 while the premium-paying count has fallen to 0,512516, and the 0,420265
+only to 0,910094 while the premium-paying count has fallen to 0,500051, and the 0,410044
 difference is a cohort still in force, still credited and still converting.
 `check_pols_roll_fwd()` asserts both limbs — that the ledgers sum to `pols_if` and that
 `pols_if` decrements on mortality alone. The two ledgers carry **different account values**, and that asymmetry is the whole economic
@@ -187,7 +187,7 @@ annual maintenance expense or annuity administration in each month. Booking a
 charge as both is the notes' fourth pitfall, and it is why `expenses(t)` is invariant to
 `beta_prem`, `gamma_av` and `zill_rate`: raising all three moves not one euro of `expenses` or
 `commissions`, and moves `net_cf` **only** through the smaller annuity that a smaller fund buys
-at *Rentenbeginn* — 245 916,54 € of annuity claims against 265 725,57 €.
+at *Rentenbeginn* — 208 826,46 € of annuity claims against 225 647,81 €.
 
 The *Zillmerung* is **spread over five years and capped at 25 ‰ of the *Beitragssumme***
 [R16] [REG-R16]. `alpha_amort_pp(k)` is equal at `k = 0 … 4`, zero from `k = 5`, and the five
@@ -263,9 +263,9 @@ current 27,72 €, the guarantee there being worth 824,65 € a year against the
 projection runs on the best estimate, `mort_rate(t) = mort_be_factor × mort_rate_base(t)`. The
 wedge between them is the payout phase's *Risikoüberschuss*, and `ann_bonus_rate` — a
 *teildynamische Rente* — is what gives it back, so `ann_pp(k_conv())` is **exactly invariant** to
-`mort_be_factor` while `claims_annuity` is not: dropping the factor from 0.85 to 0.70 leaves the
-annuity at 7 561,9135 € to the last bit and lifts the annuity claims from 265 725,57 € to
-292 090,33 €. A model that converted on its own best-estimate mortality would abolish the wedge,
+`mort_be_factor` while `claims_annuity` is not: dropping the factor from 1.15 to 1.00 leaves the
+annuity at 7 561,9135 € to the last bit and lifts the annuity claims from 225 647,81 € to
+243 958,39 €. A model that converted on its own best-estimate mortality would abolish the wedge,
 and with it the whole German payout-phase surplus mechanic. `check_conversion()` inverts the
 identity at `k_conv()` and is zero at every other `k`, so it catches a factor applied per policy
 instead of per fund, an `ann_freq` of 1, an `rf_unit` of 1 000 — and a second conversion, of
@@ -311,7 +311,7 @@ table is the notes' fifteenth pitfall.
 
 `mort_rate(t)` is **1.0 wherever `age(t) ≥ omega_age() − 1`**, whatever `mort_be_factor` says.
 Without that rule the generational trend carries the shipped table's own terminal rate below 1
-in every calendar year after the base year — 0.19920354 at age 120 in 2101 — and would leave a
+in every calendar year after the base year — 0.26951067 at age 120 in 2101 — and would leave a
 residue in force after the end of the table; with it, `pols_if(proj_len()) = 0` exactly, the
 decrements sum to 1,000000, and there is no tail state and nothing left to pay.
 
@@ -390,7 +390,7 @@ neither shifts; `issue_year` is a calendar year, and `issue_age` and `ret_age` a
 | `behaviour_table.csv` | `bf_rate` and `zuz_take_up` by `dur`, the **policy year** `policy_year(t)`. `dur` is a contractual 1-based label and **not** the frame's `t`, so the file starts at `dur = 1` and is unaffected by the 0-based index | **[std]**, and **no observed range exists**: no German insurer publishes a *Beitragsfreistellung* rate or a *Zuzahlung* take-up for this product (gap 3). The shape is argued from the product's structure; the levels are invented |
 | `prem_freq_table.csv` | The instalments a year and the *Ratenzahlungszuschlag* by payment frequency: 1,000 / 1,020 / 1,030 / 1,050 | **[std]** — the *Ratenzahlungszuschlag* on the *laufender Beitrag* alone; German market convention, no tariff sheet was reached |
 | `option_table.csv` | One multiplicative factor per option key | **[std]** — the *Rentenfaktor* reductions for a *Rentengarantiezeit* and a survivor's annuity, anchored on a Schicht-3 illustration that is [unverified] and expressly not transferable |
-| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.85, `check_tol` 1e-09, and the 5 that were References on `Projection`: `elig_surv_prob` 0.55, `mort_base_year` 2005, `acq_spread_years` 5, `rf_unit` 10000.0 and `ann_freq` 12 | `mort_be_factor`: **[std]**, the round step from the first-order table to a best estimate [R17] [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads; each later row with its basis tags in its provenance |
+| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 1.15, `check_tol` 1e-09, and the 5 that were References on `Projection`: `elig_surv_prob` 0.55, `mort_base_year` 2005, `acq_spread_years` 5, `rf_unit` 10000.0 and `ann_freq` 12 | `mort_be_factor`: a Setzung, the step from the first-order annuitant table up to a best estimate, as RV's [R17] [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads; each later row with its basis tags in its provenance |
 
 ## The published checks
 
@@ -523,7 +523,7 @@ proprietary or unreachable. Nothing here is a market observation.
 |---|---|---|
 | Mortality table | `qx = min(1, 0.014000 × 1.085^(age − 67))`, ages 20–121 | DAV 2004 R is the DAV's property and is cited, never shipped [R17]. Anchored at `qx(67) = 0.014000` so the worked example reproduces exactly |
 | Improvement trend, and the terminal age | 1,5 % p.a. flat across ages from `mort_base_year = 2005`; last age 121 (`omega_age() = 122`), absorbing | The trend keeps the basis generational, which is what a replacement must preserve; DAV 2004 R's own trends are age-dependent, so this is a simplification and a stated model risk. 121 is the age German annuity tables are conventionally carried to, and the absorbing rule is what makes the decrements sum to one |
-| Best-estimate factor | `mort_be_factor = 0.85` | A round step from the shipped first-order table to a best estimate; the single largest unanchored number in the payout phase |
+| Best-estimate factor | `mort_be_factor = 1.15` | The step from the shipped first-order annuitant table, whose margin is mortality below expectation, up to a best estimate; the same step as RV's on the same table; the single largest unanchored number in the payout phase |
 | Declared *laufende Verzinsung* | 2,60 % (t 1–10), 2,40 % (11–20), 2,20 % after | A scenario set above the 1,00 % *Höchstrechnungszins* by a plausible surplus margin and graded down, so the guarantee does not bind on the anchor. **No Basisrente declared rate exists anywhere in the corpus** |
 | *Schlussüberschussanteil* and *Überschussrente* | 4,0 % of the fund at *Rentenbeginn*; `ann_bonus_rate = 1,0 %` p.a. compounding | The single-date allocation is a contract fact [R15] and the 4,0 % has nothing behind it. The uplift makes a *teildynamische Rente*: *volldynamisch* would consume the whole first-order margin and *konstant* none, and 1,0 % is deliberately in between |
 | *Aktueller Rentenfaktor* | 31,50 € at 67, graded 3,5 % per year; `low` = 0.88 × base | Set **above** the guaranteed 28,00 € so `max(gtd, curr)` is visibly operative, and the `low` scenario below model point 13's 34,00 € so the other branch ships |

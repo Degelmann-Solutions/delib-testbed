@@ -319,7 +319,7 @@ best-estimate factor for a Basisrente, and the research file records the absence
 
 | Input | Base-run value | Rationale |
 |---|---|---|
-| Mortality best-estimate factor `mort_be_factor` | **0.85** of the shipped first-order table | The first-order table carries the DAV's prudential margins [R17] [REG-R47]; 0.85 is a round **[std]** step to a best estimate and is the single largest unanchored number in the payout phase |
+| Mortality best-estimate factor `mort_be_factor` | **1.15** of the shipped first-order table | The first-order table carries the DAV's prudential margins [R17] [REG-R47]; on an annuitant table the margin is mortality below expectation, so the best estimate lies above it. 1.15 is the same round step as RV's, so the two annuity products share one second-order view of the same table (acceptance of 2026-11-09); the direction is sourced (bib `DAV-Fortbildung/DAV vor Ort/Koeln-Bonn-Duesseldorf/2026_08_04_qx-Club_Gottschalk_Kundennutzen.pdf` p. 15–16), the level is a Setzung and is the single largest unanchored number in the payout phase |
 | Mortality improvement `trend` | **1,5 % p.a.** at every age, applied from `mort_base_year = 2005` | Keeps the table **generational**, which is what a replacement must preserve [REG-R49]. A flat trend across ages is a simplification; DAV 2004 R's own trends are age-dependent |
 | *Beitragsfreistellung* rate `bf_rate(dur)` | **4,0 %** at durations 1–5, **3,0 %** at 6–10, **2,0 %** at 11+ | Higher than a Schicht-3 lapse rate early — the buyer's income is volatile by construction and going premium-free is free of penalty and reversible — and lower late, because there is no realisable value to tempt anyone out. That **shape** is argued in `product-spec.md`; the levels are invented |
 | *Zuzahlung* take-up `zuz_take_up(dur)` | **0.70** at durations 1–5, **0.85** at 6–15, **0.90** at 16+ | The *Zuzahlung* is paid out of a profit not known until the year end, so it is behavioural, not contractual. Rising with duration because the contract and the habit bed in |
@@ -822,8 +822,8 @@ a test.
     high-mortality tail. Assert
     `claims_annuity(t) = ann_mth_pp(t) × pols_if(t)` with `ann_mth_pp(t) = ann_pp(k) / 12` exactly,
     that the twelve instalments of a payout year are equal and the thirteenth `(1 + b)` times the
-    twelfth, and that the whole payout phase is **below** the annual booking — 265 725,57 € against
-    270 016,08 € on the anchor, 1,6 % of it.
+    twelfth, and that the whole payout phase is **below** the annual booking — 225 647,81 € against
+    229 823,01 € on the anchor, 1,8 % of it.
 13. **Taking the guaranteed *Rentenfaktor* when the current one is higher, or the reverse.** The rule
     is `max(garantiert, aktuell)` [R17] [S1]. Assert the anchor converts at `rf_curr(67)` and model
     point 13 at `rentenfaktor_gtd`, and that `rentenfaktor_applied()` is monotone in both inputs.
@@ -922,7 +922,7 @@ month, which is the view only the finer grid can give.
 R-shaped **first-order** proxy, anchored so that `mort_rate_at_age(67, 2005) = 0.014000` exactly, with
 a flat improvement `trend = 0.015` at every age applied from `mort_base_year = 2005`, so that
 `mort_rate_base(t) = qx(age(t)) × (1 − 0.015)^(calendar_year(t) − 2005)`; the best-estimate factor is
-`mort_be_factor = 0.85` **[std]**, giving `mort_rate(t) = 0.85 × mort_rate_base(t)` as the year's
+`mort_be_factor = 1.15`, giving `mort_rate(t) = 1.15 × mort_rate_base(t)` as the year's
 **annual** rate and `mort_rate_mth(t) = 1 − (1 − mort_rate(t))^(1/12)` as the monthly rate applied. The real basis is
 **DAV 2004 R**, which is the property of the Deutsche Aktuarvereinigung and is **cited by name and
 never shipped** [R17] [REG-R47] [REG-R49]; a replacement must preserve the generational structure, the
@@ -970,40 +970,40 @@ three.
 
 | k | age | `pols_if` | `pols_paying` | `av` | `premiums` | `zuzahlungen` | `claims_annuity` | `expenses` | `commissions` | `net_cf` |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 | 45 | 1.000000 | 1.000000 | 0.00 | 6,000.00 | 2,800.00 | 0.00 | 309.96 | 4,094.85 | 4,395.19 |
-| 1 | 46 | 0.998560 | 0.958618 | 7,366.75 | 5,866.74 | 2,684.13 | 0.00 | 60.77 | 128.26 | 8,361.84 |
-| 2 | 47 | 0.997024 | 0.918857 | 14,688.72 | 5,735.87 | 2,572.80 | 0.00 | 61.58 | 124.63 | 8,122.46 |
-| 3 | 48 | 0.995385 | 0.880653 | 21,968.46 | 5,607.33 | 2,465.83 | 0.00 | 62.40 | 121.10 | 7,889.66 |
-| 4 | 49 | 0.993635 | 0.843941 | 29,208.23 | 5,481.05 | 2,363.03 | 0.00 | 63.22 | 117.66 | 7,663.20 |
-| 5 | 50 | 0.991769 | 0.808662 | 36,410.00 | 5,356.97 | 2,749.45 | 0.00 | 64.05 | 121.60 | 7,920.77 |
-| 10 | 55 | 0.980403 | 0.686467 | 78,013.70 | 5,020.79 | 2,333.99 | 0.00 | 68.18 | 110.32 | 7,176.28 |
-| 15 | 60 | 0.964766 | 0.610615 | 119,589.52 | 4,930.84 | 2,198.21 | 0.00 | 72.24 | 106.94 | 6,949.88 |
-| 20 | 65 | 0.943366 | 0.539704 | 162,771.09 | 4,811.83 | 1,942.94 | 0.00 | 76.04 | 101.32 | 6,577.40 |
-| 21 | 66 | 0.938235 | 0.526033 | 171,114.15 | 4,783.75 | 1,893.72 | 0.00 | 76.75 | 100.16 | 6,500.55 |
-| **22** | **67** | 0.932780 | 0.512516 | **179,426.24** | 0.00 | 0.00 | **7,033.50** | 46.46 | 0.00 | −7,079.96 |
-| 23 | 68 | 0.926985 | 0.509331 | 0.00 | 0.00 | 0.00 | 7,058.31 | 46.86 | 0.00 | −7,105.16 |
-| 32 | 77 | 0.856165 | 0.470419 | 0.00 | 0.00 | 0.00 | 7,111.92 | 49.36 | 0.00 | −7,161.28 |
-| 42 | 87 | 0.724266 | 0.397948 | 0.00 | 0.00 | 0.00 | 6,610.57 | 48.20 | 0.00 | −6,658.77 |
-| 52 | 97 | 0.521776 | 0.286689 | 0.00 | 0.00 | 0.00 | 5,205.94 | 39.88 | 0.00 | −5,245.82 |
-| 62 | 107 | 0.272931 | 0.149962 | 0.00 | 0.00 | 0.00 | 2,945.81 | 23.71 | 0.00 | −2,969.52 |
-| 72 | 117 | 0.074193 | 0.040765 | 0.00 | 0.00 | 0.00 | 847.29 | 7.16 | 0.00 | −854.46 |
-| 76 | 121 | 0.032209 | 0.017697 | 0.00 | 0.00 | 0.00 | 416.84 | 3.60 | 0.00 | −420.43 |
-| **Total** | | — | — | — | **113,761.91** | **51,236.28** | **265,725.57** | **3,695.91** | **6,437.82** | **−110,861.12** |
+| 0 | 45 | 1.000000 | 1.000000 | 0.00 | 6,000.00 | 2,800.00 | 0.00 | 309.95 | 4,094.85 | 4,395.21 |
+| 1 | 46 | 0.998052 | 0.958130 | 7,363.00 | 5,863.76 | 2,682.76 | 0.00 | 60.72 | 128.20 | 8,357.60 |
+| 2 | 47 | 0.995975 | 0.917890 | 14,673.26 | 5,729.84 | 2,570.09 | 0.00 | 61.50 | 124.50 | 8,113.93 |
+| 3 | 48 | 0.993759 | 0.879214 | 21,932.58 | 5,598.18 | 2,461.80 | 0.00 | 62.28 | 120.90 | 7,876.80 |
+| 4 | 49 | 0.991396 | 0.842039 | 29,142.41 | 5,468.70 | 2,357.71 | 0.00 | 63.06 | 117.40 | 7,645.95 |
+| 5 | 50 | 0.988877 | 0.806303 | 36,303.83 | 5,341.35 | 2,741.43 | 0.00 | 63.84 | 121.24 | 7,897.70 |
+| 10 | 55 | 0.973569 | 0.681682 | 77,469.90 | 4,985.80 | 2,317.72 | 0.00 | 67.67 | 109.55 | 7,126.29 |
+| 15 | 60 | 0.952608 | 0.602920 | 118,082.45 | 4,868.70 | 2,170.51 | 0.00 | 71.29 | 105.59 | 6,862.34 |
+| 20 | 65 | 0.924110 | 0.528688 | 159,448.61 | 4,713.62 | 1,903.28 | 0.00 | 74.43 | 99.25 | 6,443.21 |
+| 21 | 66 | 0.917309 | 0.514301 | 167,297.81 | 4,677.05 | 1,851.48 | 0.00 | 74.97 | 97.93 | 6,355.64 |
+| **22** | **67** | 0.910094 | 0.500051 | **175,062.47** | 0.00 | 0.00 | **6,855.50** | 45.29 | 0.00 | −6,900.79 |
+| 23 | 68 | 0.902444 | 0.495848 | 0.00 | 0.00 | 0.00 | 6,864.02 | 45.57 | 0.00 | −6,909.59 |
+| 32 | 77 | 0.810304 | 0.445221 | 0.00 | 0.00 | 0.00 | 6,717.68 | 46.62 | 0.00 | −6,764.30 |
+| 42 | 87 | 0.645714 | 0.354787 | 0.00 | 0.00 | 0.00 | 5,870.75 | 42.81 | 0.00 | −5,913.55 |
+| 52 | 97 | 0.413220 | 0.227044 | 0.00 | 0.00 | 0.00 | 4,091.12 | 31.34 | 0.00 | −4,122.46 |
+| 62 | 107 | 0.170104 | 0.093463 | 0.00 | 0.00 | 0.00 | 1,807.36 | 14.55 | 0.00 | −1,821.91 |
+| 72 | 117 | 0.027890 | 0.015324 | 0.00 | 0.00 | 0.00 | 307.99 | 2.60 | 0.00 | −310.60 |
+| 76 | 121 | 0.008602 | 0.004726 | 0.00 | 0.00 | 0.00 | 111.32 | 0.96 | 0.00 | −112.28 |
+| **Total** | | — | — | — | **112,806.32** | **50,822.07** | **225,647.81** | **3,372.39** | **6,417.27** | **−71,809.08** |
 
 **The whole *Aufschubphase* of this table is the annual-step model's, to the last bit.** The
 premium, the *Zuzahlung*, the commission, both counts and every account balance are unchanged,
 because twelve geometric monthly death rates compound back to the annual rate exactly. What moved is
-the payout phase — 265 725,57 € against 270 016,08 €, because the *Rente* is now paid one instalment
-at a time — and the expenses, 3 695,91 € against 3 731,36 €, because a mid-year leaver bears only
+the payout phase — 225 647,81 € against 229 823,01 €, because the *Rente* is now paid one instalment
+at a time — and the expenses, 3 372,39 € against 3 407,22 €, because a mid-year leaver bears only
 the months it was there.
 
 **The Total row is summed over all 924 months at full precision and then rounded**, which
-is not in general the same as adding the rounded cells. Here it differs in four of the six money
-columns: adding the seventy-seven rounded `claims_annuity` cells gives 265 725,58 € against
-265 725,57 €, the rounded `expenses` cells 3 695,88 € against 3 695,91 €, the rounded
-`commissions` cells 6 437,83 € against 6 437,82 € and the rounded `net_cf` cells −110 861,14 €
-against −110 861,12 €. `premiums` and `zuzahlungen` happen to
-agree at the cent. The differences are one to three cents and they are not errors; they are what
+is not in general the same as adding the rounded cells. Here it differs in five of the six money
+columns: adding the seventy-seven rounded `premiums` cells gives 112 806,36 € against
+112 806,32 €, the rounded `claims_annuity` cells 225 647,83 € against 225 647,81 €, the rounded
+`expenses` cells 3 372,42 € against 3 372,39 €, the rounded `commissions` cells 6 417,29 € against
+6 417,27 € and the rounded `net_cf` cells −71 809,07 € against −71 809,08 €. `zuzahlungen` happens to
+agree at the cent. The differences are one to four cents and they are not errors; they are what
 rounding before adding costs, and a test that asserted the sum of the printed
 cells would be asserting the wrong number.
 
@@ -1014,37 +1014,37 @@ grid could not give, and the reason the model was moved onto a monthly one.
 
 | t | `pols_if` | `claims_annuity` | `expenses` | `net_cf` |
 |---:|---:|---:|---:|---:|
-| 264 | 0.932780 | 587.80 | 3.88 | −591.68 |
-| 265 | 0.932296 | 587.50 | 3.88 | −591.38 |
-| 266 | 0.931812 | 587.19 | 3.88 | −591.07 |
-| 267 | 0.931328 | 586.89 | 3.88 | −590.76 |
-| 268 | 0.930845 | 586.58 | 3.87 | −590.46 |
-| 269 | 0.930361 | 586.28 | 3.87 | −590.15 |
-| 270 | 0.929878 | 585.97 | 3.87 | −589.84 |
-| 271 | 0.929395 | 585.67 | 3.87 | −589.54 |
-| 272 | 0.928913 | 585.36 | 3.87 | −589.23 |
-| 273 | 0.928430 | 585.06 | 3.86 | −588.92 |
-| 274 | 0.927948 | 584.76 | 3.86 | −588.62 |
-| 275 | 0.927467 | 584.45 | 3.86 | −588.31 |
-| **Year 22** | — | **7,033.50** | **46.46** | **−7,079.96** |
+| 264 | 0.910094 | 573.50 | 3.79 | −577.29 |
+| 265 | 0.909454 | 573.10 | 3.79 | −576.89 |
+| 266 | 0.908815 | 572.70 | 3.78 | −576.48 |
+| 267 | 0.908176 | 572.30 | 3.78 | −576.08 |
+| 268 | 0.907537 | 571.89 | 3.78 | −575.67 |
+| 269 | 0.906899 | 571.49 | 3.78 | −575.27 |
+| 270 | 0.906261 | 571.09 | 3.77 | −574.86 |
+| 271 | 0.905624 | 570.69 | 3.77 | −574.46 |
+| 272 | 0.904987 | 570.29 | 3.77 | −574.05 |
+| 273 | 0.904351 | 569.89 | 3.76 | −573.65 |
+| 274 | 0.903715 | 569.48 | 3.76 | −573.25 |
+| 275 | 0.903079 | 569.08 | 3.76 | −572.84 |
+| **Year 22** | — | **6,855.50** | **45.29** | **−6,900.79** |
 
 Every instalment is the same 630,16 € per annuitant — `ann_mth_pp = ann_pp(22) / 12` — and what falls
-across the twelve rows is the **count**, from 0,932780 to 0,927467. The annual-step model paid
-`12 × 630,16 × 0,932780 = 7 053,60 €`, the whole year on the opening count; the monthly grid pays
-7 033,50 €, and the 20,11 € between them is the annuity the old convention paid to lives that died
-during the year. Over the fifty-five payout years that is 4 290,52 €.
+across the twelve rows is the **count**, from 0,910094 to 0,903079. The annual-step model paid
+`12 × 630,16 × 0,910094 = 6 882,08 €`, the whole year on the opening count; the monthly grid pays
+6 855,50 €, and the 26,58 € between them is the annuity the old convention paid to lives that died
+during the year. Over the fifty-five payout years that is 4 175,20 €.
 
 Four things in the frame are worth reading before the checks below.
 
 - **The first year's strain is the commission, not the *Zillmerung*.** The 818,97 € instalment is a
   deduction from the policyholder's account and hence insurer income; it is absent from `expenses`
-  and visible only in `av(1)` being 7 366,75 € rather than the 8 140,00 € that 8 800,00 € less the
+  and visible only in `av(1)` being 7 363,00 € rather than the 8 140,00 € that 8 800,00 € less the
   7,5 % premium charge would otherwise have bought. On the monthly frame the whole strain falls in
-  month 0, which nets +4 450,15 € against the year's +4 395,19 €: the other eleven months carry a
-  twelfth of the maintenance expense and nothing else, at −5,00 € each.
+  month 0, which nets +4 450,15 € against the year's +4 395,21 €: the other eleven months carry a
+  twelfth of the maintenance expense and nothing else, at −5,00 € or −4,99 € each.
 - **`pols_paying` falls far faster than `pols_if`.** By `k = 22` the in-force count has fallen only
-  to 0,932780 while the premium-paying count has fallen to 0,512516: 0,441765 of the cohort has
-  passed through a *Beitragsfreistellung* by then, and the 0,420265 of it that has not since died
+  to 0,910094 while the premium-paying count has fallen to 0,500051: 0,438736 of the cohort has
+  passed through a *Beitragsfreistellung* by then, and the 0,410044 of it that has not since died
   is sitting in the premium-free ledger, where it is still in force, still credited and still
   converts. Not one policy has left through a surrender, there being none to leave through.
 - **The `av` column ends at `k = 22` and does not taper.** The whole fund converts in one step;
@@ -1052,7 +1052,7 @@ Four things in the frame are worth reading before the checks below.
   *Deckungsrückstellung* stands behind and that delib does not compute.
 - **The annuity rises and the claim falls.** `ann_pp(k)` compounds at 1,0 % — 7 561,91 €,
   7 637,53 €, 7 713,91 €, paid as 630,16 €, 636,46 € and 642,83 € a month — while the year's
-  `claims_annuity` peaks at `k = 29` and then falls away as
+  `claims_annuity` peaks at `k = 24` and then falls away as
   mortality outruns the *Überschussrente*. Nothing is paid *after* `t = 923`: the last survivor dies
   in the last month of the terminal year, and there is no maturity value and no tail state.
 
@@ -1085,8 +1085,8 @@ and crediting it at the declared 2,60 % net of the 0,35 % reserve charge,
 A^p(0, "AFT_INT") = 7,215.0304938362 x (1 + 0.026 - 0.0035) = 7,377.3686799475
 ```
 
-The table's `av` at `k = 1` is 7 366,75 €, which is **not** that number: it is that number after the
-year's death decrement, `7,377.3686799475 x (1 - 0.0014396389) = 7,366.7479330812` — at the
+The table's `av` at `k = 1` is 7 363,00 €, which is **not** that number: it is that number after the
+year's death decrement, `7,377.3686799475 x (1 - 0.0019477467) = 7,362.9994341872` — at the
 **annual** rate, because the account is an annual quantity and twelve monthly decrements compound to
 exactly that. That is the fund-level roll-forward `check_av_roll_fwd()` closes, and the fact that it
 closes with `bf_rate` at 4 % is the point — a *Beitragsfreistellung* moves reserve between the two
@@ -1095,39 +1095,39 @@ blocks and removes none.
 **Check 2 — the first year's decrement split, and the rate behind it.** The shipped table's rate at age
 45 is `0.014000 x 1.085^(45 - 67) = 0.0023263433`, improved from the 2005 base to the 2026 calendar
 year by `(1 - 0.015)^21 = 0.7280493868`, giving a first-order `0.0016936928`; the best-estimate
-factor takes it to the **annual** `q(0) = 0.85 x 0.0016936928 = 0.0014396389`, and the recursion
+factor takes it to the **annual** `q(0) = 1.15 x 0.0016936928 = 0.0019477467`, and the recursion
 applies its geometric twelfth
 
 ```
-q_mth(0) = 1 - (1 - 0.0014396389)^(1/12) = 0.0001200491
+q_mth(0) = 1 - (1 - 0.0019477467)^(1/12) = 0.0001624573
 ```
 
 in each of the year's twelve months. The freeze falls once, in the last of them, on the survivors of
 that month's deaths:
 
 ```
-sum_{t=0..11} pols_death(t) = 1.000000 x (1 - (1 - 0.0001200491)^12)  = 0.0014396389
-pols_freeze(11)             = 1.000000 x (1 - 0.0014396389) x 0.04    = 0.0399424144
-pols_paying(12)             = 1.000000 x (1 - 0.0014396389) x (1 - 0.04) = 0.9586179467
-pols_paidup(12)             = 0.0000000000 + 0.0399424144             = 0.0399424144
-pols_if(12)                 = 0.9586179467 + 0.0399424144             = 0.9985603611
+sum_{t=0..11} pols_death(t) = 1.000000 x (1 - (1 - 0.0001624573)^12)  = 0.0019477467
+pols_freeze(11)             = 1.000000 x (1 - 0.0019477467) x 0.04    = 0.0399220901
+pols_paying(12)             = 1.000000 x (1 - 0.0019477467) x (1 - 0.04) = 0.9581301631
+pols_paidup(12)             = 0.0000000000 + 0.0399220901             = 0.0399220901
+pols_if(12)                 = 0.9581301631 + 0.0399220901             = 0.9980522533
 ```
 
-Two things to read here. `(1 - 0.0001200491)^12 = 0.9985603611` is `1 - q(0)` to the last bit, which
+Two things to read here. `(1 - 0.0001624573)^12 = 0.9980522533` is `1 - q(0)` to the last bit, which
 is why every annual figure in the table above is the annual-step model's; the arithmetic twelfth
-`0.0014396389 / 12 = 0.0001199699` is a smaller number and closes nothing. And
-`0.9985603611 = 1.000000 - 0.0014396389` exactly: **the 4 % *Beitragsfreistellung* rate has
+`0.0019477467 / 12 = 0.0001623122` is a smaller number and closes nothing. And
+`0.9980522533 = 1.000000 - 0.0019477467` exactly: **the 4 % *Beitragsfreistellung* rate has
 cancelled out of `pols_if` entirely**, which is what distinguishes this product's decrement
 structure from a Schicht-3 annuity's and is what `check_pols_roll_fwd()` asserts at every `t`.
 
 **Check 3 — the conversion, and the branch of the `max` that binds.** The fund at the start of
-projection year `k = 22`, the end of month 263, is 179 426,2405488701 €; the *Schlussüberschussanteil* grosses it up once, at this single date,
+projection year `k = 22`, the end of month 263, is 175 062,4664846856 €; the *Schlussüberschussanteil* grosses it up once, at this single date,
 
 ```
-F = 179,426.2405488701 x 1.04 = 186,603.2901708250
+F = 175,062.4664846856 x 1.04 = 182,064.9651440730
 ```
 
-and it is shared over the 0,932780 policies still in force, giving 200 050,6219643070 € per
+and it is shared over the 0,910094 policies still in force, giving 200 050,6219643070 € per
 annuitant. The applied *Rentenfaktor* is `max(28.00, 31.50) x 1.000 = 31.50` — the **current**
 factor binds on this cell — and 31,50 € a month per 10 000 € of capital is 378,00 € a year, so
 
@@ -1141,11 +1141,11 @@ and 630,16 € a month is what is actually paid. The annual table's `claims_annu
 count in force at the start of **its own** month,
 
 ```
-sum_{t=264..275} 630.1594591876 x pols_if(t) = 7,033.4955825855
+sum_{t=264..275} 630.1594591876 x pols_if(t) = 6,855.5007722999
 ```
 
-against the `12 x 630.1594591876 x 0.9327803550 = 7,053.6043684572` an annual booking on the opening
-count would have paid — the 20,11 € difference being the annuity the old convention paid to lives
+against the `12 x 630.1594591876 x 0.9100944719 = 6,882.0801218217` an annual booking on the opening
+count would have paid — the 26,58 € difference being the annuity the old convention paid to lives
 that died during the year. Had the guaranteed 28,00 € bound instead the annuity would have been
 6 721,70 €, 11,1 % lower.
 
@@ -1157,13 +1157,13 @@ sum_{t=0..923} pols_death(t) + pols_if(924) = 1.0000000000 + 0.0000000000 = 1.00
 ```
 
 because the terminal age is absorbing. Not one policy leaves by any other route: there is no lapse
-decrement, no surrender and no commutation on this product, and the 0,441765 of the cohort that
+decrement, no surrender and no commutation on this product, and the 0,438736 of the cohort that
 went *beitragsfrei* is inside that 1,000000 rather than beside it. And on the money side, the Total
 row itself closes,
 
 ```
-113,761.9053943146 + 51,236.2751085046 - 265,725.5654249013 - 3,695.9135293351 - 6,437.8202383614
-    = -110,861.1186897786
+112,806.3186520223 + 50,822.0721738863 - 225,647.8087082836 - 3,372.3878109969 - 6,417.2733932077
+    = -71,809.0790865797
 ```
 
 which is `check_net_cf()` — delib's first ruling — evaluated over all 924 months at once
@@ -1185,21 +1185,21 @@ no premium left to stop, and `k_conv() = 9` (`t_conv() = 108`), `proj_len_y() = 
 
 | k | age | `pols_if` | `av` | `premiums` | `claims_annuity` | `expenses` | `commissions` | `net_cf` |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 | 58 | 1.000000 | 0.00 | 60,000.00 | 0.00 | 309.89 | 1,500.00 | 58,190.11 |
-| 1 | 59 | 0.995842 | 56,170.68 | 0.00 | 0.00 | 60.52 | 0.00 | −60.52 |
-| 2 | 60 | 0.991418 | 56,838.16 | 0.00 | 0.00 | 61.15 | 0.00 | −61.15 |
-| 4 | 62 | 0.981702 | 58,157.41 | 0.00 | 0.00 | 62.36 | 0.00 | −62.36 |
-| 8 | 66 | 0.958317 | 61,584.00 | 0.00 | 0.00 | 64.56 | 0.00 | −64.56 |
-| **9** | **67** | 0.951537 | **62,484.63** | 0.00 | **2,447.87** | 39.03 | 0.00 | −2,486.90 |
-| 10 | 68 | 0.944341 | 0.00 | 0.00 | 2,453.07 | 39.31 | 0.00 | −2,492.37 |
-| 19 | 77 | 0.857193 | 0.00 | 0.00 | 2,427.85 | 40.67 | 0.00 | −2,468.52 |
-| 39 | 97 | 0.468265 | 0.00 | 0.00 | 1,587.41 | 29.35 | 0.00 | −1,616.77 |
-| 63 | 121 | 0.014921 | 0.00 | 0.00 | 65.92 | 1.37 | 0.00 | −67.29 |
-| **Total** | | — | — | **60,000.00** | **84,666.77** | **2,292.11** | **1,500.00** | **−28,458.88** |
+| 0 | 58 | 1.000000 | 0.00 | 60,000.00 | 0.00 | 309.85 | 1,500.00 | 58,190.15 |
+| 1 | 59 | 0.994375 | 56,087.91 | 0.00 | 0.00 | 60.39 | 0.00 | −60.39 |
+| 2 | 60 | 0.988397 | 56,665.01 | 0.00 | 0.00 | 60.92 | 0.00 | −60.92 |
+| 4 | 62 | 0.975304 | 57,778.40 | 0.00 | 0.00 | 61.90 | 0.00 | −61.90 |
+| 8 | 66 | 0.943972 | 60,662.13 | 0.00 | 0.00 | 63.52 | 0.00 | −63.52 |
+| **9** | **67** | 0.934935 | **61,394.48** | 0.00 | **2,402.20** | 38.30 | 0.00 | −2,440.50 |
+| 10 | 68 | 0.925370 | 0.00 | 0.00 | 2,400.62 | 38.47 | 0.00 | −2,439.09 |
+| 19 | 77 | 0.811544 | 0.00 | 0.00 | 2,293.02 | 38.41 | 0.00 | −2,331.43 |
+| 39 | 97 | 0.356307 | 0.00 | 0.00 | 1,196.46 | 22.12 | 0.00 | −1,218.59 |
+| 63 | 121 | 0.002854 | 0.00 | 0.00 | 12.61 | 0.26 | 0.00 | −12.87 |
+| **Total** | | — | — | **60,000.00** | **71,866.52** | **2,051.16** | **1,500.00** | **−15,417.68** |
 
 Again summed at full precision and then rounded; adding the sixty-four rounded `net_cf` cells gives
-−28 458,87 € against −28 458,88 €, a one-cent difference. Every account balance in the column is
-the annual-step model's to the last bit; the annuity is 1 496,37 € lower and the expenses 29,11 €
+−15 417,71 € against −15 417,68 €, a three-cent difference. Every account balance in the column is
+the annual-step model's to the last bit; the annuity is 1 444,05 € lower and the expenses 28,20 €
 lower, for the two reasons the grid changed.
 
 Two features are the whole point of the variant. **The *Beitragssumme* of a single-premium contract
@@ -1213,7 +1213,7 @@ visible in the first year's account, which checks in one line:
 ```
 N(0)      = 60,000.00 x (1 - 0.075) - 300.00 - 0.00 - 36.00 = 55,164.0000000000
 av_pp(1)  = 55,164.0000000000 x (1 + 0.026 - 0.0035)        = 56,405.1900000000
-av(1)     = 56,405.1900000000 x 0.9958424243                = 56,170.6811550510
+av(1)     = 56,405.1900000000 x 0.9943750447                = 56,087.9133274220
 ```
 
 the last line being the fund-level value the table publishes — `av_pp` is per **paying** policy and
@@ -1228,8 +1228,8 @@ Pitfall 13 promises a cell on which the guaranteed factor binds, and model point
 
 | Cell | `av(T)` | `fund_at_conv()` | per annuitant | `rentenfaktor_gtd` | `rentenfaktor_curr()` | applied | `ann_pp(T)` | a month |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Anchor, `T = 22` | 179,426.24 | 186,603.29 | 200,050.62 | 28.00 | 31.50 | **31.50** | **7,561.91** | **630.16** |
-| Point 13, `T = 21` | 98,185.81 | 102,113.25 | 109,428.02 | 34.00 | 27.72 | **34.00** | **4,464.66** | **372.06** |
+| Anchor, `T = 22` | 175,062.47 | 182,064.97 | 200,050.62 | 28.00 | 31.50 | **31.50** | **7,561.91** | **630.16** |
+| Point 13, `T = 21` | 95,811.29 | 99,643.74 | 109,428.02 | 34.00 | 27.72 | **34.00** | **4,464.66** | **372.06** |
 
 On the anchor the guarantee is worth nothing and would have given 6 721,70 €; on model point 13 it
 is worth 824,65 € a year, the current factor alone giving 3 640,01 €. The projection is sensitive to
@@ -1245,7 +1245,7 @@ each is now written into the notes at its source rather than only here.
 
 1. **The terminal age is absorbing.** The horizon bullet asserted `mort_rate_at_age(omega, ·) = 1`,
    but the generational trend carries the table's terminal rate below 1 in every calendar year after
-   the base year and `mort_be_factor` would take it to 0,85 in any case. The rule now sits on
+   the base year and `mort_be_factor` would scale it away from 1 in any case. The rule now sits on
    `mort_rate(t)`, where it belongs.
 2. **`av(k_conv())` is the pre-conversion fund, not zero.** `check_av_roll_fwd()` now asserts
    `av_at(k_conv(), "AFT_INT") = 0` — the conversion empties the account — and `av(k) = 0` for every

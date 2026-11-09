@@ -1760,7 +1760,7 @@ def test_basis_is_source_or_setzung_or_empty():
 # The rows whose value entry 12 of epic-parameter-files changes (proposal-parameter-files.md,
 # "Open points", 1): their ``basis`` stays empty until that commit; every other row has one.
 EMPTY_BASIS = {
-    "basisrente": {"mort_be_factor", "check_tol"},
+    "basisrente": {"check_tol"},
     "berufsunfaehigkeit": {"check_tol", "accept_factor", "mort_dis_load_first"},
     "fondsgebundene_rentenversicherung": {"check_tol"},
     "indexpolice": {"expense_infl"},

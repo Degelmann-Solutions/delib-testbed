@@ -74,7 +74,7 @@ properties, or the model stops being a model of this product:
   takes a calendar year as well as an age and why ``calendar_year(t)`` is carried at all;
 * it must be **first order**, carrying the DAV's prudential margins, because the
   guaranteed *Rentenfaktor* is struck on that basis and the projection's own
-  ``mort_be_factor`` steps down from it to a best estimate;
+  ``mort_be_factor`` steps up from it to a best estimate;
 * it must run to a terminal age at which ``qx`` is 1.0, because ``proj_len()`` is derived
   from the last age in this file and the projection has no tail state.
 

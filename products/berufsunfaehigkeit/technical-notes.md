@@ -353,7 +353,7 @@ Space (the `annuallife/TradLife_A` layout). Every one but `model_point_table.csv
 | `occupation_table.csv` | `berufsgruppe` (BG1 – BG5) | `occ_factor`, `label`, `provenance` |
 | `lapse_table.csv` | `policy_year` (1 – 6, the last being ultimate) | `lapse_rate`, `provenance` |
 | `prem_freq_table.csv` | `prem_freq` | `instalments`, `prem_freq_load`, `provenance` |
-| `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance`: `accept_factor`; `inc_load_first`, `recov_load_first`, `mort_dis_load_first`, `mort_actv_load_first`; `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_pp_ann`, `load_claim_assess_pp_once`, `load_claim_admin_pp_mth`; `runoff_months` and `check_tol`, the tolerance of the `check_*` identities, are items of the core file `param_core.csv` |
+| `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance`: the tariff-type parameters; the house-wide, technical and statutory items, `runoff_months` and `check_tol`, the tolerance of the `check_*` identities, among them, are in the core file `core/Core/Data/param_core.csv`; `uv run python tools/params.py berufsunfaehigkeit` lists every item the tariff reads with its value, layer, basis and provenance |
 
 ---
 

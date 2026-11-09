@@ -225,10 +225,10 @@ table carries a per-row `provenance` column, this library's second ruling.
 | `prem_freq_table.csv` | `prem_freq` | `instalments` (**recorded, not applied**), `prem_freq_load`, `provenance` |
 | `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance` |
 
-`param_tariff_type.csv` holds every scalar [std] assumption that is neither a charge nor a rate table:
-`expense_acq_pp_once`, `expense_admin_pp_ann`, `expense_annuity_pp_ann`, `expense_claim_pp_once`,
-`mort_be_factor`, `mort_base_year`, `omega_age`, `bwr_rate`, `sur_ann_rate`,
-`sur_ann_growth` and `sur_ann_theta` (`check_tol` and `expense_infl` are items of the core file). Keeping them in a file rather than in
+`param_tariff_type.csv` holds every scalar [std] assumption that is neither a charge nor a rate table,
+each with its `value`, `basis` and `provenance`; `uv run python tools/params.py klassische_rentenversicherung`
+lists every item the tariff reads with its value and layer, the house-wide and technical items
+(`check_tol` and `expense_infl` among them) in the core file `core/Core/Data/param_core.csv`. Keeping them in a file rather than in
 `Projection` References is what gives each of them its own provenance tag.
 
 ### (a) Contractual and guaranteed elements (cited)

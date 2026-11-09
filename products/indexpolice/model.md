@@ -295,7 +295,7 @@ against what must be **paid** — and conflating them is a numbered pitfall [R2]
 
 ## Inputs are external files
 
-The nine input CSVs, `param_tariff_type.csv` with 9 of the 10 scalar tariff parameters that were `Projection` References among them (the DeckRV § 4 cap `zillmer_cap_bsum` and the five-year spread `surr_spread_years`, a literal in its formulas until phase 3, the check tolerance `check_tol` and the expense inflation `expense_infl` are items of the core file `param_core.csv`), live **in this directory**, beside `run.py` — not inside the model
+The nine input CSVs, the tariff-type file `param_tariff_type.csv` among them (the house-wide, technical and statutory items, the DeckRV § 4 cap `zillmer_cap_bsum` among them, are in the core file `core/Core/Data/param_core.csv`; `uv run python tools/params.py indexpolice` lists every item the tariff reads with its value, layer, basis and provenance), live **in this directory**, beside `run.py` — not inside the model
 folder. `Index_DE_S/` holds nothing but formulas:
 
 ```

@@ -296,7 +296,7 @@ which is the one thing interleaving the two decrements monthly genuinely changes
 
 ## Inputs are external files
 
-The seven input CSVs, `param_tariff_type.csv` with `expense_claim_pp_once` and 16 of the 17 scalar tariff parameters that were References on `Projection` among them (`suicide_years`, the check tolerance `check_tol` and the expense inflation `expense_infl` are items of the core file `param_core.csv`), live **in this directory**, beside `run.py` — not inside the model
+The seven input CSVs, the tariff-type file `param_tariff_type.csv` among them (the house-wide, technical and statutory items, `suicide_years`, the check tolerance `check_tol` and the expense inflation `expense_infl` among them, are in the core file `core/Core/Data/param_core.csv`; `uv run python tools/params.py risikolebensversicherung` lists every item the tariff reads with its value, layer, basis and provenance), live **in this directory**, beside `run.py` — not inside the model
 folder. `RLV_DE_S/` holds nothing but formulas:
 
 ```

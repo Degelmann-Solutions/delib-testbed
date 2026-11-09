@@ -4,7 +4,6 @@ expense_infl,0.015,,"[std] 1.5 % p.a. inflation of the Stueckkosten from issue, 
 charge_acq_bsum_once,0.025,,"[std] [REG-R16] acquisition charge 2.5 % of the Beitragssumme, spread over acq_spread_years premium-paying years, at the DeckRV Hoechstzillmersatz of 25 per mille; was a Reference on Projection"
 expense_acq_bsum_once,0.025,,"[std] acquisition expense 2.5 % of the Beitragssumme, incurred in full at inception: the Zillmer strain, paid out at once and recovered over five years; was a Reference on Projection"
 acq_spread_years,5,,"[std] a tariff parameter, not a statutory one: the acquisition charge is spread over the first 5 premium-paying years; at 5 it happens to equal the five-year floor of section 169 (3) VVG, so the surrender floor's shadow account coincides with the reserve; was a Reference on Projection"
-zillmer_cap_bsum,0.025,,"[R7] [REG-R16] the DeckRV section 4 (1) Hoechstzillmersatz, 25 per mille of the sum of all premiums, capping the acquisition charge; was a Reference on Projection"
 charge_admin_prem_inst,0.03,,"[std] premium charge beta, 3 % of each gross premium collected, Verwaltungskosten; was a Reference on Projection"
 charge_admin_av_ann,0.0025,,"[std] reserve charge gamma, 0.25 % a year of the post-premium balance, Verwaltungskosten; was a Reference on Projection"
 expense_admin_pp_ann,36.0,,"[std] maintenance expense (Stueckkosten) 36.00 EUR per policy a year, inflating at expense_infl from issue; was a Reference on Projection"

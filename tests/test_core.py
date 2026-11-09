@@ -2097,6 +2097,7 @@ CORE_ITEMS = {
     "tax_step_min_year": 13,
     "tax_step_age": 62,
     "mmkt_return_ann": 0.015,
+    "zillmer_cap_bsum": 0.025,
 }
 
 

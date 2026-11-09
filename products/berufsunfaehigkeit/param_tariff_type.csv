@@ -10,4 +10,3 @@ load_admin_prem_inst,0.09,,"[std] [R12] proportional Verwaltungskosten 9 % of th
 load_admin_pp_ann,18.0,,"[std] flat Verwaltungskosten 18.00 EUR per policy per year, charged 1/12 monthly, uninflated: a German Verwaltungskostenzuschlag is fixed in the tariff at conclusion; was a Reference on Projection"
 load_claim_assess_pp_once,800.0,,"[std] Leistungsbearbeitung, assessment: 800.00 EUR per claim inception, a flat euro amount; was a Reference on Projection"
 load_claim_admin_pp_mth,12.0,,"[std] Leistungsbearbeitung, maintenance: 12.00 EUR per month a claim is in payment, a flat euro amount; was a Reference on Projection"
-runoff_months,3,,"[R3] [REG-R29] the section 174 (2) VVG run-off, the insurer liable to the end of the third month after the Einstellungsmitteilung reaches the policyholder; three slots of the run-off ledger; was a Reference on Projection"

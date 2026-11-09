@@ -295,7 +295,7 @@ against what must be **paid** — and conflating them is a numbered pitfall [R2]
 
 ## Inputs are external files
 
-The nine input CSVs, `param_tariff_type.csv` with `check_tol`, `expense_infl`, the 10 scalar tariff parameters that were `Projection` References and the five-year spread `surr_spread_years` that was a literal in its formulas among them, live **in this directory**, beside `run.py` — not inside the model
+The nine input CSVs, `param_tariff_type.csv` with `check_tol`, `expense_infl`, the 10 scalar tariff parameters that were `Projection` References among them (the five-year spread `surr_spread_years`, a literal in its formulas until phase 3, is an item of the core file `param_core.csv`), live **in this directory**, beside `run.py` — not inside the model
 folder. `Index_DE_S/` holds nothing but formulas:
 
 ```

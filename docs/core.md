@@ -240,7 +240,7 @@ The shared loaders in the core's `Data` beside the tables of entry 2: `surplus_t
 
 A scalar parameter, a rate, factor, amount or tolerance with one value per tariff, is a row of a parameter file and is read through one lookup in the core's `Data`, `param("<item>")`, always called with the item's name as a string literal, so that a scan of the code finds every item read (`data.param("<item>")` from a `Projection`). Three layers hold the items, each item in exactly one of them for a tariff:
 
-- the core file `core/Core/Data/param_core.csv`, the technical and house-wide quantities with one value for every tariff type. It holds one item, `rate_cap_eps` (1e-12): Pflege's eleven guards cap a decrement probability at `1 - rate_cap_eps` before taking its force `-ln(1 - q)`, so that the force stays finite at the limiting age (section "Formula literals");
+- the core file `core/Core/Data/param_core.csv`, the technical and house-wide quantities with one value for every tariff type. It holds the technical item `rate_cap_eps` (1e-12): Pflege's eleven guards cap a decrement probability at `1 - rate_cap_eps` before taking its force `-ln(1 - q)`, so that the force stays finite at the limiting age (section "Formula literals"). Since the acceptance of 2026-11-09 it also holds the statutory terms, whose statute gives one value for every tariff: the *Selbsttötung* window of § 161 Abs. 1 VVG `suicide_years` 3 (KLV, RLV), the spread of § 169 Abs. 3 VVG `surr_spread_years` 5 (Index, KLV) and the run-off of § 174 Abs. 2 VVG `runoff_months` 3 (BU). The quantity's nature decides, not the number of readers: an item one product reads is core where its value is house-wide;
 - the tariff-type file in the product folder, named by the product's Reference `param_file`: `param_tariff_type.csv` in all ten products, each renamed from the product's `param_table.csv` (RLV first, the other nine together);
 - the tariff file `param_tariff.csv` in the product folder, optional: it appears only at the first value in which a tariff deviates from its tariff type, and the loader skips the layer where it is absent.
 
@@ -362,9 +362,9 @@ What stays code: the calendar (months per year, the last month of a policy year,
 The actuarial literals moved byte-identically, each row's value the literal's text (an `int` stays an `int`), each read a literal `data.param("<item>")` in the literal's place:
 
 - FRV, rows of its `param_tariff_type.csv`: in `lapse_tax_step` the 12/62 rule of EStG § 20 Abs. 1 Nr. 6 Satz 2 with § 52 Abs. 28, `tax_step_min_year` 13 and `tax_step_age` 62, and the step's magnitude `tax_step_factor` 2.5. Entry 8 also moved the bisection bracket of `irr_ann` into rows `irr_lo` -0.99 and `irr_hi` 5.0; as a solver setting it is a literal again since 2026-11-06, the rows deleted.
-- Index: in `prem_charge_acq_min_pp` the five-year spread of § 169 Abs. 3 VVG, `surr_spread_years` 5.
-- KLV: in `res_min_pp` the same spread, `surr_spread_years` 5, an `int` as in Index (the literal was `5.0`; `k / 5` is the same true division), and in `benefit_death_pp` the three-year *Selbsttötung* window of § 161 VVG, `suicide_years` 3 (RLV's row of that name has the same value).
-- Pflege's eleven guards `1.0 - 1e-12`, which cap a decrement probability below 1 before `-ln(1 - q)`, read `1.0 - data.param("rate_cap_eps")`: the epsilon is technical with one value for every tariff type, so it is the item of the core file (section "The parameter files"); the subtraction stays in the cell.
+- Index: in `prem_charge_acq_min_pp` the five-year spread of § 169 Abs. 3 VVG, `surr_spread_years` 5, an item of the core file since 2026-11-09.
+- KLV: in `res_min_pp` the same spread, `surr_spread_years` 5, an `int` as in Index (the literal was `5.0`; `k / 5` is the same true division), and in `benefit_death_pp` the three-year *Selbsttötung* window of § 161 VVG, `suicide_years` 3 (RLV's row of that name had the same value); both are items of the core file since 2026-11-09.
+- Pflege's eleven guards `1.0 - 1e-12`, which cap a decrement probability below 1 before `-ln(1 - q)`, read `1.0 - data.param("rate_cap_eps")`: the epsilon is technical with one value for every tariff type, so it is an item of the core file (section "The parameter files"); the subtraction stays in the cell.
 
 The table lengths read from their tables, each the table's largest key as an `int`:
 

@@ -48,11 +48,11 @@
   neither its ``Projection`` nor its parameter files. BU's 11, FRV's 12, Basis' 5,
   Index' 10 and 8 of Sofort's 10 likewise; Sofort's other 2, the bisection settings of its
   refund solve, are literals in its formula. RV and Pflege never had one.
-  Every product's core layer is ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's eleven
-  guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 3 actuarial
+  Every product's core layer holds the items of ``CORE_ITEMS`` with their types, among them
+  ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's eleven guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 3 actuarial
   formula literals (the tax step of ``lapse_tax_step``) are rows of its
   tariff-type file with their literals' types and values; Index' five-year spread and KLV's
-  five-year spread and three-year suicide window likewise. Every other numeric literal of a
+  five-year spread and three-year suicide window are items of the core file. Every other numeric literal of a
   formula cell of the core and the ten products, but 0, 1, 0.0 and 1.0, is structural and
   listed for its space in ``STRUCTURAL_LITERALS``, and every listed value occurs there.
   BU's claim-year caps are the last ``dur_year`` of its claim-duration table, so a scratch
@@ -1771,7 +1771,14 @@ def test_rlv_claim_expense_is_a_tariff_type_row(product_models):
 
 
 # The moved References and literals below are keyed by their current item names, which may
-# differ from the References' names (docs/core.md, "Parameter names").
+# differ from the References' names (docs/core.md, "Parameter names"). An item of the core file
+# stands in the core layer, any other in the tariff-type layer.
+
+def param_layer_of(item):
+    """The layer a moved item stands in: the core file for an item of ``CORE_ITEMS``, the
+    tariff-type file for any other."""
+    return "core" if item in CORE_ITEMS else "tariff_type"
+
 
 # The 32 numeric References Riester's ``Projection`` held, as their former Python literals.
 RIESTER_MOVED_REFERENCES = {
@@ -1882,7 +1889,7 @@ FRV_MOVED_LITERALS = {
 # The actuarial literal Index' formulas held (``prem_charge_acq_min_pp``), as written there.
 INDEX_MOVED_LITERALS = {"surr_spread_years": 5}
 
-# The actuarial literals KLV's formulas held (``res_min_pp``, ``benefit_death_pp``), as rows.
+# The actuarial literals KLV's formulas held (``res_min_pp``, ``benefit_death_pp``), as items.
 # ``surr_spread_years`` was ``5.0`` there; its row is ``5``, an ``int`` as Index' row.
 KLV_MOVED_LITERALS = {"surr_spread_years": 5, "suicide_years": 3}
 
@@ -1932,95 +1939,95 @@ REFERENCES_MOVED = (
 )
 
 
-def test_riester_references_are_tariff_type_rows(product_models):
+def test_riester_references_stand_in_their_layer(product_models):
     model = product_models("riester_rente")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(RIESTER_MOVED_REFERENCES) == 32
     for item, literal in RIESTER_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
-def test_rlv_references_are_tariff_type_rows(product_models):
+def test_rlv_references_stand_in_their_layer(product_models):
     model = product_models("risikolebensversicherung")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(RLV_MOVED_REFERENCES) == 17
     assert "sicherheitszuschlag_m" not in model.Projection.refs
     for item, literal in RLV_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
-def test_klv_references_are_tariff_type_rows(product_models):
+def test_klv_references_stand_in_their_layer(product_models):
     model = product_models("kapitallebensversicherung")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(KLV_MOVED_REFERENCES) == 4
     for item, literal in KLV_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
-def test_bu_references_are_tariff_type_rows(product_models):
+def test_bu_references_stand_in_their_layer(product_models):
     model = product_models("berufsunfaehigkeit")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(BU_MOVED_REFERENCES) == 11
     for item, literal in BU_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
-def test_frv_references_are_tariff_type_rows(product_models):
+def test_frv_references_stand_in_their_layer(product_models):
     model = product_models("fondsgebundene_rentenversicherung")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(FRV_MOVED_REFERENCES) == 12
     for item, literal in FRV_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
-def test_frv_literals_are_tariff_type_rows(product_models):
+def test_frv_literals_stand_in_their_layer(product_models):
     data = product_models("fondsgebundene_rentenversicherung").Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(FRV_MOVED_LITERALS) == 3
     for item, literal in FRV_MOVED_LITERALS.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
 
 
-def test_index_literals_are_tariff_type_rows(product_models):
+def test_index_literals_stand_in_their_layer(product_models):
     data = product_models("indexpolice").Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(INDEX_MOVED_LITERALS) == 1
     for item, literal in INDEX_MOVED_LITERALS.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
 
 
-def test_klv_literals_are_tariff_type_rows(product_models):
+def test_klv_literals_stand_in_their_layer(product_models):
     data = product_models("kapitallebensversicherung").Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(KLV_MOVED_LITERALS) == 2
     for item, literal in KLV_MOVED_LITERALS.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
 
 
 # The units and annuity frequencies that are rows rather than literals: product -> item ->
@@ -2036,53 +2043,58 @@ UNIT_AND_FREQUENCY_ROWS = {
 
 
 @pytest.mark.parametrize("product", sorted(UNIT_AND_FREQUENCY_ROWS))
-def test_units_and_frequencies_are_tariff_type_rows(product, product_models):
+def test_units_and_frequencies_stand_in_their_layer(product, product_models):
     data = product_models(product).Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     for item, literal in UNIT_AND_FREQUENCY_ROWS[product].items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
 
 
-def test_basis_references_are_tariff_type_rows(product_models):
+def test_basis_references_stand_in_their_layer(product_models):
     model = product_models("basisrente")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(BASIS_MOVED_REFERENCES) == 5
     for item, literal in BASIS_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
-def test_index_references_are_tariff_type_rows(product_models):
+def test_index_references_stand_in_their_layer(product_models):
     model = product_models("indexpolice")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(INDEX_MOVED_REFERENCES) == 10
     for item, literal in INDEX_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
-def test_sofort_references_are_tariff_type_rows(product_models):
+def test_sofort_references_stand_in_their_layer(product_models):
     model = product_models("sofortrente")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(SOFORT_MOVED_REFERENCES) == 8
     for item, literal in SOFORT_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
 # The items of the core file ``core/Core/Data/param_core.csv``, as their former Python literals.
-CORE_ITEMS = {"rate_cap_eps": 1e-12}
+CORE_ITEMS = {
+    "rate_cap_eps": 1e-12,
+    "suicide_years": 3,
+    "surr_spread_years": 5,
+    "runoff_months": 3,
+}
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
@@ -2515,7 +2527,8 @@ def test_an_unused_core_item_is_named(tmp_path):
         copy.close()
     assert usage.problems == []
     assert usage.layers["core"] == {**CORE_ITEMS, "probe_core": 0.125}
-    assert param_usage.unused_core_items([usage]) == sorted(["probe_core", *CORE_ITEMS])
+    unread = [item for item in CORE_ITEMS if item not in usage.reads]
+    assert param_usage.unused_core_items([usage]) == sorted(["probe_core", *unread])
 
 
 def test_klv_result_cf_is_the_core_statement_from_t_start(product_models):

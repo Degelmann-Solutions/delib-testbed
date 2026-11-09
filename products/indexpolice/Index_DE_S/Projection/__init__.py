@@ -461,7 +461,7 @@ def prem_charge_acq_min_pp(k):
 
     Acquisition and distribution costs must be spread over at least the first five years
     for the purpose of the *Mindestrückkaufswert*, whatever the tariff does — so this
-    profile reads the row ``surr_spread_years`` and not ``acq_spread_years``, which is a tariff
+    profile reads the core item ``surr_spread_years``, not ``acq_spread_years``, which is a tariff
     parameter and not a statutory one.  With ``acq_spread_years = 5`` the two coincide exactly
     and the floor is a no-op, which is the point: delib's charge profile is already at the
     statutory floor.  Set ``acq_spread_years = 1`` and the floor bites.

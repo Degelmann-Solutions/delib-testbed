@@ -14,7 +14,6 @@ load_admin_sum_ann,0.0003,,"[std] sum-related admin 0.30 per mille of benefit_pp
 expense_collect_prem_inst,0.03,,"[std] modelled collection cost 3.0 % of each Zahlbeitrag; the gap to load_admin_prem_inst is the Kostenueberschuss, which is not returned; was a Reference on Projection"
 comm_renew_prem_inst,0.01,,"[std] renewal commission 1.0 % of each Zahlbeitrag instalment from policy year 2; was a Reference on Projection"
 suicide_share,0.03,,"[std] [R1] share of the deaths inside the section 161 VVG window that are suicides, applied to death claims only; no German cause-of-death share was retrieved, argued range 0.01 to 0.05 [unverified]; was a Reference on Projection"
-suicide_years,3,,"[R1] [REG-R26] the section 161 VVG window of three years, the statutory minimum, extendable by Einzelvereinbarung; all three retrieved wordings adopt it [S1] [S3] [S4]; was a Reference on Projection"
 shock_lapse_lambda,0.0,,"[std] premium-shock lapse factor lambda_s; 0.0 switches the module off, so the base run reproduces the worked example; reference value 2.0; was a Reference on Projection"
 sel_lapse_lambda,0.0,,"[std] selective-lapse loading lambda on the second-order mortality; 0.0 switches the module off, one basis for stayers and leavers; reference value 0.30; was a Reference on Projection"
 sel_lapse_ref,0.25,,"[std] the cumulative lapse w_ref above which the selective-lapse loading acts; was a Reference on Projection"

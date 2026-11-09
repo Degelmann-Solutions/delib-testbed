@@ -296,7 +296,7 @@ which is the one thing interleaving the two decrements monthly genuinely changes
 
 ## Inputs are external files
 
-The seven input CSVs, `param_tariff_type.csv` with `check_tol`, `expense_infl`, `expense_claim_pp_once` and the 17 scalar tariff parameters that were References on `Projection` among them, live **in this directory**, beside `run.py` — not inside the model
+The seven input CSVs, `param_tariff_type.csv` with `check_tol`, `expense_infl`, `expense_claim_pp_once` and 16 of the 17 scalar tariff parameters that were References on `Projection` among them (`suicide_years` is an item of the core file `param_core.csv`), live **in this directory**, beside `run.py` — not inside the model
 folder. `RLV_DE_S/` holds nothing but formulas:
 
 ```
@@ -487,7 +487,7 @@ checks, not inputs.
 | `expense_infl` (a row of `param_tariff_type.csv`) | 0.02, on sum-related admin only | The tariff's γ is level while the modelled one inflates, so the cost result narrows over a long term and eventually reverses — a real feature of a 25-year contract |
 | `expense_claim_pp_once` (a row of `param_tariff_type.csv`) | 250 € per death claim | No German figure is public; worth 0,16 € in the anchor's first year |
 | `suicide_share` (a row of `param_tariff_type.csv`) | 0.03 | No German cause-of-death share was retrieved; stands for "about three per cent of deaths at these ages are suicides", argued range 0,01–0,05 [unverified]. The **three-year window itself is sourced** [R1] |
-| `suicide_years` (a row of `param_tariff_type.csv`) | 3 | The statutory minimum, extendable by *Einzelvereinbarung* [R1] [REG-R26]. A row so an extended window can be modelled. **All three retrieved wordings adopt the statutory three and none extends it** [S1] [S3] [S4] |
+| `suicide_years` (an item of the core file `param_core.csv`) | 3 | The statutory minimum, extendable by *Einzelvereinbarung* [R1] [REG-R26]. One value for every tariff; an extended window is not modelled. **All three retrieved wordings adopt the statutory three and none extends it** [S1] [S3] [S4] |
 | Lapse table | 6 % / 4 % / 4 % / 3 % **a year**, zero through the final policy year | Argued from three structural features (mechanic 17); **no German figure supports any of it**, argued range 2–8 % in the early durations (gap 13). The final-year zero is a property of the last policy year and lives in the formula, not the table. The annual rate is spread to the month at `1 − (1 − w)^(1/12)` **[std]**: no German instrument states a conversion convention for any decrement, and what is not optional is that twelve of the monthly rates compound back to the year's |
 | `prem_freq_load` | 1.000 / 1.02 / 1.03 / 1.05 | A market convention with no carrier attribution (gap 21), applied to the **billed** amount so the split identity holds at every frequency |
 | Benefit schedules | `(21 − policy_year)/20`, i.e. `(20 − duration(t))/20`, stepping on the anniversary; a 3,00 % thirty-year annuity balance | The three shapes are structural; **no schedule parameter was established** (gap 15) |

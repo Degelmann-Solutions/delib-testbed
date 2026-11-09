@@ -3,7 +3,7 @@ expense_acq_pp_once,400.00,,[std] 400 EUR per policy at issue; no German carrier
 expense_admin_pp_ann,45.00,,"[std] 45 EUR per policy p.a. in the accumulation phase, inflating (gap 14)"
 expense_annuity_pp_ann,30.00,,"[std] 30 EUR per policy p.a. in the payout phase, inflating (gap 14)"
 expense_claim_pp_once,120.00,,"[std] 120 EUR per death, surrender or commutation settlement (gap 14)"
-expense_infl,0.020,,[std] 2.0% p.a. expense inflation; no source (gap 14)
+expense_infl,0.02,,[std] 2.0% p.a. expense inflation; no source (gap 14)
 mort_be_factor,1.15,,"[std] second-order = first-order x 1.15: for an annuity prudence means assuming mortality below best estimate, so the factor is above one [REG-R47] [REG-R49]"
 mort_base_year,2005,,[R13] DAV 2004 R was intended for new business from 2005; the proxy's base year
 omega_age,121,,"[std] terminal age of the shipped proxy; proj_len = omega_age - issue_age, so a life annuity is projected to exhaustion rather than to a fixed horizon"

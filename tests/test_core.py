@@ -2163,6 +2163,7 @@ CORE_ITEMS = {
     "zulage_lag": 1,
     "guar_carve_out_cap": 0.2,
     "teilkapital_cap": 0.3,
+    "kleinbetrag_threshold_mth": 59.33,
 }
 
 

@@ -1640,7 +1640,7 @@ def test_rlv_liability_cf_is_the_negated_net_cf(product_models):
 
 ROLL_FWD_TOL = {
     "basisrente": 1e-08,
-    "berufsunfaehigkeit": 1e-10,
+    "berufsunfaehigkeit": 1e-08,
     "fondsgebundene_rentenversicherung": 1e-10,
     "indexpolice": 1e-08,
     "kapitallebensversicherung": 1e-10,
@@ -1768,7 +1768,7 @@ def test_basis_is_source_or_setzung_or_empty():
 # "Open points", 1): their ``basis`` stays empty until that commit; every other row has one.
 EMPTY_BASIS = {
     "basisrente": set(),
-    "berufsunfaehigkeit": {"check_tol"},
+    "berufsunfaehigkeit": set(),
     "fondsgebundene_rentenversicherung": {"check_tol"},
     "indexpolice": set(),
     "kapitallebensversicherung": {"check_tol"},

@@ -1309,7 +1309,7 @@ def inflation_years(t):
     The core's :func:`inflation_factor` is then ``(1 + expense_infl)**(t/12)``, applied to the
     per-policy administration cost and to the per-annuity-payment claims cost, both of which
     are euro amounts quoted at ``t = 0`` prices.  Over the anchor cell's sixty-five years it
-    is a factor of about 2.6, which is enough for the per-policy line to decide the viability
+    is a factor of about 3.6 at the 2.0 % rate, which is enough for the per-policy line to decide the viability
     of a small contract on its own.
 
     Override reason: the expense inflation compounds continuously over ``t / 12`` years,

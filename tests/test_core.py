@@ -1094,6 +1094,10 @@ PFLEGE_RENAMED = {
     "roll_fwd_tol": "check_tol",
 }
 
+# Pflege's values that entry 12 of epic-parameter-files aligned (the acceptance of 2026-11-09):
+# current item -> aligned value, against upstream's.
+PFLEGE_ALIGNED = {"expense_infl": 0.02}
+
 
 def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     product = "pflegerentenversicherung"
@@ -1106,6 +1110,9 @@ def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     assert expense.at["load_acq_bsum_once", "unit"] == "permille_of_beitragssumme"
     expense.at["load_acq_bsum_once", "value"] /= 1000.0
     expense.at["load_acq_bsum_once", "unit"] = "fraction_of_beitragssumme"
+    for item, value in PFLEGE_ALIGNED.items():
+        table = basis if item in basis.index else expense
+        table.at[item, "value"] = value
     # The Rechnungszins moved from the table to the model point (a contract attribute).
     moved = ["rechnungszins"]
     points = model.Data.model_point_table()
@@ -1114,8 +1121,8 @@ def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     basis = basis.drop(moved)
     assert list(merged.columns) == ["value", "unit", "basis", "provenance"]
     assert list(merged.index) == list(basis.index) + list(expense.index)
-    # Values and order are upstream's; basis and provenance follow the acceptance of
-    # 2026-11-09, which extended each provenance with its source or reason.
+    # Values and order are upstream's but the aligned ones; basis and provenance follow the
+    # acceptance of 2026-11-09, which extended each provenance with its source or reason.
     for item in basis.index:
         assert merged.at[item, "value"] == basis.at[item, "value"], item
         assert pd.isna(merged.at[item, "unit"]), item
@@ -1766,7 +1773,7 @@ EMPTY_BASIS = {
     "indexpolice": set(),
     "kapitallebensversicherung": {"check_tol"},
     "klassische_rentenversicherung": {"check_tol"},
-    "pflegerentenversicherung": {"check_tol", "expense_infl"},
+    "pflegerentenversicherung": {"check_tol"},
     "riester_rente": {"check_tol"},
     "risikolebensversicherung": {"check_tol", "val_tol"},
     "sofortrente": {"expense_infl"},
@@ -2719,8 +2726,8 @@ def test_pflege_inflation_factor_compounds_continuously(product_models):
     assert projection.inflation_years._is_defined()
     point_id = model.Data.model_point_table().index[0]
     item = projection[point_id]
-    assert item.expense_infl() == 0.015
-    assert item.inflation_factor(6) == 1.015 ** 0.5
+    assert item.expense_infl() == 0.02
+    assert item.inflation_factor(6) == 1.02 ** 0.5
     assert item.inflation_factor(0) == 1.0
 
 

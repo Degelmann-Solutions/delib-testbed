@@ -187,7 +187,7 @@ every model point that carries one, and no total in the frame would look wrong. 
 
 The dynamic costs more than a four-year spell suggests. On model point 8, `d = 2 %` raises the
 projected annuity total from 13 200,11 € to 15 101,44 € — **+14,4 %** — and the equivalence premium
-from 64,198409 € to 72,038378 €, **+12,2 %**: `ln(1.144)/ln(1.02) = 6,8` years of payment-weighted
+from 64,539230 € to 72,379198 €, **+12,1 %**: `ln(1.144)/ln(1.02) = 6,8` years of payment-weighted
 elapsed duration against a mean spell in an insured grade of 5,45 years, because the escalation
 compounds over elapsed time in **care**, *Pflegegrad* 1 months included where nothing is paid, and
 because deterioration puts the largest benefit percentages at the end of a spell.
@@ -207,11 +207,11 @@ practice and what keeps the model acyclic. Everything that scales with `P` is li
 
 ```
 P·U = A + P·D1 + P·a1 + β·P·U + G + C   →   P = (A + G + C) / [U(1 − β) − D1 − a1]
-    = (17,789.761930 + 892.884210 + 69.389246) / (313.500018 x 0.970 − 12.000000)
-    = 18,752.035386 / 292.095018 = 64.198409 EUR a month
+    = (17,789.761930 + 980.607132 + 81.218362) / (313.500018 x 0.970 − 12.000000)
+    = 18,851.587424 / 292.095018 = 64.539230 EUR a month
 ```
 
-`prem_net_level_pp() = A / U = 56.745649`, so the whole expense loading is **13,13 %**, of which
+`prem_net_level_pp() = A / U = 56.745649`, so the whole expense loading is **13,73 %**, of which
 the *Zillmerung* allowance `a1 = 0.025 × 12 × (85 − 45) = 12.000000` units of `P` alone is 2,53 € a
 month: strike `a1` out of the denominator and the premium falls to 61,665 €. `U` is **26,13 years'**
 worth of discounted premium.
@@ -236,7 +236,7 @@ the § 4 DeckRV *Höchstzillmersatz* of 25 ‰ so the ceiling binds visibly [REG
 lifelong-premium contract has no finite *Beitragssumme* without a convention, and
 `beitragssumme_cap_age = 85` **[std]** is that convention —
 `P × 12 × (min(prem_end_age, 85) − issue_age)`, and the *Einmalbeitrag* itself where there is
-one. On the anchor cell that is 30 815,24 € and a charge of 770,38 €, all of it at `t = 0`.
+one. On the anchor cell that is 30 978,83 € and a charge of 774,47 €, all of it at `t = 0`.
 Charging the rate on an *annual* premium instead understates it by a factor of the paying term
 — here forty-fold — and is a listed pitfall. Because the charge falls at `t = 0` only, an
 **in-force model point never incurs it**: its frame opens at `duration_mth_init() > 0` and the cost
@@ -272,7 +272,7 @@ place: point `Data.mort_file` at another same-schema file and the projection fol
 | `care_file` | `care_table()` | `care_table.csv` | The whole in-care basis in five rows: `entry_share` 0.20 / 0.38 / 0.24 / 0.13 / 0.05, `det_rate` 0.28 / 0.24 / 0.20 / 0.16 / 0.00, `rec_rate` 0.10 / 0.06 / 0.04 / 0.02 / 0.01 and `mort_mult` 1.5 / 2.5 / 3.5 / 6.0 / 9.0 on the **force**. All **[std]**. `entry_share` is deliberately **not** the stock distribution of about 9 / 44 / 27 / 14 / 6 % [R18]: entrants skew lower than the stock because deterioration moves people up over a spell |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual lapse from the **active** state by policy year 1–40, year 40's rate applying thereafter: 6,0 / 5,0 / 4,0 / 3,5 / 3,0 % then 2,5 / 2,0 / 1,5 %. **[std]**, and **no lapse rate for a German *Pflegerente* at any duration was established**; the shape is argued from the *Zillmerung*, and the 14-day *Widerruf* sits inside year 1 [REG-R23] |
 | `surrender_file` | `surrender_table()` | `surrender_table.csv` | The guaranteed *Rückkaufswert* as a fraction of premiums paid to date, by *Versicherungsjahr* `y(t) = t // 12 + 1`, 1–40. **[std]** shape encoding two cited facts and no cited level — the 25 ‰ *Zillmerung* allowance, which is why years 1 and 2 are zero [REG-R16], and the § 169 Abs. 3 VVG five-year cost spread, which is why it turns positive in year 3 [REG-R28] |
-| `param_file` | `param()` | `param_tariff_type.csv` | The scalar parameters by `item`, with a `unit` column for the expense rows. `omega_age` 110, `unisex_mix_male` 0.50, `recov_age_ref` 75, `recov_age_decay` 0.10, `inc_cap` 0.50, `beitragssumme_cap_age` 85, `check_tol` 1e−10 and the five first-order margins `inc_load_first` 1.25, `det_load_first` 1.15, `recov_load_first` 0.80, `mort_care_load_first` 0.85, `mort_actv_load_first` 0.90; **none of these is cited**; the *Rechnungszins*, the one cited pricing assumption, is a model-point column since phase 3 [REG-R14] [REG-R15]. Then `load_acq_bsum_once` 0,025 (25 ‰) of *Beitragssumme*, `load_admin_prem_inst` 3,0 %, `load_admin_pp_mth` 2,00 € a month, `load_claim_pp_inst` 1,50 € per annuity payment, `expense_infl` 1,5 % a year, all **[std]** but the 25 ‰ ceiling the first sits exactly at. Everything not cited is **[std]**. Upstream these were two files, `basis_table.csv` and `expense_table.csv`; phase 3 merged them so that the loader is the common core's |
+| `param_file` | `param()` | `param_tariff_type.csv` | The scalar parameters by `item`, with a `unit` column for the expense rows. `omega_age` 110, `unisex_mix_male` 0.50, `recov_age_ref` 75, `recov_age_decay` 0.10, `inc_cap` 0.50, `beitragssumme_cap_age` 85, `check_tol` 1e−10 and the five first-order margins `inc_load_first` 1.25, `det_load_first` 1.15, `recov_load_first` 0.80, `mort_care_load_first` 0.85, `mort_actv_load_first` 0.90; **none of these is cited**; the *Rechnungszins*, the one cited pricing assumption, is a model-point column since phase 3 [REG-R14] [REG-R15]. Then `load_acq_bsum_once` 0,025 (25 ‰) of *Beitragssumme*, `load_admin_prem_inst` 3,0 %, `load_admin_pp_mth` 2,00 € a month, `load_claim_pp_inst` 1,50 € per annuity payment, `expense_infl` 2,0 % a year, all **[std]** but the 25 ‰ ceiling and the house-wide inflation the first sits exactly at. Everything not cited is **[std]**. Upstream these were two files, `basis_table.csv` and `expense_table.csv`; phase 3 merged them so that the loader is the common core's |
 
 Every file but the model point table carries a **`provenance` column**, one tag per row — delib's
 second ruling, and it is machine-checked.
@@ -356,13 +356,13 @@ risk-free term structure, plus a risk margin [REG-R1] [REG-R2] [REG-R4]; **nothi
 discounts**, and `rechnungszins` appears only inside the equivalence.
 
 The shape to expect on the anchor cell is the product's economic story in three phases. Month 0 is
-**−710,11 €**, almost all of it the 25 ‰ *Zillmerung* allowance charged in one go —
-`expenses(0) = 770,380907 + 2,000000 + 1,925952 = 774,306859 €` against a 64,20 € instalment. From
+**−713,87 €**, almost all of it the 25 ‰ *Zillmerung* allowance charged in one go —
+`expenses(0) = 774,470756 + 2,000000 + 1,936177 = 778,406933 €` against a 64,54 € instalment. From
 `t = 1` the contract runs positive, the level *Beitrag* far above the risk premium, the monthly
-margin decaying from 59,93 € to 3,45 € by age 65. **`net_cf` crosses zero between `t = 251` and
+margin decaying from 60,26 € to 3,43 € by age 65. **`net_cf` crosses zero between `t = 251` and
 `t = 252`, attained age 66**, and the last three decades are run-off: annuity outgo peaks at
 49,82 € in month 407 (age 78) and the population in care at 0.092120 in month 417 (age 79).
-Undiscounted the contract collects 15 857,95 € and pays 17 385,60 €, for **−1 527,65 €** — not a
+Undiscounted the contract collects 15 942,14 € and pays 17 479,25 €, for **−1 537,11 €** — not a
 loss but the consequence of publishing an *undiscounted* stream whose income falls thirty years
 before its outgo. That crossing is where the *Deckungskapital* this model does not compute peaks,
 and it is the whole economic content of an ageing reserve on a life chassis.
@@ -435,7 +435,7 @@ moving one moves the worked example and the golden tests with it.
 | Lapse table | 6,0 % falling to 1,5 % by year 21, **active state only**, zero after the premium term | **No lapse rate for a German *Pflegerente* at any duration was established.** The shape is argued from the *Zillmerung*; nothing in care lapses, because a claimant with a waived premium has no premium to default on and a live annuity to forfeit |
 | *Rückkaufswert* table | 0 / 0 / 0.05 / 0.12 / 0.20 of premiums paid, rising to 0.70 by year 40 | The **shape** encodes the 25 ‰ *Zillmerung* allowance [REG-R16] and the § 169 Abs. 3 five-year spread [REG-R28]; **no level was established**. Whether a *pure-risk* *Pflegerente* falls inside § 169 at all is an open question the library states rather than assumes away — § 169 Abs. 1 owes the value where *"der Eintritt der Verpflichtung des Versicherers gewiss ist"*, and the one carrier's wording retrieved grants it anyway [R11] [S4]. **The companion `stornoabzug_rate` of 0 %, with a 5 % model point, is contradicted by that wording, which agrees 25 %** rising to 50 % after a withdrawal. Reported, not changed |
 | `beitragssumme_cap_age` | 85 | A lifelong-premium contract has no finite *Beitragssumme* without a convention. The **ceiling** the per-mille sits at is cited [REG-R16]; the base it is struck on is not |
-| Expense levels | 25 ‰ once, 3,0 % of premium, 2,00 € a month inflating at 1,5 %, 1,50 € per annuity payment | **No charge level of any kind was established for any German *Pflegerenten* tariff.** The acquisition rate sits *exactly at* the § 4 DeckRV ceiling so the ceiling binds visibly; the rest are placeholders, and the instalment loading is folded into `load_admin_prem_inst` rather than shipped as a *Ratenzahlungszuschlag* no source supports |
+| Expense levels | 25 ‰ once, 3,0 % of premium, 2,00 € a month inflating at 2,0 %, 1,50 € per annuity payment | **No charge level of any kind was established for any German *Pflegerenten* tariff.** The acquisition rate sits *exactly at* the § 4 DeckRV ceiling so the ceiling binds visibly; the rest are placeholders, and the instalment loading is folded into `load_admin_prem_inst` rather than shipped as a *Ratenzahlungszuschlag* no source supports |
 | First-order margins | incidence × 1.25, deterioration × 1.15, recovery × 0.80, in-care mortality × 0.85, active mortality × 0.90, **no lapse** | The **direction** is cited [REG-R8] [REG-R47], and prudence forks by risk: more claims, faster progression, fewer recoveries, longer annuities, and *more* active lives surviving to claim. **Published levels do exist and this table used to say they did not**: the DAV's *Gesamtzuschlag* on incidence runs 24,5 / 21,4 / 20,5 / 24,0 / 31,2 % by minimum *Pflegegrad*, its *Gesamtabschlag* on *Invalidensterblichkeit* 28,5 / 24,2 / 24,2 / 24,3 / 25,7 %, and on *Aktivensterblichkeit* 13,6 % [R15] [REG-R8]. `inc_load_first` 1.25 sits inside that range and `mort_actv_load_first` 0.90 is close to 0.864; **`mort_care_load_first` 0.85 is materially less prudent than the published 0.715–0.758**. `det_load_first` and `recov_load_first` have no published counterpart, the *Stufenmodell* having no per-grade transitions. Reported, not changed |
 | `unisex_mix_male` | 0.50 | Sex may not enter a premium concluded from 21 December 2012 [REG-R34]. Pricing a 50 / 50 mix while writing 60 / 40 is a named model risk — the mismatch **is** the cross-subsidy, and the mix is endogenous to the price |
 | `rechnungszins` | **1,00 % a year** | § 2 Abs. 1 DeckRV, *"wird der Höchstzinssatz … auf 1 Prozent festgesetzt"*, read from the consolidated regulation whose `Stand` is the amending V of 19.7.2024 that set it for new business from 1 January 2025; Abs. 2 attaches the rate used at conclusion to the contract for its whole term [R13] [REG-R14] [REG-R15]. Used only in the equivalence — **the one genuinely cited pricing assumption in the model** |
@@ -459,7 +459,7 @@ schedule is a market convention and is **[std]** like the rest [R8].
 
 `tests/test_pflegerentenversicherung_de.py` asserts the fourteen printed rows of the notes' worked
 example to the cent and the policy counts to six decimals, the full-precision totals against the
-sum-of-rounded-cells the notes also print, the equivalence premium of 64,198409 € reached two
+sum-of-rounded-cells the notes also print, the equivalence premium of 64,539230 € reached two
 independent ways from `A`, `U`, `G` and `C`, month 0 rebuilt term by term, the first month's
 decrements from the annual rates through the forces, the first annuity payment grade by grade, the
 closure identity, the shape of the frame — `proj_len() == 780` on the anchor cell, index

@@ -98,7 +98,7 @@ the *Beitragssumme* convention ``beitragssumme_cap_age``, the check tolerance
 ``load_acq_bsum_once`` (fraction of *Beitragssumme*, charged once at ``t = 0``), ``load_admin_prem_inst``
 (fraction of each *Beitrag* collected), ``load_admin_pp_mth`` (EUR per policy in force per month
 at ``t = 0`` prices), ``load_claim_pp_inst`` (EUR per annuity payment made) and
-``expense_infl`` (annual); they are placeholder levels whose only cited element is the
+``expense_infl`` (annual, the house-wide rate); they are placeholder levels whose only cited element is the
 25 ‰ ceiling the acquisition charge is set exactly at. The two groups were the files
 ``basis_table.csv`` and ``expense_table.csv`` upstream; phase 3 merged them so that the
 loader ``param()`` is the common core's.

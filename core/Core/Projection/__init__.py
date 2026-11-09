@@ -767,11 +767,11 @@ def claims(t, kind=None):
 
 
 def expense_infl():
-    """The annual expense inflation rate, from *param_tariff_type.csv*.
+    """The annual expense inflation rate, the item ``expense_infl``.
 
-    The row ``expense_infl`` of the product's table; a product without the row raises
-    ``KeyError``.  A product that keys the rate by tariff or cost set overrides the cell with
-    its lookup.
+    One house-wide rate for every tariff; without the item ``param`` raises ``KeyError``.  A
+    product whose costs inflate otherwise, keying the rate by tariff or cost set, overrides the
+    cell with its lookup.
     """
     return float(data.param("expense_infl"))                         # noqa: F821
 

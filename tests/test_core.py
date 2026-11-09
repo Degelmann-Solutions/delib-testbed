@@ -1860,8 +1860,8 @@ RIESTER_MOVED_REFERENCES = {
     "comm_renew_prem_inst": 0.015,
 }
 
-# The 17 numeric References RLV's ``Projection`` held, as their former Python literals (``val_tol``
-# aligned to 1e-08 by entry 12 of epic-parameter-files); the
+# The 17 numeric References RLV's ``Projection`` held, as their former Python literals;
+# ``val_tol``, aligned to 1e-08 by entry 12 of epic-parameter-files, is read as ``check_tol``; the
 # *Sicherheitszuschlag* ``sicherheitszuschlag_m`` 1.25 is the factor ``mort_load_first``, 1 + m.
 RLV_MOVED_REFERENCES = {
     "mort_load_first": 1.0 + 1.25,
@@ -1880,7 +1880,7 @@ RLV_MOVED_REFERENCES = {
     "shock_lapse_lambda": 0.0,
     "sel_lapse_lambda": 0.0,
     "sel_lapse_ref": 0.25,
-    "val_tol": 1e-08,
+    "check_tol": 1e-08,
 }
 
 # The 4 numeric References KLV's ``Projection`` held and its cells read, as their former

@@ -1316,7 +1316,7 @@ def comm_renew(t):
 
 
 def check_net_cf_tol(t):
-    """The tolerance of :func:`check_net_cf`: ``val_tol`` times the sum insured, at least 1.
+    """The tolerance of :func:`check_net_cf`: ``check_tol`` times the sum insured, at least 1.
 
     :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
     period.
@@ -1325,10 +1325,10 @@ def check_net_cf_tol(t):
     :func:`check_net_cf_resid` gives the signed residual of the period that failed.  The
     tolerance scales with the sum insured, which is the largest number in the statement.
 
-    Override reason: the statement is checked to val_tol relative to the sum insured,
+    Override reason: the statement is checked to check_tol relative to the sum insured,
     products/risikolebensversicherung/model.md:500
     """
-    return data.param("val_tol") * max(sum_assured(), 1.0)           # noqa: F821
+    return data.param("check_tol") * max(sum_assured(), 1.0)           # noqa: F821
 
 
 def check_pols_roll_fwd_resid(t):
@@ -1396,7 +1396,7 @@ def check_prem_split():
     multiplies the annual billed amount once and the division into instalments is applied
     to all three terms alike.
     """
-    tol = data.param("val_tol") * max(sum_assured(), 1.0)            # noqa: F821
+    tol = data.param("check_tol") * max(sum_assured(), 1.0)            # noqa: F821
     for t in range(t_start(), proj_len()):
         if abs(check_prem_split_resid(t)) > tol:
             return False
@@ -1443,7 +1443,7 @@ def check_res_roll_fwd():
     modelling error — concluding from the absence of a *Sparanteil* that there is no
     reserve, and building a projection that cannot close.
     """
-    tol = data.param("val_tol") * max(sum_assured(), 1.0)            # noqa: F821
+    tol = data.param("check_tol") * max(sum_assured(), 1.0)            # noqa: F821
     if abs(res_pp_at(0, "BEF_PREM")) > tol:
         return False
     if abs(res_pp_at(proj_len_y(), "BEF_PREM")) > tol:
@@ -1469,7 +1469,7 @@ def check_no_cash_value_resid(t):
 
 def check_no_cash_value():
     """True when a lapse and an expiry both pay nothing in every projected month."""
-    return all(abs(check_no_cash_value_resid(t)) <= data.param("val_tol")  # noqa: F821
+    return all(abs(check_no_cash_value_resid(t)) <= data.param("check_tol")  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 

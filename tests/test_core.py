@@ -1776,7 +1776,7 @@ EMPTY_BASIS = {
     "pflegerentenversicherung": {"check_tol"},
     "riester_rente": {"check_tol"},
     "risikolebensversicherung": {"check_tol", "val_tol"},
-    "sofortrente": {"expense_infl"},
+    "sofortrente": set(),
 }
 
 
@@ -2713,10 +2713,10 @@ def test_sofort_inflation_factor_steps_on_the_policy_anniversary(product_models)
     assert projection.inflation_years._is_derived()
     for point_id in model.Data.model_point_table().index:
         item = projection[point_id]
-        assert item.expense_infl() == 0.015
+        assert item.expense_infl() == 0.02
         for t in range(item.t_start(), item.proj_len()):
-            assert item.inflation_factor(t) == 1.015 ** item.duration(t), (point_id, t)
-            assert item.inflation_factor(t) == 1.015 ** (t // 12), (point_id, t)
+            assert item.inflation_factor(t) == 1.02 ** item.duration(t), (point_id, t)
+            assert item.inflation_factor(t) == 1.02 ** (t // 12), (point_id, t)
 
 
 def test_pflege_inflation_factor_compounds_continuously(product_models):

@@ -349,7 +349,7 @@ three-class split, and confusing them is pitfall 12's neighbour.
 | `expense_acq_sp_once`, `expense_acq_pp_once` — acquisition expense actually incurred at `t = 0` | **2,0 %** of `SP` **plus 200 €**, two rows of `param_tariff_type.csv` | **[std]** (c1) |
 | `expense_admin_pp_ann` — maintenance expense per annum, per unit of `pols_if` | **60 €**, a row of `param_tariff_type.csv`, accrued monthly | **[std]** (c1) |
 | `expense_pay_pp_inst` — cost of running one instalment | **1,50 €** per instalment paid, a row of `param_tariff_type.csv` | **[std]** (c1) |
-| `expense_infl` — expense inflation | **1,5 %** p.a., a row of `param_tariff_type.csv`, stepping at the policy anniversary | **[std]** (c1) |
+| `expense_infl` — expense inflation | **2,0 %** p.a., the house-wide rate (acceptance of 2026-11-09; was 1,5 %), a row of `param_tariff_type.csv`, stepping at the policy anniversary | **[std]** (c1) |
 | `unisex_mix_male` ρ_M | **0.45**, a row of `param_tariff_type.csv` | **[std]** |
 | `mort_base_year` | **2025**, a row of `param_tariff_type.csv` | **[std]** |
 | `omega_age` ω | **121**, a row of `param_tariff_type.csv` | **[std]** |
@@ -832,7 +832,7 @@ on the **first-order unisex** path and the projection decrements on the **second
 Rente* and steps up 1 % at each policy anniversary, ratcheting under the *Bonusrente* mechanic [R23].
 *Expenses.* Acquisition `2,0 % of single_prem + 200 € = 2,200.00 €` at `t = 0` **[std]**; maintenance
 `60 €` a year accrued monthly on `pols_if(t)` **[std]**; `1,50 €` per instalment paid **[std]**; all
-three inflating at `expense_infl = 1,5 %` p.a., stepping at the policy anniversary **[std]**.
+three inflating at `expense_infl = 2,0 %` p.a., stepping at the policy anniversary.
 *Decrements.* Death only — no lapse, no surrender, no paid-up, no option exercise [R1] [R2] [R5].
 *Tolerances.* `roll_fwd_tol()` = 1e-8 (`check_tol`, `param_tariff_type.csv`); the refund solve is not exercised on this cell.
 
@@ -889,21 +889,21 @@ precision and then rounded.
 | 9 | 1.000000 | 0.00 | 395.39 | 3.54 | 0.00 | 6.50 | 405.43 | −405.43 |
 | 10 | 1.000000 | 0.00 | 395.00 | 3.94 | 0.00 | 6.50 | 405.43 | −405.43 |
 | 11 | 1.000000 | 0.00 | 394.60 | 4.33 | 0.00 | 6.50 | 405.43 | −405.43 |
-| 12 | 1.000000 | 0.00 | 394.57 | 4.72 | 0.00 | 6.60 | 405.89 | −405.89 |
-| 60 | 1.000000 | 0.00 | 373.69 | 27.09 | 0.00 | 7.00 | 407.78 | −407.78 |
-| 119 | 1.000000 | 0.00 | 338.58 | 63.75 | 0.00 | 7.43 | 409.76 | −409.76 |
-| 120 | 0.839834 | 0.00 | 338.22 | 0.00 | 0.00 | 6.34 | 344.56 | −344.56 |
-| 121 | 0.837965 | 0.00 | 337.47 | 0.00 | 0.00 | 6.32 | 343.79 | −343.79 |
-| 240 | 0.555887 | 0.00 | 226.20 | 0.00 | 0.00 | 4.87 | 231.07 | −231.07 |
-| 360 | 0.189111 | 0.00 | 77.83 | 0.00 | 0.00 | 1.92 | 79.75 | −79.75 |
-| 480 | 0.007818 | 0.00 | 3.26 | 0.00 | 0.00 | 0.09 | 3.35 | −3.35 |
+| 12 | 1.000000 | 0.00 | 394.57 | 4.72 | 0.00 | 6.63 | 405.93 | −405.93 |
+| 60 | 1.000000 | 0.00 | 373.69 | 27.09 | 0.00 | 7.18 | 407.96 | −407.96 |
+| 119 | 1.000000 | 0.00 | 338.58 | 63.75 | 0.00 | 7.77 | 410.10 | −410.10 |
+| 120 | 0.839834 | 0.00 | 338.22 | 0.00 | 0.00 | 6.65 | 344.88 | −344.88 |
+| 121 | 0.837965 | 0.00 | 337.47 | 0.00 | 0.00 | 6.64 | 344.11 | −344.11 |
+| 240 | 0.555887 | 0.00 | 226.20 | 0.00 | 0.00 | 5.37 | 231.57 | −231.57 |
+| 360 | 0.189111 | 0.00 | 77.83 | 0.00 | 0.00 | 2.23 | 80.05 | −80.05 |
+| 480 | 0.007818 | 0.00 | 3.26 | 0.00 | 0.00 | 0.11 | 3.37 | −3.37 |
 | 600 | 0.000000 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | −0.00 |
 | 671 | 0.000000 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | −0.00 |
-| **Total** | **258.921518** | **100,000.00** | **101,091.33** | **3,428.03** | **0.00** | **4,228.28** | **8,747.64** | **−8,747.64** |
+| **Total** | **258.921518** | **100,000.00** | **101,091.33** | **3,428.03** | **0.00** | **4,365.36** | **8,884.72** | **−8,884.72** |
 
 **The Total row is summed at full precision and then rounded, and here that visibly matters.**
-Adding the 672 *rounded* `net_cf` cells gives **−8 747,47 €** against the **−8 747,64 €** above —
-17 cents apart, because 672 half-cent roundings do not cancel. The same happens in the other
+Adding the 672 *rounded* `net_cf` cells gives **−8 884,58 €** against the **−8 884,72 €** above —
+14 cents apart, because 672 half-cent roundings do not cancel. The same happens in the other
 columns: `annuity_payments` accumulates to 101 091,23 € from the rounded cells against
 101 091,33 € at full precision, and `claims_guarantee` to 3 428,04 € against 3 428,03 €. Any test
 of this table must sum the model's own values, not the printed ones.
@@ -996,8 +996,8 @@ attained age 120 forces the survival path to zero inside the `omega_age = 121` h
   − 101,091.3334710770            annuity_payments
   −   3,428.0270060962            claims_guarantee
   −       0.0000000000            claims_refund
-  −   4,228.2772978315            expenses
-  = −  8,747.6377750047           net_cf
+  −   4,365.3561135500            expenses
+  = −  8,884.7165907231           net_cf
 
 which is the printed Total to the cent. That is `check_net_cf()` summed rather than asserted
 per month.
@@ -1039,17 +1039,17 @@ exactly the inverse proportion:
 | 1 | 1.000000 | 0.00 | 399.91 | 0.40 | 6.50 | −406.80 |
 | 2 | 1.000000 | 0.00 | 399.51 | 0.79 | 6.50 | −406.80 |
 | 3 | 1.000000 | 0.00 | 399.11 | 1.19 | 6.50 | −406.80 |
-| 12 | 1.000000 | 0.00 | 395.93 | 4.74 | 6.60 | −407.26 |
-| 120 | 1.000000 | 0.00 | 339.39 | 64.72 | 7.54 | −411.65 |
-| 121 | 0.837965 | 0.00 | 338.63 | 0.00 | 6.32 | −344.95 |
-| 240 | 0.555887 | 0.00 | 226.98 | 0.00 | 4.87 | −231.84 |
-| **Total** | **259.081684** | **100,000.00** | **101,038.39** | **3,504.53** | **4,227.99** | **−8,770.91** |
+| 12 | 1.000000 | 0.00 | 395.93 | 4.74 | 6.63 | −407.30 |
+| 120 | 1.000000 | 0.00 | 339.39 | 64.72 | 7.92 | −412.03 |
+| 121 | 0.837965 | 0.00 | 338.63 | 0.00 | 6.64 | −345.27 |
+| 240 | 0.555887 | 0.00 | 226.98 | 0.00 | 5.37 | −232.35 |
+| **Total** | **259.081684** | **100,000.00** | **101,038.39** | **3,504.53** | **4,365.13** | **−8,908.05** |
 
 Three things are worth reading off it. `t = 0` carries no instalment and no instalment-running
 expense — 2 205,00 € against the anchor's 2 206,50 € — so the *nachschüssig* cell's first month is
 **400,43 €** better, exactly one instalment plus its 1,50 € running cost, and it pays that back
-over the following fifty-six years: its undiscounted `net_cf` total is −8 770,91 € against
-−8 747,64 €. The guarantee still
+over the following fifty-six years: its undiscounted `net_cf` total is −8 908,05 € against
+−8 884,72 €. The guarantee still
 covers **120 instalments**, now at `t = 1 … 120` (pitfall 13). And the annuity is **0,34 % higher**,
 not 5 %: see the correction recorded at the end of this section.
 
@@ -1063,13 +1063,13 @@ uses it rather than striking one. Its frame opens at `t = 156` and runs to 671: 
 
 | `t` | `pols_if` | `premiums` | `annuity_payments` | `claims_guarantee` | `expenses` | `net_cf` |
 |---:|---:|---:|---:|---:|---:|---:|
-| 156 | 1.000000 | 0.00 | 516.00 | 0.00 | 7.89 | −523.89 |
-| 157 | 1.000000 | 0.00 | 514.26 | 1.74 | 7.89 | −523.89 |
-| 168 | 1.000000 | 0.00 | 495.50 | 20.50 | 8.01 | −524.01 |
-| 179 | 1.000000 | 0.00 | 475.88 | 40.12 | 8.01 | −524.01 |
-| 180 | 0.918857 | 0.00 | 474.13 | 0.00 | 7.47 | −481.60 |
-| 240 | 0.689197 | 0.00 | 355.63 | 0.00 | 6.03 | −361.66 |
-| **Total** | **135.648915** | **0.00** | **69,516.79** | **478.05** | **1,192.84** | **−71,187.68** |
+| 156 | 1.000000 | 0.00 | 516.00 | 0.00 | 8.41 | −524.41 |
+| 157 | 1.000000 | 0.00 | 514.26 | 1.74 | 8.41 | −524.41 |
+| 168 | 1.000000 | 0.00 | 495.50 | 20.50 | 8.58 | −524.58 |
+| 179 | 1.000000 | 0.00 | 475.88 | 40.12 | 8.58 | −524.58 |
+| 180 | 0.918857 | 0.00 | 474.13 | 0.00 | 8.04 | −482.17 |
+| 240 | 0.689197 | 0.00 | 355.63 | 0.00 | 6.66 | −362.28 |
+| **Total** | **135.648915** | **0.00** | **69,516.79** | **478.05** | **1,320.10** | **−71,314.94** |
 
 `premiums` is **zero in every row** — the *Einmalbeitrag* was paid in 2012, before the valuation
 date, and counting it again is pitfall 11 — and the acquisition expense appears nowhere, which is
@@ -1091,13 +1091,13 @@ priced into the guarantee. Everything else differs:
 |---|---:|---:|---:|
 | `annuity_payments` | 101,091.33 | 90,804.02 | 10,287.32 |
 | `claims_guarantee` | 3,428.03 | 3,097.97 | 330.06 |
-| `expenses` | 4,228.28 | 4,228.28 | 0.00 |
-| `net_cf` | −8,747.64 | **+1,869.74** | −10,617.37 |
+| `expenses` | 4,365.36 | 4,365.36 | 0.00 |
+| `net_cf` | −8,884.72 | **+1,732.66** | −10,617.37 |
 
 The whole modelled *Überschussrente* is **10 617,37 €** undiscounted, and **none of it is
 guaranteed**. It is also what turns the sign of the undiscounted total: on the guaranteed annuity
-alone the anchor cell collects 1 869,74 € more than it pays out over fifty-six years, and with the
-surplus it pays out 8 747,64 € more than it collects. Neither figure is an economic result — these
+alone the anchor cell collects 1 732,66 € more than it pays out over fifty-six years, and with the
+surplus it pays out 8 884,72 € more than it collects. Neither figure is an economic result — these
 are undiscounted flows and the *Einmalbeitrag* arrives fifty-six years before the last of them —
 but the *difference* between them is exactly the quantity the four *Überschussverwendung* forms
 distribute, and pricing it is what a sensitivity on this product is for.
@@ -1156,9 +1156,9 @@ guess which side moved.
    figure downstream to move with it.
 7. **The *Überschussrente* total of the surplus-off comparison is 10 617,37 €, not
    10 617,38 €.** The difference column of that table was formed by subtracting the two
-   **printed** totals — `−8 747,64 − 1 869,74` — where every other total in this document is
+   **printed** totals — `−8 884,72 − 1 732,66` — where every other total in this document is
    summed at full precision and then rounded. At full precision the difference is
-   `−8 747,637775 − 1 869,737028 = −10 617,374803`, which rounds to −10 617,37. The
+   `−8 884,716591 − 1 732,658212 = −10 617,374803`, which rounds to −10 617,37. The
    `annuity_payments` and `claims_guarantee` cells of the same row were already right; only
    `net_cf` fell on the wrong side of a half-cent. `tests/test_sofortrente_de.py` asserts the
    full-precision figure.

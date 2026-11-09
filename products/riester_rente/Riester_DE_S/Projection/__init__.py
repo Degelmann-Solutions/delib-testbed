@@ -48,8 +48,8 @@ the commutation test are **bit-identical** on all thirteen model points.
 benefit; the annual-step model booked twelve instalments together at the start of each
 payout year on that year's opening count, which paid a life that died in the first month of
 a year for the whole of it.  ``annuity_month_pp()`` is now paid to whoever
-:func:`pols_annuity_pay` says is alive that month, which takes 361,74 € off the anchor's
-annuity outgo and 573,50 € off model point 12's, whose *Rentengarantiezeit* is zero.  The
+:func:`pols_annuity_pay` says is alive that month, which takes 362,84 € off the anchor's
+annuity outgo and 575,26 € off model point 12's, whose *Rentengarantiezeit* is zero.  The
 *Rentengarantiezeit* itself becomes ``12m`` guaranteed **instalments**.  And the three
 accumulation decrements now **compete month by month** where the annual grid ran them in
 sequence at one year end — mortality first on the whole cohort, then surrender, then
@@ -648,12 +648,12 @@ def annuity_mort_rate(x, tau):
 
 
 def mort_be_factor():
-    """The step from the accumulation death table to the best estimate, 0.80.
+    """The step from the accumulation death table to the best estimate, 0.75.
 
     Read from *param_tariff_type.csv*; the payout phase's ``annuity_mort_be_factor`` runs the
     other way and is a row of *param_tariff_type.csv* too.
 
-    Override reason: the best estimate sits at 0.80 of the first-order death table, below
+    Override reason: the best estimate sits at 0.75 of the first-order death table, below
     it because the direction of prudence forks by product, a tariff parameter in
     *param_tariff_type.csv*, products/riester_rente/technical-notes.md:415
     """
@@ -666,7 +666,7 @@ def mort_rate(t):
     The basis **switches at ``t_conv()``**, and the two adjustments run in opposite
     directions because the direction of prudence forks by product.  In accumulation the
     rate is ``mort_rate_base(t) x mort_be_factor``, the core's ``mort_rate_at_age(x(t))``,
-    with the factor at 0.80: a
+    with the factor at 0.75: a
     first-order *death* table assumes mortality higher than expected, so the best estimate
     sits below it.  In payout it is ``annuity_mort_rate(x(t), tau(t)) x
     annuity_mort_be_factor`` with the factor at 1.15: a first-order *annuity* table assumes

@@ -1767,7 +1767,7 @@ EMPTY_BASIS = {
     "kapitallebensversicherung": {"check_tol"},
     "klassische_rentenversicherung": {"check_tol"},
     "pflegerentenversicherung": {"check_tol", "expense_infl"},
-    "riester_rente": {"mort_be_factor", "check_tol", "kleinbetrag_threshold_mth"},
+    "riester_rente": {"check_tol", "kleinbetrag_threshold_mth"},
     "risikolebensversicherung": {"check_tol", "val_tol"},
     "sofortrente": {"expense_infl"},
 }

@@ -61,7 +61,7 @@ not public, and are **not redistributed here**. They are cited by name and stood
 Gompertz proxy, ``qx = 0.001500 x 1.10^(age - 50)`` over ages 16 to 109 with ``qx = 1`` at
 110, and it carries **no improvement projection at all**, because on a death cover
 improvement runs in the insurer's favour and a first-order death basis does not anticipate
-it. The projection applies ``mort_be_factor = 0.80`` on top, which is the direction of
+it. The projection applies ``mort_be_factor = 0.75`` on top, which is the direction of
 prudence for a death table: a first-order death basis assumes mortality *higher* than
 expected, so the best estimate sits **below** it. **The anchor a substitute must preserve
 is the rate at age 50, ``qx = 0.001500``**, so the notes' worked example still closes;

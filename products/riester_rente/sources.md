@@ -536,7 +536,7 @@ Entries cited by the Riester documents:
 - **REG-R44** — the Altersvorsorgereformgesetz 2026 and the *Altersvorsorgedepot*: the reform that closed this product to new business, and the source of the **1 January 2027** valuation date the whole model point table opens at.
 - **REG-R45** — EStG § 20 Abs. 1 Nr. 6: the lump-sum tax rule the unsubsidised pool falls under, for contrast with § 22 Nr. 5.
 - **REG-R46** — ErbStG and SGB V §§ 226, 229 and 240: contributions on an annuity in payment, and the *Bezugsgröße*-linked figures behind the two competing readings of the *Kleinbetragsrente* threshold.
-- **REG-R47** — *Rechnungsgrundlagen erster und zweiter Ordnung*, and the DAV as owner of the tables: **why the two best-estimate factors run in opposite directions** (0.80 on the death basis, 1.15 on the annuity basis), and why no DAV table is redistributed here.
+- **REG-R47** — *Rechnungsgrundlagen erster und zweiter Ordnung*, and the DAV as owner of the tables: **why the two best-estimate factors run in opposite directions** (0.75 on the death basis, 1.15 on the annuity basis), and why no DAV table is redistributed here.
 - **REG-R48** — DAV 2008 T: the death-benefit basis `mort_table_accum.csv` is a **[std]** proxy for.
 - **REG-R49** — DAV 2004 R and DAV 2004 R-Bestand: the **generational** annuity basis `annuity_mort_table.csv` is a **[std]** proxy for, and the reason a period-table proxy would understate a seventeen-year-deferred annuitisation.
 - **REG-R53** — the German life market in numbers: the region declared rates sat in during the mid-2020s, which is where the `base` scenario's 2,30 % comes from, and the statement that a declared *laufende Verzinsung* **includes** the *Rechnungszins*.

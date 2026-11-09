@@ -89,11 +89,11 @@ every contribution, both balances, the guarantee accumulator, the capital at *Re
 the *Garantielücke* and the *Kleinbetragsrente* verdict are unchanged. What the finer grid
 buys is the *Leibrente*, which the AltZertG requires to be lifelong and monthly and which
 the annual model compressed into one payment at the start of each payout year on that
-year's opening count — worth 361,74 € of the anchor's annuity outgo and 573,50 € of model
+year's opening count — worth 362,84 € of the anchor's annuity outgo and 575,26 € of model
 point 12's, which has no *Rentengarantiezeit* to hold the count still. It also dates the
 three accumulation exits, which now compete month by month instead of running in sequence
 at one year end: 5,62 € moves off the anchor's death outgo and 2,64 € off its surrender
-outgo onto 8,30 € of transfers.
+outgo onto 8,30 € of transfers (at the former ``mort_be_factor`` 0.80).
 
 **What is sourced and what is not.** The statutory mechanics are cited: who is
 *zulageberechtigt*, the *Grundzulage* / *Kinderzulage* / *Berufseinsteiger-Bonus*

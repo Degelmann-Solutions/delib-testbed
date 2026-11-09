@@ -395,7 +395,7 @@ The structural literals, by class and place:
 
 Every commit that touches the core or a product model follows these rules from the first phase-3 commit on. Trailers stand in the last paragraph of the commit message, before `Co-Authored-By`.
 
-- **Byte-identical commit** (refactor, unification without result change, reasoned override, tests, docs): no result trailer. A commit without `Result-Change` claims that every product's results are byte-identical to the commit before; the `pytest` gate (`tests/test_baseline.py` with its pinned hashes) proves it.
+- **Byte-identical commit** (refactor, unification without result change, reasoned override, tests, docs): no result trailer. A commit without `Result-Change` claims that every product's results are byte-identical to the commit before; the `pytest` gate (`tests/test_baseline.py` with its pinned hashes) proves it. A value commit that changes no baseline (a check tolerance aligned) carries `Reason` and `Checked-By` as below but no `Result-Change`, which the tool would report as `NO CHANGE`, and its body says "Results are byte-identical."
 - **Result-changing commit**: one trailer naming every product whose results change, the reason, and the agent check:
 
   ```text

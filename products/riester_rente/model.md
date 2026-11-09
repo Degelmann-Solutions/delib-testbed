@@ -375,7 +375,7 @@ frequency-loading invariance is tested.
 | `income_schedule.csv` | Contribution-liable earnings by schedule id and `t`, 0–59 | **[std]** 2 % nominal growth paths plus a `zero` path for the *mittelbar* eligible spouse. It decides when the 2 100 € ceiling binds |
 | `surplus_scenario.csv` | `decl_rate` by scenario id and `t`, 0–89: `base` 2,30 %, `low` 0,50 % | **[std]**, the **largest single lever in the model** and the least supported (gap 12). The rate **includes** the *Rechnungszins* [REG-R53] |
 | `prem_freq_table.csv` | The *Ratenzuschlag* multiplier by payment frequency | **[std]** 1.0000 / 1.0100 / 1.0200 / 1.0300, a charge and never a credit |
-| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.80, `expense_infl` 0.02, and the 32 scalar tariff parameters that were References on `Projection`, `valuation_year` and `grundzulage` … `comm_renew_prem_inst` | `mort_be_factor` **[std]**, the step from the first-order death table to the best estimate, below it because a death table carries its margin above [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads. The 32 moved References carry their own basis tags in their provenance, statutory or **[std]** per row, as in `technical-notes.md` "Assumption inputs" |
+| `param_tariff_type.csv` | The scalar tariff parameters by `item`: `mort_be_factor` 0.80, `expense_infl` 0.02, and 21 of the 32 scalar tariff parameters that were References on `Projection`, `charge_acq_bsum_once` … `comm_renew_prem_inst`; the other 11, `valuation_year` and the statutory terms `grundzulage` … `teilkapital_cap` but `kleinbetrag_threshold_mth`, are items of the core file `param_core.csv` | `mort_be_factor` **[std]**, the step from the first-order death table to the best estimate, below it because a death table carries its margin above [REG-R47]; added in phase 3, when the factor moved from a Reference on `Projection` into the table the common core reads. The 32 moved References carry their own basis tags in their provenance, statutory or **[std]** per row, as in `technical-notes.md` "Assumption inputs" |
 
 ### How the time-like input columns are keyed
 
@@ -445,7 +445,7 @@ example reproduces while the machinery stays visible and testable.
 | The low declared-rate stress — the only lever deciding whether the guarantee costs anything | `scenario_id` | `base`, 2,30 % | point 11, `low` at 0,50 % |
 | *Teilkapitalauszahlung* election, and the *Rentengarantiezeit* that pays on `pols_conv()` rather than `pols_if(t)` — both **on** by default | `teilkapital_share`, `rentengarantie_years` | `0.30`, `10` | point 12, at 0.00 and 0 |
 
-Two parameters are worth naming because a user will want to move them: the row `zulage_lag = 1` of `param_tariff_type.csv`,
+Two parameters are worth naming because a user will want to move them: the core item `zulage_lag = 1` of `param_core.csv`,
 which is the statutory timing rather than a convention — §§ 88 to 90 EStG put the credit in the
 following year and AltvPIBV § 9 Abs. 3 dates it to **15 May** of that year [R5] [R11], closing
 gap 6, so what `zulage_lag` standardizes is only the annual-grid compression; and

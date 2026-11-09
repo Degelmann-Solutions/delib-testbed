@@ -2098,6 +2098,17 @@ CORE_ITEMS = {
     "tax_step_age": 62,
     "mmkt_return_ann": 0.015,
     "zillmer_cap_bsum": 0.025,
+    "valuation_year": 2027,
+    "grundzulage": 175.0,
+    "kinderzulage_pre2008": 185.0,
+    "kinderzulage_post2008": 300.0,
+    "berufseinsteiger_bonus": 200.0,
+    "mindesteigenbeitrag_rate": 0.04,
+    "foerder_ceiling": 2100.0,
+    "sockelbeitrag": 60.0,
+    "zulage_lag": 1,
+    "guar_carve_out_cap": 0.2,
+    "teilkapital_cap": 0.3,
 }
 
 

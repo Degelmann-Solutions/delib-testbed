@@ -168,7 +168,7 @@ cells in the `Data` Space (the `annuallife/TradLife_A` layout). Every file **exc
 | `care_table.csv` | `pflegegrad` | `entry_share`, `det_rate`, `rec_rate`, `mort_mult`, `provenance` | The whole in-care basis in five rows: the distribution of the grade first entered, the annual deterioration rate to the next grade, the annual recovery rate to the previous grade or to active, and the force-of-mortality multiple over an active life of the same age |
 | `lapse_table.csv` | `policy_year` | `lapse_rate`, `provenance` | Annual lapse from the **active** state, policy years 1–40; year 40's rate applies to every later year |
 | `surrender_table.csv` | `policy_year` | `rkw_prem_ratio`, `provenance` | The guaranteed *Rückkaufswert* as a fraction of premiums paid to date, policy years 1–40, clamped as for lapse at its last policy year `Y` (40), which `surrender_table_last_year()` reads from the table |
-| `param_tariff_type.csv` | `item` | `value`, `unit`, `basis`, `provenance` | `omega_age`, `unisex_mix_male`, `rec_age_ref`, `rec_age_decay`, `inc_cap`, `beitragssumme_cap_age`, `roll_fwd_tol`, and the five first-order prudence margins `inc_load_first`, `det_load_first`, `recov_load_first`, `mort_care_load_first`, `mort_actv_load_first` (`unit` empty); then `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_pp_mth`, `load_claim_pp_inst`, `expense_infl`. Upstream's `basis_table.csv` and `expense_table.csv`, merged in phase 3; `rechnungszins` moved to the model point |
+| `param_tariff_type.csv` | `item` | `value`, `unit`, `basis`, `provenance` | `omega_age`, `unisex_mix_male`, `recov_age_ref`, `recov_age_decay`, `inc_cap`, `beitragssumme_cap_age`, `roll_fwd_tol`, and the five first-order prudence margins `inc_load_first`, `det_load_first`, `recov_load_first`, `mort_care_load_first`, `mort_actv_load_first` (`unit` empty); then `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_pp_mth`, `load_claim_pp_inst`, `expense_infl`. Upstream's `basis_table.csv` and `expense_table.csv`, merged in phase 3; `rechnungszins` moved to the model point |
 
 Eight files, each read by a reader cells in `Data`; the suite asserts there are no orphans.
 
@@ -345,8 +345,8 @@ only from 2017 [S14] — so `entry_share` stays **[std]**. `mort_mult` is a
 multiple on the **force** of active mortality at the same age, carrying the research file's most
 load-bearing biometric statement — the mortality of a *Pflegebedürftiger* is **of the order of two to
 three times an active life's at grade 2 and five to ten times at grade 5** [unverified]. Recovery is
-further damped with age, `rec_rate(g, x) = rec_rate_g * exp(-rec_age_decay * max(0, x - rec_age_ref))`
-with `rec_age_ref = 75` and `rec_age_decay = 0.10` **[std]**, which is what makes deterioration
+further damped with age, `rec_rate(g, x) = rec_rate_g * exp(-recov_age_decay * max(0, x - recov_age_ref))`
+with `recov_age_ref = 75` and `recov_age_decay = 0.10` **[std]**, which is what makes deterioration
 dominate recovery above 75 — property (b) of a replacement table.
 
 Three consequences follow, all three pitfalls. **The annuity in payment is short**, of the order of
@@ -703,7 +703,7 @@ this list executed in a different sequence.
    on `pols_if(t)`, inflated; premium-related administration on the premium just collected; and
    `claim_expenses(t)` on the annuity payments just made.
 6. **Look up the month's forces at `x(t)`.** `μ_A`, and `ι` — **zero while `t < wartezeit_months`**;
-   `μ_g = mort_mult(g) × μ_A`; `δ_g`; `ρ_g`, damped above `rec_age_ref`. Then `w(t)`, zero outside
+   `μ_g = mort_mult(g) × μ_A`; `δ_g`; `ρ_g`, damped above `recov_age_ref`. Then `w(t)`, zero outside
    the premium term.
 7. **Apply the transitions over the month**, constant forces, proportional allocation. From the
    active state: death, entry into care split by `entry_share`, or stay. From each grade, in both

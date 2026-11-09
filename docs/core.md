@@ -265,7 +265,7 @@ The same quantity has the same item name in every product (Moritz, 2026-11-07). 
 - **Base**: `pp`, euro per policy or per event, or the base of a rate: `bsum` (*Beitragssumme*), `prem` (gross premium or contribution), `sp` (single premium), `av` (account or fund value), `sum` (sum insured or benefit), `annval` (annuity present value).
 - **Period**: `once` (at issue or per event), `ann` (a year), `mth` (a month), `inst` (per premium instalment or per payment).
 
-A rate is a fraction in every file: Pflege's acquisition rate, 25 per mille as `acq_permille`, is `load_acq_bsum_once` 0.025, and its formulas lost the `/ 1000.0`. Other shared quantities: a first-order load on a decrement is a factor named `<decrement>_load_first`, as BU's; the unisex male share is `unisex_mix_male`, read through the core's `unisex_mix_male()` where a product blends; the years over which the acquisition charge is spread are `acq_spread_years`, another quantity than the § 169 Abs. 3 VVG floor `surr_spread_years`; the share of the *Bewertungsreserven* is `bwr_rate`; the *Stornoabzug* rate is `stornoabzug_rate`; the base year of a generational mortality table is `mort_base_year`. `expense_infl` is an inflation rate, not a cost, and keeps its name. A cell whose name only repeated an old item name took the new name (RV's four expense cells, Pflege's five margin cells).
+A rate is a fraction in every file: Pflege's acquisition rate, 25 per mille as `acq_permille`, is `load_acq_bsum_once` 0.025, and its formulas lost the `/ 1000.0`. Other shared quantities: a first-order load on a decrement is a factor named `<decrement>_load_first`, as BU's; the unisex male share is `unisex_mix_male`, read through the core's `unisex_mix_male()` where a product blends; the years over which the acquisition charge is spread are `acq_spread_years`, another quantity than the § 169 Abs. 3 VVG floor `surr_spread_years`; the share of the *Bewertungsreserven* is `bwr_rate`; the *Stornoabzug* rate is `stornoabzug_rate`; the base year of a generational mortality table is `mort_base_year`. `expense_infl` is an inflation rate, not a cost, and keeps its name. A cell whose name only repeated an old item name took the new name (RV's four expense cells, Pflege's five margin cells and its two recovery-shape cells).
 
 The renamed items, old name to new name:
 
@@ -305,6 +305,8 @@ The renamed items, old name to new name:
 | Pflege | `rec_margin` | `recov_load_first` |
 | Pflege | `act_mort_margin` | `mort_actv_load_first` |
 | Pflege | `care_mort_margin` | `mort_care_load_first` |
+| Pflege | `rec_age_ref` | `recov_age_ref` |
+| Pflege | `rec_age_decay` | `recov_age_decay` |
 | Riester | `acq_charge_rate` | `charge_acq_bsum_once` |
 | Riester | `admin_charge_prem_rate` | `charge_admin_prem_inst` |
 | Riester | `admin_charge_fixed` | `charge_admin_pp_ann` |

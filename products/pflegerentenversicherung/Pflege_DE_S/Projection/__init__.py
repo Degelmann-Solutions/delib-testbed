@@ -624,27 +624,27 @@ def det_force(x, g):
     return -math.log(1.0 - min(q, 1.0 - data.param("rate_cap_eps")))  # noqa: F821
 
 
-def rec_age_ref():
+def recov_age_ref():
     """The attained age above which recovery is damped, from *param_tariff_type.csv*.
 
     A shape parameter of the recovery basis; :func:`rec_rate` reads it.
     """
-    return float(data.param("rec_age_ref"))                          # noqa: F821
+    return float(data.param("recov_age_ref"))                        # noqa: F821
 
 
-def rec_age_decay():
-    """The recovery damping per year of age above ``rec_age_ref``, from *param_tariff_type.csv*.
+def recov_age_decay():
+    """The recovery damping per year of age above ``recov_age_ref``, from *param_tariff_type.csv*.
 
     A shape parameter of the recovery basis; :func:`rec_rate` reads it.
     """
-    return float(data.param("rec_age_decay"))                        # noqa: F821
+    return float(data.param("recov_age_decay"))                      # noqa: F821
 
 
 def rec_rate(x, g):
-    """The annual recovery rate from grade ``g`` at age ``x``, damped above ``rec_age_ref``.
+    """The annual recovery rate from grade ``g`` at age ``x``, damped above ``recov_age_ref``.
 
-    ``rec_rate(g) x exp(-rec_age_decay x max(0, x - rec_age_ref))`` with
-    ``rec_age_ref = 75`` and ``rec_age_decay = 0.10`` **[std]**.  The damping is what makes
+    ``rec_rate(g) x exp(-recov_age_decay x max(0, x - recov_age_ref))`` with
+    ``recov_age_ref = 75`` and ``recov_age_decay = 0.10`` **[std]**.  The damping is what makes
     deterioration dominate recovery above 75 — property (b) of a replacement table — and it
     encodes the one thing about *Reaktivierung* that is not in doubt: it is real after
     acute events at younger ages and small at the ages where most claims arise.
@@ -657,7 +657,7 @@ def rec_rate(x, g):
     attained age.
     """
     base = float(data.care_table_dict()["rec_rate"][g])              # noqa: F821
-    return base * math.exp(-rec_age_decay() * max(0.0, x - rec_age_ref()))  # noqa: F821
+    return base * math.exp(-recov_age_decay() * max(0.0, x - recov_age_ref()))  # noqa: F821
 
 
 def rec_force(x, g):

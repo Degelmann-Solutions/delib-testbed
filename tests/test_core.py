@@ -1089,6 +1089,8 @@ PFLEGE_RENAMED = {
     "admin_prem_pct": "load_admin_prem_inst",
     "admin_mth_pp": "load_admin_pp_mth",
     "claim_expense_pp": "load_claim_pp_inst",
+    "rec_age_ref": "recov_age_ref",
+    "rec_age_decay": "recov_age_decay",
 }
 
 
@@ -2974,8 +2976,8 @@ def test_pflege_recovery_is_damped_only_above_the_reference_age(product_models):
     model = product_models("pflegerentenversicherung")
     item = model.Projection[1]
     care = model.Data.care_table()
-    ref = item.rec_age_ref()
-    decay = item.rec_age_decay()
+    ref = item.recov_age_ref()
+    decay = item.recov_age_decay()
     assert (ref, decay) == (75.0, 0.1)
     for g in range(1, 6):
         base = float(care.at[g, "rec_rate"])

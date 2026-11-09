@@ -90,7 +90,7 @@ five-year spread rather than from data — no lapse rate and no *Rückkaufswert*
 *Pflegerente* at any duration was established — and ``param_tariff_type.csv`` holds the scalar
 parameters by ``item``. Its first twelve rows are the bases and conventions: the
 terminal age ``omega_age``, the unisex mix ``unisex_mix_male``, the
-recovery-damping shape ``rec_age_ref`` / ``rec_age_decay``, the ``inc_cap`` shape device,
+recovery-damping shape ``recov_age_ref`` / ``recov_age_decay``, the ``inc_cap`` shape device,
 the *Beitragssumme* convention ``beitragssumme_cap_age``, the check tolerance
 ``roll_fwd_tol`` and the five first-order prudence margins ``inc_load_first``,
 ``det_load_first``, ``recov_load_first``, ``mort_care_load_first`` and

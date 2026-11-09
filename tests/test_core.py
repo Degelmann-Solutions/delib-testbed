@@ -1755,40 +1755,16 @@ def test_an_item_of_several_files_has_one_type():
     assert not mixed, mixed
 
 
-def test_basis_is_source_or_setzung_or_empty():
-    """Every row of every parameter file has ``basis`` ``source``, ``Setzung`` or, until its
-    value is aligned, empty; every row of the core file has one."""
+def test_basis_is_source_or_setzung():
+    """Every row of every parameter file has ``basis`` ``source`` or ``Setzung``; since entry 12
+    of epic-parameter-files aligned the last values, no row is left empty."""
     files = sorted(PRODUCTS_DIR.glob("*/param_tariff_type.csv"))
+    files += sorted(PRODUCTS_DIR.glob("*/param_tariff.csv"))
     files.append(CORE_MODEL / "Data" / "param_core.csv")
     for path in files:
         table = pd.read_csv(path, dtype=str, keep_default_na=False)
-        wrong = table.loc[~table["basis"].isin(["source", "Setzung", ""]), "item"].tolist()
+        wrong = table.loc[~table["basis"].isin(["source", "Setzung"]), "item"].tolist()
         assert not wrong, (path, wrong)
-    core = pd.read_csv(CORE_MODEL / "Data" / "param_core.csv", dtype=str, keep_default_na=False)
-    assert (core["basis"] != "").all(), core.loc[core["basis"] == "", "item"].tolist()
-
-
-# The rows whose value entry 12 of epic-parameter-files changes (proposal-parameter-files.md,
-# "Open points", 1): their ``basis`` stays empty until that commit; every other row has one.
-EMPTY_BASIS = {
-    "basisrente": set(),
-    "berufsunfaehigkeit": set(),
-    "fondsgebundene_rentenversicherung": set(),
-    "indexpolice": set(),
-    "kapitallebensversicherung": set(),
-    "klassische_rentenversicherung": set(),
-    "pflegerentenversicherung": set(),
-    "riester_rente": set(),
-    "risikolebensversicherung": set(),
-    "sofortrente": set(),
-}
-
-
-@pytest.mark.parametrize("product", sorted(MODELS))
-def test_basis_is_empty_only_where_the_value_changes(product):
-    table = tariff_type_table(product)
-    empty = set(table.index[table["basis"].isna()])
-    assert empty == EMPTY_BASIS[product]
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))

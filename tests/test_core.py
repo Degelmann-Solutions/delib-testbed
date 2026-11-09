@@ -1647,7 +1647,7 @@ ROLL_FWD_TOL = {
     "klassische_rentenversicherung": 1e-08,
     "pflegerentenversicherung": 1e-08,
     "riester_rente": 1e-08,
-    "risikolebensversicherung": 1e-10,
+    "risikolebensversicherung": 1e-08,
     "sofortrente": 1e-08,
 }
 
@@ -1775,7 +1775,7 @@ EMPTY_BASIS = {
     "klassische_rentenversicherung": set(),
     "pflegerentenversicherung": set(),
     "riester_rente": set(),
-    "risikolebensversicherung": {"check_tol", "val_tol"},
+    "risikolebensversicherung": {"val_tol"},
     "sofortrente": set(),
 }
 
@@ -2293,7 +2293,7 @@ def test_param_reads_a_core_item_and_a_tariff_item(tmp_path):
     try:
         assert copy.Data.param("probe_core") == 0.125
         assert copy.Data.param("probe_tariff") == 7
-        assert copy.Data.param("check_tol") == 1e-10
+        assert copy.Data.param("check_tol") == 1e-08
     finally:
         copy.close()
     assert (CORE_MODEL / "Data" / "param_core.csv").read_text(encoding="utf-8") == shipped

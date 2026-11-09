@@ -3243,7 +3243,7 @@ def test_klv_surplus_rates_and_stornoabzug_hold_their_last_policy_year(product_m
     last_lapse = int(lapse.index.max())
     k = last_lapse + 5
     assert item.policy_year_y(k) > last_lapse
-    assert item.storno_rate(k) == float(lapse.at[last_lapse, "storno_rate"])
+    assert item.stornoabzug_rate(k) == float(lapse.at[last_lapse, "stornoabzug_rate"])
 
 
 def test_klv_echt_instalments_carry_no_loading(product_models):

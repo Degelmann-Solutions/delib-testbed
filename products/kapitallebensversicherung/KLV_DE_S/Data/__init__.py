@@ -91,7 +91,7 @@ bases must not be crossed: ``mort_rate_base`` prices and reserves, ``mort_rate``
 
 ``lapse_table.csv`` carries two duration-keyed rates that are easily confused.
 ``lapse_rate`` is the **surrender decrement** — the only voluntary exit modelled — and
-``storno_rate`` is the **Stornoabzug**, the percentage deduction from the guaranteed value
+``stornoabzug_rate`` is the **Stornoabzug**, the percentage deduction from the guaranteed value
 on a surrender. Both are **[std]**: the only German lapse data are market aggregates that
 are neither endowment-specific nor by duration, and the headline one counts conversions to
 *beitragsfrei* alongside surrenders, so calibrating a surrender decrement to it
@@ -151,11 +151,11 @@ def charge_table_index():
     """The index column of *cost_table.csv*: ``cost_id``.
 
     The table holds the tariff loadings and the expense basis by ``cost_id``: first order
-    and second order on the same row — ``alpha_rate``, ``beta_rate`` and ``gamma_rate`` are
-    what the tariff charges, ``acq_expense``, ``maint_expense``, ``expense_infl``,
-    ``claim_expense``, ``comm_init_rate`` and ``comm_renew_rate`` are what the insurer
-    expects to spend — because the difference between them **is** the
-    *Kostenüberschuss*.
+    and second order on the same row — ``load_acq_bsum_once``, ``load_admin_prem_inst``
+    and ``load_admin_sum_ann`` are what the tariff charges, ``expense_acq_pp_once``,
+    ``expense_admin_pp_ann``, ``expense_infl``, ``expense_claim_pp_once``,
+    ``comm_acq_bsum_once`` and ``comm_renew_prem_inst`` are what the insurer expects to
+    spend — because the difference between them **is** the *Kostenüberschuss*.
 
     Override reason: the tariff loadings and the expense basis share one row per
     ``cost_id``, products/kapitallebensversicherung/technical-notes.md:214

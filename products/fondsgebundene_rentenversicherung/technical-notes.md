@@ -332,7 +332,7 @@ approaches and spike when both limbs are met [R20] [REG-R45].
                               1.0 otherwise                                        [std]
     # the 12/62 threshold itself is statutory: EStG § 20 Abs. 1 Nr. 6 Satz 2 with
     # § 52 Abs. 28 (62 for contracts concluded after 31 December 2011; 60 before).
-    # Its magnitude, 2.5, is [std]. 13, 62 and 2.5 are rows of param_tariff_type.csv.
+    # Its magnitude, 2.5, is [std]. 13 and 62 are core items, 2.5 a tariff-type row.
     lapse_rate(t)      = min( lapse_cap, lapse_rate_base(t) × lapse_tax_step(t) + lapse_dyn_add(t) )
     lapse_rate_mth(t)  = 1 − (1 − lapse_rate(t))^(1/12)
     lapse_rate_mth(proj_len() − 1) = 0                                             [std]

@@ -50,8 +50,8 @@
   refund solve, are literals in its formula. RV and Pflege never had one.
   Every product's core layer holds the items of ``CORE_ITEMS`` with their types, among them
   ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's eleven guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 3 actuarial
-  formula literals (the tax step of ``lapse_tax_step``) are rows of its
-  tariff-type file with their literals' types and values; Index' five-year spread and KLV's
+  formula literals (the tax step of ``lapse_tax_step``) are parameter items with their
+  literals' types and values, the two statutory limbs in the core file; Index' five-year spread and KLV's
   five-year spread and three-year suicide window are items of the core file. Every other numeric literal of a
   formula cell of the core and the ten products, but 0, 1, 0.0 and 1.0, is structural and
   listed for its space in ``STRUCTURAL_LITERALS``, and every listed value occurs there.
@@ -2094,6 +2094,9 @@ CORE_ITEMS = {
     "suicide_years": 3,
     "surr_spread_years": 5,
     "runoff_months": 3,
+    "tax_step_min_year": 13,
+    "tax_step_age": 62,
+    "mmkt_return_ann": 0.015,
 }
 
 

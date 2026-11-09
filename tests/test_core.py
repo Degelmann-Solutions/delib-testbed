@@ -1757,6 +1757,29 @@ def test_basis_is_source_or_setzung_or_empty():
     assert (core["basis"] != "").all(), core.loc[core["basis"] == "", "item"].tolist()
 
 
+# The rows whose value entry 12 of epic-parameter-files changes (proposal-parameter-files.md,
+# "Open points", 1): their ``basis`` stays empty until that commit; every other row has one.
+EMPTY_BASIS = {
+    "basisrente": {"mort_be_factor", "check_tol"},
+    "berufsunfaehigkeit": {"check_tol", "accept_factor", "mort_dis_load_first"},
+    "fondsgebundene_rentenversicherung": {"check_tol"},
+    "indexpolice": {"expense_infl"},
+    "kapitallebensversicherung": {"check_tol"},
+    "klassische_rentenversicherung": {"check_tol"},
+    "pflegerentenversicherung": {"check_tol", "expense_infl"},
+    "riester_rente": {"mort_be_factor", "check_tol", "kleinbetrag_threshold_mth"},
+    "risikolebensversicherung": {"check_tol", "val_tol"},
+    "sofortrente": {"expense_infl"},
+}
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_basis_is_empty_only_where_the_value_changes(product):
+    table = tariff_type_table(product)
+    empty = set(table.index[table["basis"].isna()])
+    assert empty == EMPTY_BASIS[product]
+
+
 @pytest.mark.parametrize("product", sorted(MODELS))
 def test_every_product_reads_its_tariff_type_file(product, product_models):
     """``param_file`` is ``param_tariff_type.csv``, in the layer columns, and no

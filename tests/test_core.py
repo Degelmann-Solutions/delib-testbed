@@ -1744,6 +1744,19 @@ def test_an_item_of_several_files_has_one_type():
     assert not mixed, mixed
 
 
+def test_basis_is_source_or_setzung_or_empty():
+    """Every row of every parameter file has ``basis`` ``source``, ``Setzung`` or, until its
+    value is aligned, empty; every row of the core file has one."""
+    files = sorted(PRODUCTS_DIR.glob("*/param_tariff_type.csv"))
+    files.append(CORE_MODEL / "Data" / "param_core.csv")
+    for path in files:
+        table = pd.read_csv(path, dtype=str, keep_default_na=False)
+        wrong = table.loc[~table["basis"].isin(["source", "Setzung", ""]), "item"].tolist()
+        assert not wrong, (path, wrong)
+    core = pd.read_csv(CORE_MODEL / "Data" / "param_core.csv", dtype=str, keep_default_na=False)
+    assert (core["basis"] != "").all(), core.loc[core["basis"] == "", "item"].tolist()
+
+
 @pytest.mark.parametrize("product", sorted(MODELS))
 def test_every_product_reads_its_tariff_type_file(product, product_models):
     """``param_file`` is ``param_tariff_type.csv``, in the layer columns, and no

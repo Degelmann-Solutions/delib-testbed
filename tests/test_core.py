@@ -1833,7 +1833,7 @@ RLV_MOVED_REFERENCES = {
 # Python literals.
 KLV_MOVED_REFERENCES = {
     "suicide_share": 0.02,
-    "bfz_min_si": 2500.0,
+    "bfz_min_sum": 2500.0,
     "term_surr_share": 0.0,
     "bwr_rate": 0.0,
 }

@@ -291,6 +291,7 @@ The renamed items, old name to new name:
 | Index | `zill_cap_rate` | `zillmer_cap_bsum`, the DeckRV § 4 cap, not a cost |
 | Index | `zill_years` | `acq_spread_years` |
 | Index | `storno_rate` | `stornoabzug_rate` |
+| KLV | `bfz_min_si` | `bfz_min_sum` |
 | RV | `expense_acq_pp` | `expense_acq_pp_once` |
 | RV | `expense_maint_pp` | `expense_admin_pp_ann` |
 | RV | `expense_annuity_pp` | `expense_annuity_pp_ann` |

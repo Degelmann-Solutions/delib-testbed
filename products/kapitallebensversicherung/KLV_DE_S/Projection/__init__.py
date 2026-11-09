@@ -254,7 +254,7 @@ reached**. The paid-up sum is bought with the § 169 value, so, writing ``e = bf
 for the 0-based index of the election year, ``bfz_si_pp() = res_guar_pp(e) /
 pu_single_prem(e + 1)``, and the contract
 stays in ``pols_if`` with that reduced sum in place of ``sum_assured()``. Where the sum falls
-short of ``bfz_min_si``, the statute obliges the insurer to pay the § 169 value instead and
+short of ``bfz_min_sum``, the statute obliges the insurer to pay the § 169 value instead and
 **the election becomes a surrender**: :func:`lapse_rate` returns 1.0 for that year and
 :func:`lapse_rate_mth` places the whole of it in the year's **last month**, where the election
 falls. The cohort leaves there as ``claims(t, "LAPSE")`` and every later row is zero. Model
@@ -844,7 +844,7 @@ def is_paid_up(k):
     True only where a *Beitragsfreistellung* was elected (``bfz_year > 0``), the election
     year has passed **and the election succeeded** - that is, the
     *beitragsfreie Versicherungssumme* it bought reached the agreed
-    *Mindestversicherungsleistung* ``bfz_min_si``.  Where it did not, § 165 VVG obliges the
+    *Mindestversicherungsleistung* ``bfz_min_sum``.  Where it did not, § 165 VVG obliges the
     insurer to pay the § 169 value instead and the election **becomes a surrender**; see
     :func:`lapse_rate`.
 
@@ -857,7 +857,7 @@ def is_paid_up(k):
     :func:`res_guar_pp` can price the purchase without depending on its own result.
     """
     return (bfz_year() > 0 and k >= bfz_year()
-            and bfz_si_pp() >= data.param("bfz_min_si"))             # noqa: F821
+            and bfz_si_pp() >= data.param("bfz_min_sum"))            # noqa: F821
 
 
 def res_pp(k):
@@ -946,7 +946,7 @@ def bfz_si_pp():
     the sum bought is worth more than the reserve released - the difference being
     :func:`bfz_uplift_pp`.
 
-    Where the result falls below ``bfz_min_si`` (2 500 € **[std]**) the election is **not** a
+    Where the result falls below ``bfz_min_sum`` (2 500 € **[std]**) the election is **not** a
     *Beitragsfreistellung* at all; see :func:`is_paid_up` and :func:`lapse_rate`.
     """
     if bfz_year() <= 0:
@@ -1336,7 +1336,7 @@ def bfz_fails():
     """Whether a *Beitragsfreistellung* was elected and **failed** the minimum-sum test.
 
     ``bfz_year() > 0 and not is_paid_up(bfz_year())``: the election was made and the
-    *beitragsfreie Versicherungssumme* it bought fell short of ``bfz_min_si``, so § 165 VVG
+    *beitragsfreie Versicherungssumme* it bought fell short of ``bfz_min_sum``, so § 165 VVG
     obliges the insurer to pay the § 169 value instead and the election **becomes a
     surrender**.  Named because two cells need the same test and a monthly grid makes them
     read it at different arguments — :func:`lapse_rate` at a month, :func:`is_paid_up` at a

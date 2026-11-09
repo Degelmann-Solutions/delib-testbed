@@ -214,14 +214,14 @@ per row: delib's second ruling, machine-checked.
 | `cost_table.csv` | `cost_id` | `alpha_rate`, `beta_rate`, `gamma_rate`, `acq_expense`, `maint_expense`, `expense_infl`, `claim_expense`, `comm_init_rate`, `comm_renew_rate`, `provenance` |
 | `prem_freq_table.csv` | `prem_freq` | `instalments`, `prem_freq_load`, `provenance` |
 | `deckrv_table.csv` | `issue_year` | `hoechstrechnungszins`, `hoechstzillmersatz`, `provenance` |
-| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`, `unisex_mix_male`, `suicide_share`, `bfz_min_si`, `term_surr_share`, `bwr_rate`, `surr_spread_years`, `suicide_years`), `basis`, `provenance` |
+| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`, `unisex_mix_male`, `suicide_share`, `bfz_min_sum`, `term_surr_share`, `bwr_rate`, `surr_spread_years`, `suicide_years`), `basis`, `provenance` |
 
 `cost_table.csv` deliberately carries the **first-order tariff loadings and the second-order expense
 assumptions on the same row**, because the difference between them *is* the *Kostenüberschuss*, and
 `deckrv_table.csv` carries both DeckRV ceilings — § 2's *Höchstrechnungszins* and § 4's
 *Höchstzillmersatz* — keyed by `issue_year`, both being cohort facts that travel with the contract
 [REG-R14] [REG-R15] [REG-R16]. The scalars that are not tables — `suicide_share`,
-`bfz_min_si`, `term_surr_share` and `bwr_rate` — are rows of `param_tariff_type.csv`, were `Projection`
+`bfz_min_sum`, `term_surr_share` and `bwr_rate` — are rows of `param_tariff_type.csv`, were `Projection`
 References (the two behaviour modules are not built, their unread switches removed), and their values and tags are in this section; `mort_be_factor` and `unisex_mix_male` are rows of
 it since phase 3, as are `surr_spread_years` 5 and `suicide_years` 3, formerly literals in its formulas, and all eight are read by the common core's loader.
 
@@ -533,7 +533,7 @@ Three rules ride on those four lines:
   published deduction is a percentage of the *Deckungskapital* [S3] [R30] (pitfall 6).
 - **`term_surr_share = 0` in the base run [std]**, a row of `param_tariff_type.csv` — the accrued *Schlussüberschussanteil* is paid at the
   *Ablauf* and on death, not on surrender (`product-spec.md`, footnote 12); the parameter is exposed.
-- **The *Mindestversicherungsleistung* test**: if `bfz_si_pp < bfz_min_si` (**2,500 EUR [std]**, a row of `param_tariff_type.csv`) the
+- **The *Mindestversicherungsleistung* test**: if `bfz_si_pp < bfz_min_sum` (**2,500 EUR [std]**, a row of `param_tariff_type.csv`) the
   election is **not** a *Beitragsfreistellung* (lapse rate 1 in that year; 0 through the final policy year, whose end is the *Ablauf*) — § 165 VVG obliges the insurer to pay the § 169 value
   instead, so the model converts the point to a **surrender at the end of year `e = bfz_year − 1`**
   and the projection terminates there [R3] (pitfall 8). Model point 12 exercises that branch.
@@ -725,7 +725,7 @@ year and is what the frame publishes.
 6. **Apply the surplus** per `surplus_use` — accumulate it, buy bonus sum insured, or carry it forward
    as next year's premium offset.
 7. **The *Beitragsfreistellung* election**, where `k = bfz_year − 1`: strike `res_guar_pp(k)`, buy
-   `bfz_si_pp`, and test it against `bfz_min_si` — **below the minimum the election becomes a
+   `bfz_si_pp`, and test it against `bfz_min_sum` — **below the minimum the election becomes a
    surrender**, and it falls in that policy year's **last month**.
 8. **Strike the § 169 value** `res_guar_pp(k)` at the year's end, and roll forward `res_pp(k+1)`,
    `av_sur_pp(k+1)`, `bonus_si_pp(k+1)`, `term_bonus_pp(k+1)`, `is_paid_up(k+1)`.

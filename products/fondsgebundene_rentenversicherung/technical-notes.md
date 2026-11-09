@@ -652,7 +652,7 @@ Seven `check_*()` cells are published, each a `bool` over all `t` with a per-`t`
 
 | Check | Identity |
 |---|---|
-| `check_net_cf()` | **delib ruling 1.** `net_cf = charge_acq + charge_admin_prem + charge_admin_fund + charge_policy_fee + charge_risk + stornoabzug − expenses − commissions − death_strain`, to `val_tol` times the larger of 1 and the month's `abs(net_cf(t))` |
+| `check_net_cf()` | **delib ruling 1.** `net_cf = charge_acq + charge_admin_prem + charge_admin_fund + charge_policy_fee + charge_risk + stornoabzug − expenses − commissions − death_strain`, to `check_tol` times the larger of 1 and the month's `abs(net_cf(t))` |
 | `check_prem_split()` | `premiums = prem_to_av + charge_acq + charge_admin_prem` — the *Beitragsverrechnung* closes |
 | `check_units_roll_fwd()` | `units_pp(t+1) = units_pp(t) + units_bought_pp(t) − units_cancelled_pp(t)` — no price term |
 | `check_av_roll_fwd()` | `F_BEF_DECR(t) = (F(t) + A(t))·(1 + i(t)) − charges − W(t)` — the price term, once |

@@ -1775,7 +1775,7 @@ def check_net_cf_resid(t):
 
 
 def check_net_cf_tol(t):
-    """The tolerance of :func:`check_net_cf` in month t, ``val_tol`` relative to ``net_cf(t)``.
+    """The tolerance of :func:`check_net_cf` in month t, ``check_tol`` relative to ``net_cf(t)``.
 
     :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
     month.
@@ -1783,10 +1783,10 @@ def check_net_cf_tol(t):
     No argument, one bool over all t, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
 
-    Override reason: the statement is checked to val_tol relative to the month's net cash
+    Override reason: the statement is checked to check_tol relative to the month's net cash
     flow, products/fondsgebundene_rentenversicherung/technical-notes.md:655
     """
-    return data.param("val_tol") * max(1.0, abs(net_cf(t)))          # noqa: F821
+    return data.param("check_tol") * max(1.0, abs(net_cf(t)))        # noqa: F821
 
 
 def check_prem_split_resid(t):
@@ -1805,7 +1805,7 @@ def check_prem_split_resid(t):
 def check_prem_split():
     """True when the premium splits exactly three ways in every projected month."""
     return all(abs(check_prem_split_resid(t))
-               <= data.param("val_tol") * max(1.0, abs(premiums(t)))  # noqa: F821
+               <= data.param("check_tol") * max(1.0, abs(premiums(t)))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1826,7 +1826,7 @@ def check_units_roll_fwd_resid(t):
 def check_units_roll_fwd():
     """True when the unit count rolls forward exactly in every projected month."""
     return all(abs(check_units_roll_fwd_resid(t))
-               <= data.param("val_tol") * max(1.0, abs(units_pp(t)))  # noqa: F821
+               <= data.param("check_tol") * max(1.0, abs(units_pp(t)))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1850,7 +1850,7 @@ def check_av_roll_fwd_resid(t):
 def check_av_roll_fwd():
     """True when the *Fondsguthaben* rolls forward exactly in every projected month."""
     return all(abs(check_av_roll_fwd_resid(t))
-               <= data.param("val_tol") * max(1.0, abs(av_pp_at(t, "BEF_DECR")))  # noqa: F821
+               <= data.param("check_tol") * max(1.0, abs(av_pp_at(t, "BEF_DECR")))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1875,7 +1875,7 @@ def check_benefit_funding_resid(t):
 def check_benefit_funding():
     """True when every benefit is funded from the fund or the insurer, in every month."""
     return all(abs(check_benefit_funding_resid(t))
-               <= data.param("val_tol") * max(1.0, abs(av_releases(t)))  # noqa: F821
+               <= data.param("check_tol") * max(1.0, abs(av_releases(t)))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1934,7 +1934,7 @@ def check_acq_charge_resid(t):
 def check_acq_charge():
     """True when the acquisition-charge ledger matches its counted expectation everywhere."""
     return all(abs(check_acq_charge_resid(t))
-               <= data.param("val_tol") * max(1.0, zillmer_amount())  # noqa: F821
+               <= data.param("check_tol") * max(1.0, zillmer_amount())  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 

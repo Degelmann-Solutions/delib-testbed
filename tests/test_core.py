@@ -1855,7 +1855,8 @@ BU_MOVED_REFERENCES = {
     "runoff_months": 3,
 }
 
-# The 12 numeric References FRV's ``Projection`` held, as their former Python literals.
+# The 12 numeric References FRV's ``Projection`` held, as their former Python literals;
+# ``val_tol`` 1e-10 is read as ``check_tol``, the same quantity with the same value.
 FRV_MOVED_REFERENCES = {
     "lapse_cap": 0.4,
     "lapse_dyn_beta": 0.0,
@@ -1868,7 +1869,7 @@ FRV_MOVED_REFERENCES = {
     "expense_claim_pp_once": 150.0,
     "expense_surr_pp_once": 50.0,
     "expense_conv_pp_once": 100.0,
-    "val_tol": 1e-10,
+    "check_tol": 1e-10,
 }
 
 # The 3 actuarial literals FRV's formulas held (``lapse_tax_step``), as written there.

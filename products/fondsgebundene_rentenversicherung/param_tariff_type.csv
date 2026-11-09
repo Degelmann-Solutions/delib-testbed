@@ -13,7 +13,6 @@ comm_renew_prem_inst,0.015,,"[std] renewal commission 1.5 % of each gross premiu
 expense_claim_pp_once,150.0,,"[std] claim expense 150.00 EUR per death claim; was a Reference on Projection"
 expense_surr_pp_once,50.0,,"[std] surrender expense 50.00 EUR per surrender; was a Reference on Projection"
 expense_conv_pp_once,100.0,,"[std] annuitisation expense 100.00 EUR per policy converting at Rentenbeginn; was a Reference on Projection"
-val_tol,1e-10,,"[std] tolerance of check_net_cf, check_prem_split, check_units_roll_fwd, check_av_roll_fwd, check_benefit_funding and check_acq_charge, scaled by the magnitude each compares; a float comparison tolerance, not an actuarial assumption; was a Reference on Projection"
 tax_step_min_year,13,,"[R20] [REG-R45] section 20 (1) no. 6 sentence 2 EStG: the first policy year after twelve completed contract years, the duration limb of the 12/62 rule of the tax-threshold lapse step; was a literal in lapse_tax_step on Projection"
 tax_step_age,62,,"[R20] [REG-R45] section 20 (1) no. 6 sentence 2 EStG with section 52 (28) EStG: the attained age 62 for contracts concluded after 31 December 2011 (60 before), the age limb of the 12/62 rule of the tax-threshold lapse step; was a literal in lapse_tax_step on Projection"
 tax_step_factor,2.5,,"[std] multiplier 2.5 on the lapse rate for the twelve months of the tax-threshold policy year; the 12/62 threshold is statutory, its magnitude is not; was a literal in lapse_tax_step on Projection"

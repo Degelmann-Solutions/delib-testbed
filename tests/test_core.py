@@ -1763,7 +1763,7 @@ EMPTY_BASIS = {
     "basisrente": {"check_tol"},
     "berufsunfaehigkeit": {"check_tol"},
     "fondsgebundene_rentenversicherung": {"check_tol"},
-    "indexpolice": {"expense_infl"},
+    "indexpolice": set(),
     "kapitallebensversicherung": {"check_tol"},
     "klassische_rentenversicherung": {"check_tol"},
     "pflegerentenversicherung": {"check_tol", "expense_infl"},

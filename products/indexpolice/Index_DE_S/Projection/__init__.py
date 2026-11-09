@@ -1322,7 +1322,7 @@ def exp_acq_pp(t):
 
 
 def exp_maint_pp(k):
-    """Maintenance expense per policy: 36.00 EUR a year inflating at 1.5 % **[std]**.
+    """Maintenance expense per policy: 36.00 EUR a year inflating at 2.0 % (``expense_infl``).
 
     *Stückkosten*, ``expense_admin_pp_ann x (1 + expense_infl())^k``, inflated from **issue**
     and not from the valuation date — ``k`` is the elapsed policy years, so an in-force point

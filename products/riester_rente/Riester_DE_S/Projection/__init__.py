@@ -567,7 +567,7 @@ def issue_year():
     Override reason: every model point opens at the common 1 January 2027 valuation date,
     so the year of issue is counted back from it, products/riester_rente/technical-notes.md:40
     """
-    return valuation_year - duration_init()                          # noqa: F821
+    return data.param("valuation_year") - duration_init()            # noqa: F821
 
 
 def is_accum_y(k):
@@ -644,14 +644,14 @@ def annuity_mort_rate(x, tau):
     tab = data.annuity_mort_table_dict()                             # noqa: F821
     qb = float(tab["qx_base"][x])
     im = float(tab["improvement"][x])
-    return qb * (1.0 - im) ** (tau - annuity_base_year)              # noqa: F821
+    return qb * (1.0 - im) ** (tau - data.param("annuity_base_year"))  # noqa: F821
 
 
 def mort_be_factor():
     """The step from the accumulation death table to the best estimate, 0.80.
 
     Read from *param_tariff_type.csv*; the payout phase's ``annuity_mort_be_factor`` runs the
-    other way and stays a Reference.
+    other way and is a row of *param_tariff_type.csv* too.
 
     Override reason: the best estimate sits at 0.80 of the first-order death table, below
     it because the direction of prudence forks by product, a tariff parameter in
@@ -686,7 +686,7 @@ def mort_rate(t):
     if is_accum(t):
         return min(1.0, mort_rate_base(t) * mort_be_factor())
     return min(1.0, annuity_mort_rate(age(t), calendar_year(t))
-               * annuity_mort_be_factor)                             # noqa: F821
+               * data.param("annuity_mort_be_factor"))               # noqa: F821
 
 
 def lapse_factor(t):
@@ -852,10 +852,11 @@ def zulage_entitlement_pp(k):
         return 0.0
     tab = data.zulage_schedule_dict()                                # noqa: F821
     key = (zulage_id(), k)
-    return (grundzulage * float(tab["unmittelbar"][key])             # noqa: F821
-            + kinderzulage_pre2008 * float(tab["n_kinder_pre2008"][key])  # noqa: F821
-            + kinderzulage_post2008 * float(tab["n_kinder_post2008"][key])  # noqa: F821
-            + berufseinsteiger_bonus * float(tab["bonus"][key]))     # noqa: F821
+    return (data.param("grundzulage") * float(tab["unmittelbar"][key])  # noqa: F821
+            + data.param("kinderzulage_pre2008") * float(tab["n_kinder_pre2008"][key])  # noqa: F821
+            + data.param("kinderzulage_post2008")                    # noqa: F821
+            * float(tab["n_kinder_post2008"][key])
+            + data.param("berufseinsteiger_bonus") * float(tab["bonus"][key]))  # noqa: F821
 
 
 def mindesteigenbeitrag_pp(k):
@@ -871,8 +872,9 @@ def mindesteigenbeitrag_pp(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return max(sockelbeitrag,                                        # noqa: F821
-               min(mindest_rate * income_ref(k), foerder_ceiling)    # noqa: F821
+    return max(data.param("sockelbeitrag"),                          # noqa: F821
+               min(data.param("mindest_rate") * income_ref(k),       # noqa: F821
+                   data.param("foerder_ceiling"))                    # noqa: F821
                - zulage_entitlement_pp(k))
 
 
@@ -933,7 +935,7 @@ def zulage_pp(k):
         return 0.0
     if k == 0:
         return zulage_init_pp()
-    return zulage_granted_pp(k - zulage_lag)             # noqa: F821
+    return zulage_granted_pp(k - data.param("zulage_lag"))  # noqa: F821
 
 
 def zulage_cum_pp(k):
@@ -977,7 +979,7 @@ def alpha_rate():
     So the core's :func:`zillmer_amount` is the whole acquisition charge,
     ``acq_charge_rate x beitragssumme()``, which :func:`acq_charge_pp` spreads.
     """
-    return acq_charge_rate                                           # noqa: F821
+    return data.param("acq_charge_rate")                             # noqa: F821
 
 
 def acq_charge_pp(k):
@@ -992,9 +994,9 @@ def acq_charge_pp(k):
     contract it drives :func:`prem_to_av_pp` negative; stopping it at *Beitragsfreistellung*
     is a listed pitfall.
     """
-    if k > k_conv() or duration_y(k) >= acq_charge_years:              # noqa: F821
+    if k > k_conv() or duration_y(k) >= data.param("acq_charge_years"):  # noqa: F821
         return 0.0
-    return zillmer_amount() / acq_charge_years                       # noqa: F821
+    return zillmer_amount() / data.param("acq_charge_years")         # noqa: F821
 
 
 def admin_charge_pp(k):
@@ -1013,7 +1015,8 @@ def admin_charge_pp(k):
             + (contrib_extra_pp() if (is_accum_y(k) and not
                                       (bfs_year() >= 0 and k >= bfs_year()))
                else 0.0))
-    return (admin_charge_prem_rate * base + admin_charge_fixed       # noqa: F821
+    return (data.param("admin_charge_prem_rate") * base              # noqa: F821
+            + data.param("admin_charge_fixed")                       # noqa: F821
             + eigenbeitrag_pp(k) * (prem_freq_load() - 1.0))
 
 
@@ -1185,7 +1188,7 @@ def guar_carve_out_pp(k):
     extra = (contrib_extra_pp()
              if not (bfs_year() >= 0 and k >= bfs_year()) else 0.0)
     total = eigenbeitrag_pp(k) + zulage_pp(k) + extra + rider_prem_pp()
-    return min(rider_prem_pp(), guar_carve_out_cap * total)          # noqa: F821
+    return min(rider_prem_pp(), data.param("guar_carve_out_cap") * total)  # noqa: F821
 
 
 def guar_pp(k):
@@ -1267,7 +1270,7 @@ def slueb_pp():
     German corpus does not settle; excluding it, and the *Bewertungsreserven* share with
     it, raises the projected guarantee cost by their whole amount.
     """
-    return slueb_rate * guar_pp(k_conv() + 1)                        # noqa: F821
+    return data.param("slueb_rate") * guar_pp(k_conv() + 1)          # noqa: F821
 
 
 def bewres_pp():
@@ -1279,8 +1282,8 @@ def bewres_pp():
     here, and the level is a standardization.
     """
     T = k_conv()
-    return bewres_rate * (dk_pp(T) + prem_to_av_pp(T)                # noqa: F821
-                          + surplus_acct_pp(T))
+    return data.param("bewres_rate") * (dk_pp(T) + prem_to_av_pp(T)  # noqa: F821
+                                        + surplus_acct_pp(T))
 
 
 def account_conv_pp():
@@ -1334,14 +1337,14 @@ def ann_factor():
     On the anchor — age 67 in calendar 2044 — it is 20,87222879, and that is the number a
     substitute annuity table must reproduce for the notes' worked example to close.
     """
-    v = 1.0 / (1.0 + annuity_rechnungszins)                          # noqa: F821
+    v = 1.0 / (1.0 + data.param("annuity_rechnungszins"))            # noqa: F821
     x0, tau0 = age_y(k_conv()), calendar_year_y(k_conv())
     total, kp, k = 0.0, 1.0, 0
     while kp > 0.0 and x0 + k < omega_age():
         total += v ** k * kp
         kp *= 1.0 - annuity_mort_rate(x0 + k, tau0 + k)
         k += 1
-    return total - woolhouse                                        # noqa: F821
+    return total - data.param("woolhouse")                          # noqa: F821
 
 
 def rentenfaktor_curr():
@@ -1354,7 +1357,7 @@ def rentenfaktor_curr():
     expense cash flow.  On the anchor it is 27,947822, **below** the guaranteed 29,00, so
     the guarantee binds.
     """
-    return ((1.0 - rentenfaktor_margin) * 10000.0                    # noqa: F821
+    return ((1.0 - data.param("rentenfaktor_margin")) * 10000.0      # noqa: F821
             / (12.0 * ann_factor()))
 
 
@@ -1397,10 +1400,10 @@ def is_kleinbetrag():
     Given how much of the German Riester book runs at the *Sockelbeitrag*, that is the right
     way round.
     """
-    test = ((1.0 - min(teilkapital_share(), teilkapital_cap))         # noqa: F821
+    test = ((1.0 - min(teilkapital_share(), data.param("teilkapital_cap")))  # noqa: F821
             * capital_conv_pp() / 10000.0
             * rentenfaktor_applied())
-    return bool(test <= kleinbetrag_threshold_mth)                   # noqa: F821
+    return bool(test <= data.param("kleinbetrag_threshold_mth"))     # noqa: F821
 
 
 def teilkapital_pp():
@@ -1415,7 +1418,7 @@ def teilkapital_pp():
     """
     if is_kleinbetrag():
         return 0.0
-    return min(teilkapital_share(), teilkapital_cap) * capital_conv_pp()  # noqa: F821
+    return min(teilkapital_share(), data.param("teilkapital_cap")) * capital_conv_pp()  # noqa: F821
 
 
 def annuity_capital_pp():
@@ -1484,7 +1487,7 @@ def cv_pp(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return av_total_pp_at(k, "AFT_INT") * (1.0 - stornoabzug_rate)         # noqa: F821
+    return av_total_pp_at(k, "AFT_INT") * (1.0 - data.param("stornoabzug_rate"))  # noqa: F821
 
 
 def transfer_value_pp(k):
@@ -1499,7 +1502,7 @@ def transfer_value_pp(k):
     """
     if not is_accum_y(k):
         return 0.0
-    return max(0.0, av_total_pp_at(k, "AFT_INT") - transfer_charge)        # noqa: F821
+    return max(0.0, av_total_pp_at(k, "AFT_INT") - data.param("transfer_charge"))  # noqa: F821
 
 
 def exit_charge_pp(t):
@@ -1515,8 +1518,8 @@ def exit_charge_pp(t):
     if not is_accum(t):
         return 0.0
     a = av_total_pp_at(proj_year(t), "AFT_INT")
-    return (stornoabzug_rate * a * pols_lapse(t)                     # noqa: F821
-            + min(transfer_charge, a) * pols_transfer(t))            # noqa: F821
+    return (data.param("stornoabzug_rate") * a * pols_lapse(t)       # noqa: F821
+            + min(data.param("transfer_charge"), a) * pols_transfer(t))  # noqa: F821
 
 
 def claim_kinds():
@@ -1664,7 +1667,7 @@ def expenses_acq(t):
     *Beitragssumme* at issue, products/riester_rente/technical-notes.md:422
     """
     if t == 0 and duration_init() == 0:
-        return (expense_acq + expense_acq_rate                       # noqa: F821
+        return (data.param("expense_acq") + data.param("expense_acq_rate")  # noqa: F821
                 * beitragssumme()) * pols_if(0)
     return 0.0
 
@@ -1685,10 +1688,10 @@ def expenses_maint(t):
     products/riester_rente/technical-notes.md:664, and the annuity expense on the
     annuitants paid, products/riester_rente/technical-notes.md:665
     """
-    maint = (expense_maint / 12.0                                    # noqa: F821
+    maint = (data.param("expense_maint") / 12.0                      # noqa: F821
              * inflation_factor(t)
              * pols_if(t)) if is_accum(t) else 0.0
-    return maint + expense_annuity / 12.0 * pols_annuity_pay(t)      # noqa: F821
+    return maint + data.param("expense_annuity") / 12.0 * pols_annuity_pay(t)  # noqa: F821
 
 
 def expenses_claim(t):
@@ -1697,8 +1700,8 @@ def expenses_claim(t):
     Override reason: the claim expense is an amount per death, surrender or transfer,
     products/riester_rente/technical-notes.md:666
     """
-    return expense_claim * (pols_death(t) + pols_lapse(t)            # noqa: F821
-                            + pols_transfer(t))
+    return data.param("expense_claim") * (pols_death(t) + pols_lapse(t)  # noqa: F821
+                                          + pols_transfer(t))
 
 
 def comm_init_rate():
@@ -1713,7 +1716,7 @@ def comm_init_rate():
     Override reason: the initial commission is ``comm_rate_init`` of the *Beitragssumme* at
     issue, products/riester_rente/technical-notes.md:667
     """
-    return comm_rate_init                                            # noqa: F821
+    return data.param("comm_rate_init")                              # noqa: F821
 
 
 def comm_renew(t):
@@ -1732,7 +1735,8 @@ def comm_renew(t):
     if not is_accum(t) or not prem_due(t):
         return 0.0
     k = proj_year(t)
-    return comm_rate_renew * (eigenbeitrag_pp(k) + zulage_pp(k)) * pols_if(t)  # noqa: F821
+    return (data.param("comm_rate_renew")                            # noqa: F821
+            * (eigenbeitrag_pp(k) + zulage_pp(k)) * pols_if(t))
 
 
 def income_other(t):
@@ -1869,7 +1873,7 @@ def check_guar_roll_fwd():
     ok = all(abs(check_guar_roll_fwd_resid(k)) <= roll_fwd_tol()     # noqa: F821
              * max(1.0, guar_pp(k_conv() + 1))
              for k in range(proj_len_y()))
-    cap = all(guar_carve_out_pp(k) <= guar_carve_out_cap             # noqa: F821
+    cap = all(guar_carve_out_pp(k) <= data.param("guar_carve_out_cap")  # noqa: F821
               * (eigenbeitrag_pp(k) + zulage_pp(k) + contrib_extra_pp()
                  + rider_prem_pp()) + roll_fwd_tol()                 # noqa: F821
               for k in range(k_conv()))
@@ -1946,7 +1950,7 @@ def check_conversion_resid(k):
     r2 = capital_conv_pp() - (teilkapital_pp() + annuity_capital_pp()
                               + commutation_pp())
     r3 = (rentenfaktor_curr() * 12.0 * ann_factor()
-          - (1.0 - rentenfaktor_margin) * 10000.0)                   # noqa: F821
+          - (1.0 - data.param("rentenfaktor_margin")) * 10000.0)     # noqa: F821
     r4 = 12.0 * annuity_month_pp() - annuity_pp(k)
     return abs(r1) + abs(r2) + abs(r3) + abs(r4)
 
@@ -2114,71 +2118,5 @@ def result_acct():
 data = ("Interface", ("..", "Data"), "auto")
 
 point_id = 1
-
-valuation_year = 2027
-
-
-grundzulage = 175.0
-
-kinderzulage_pre2008 = 185.0
-
-kinderzulage_post2008 = 300.0
-
-berufseinsteiger_bonus = 200.0
-
-mindest_rate = 0.04
-
-foerder_ceiling = 2100.0
-
-sockelbeitrag = 60.0
-
-zulage_lag = 1
-
-acq_charge_rate = 0.025
-
-acq_charge_years = 5
-
-admin_charge_prem_rate = 0.04
-
-admin_charge_fixed = 12.0
-
-guar_carve_out_cap = 0.2
-
-slueb_rate = 0.02
-
-bewres_rate = 0.01
-
-teilkapital_cap = 0.3
-
-kleinbetrag_threshold_mth = 39.55
-
-rentenfaktor_margin = 0.3
-
-annuity_rechnungszins = 0.01
-
-woolhouse = 0.4583333333333333
-
-annuity_mort_be_factor = 1.15
-
-annuity_base_year = 2027
-
-stornoabzug_rate = 0.02
-
-transfer_charge = 50.0
-
-expense_maint = 30.0
-
-expense_annuity = 24.0
-
-expense_claim = 80.0
-
-expense_acq = 150.0
-
-expense_acq_rate = 0.02
-
-comm_rate_init = 0.025
-
-comm_rate_renew = 0.015
-
 
 pd = ("Module", "pandas")

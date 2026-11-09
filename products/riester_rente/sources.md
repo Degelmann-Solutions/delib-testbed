@@ -512,7 +512,7 @@ Entries cited by the Riester documents:
 - **REG-R5** — VAG 2016, the statute and its Anlage 1: the supervisory frame the provider sits in, and the *Sparte* this contract is written in.
 - **REG-R6** — VAG §§ 74–110 and § 40: the best-estimate-plus-risk-margin structure the published `liability_cf` feeds, and the SFCR that reports it. Nothing here discounts.
 - **REG-R14** — DeckRV § 2: the *Höchstrechnungszins* as a cap on the **reserving** rate rather than on what a policy may guarantee — the distinction the model's `rechnungszins` **[std]** rests on.
-- **REG-R15** — the *Höchstrechnungszins* rate history and the Sechste Verordnung of 19 July 2024: the 0,25 % and 1,00 % values used with [R22], and the 1,00 % `annuity_rechnungszins`.
+- **REG-R15** — the *Höchstrechnungszins* rate history and the Sechste Verordnung of 19 July 2024: the 0,25 % and 1,00 % values used with [R22], and the 1,00 % `annuity_rechnungszins`, a row of `param_tariff_type.csv`.
 - **REG-R16** — DeckRV § 4, *Höchstzillmersätze*: the ceiling the model's initial commission is set at, and the German counterpart to the AltZertG's five-year spreading rule.
 - **REG-R17** — DeckRV § 5 Abs. 3, the *Referenzzins* and the *Zinszusatzreserve*: named in the valuation pointers as out of scope, and the reason `rechnungszins` is a model point attribute rather than a library constant.
 - **REG-R18** — MindZV: the statutory minimum allocation to the *Rückstellung für Beitragsrückerstattung*, which is the floor under the declared rate this model takes as an exogenous **[std]** scenario.
@@ -520,7 +520,7 @@ Entries cited by the Riester documents:
 - **REG-R20** — LVRG 2014: the commission and cost-disclosure reform that bounds the acquisition-charge and commission **[std]** levels.
 - **REG-R22** — VVG 2008, Kapitel 5 and § 171: the contract law that governs a certified Riester insurance contract exactly as it governs a Schicht-3 one, subject to the AltZertG's overrides.
 - **REG-R24** — VVG § 153, *Überschussbeteiligung* and the *hälftige* participation in *Bewertungsreserven*: the basis of `bewres_pp()` at *Rentenbeginn*.
-- **REG-R28** — VVG §§ 165–170: *prämienfreie Versicherung* (the statutory limb of *Beitragsfreistellung*), *Kündigung*, the *Rückkaufswert* and the agreed and appropriate *Stornoabzug* — `cv_pp` and `stornoabzug_rate`, and the five-year-spreading floor under the surrender value which this model satisfies by construction.
+- **REG-R28** — VVG §§ 165–170: *prämienfreie Versicherung* (the statutory limb of *Beitragsfreistellung*), *Kündigung*, the *Rückkaufswert* and the agreed and appropriate *Stornoabzug* — `cv_pp` and `stornoabzug_rate` (a row of `param_tariff_type.csv`), and the five-year-spreading floor under the surrender value which this model satisfies by construction.
 - **REG-R29** — VVG §§ 172–177: the *Berufsunfähigkeitsversicherung* whose premium creates the guarantee carve-out here and whose own liability lives in `berufsunfaehigkeit`.
 - **REG-R31** — VVG §§ 6, 7 and 214 with the VVG-InfoV: the advice, information and cost-disclosure duties that sit alongside the AltZertG's own [R4].
 - **REG-R32** — PRIIPs: the parallel European disclosure regime, named to distinguish it from the AltZertG sheet.

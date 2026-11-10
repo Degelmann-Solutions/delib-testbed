@@ -90,9 +90,9 @@ kappa                      occ_factor()                    Occupational loading
 alpha                      accept_factor                   Anerkennungsquote factor
 upsilon                    au_uplift()                     AU-Klausel inception uplift
 P                          prem_gross_level_pp()           Level annual Bruttobeitrag
-(none)                     prem_gross_ann_pp(t)            Annual Bruttobeitrag at t
+(none)                     prem_gross_pp(t)                Annual Bruttobeitrag at t
 (none)                     prem_due(t)                     1 in a payment month, else 0
-P_b(t)                     prem_gross_pp(t)                Bruttobeitrag instalment at t
+P_b(t)                     prem_charged_inst_pp(t)         Bruttobeitrag instalment at t
 P_z(t)                     prem_zahl_pp(t)                 Zahlbeitrag instalment at t
 (1 - theta) P_b(t)         surplus_credit_pp(t)            Beitragsverrechnung instalment
 BS_unit                    beitragssumme_unit()            Beitragssumme per 1 EUR p.a.
@@ -191,7 +191,7 @@ administration loadings are proportional to it, so
         / ( PV_prem x (1 - load_admin_prem_inst) - load_acq_bsum_once x BS_unit )
 
 and :func:`prem_gross_level_pp` is ``rating_factor() x P``, or ``rating_factor() x
-gross_prem_ann()`` where the model point overrides it. **The recursion is acyclic**: no
+prem_gross_level_std_pp`` where the model point states it. **The recursion is acyclic**: no
 decrement in this model depends on the premium, so nothing in the ``pv_*`` cells depends
 on ``P``. The equivalence is struck **before** the *Risikozuschlag* and **without lapse**,
 which is deliberate on both counts — German pricing does not anticipate lapse, because a
@@ -414,16 +414,6 @@ def beitragsdyn_rate():
     if premium_form() == "level":
         return 0.0
     return float(model_point()["beitragsdyn_rate"])
-
-
-def gross_prem_ann():
-    """The annual *Bruttobeitrag* override, in euros; **0 means derive by equivalence**.
-
-    Only model point 13 supplies one.  A real tariff would read the premium off a rate
-    card; no German BU rate card of any kind was obtained for this library, so the
-    derivation is the default and the override is the exception.
-    """
-    return float(model_point()["gross_prem_ann"])
 
 
 def beitragsverrechnung():
@@ -964,8 +954,11 @@ def beitragssumme_unit():
 def prem_gross_level_pp():
     """P: the **level annual** *Bruttobeitrag* per policy, in euros.
 
-    ``rating_factor()`` times either the model point's ``gross_prem_ann`` override or, where
-    that is zero, the premium the equivalence produces::
+    ``rating_factor()`` times either the model point's ``prem_gross_level_std_pp``, the
+    level annual premium before the *Risikozuschlag*, or, where that is zero (**0 means
+    derive by equivalence**; only model point 13 supplies one, a real tariff would read it
+    off a rate card, and no German BU rate card was obtained), the premium the equivalence
+    produces::
 
         P = (pv_rente_first() + pv_wiedereingl_first() + pv_claim_cost_first()
              + pv_admin_first())
@@ -979,8 +972,9 @@ def prem_gross_level_pp():
     This is the *Bruttobeitrag*: the contractually guaranteed **maximum**.  What is
     actually charged is :func:`prem_zahl_pp`, ``beitragsverrechnung()`` times it.
     """
-    if gross_prem_ann() > 0.0:
-        return rating_factor() * gross_prem_ann()
+    prem_std = float(model_point()["prem_gross_level_std_pp"])
+    if prem_std > 0.0:
+        return rating_factor() * prem_std
     numer = (pv_rente_first() + pv_wiedereingl_first()
              + pv_claim_cost_first() + pv_admin_first())
     denom = (pv_prem_unit_first() * (1.0 - data.param("load_admin_prem_inst"))  # noqa: F821
@@ -988,12 +982,12 @@ def prem_gross_level_pp():
     return rating_factor() * numer / denom
 
 
-def prem_gross_ann_pp(t):
+def prem_gross_pp(t):
     """The annual *Bruttobeitrag* in force in the policy year containing month t.
 
     ``prem_gross_level_pp() x dyn_factor(t)`` — level on the ``level`` form, growing by
     ``1 + beitragsdyn_rate()`` each policy year on the ``dynamik`` one.  It is an annual
-    rate, not an instalment; :func:`prem_gross_pp` turns it into what is billed.
+    rate, not an instalment; :func:`prem_charged_inst_pp` turns it into what is billed.
     """
     return prem_gross_level_pp() * dyn_factor(t)
 
@@ -1008,28 +1002,28 @@ def prem_due(t):
     return 1.0 if duration_mth(t) % prem_cycle() == 0 else 0.0
 
 
-def prem_gross_pp(t):
+def prem_charged_inst_pp(t):
     """P_b(t): the *Bruttobeitrag* **instalment** due at the start of month t, per policy.
 
-    ``prem_due(t) x prem_gross_ann_pp(t) x prem_freq_load() x prem_cycle() / 12``, so it
+    ``prem_due(t) x prem_gross_pp(t) x prem_freq_load() x prem_cycle() / 12``, so it
     is zero in a month that is not a payment month and carries the whole period's premium
     in one that is.  The *Ratenzahlungszuschlag* scales it, which is why the annual
     *Bruttobeitrag* of a monthly payer buys a 5 % larger bill than the tariff amount.
     """
-    return (prem_due(t) * prem_gross_ann_pp(t) * prem_freq_load()
+    return (prem_due(t) * prem_gross_pp(t) * prem_freq_load()
             * prem_cycle() / 12.0)
 
 
 def prem_zahl_pp(t):
     """P_z(t): the *Zahlbeitrag* instalment actually billed at month t, per policy.
 
-    ``beitragsverrechnung() x prem_gross_pp(t)`` — the *Bruttobeitrag* less the
+    ``beitragsverrechnung() x prem_charged_inst_pp(t)`` — the *Bruttobeitrag* less the
     *Beitragsverrechnung*.  This is the number a *Produktinformationsblatt* prints beside
     the *Bruttobeitrag*, and the one the policyholder pays; the gap between them is the
     anticipated *Ueberschuss* credited in advance, and it can be withdrawn as far as the
     *Bruttobeitrag* and no further.
     """
-    return beitragsverrechnung() * prem_gross_pp(t)
+    return beitragsverrechnung() * prem_charged_inst_pp(t)
 
 
 def surplus_credit_pp(t):
@@ -1039,7 +1033,7 @@ def surplus_credit_pp(t):
     *Ueberschussbeteiligung* is a visible line of the cash flow statement.  A model
     carrying only the *Zahlbeitrag* silently assumes this credit is permanent.
     """
-    return (1.0 - beitragsverrechnung()) * prem_gross_pp(t)
+    return (1.0 - beitragsverrechnung()) * prem_charged_inst_pp(t)
 
 
 # --- the first-order shadow ledgers ---
@@ -1641,7 +1635,7 @@ def pols_prem(t):
 def prem_inst_pp(t):
     """The **gross** *Bruttobeitrag* instalment per policy at the start of month t.
 
-    ``prem_gross_pp(t)``, zero in a month that is not a payment month; the core's
+    ``prem_charged_inst_pp(t)``, zero in a month that is not a payment month; the core's
     :func:`premiums` weights it by :func:`pols_prem`.  The premium column is the gross
     stream; the *Beitragsverrechnung* returned out of it is :func:`surplus_credit`, and the
     cash actually collected is the difference.  Publishing both is what keeps the
@@ -1650,7 +1644,7 @@ def prem_inst_pp(t):
     Override reason: the premium is the *Bruttobeitrag* instalment due in the month,
     products/berufsunfaehigkeit/technical-notes.md:186
     """
-    return prem_gross_pp(t)
+    return prem_charged_inst_pp(t)
 
 
 def surplus_credit(t):
@@ -1746,7 +1740,8 @@ def expenses(t):
     if t == 0 and duration_mth_init() == 0:
         acq = (data.param("load_acq_bsum_once")                      # noqa: F821
                * prem_gross_level_pp() * beitragssumme_unit())
-    admin_prop = data.param("load_admin_prem_inst") * prem_gross_pp(t) * pols_prem(t)  # noqa: F821
+    admin_prop = (data.param("load_admin_prem_inst")                 # noqa: F821
+                  * prem_charged_inst_pp(t) * pols_prem(t))
     admin_flat = data.param("load_admin_pp_ann") / 12.0 * pols_if(t)  # noqa: F821
     return acq + admin_prop + admin_flat
 
@@ -1964,7 +1959,7 @@ def check_prem_split_resid(t):
 def check_prem_split():
     """True when the two premium columns reconcile to the *Zahlbeitrag* in every month."""
     return all(abs(check_prem_split_resid(t)) <= roll_fwd_tol()      # noqa: F821
-               * max(1.0, abs(prem_gross_ann_pp(t)))
+               * max(1.0, abs(prem_gross_pp(t)))
                for t in range(0, proj_len()))
 
 
@@ -2089,7 +2084,7 @@ def result_states_columns():
         ("mort_rate", mort_rate),                                    # noqa: F821
         ("lapse_rate", lapse_rate),                                  # noqa: F821
         ("bu_rente_pp", bu_rente_pp),                                # noqa: F821
-        ("prem_gross_pp", prem_gross_pp),                            # noqa: F821
+        ("prem_charged_inst_pp", prem_charged_inst_pp),              # noqa: F821
         ("prem_zahl_pp", prem_zahl_pp),                              # noqa: F821
     )
 

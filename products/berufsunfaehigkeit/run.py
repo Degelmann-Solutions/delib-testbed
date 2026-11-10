@@ -26,7 +26,7 @@ print("premium form = {}   mode = {} (M = {}, freq_load {:.2f})   "
           proj.rating_factor()))
 print("Bruttobeitrag {:,.4f} EUR p.a.   instalment {:,.4f} EUR   "
       "Zahlbeitrag {:,.4f} EUR   Beitragssumme {:,.2f} EUR".format(
-          proj.prem_gross_level_pp(), proj.prem_gross_pp(0), proj.prem_zahl_pp(0),
+          proj.prem_gross_level_pp(), proj.prem_charged_inst_pp(0), proj.prem_zahl_pp(0),
           proj.prem_gross_level_pp() * proj.beitragssumme_unit()))
 print("proj_len = {} monthly rows (t = 0 .. {}), ages {} to {}".format(
     proj.proj_len(), proj.proj_len() - 1, proj.age(0), proj.age(proj.proj_len() - 1)))

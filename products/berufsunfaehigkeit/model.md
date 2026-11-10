@@ -167,7 +167,7 @@ every month — so `prem_freq_load` is a genuine loading on the tariff premium r
 re-expression of it. Running the shadow from inception rather than from the valuation date is
 what gives an in-force point the premium its contract was struck at: **model point 6 is model
 point 1 fifteen years on, and the two price identically at 965,1582 € p.a.** Model point 13
-supplies `gross_prem_ann = 2 400,00 €` instead, so the override branch ships too.
+supplies `prem_gross_level_std_pp = 2 400,00 €` instead, so the override branch ships too.
 
 ## The *Beitragsbefreiung* is the absence of a premium, not a benefit
 
@@ -177,7 +177,7 @@ contract [S1] [S2] — and in a multi-state model that is not a cash flow at all
 
 ```
 pols_prem(t) = pols_actv(t) + Σ_{z ≤ karenz_months} pols_dis_dur(t, z)
-premiums(t)  = prem_gross_pp(t) x pols_prem(t)
+premiums(t)  = prem_charged_inst_pp(t) x pols_prem(t)
 ```
 
 Weighting by `pols_if(t)` instead charges premium to lives in claim and silently deletes the
@@ -197,7 +197,7 @@ both of those are part of the *definition* of BU, and the *Karenzzeit* defers th
 
 | | escalates | steps on | cells |
 |---|---|---|---|
-| *Beitragsdynamik* `g_B` | the **insured** *BU-Rente* **and** the annual *Bruttobeitrag*, before any claim | the **policy** anniversary | `dyn_factor(t)` → `bu_rente_pp(t)`, `prem_gross_ann_pp(t)` |
+| *Beitragsdynamik* `g_B` | the **insured** *BU-Rente* **and** the annual *Bruttobeitrag*, before any claim | the **policy** anniversary | `dyn_factor(t)` → `bu_rente_pp(t)`, `prem_gross_pp(t)` |
 | *Leistungsdynamik* `g_L` | the *BU-Rente* **in payment** | the anniversary of the **onset** | `leistungsdyn_factor(z)` → `rente_pay_pp(t, z)` |
 
 `rente_pay_pp(t, z) = bu_rente_pp(t − z) × (1 + g_L)^((z − 1) // 12)`: the insured amount at
@@ -342,7 +342,7 @@ arriving in another, or arrives in two. The first fixes the definition, the seco
 | *Wiedereingliederungshilfe* | `wiedereingliederung_months` | `6`, and `0` on model point 12 | Monthly *Renten* paid on each **completed** run-off |
 | *Leistungsdynamik* | `leistungsdyn_rate` | `0.02`, and `0.00` on model point 12 | In-claim escalation on each onset anniversary |
 | *Risikozuschlag* | `rating_factor` | `1.00` | A multiplier on the *Bruttobeitrag* alone |
-| Premium override | `gross_prem_ann` | `0.0` = derive by equivalence | Model point 13 supplies 2 400,00 € p.a. instead |
+| Premium override | `prem_gross_level_std_pp` | `0.0` = derive by equivalence | Model point 13 supplies 2 400,00 € p.a. instead |
 
 Model point 12 is the anchor with both escalations off: its equivalence gives 824,59 € against
 the anchor's 965,16 €, so the *Leistungsdynamik* and the *Wiedereingliederungshilfe* together

@@ -759,7 +759,7 @@ CORE_CELLS = {
         "expense_infl": {"basisrente": "override",
                          "fondsgebundene_rentenversicherung": "derived",
                          "indexpolice": "derived",
-                         "kapitallebensversicherung": "override",
+                         "kapitallebensversicherung": "derived",
                          "klassische_rentenversicherung": "derived",
                          "pflegerentenversicherung": "derived",
                          "riester_rente": "derived",

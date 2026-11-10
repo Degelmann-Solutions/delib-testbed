@@ -153,8 +153,8 @@ def charge_table_index():
     The table holds the tariff loadings and the expense basis by ``cost_id``: first order
     and second order on the same row — ``load_acq_bsum_once``, ``load_admin_prem_inst``
     and ``load_admin_sum_ann`` are what the tariff charges, ``expense_acq_pp_once``,
-    ``expense_admin_pp_ann``, ``expense_infl``, ``expense_claim_pp_once``,
-    ``comm_acq_bsum_once`` and ``comm_renew_prem_inst`` are what the insurer expects to
+    ``expense_admin_pp_ann``, ``expense_claim_pp_once``, ``comm_acq_bsum_once`` and
+    ``comm_renew_prem_inst`` are what the insurer expects to
     spend — because the difference between them **is** the *Kostenüberschuss*.
 
     Override reason: the tariff loadings and the expense basis share one row per

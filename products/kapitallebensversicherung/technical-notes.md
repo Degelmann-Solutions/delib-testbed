@@ -211,7 +211,7 @@ per row: delib's second ruling, machine-checked.
 | `mort_table.csv` | `sex`, `age` | `mort_rate_1st`, `provenance` |
 | `lapse_table.csv` | `policy_year` (**1-based label**, read as `policy_year(t) = t + 1`) | `lapse_rate`, `stornoabzug_rate`, `provenance` |
 | `surplus_rate_table.csv` | `scenario_id`, `policy_year` (**1-based label**, read as `t + 1`) | `decl_rate`, `term_rate`, `ans_rate`, `provenance` |
-| `cost_table.csv` | `cost_id` | `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_sum_ann`, `expense_acq_pp_once`, `expense_admin_pp_ann`, `expense_infl`, `expense_claim_pp_once`, `comm_acq_bsum_once`, `comm_renew_prem_inst`, `provenance` |
+| `cost_table.csv` | `cost_id` | `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_sum_ann`, `expense_acq_pp_once`, `expense_admin_pp_ann`, `expense_claim_pp_once`, `comm_acq_bsum_once`, `comm_renew_prem_inst`, `provenance` |
 | `prem_freq_table.csv` | `prem_freq` | `instalments`, `prem_freq_load`, `provenance` |
 | `deckrv_table.csv` | `issue_year` | `hoechstrechnungszins`, `hoechstzillmersatz`, `provenance` |
 | `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance` of the tariff-type parameters; the statutory items `surr_spread_years` and `suicide_years` are in the core file `core/Core/Data/param_core.csv`; `uv run python tools/params.py kapitallebensversicherung` lists every item the tariff reads with its value, layer, basis and provenance |
@@ -374,7 +374,7 @@ row per `cost_id`, because the difference between them **is** the *Kostenübersc
 | `comm_acq_bsum_once` | 2.5% of the *Beitragssumme* at conclusion | second order | set at the 25 ‰ *zillmering* ceiling [R7], which is **not** a commission cap — "Eine Deckelung der Provisionen ist gesetzlich nicht vorgesehen" [R29]; **no carrier commission rate is established**, so **[std]** with no observation behind it |
 | `comm_renew_prem_inst` | 1.5% of the *Bruttobeitrag* from year 2 (*Bestandsprovision*) | second order | mechanism [R29]; level **[std]** |
 | `expense_admin_pp_ann` | 45 EUR per in-force policy p.a. | second order | **[std]** |
-| `expense_infl` | 1.8% p.a. | second order | **[std]** |
+| `expense_infl` | 2.0% p.a., the core item, not a column of `cost_table.csv` | second order | **[std]** |
 | `expense_claim_pp_once` | 120 EUR per death, maturity or surrender claim | second order | **[std]** |
 
 **No charge level of any kind was established for any German carrier** (gap 7). The levels are
@@ -981,7 +981,7 @@ thirty-six months** on the monthly frame, the window being measured in whole yea
 boundary falls on an anniversary — the share **[std]**.
 Expenses **[std]** throughout: `expense_acq_pp_once = 300.00 EUR` at issue, `comm_acq_bsum_once = 2.5%` of the
 *Beitragssumme* at issue — set at the 25 ‰ *zillmering* ceiling [R7], which does not cap commission
-[R29], and with **no carrier commission rate established anywhere in the corpus** — `expense_admin_pp_ann = 45.00 EUR` per in-force policy p.a. inflating at `expense_infl = 1.8%` p.a.,
+[R29], and with **no carrier commission rate established anywhere in the corpus** — `expense_admin_pp_ann = 45.00 EUR` per in-force policy p.a. inflating at `expense_infl = 2.0%` p.a.,
 `comm_renew_prem_inst = 1.5%` of the *Bruttobeitrag* from year 2, and `expense_claim_pp_once = 120.00 EUR` per
 death, maturity or surrender claim. No behaviour modules: `β_shock = 0`, `a = 0`.
 
@@ -1006,36 +1006,36 @@ whole contract, policy years 1 to 25.
 | policy year | age | pols_if | premiums | claims_death | claims_maturity | claims_lapse | expenses | commissions | net_cf |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 1 | 37 | 1.000000 | 2,004.04 | 43.08 | 0.00 | 2.88 | 350.04 | 1,252.53 | 355.51 |
-| 2 | 38 | 0.949145 | 1,902.13 | 44.26 | 0.00 | 40.88 | 48.26 | 28.53 | 1,740.20 |
-| 3 | 39 | 0.900810 | 1,805.26 | 45.90 | 0.00 | 86.60 | 45.20 | 27.08 | 1,600.47 |
-| 4 | 40 | 0.868365 | 1,740.24 | 49.00 | 0.00 | 142.18 | 44.30 | 26.10 | 1,478.66 |
-| 5 | 41 | 0.837014 | 1,677.41 | 51.41 | 0.00 | 195.02 | 43.41 | 25.16 | 1,362.41 |
-| 6 | 42 | 0.806716 | 1,616.69 | 54.04 | 0.00 | 251.21 | 42.54 | 24.25 | 1,244.66 |
-| 7 | 43 | 0.777431 | 1,558.00 | 56.89 | 0.00 | 293.79 | 41.68 | 23.37 | 1,142.27 |
-| 8 | 44 | 0.749121 | 1,501.27 | 60.00 | 0.00 | 334.28 | 40.84 | 22.52 | 1,043.63 |
-| 9 | 45 | 0.721747 | 1,446.41 | 63.83 | 0.00 | 213.02 | 38.97 | 21.70 | 1,108.90 |
-| 10 | 46 | 0.706081 | 1,415.02 | 68.58 | 0.00 | 237.51 | 38.78 | 21.23 | 1,048.91 |
-| 11 | 47 | 0.690646 | 1,384.08 | 73.79 | 0.00 | 268.03 | 38.60 | 20.76 | 982.91 |
-| 12 | 48 | 0.675431 | 1,353.59 | 78.01 | 0.00 | 876.44 | 40.95 | 20.30 | 337.88 |
-| 13 | 49 | 0.633469 | 1,269.50 | 82.09 | 0.00 | 378.76 | 36.95 | 19.04 | 752.66 |
-| 14 | 50 | 0.616105 | 1,234.70 | 88.23 | 0.00 | 404.57 | 36.56 | 18.52 | 686.82 |
-| 15 | 51 | 0.599079 | 1,200.58 | 94.94 | 0.00 | 429.56 | 36.17 | 18.01 | 621.91 |
-| 16 | 52 | 0.582376 | 1,167.11 | 102.28 | 0.00 | 464.10 | 35.77 | 17.51 | 547.45 |
-| 17 | 53 | 0.565979 | 1,134.25 | 110.30 | 0.00 | 487.85 | 35.37 | 17.01 | 483.71 |
-| 18 | 54 | 0.549875 | 1,101.97 | 119.08 | 0.00 | 510.74 | 34.97 | 16.53 | 420.66 |
-| 19 | 55 | 0.534048 | 1,070.25 | 128.67 | 0.00 | 532.76 | 34.56 | 16.05 | 358.22 |
-| 20 | 56 | 0.518483 | 1,039.06 | 139.15 | 0.00 | 553.89 | 34.14 | 15.59 | 296.29 |
-| 21 | 57 | 0.503165 | 1,008.36 | 150.61 | 0.00 | 574.14 | 33.71 | 15.13 | 234.78 |
-| 22 | 58 | 0.488079 | 978.13 | 163.12 | 0.00 | 593.48 | 33.28 | 14.67 | 173.58 |
-| 23 | 59 | 0.473210 | 948.33 | 176.78 | 0.00 | 611.91 | 32.84 | 14.22 | 112.58 |
-| 24 | 60 | 0.458543 | 918.94 | 191.69 | 0.00 | 629.39 | 32.39 | 13.78 | 51.69 |
-| 25 | 61 | 0.444064 | 889.92 | 210.36 | 28,750.90 | 0.00 | 83.85 | 13.35 | -28,168.54 |
-| **Total** | | **16.648981** | **33,365.26** | **2,446.09** | **28,750.90** | **9,112.99** | **1,314.12** | **1,722.94** | **-9,981.79** |
+| 2 | 38 | 0.949145 | 1,902.13 | 44.26 | 0.00 | 40.88 | 48.34 | 28.53 | 1,740.12 |
+| 3 | 39 | 0.900810 | 1,805.26 | 45.90 | 0.00 | 86.60 | 45.37 | 27.08 | 1,600.31 |
+| 4 | 40 | 0.868365 | 1,740.24 | 49.00 | 0.00 | 142.18 | 44.54 | 26.10 | 1,478.42 |
+| 5 | 41 | 0.837014 | 1,677.41 | 51.41 | 0.00 | 195.02 | 43.73 | 25.16 | 1,362.09 |
+| 6 | 42 | 0.806716 | 1,616.69 | 54.04 | 0.00 | 251.21 | 42.92 | 24.25 | 1,244.28 |
+| 7 | 43 | 0.777431 | 1,558.00 | 56.89 | 0.00 | 293.79 | 42.13 | 23.37 | 1,141.82 |
+| 8 | 44 | 0.749121 | 1,501.27 | 60.00 | 0.00 | 334.28 | 41.35 | 22.52 | 1,043.11 |
+| 9 | 45 | 0.721747 | 1,446.41 | 63.83 | 0.00 | 213.02 | 39.55 | 21.70 | 1,108.31 |
+| 10 | 46 | 0.706081 | 1,415.02 | 68.58 | 0.00 | 237.51 | 39.44 | 21.23 | 1,048.26 |
+| 11 | 47 | 0.690646 | 1,384.08 | 73.79 | 0.00 | 268.03 | 39.33 | 20.76 | 982.18 |
+| 12 | 48 | 0.675431 | 1,353.59 | 78.01 | 0.00 | 876.44 | 41.74 | 20.30 | 337.10 |
+| 13 | 49 | 0.633469 | 1,269.50 | 82.09 | 0.00 | 378.76 | 37.78 | 19.04 | 751.83 |
+| 14 | 50 | 0.616105 | 1,234.70 | 88.23 | 0.00 | 404.57 | 37.45 | 18.52 | 685.93 |
+| 15 | 51 | 0.599079 | 1,200.58 | 94.94 | 0.00 | 429.56 | 37.12 | 18.01 | 620.96 |
+| 16 | 52 | 0.582376 | 1,167.11 | 102.28 | 0.00 | 464.10 | 36.78 | 17.51 | 546.44 |
+| 17 | 53 | 0.565979 | 1,134.25 | 110.30 | 0.00 | 487.85 | 36.44 | 17.01 | 482.64 |
+| 18 | 54 | 0.549875 | 1,101.97 | 119.08 | 0.00 | 510.74 | 36.09 | 16.53 | 419.54 |
+| 19 | 55 | 0.534048 | 1,070.25 | 128.67 | 0.00 | 532.76 | 35.73 | 16.05 | 357.04 |
+| 20 | 56 | 0.518483 | 1,039.06 | 139.15 | 0.00 | 553.89 | 35.37 | 15.59 | 295.07 |
+| 21 | 57 | 0.503165 | 1,008.36 | 150.61 | 0.00 | 574.14 | 34.99 | 15.13 | 233.50 |
+| 22 | 58 | 0.488079 | 978.13 | 163.12 | 0.00 | 593.48 | 34.61 | 14.67 | 172.25 |
+| 23 | 59 | 0.473210 | 948.33 | 176.78 | 0.00 | 611.91 | 34.21 | 14.22 | 111.21 |
+| 24 | 60 | 0.458543 | 918.94 | 191.69 | 0.00 | 629.39 | 33.80 | 13.78 | 50.28 |
+| 25 | 61 | 0.444064 | 889.92 | 210.36 | 28,750.90 | 0.00 | 85.32 | 13.35 | -28,170.01 |
+| **Total** | | **16.648981** | **33,365.26** | **2,446.09** | **28,750.90** | **9,112.99** | **1,334.17** | **1,722.94** | **-10,001.84** |
 
 **The Total row is summed at full precision and then rounded, not summed from the rounded cells
 above it**, and on this cell the two differ. Adding the printed column gives 33,365.24 for
-`premiums` against 33,365.26, 1,314.13 for `expenses` against 1,314.12 and −9,981.78 for `net_cf`
-against −9,981.79 — the accumulation of twenty-five roundings of at most half a cent each.
+`premiums` against 33,365.26 and −10,001.81 for `net_cf`
+against −10,001.84 — the accumulation of twenty-five roundings of at most half a cent each.
 `pols_if` behaves the same way: 16.648981 at full precision against 16.648982 from the printed
 column. The other columns agree to the cent. Where a reader needs the totals to reconcile with
 the printed cells rather than with the model, it is the printed cells that are the approximation.
@@ -1070,8 +1070,8 @@ of 2 004,04 € almost exactly meeting the initial commission of 1 252,53 € pl
 acquisition expense, so **the new-business strain of a *gezillmert* German endowment is in the
 reserve and not in the cash flow**: the *Deckungskapital* opens at −1 252,53 €. The margin then
 runs near a thousand euros a year and decays with the cohort, dipping visibly in policy year 12 —
-337,88 € against 982,91 € — where the surrender rate spikes to 6,0 % at the twelve-year tax
-threshold. The last year is a single outflow of **−28 168,54 €**.
+337,10 € against 982,18 € — where the surrender rate spikes to 6,0 % at the twelve-year tax
+threshold. The last year is a single outflow of **−28 170,01 €**.
 
 ### The state behind it
 
@@ -1154,8 +1154,8 @@ deaths **0,04355790**, surrenders **0,51566656** and maturities **0,44077554** s
 own figure to the last digit, lapse being zero through the whole final policy year under either
 grid; the split between the first two moved by 0,00054, which is what interleaving the two
 decrements monthly genuinely changes. And the cash flow statement closes row by row; summed over
-policy year 12, 1 353,591433 − 78,012539 − 0 − 876,440599 − 40,954555 − 20,303871 =
-**337,879869 €** — `check_net_cf()`, this library's first ruling, asserted in every month from
+policy year 12, 1 353,591433 − 78,012539 − 0 − 876,440599 − 41,738473 − 20,303871 =
+**337,095950 €** — `check_net_cf()`, this library's first ruling, asserted in every month from
 `result_cf()`'s own published columns rather than from the cells behind them.
 
 ### The variant: the *Einmalbeitrag*
@@ -1168,11 +1168,11 @@ that same amount, so the 25 ‰ *Zillmersatz* buys only 1 081,83 € of zillmere
 | policy year | pols_if | premiums | claims_death | claims_maturity | claims_lapse | expenses | commissions | net_cf |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 1 | 1.000000 | 43,273.05 | 43.19 | 0.00 | 147.82 | 350.04 | 1,081.83 | 41,650.17 |
-| 2 | 0.949145 | 0.00 | 45.68 | 0.00 | 1,728.58 | 48.26 | 0.00 | -1,822.52 |
-| 3 | 0.900810 | 0.00 | 48.10 | 0.00 | 1,181.37 | 45.20 | 0.00 | -1,274.68 |
-| 24 | 0.458543 | 0.00 | 236.84 | 0.00 | 813.28 | 32.39 | 0.00 | -1,082.51 |
-| 25 | 0.444064 | 0.00 | 260.17 | 35,570.54 | 0.00 | 83.85 | 0.00 | -35,914.55 |
-| **Total** | **16.648981** | **43,273.05** | **2,894.48** | **35,570.54** | **22,825.77** | **1,314.12** | **1,081.83** | **-20,413.68** |
+| 2 | 0.949145 | 0.00 | 45.68 | 0.00 | 1,728.58 | 48.34 | 0.00 | -1,822.60 |
+| 3 | 0.900810 | 0.00 | 48.10 | 0.00 | 1,181.37 | 45.37 | 0.00 | -1,274.84 |
+| 24 | 0.458543 | 0.00 | 236.84 | 0.00 | 813.28 | 33.80 | 0.00 | -1,083.93 |
+| 25 | 0.444064 | 0.00 | 260.17 | 35,570.54 | 0.00 | 85.32 | 0.00 | -35,916.03 |
+| **Total** | **16.648981** | **43,273.05** | **2,894.48** | **35,570.54** | **22,825.77** | **1,334.17** | **1,081.83** | **-20,433.73** |
 
 Four consequences are visible in five rows. **The § 169 floor is slack from the first
 anniversary** — `res_zill_pp(1)` = 39 648,80 € against `res_min_pp(1)` = 38 783,34 €, the reverse
@@ -1194,9 +1194,9 @@ credited in all three; what differs is where it lands.
 
 | model point | `surplus_use` | maturity benefit per policy | death benefit per policy, month 59 | premiums collected | `net_cf` total |
 |---|---|---:|---:|---:|---:|
-| 1 | `ansammlung` | 65,227.99 | 50,460.89 | 33,365.26 | -9,981.79 |
-| 8 | `bonus` | 63,562.77 | 50,532.10 | 33,365.26 | -8,089.89 |
-| 9 | `beitragsverrechnung` | 52,428.98 | 50,085.64 | 28,016.10 | -8,318.08 |
+| 1 | `ansammlung` | 65,227.99 | 50,460.89 | 33,365.26 | -10,001.84 |
+| 8 | `bonus` | 63,562.77 | 50,532.10 | 33,365.26 | -8,109.94 |
+| 9 | `beitragsverrechnung` | 52,428.98 | 50,085.64 | 28,016.10 | -8,338.13 |
 
 The death benefit is read at **month 59**, the anniversary closing policy year 5 — the instant the
 annual grid priced, and unchanged by the conversion. A death earlier in that policy year is paid
@@ -1237,8 +1237,8 @@ sentences that stopped being true were restated rather than left standing.
    `echt` / `unecht` distinction, which lived entirely in a multiplier, is now a difference in the
    frame as well.
 6. **The totals the timing moved** on the anchor: death claims 2 506,85 → 2 446,09 €, surrender
-   claims 10 104,99 → 9 112,99 €, expenses 1 327,88 → 1 314,12 €, `net_cf` −11 048,31 →
-   −9 981,79 €, and policy year 1 +320,89 → +355,51 €. `premiums` and the *Ablauf* payment are
+   claims 10 104,99 → 9 112,99 €, expenses 1 348,20 → 1 334,17 €, `net_cf` −11 068,63 →
+   −10 001,84 €, and policy year 1 +320,89 → +355,51 €. `premiums` and the *Ablauf* payment are
    unchanged.
 7. **The closure identity's split.** Deaths and surrenders now interleave month by month, so the
    anchor reads 0,04355790 and 0,51566656 against 0,04409376 and 0,51513070; the maturing cohort

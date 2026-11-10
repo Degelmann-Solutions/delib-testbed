@@ -185,7 +185,7 @@ l(t)                pols_if(t)                             In force at the start
 RK(t)               benefit_lapse_pp(t)                    surr_value_pp(t), per lapse
 (none)              claim_kinds()                          DEATH / MATURITY / LAPSE
 claims_*            claims(t, kind)                        DEATH / MATURITY / LAPSE
-(none)              expense_infl()                         Its rate, from cost_table.csv
+(none)              expense_infl()                         Its rate, the core item, 2 %
 (none)              inflation_factor(t)                    Expense inflation factor
 (none)              claim_expenses(t)                      Claim handling expense
 (none)              expenses_pp(t)                         Per-policy expense in month t
@@ -392,8 +392,8 @@ What the finer grid changes is the **cash flows**, and each change is a decision
 - the renewal commission follows the instalment it is charged on.
 
 On the anchor cell that is death claims 2 506,85 → 2 446,09 €, surrender claims
-10 104,99 → 9 112,99 €, expenses 1 327,88 → 1 314,12 € and ``net_cf`` −11 048,31 →
-−9 981,79 €, with ``premiums`` and the *Ablauf* payment unchanged.
+10 104,99 → 9 112,99 €, expenses 1 348,20 → 1 334,17 € and ``net_cf`` −11 068,63 →
+−10 001,84 €, with ``premiums`` and the *Ablauf* payment unchanged.
 :func:`result_cf_annual` sums the frame into policy years so the two can be laid side by side,
 and :func:`result_surplus` stays annual because what it publishes moves once a year.
 """
@@ -1589,19 +1589,6 @@ def benefit_lapse_pp(t):
 
 
 # --- expenses and commission -----------------------------------------------
-
-def expense_infl():
-    """The annual expense inflation rate of this policy's cost set, 1,8 % p.a. **[std]**.
-
-    Read from *cost_table.csv* at :func:`cost_id`, beside the expense levels it inflates,
-    rather than from *param_tariff_type.csv*: the rate belongs to the cost basis, and a book with
-    two cost sets carries two rates.
-
-    Override reason: the expense inflation is a column of the cost table keyed by
-    ``cost_id``, products/kapitallebensversicherung/technical-notes.md:214
-    """
-    return float(data.charge_table_dict()["expense_infl"][cost_id()])  # noqa: F821
-
 
 def claim_expenses(t):
     """The claim handling expense on the month's exits **[std]**.

@@ -120,7 +120,7 @@ that exercise the attribute non-trivially, so a reader can find the row that tes
 | `pols_if_init` | float | policies the model point represents | all |
 | `ret_age` | int | age at *Rentenbeginn*; fixes `proj_len()` and the *Rentenfaktor* row | 13 (70), all others 67 |
 | `prem_form` | enum {`regular`, `single`} | recurring or single premium | 2 (`single`) |
-| `prem_pp` | EUR | the **instalment the policy states**, or the *Einmalbeitrag*. Already contains whatever *Ratenzahlungszuschlag* the tariff applied | all |
+| `prem_charged_inst_level_pp` | EUR | the **instalment the policy states**, or the *Einmalbeitrag*. Already contains whatever *Ratenzahlungszuschlag* the tariff applied | all |
 | `prem_freq` | enum {annual, half_yearly, quarterly, monthly}, a key of `prem_freq_table.csv` | payment frequency; `prem_cycle = 12 // instalments` months between premiums | 3 (quarterly), 4 (half_yearly), 5 (annual) |
 | `prem_term_y` | int | premium-paying term in years; 0 for `single` | 12 (2 years against a 12-year deferment) |
 | `dynamik_rate` | float | *Beitragsdynamik*, annual premium increase at each anniversary; 0 = off | 10 (3 %) |
@@ -133,7 +133,7 @@ that exercise the attribute non-trivially, so a reader can find the row that tes
 | `rentenfaktor_id` | str | key into `rentenfaktor_table.csv` | 13 (`rich_current`) |
 | `unit_price_init` | EUR | *Anteilspreis* at the projection's opening, i.e. `unit_price_open(t_start())` | 6 (118.40); 100.00 elsewhere |
 | `units_init` | float | units held at the projection's opening | 6 (190.0); 0 elsewhere |
-| `cum_prem_init` | EUR | premiums paid before the valuation date — the *Beitragsrückgewähr* base | 6 (24,000.00) |
+| `prem_cum_pp_init` | EUR | premiums paid before the valuation date — the *Beitragsrückgewähr* base | 6 (24,000.00) |
 | `topup_month` | int | 0-based month of a *Zuzahlung*; 0 = none (the sentinel) | 9 (120) |
 | `topup_amount` | EUR | the *Zuzahlung* | 9 (20,000.00) |
 | `wd_month` | int | 0-based month of a *Teilentnahme*; 0 = none (the sentinel) | 9 (240) |
@@ -172,7 +172,7 @@ twelve-year deferment on the stress path, which is the acquisition-spread bounda
 | `av_pp(t)` | *Fondsguthaben* per policy at the start of month `t`, `= units_pp(t) × unit_price_open(t)` | derived |
 | `av_pp_at(t, timing)` | the within-month balances: `"BEF_CHARGE"`, `"AFT_CHARGE"`, `"AFT_WD"`, `"BEF_DECR"` | within month |
 | `av_at(t, timing)` | `av_pp_at(t, timing) × pols_if(t)` — the in-force fund at that point | derived |
-| `cum_prem_pp(t)` | cumulative **gross** premiums paid to and including month `t`, seeded at `cum_prem_init` | monthly |
+| `prem_cum_end_pp(t)` | cumulative **gross** premiums paid to and including month `t`, seeded at `prem_cum_pp_init` | monthly |
 | `cum_charge_acq_pp(t)` | cumulative acquisition charge withheld — the ledger `check_acq_charge()` closes | monthly |
 | `db_floor_pp(t)` | guaranteed minimum death benefit under `db_form` | monthly |
 | `nar_pp(t)` | *riskiertes Kapital*, `max(db_floor_pp(t) − av_pp_at(t, "AFT_WD"), 0)` | monthly |
@@ -419,12 +419,12 @@ with a PRIIPs performance scenario**.
 | `i(t)` | `fund_return_net_mth(t)` | monthly return net of the fund's TER |
 | `u(t)` | `units_pp(t)` | units per policy at the **start** of month `t` |
 | `F(t)`, `F_τ(t)` | `av_pp(t)`, `av_pp_at(t, τ)` | *Fondsguthaben* per policy, `F(t) = u(t)·p_open(t)` |
-| `B(t)`, `Z(t)` | `prem_pp(t)`, `topup_pp(t)` | gross *Beitrag* due; *Zuzahlung* |
+| `B(t)`, `Z(t)` | `prem_charged_inst_pp(t)`, `topup_pp(t)` | gross *Beitrag* due; *Zuzahlung* |
 | `A(t)` | `prem_to_av_pp(t)` | *Anlagebeitrag* — what actually buys units |
 | `α(t)` | `charge_acq_pp(t)` | acquisition instalment, plus *Zuzahlungskosten* on any `Z(t)` |
 | `β`, `γₘ`, `SK` | `charge_admin_prem_inst`, `gamma_rate_mth`, `charge_admin_pp_mth` | premium-based rate; `charge_admin_av_ann/12`; *Stückkosten* |
 | `S` | `beitragssumme()` | sum of premiums payable at the initial level |
-| `C(t)` | `cum_prem_pp(t)` | cumulative **gross** premiums paid to and including month `t` |
+| `C(t)` | `prem_cum_end_pp(t)` | cumulative **gross** premiums paid to and including month `t` |
 | `D(t)`, `K(t)` | `db_floor_pp(t)`, `nar_pp(t)` | guaranteed minimum death benefit; *riskiertes Kapital* |
 | `qᴵ(t)`, `q(t)` | `mort_rate_tariff_mth(t)`, `mort_rate_mth(t)` | first-order (the price) and second-order (the decrement) monthly death rates |
 | `f` | `mort_be_factor` | 0.75; `q(t) = f · qᴵ(t)` |
@@ -436,12 +436,12 @@ with a PRIIPs performance scenario**.
 
 ### The *Beitragsverrechnung*
 
-    B(t) = prem_pp_base · d(t)   if t < 12·prem_term_y, (pup_month > 0 ⇒ t < pup_month), (t − t₀) mod prem_cycle = 0
+    B(t) = prem_charged_inst_level_pp · d(t)   if t < 12·prem_term_y, (pup_month > 0 ⇒ t < pup_month), (t − t₀) mod prem_cycle = 0
          = 0                     otherwise
     d(t) = (1 + dynamik_rate)^(y(t) − 1)                        Beitragsdynamik, 1.0 when off
 
-    S    = prem_pp_base × instalments × prem_term_y                  regular
-         = prem_pp_base                                              single
+    S    = prem_charged_inst_level_pp × instalments × prem_term_y                  regular
+         = prem_charged_inst_level_pp                                              single
 
     N_α  = min(60, 12 × prem_term_y) / prem_cycle                acquisition instalments
     α(t) = charge_acq_bsum_once · S / N_α        on the first N_α premium dates      regular
@@ -495,7 +495,7 @@ The death-benefit floor is the model point's `db_form`:
 
 `prem_return` is the composite. The net amount at risk is then `max(C(t) − F_AFT_WD(t), 0)`,
 positive early and after a market fall and vanishing once the fund overtakes the premiums paid,
-which is why **`cum_prem_pp` is a state variable of this product** and why the charge has to be
+which is why **`prem_cum_end_pp` is a state variable of this product** and why the charge has to be
 recomputed every month. It is the premiums **paid**, gross — not the premiums invested.
 
 ### Decrements and the in-force recursion
@@ -673,7 +673,7 @@ For `t = t₀ … n − 1`, in this order:
 2. Open the month: `u(t)` units, `F(t) = u(t)·p_open(t)`.
 3. **Premium in advance.** `B(t)` if a premium is due (not after `prem_term_y`, not from
    `pup_month`), plus any `Z(t)`. Update `C(t) = C(t−1) + B(t) + Z(t)`, seeded inside the
-   frame's own first month as `C(t₀) = cum_prem_init + B(t₀) + Z(t₀)` — there is no `t₀ − 1`
+   frame's own first month as `C(t₀) = prem_cum_pp_init + B(t₀) + Z(t₀)` — there is no `t₀ − 1`
    to read on a new-business cell, where `t₀ = 0`. `cum_charge_acq_pp` is seeded the same way.
 4. **Withhold**, in order: the acquisition instalment `α(t)`, then `β·B(t)`. The remainder is
    `A(t)`.
@@ -767,12 +767,12 @@ one becomes a test.
 15. **Applying only the guaranteed *Rentenfaktor*.** The rule is `max(guaranteed, current)`
     [S4] [R22]. Assert equality on the anchor and, on model point 13,
     `rentenfaktor_applied() = rentenfaktor_curr() = 1.12 × rentenfaktor_guar()`.
-16. **Re-applying a *Ratenzahlungszuschlag*.** `prem_pp` is the instalment the policy states and
-    already contains whatever loading the tariff applied. Assert `premiums(t) = prem_pp ×
+16. **Re-applying a *Ratenzahlungszuschlag*.** `prem_charged_inst_level_pp` is the instalment the policy states and
+    already contains whatever loading the tariff applied. Assert `premiums(t) = prem_charged_inst_level_pp ×
     pols_if(t)` exactly in a premium month on model points 3, 4 and 5, and `0.00` in the
     intervening months.
 17. **Letting the *Beitragsrückgewähr* base be the premiums invested rather than the premiums
-    paid.** Assert `cum_prem_pp(59) = 12,000.00` on the anchor — 60 × 200.00 — against
+    paid.** Assert `prem_cum_end_pp(59) = 12,000.00` on the anchor — 60 × 200.00 — against
     `Σ_{t<60} prem_to_av_pp(t)`, which is 9,720.00, a 19 % understatement of the death benefit.
 18. **Letting a fixed charge drive the fund negative.** The *Stückkosten* and the *Risikobeitrag*
     are floored at the remaining balance **[std]**. Assert `av_pp_at(t, τ) ≥ 0` at every `t` and
@@ -799,7 +799,7 @@ any of them, and the research file's gaps register records that as gaps 18 and 1
   the exit is at fund value on short notice. The reference module raises the rate when the
   contract is under water against the premiums paid:
 
-      lapse_dyn_add(t) = lapse_dyn_beta × max( 0, 1 − av_pp(t) / cum_prem_pp(t) )
+      lapse_dyn_add(t) = lapse_dyn_beta × max( 0, 1 − av_pp(t) / prem_cum_end_pp(t) )
 
   with `lapse_dyn_beta = 0` in the base run and **0.15** as the reference value. Switched on, it
   bites hardest on model point 12, whose stress path leaves the fund far below premiums paid for
@@ -832,10 +832,10 @@ any of them, and the research file's gaps register records that as gaps 18 and 1
 `issue_age = 37`; `duration_mth_init = 0`, so `t_start() = 0`; `pols_if_init = 1.0`;
 `ret_age = 67`, so `proj_len() = 12 × (67 − 37) = 360` months and the frame is
 `t = 0 … 359`;
-`prem_form = regular`; `prem_pp = 200.00 EUR`; `prem_freq = monthly`; `prem_term_y = 30`;
+`prem_form = regular`; `prem_charged_inst_level_pp = 200.00 EUR`; `prem_freq = monthly`; `prem_term_y = 30`;
 `dynamik_rate = 0.00`; `pup_month = 0`; `db_form = prem_return`, so `db_pct` and `sum_assured` are
 unused; `charge_id = std_gross`; `scenario_id = base`; `rentenfaktor_id = std_2026`;
-`unit_price_init = 100.00 EUR`; `units_init = 0.0`; `cum_prem_init = 0.00 EUR`;
+`unit_price_init = 100.00 EUR`; `units_init = 0.0`; `prem_cum_pp_init = 0.00 EUR`;
 `topup_month = 0`, `topup_amount = 0.00`; `wd_month = 0`, `wd_amount = 0.00`;
 `ablauf_flag = False`; `kapitalwahl = False`. Hence `beitragssumme() = 200.00 × 12 × 30 =
 72 000,00 €`, the acquisition charge at the cap is `0.025 × 72 000 = 1 800,00 €`, and the
@@ -946,7 +946,7 @@ being no *Teilentnahme*, and is omitted. `t = 93` and `94` are added to the list
 they straddle the month the fund overtakes the premiums paid and the *Risikobeitrag* falls
 to zero for the rest of the contract. Balances have no total, being balances.
 
-| t | unit_price | units_pp | av_pp | av BEF_CHARGE | av AFT_CHARGE | av BEF_DECR | cum_prem_pp | nar_pp | lapse_rate_mth | mort_rate_mth |
+| t | unit_price | units_pp | av_pp | av BEF_CHARGE | av AFT_CHARGE | av BEF_DECR | prem_cum_end_pp | nar_pp | lapse_rate_mth | mort_rate_mth |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 0 | 100.371482 | 0.000000 | 0.00 | 162.60 | 159.56 | 159.56 | 200.00 | 40.44 | 0.00514301 | 0.00005000 |
 | 1 | 100.744344 | 1.589679 | 159.56 | 322.75 | 319.67 | 319.67 | 400.00 | 80.33 | 0.00514301 | 0.00005000 |

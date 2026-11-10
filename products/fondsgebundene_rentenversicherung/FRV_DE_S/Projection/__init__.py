@@ -76,7 +76,7 @@ n                          proj_len()                       Policy months from i
 y(t)                       policy_year(t)                   t // 12 + 1 (1-based label)
 x(t)                       age(t)                           Attained age in month t
 S                          beitragssumme()                  Sum of premiums payable
-B(t)                       prem_pp(t)                       Gross Beitrag due in month t
+B(t)                       prem_charged_inst_pp(t)          Gross Beitrag due in month t
 Z(t)                       topup_pp(t)                      Zuzahlung in month t
 B(t) + Z(t)                prem_inst_pp(t)                  Premium per policy in month t
 d(t)                       dynamik_factor(t)                Beitragsdynamik factor
@@ -84,7 +84,7 @@ alpha(t)                   charge_acq_pp(t)                 Acquisition instalme
 (ledger)                   cum_charge_acq_pp(t)             Acquisition charge to date
 beta B(t)                  charge_admin_prem_pp(t)          Premium-based admin charge
 A(t)                       prem_to_av_pp(t)                 Anlagebeitrag - what buys units
-C(t)                       cum_prem_pp(t)                   Cumulative gross premiums paid
+C(t)                       prem_cum_end_pp(t)               Cumulative gross premiums paid
 p(t)                       unit_price(t)                    Anteilspreis at the END of t
 p_open(t)                  unit_price_open(t)               Anteilspreis at the START of t
 i(t)                       fund_return_net_mth(t)           Monthly return net of the TER
@@ -231,14 +231,14 @@ issue expense fall at ``t = 0`` and only there, and ``t = 0`` is not in that mod
 frame. That is the whole of the difference between an in-force cell and a new-business one
 on this chassis.
 
-.. rubric:: The Beitragsrückgewähr, and why cum_prem_pp is a state variable
+.. rubric:: The Beitragsrückgewähr, and why prem_cum_end_pp is a state variable
 
 On the composite death benefit the floor is the **premiums paid**, so the net amount at
 risk is ``max(C(t) - F(t), 0)`` — positive early and after a market fall, vanishing once
-the fund overtakes the premiums paid. That makes ``cum_prem_pp`` a genuine state variable
+the fund overtakes the premiums paid. That makes ``prem_cum_end_pp`` a genuine state variable
 of this product rather than a reporting convenience, and it makes the risk charge a
 quantity that has to be recomputed every month. ``C(t)`` is the premiums **paid**, gross:
-on the anchor cell ``cum_prem_pp(59) = 12 000,00 €`` against ``sum of prem_to_av_pp`` over
+on the anchor cell ``prem_cum_end_pp(59) = 12 000,00 €`` against ``sum of prem_to_av_pp`` over
 the same months of 9 720,00 €, so reading the floor off the premiums *invested* would
 understate the death benefit by 19 %.
 
@@ -305,7 +305,7 @@ Three constructions are implemented and switched off, so the base run reproduces
 worked example while the machinery stays visible and testable:
 
 - **Dynamic lapse**, ``lapse_dyn_beta = 0``, with 0.15 as the reference value.
-  ``lapse_dyn_add(t) = beta x max(0, 1 - av_pp(t)/cum_prem_pp(t))`` raises the lapse rate
+  ``lapse_dyn_add(t) = beta x max(0, 1 - av_pp(t)/prem_cum_end_pp(t))`` raises the lapse rate
   while the contract is under water against the premiums paid. Unit-linked lapse is
   market-sensitive precisely because the exit is at fund value on short notice. Switched
   on it bites hardest on model point 12, whose stress path leaves the fund far below the
@@ -364,16 +364,16 @@ _spaces = []
 
 # ----------------------------------------  the model point
 
-def prem_pp_base():
+def prem_charged_inst_level_pp():
     """The *Beitrag* the policy states, per instalment, at the initial level.
 
     It **already contains** whatever *Ratenzahlungszuschlag* the tariff applied for paying
     more often than annually, so nothing in this model loads it again — re-applying the
-    fractionation loading is a listed pitfall.  :func:`prem_pp` is what is actually due in
-    a given month, after the frequency, the premium term, any *Beitragsfreistellung* and
-    any *Beitragsdynamik*.
+    fractionation loading is a listed pitfall.  :func:`prem_charged_inst_pp` is what is
+    actually due in a given month, after the frequency, the premium term, any
+    *Beitragsfreistellung* and any *Beitragsdynamik*.
     """
-    return float(model_point()["prem_pp"])
+    return float(model_point()["prem_charged_inst_level_pp"])
 
 
 def dynamik_rate():
@@ -458,13 +458,13 @@ def units_init():
     return float(model_point()["units_init"])
 
 
-def cum_prem_init():
+def prem_cum_pp_init():
     """Gross premiums paid before the valuation date — the *Beitragsrückgewähr* base.
 
-    Seeds :func:`cum_prem_pp`.  Nonzero only on the in-force cell, where getting it wrong
+    Seeds :func:`prem_cum_end_pp`.  Nonzero only on the in-force cell, where getting it wrong
     would silently mis-state the death benefit for the whole remaining term.
     """
-    return float(model_point()["cum_prem_init"])
+    return float(model_point()["prem_cum_pp_init"])
 
 
 def topup_month():
@@ -585,9 +585,9 @@ def alpha_rate():
     On a single-premium contract it is :func:`charge_acq_sp_once`: there is no
     *Beitragssumme* to zillmer against and no five-year spread to obey, so the core's
     ``zillmer_amount() = alpha_rate() x beitragssumme()`` is ``charge_acq_sp_once() x
-    prem_pp_base()`` there (``beitragssumme()`` is the *Einmalbeitrag* counted once), and
-    ``alpha_rate() x beitragssumme()``, 2.50 % of 72 000,00 = **1 800,00 EUR** on the
-    anchor cell, on a recurring-premium one.
+    prem_charged_inst_level_pp()`` there (``beitragssumme()`` is the *Einmalbeitrag* counted
+    once), and ``alpha_rate() x beitragssumme()``, 2.50 % of 72 000,00 = **1 800,00 EUR** on
+    the anchor cell, on a recurring-premium one.
     """
     if prem_form() == "single":
         return charge_acq_sp_once()
@@ -684,26 +684,26 @@ def dynamik_factor(t):
     return (1.0 + dynamik_rate()) ** (policy_year(t) - 1)
 
 
-def prem_pp(t):
+def prem_charged_inst_pp(t):
     """The gross *Beitrag* per policy due in month t; zero in a month with no instalment.
 
     A premium falls when the frequency says so, the premium term has not expired and the
     contract is not yet *beitragsfrei*.  On a single-premium contract the whole
     *Einmalbeitrag* falls at ``t_start()`` and nothing after it.
 
-    The amount is :func:`prem_pp_base` times the *Beitragsdynamik* factor and nothing
-    else: the stated instalment already contains any *Ratenzahlungszuschlag*, so loading
-    it again would charge the fractionation twice.
+    The amount is :func:`prem_charged_inst_level_pp` times the *Beitragsdynamik* factor and
+    nothing else: the stated instalment already contains any *Ratenzahlungszuschlag*, so
+    loading it again would charge the fractionation twice.
     """
     if prem_form() == "single":
-        return prem_pp_base() if t == t_start() else 0.0
+        return prem_charged_inst_level_pp() if t == t_start() else 0.0
     if t >= 12 * prem_term_y():
         return 0.0
     if pup_month() > 0 and t >= pup_month():
         return 0.0
     if (t - t_start()) % prem_cycle() != 0:
         return 0.0
-    return prem_pp_base() * dynamik_factor(t)
+    return prem_charged_inst_level_pp() * dynamik_factor(t)
 
 
 def topup_pp(t):
@@ -716,8 +716,8 @@ def topup_pp(t):
 def beitragssumme_prem():
     """The annual premium of the *Beitragssumme*, at the **initial** level.
 
-    ``prem_pp_base() x instalments()`` on a recurring-premium contract, and the
-    *Einmalbeitrag* itself on a single-premium one, counted once by
+    ``prem_charged_inst_level_pp() x instalments()`` on a recurring-premium contract, and
+    the *Einmalbeitrag* itself on a single-premium one, counted once by
     :func:`beitragssumme_years`; so ``beitragssumme()`` is 200.00 x 12 x 30 = 72 000,00 EUR
     on the anchor cell.  It is the base of the acquisition charge and it is **invariant**:
     it does not shrink when the contract lapses or goes *beitragsfrei*, and it does not
@@ -725,13 +725,13 @@ def beitragssumme_prem():
     premiums actually paid is a listed pitfall — it would make the acquisition charge a
     function of the lapse assumption, which is both wrong and circular.
 
-    Override reason: the premium is paid in instalments of ``prem_pp_base()`` every
-    ``prem_cycle()`` months, or once as an *Einmalbeitrag*,
+    Override reason: the premium is paid in instalments of ``prem_charged_inst_level_pp()``
+    every ``prem_cycle()`` months, or once as an *Einmalbeitrag*,
     products/fondsgebundene_rentenversicherung/technical-notes.md:443
     """
     if prem_form() == "single":
-        return prem_pp_base()
-    return prem_pp_base() * instalments()
+        return prem_charged_inst_level_pp()
+    return prem_charged_inst_level_pp() * instalments()
 
 
 def beitragssumme_years():
@@ -787,7 +787,7 @@ def charge_acq_pp(t):
     if prem_form() == "single":
         if t == t_start():
             reg = zillmer_amount()
-    elif t < acq_window_months() and prem_pp(t) > 0.0:
+    elif t < acq_window_months() and prem_charged_inst_pp(t) > 0.0:
         reg = zillmer_amount() / acq_instalments()
     return reg + charge_acq_sp_once() * topup_pp(t)
 
@@ -812,11 +812,11 @@ def cum_charge_acq_pp(t):
 def charge_admin_prem_pp(t):
     """*Beitragsbezogene Verwaltungskosten* withheld from month t's premium, per policy.
 
-    ``charge_admin_prem_inst() x prem_pp(t)`` — 4.00 % of 200.00 = **8,00 EUR** on the
-    anchor cell, every month a premium falls and none in between.  Charged on the regular
-    *Beitrag* only: a *Zuzahlung* pays its own charge and no second one.
+    ``charge_admin_prem_inst() x prem_charged_inst_pp(t)`` — 4.00 % of 200.00 = **8,00 EUR**
+    on the anchor cell, every month a premium falls and none in between.  Charged on the
+    regular *Beitrag* only: a *Zuzahlung* pays its own charge and no second one.
     """
-    return charge_admin_prem_inst() * prem_pp(t)
+    return charge_admin_prem_inst() * prem_charged_inst_pp(t)
 
 
 def prem_to_av_pp(t):
@@ -826,26 +826,26 @@ def prem_to_av_pp(t):
     acquisition instalment runs (t < 60) and 192,00 EUR after it** — the step at ``t = 60``
     is the whole point of the sixty-month window.
     """
-    return (prem_pp(t) + topup_pp(t)
+    return (prem_charged_inst_pp(t) + topup_pp(t)
             - charge_acq_pp(t) - charge_admin_prem_pp(t))
 
 
-def cum_prem_pp(t):
+def prem_cum_end_pp(t):
     """Cumulative **gross** premiums paid to and including month t, per policy.
 
-    The *Beitragsrückgewähr* base, seeded at :func:`cum_prem_init`.  It is the premiums
-    **paid**, not the premiums invested: on the anchor cell ``cum_prem_pp(59) =
+    The *Beitragsrückgewähr* base, seeded at :func:`prem_cum_pp_init`.  It is the premiums
+    **paid**, not the premiums invested: on the anchor cell ``prem_cum_end_pp(59) =
     12 000,00 EUR`` against 9 720,00 EUR actually put into units, so reading the death
     benefit off the invested amount would understate it by 19 %.  A *Zuzahlung* counts.
 
     The seed is added **inside** the frame's first month rather than read from
-    ``cum_prem_pp(t_start() - 1)``, which on a new-business cell would be ``t = -1``.
+    ``prem_cum_end_pp(t_start() - 1)``, which on a new-business cell would be ``t = -1``.
     """
     if t < t_start():
-        return cum_prem_init()
+        return prem_cum_pp_init()
     if t == t_start():
-        return cum_prem_init() + prem_pp(t) + topup_pp(t)
-    return cum_prem_pp(t - 1) + prem_pp(t) + topup_pp(t)
+        return prem_cum_pp_init() + prem_charged_inst_pp(t) + topup_pp(t)
+    return prem_cum_end_pp(t - 1) + prem_charged_inst_pp(t) + topup_pp(t)
 
 
 # ----------------------------------------  the fund
@@ -1101,7 +1101,7 @@ def db_floor_pp(t):
         0.00 — the benefit is the *Fondsguthaben* itself, so there is nothing to
         guarantee and no *Risikobeitrag*.
     ``prem_return``
-        the *Beitragsrückgewähr*: ``cum_prem_pp(t)``, the gross premiums paid.  The
+        the *Beitragsrückgewähr*: ``prem_cum_end_pp(t)``, the gross premiums paid.  The
         composite, and the only shape with corroboration anywhere in this corpus.
     ``pct_fund``
         ``db_pct()`` times the *Fondsguthaben*, so the floor and the net amount at risk
@@ -1113,7 +1113,7 @@ def db_floor_pp(t):
     if form == "fund":
         return 0.0
     elif form == "prem_return":
-        return cum_prem_pp(t)
+        return prem_cum_end_pp(t)
     elif form == "pct_fund":
         return db_pct() * av_pp_at(t, "AFT_WD")
     return sum_assured()
@@ -1235,7 +1235,7 @@ def lapse_tax_step(t):
 def lapse_dyn_add(t):
     """The dynamic-lapse addition in month t; **zero in the base run**.
 
-    ``lapse_dyn_beta x max(0, 1 - av_pp(t) / cum_prem_pp(t))`` — the rate rises while the
+    ``lapse_dyn_beta x max(0, 1 - av_pp(t) / prem_cum_end_pp(t))`` — the rate rises while the
     contract is under water against the premiums paid.  Unit-linked lapse is
     market-sensitive precisely because the exit is at fund value on short notice, and the
     feedback it introduces is real: a falling fund raises lapse, which removes the
@@ -1246,9 +1246,10 @@ def lapse_dyn_add(t):
     """
     if data.param("lapse_dyn_beta") == 0.0:                          # noqa: F821
         return 0.0
-    if cum_prem_pp(t) <= 0.0:
+    if prem_cum_end_pp(t) <= 0.0:
         return 0.0
-    return data.param("lapse_dyn_beta") * max(0.0, 1.0 - av_pp(t) / cum_prem_pp(t))  # noqa: F821
+    return (data.param("lapse_dyn_beta")                             # noqa: F821
+            * max(0.0, 1.0 - av_pp(t) / prem_cum_end_pp(t)))
 
 
 def lapse_rate(t):
@@ -1343,9 +1344,9 @@ def pols_if_at(t, timing):
 def prem_inst_pp(t):
     """The gross premium per policy in month t, including any *Zuzahlung*.
 
-    ``prem_pp(t) + topup_pp(t)``; the core's :func:`premiums` weights it by ``pols_if(t)``.
-    The premium column is published because the reader needs it, and it is **excluded
-    from** :func:`net_cf`: almost all of it is the *Anlagebeitrag*, which is the
+    ``prem_charged_inst_pp(t) + topup_pp(t)``; the core's :func:`premiums` weights it by
+    ``pols_if(t)``.  The premium column is published because the reader needs it, and it is
+    **excluded from** :func:`net_cf`: almost all of it is the *Anlagebeitrag*, which is the
     policyholder's money passing into the unit fund.  What the insurer keeps out of it is
     :func:`charge_acq` and :func:`charge_admin_prem`, and :func:`check_prem_split` asserts
     that the three account for the whole premium.
@@ -1353,7 +1354,7 @@ def prem_inst_pp(t):
     Override reason: the premium is the regular *Beitrag* plus the *Zuzahlung*,
     products/fondsgebundene_rentenversicherung/technical-notes.md:532
     """
-    return prem_pp(t) + topup_pp(t)
+    return prem_charged_inst_pp(t) + topup_pp(t)
 
 
 def prem_to_av(t):
@@ -1583,13 +1584,14 @@ def comm_init(t):
 
 
 def comm_renew(t):
-    """The *Bestandsprovision* ``comm_renew_prem_inst x prem_pp(t)`` on every gross *Beitrag*
-    **[std]**.
+    """The *Bestandsprovision* ``comm_renew_prem_inst x prem_charged_inst_pp(t)`` on every
+    gross *Beitrag* **[std]**.
 
     Override reason: the renewal commission is a rate on each gross premium,
     products/fondsgebundene_rentenversicherung/technical-notes.md:541
     """
-    return data.param("comm_renew_prem_inst") * prem_pp(t) * pols_if(t)  # noqa: F821
+    return (data.param("comm_renew_prem_inst")                       # noqa: F821
+            * prem_charged_inst_pp(t) * pols_if(t))
 
 
 def net_cf(t):
@@ -1713,7 +1715,7 @@ def irr_ann():
     """
     n = proj_len()
     t0 = t_start()
-    flows = [(prem_pp(t) + topup_pp(t), (n - t) / 12.0)
+    flows = [(prem_charged_inst_pp(t) + topup_pp(t), (n - t) / 12.0)
              for t in range(t0, n)]
     flows += [(-withdrawals_pp(t), (n - 1 - t) / 12.0) for t in range(t0, n)]
     flows += [(av_pp(t0), (n - t0) / 12.0)]
@@ -2006,7 +2008,7 @@ def result_fund():
             "av_pp_aft_charge": [av_pp_at(t, "AFT_CHARGE") for t in ts],
             "av_pp_aft_wd": [av_pp_at(t, "AFT_WD") for t in ts],
             "av_pp_bef_decr": [av_pp_at(t, "BEF_DECR") for t in ts],
-            "cum_prem_pp": [cum_prem_pp(t) for t in ts],
+            "prem_cum_end_pp": [prem_cum_end_pp(t) for t in ts],
             "db_floor_pp": [db_floor_pp(t) for t in ts],
             "nar_pp": [nar_pp(t) for t in ts],
             "mort_rate_mth": [mort_rate_mth(t) for t in ts],

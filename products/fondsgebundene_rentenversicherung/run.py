@@ -26,7 +26,7 @@ print("model point {}: {} - {}{} -> Rentenbeginn at {}, t = {} .. {}".format(
     proj.ret_age(), proj.t_start(), proj.proj_len() - 1))
 print("premium: {} {:,.2f} EUR every {} month(s) for {} years   "
       "Beitragssumme {:,.2f} EUR".format(
-          proj.prem_form(), proj.prem_pp_base(), proj.prem_cycle(),
+          proj.prem_form(), proj.prem_charged_inst_level_pp(), proj.prem_cycle(),
           proj.prem_term_y(), proj.beitragssumme()))
 print("charges: {}  acq {:,.2f} EUR over {} instalments of {:,.2f}  "
       "beta {:.2%}  gamma {:.2%} p.a.  Stueckkosten {:,.2f}/month".format(

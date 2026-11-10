@@ -38,7 +38,7 @@ Epic-night-run set out to fit all ten products together into one 10 h night at P
 
 M = 500 was an estimate for term life alone from phase 1 (above, "Phase 2: how to measure"). The new M is counted on the code base after the core, first at commit `f07f0036f775e1a797004ae90cf5ac533f7889d2` (merge of PR #20, 2026-10-28), recounted at commit `790706b06b02755cf5882a68cae6977234ad7a0c` (merge of PR #38, the code after entries 17 and 18 of epic-night-run, 2026-11-02), split by where each mutant sits: a mutant in the core runs all ten products, a mutant in a product only that product (epic-night-run, decision of 2026-10-28). It replaces M = 500 and sets the target speed every later optimisation reports against.
 
-**What is counted.** The operators O1–O6 of the operator list (P-013, sections 2 and 4), without O7 (parameter cells), per node of the Python AST:
+**What is counted.** The operators O1–O6 below, without O7 (parameter cells), per node of the Python AST:
 
 - O1 `<` `<=` `>` `>=`: 3 mutants, O2 `==` `!=`: 2, each per operator in a comparison (a chained comparison counts every operator).
 - O3 only `+` `-` `*` `/`, in binary operations and augmented assignments: 1 each; `//` `%` `**` none.

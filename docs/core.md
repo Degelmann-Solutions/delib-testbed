@@ -302,7 +302,7 @@ The inventory, every model-point column and cell that holds a premium amount, by
 | FRV | `prem_cum_pp_init` | column and cell | premiums paid before the valuation date |
 | FRV | `prem_cum_end_pp(t)` | cell | premiums paid to the end of month t, *Zuzahlung* included: another timing than RV's `prem_cum_pp(k)` |
 | FRV | `prem_to_av_pp(t)` | cell | the premium invested in the fund after the charges |
-| Index | `prem_gross_level_pp` | column | annual premium before φ at inception; the *Einmalbeitrag* on `single` |
+| Index | `prem_gross_level_pp` | column and cell | annual premium before φ at inception; the *Einmalbeitrag* on `single`; the cell is the core's hook for `beitragssumme_prem()` |
 | Index | `prem_gross_pp(k)` | cell | annual premium before φ of year k |
 | Index | `prem_pp(k)` | cell | annual premium after φ of year k |
 | Index | `prem_inst_pp(t)` | cell | the year's `prem_pp` in the month it is due |

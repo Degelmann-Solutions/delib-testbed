@@ -418,12 +418,12 @@ def beitragssumme_years():
 def prem_gross_pp(k):
     """``P_b(k)``: the annual-mode premium of period k, per policy.
 
-    The model point's ``prem_gross_level_pp`` in every period: this tariff has no
+    :func:`prem_gross_level_pp` in every period: this tariff has no
     *Beitragsdynamik*.  It is the contractual amount and carries no end of the premium
     term; whether a premium falls due in period k is :func:`prem_due` alone, which the
     cells of the amounts paid and charged read.
     """
-    return float(model_point()["prem_gross_level_pp"])
+    return prem_gross_level_pp()
 
 
 def prem_pp(k):

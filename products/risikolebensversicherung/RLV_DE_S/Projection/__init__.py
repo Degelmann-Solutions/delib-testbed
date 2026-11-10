@@ -127,13 +127,13 @@ G                          prem_gross_level_pp()           Bruttobeitrag, before
 Gn                         prem_net_level_pp()             Actuarial Nettopraemie
 v_d                        beitragsverrechnung_rate()      Beitragsverrechnungssatz
 phi                        prem_freq_load()                Ratenzahlungszuschlag
-G phi                      prem_gross_pp(t)                Bruttobeitrag, annual
+G phi                      prem_pp(t)                      Bruttobeitrag, annual
 v_d G phi                  prem_rebate_pp(t)               Beitragsverrechnung, annual
 P(t)                       prem_paid_pp(t)                 Zahlbeitrag, annual
 (none)                     instalments()                   Instalments a year, 1/2/4/12
 (none)                     prem_cycle()                    Months between instalments
 (none)                     prem_due(t)                     Is an instalment due in month t
-(none)                     prem_gross_inst_pp(t)           Gross instalment collected
+(none)                     prem_charged_inst_pp(t)         Gross instalment collected
 (none)                     prem_rebate_inst_pp(t)          Rebate netted off it
 P_inst(t)                  prem_inst_pp(t)                 Zahlbeitrag instalment
 (reserve)                  res_pp_at(y, timing)            First-order Deckungskapital
@@ -177,7 +177,7 @@ never a name here, and ``prem_net_pp`` is on the library's retired-names registe
 
 The order between the first two is worth stating, because the intuition gets it backwards:
 on the shipped calibration ``prem_paid_pp(0)/phi = 733.01 < prem_net_level_pp() =
-1 084.80 < prem_gross_pp(0)/phi = 1 275.41``. The billed premium sits **below** the
+1 084.80 < prem_pp(0)/phi = 1 275.41``. The billed premium sits **below** the
 actuarial net premium, because ``Gn`` is struck on the loaded first-order rate and 90 % of
 that loading is handed straight back as *Beitragsverrechnung*. A test asserting
 ``Gn < P`` is asserting the absence of the product's central mechanic.
@@ -350,7 +350,7 @@ rather than inherited from the frame:
   does not decline monthly;
 - the § 161 three-year window runs in whole years from issue, tranche by tranche
   (:func:`benefit_paid_pp`), and every boundary it has therefore falls on an anniversary;
-- the *Beitragszahlungsdauer* ends on an anniversary (:func:`prem_gross_pp`) and the
+- the *Beitragszahlungsdauer* ends on an anniversary (:func:`prem_pp`) and the
   *Bestandspflegeprovision* starts on one (:func:`commissions`);
 - expenses inflate **by policy year**, stepping on the anniversary
   (:func:`inflation_factor`), which is ``Sofort_DE_S``'s form rather than ``FRV_DE_S``'s
@@ -971,7 +971,7 @@ def prem_due(t):
     return duration_mth(t) % prem_cycle() == 0
 
 
-def prem_gross_pp(t):
+def prem_pp(t):
     """The **annual** *Bruttobeitrag* per in-force policy for month t's policy year, ``G phi``.
 
     **The guaranteed stream**: the maximum the policyholder can ever be required to pay in
@@ -983,7 +983,7 @@ def prem_gross_pp(t):
 
     An **annual** amount, flat across the policy year: the *Bruttobeitrag* is struck once
     at issue and is level for the term.  What is collected in month ``t`` is
-    :func:`prem_gross_inst_pp`, the instalment the elected *Zahlweise* makes due.
+    :func:`prem_charged_inst_pp`, the instalment the elected *Zahlweise* makes due.
     """
     if t < 0 or duration(t) >= prem_term():
         return 0.0
@@ -997,7 +997,7 @@ def prem_rebate_pp(t):
     than credited to an account — which is what § 153 VVG's *verursachungsorientiert*
     allocation looks like on a product with no account to credit.  Zero where
     ``surplus_form = keine`` and zero once the paying term is over.  An annual amount,
-    like :func:`prem_gross_pp`; :func:`prem_rebate_inst_pp` is what is netted off each
+    like :func:`prem_pp`; :func:`prem_rebate_inst_pp` is what is netted off each
     instalment.
     """
     if t < 0 or duration(t) >= prem_term():
@@ -1008,7 +1008,7 @@ def prem_rebate_pp(t):
 def prem_paid_pp(t):
     """P(t): the **annual** *Zahlbeitrag* per in-force policy — what the customer is billed.
 
-    ``prem_gross_pp(t) - prem_rebate_pp(t)``, formed as the difference so that the split
+    ``prem_pp(t) - prem_rebate_pp(t)``, formed as the difference so that the split
     identity is true by construction rather than by coincidence.  **Not guaranteed**:
     § 153 VVG confers an entitlement to participate in surplus, not to a level, and a
     reduction of the declaration raises this toward the *Bruttobeitrag* with no procedure
@@ -1018,20 +1018,20 @@ def prem_paid_pp(t):
     consecutive renewals.  The stream inside :func:`net_cf` is :func:`prem_inst_pp`,
     collected on the *Zahlweise*'s own cycle.
     """
-    return prem_gross_pp(t) - prem_rebate_pp(t)
+    return prem_pp(t) - prem_rebate_pp(t)
 
 
-def prem_gross_inst_pp(t):
+def prem_charged_inst_pp(t):
     """The *Bruttobeitrag* instalment falling due in month t, or zero.
 
-    ``prem_gross_pp(t) / instalments()`` where :func:`prem_due` makes one due.  The
+    ``prem_pp(t) / instalments()`` where :func:`prem_due` makes one due.  The
     instalments of a policy year therefore sum to exactly that year's annual
     *Bruttobeitrag*, the *Ratenzahlungszuschlag* included: ``phi`` is a multiplier on the
     annual amount and dividing the loaded amount into instalments is what the surcharge
     prices.  Loading each instalment again, or dividing and then loading, charges it
     twice.
     """
-    return prem_gross_pp(t) / instalments() if prem_due(t) else 0.0
+    return prem_pp(t) / instalments() if prem_due(t) else 0.0
 
 
 def prem_rebate_inst_pp(t):
@@ -1047,7 +1047,7 @@ def prem_rebate_inst_pp(t):
 def prem_inst_pp(t):
     """P_inst(t): the *Zahlbeitrag* instalment actually collected per policy in month t.
 
-    ``prem_gross_inst_pp(t) - prem_rebate_inst_pp(t)``, formed as the difference so that
+    ``prem_charged_inst_pp(t) - prem_rebate_inst_pp(t)``, formed as the difference so that
     the split identity holds instalment by instalment as well as year by year.  An annual
     payer therefore collects the whole 733,01 € of the anchor cell in the first month of
     each policy year and nothing in the other eleven; model point 4 is the contrast,
@@ -1062,7 +1062,7 @@ def prem_inst_pp(t):
     Override reason: the *Zahlbeitrag* instalment is the gross instalment less the rebate,
     products/risikolebensversicherung/technical-notes.md:614
     """
-    return prem_gross_inst_pp(t) - prem_rebate_inst_pp(t)
+    return prem_charged_inst_pp(t) - prem_rebate_inst_pp(t)
 
 
 # ==========================================================================
@@ -1151,12 +1151,12 @@ def res_zill_pp_at(y, timing):
 def prem_gross(t):
     """*Bruttobeitrag* instalments on the in-force cohort — the **guaranteed** stream.
 
-    ``prem_gross_inst_pp(t) l(t)``.  Published beside :func:`premiums` and **not** part of
+    ``prem_charged_inst_pp(t) l(t)``.  Published beside :func:`premiums` and **not** part of
     :func:`net_cf`.  It is what the contract guarantees the insurer may charge, so it is
     also the ``decl_scale = 0`` stress: the whole distance between the two columns is
     surplus the insurer may withdraw by declaration alone.
     """
-    return prem_gross_inst_pp(t) * pols_if(t)
+    return prem_charged_inst_pp(t) * pols_if(t)
 
 
 def prem_rebate(t):
@@ -1377,7 +1377,7 @@ def check_prem_split_resid(t):
     identity asserted on the annual amounts alone would not see a *Zahlweise* that
     fractionates the gross and the rebate on different cycles.
     """
-    return (prem_gross_inst_pp(t) - prem_inst_pp(t)
+    return (prem_charged_inst_pp(t) - prem_inst_pp(t)
             - prem_rebate_inst_pp(t))
 
 
@@ -1400,12 +1400,12 @@ def check_prem_split():
     for t in range(t_start(), proj_len()):
         if abs(check_prem_split_resid(t)) > tol:
             return False
-        if abs(prem_gross_pp(t) - prem_paid_pp(t) - prem_rebate_pp(t)) > tol:
+        if abs(prem_pp(t) - prem_paid_pp(t) - prem_rebate_pp(t)) > tol:
             return False
         if duration(t) < prem_term() and prem_due(t):
-            if not (0.0 <= prem_rebate_inst_pp(t) < prem_gross_inst_pp(t)):
+            if not (0.0 <= prem_rebate_inst_pp(t) < prem_charged_inst_pp(t)):
                 return False
-        elif not (prem_gross_inst_pp(t) == prem_rebate_inst_pp(t)
+        elif not (prem_charged_inst_pp(t) == prem_rebate_inst_pp(t)
                   == prem_inst_pp(t) == 0.0):
             return False
     return True
@@ -1551,7 +1551,7 @@ def result_pols_columns():
         ("benefit_pp", benefit_pp),                                  # noqa: F821
         ("benefit_paid_pp", benefit_paid_pp),                        # noqa: F821
         ("suicide_factor", suicide_factor),                          # noqa: F821
-        ("prem_gross_pp", prem_gross_pp),                            # noqa: F821
+        ("prem_pp", prem_pp),                                        # noqa: F821
         ("prem_rebate_pp", prem_rebate_pp),                          # noqa: F821
         ("prem_paid_pp", prem_paid_pp),                              # noqa: F821
         ("prem_inst_pp", prem_inst_pp),                              # noqa: F821

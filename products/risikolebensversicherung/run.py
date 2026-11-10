@@ -41,7 +41,7 @@ print("Bruttobeitrag  G  = {:,.4f} EUR   Nettopraemie Gn = {:,.4f} EUR".format(
 print("Beitragsverrechnungssatz v_d = {:.8f}   Zahlbeitrag = {:,.4f} EUR/y   "
       "Zahl/Brutto = {:.6f}   instalment = {:,.4f} EUR".format(
           proj.beitragsverrechnung_rate(), proj.prem_paid_pp(proj.t_start()),
-          proj.prem_paid_pp(proj.t_start()) / proj.prem_gross_pp(proj.t_start()),
+          proj.prem_paid_pp(proj.t_start()) / proj.prem_pp(proj.t_start()),
           proj.prem_inst_pp(proj.t_start())))
 print()
 df = proj.result_cf()

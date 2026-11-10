@@ -374,7 +374,7 @@ thing; this identity settles the reading.
 |---|---|
 | `check_net_cf()` | On `result_cf()` row `t`: `net_cf = premiums − claims_death − claims_lapse − claims_maturity − expenses − commissions` |
 | `check_pols_roll_fwd()` | `pols_if(t+1) = pols_if(t) − pols_death(t) − pols_lapse(t) − pols_maturity(t)`, and the three exits sum to `pols_if_init()` |
-| `check_prem_split()` | `prem_gross_pp(t) = prem_paid_pp(t) + prem_rebate_pp(t)`, with `0 ≤ prem_rebate_pp < prem_gross_pp` where a premium is due and all three zero where none is |
+| `check_prem_split()` | `prem_pp(t) = prem_paid_pp(t) + prem_rebate_pp(t)`, with `0 ≤ prem_rebate_pp < prem_pp` where a premium is due and all three zero where none is |
 | `check_res_roll_fwd()` | The Thiele step `(res + Gn·1{t<k})(1+i) = q₁·B + (1−q₁)·res(t+1)`, plus `res_pp_at(0) = 0` and `res_pp_at(n) = 0` |
 | `check_no_cash_value()` | `claims(t,"LAPSE") = 0` and `claims(t,"MATURITY") = 0` at every `t` |
 

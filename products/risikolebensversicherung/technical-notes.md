@@ -232,18 +232,18 @@ anchor cell.**
 | `lapse_rate(t)` | **Annual** lapse rate of the policy year; **0** through the whole final policy year | lookup |
 | `lapse_rate_mth(t)` | The monthly rate applied after the death decrement, `1 − (1 − lapse_rate(t))^(1/12)` **[std]** | monthly |
 | `suicide_factor(t)` | § 161 benefit switch, `< 1` inside three years of issue and of each increment | anniversary |
-| `prem_gross_pp(t)` | **Annual** *Bruttobeitrag* per in-force policy, loaded for frequency; **0** for `duration(t) ≥ prem_term` | anniversary |
+| `prem_pp(t)` | **Annual** *Bruttobeitrag* per in-force policy, loaded for frequency; **0** for `duration(t) ≥ prem_term` | anniversary |
 | `prem_rebate_pp(t)` | **Annual** *Beitragsverrechnung* per in-force policy | anniversary |
-| `prem_paid_pp(t)` | **Annual** *Zahlbeitrag* per in-force policy = `prem_gross_pp − prem_rebate_pp` | anniversary |
+| `prem_paid_pp(t)` | **Annual** *Zahlbeitrag* per in-force policy = `prem_pp − prem_rebate_pp` | anniversary |
 | `instalments()`, `prem_cycle()`, `prem_due(t)` | Instalments a year (1/2/4/12), months between them, whether one falls due this month | *Zahlweise* |
-| `prem_gross_inst_pp(t)`, `prem_rebate_inst_pp(t)`, `prem_inst_pp(t)` | The three annual amounts divided into instalments, zero in a month none is due | monthly |
+| `prem_charged_inst_pp(t)`, `prem_rebate_inst_pp(t)`, `prem_inst_pp(t)` | The three annual amounts divided into instalments, zero in a month none is due | monthly |
 | `res_pp_at(y, timing)` | First-order **net** *Deckungskapital* per policy at **policy year** `y` — a **pricing diagnostic**, not a balance-sheet provision | prospective, annual |
 | `res_zill_pp_at(y, timing)` | The same reserve less the unamortised Zillmer balance; **negative for much of the term** | prospective, annual |
 | `pols_death(t)` | Expected deaths in month `t` = `pols_if(t) × mort_rate_mth(t)` | monthly |
 | `pols_lapse(t)` | Expected lapses in month `t`, on survivors of the death decrement | monthly |
 | `pols_maturity(t)` | Expiring survivors; **0** except at `t = proj_len() − 1` | monthly |
 | `premiums(t)` | `prem_inst_pp(t) × pols_if(t)` — the billed stream, the one inside `net_cf` | monthly |
-| `prem_gross(t)` | `prem_gross_inst_pp(t) × pols_if(t)` — the **guaranteed** stream, published beside it | monthly |
+| `prem_gross(t)` | `prem_charged_inst_pp(t) × pols_if(t)` — the **guaranteed** stream, published beside it | monthly |
 | `claims(t, kind)` | `kind ∈ {DEATH, LAPSE, MATURITY}`; the last two are structurally zero | monthly |
 | `expenses(t)` | Acquisition + maintenance + collection + claim expense | monthly |
 | `commissions(t)` | Initial *Abschlussprovision* + *Bestandspflegeprovision* | monthly |
@@ -455,7 +455,7 @@ rather than buried.
 | `l(t)` | `pols_if(t)`, in force at the **start** of month `t`; `l(t0) = pols_if_init() = 1` |
 | `p₁(y)` | tariff survivorship over **policy years**, mortality only: `p₁(0) = 1`, `p₁(y+1) = p₁(y)·(1 − q₁(12y))` |
 | `i`, `v` | `rechnungszins` = 1,00 %; `v = 1/(1 + i)` |
-| `G`, `Gn` | `prem_gross_pp` before frequency loading; `prem_net_level_pp`, the actuarial *Nettoprämie* |
+| `G`, `Gn` | `prem_pp` before frequency loading; `prem_net_level_pp`, the actuarial *Nettoprämie* |
 | `φ` | `prem_freq_load`, the *Ratenzahlungszuschlag* multiplier |
 | `v_d` | `beitragsverrechnung_rate()`, the declared *Beitragsverrechnungssatz*, struck once at issue |
 | `z`, `β`, `γ` | `load_acq_bsum_once` = 0.025; `load_admin_prem_inst` = 0.05; `load_admin_sum_ann` = 0.00030 |
@@ -533,7 +533,7 @@ struck once, at issue, to return `surplus_share` of it over the premium-paying t
 
 and is **0** where `surplus_form = keine`. Then, at every `t < k`,
 
-    prem_gross_pp(t)  = G · φ
+    prem_pp(t)  = G · φ
     prem_rebate_pp(t) = v_d · G · φ
     prem_paid_pp(t)   = (1 − v_d) · G · φ
 
@@ -609,12 +609,12 @@ its total does not.
                      + c_r·P_inst(t)·l(t)·1{duration(t) ≥ 1}
 
     prem_due(t)            = 1{ duration_mth(t) mod (12/r) = 0 }
-    prem_gross_inst_pp(t)  = prem_gross_pp(t)/r · prem_due(t)
+    prem_charged_inst_pp(t)  = prem_pp(t)/r · prem_due(t)
     prem_rebate_inst_pp(t) = prem_rebate_pp(t)/r · prem_due(t)
-    P_inst(t)              = prem_gross_inst_pp(t) − prem_rebate_inst_pp(t)
+    P_inst(t)              = prem_charged_inst_pp(t) − prem_rebate_inst_pp(t)
 
     premiums(t)    = P_inst(t)·l(t)
-    prem_gross(t)  = prem_gross_inst_pp(t)·l(t)
+    prem_gross(t)  = prem_charged_inst_pp(t)·l(t)
     prem_rebate(t) = prem_rebate_inst_pp(t)·l(t)
 
     net_cf(t)      = premiums(t) − claims(t) − expenses(t) − commissions(t)
@@ -719,7 +719,7 @@ Five, each with a per-`t` residual companion `check_*_resid(t)`, each returning 
 |---|---|---|
 | `check_net_cf()` | On `result_cf()` row `t`: `net_cf = premiums − claims_death − claims_lapse − claims_maturity − expenses − commissions`, every term read from the published frame | delib's first ruling: the headline number is reconciled in code, not only in prose — and by a different route from `net_cf`'s own, which subtracts the kind-less `claims(t)` subtotal, so the check crosses both the cells-to-frame boundary and the `claims(t, kind)` dispatch |
 | `check_pols_roll_fwd()` | `pols_if(t+1) = pols_if(t) − pols_death(t) − pols_lapse(t) − pols_maturity(t)`, and the three exits sum to `pols_if_init()` | The decrement roll-forward and its closure |
-| `check_prem_split()` | On the instalments, `prem_gross_inst_pp(t) = prem_inst_pp(t) + prem_rebate_inst_pp(t)`, and on the annual amounts likewise, with `0 ≤ prem_rebate_inst_pp(t) < prem_gross_inst_pp(t)` in a month an instalment is due inside the paying term and all three zero in every other month | The product's signature identity, at every `t` and every *Zahlweise* — and, since the conversion, in every month rather than only at the anniversary |
+| `check_prem_split()` | On the instalments, `prem_charged_inst_pp(t) = prem_inst_pp(t) + prem_rebate_inst_pp(t)`, and on the annual amounts likewise, with `0 ≤ prem_rebate_inst_pp(t) < prem_charged_inst_pp(t)` in a month an instalment is due inside the paying term and all three zero in every other month | The product's signature identity, at every `t` and every *Zahlweise* — and, since the conversion, in every month rather than only at the anniversary |
 | `check_res_roll_fwd()` | The Thiele recursion above, per **policy year**, plus `res_pp_at(0) = 0` and `res_pp_at(n) = 0` | The reserve mechanic 11 says a naive implementation gets wrong |
 | `check_no_cash_value()` | `claims(t,"LAPSE") = 0` and `claims(t,"MATURITY") = 0` at every `t` | A statutory fact [R2] [R3] [R8], checked on every model point rather than asserted in prose |
 
@@ -745,7 +745,7 @@ run every month.
    `lives = 2`, **before** any loading; form the **annual** `q₂(t)` on the policy's own sex and
    `q₁(t)` on the tariff's unisex blend, then the monthly `q₂ᵐ(t) = 1 − (1 − q₂(t))^(1/12)`.
 4. **Beginning of month — premium instalment.** For `duration(t) < k`, set the annual
-   `prem_gross_pp(t) = G·φ`, `prem_rebate_pp(t) = v_d·G·φ` and `prem_paid_pp(t)` as their
+   `prem_pp(t) = G·φ`, `prem_rebate_pp(t) = v_d·G·φ` and `prem_paid_pp(t)` as their
    difference; else all three zero. Where `prem_due(t)`, divide each by `r` to get the instalment;
    else all three instalments are zero. Take `premiums(t) = P_inst(t)·l(t)`.
 5. **Beginning of month — expenses on the opening in-force.** Collection `a·P_inst(t)·l(t)` and a
@@ -776,14 +776,14 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
 1. **Confusing the three "netto"s.** *Nettoprämie* (actuarial), *Nettobeitrag*/*Zahlbeitrag*
    (consumer) and *Nettotarif* (distribution) are unrelated [mechanic 4]. Assert the order the
    built model actually produces on the anchor —
-   `prem_paid_pp(0)/φ < prem_net_level_pp() < prem_gross_pp(0)/φ`, i.e. 733,01 € < 1 084,80 € <
+   `prem_paid_pp(0)/φ < prem_net_level_pp() < prem_pp(0)/φ`, i.e. 733,01 € < 1 084,80 € <
    1 275,41 € — and that no cells is named `prem_net_pp` or `nettobeitrag`. **The billed
    *Zahlbeitrag* sits *below* the actuarial *Nettoprämie***, because `Gn = A/ä` is struck on the
    loaded first-order rate and 90 % of that loading is handed straight back as
    *Beitragsverrechnung*. Asserting `Gn < P` instead would be asserting the absence of the
    product's central mechanic.
 2. **Carrying only one premium stream.** A model with a single premium cannot represent this product
-   [R6]. Assert `prem_gross_pp(t) > prem_paid_pp(t)` at every `t` on model point 1 and
+   [R6]. Assert `prem_pp(t) > prem_paid_pp(t)` at every `t` on model point 1 and
    `prem_gross(t) > premiums(t)` in every month an instalment is actually collected, and
    `prem_gross(t) == premiums(t)` exactly on model point 12, where `surplus_form = keine`.
 3. **Treating the *Zahlbeitrag* as guaranteed.** Only the *Bruttobeitrag* is [R6] [REG-R27]. Assert
@@ -810,7 +810,7 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
    2012 — AGG § 33 Abs. 5 confines the derogation to *Versicherungsverhältnisse* "die vor dem
    21. Dezember 2012 begründet werden", and § 20 Abs. 2 leaves no actuarial justification open for
    sex at all [R13] [REG-R34].
-   Model points 1 and 2 differ **only** in `sex`: assert their `prem_gross_pp(t)`,
+   Model points 1 and 2 differ **only** in `sex`: assert their `prem_pp(t)`,
    `prem_paid_pp(t)` and `beitragsverrechnung_rate()` are identical to 1e-12, while their
    `claims_death` totals differ by a factor near two.
 7. **Applying the *Sicherheitszuschlag* to the projection.** `q₁` prices, `q₂` projects. Assert that
@@ -833,7 +833,7 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
    months 60 to 95 for the first increment.
 10. **Mishandling the *Ratenzahlungszuschlag*.** `φ` multiplies the **annual** billed amount, so
     both premium streams and the rebate carry it once, and the instalment is that loaded amount
-    divided by `r`. Assert `check_prem_split()` on every model point; that `prem_gross_pp(0)` on
+    divided by `r`. Assert `check_prem_split()` on every model point; that `prem_pp(0)` on
     model point 4 (`monthly`) is exactly `1.05 ×` the same cell recomputed at `annual`; and
     that the twelve instalments of a policy year sum to exactly the year's annual amount — a single
     loading, not one applied to each stream separately and not one applied again to each instalment.
@@ -843,7 +843,7 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
     finer grid narrows the error — 0,038 € in the first month against 0,46 € in the first year —
     without removing the trap: there are now twelve times as many chances to apply it.
 12. **Running the premium past the *Beitragszahlungsdauer*.** On model point 6 (`k = 12` years,
-    `n = 20`) assert `prem_gross_pp(t) == premiums(t) == prem_rebate_pp(t) == 0` for
+    `n = 20`) assert `prem_pp(t) == premiums(t) == prem_rebate_pp(t) == 0` for
     `t = 144…239`, while `claims_death(t) > 0` there and `res_pp_at(y,"BEF_PREM")` is falling. The
     boundary is an anniversary, the *Beitragszahlungsdauer* being stated in whole years; the last
     instalment of this `half_yearly` cell falls in month 138.
@@ -867,8 +867,8 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
     rate by dividing it by twelve instead would leave the in-force at every anniversary wrong.
 17. **Letting `rating_factor` scale the benefit.** A *Risikozuschlag* is a mortality loading, not a
     benefit uplift (mechanic 9). On model point 11 assert `benefit_pp(t)` is invariant to
-    `rating_factor` while `prem_gross_pp` and `claims_death` both scale with it, and that the ratio
-    `prem_paid_pp(0)/prem_gross_pp(0)` moves by less than one percentage point when `rating_factor`
+    `rating_factor` while `prem_pp` and `claims_death` both scale with it, and that the ratio
+    `prem_paid_pp(0)/prem_pp(0)` moves by less than one percentage point when `rating_factor`
     goes from 1.00 to 1.75 — the invariance that follows from loading both bases.
 18. **Treating the *Über-Kreuz-Versicherung* as a different product.** It is a contracting structure
     with identical cover and identical cash flows; only the *Erbschaftsteuer* outcome changes [R15]

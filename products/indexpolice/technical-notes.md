@@ -254,7 +254,7 @@ changed on the strength of what it established; `model.md` records each comparis
 | Base of the participation | `G(t) = av_pp(k)`, the capital at the start of the *Indexjahr*, **before** that year's premium | **confirmed by clause** — [S2] Ziffer 3.3 Absatz 2 e), [S7] § 3 Ziffer 2; spec footnote 14 |
 | *Höchststandsicherung* | a credit, once made, is permanently added to the guaranteed capital and enters `G` of every later year | mechanic firm |
 | Guarantee at *Rentenbeginn* | `max( av_pp(n), guar_level × prem_sum_paid + credit_cum_pp(n) )`, the time-`n` values; **not** an annual guaranteed rate on the reserve | [R11] [R12]; composition **[std]** |
-| Death benefit | `max( av_pp_at(k,"AFT_GUAR"), death_min_rate × prem_sum() )` — the account **excluding the running *Indexjahr***, floored at 50 % of the *Beitragssumme* | shape [S7] § 1 Ziffer 5 (*Policenwert*, min. 90 % of premiums), **not** [S9], whose default is no death benefit at all; floor **[std]** [R14] [REG-R45] |
+| Death benefit | `max( av_pp_at(k,"AFT_GUAR"), death_min_rate × beitragssumme() )` — the account **excluding the running *Indexjahr***, floored at 50 % of the *Beitragssumme* | shape [S7] § 1 Ziffer 5 (*Policenwert*, min. 90 % of premiums), **not** [S9], whose default is no death benefit at all; floor **[std]** [R14] [REG-R45] |
 | Surrender value | `max( av_pp_at(k,"AFT_GUAR"), av_min_pp(k) ) × (1 − stornoabzug_rate × surr_charge_on)` | [R2] [REG-R28]; level **[std]** |
 | § 169 Abs. 3 floor | the *Deckungskapital* with acquisition costs spread evenly over the **first five contract years** | [R2] [REG-R28] |
 | *Höchstzillmersatz* | acquisition charge capped at **25 ‰** — "Der Zillmersatz darf 25 Promille der Summe aller Prämien nicht überschreiten", DeckRV § 4 Abs. 1 | [R7] [REG-R16] |
@@ -419,7 +419,7 @@ oversight.
 | `l(t)` | `pols_if(t)` | policies in force at time `t`, the start of **month** `t`; `l(t₀) = pols_if_init()` |
 | `φ` | `prem_freq_load()` | the *Ratenzahlungszuschlag* multiplier |
 | `P_b(k)`, `P(k)` | `prem_gross_pp(k)`, `prem_pp(k)` | the annual-mode premium due in policy year `k`; the amount actually collected, `P_b(k)·φ`, in the first month of that year |
-| `BS` | `prem_sum()` | *Beitragssumme* = `Σ_k P_b(k)` over the whole contract, **on the annual-mode premium** |
+| `BS` | `beitragssumme()` | *Beitragssumme* = `Σ_k P_b(k)` over the whole contract, **on the annual-mode premium**: the core's `beitragssumme_prem()` × `beitragssumme_years()`, on the cell `prem_gross_level_pp()`, 1 year for an *Einmalbeitrag* |
 | `α(k)`, `α₅(k)` | `prem_charge_acq_pp(k)`, `prem_charge_acq_min_pp(k)` | the acquisition charge on the tariff spread and on the five-year spread |
 | `β·P(k)` | `prem_charge_adm_pp(k)` | the premium-based administration charge |
 | `P⁺(k)` | `prem_to_av_pp(k)` | the premium credited to the account, `P(k) − α(k) − β·P(k)` |
@@ -781,7 +781,7 @@ take deliberately and is not made in a provenance pass.
 9. **Paying a pro-rata index credit on a mid-year exit.** No credit in the year of exit — the rule in
    both retrieved AVB, which credit the participation only at the start of the following *Indexjahr*
    ([S2] Ziffer 3.3, [S7] § 3 Ziffer 5) and add nothing pro rata for the running one. Assert
-   `db_pp(k) == max(av_pp_at(k,"AFT_GUAR"), death_min_rate * prem_sum())` exactly, with no index term,
+   `db_pp(k) == max(av_pp_at(k,"AFT_GUAR"), death_min_rate * beitragssumme())` exactly, with no index term,
    and that `av_pp_at(k,"AFT_GUAR") < av_pp(k+1)` in every year the index credited something — the
    benefit is struck on the balance **before** the year's credits. Assert it on that balance and not
    on `db_pp` itself: the *Mindesttodesfallschutz* floor of 32 400,00 € exceeds the anchor's account
@@ -810,7 +810,7 @@ take deliberately and is not made in a provenance pass.
     `cv_pp(k) < av_pp_at(k,"AFT_GUAR")` on every point with `surr_charge_on = 1`.
 14. **Double-charging or mis-basing the *Ratenzahlungszuschlag*.** `φ` multiplies the premium
     **collected** and does **not** enter the *Beitragssumme*. On model point 4 (monthly) assert
-    `prem_pp(k) == 2 400,00 × 1,05 == 2 520,00` while `prem_sum() == 2 400,00 × 32 == 76 800,00`,
+    `prem_pp(k) == 2 400,00 × 1,05 == 2 520,00` while `beitragssumme() == 2 400,00 × 32 == 76 800,00`,
     so the acquisition charge and the 50 % death floor are unchanged by the payment frequency.
 15. **Letting the Cap and the option budget be independent parameters.** They are not: the Cap is the
     level at which the option strip costs the budget. Assert `index_budget_ratio()` — total index credits
@@ -874,7 +874,7 @@ table below is the **entire** projection; `pols_if_init = 1.0`; `ret_age = 67`, 
 `prem_form = regular`; `prem_gross_level_pp = 2 400,00 €` (the annual-mode
 *Jahresbeitrag*, i.e. the research file's 200,00 € a month taken annually); `prem_freq = annual`, so
 `prem_freq_load() = 1,000` and the premium collected equals the premium due; `prem_term_y = 27`, premiums
-payable throughout, so `prem_sum() = 27 × 2 400,00 = 64 800,00 €`; `av_pp_init = 0,00 €`;
+payable throughout, so `beitragssumme() = 27 × 2 400,00 = 64 800,00 €`; `av_pp_init = 0,00 €`;
 `guar_locked_init = 0,00 €`; `prem_gross_cum_pp_init = 0,00 €`; `guar_level = 0,90`, a *Beitragsgarantie* of
 `0,90 × 64 800,00 = 58 320,00 €` at *Rentenbeginn* plus every locked-in credit; `rechnungszins = 0,0100`,
 the *Höchstrechnungszins* for 2025–2026 [R7] [R18] [REG-R15]; `payoff_form = "cap"`;

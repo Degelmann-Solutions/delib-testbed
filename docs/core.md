@@ -66,7 +66,7 @@ The core's `Projection` holds the annual first-order equivalence that RLV and KL
 
 The term positions carry the byte identity: `x * 1.0` and `x + 0.0` are exact, reassociation is not. So a neutral term stands where the product's own factor stood (KLV's rating factor between `p` and `q`, the death sum outside the sum), and RLV's `(1 + m) * rf` stays one load term.
 
-Core cells that call a cell the product defines, its hook into the chain: `mort_rate_tariff_base` calls `mort_rate_tariff_at_age(x)` (FRV, KLV), `beitragssumme_prem` calls `prem_gross_level_pp()` (KLV) and `zillmer_amount` calls `alpha_rate()`, the product's *Zillmersatz* (KLV, FRV, Basis, RV, Pflege, Riester). A product without the hook inherits the core cell unused, as with every other core cell.
+Core cells that call a cell the product defines, its hook into the chain: `mort_rate_tariff_base` calls `mort_rate_tariff_at_age(x)` (FRV, KLV), `beitragssumme_prem` calls `prem_gross_level_pp()` (KLV, Index) and `zillmer_amount` calls `alpha_rate()`, the product's *Zillmersatz* (KLV, FRV, Basis, RV, Pflege, Riester). A product without the hook inherits the core cell unused, as with every other core cell.
 
 Still in the products, because unifying them changes results or adds a quantity (each a result-changing commit of its own, listed as open work):
 
@@ -232,7 +232,7 @@ The premium payment frequency and its loading: `prem_freq()` reads the model poi
 
 The premium form: `prem_form()` reads the model point's `prem_form`, `regular` (*laufender Beitrag*) or `single` (*Einmalbeitrag*), and raises `ValueError` for another value (Basis, FRV, Index, RV, RLV, Pflege; Sofort's column is `single` on every point, and its own cells read neither it nor `prem_freq_load`). The values were `laufend` and `einmal` in FRV, RV and RLV, whose column RV and RLV named `premium_form`, and `level` for the regular premium in Index; Basis and RV read the column without a cell. A product whose model points have no `prem_form` column writes regular premiums only and reads `regular` (KLV, BU, Riester). A single premium carries no *Ratenzahlungszuschlag*, and every single-premium point carries `prem_freq = annual`, the one payment of its year (FRV's point 2 had `monthly`, read by no cell): RLV, whose single premium is the paying term 1 of the same equivalence, reads it as one instalment, the other products not at all. Pflege's *Einmalbeitrag*, the frequency `single` with the sentinel of 0 months until then, is `prem_form = single`. RLV overrides `prem_form` with its gate that `single` requires `prem_term = 1`. BU's `premium_form` (`dynamik` or `level`) and Riester's `contrib_form` are other quantities and keep their names.
 
-The *Beitragssumme* and the acquisition charge on it: `beitragssumme() = beitragssumme_prem() * beitragssumme_years()`, the annual premium times the paying years (`prem_gross_level_pp()`, `prem_term()`; KLV). FRV and Pflege override the two terms for their premium form (instalments, a single premium counted once, Pflege's age-85 cap); Basis and RV (schedule sums with *Dynamik*) and Riester (a model-point column) override `beitragssumme`. `zillmer_amount() = zillmer_on() * alpha_rate() * beitragssumme()` with `zillmer_on() = 1`; KLV overrides `zillmer_on` from its model point, FRV's `alpha_rate` is the *Zuzahlungskosten* rate on a single premium (its `beitragssumme()` is then the premium once), and Riester spreads it over five years. BU's `beitragssumme_unit` (per euro of premium) stays.
+The *Beitragssumme* and the acquisition charge on it: `beitragssumme() = beitragssumme_prem() * beitragssumme_years()`, the annual premium times the paying years (`prem_gross_level_pp()`, `prem_term()`; KLV). FRV and Pflege override the two terms for their premium form (instalments, a single premium counted once, Pflege's age-85 cap), Index only `beitragssumme_years` (`prem_term_y()`, a single premium counted once), its `prem_sum()` removed; Basis and RV (schedule sums with *Dynamik*) and Riester (a model-point column) override `beitragssumme`. `zillmer_amount() = zillmer_on() * alpha_rate() * beitragssumme()` with `zillmer_on() = 1`; KLV overrides `zillmer_on` from its model point, FRV's `alpha_rate` is the *Zuzahlungskosten* rate on a single premium (its `beitragssumme()` is then the premium once), and Riester spreads it over five years. BU's `beitragssumme_unit` (per euro of premium) stays.
 
 The shared loaders in the core's `Data` beside the tables of entry 2: `surplus_table()` (Basis, Riester's `surplus_scenario.csv`), `charge_table()` (FRV; Basis, RV and KLV's `cost_table.csv` override its index term) and `hoechstrechnungszins_table()` (Sofort). KLV's and Index's `surplus_rate_table` and RV's `decl_rate_table` have other keys and stay.
 
@@ -280,7 +280,7 @@ The inventory, every model-point column and cell that holds a premium amount, by
 |---|---|---|---|
 | core | `prem_inst_pp(t)` | cell | the money collected per policy in month t, 0 by default; all ten override it |
 | core | `premiums(t)` | cell | `prem_inst_pp(t) * pols_prem(t)`, the result column |
-| core | `beitragssumme_prem()` | cell | the annual premium of the *Beitragssumme*, `prem_gross_level_pp()` (KLV); FRV and Pflege override it |
+| core | `beitragssumme_prem()` | cell | the annual premium of the *Beitragssumme*, `prem_gross_level_pp()` (KLV, Index); FRV and Pflege override it |
 | core | `prem_net_level_pp()` | cell | the net level premium of the first-order equivalence, never a cash flow (RLV, KLV, Pflege) |
 | Basis | `prem_gross_level_pp` | column | annual premium before φ at inception; the *Einmalbeitrag* on `single` |
 | Basis | `prem_gross_pp(k)` | cell | annual premium before φ of year k, with the *Beitragsdynamik* |
@@ -302,7 +302,7 @@ The inventory, every model-point column and cell that holds a premium amount, by
 | FRV | `prem_cum_pp_init` | column and cell | premiums paid before the valuation date |
 | FRV | `prem_cum_end_pp(t)` | cell | premiums paid to the end of month t, *Zuzahlung* included: another timing than RV's `prem_cum_pp(k)` |
 | FRV | `prem_to_av_pp(t)` | cell | the premium invested in the fund after the charges |
-| Index | `prem_gross_level_pp` | column | annual premium before φ at inception; the *Einmalbeitrag* on `single` |
+| Index | `prem_gross_level_pp` | column and cell | annual premium before φ at inception; the *Einmalbeitrag* on `single`; the cell is the core's hook for `beitragssumme_prem()` |
 | Index | `prem_gross_pp(k)` | cell | annual premium before φ of year k |
 | Index | `prem_pp(k)` | cell | annual premium after φ of year k |
 | Index | `prem_inst_pp(t)` | cell | the year's `prem_pp` in the month it is due |
@@ -344,7 +344,7 @@ The inventory, every model-point column and cell that holds a premium amount, by
 | Sofort | `net_single_prem()` | cell | the *Einmalbeitrag* less the acquisition loading, a quantity of its own |
 | Sofort | `prem_inst_pp(t)` | cell | the *Einmalbeitrag* in the month it is due |
 
-The amounts that are not premiums keep their names: Riester's `contrib_*` and its column `beitragssumme`, the core's `beitragssumme()`, Basis' `prem_total_pp`, RV's `prem_pp_sched`, the `prem_to_av*` cells, Index' `prem_sum()`, the *Beitragssumme* on `prem_gross_level_pp` under Index' own name, kept as it is, and BU's `premium_form`, a form and no amount.
+The amounts that are not premiums keep their names: Riester's `contrib_*` and its column `beitragssumme`, the core's `beitragssumme()`, Basis' `prem_total_pp`, RV's `prem_pp_sched`, the `prem_to_av*` cells, and BU's `premium_form`, a form and no amount.
 
 The renamed columns and cells, old name to new name, in the order of the commits (where a new name was a current name, the current one was renamed first; where a column and a cell shared the old name, the column first):
 
@@ -385,7 +385,7 @@ The renamed columns and cells, old name to new name, in the order of the commits
 | Sofort | column | (none) | `prem_form`, added, `single` on every point |
 | FRV, Sofort | cell | (none) | `prem_due(t)`, added |
 
-Every rename and every `prem_due` commit is byte-identical. The `prem_due` commits moved operators and the literal `12` of a year's first month between cells, and the counts of `tools/measure_marginal.py` and `tests/test_measure_marginal.py` follow the roadmap's command: Index 343 to 339, Basis 628 to 625, BU 506 to 505, RLV 292 to 287, KLV 417 to 419, RV 582 to 587, FRV 414 to 416, Riester 590 to 614, M 5,249 to 5,269; M_core 190 unchanged. The result commits removed cells: BU 505 to 502, RLV 287 to 285, Basis 625 to 623, M 5,269 to 5,262. Riester's `guar_pp` then read `prem_due` for the extra contribution as the other sites do: Riester 614 to 617, M 5,262 to 5,265. Basis' `zuz_pp` and `prem_inst_pp` then took their own tests back: Basis 623 to 635, M 5,265 to 5,277.
+Every rename and every `prem_due` commit is byte-identical. The `prem_due` commits moved operators and the literal `12` of a year's first month between cells, and the counts of `tools/measure_marginal.py` and `tests/test_measure_marginal.py` follow the roadmap's command: Index 343 to 339, Basis 628 to 625, BU 506 to 505, RLV 292 to 287, KLV 417 to 419, RV 582 to 587, FRV 414 to 416, Riester 590 to 614, M 5,249 to 5,269; M_core 190 unchanged. The result commits removed cells: BU 505 to 502, RLV 287 to 285, Basis 625 to 623, M 5,269 to 5,262. Riester's `guar_pp` then read `prem_due` for the extra contribution as the other sites do: Riester 614 to 617, M 5,262 to 5,265. Basis' `zuz_pp` and `prem_inst_pp` then took their own tests back: Basis 623 to 635, M 5,265 to 5,277. Index then read the core's `beitragssumme()` for its `prem_sum()`: Index 339 to 338, M 5,277 to 5,276.
 
 ## The parameter files
 
@@ -405,7 +405,7 @@ Whether every item is read and every call names an item is checked statically, b
 
 The core file lives beside the core's loaders rather than at `core/param_core.csv`, and `param_core_path()` finds it as `_model.path / "CoreData" / "param_core.csv"`, through the product's `CoreData` symlink: `param_file` resolves against `input_dir()`, the product folder, and a scratch copy of a product folder (tests, `tools/measure_marginal.py`) copies the `CoreData` folder through the symlink and with it the core file, so a copy reads its own core file and a test can give it a fixture item without touching the core (Moritz, 2026-11-04). `mx.read_model` ignores a CSV file in a space folder, and `tests/test_provenance.py` does not descend into the symlinked folder, so the file adds no cell and no product file.
 
-Every parameter read goes through `param`: the core's parameter cells `omega_age`, `unisex_mix_male`, `expense_infl` and `roll_fwd_tol` and the products' own reads (RV, Pflege, Basis, FRV, KLV, Riester) call `data.param("<item>")`, each in the `int` or `float` wrapper it had. The former DataFrame and dict readers `param_table()` and `param_table_dict()` had no reader left and are gone; `tests/test_core.py` fails on a source that still names them.
+Every parameter read goes through `param`: the core's parameter cells `omega_age`, `unisex_mix_male`, `expense_infl` and `roll_fwd_tol` and the products' own reads (RV, Pflege, Basis, FRV, KLV, Riester) call `data.param("<item>")` and take its value as `param` types it, `int` for a digits-only text and `float` otherwise; a cast stays only where it converts, `float()` on the two counts Pflege's `recov_age_ref` (75) and FRV's `glide_months` (60). The former DataFrame and dict readers `param_table()` and `param_table_dict()` had no reader left and are gone; `tests/test_core.py` fails on a source that still names them.
 
 ### Parameter names
 

@@ -258,7 +258,7 @@ def omega_age():
     The first age nobody reaches: the death rate is 1 at ``omega_age() - 1``, so a
     projection run to it ends with no survivors.
     """
-    return int(data.param("omega_age"))                              # noqa: F821
+    return data.param("omega_age")                                   # noqa: F821
 
 
 def ret_age():
@@ -558,7 +558,7 @@ def disc_factor(y):
 
 def unisex_mix_male():
     """The male share of the unisex tariff blend, from the product's *param_tariff_type.csv*."""
-    return float(data.param("unisex_mix_male"))                      # noqa: F821
+    return data.param("unisex_mix_male")                             # noqa: F821
 
 
 def unisex_blend(q_m, q_f):
@@ -773,7 +773,7 @@ def expense_infl():
     product whose costs inflate otherwise, keying the rate by tariff or cost set, overrides the
     cell with its lookup.
     """
-    return float(data.param("expense_infl"))                         # noqa: F821
+    return data.param("expense_infl")                                # noqa: F821
 
 
 def inflation_years(t):
@@ -895,7 +895,7 @@ def roll_fwd_tol():
     A float comparison tolerance, not an actuarial assumption: each check scales it by the
     magnitude of what it compares.  A tariff without the item raises ``KeyError``.
     """
-    return float(data.param("check_tol"))                            # noqa: F821
+    return data.param("check_tol")                                   # noqa: F821
 
 
 def result_cf_columns():

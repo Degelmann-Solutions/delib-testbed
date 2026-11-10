@@ -28,8 +28,8 @@ The problems of one product: a call or declared item naming an item no layer hol
 of the tariff-type or the tariff layer that no reachable cell reads, an undeclared indirect
 read, a declared cell that does not exist, and a bypass of ``param``.  An item of the core
 file is checked across all products together, ``unused_core_items(usages)``: it is used if
-any product reads it.  The parameter tool of epic-parameter-files (entry 14) builds on this
-scan.
+any product reads it.  ``tools/params.py``, the view of a tariff's parameters, builds on
+this scan.
 """
 import ast
 import textwrap

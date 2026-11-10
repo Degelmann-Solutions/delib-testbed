@@ -577,7 +577,7 @@ def mort_be_factor():
     loading and a tariff parameter in *param_tariff_type.csv*,
     products/kapitallebensversicherung/model.md:513
     """
-    return float(data.param("mort_be_factor"))                       # noqa: F821
+    return data.param("mort_be_factor")                              # noqa: F821
 
 
 def hoechstrechnungszins():

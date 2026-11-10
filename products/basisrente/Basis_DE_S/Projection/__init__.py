@@ -820,7 +820,7 @@ def mort_be_factor():
     Override reason: the best estimate is 1.15 of the shipped first-order annuitant table, as
     RV's, a tariff parameter in *param_tariff_type.csv*, products/basisrente/technical-notes.md:323
     """
-    return float(data.param("mort_be_factor"))                       # noqa: F821
+    return data.param("mort_be_factor")                              # noqa: F821
 
 
 def mort_rate(t):

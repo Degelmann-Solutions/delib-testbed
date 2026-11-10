@@ -140,7 +140,7 @@ DEFAULT_WORKERS = (1, 4, 8, 12, 16, 24)
 # command, not this tool's, and tests/test_measure_marginal.py runs it against these constants.
 M_CORE = 190
 M_PRODUCT = {
-    "basisrente": 628,
+    "basisrente": 625,
     "berufsunfaehigkeit": 506,
     "fondsgebundene_rentenversicherung": 414,
     "indexpolice": 339,

@@ -514,17 +514,15 @@ def prem_gross_pp(k):
 
     ``prem_gross_level_pp x (1 + prem_dyn_rate)^duration_y(k)`` on the ``regular`` form: the
     *Beitragsdynamik* compounds on the base premium from **inception**, so it is keyed to
-    the policy duration and not to the projection year.  For ``prem_form = "single"`` the
-    *Einmalbeitrag* is paid once, at ``k = 0`` and only where ``duration_init = 0``, and is
-    zero at every other ``k``.
+    the policy duration and not to the projection year.  For ``prem_form = "single"`` it is
+    the *Einmalbeitrag* itself, which carries no *Dynamik*.
 
-    This is the contractual amount.  What is actually charged is :func:`prem_pp`, which
-    applies phi and stops at *Rentenbeginn*.
+    This is the contractual amount and carries no end of the premium term: whether a
+    premium falls due in year k is :func:`prem_due` alone.  What is actually charged is
+    :func:`prem_pp`, which applies phi where one is due.
     """
     if prem_form() == "single":
-        if k == 0 and duration_init() == 0:
-            return float(model_point()["prem_gross_level_pp"])
-        return 0.0
+        return float(model_point()["prem_gross_level_pp"])
     return (float(model_point()["prem_gross_level_pp"])
             * (1.0 + float(model_point()["prem_dyn_rate"])) ** duration_y(k))
 
@@ -534,8 +532,9 @@ def prem_pp(k):
 
     ``prem_gross_pp(k) x prem_freq_load()``, taken at the **start** of the year (annual in
     advance; a fractionated mode changes the amount through the *Ratenzahlungszuschlag*,
-    not the grid).  Zero from ``k = k_conv()`` — premiums stop at *Rentenbeginn* — and zero
-    on a model point that opens *beitragsfrei*, whose whole cohort is in
+    not the grid).  Zero in a year whose first month :func:`prem_due` does not make a
+    premium payable — premiums stop at *Rentenbeginn*, a single premium is paid once — and
+    zero on a model point that opens *beitragsfrei*, whose whole cohort is in
     :func:`pols_paidup` anyway.  Letting premiums run past *Rentenbeginn* is the seventh
     pitfall.
 
@@ -543,7 +542,7 @@ def prem_pp(k):
     the year: :func:`premiums` is weighted by the **opening** :func:`pols_paying` and is
     not further multiplied by ``(1 - mort_rate)``.
     """
-    if k < 0 or k >= k_conv() or k >= proj_len_y():
+    if not prem_due(12 * k):
         return 0.0
     if int(model_point()["paidup_at_init"]) == 1:
         return 0.0
@@ -570,9 +569,9 @@ def zuz_pp(k):
     """Z(k): the *Zuzahlung* paid per premium-paying policy in year k.
 
     ``zuzahlung_pp x zuz_take_up(k)``, taken at the start of the year alongside the
-    *laufender Beitrag* and carrying **no** *Ratenzahlungszuschlag*.  Zero from
-    ``k = k_conv()``, zero once ``duration_y(k) >= zuzahlung_end_dur``, and zero on a
-    model point that opens *beitragsfrei*.
+    *laufender Beitrag* and carrying **no** *Ratenzahlungszuschlag*.  Zero in a year
+    :func:`prem_due` makes no premium payable, zero once ``duration_y(k) >=
+    zuzahlung_end_dur``, and zero on a model point that opens *beitragsfrei*.
 
     The *Zuzahlung* is the product's signature premium form — a self-employed buyer tops
     the contract up out of a good year — and it is the reason ``zuzahlungen`` is published
@@ -580,7 +579,7 @@ def zuz_pp(k):
     form on a distinct charge basis, carrying ``charge_acq_sp_once`` instead of a share of the
     *Zillmerung*.
     """
-    if k < 0 or k >= k_conv() or k >= proj_len_y():
+    if not prem_due(12 * k):
         return 0.0
     if int(model_point()["paidup_at_init"]) == 1:
         return 0.0
@@ -715,7 +714,14 @@ def prem_to_av_pp(k):
 
 
 def prem_due(t):
-    """True in the month the year's *Beitrag* falls due, ``t % 12 == 0``.
+    """True in the month the year's *Beitrag* falls due.
+
+    ``t % 12 == 0``, the first month of a projection year, in a projected year before
+    *Rentenbeginn*, ``0 <= proj_year(t) < k_conv()``; on the ``single`` form in the first
+    year alone, and only where ``duration_init = 0``: the *Einmalbeitrag* is paid once, at
+    inception.  This cell is the only source of a zero for the end of the premium term:
+    :func:`prem_pp` and :func:`zuz_pp` read it at ``12 k``, the first month of their year,
+    and no premium cell tests *Rentenbeginn* or the single payment itself.
 
     The whole *Versicherungsjahr*'s contribution is taken in the **first month** of the
     projection year, with the *Zuzahlung* beside it.  The *Ratenzahlungszuschlag* is the
@@ -725,7 +731,14 @@ def prem_due(t):
     changes nothing.  The account is a *Deckungskapital* struck per *Versicherungsjahr* and
     is credited the same annual contribution whatever the mode.
     """
-    return t % 12 == 0
+    if t % 12 != 0:
+        return False
+    k = proj_year(t)
+    if k < 0 or k >= k_conv() or k >= proj_len_y():
+        return False
+    if prem_form() == "single":
+        return k == 0 and duration_init() == 0
+    return True
 
 
 def prem_inst_pp(t):

@@ -383,7 +383,7 @@ duration**, not the projection year — which is what makes an in-force point wo
 
 ```
 prem_gross_pp(k) = prem_gross_level_pp × (1 + δ)^d(k)                for prem_form = "regular"
-P(k)             = prem_gross_pp(k) × φ        if k < T and not paid-up and premiums are due
+P(k)             = prem_gross_pp(k) × φ        if prem_due(12 k) and not paid-up
                  = 0                          otherwise
 ```
 
@@ -402,7 +402,7 @@ Z(k) = zuzahlung_pp × zuz_take_up(d(k))      if k < T and d(k) < zuzahlung_end_
 tariff prices a half-yearly, quarterly or monthly mode by loading the **amount** through `φ`, not by
 moving the *Versicherungsperiode*, and the account the contribution is credited to is a
 *Deckungskapital* struck per *Versicherungsjahr*. So the whole year's *Beitrag* and *Zuzahlung* fall
-in the first month of the projection year — `prem_due(t)`, `t % 12 == 0` — whatever `prem_freq` says,
+in the first month of the projection year — `prem_due(t)`, `t % 12 == 0` and `k < T` — whatever `prem_freq` says,
 and splitting the cash into instalments while crediting the account annually would make the fund's
 cash and the account's credit disagree inside the year for no gain in fidelity.
 

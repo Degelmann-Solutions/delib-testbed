@@ -28,9 +28,9 @@ print("model point {}: {} - {}{} -> Rentenbeginn at {}, {} policy years "
           proj.t_start(), proj.proj_len() - 1))
 print("premium form = {}   {:,.2f} EUR a year x {} years {} -> collected "
       "{:,.2f} EUR   Beitragssumme {:,.2f} EUR".format(
-          proj.prem_form(), proj.prem_base_pp(proj.k_start()),
+          proj.prem_form(), proj.prem_gross_pp(proj.k_start()),
           proj.prem_term_y(), proj.prem_freq(),
-          proj.prem_gross_pp(proj.k_start()), proj.prem_sum()))
+          proj.prem_pp(proj.k_start()), proj.prem_sum()))
 print("payoff = {}   index = {}   Cap {:.2%} monthly   Quote {:.2%}   "
       "election = {}".format(
           proj.payoff_form(), proj.index_id(), proj.index_cap(proj.k_start()),

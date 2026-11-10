@@ -344,7 +344,7 @@ The inventory, every model-point column and cell that holds a premium amount, by
 | Sofort | `net_single_prem()` | cell | the *Einmalbeitrag* less the acquisition loading, a quantity of its own |
 | Sofort | `prem_inst_pp(t)` | cell | the *Einmalbeitrag* in the month it is due |
 
-The amounts that are not premiums keep their names: Riester's `contrib_*` and its column `beitragssumme`, the core's `beitragssumme()`, Basis' `prem_total_pp`, RV's `prem_pp_sched`, the `prem_to_av*` cells and BU's `premium_form`, a form and no amount.
+The amounts that are not premiums keep their names: Riester's `contrib_*` and its column `beitragssumme`, the core's `beitragssumme()`, Basis' `prem_total_pp`, RV's `prem_pp_sched`, the `prem_to_av*` cells, Index' `prem_sum()`, the *Beitragssumme* on `prem_gross_level_pp` under Index' own name, kept as it is, and BU's `premium_form`, a form and no amount.
 
 The renamed columns and cells, old name to new name, in the order of the commits (where a new name was a current name, the current one was renamed first; where a column and a cell shared the old name, the column first):
 

@@ -2,6 +2,8 @@
 
 delib-testbed is a multi-product life model built from the `delib` library of [lifelib](https://github.com/lifelib-dev/lifelib), with a real, growing commit history. It starts as upstream's standard products side by side, gets a faster runner, then a common core, and then new tariffs, tariff generations and products.
 
+This is a test bed under active development, not a product: there are no releases, and results, layout and history rules may change between phases.
+
 The repository serves two purposes:
 
 1. **Test object.** A test-set builder, kept in a separate repository, mutates this model and measures the quality of its test sets against the real history recorded here.

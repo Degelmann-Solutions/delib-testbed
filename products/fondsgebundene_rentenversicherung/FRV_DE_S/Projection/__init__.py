@@ -76,6 +76,7 @@ n                          proj_len()                       Policy months from i
 y(t)                       policy_year(t)                   t // 12 + 1 (1-based label)
 x(t)                       age(t)                           Attained age in month t
 S                          beitragssumme()                  Sum of premiums payable
+(none)                     prem_due(t)                      Is an instalment due in month t
 B(t)                       prem_charged_inst_pp(t)          Gross Beitrag due in month t
 Z(t)                       topup_pp(t)                      Zuzahlung in month t
 B(t) + Z(t)                prem_inst_pp(t)                  Premium per policy in month t
@@ -684,24 +685,40 @@ def dynamik_factor(t):
     return (1.0 + dynamik_rate()) ** (policy_year(t) - 1)
 
 
+def prem_due(t):
+    """Whether a premium instalment falls due in month t.
+
+    On a recurring-premium contract ``(t - t_start()) % prem_cycle() == 0`` inside the
+    premium term, ``t < 12 x prem_term_y()``; on a single-premium contract the frame's
+    first month ``t_start()`` alone, where the whole *Einmalbeitrag* falls.  This cell is
+    the only source of a zero for the end of the premium term: :func:`prem_charged_inst_pp`
+    reads it and tests neither the term nor the single payment itself.  A
+    *Beitragsfreistellung* is no end of the term and stays there.
+    """
+    if prem_form() == "single":
+        return t == t_start()
+    if t >= 12 * prem_term_y():
+        return False
+    return (t - t_start()) % prem_cycle() == 0
+
+
 def prem_charged_inst_pp(t):
     """The gross *Beitrag* per policy due in month t; zero in a month with no instalment.
 
-    A premium falls when the frequency says so, the premium term has not expired and the
-    contract is not yet *beitragsfrei*.  On a single-premium contract the whole
-    *Einmalbeitrag* falls at ``t_start()`` and nothing after it.
+    A premium falls where :func:`prem_due` makes one payable — the frequency says so and
+    the premium term has not expired — and the contract is not yet *beitragsfrei*.  On a
+    single-premium contract the whole *Einmalbeitrag* falls at ``t_start()`` and nothing
+    after it.
 
     The amount is :func:`prem_charged_inst_level_pp` times the *Beitragsdynamik* factor and
     nothing else: the stated instalment already contains any *Ratenzahlungszuschlag*, so
     loading it again would charge the fractionation twice.
     """
+    if not prem_due(t):
+        return 0.0
     if prem_form() == "single":
-        return prem_charged_inst_level_pp() if t == t_start() else 0.0
-    if t >= 12 * prem_term_y():
-        return 0.0
+        return prem_charged_inst_level_pp()
     if pup_month() > 0 and t >= pup_month():
-        return 0.0
-    if (t - t_start()) % prem_cycle() != 0:
         return 0.0
     return prem_charged_inst_level_pp() * dynamik_factor(t)
 

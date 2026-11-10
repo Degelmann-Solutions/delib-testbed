@@ -436,7 +436,7 @@ with a PRIIPs performance scenario**.
 
 ### The *Beitragsverrechnung*
 
-    B(t) = prem_charged_inst_level_pp · d(t)   if t < 12·prem_term_y, (pup_month > 0 ⇒ t < pup_month), (t − t₀) mod prem_cycle = 0
+    B(t) = prem_charged_inst_level_pp · d(t)   if prem_due(t): t < 12·prem_term_y, (t − t₀) mod prem_cycle = 0; and (pup_month > 0 ⇒ t < pup_month)
          = 0                     otherwise
     d(t) = (1 + dynamik_rate)^(y(t) − 1)                        Beitragsdynamik, 1.0 when off
 

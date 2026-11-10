@@ -118,7 +118,7 @@ n = omega - x(0)           proj_len_y()                    Number of projected y
 k = t // 12                proj_year(t)                    Projection year of month t
 (none)                     is_anniv(t)                     Last month of a projection year
 omega                      omega_age()                     Limiting age, table end + 1
-(none)                     prem_due(t)                     Month the contribution falls due
+(none)                     prem_due(t)                     Is the contribution due in month t
 T                          k_conv()                        The conversion year
 12 T                       t_conv()                        The conversion month
 x(k)                       age_y(k)                        Attained age in year k
@@ -528,7 +528,14 @@ def horizon_age():
 
 
 def prem_due(t):
-    """True in the month the year's contribution and Zulage fall due, ``t % 12 == 0``.
+    """True in the month the year's contribution falls due.
+
+    ``t % 12 == 0``, the first month of a projection year, while the contract accumulates,
+    ``t < t_conv()``: the last contribution year is ``k_conv() - 1``.  This cell is the only
+    source of a zero for the end of the contribution term: :func:`eigenbeitrag_pp`,
+    :func:`mindesteigenbeitrag_pp` and the unsubsidised contribution read it at ``12 k``,
+    the first month of their year, and none tests *Rentenbeginn* itself.  A
+    *Beitragsfreistellung* (``bfs_year``) is no end of the term and stays in those cells.
 
     The *Eigenbeitrag*, the unsubsidised contribution and the ZfA's Zulage payment are all
     **annual** events and all fall in the first month of a projection year.  The
@@ -536,9 +543,12 @@ def prem_due(t):
     German tariff prices monthly or quarterly payment by **loading the amount** through
     :func:`prem_freq_load`, not by moving the contribution year, and the account the
     contribution is credited to is struck per year.  The Zulage is not fractionated at all —
-    the ZfA pays the provider once a year.
+    the ZfA pays the provider once a year — and is no premium: :func:`zulagen` falls in the
+    first month of a year also at ``t_conv()``, where no contribution is due any more.
     """
-    return t % 12 == 0
+    if t % 12 != 0:
+        return False
+    return is_accum(t)
 
 
 def clock_offset_mth():
@@ -870,7 +880,7 @@ def mindesteigenbeitrag_pp(k):
     contributions have ceased, which is also the guard that keeps
     :func:`zulage_granted_pp` from dividing by zero.
     """
-    if not is_accum_y(k):
+    if not prem_due(12 * k):
         return 0.0
     return max(data.param("sockelbeitrag"),                          # noqa: F821
                min(data.param("mindesteigenbeitrag_rate") * income_ref(k),  # noqa: F821
@@ -887,7 +897,7 @@ def eigenbeitrag_pp(k):
     *Sparbeitrag* base and the *Beitragsgarantie*; :func:`eigenbeitrag_paid_pp` is what the
     saver actually hands over.
     """
-    if not is_accum_y(k):
+    if not prem_due(12 * k):
         return 0.0
     if bfs_year() >= 0 and k >= bfs_year():
         return 0.0
@@ -968,7 +978,7 @@ def contrib_total_pp(k):
     ``bfs_year()`` or at ``k_conv()``.
     """
     return (eigenbeitrag_paid_pp(k) + zulage_pp(k)
-            + (contrib_extra_pp() if (is_accum_y(k) and not
+            + (contrib_extra_pp() if (prem_due(12 * k) and not
                                       (bfs_year() >= 0 and k >= bfs_year()))
                else 0.0))
 
@@ -1012,7 +1022,7 @@ def admin_charge_pp(k):
     if k > k_conv():
         return 0.0
     base = (eigenbeitrag_pp(k) + zulage_pp(k)
-            + (contrib_extra_pp() if (is_accum_y(k) and not
+            + (contrib_extra_pp() if (prem_due(12 * k) and not
                                       (bfs_year() >= 0 and k >= bfs_year()))
                else 0.0))
     return (data.param("charge_admin_prem_inst") * base              # noqa: F821
@@ -1252,7 +1262,7 @@ def pool_ungefoerdert_pp(k):
     """
     if k < 0:
         return 0.0
-    add = (contrib_extra_pp() if (is_accum_y(k) and not
+    add = (contrib_extra_pp() if (prem_due(12 * k) and not
                                   (bfs_year() >= 0 and k >= bfs_year())) else 0.0)
     return add if k == 0 else pool_ungefoerdert_pp(k - 1) + add
 
@@ -1624,7 +1634,7 @@ def prem_inst_pp(t):
     if not prem_due(t):
         return 0.0
     k = proj_year(t)
-    extra = (contrib_extra_pp() if (is_accum_y(k) and not
+    extra = (contrib_extra_pp() if (prem_due(12 * k) and not
                                     (bfs_year() >= 0 and k >= bfs_year())) else 0.0)
     return eigenbeitrag_paid_pp(k) + extra
 
@@ -1641,9 +1651,11 @@ def zulagen(t):
 
     The ZfA pays the provider **once a year**, so this is not fractionated on any payment
     mode and falls in the same month as the *Eigenbeitrag*.  ``zulage_pp(k_conv())`` is
-    non-zero, so the conversion month carries the last contribution year's subsidy.
+    non-zero, so the conversion month carries the last contribution year's subsidy: the
+    Zulage's month is the first of a projection year, not :func:`prem_due`, which ends
+    with the contributions.
     """
-    if not prem_due(t):
+    if t % 12 != 0:
         return 0.0
     return zulage_pp(proj_year(t)) * pols_if(t)
 
@@ -1738,7 +1750,7 @@ def comm_renew(t):
     """
     if t == 0 and duration_init() == 0:
         return 0.0
-    if not is_accum(t) or not prem_due(t):
+    if not prem_due(t):
         return 0.0
     k = proj_year(t)
     return (data.param("comm_renew_prem_inst")                       # noqa: F821
@@ -1861,7 +1873,7 @@ def check_guar_roll_fwd_resid(k):
     """
     if k > k_conv():
         return guar_pp(k + 1) - guar_pp(k)
-    extra = (contrib_extra_pp() if (is_accum_y(k) and not
+    extra = (contrib_extra_pp() if (prem_due(12 * k) and not
                                     (bfs_year() >= 0 and k >= bfs_year())) else 0.0)
     return (guar_pp(k + 1) - guar_pp(k) - eigenbeitrag_pp(k)
             - zulage_pp(k) - extra + guar_carve_out_pp(k))

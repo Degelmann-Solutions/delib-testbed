@@ -484,7 +484,7 @@ and the ZfA pays the provider once, in the following one.
     Z(k)   = zulage_init_pp   for k = 0;   Ẑ(k − 1)   for 1 ≤ k ≤ T;   0 for k > T
 
 On the monthly frame both the *Eigenbeitrag* and the Zulage fall in the **first month** of the
-projection year — `prem_due(t)`, `t % 12 == 0` — and in no other: the *Ratenzuschlag* prices a
+projection year — `prem_due(t)`, `t % 12 == 0` before `t_conv` — and in no other: the *Ratenzuschlag* prices a
 fractionated payment mode by loading the amount rather than by moving the contribution year, and
 the ZfA does not fractionate at all.
 
@@ -661,8 +661,8 @@ account is struck; the cash flows that pay them are **monthly**, with `k = proj_
     claims(t, "COMMUTATION") = commutation_pp() · pols_conv()        at t = 12T only
     claims(t, "ANNUITY")     = annuity_month_pp() · pols_annuity_pay(t)
 
-    premiums(t)   = ( E(k)·φ + contrib_extra_pp·1{is_accum_y(k)} ) · l(t)   if prem_due(t), else 0
-    zulagen(t)    = Z(k) · l(t)                                             if prem_due(t), else 0
+    premiums(t)   = ( E(k)·φ + contrib_extra_pp ) · l(t)                    if prem_due(t), else 0
+    zulagen(t)    = Z(k) · l(t)                                             if t mod 12 = 0, else 0
     expenses(t)   = expense_acq_pp_once · 1{t = 0 and duration_init = 0}
                     + expense_admin_pp_ann / 12 · (1 + expense_infl)^d(t) · l(t) · 1{is_accum(t)}
                     + expense_annuity_pp_ann / 12 · pols_annuity_pay(t)

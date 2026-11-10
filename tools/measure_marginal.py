@@ -144,7 +144,7 @@ M_PRODUCT = {
     "berufsunfaehigkeit": 505,
     "fondsgebundene_rentenversicherung": 414,
     "indexpolice": 339,
-    "kapitallebensversicherung": 417,
+    "kapitallebensversicherung": 419,
     "klassische_rentenversicherung": 582,
     "pflegerentenversicherung": 807,
     "riester_rente": 590,

@@ -1221,15 +1221,18 @@ def prem_rebate_pp(k):
 def prem_pp(k):
     """The **annual** *Zahlbeitrag* charged per policy in policy year k, before any offset.
 
-    ``prem_gross_level_pp() * prem_freq_load()`` while ``k < prem_term()`` **and** the
-    contract is not *beitragsfrei*; zero otherwise.  ``m`` premiums fall in years ``k = 0 ...
-    m - 1``, the 0-based reading of "payable over the *Beitragszahlungsdauer*".  An annual
-    amount: ``phi`` loads the year's *Bruttobeitrag* once, and what is collected in a month is
+    ``prem_gross_level_pp() * prem_freq_load()`` in a policy year whose first month
+    :func:`prem_due` makes a premium payable **and** in which the contract is not
+    *beitragsfrei*; zero otherwise.  ``m`` premiums fall in years ``k = 0 ... m - 1``, the
+    0-based reading of "payable over the *Beitragszahlungsdauer*".  An annual amount:
+    ``phi`` loads the year's *Bruttobeitrag* once, and what is collected in a month is
     :func:`prem_charged_inst_pp`.
     """
-    if k < prem_term() and not is_paid_up(k):
-        return prem_gross_level_pp() * prem_freq_load()
-    return 0.0
+    if not prem_due(12 * k):
+        return 0.0
+    if is_paid_up(k):
+        return 0.0
+    return prem_gross_level_pp() * prem_freq_load()
 
 
 def prem_paid_pp(k):
@@ -1246,8 +1249,13 @@ def prem_paid_pp(k):
 def prem_due(t):
     """Whether a premium instalment falls due at the **beginning** of month t.
 
-    ``duration_mth(t) % prem_cycle() == 0``.  An annual payer is due in the first month of
-    every policy year and nowhere else; a *monthly* payer is due in every month.
+    ``duration_mth(t) % prem_cycle() == 0`` inside the *Beitragszahlungsdauer*,
+    ``duration(t) < prem_term()``.  An annual payer is due in the first month of every
+    paying policy year and nowhere else; a *monthly* payer is due in every month of one.
+    This cell is the only source of a zero for the end of the premium term: the annual
+    :func:`prem_pp` reads it at ``12 k``, the first month of its year, and no premium cell
+    tests ``prem_term()`` itself.  A *Beitragsfreistellung* is no end of the term and
+    stays in :func:`prem_pp`.
 
     **This is what the ``echt`` / ``unecht`` distinction was always about.** Under ``unecht``
     the *Versicherungsperiode* remains the year and the twelve payments are instalments of an
@@ -1257,6 +1265,8 @@ def prem_due(t):
     distinction lived in a multiplier.  Here they differ in the frame: model points 4 and 5
     are the same monthly contract, and only the *Ratenzahlungszuschlag* separates them.
     """
+    if duration(t) >= prem_term():
+        return False
     return duration_mth(t) % prem_cycle() == 0
 
 

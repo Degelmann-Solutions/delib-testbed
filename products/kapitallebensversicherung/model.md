@@ -326,7 +326,7 @@ under the two readings and differ by 1 642,40 € of projected premium.
 
 **The other half of the *Zahlweise* is now real.** `instalments()` no longer merely justifies a
 loading it does not otherwise touch: `prem_cycle() = 12 // instalments()` is the collection
-period in months, `prem_due(t)` is true when `duration_mth(t) % prem_cycle() == 0`, and
+period in months, `prem_due(t)` is true when `duration_mth(t) % prem_cycle() == 0` in the premium term, and
 `prem_inst_pp(t) = prem_paid_pp(duration(t)) / instalments()` where one falls due is a single
 instalment rather than a year's premium — formed from the annual amount so the
 *Beitragsverrechnung* offset is spread over the year exactly as the charge is. An annual payer is charged in month 0 of each policy year and nothing in

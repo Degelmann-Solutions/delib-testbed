@@ -597,7 +597,7 @@ the test that distinguishes them (pitfall 15).
 The annual amounts, with `k = duration(t)`:
 
 ```
-prem_pp(k) = prem_gross_level_pp · prem_freq_load        if k < prem_term and not is_paid_up(k)
+prem_pp(k) = prem_gross_level_pp · prem_freq_load        if prem_due(12 k) and not is_paid_up(k)
                    = 0                                      otherwise
 prem_paid_pp(k)    = prem_pp(k) − prem_rebate_pp(k)
 ```
@@ -605,7 +605,7 @@ prem_paid_pp(k)    = prem_pp(k) − prem_rebate_pp(k)
 and what is actually collected in a month, on the *Zahlweise*'s own cycle with `r = instalments`:
 
 ```
-prem_due(t)             = 1{ t mod (12/r) = 0 }
+prem_due(t)             = 1{ t mod (12/r) = 0 and duration(t) < prem_term }
 prem_charged_inst_pp(t) = prem_pp(k)/r · prem_due(t)
 prem_inst_pp(t)         = prem_paid_pp(k)/r    · prem_due(t)
 premiums(t)             = prem_inst_pp(t) · pols_if(t)

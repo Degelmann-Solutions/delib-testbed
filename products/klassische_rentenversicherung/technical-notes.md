@@ -96,7 +96,7 @@ citations do establish is the shape of each recursion, and that is what this fil
   certainty geometrically empties the cohort eleven months early.
 - **Timing conventions [std].** The premium at the **start of the policy year**, which is what
   § 12 Abs. 1 VVG makes the *Versicherungsperiode* for this tariff, so `prem_due(t)` is true in the
-  first month of each policy year and nowhere else; charges deducted immediately after; the
+  first month of each paying policy year and nowhere else; charges deducted immediately after; the
   *Rechnungszins* credited on the post-premium, post-charge balance at the **end of the year**; the
   declared surplus credited to the *Ansammlungsguthaben* at the end of the year; death and surrender
   at the **end of each month**, deaths before surrenders; the *Rentenbeginn* events after the
@@ -138,8 +138,7 @@ The right-hand column names the points that exercise each attribute away from it
 | `duration_init` | int | Complete policy years already elapsed; 0 = new business. Already 0-based, so the frame opens at `t_start() = 12 × duration_init` | 6 (20), 14 (8) |
 | `pols_if_init` | float | Policies represented; `pols_if(t_start())` | all (1.0) |
 | `prem_form` | enum {regular, single} | Recurring or single premium [S11] [REG-R53] | 2 (`single`) |
-| `prem_gross_pp` | EUR p.a. | Annual *Bruttobeitrag* before the frequency loading | all but 2 |
-| `premium_single_pp` | EUR | *Einmalbeitrag* | 2 |
+| `prem_gross_level_pp` | EUR p.a. | Annual *Bruttobeitrag* before the frequency loading; on `prem_form = single` the *Einmalbeitrag* | all; 2 (the *Einmalbeitrag*) |
 | `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | *Zahlweise*; keys `prem_freq_table.csv` for the *Ratenzahlungszuschlag*. The **collection** is annual in advance whatever the elected frequency, § 12 Abs. 1 VVG making the *Versicherungsperiode* the year for this tariff | 3 (monthly), 4 (quarterly), 5 (half-yearly) |
 | `prem_term_y` | int | Premium-paying **years** from inception, a count: premiums fall in policy years `k < prem_term_y` | 4 (20 of 22), 5 (25 of 27) |
 | `aufschub_y` | int | Deferment in **years**, a count: *Rentenbeginn* at the end of month `t = 12 × aufschub_y − 1` | all |
@@ -161,7 +160,8 @@ The right-hand column names the points that exercise each attribute away from it
 | `prem_cum_pp_init` | EUR | Premiums paid before the valuation date — the *Beitragsrückgewähr* base | 6, 14 |
 | `alpha_amort_pp_init` | EUR | Acquisition charge already amortised before the valuation date | 6 (2 592), 14 (900) |
 
-**The fourteen model points.** Point 1 is the worked example's anchor cell. Between them the points
+**The fourteen model points.** Point 1 is the worked example's anchor cell. Point 2 states its
+*Einmalbeitrag* in `prem_gross_level_pp`, the one premium column of every form. Between them the points
 carry both premium forms, all four payment frequencies, two in-force cells on two legacy guarantee
 vintages, both charge sets, all three death-benefit forms with and without surplus, all three payout
 systems, five *Rentengarantiezeit* durations including zero, *Kapitalwahlrecht* take-ups of 0 %,
@@ -409,7 +409,7 @@ documentation even on a monthly grid.** § 12 Abs. 1 VVG makes the *Versicherung
 where premiums are not measured in shorter periods, the *Deckungskapital* this model turns on is
 defined at anniversaries, and § 169 Abs. 3 pays a mid-period exit the value struck at the **end** of
 that period — so the consistent reading is a premium payable in advance for the whole year and a
-value earned for the whole year, and `prem_due(t)` is true in the first month of each policy year
+value earned for the whole year, and `prem_due(t)` is true in the first month of a paying policy year
 only. Modelling the instalments would require an unearned-premium convention on mid-year exits that
 no source in this corpus establishes. `KLV_DE_S` is the contrast and the reason this is a decision
 rather than an omission: there the *echt* / *unecht* distinction turns on whether the
@@ -451,12 +451,12 @@ flow in `result_cf()` is EUR for the model point as a whole.
 
 ### The premium and the *Beitragssumme*
 
-    P(k) = 0                                                 if k ≥ n, or k ≥ prem_term_y,
+    P(k) = 0                                                 if not prem_due(12 k),
                                                              or (pup_year > 0 and k ≥ pup_year − 1)
-         = premium_single_pp                                 if prem_form = single and k = 0
-         = prem_gross_pp × prem_freq_load × (1 + dynamik_rate)^k   if prem_form = regular
+         = prem_gross_level_pp                               if prem_form = single
+         = prem_gross_level_pp × prem_freq_load × (1 + dynamik_rate)^k   if prem_form = regular
 
-    prem_due(t) = ( t mod 12 == 0 )        the first month of each policy year, and no other
+    prem_due(t) = ( t mod 12 == 0 ) and k < n and k < prem_term_y, k = duration(t); single form: k = 0 only
     premiums(t) = P(duration(t)) × l(t)    where prem_due(t), else 0
 
     beitragssumme    = Σ_{u=0..min(prem_term_y, n)−1} P_sched(u)
@@ -936,8 +936,8 @@ Every formula here is **[std]**; nothing in the corpus calibrates any of it (gap
 
 **Configuration.** Model point 1, `point_id = 1`, `policy_id = DE-RV-0001`: `sex = M`;
 `issue_age = 50`; `issue_year = 2026`; `duration_init = 0`, so the frame opens at `t = 0`;
-`pols_if_init = 1.0`; `prem_form = regular`; `prem_gross_pp = 3 000,00 €`;
-`premium_single_pp = 0,00 €`; `prem_freq = annual`, hence `prem_freq_load = 1,000`; `prem_term_y = 17`;
+`pols_if_init = 1.0`; `prem_form = regular`; `prem_gross_level_pp = 3 000,00 €`, the annual
+premium; `prem_freq = annual`, hence `prem_freq_load = 1,000`; `prem_term_y = 17`;
 `aufschub_y = 17`, so the *Rentenbeginn* falls at the end of month `t = 203` — the end of the
 seventeenth policy year — at attained age 67;
 `rechnungszins = 1,00 %`, the 2026 vintage [REG-R15]; `charge_id = zillmer_25`;

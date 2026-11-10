@@ -140,15 +140,15 @@ DEFAULT_WORKERS = (1, 4, 8, 12, 16, 24)
 # command, not this tool's, and tests/test_measure_marginal.py runs it against these constants.
 M_CORE = 190
 M_PRODUCT = {
-    "basisrente": 628,
-    "berufsunfaehigkeit": 506,
-    "fondsgebundene_rentenversicherung": 414,
-    "indexpolice": 343,
-    "kapitallebensversicherung": 417,
-    "klassische_rentenversicherung": 582,
+    "basisrente": 635,
+    "berufsunfaehigkeit": 502,
+    "fondsgebundene_rentenversicherung": 416,
+    "indexpolice": 339,
+    "kapitallebensversicherung": 419,
+    "klassische_rentenversicherung": 587,
     "pflegerentenversicherung": 807,
-    "riester_rente": 590,
-    "risikolebensversicherung": 292,
+    "riester_rente": 617,
+    "risikolebensversicherung": 285,
     "sofortrente": 480,
 }
 M_NEW = M_CORE + sum(M_PRODUCT.values())

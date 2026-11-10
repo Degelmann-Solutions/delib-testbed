@@ -84,7 +84,7 @@ shipped index path so that the mechanics are asserted against them cell by cell.
   mechanic. `index_month(t) = t % 12 + 1` is the alignment stated as arithmetic.
 - **Timing conventions [std].** The premium at the **start of the policy year** — annual in advance,
   which is what § 12 Abs. 1 VVG makes the *Versicherungsperiode* for this tariff, so `prem_due(t)` is
-  true in the first month of each policy year and nowhere else; the premium charges deducted as the
+  true in the first month of each paying policy year and nowhere else; the charges deducted as the
   premium is credited; the reserve charge and the guaranteed interest struck on the post-premium
   balance, once a year; the insurer's acquisition expense in the frame's first month and a twelfth of
   the year's maintenance each month, on the opening in-force of that month; decrements and benefits at
@@ -170,12 +170,12 @@ from its base value, so that no column is carried without being tested.
 | `pols_if_init` | float | policies represented at `t_start()` | — (1.0 everywhere) |
 | `ret_age` | int | attained age at *Rentenbeginn*; `proj_len() = ret_age − issue_age` | 6 |
 | `prem_form` | enum {regular, single} | *laufender Beitrag* or *Einmalbeitrag* | 7 |
-| `prem_gross_pp` | EUR | the **annual-mode** premium (the *Jahresbeitrag*), or the single premium | 5, 6, 7, 8, 12, 13 |
+| `prem_gross_level_pp` | EUR | the **annual-mode** premium (the *Jahresbeitrag*), or the single premium | 5, 6, 7, 8, 12, 13 |
 | `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | payment frequency; drives `prem_freq_load()` | 4, 5, 6 |
 | `prem_term_y` | int | *Beitragszahlungsdauer* in policy years, ≤ `proj_len()` | 6, 7, 9, 13 |
 | `av_pp_init` | EUR | *Deckungskapital* per policy at the valuation date; 0 for new business | 8, 13 |
 | `guar_locked_init` | EUR | the *Höchststandsicherung* ledger already accumulated — credits made before the valuation date | 8, 13 |
-| `prem_paid_init` | EUR | premiums already paid, on the annual-mode basis; the base of the *Beitragsgarantie* so far | 8, 13 |
+| `prem_gross_cum_pp_init` | EUR | premiums already paid, on the annual-mode basis; the base of the *Beitragsgarantie* so far | 8, 13 |
 | `guar_level` | float | *Garantieniveau*: the *Beitragsgarantie* as a fraction of the *Beitragssumme* | 6, 9, 12 |
 | `rechnungszins` | float | the contract's *Rechnungszins*; a **cohort** fact, not today's rate [REG-R15] | 8, 13 |
 | `payoff_form` | enum {cap, quote} | Cap design or *Partizipationsquote* | 2, 3 |
@@ -222,9 +222,9 @@ points, four *Rechnungszins* cohorts and four *Garantieniveaus*.
 | `av_pp(k)` | *Deckungskapital* per policy at time `k`, the **start** of policy year `k`; `av_pp(k_start()) = av_pp_init` | annual recursion |
 | `av_pp_at(k, timing)` | `"BEF_PREM"`, `"AFT_PREM"`, `"AFT_CHARGE"`, `"AFT_GUAR"`, `"AFT_CREDIT"` | within policy year `k` |
 | `av_at(k, timing)`, `av(k)` | the same balances at fund level, `× pols_if(12k)` | within policy year `k` |
-| `prem_paid_pp(k)` | cumulative annual-mode premiums paid to time `k`, including `prem_paid_init` | annual, non-decreasing |
+| `prem_gross_cum_pp(k)` | cumulative annual-mode premiums paid to time `k`, including `prem_gross_cum_pp_init` | annual, non-decreasing |
 | `credit_cum_pp(k)` | the ***Höchststandsicherung*** ledger: every index and safe-arm credit made, cumulated | annual, non-decreasing |
-| `guar_floor_pp(k)` | the *Beitragsgarantie*, `guar_level × prem_paid_pp(k)` | annual, non-decreasing |
+| `guar_floor_pp(k)` | the *Beitragsgarantie*, `guar_level × prem_gross_cum_pp(k)` | annual, non-decreasing |
 | `guar_cap_pp(k)` | the guaranteed capital, `guar_floor_pp(k) + credit_cum_pp(k)` | annual, non-decreasing |
 | `av_min_pp(k)`, `av_min_pp_at(k, timing)` | the shadow *Deckungskapital* on a **five-year** acquisition-cost spread, with the same within-year timings — the § 169 Abs. 3 floor [REG-R28] | annual recursion |
 | `index_base_pp(k)` | `G(k)`, the participating capital of the *Indexjahr* of policy year `k` = `av_pp(k)`, **before** that year's premium | annual |
@@ -418,7 +418,7 @@ oversight.
 | `x(t)` | `age(t)` | attained age in month `t` = `issue_age + duration(t)`, stepping on the anniversary |
 | `l(t)` | `pols_if(t)` | policies in force at time `t`, the start of **month** `t`; `l(t₀) = pols_if_init()` |
 | `φ` | `prem_freq_load()` | the *Ratenzahlungszuschlag* multiplier |
-| `P_b(k)`, `P(k)` | `prem_base_pp(k)`, `prem_gross_pp(k)` | the annual-mode premium due in policy year `k`; the amount actually collected, `P_b(k)·φ`, in the first month of that year |
+| `P_b(k)`, `P(k)` | `prem_gross_pp(k)`, `prem_pp(k)` | the annual-mode premium due in policy year `k`; the amount actually collected, `P_b(k)·φ`, in the first month of that year |
 | `BS` | `prem_sum()` | *Beitragssumme* = `Σ_k P_b(k)` over the whole contract, **on the annual-mode premium** |
 | `α(k)`, `α₅(k)` | `prem_charge_acq_pp(k)`, `prem_charge_acq_min_pp(k)` | the acquisition charge on the tariff spread and on the five-year spread |
 | `β·P(k)` | `prem_charge_adm_pp(k)` | the premium-based administration charge |
@@ -437,7 +437,7 @@ oversight.
 | `X(k)`, `U(k)` | `index_credit_pp(k)`, `surplus_credit_pp(k)` | the *Indexgutschrift* `ρ(k)·w(k)·G(k)`; the safe-arm credit `(1−w(k))·b(k)·G(k)` |
 | `B(k)` | `opt_budget_pp(k)` | the option budget, `w(k)·b(k)·G(k)` |
 | `K(k)` | `credit_cum_pp(k)` | the *Höchststandsicherung* ledger, `Σ_{u<k} (X(u) + U(u))` |
-| `Π(k)`, `Γ(k)` | `prem_paid_pp(k)`, `guar_cap_pp(k)` | cumulative annual-mode premiums paid; the guaranteed capital, `guar_level·Π(k) + K(k)` |
+| `Π(k)`, `Γ(k)` | `prem_gross_cum_pp(k)`, `guar_cap_pp(k)` | cumulative annual-mode premiums paid; the guaranteed capital, `guar_level·Π(k) + K(k)` |
 | `q_d(t)`, `w_l(t)` | `mort_rate(t)`, `lapse_rate(t)` | the **annual** death and surrender rates of the policy year `t` falls in |
 | `q^m_d(t)`, `w^m_l(t)` | `mort_rate_mth(t)`, `lapse_rate_mth(t)` | the **monthly** rates the recursion applies, each `1 − (1 − r)^(1/12)` |
 | `D(k)`, `V(k)`, `M(k)` | `db_pp(k)`, `cv_pp(k)`, `mat_pp(k)` | the death benefit, the surrender value, the benefit at *Rentenbeginn* (non-zero only at `k = n−1`) |
@@ -448,18 +448,18 @@ amount times the count it is struck on.
 
 ### The premium
 
-    P_b(k) = prem_gross_pp        for k < prem_term_y  (level form: policy years 1 … prem_term_y)
-           = prem_gross_pp        for k = k₀ only      (single form)
+    P_b(k) = prem_gross_level_pp  in every policy year, the contractual amount
+    due(k) = k < prem_term_y      (level form: policy years 1 … prem_term_y);  k = k₀ only  (single form)
+    P(k)   = P_b(k) · φ           where due(k)
            = 0                    otherwise
-    P(k)   = P_b(k) · φ
     α(k)   = min(charge_acq_bsum_once, zillmer_cap_bsum) · BS / min(acq_spread_years, prem_term_y)   for
              k < min(acq_spread_years, prem_term_y), i.e. the first that many premium-paying
              years, 0 afterwards
     α₅(k)  = the same with acq_spread_years replaced by 5, unconditionally
     P⁺(k)  = P(k) − α(k) − charge_admin_prem_inst · P(k)
-    Π(k+1) = Π(k) + P_b(k),      Π(k₀) = prem_paid_init
+    Π(k+1) = Π(k) + P_b(k) where due(k),      Π(k₀) = prem_gross_cum_pp_init
 
-    prem_due(t) = ( t mod 12 == 0 )     the first month of each policy year, and no other
+    prem_due(t) = ( t mod 12 == 0 ) and due(duration(t))     the first month of a paying policy year, and no other
     premiums(t) = P(duration(t)) · l(t) where prem_due(t), else 0
 
 `φ` multiplies the premium **collected**; it does **not** enter `BS`, and therefore does not enter the
@@ -810,7 +810,7 @@ take deliberately and is not made in a provenance pass.
     `cv_pp(k) < av_pp_at(k,"AFT_GUAR")` on every point with `surr_charge_on = 1`.
 14. **Double-charging or mis-basing the *Ratenzahlungszuschlag*.** `φ` multiplies the premium
     **collected** and does **not** enter the *Beitragssumme*. On model point 4 (monthly) assert
-    `prem_gross_pp(k) == 2 400,00 × 1,05 == 2 520,00` while `prem_sum() == 2 400,00 × 32 == 76 800,00`,
+    `prem_pp(k) == 2 400,00 × 1,05 == 2 520,00` while `prem_sum() == 2 400,00 × 32 == 76 800,00`,
     so the acquisition charge and the 50 % death floor are unchanged by the payment frequency.
 15. **Letting the Cap and the option budget be independent parameters.** They are not: the Cap is the
     level at which the option strip costs the budget. Assert `index_budget_ratio()` — total index credits
@@ -871,11 +871,11 @@ them, and none for this product specifically.
 `policy_id = "DE-IDX-0001"`; `sex = M`; `issue_age = 40`; `duration_init = 0`, so `t_start() = 0` and the
 table below is the **entire** projection; `pols_if_init = 1.0`; `ret_age = 67`, hence
 `proj_len_y() = 67 − 40 = 27` policy years and `proj_len() = 324` months, `t = 0 … 323`;
-`prem_form = regular`; `prem_gross_pp = 2 400,00 €` (the annual-mode
+`prem_form = regular`; `prem_gross_level_pp = 2 400,00 €` (the annual-mode
 *Jahresbeitrag*, i.e. the research file's 200,00 € a month taken annually); `prem_freq = annual`, so
 `prem_freq_load() = 1,000` and the premium collected equals the premium due; `prem_term_y = 27`, premiums
 payable throughout, so `prem_sum() = 27 × 2 400,00 = 64 800,00 €`; `av_pp_init = 0,00 €`;
-`guar_locked_init = 0,00 €`; `prem_paid_init = 0,00 €`; `guar_level = 0,90`, a *Beitragsgarantie* of
+`guar_locked_init = 0,00 €`; `prem_gross_cum_pp_init = 0,00 €`; `guar_level = 0,90`, a *Beitragsgarantie* of
 `0,90 × 64 800,00 = 58 320,00 €` at *Rentenbeginn* plus every locked-in credit; `rechnungszins = 0,0100`,
 the *Höchstrechnungszins* for 2025–2026 [R7] [R18] [REG-R15]; `payoff_form = "cap"`;
 `index_id = "eqidx_vol17"`, so the Cap is 3,00 % a month and the *Indexjahre* at `k = 8` and `k = 9`

@@ -265,7 +265,7 @@ ledgers are **annual**, and all three take `k`:
 |---|---|---:|---:|
 | `ansammlung` (point 1) | `av_sur_pp(k+1) = av_sur_pp(k) (1 + a(k)) + C(k)` | **65 227,99 €** | 50 460,89 € |
 | `bonus` (point 8) | `bonus_si_pp(k+1) = bonus_si_pp(k) + C(k) / pu_single_prem(k+1)` | 63 562,77 € | **50 532,10 €** |
-| `beitragsverrechnung` (point 9) | `prem_offset_pp(k) = min(prem_charged_pp(k), C(k−1))` | 52 428,98 € | 50 085,64 € |
+| `beitragsverrechnung` (point 9) | `prem_rebate_pp(k) = min(prem_pp(k), C(k−1))` | 52 428,98 € | 50 085,64 € |
 
 `t` = 59 is the twelfth month of the fifth policy year, and the column is quoted there because
 that is where the monthly model reproduces the annual one exactly. Through months 48 to 58 the
@@ -326,7 +326,7 @@ under the two readings and differ by 1 642,40 € of projected premium.
 
 **The other half of the *Zahlweise* is now real.** `instalments()` no longer merely justifies a
 loading it does not otherwise touch: `prem_cycle() = 12 // instalments()` is the collection
-period in months, `prem_due(t)` is true when `duration_mth(t) % prem_cycle() == 0`, and
+period in months, `prem_due(t)` is true when `duration_mth(t) % prem_cycle() == 0` in the premium term, and
 `prem_inst_pp(t) = prem_paid_pp(duration(t)) / instalments()` where one falls due is a single
 instalment rather than a year's premium — formed from the annual amount so the
 *Beitragsverrechnung* offset is spread over the year exactly as the charge is. An annual payer is charged in month 0 of each policy year and nothing in
@@ -484,8 +484,8 @@ symbols; the full mapping lives in the `Projection` Space docstring. Six cases n
 |---|---|---|
 | `q₁(x)`, `q(t)` | `mort_rate_tariff_at_age` / `mort_rate_base` / `mort_rate` | Three quantities: the unisex **tariff** rate that prices and reserves, the policy's own sex-specific table row, and the best estimate that projects. `mort_rate_table` and `mort_ae_factor` are both retired names |
 | `V(t)` | `res_pp` / `res_net_pp` / `res_zill_pp` / `res_min_pp` / `res_guar_pp` | One symbol, five amounts. `res_pp` is what the contract holds; the middle three are constructions; `res_guar_pp` is the § 169 value at the **end** of the year |
-| `B`, `P^n`, `P^Z` | `prem_gross_pp` / `prem_net_level_pp` / `prem_zill_pp` | The *Bruttobeitrag* and two **pricing quantities that never become cash flows**. `premium_net_pp` is a retired name; `prem_net_level_pp` is the one that won |
-| (charged / paid) | `prem_charged_pp(k)` / `prem_paid_pp(k)` | The **year's** *Zahlbeitrag* before and after the *Beitragsverrechnung* offset, with `prem_charged_inst_pp(t)` and `prem_inst_pp(t)` the instalments the *Zahlweise* makes due. The renewal commission reads the charged instalment |
+| `B`, `P^n`, `P^Z` | `prem_gross_level_pp` / `prem_net_level_pp` / `prem_zill_pp` | The *Bruttobeitrag* and two **pricing quantities that never become cash flows**. `premium_net_pp` is a retired name; `prem_net_level_pp` is the one that won |
+| (charged / paid) | `prem_pp(k)` / `prem_paid_pp(k)` | The **year's** *Zahlbeitrag* before and after the *Beitragsverrechnung* offset, with `prem_charged_inst_pp(t)` and `prem_inst_pp(t)` the instalments the *Zahlweise* makes due. The renewal commission reads the charged instalment |
 | `U(t)` | `av_sur_pp`, `av_sur_pp_at`, `av_sur`, `av_sur_at` | The **surplus** half of the house account-value pair, on the *Überschussguthaben* — which receives surplus and **never premium**, so `prem_to_av_pp` has no counterpart here and is not published. Library-wide `av_pp` is the *principal* balance (`RV_DE_S`'s and `Basis_DE_S`'s *Deckungskapital*, `FRV_DE_S`'s *Fondsguthaben*) and `av_sur_pp` the *verzinsliche Ansammlung* beside it, which is `RV_DE_S`'s spelling on the one model carrying both; this product's principal balance is a **reserve**, `res_pp`, so there is no `av_pp` here. `withdrawals` is likewise absent: no located wording gives a classic endowment a partial-withdrawal right |
 | `w(t)`, `σ(t)` | `lapse_rate` / `stornoabzug_rate` | A decrement and a deduction, in one CSV and easy to confuse. `lapse_rate(t)` returns the **annual** rate of the policy year `t` falls in, per the library convention, and `lapse_rate_mth(t)` is what the recursion applies; `stornoabzug_rate(k)` is a band read by policy **year** and never twelfth-rooted — a deduction is a percentage, not a decrement |
 

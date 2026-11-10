@@ -123,12 +123,12 @@ actually billed is `beitragsverrechnung` times it — the anticipated *Überschu
 advance under § 153 VVG through § 176, with the MindZV risk-result minimum behind it [R14]
 [REG-R18] [REG-R24].
 
-`result_cf()` publishes **both**: `premiums(t)` is the gross stream and `surplus_credit(t)` the
-credit returned out of it, so the cash collected is the difference and the
-*Überschussbeteiligung* is a visible line rather than a netting hidden inside the premium. A
-model carrying only the *Zahlbeitrag* silently assumes the credit is permanent; one carrying only
-the *Bruttobeitrag* overstates collected premium by `1/0,70 − 1 = 42,86 %`. Over the anchor
-cell's 444 months `Σ premiums / Σ (premiums − surplus_credit) = 23,636.5239 / 16,545.5667 =
+`result_cf()` publishes the money collected, as every product's does: `premiums(t)` is the
+*Zahlbeitrag*, and the credit netted off the *Bruttobeitrag* instalment is the cell
+`prem_rebate_inst_pp(t)`, which `check_prem_split` closes against the instalment due. A
+model that knows only the *Zahlbeitrag* silently assumes the credit is permanent; one booking
+the *Bruttobeitrag* as premium overstates collected premium by `1/0,70 − 1 = 42,86 %`. Over the anchor
+cell's 444 months `Σ prem_charged_inst_pp × pols_prem / Σ premiums = 23,636.5239 / 16,545.5667 =
 1.428571428571429`, which is `1 / 0.70` to fifteen figures — necessarily so, because `prem_freq_load`
 scales *Bruttobeitrag* and *Beitragsverrechnung* **together** and cancels out of the ratio.
 
@@ -167,7 +167,7 @@ every month — so `prem_freq_load` is a genuine loading on the tariff premium r
 re-expression of it. Running the shadow from inception rather than from the valuation date is
 what gives an in-force point the premium its contract was struck at: **model point 6 is model
 point 1 fifteen years on, and the two price identically at 965,1582 € p.a.** Model point 13
-supplies `gross_prem_ann = 2 400,00 €` instead, so the override branch ships too.
+supplies `prem_gross_level_std_pp = 2 400,00 €` instead, so the override branch ships too.
 
 ## The *Beitragsbefreiung* is the absence of a premium, not a benefit
 
@@ -177,13 +177,13 @@ contract [S1] [S2] — and in a multi-state model that is not a cash flow at all
 
 ```
 pols_prem(t) = pols_actv(t) + Σ_{z ≤ karenz_months} pols_dis_dur(t, z)
-premiums(t)  = prem_gross_pp(t) x pols_prem(t)
+premiums(t)  = prem_inst_pp(t) x pols_prem(t)
 ```
 
 Weighting by `pols_if(t)` instead charges premium to lives in claim and silently deletes the
 waiver. It is the classic German BU implementation error, it leaves every total looking
 plausible, and it is why `check_net_cf()` rebuilds the premium leg from
-`prem_zahl_pp(t) × pols_prem(t)` rather than from `premiums(t) − surplus_credit(t)`.
+`prem_inst_pp(t) × pols_prem(t)` rather than reading `premiums(t)` off the frame.
 
 A life inside the *Karenzzeit* is *berufsunfähig*, is **not** yet paid, and **still pays
 premium** **[std]** — the waiver runs with the benefit. On the anchor `karenz_months = 0`, so
@@ -197,7 +197,7 @@ both of those are part of the *definition* of BU, and the *Karenzzeit* defers th
 
 | | escalates | steps on | cells |
 |---|---|---|---|
-| *Beitragsdynamik* `g_B` | the **insured** *BU-Rente* **and** the annual *Bruttobeitrag*, before any claim | the **policy** anniversary | `dyn_factor(t)` → `bu_rente_pp(t)`, `prem_gross_ann_pp(t)` |
+| *Beitragsdynamik* `g_B` | the **insured** *BU-Rente* **and** the annual *Bruttobeitrag*, before any claim | the **policy** anniversary | `dyn_factor(t)` → `bu_rente_pp(t)`, `prem_gross_pp(t)` |
 | *Leistungsdynamik* `g_L` | the *BU-Rente* **in payment** | the anniversary of the **onset** | `leistungsdyn_factor(z)` → `rente_pay_pp(t, z)` |
 
 `rente_pay_pp(t, z) = bu_rente_pp(t − z) × (1 + g_L)^((z − 1) // 12)`: the insured amount at
@@ -311,12 +311,12 @@ delib's second ruling, and it is machine-checked.
 Seven `check_*()` cells, each a no-argument `bool` over all `t` with a per-`t` residual.
 
 **`check_net_cf` — delib ruling 1, in one line:**
-`net_cf(t) = prem_zahl_pp(t) × pols_prem(t) − claims(t,"BU_RENTE") − claims(t,"REINTEGRATION") − claims(t,"LAPSE") − expenses(t) − claim_expenses(t)`.
+`net_cf(t) = prem_inst_pp(t) × pols_prem(t) − claims(t,"BU_RENTE") − claims(t,"REINTEGRATION") − claims(t,"LAPSE") − expenses(t) − claim_expenses(t)`.
 
 The premium leg is deliberately rebuilt from the *Zahlbeitrag* **actually billed** times the
-premium-paying count rather than from `premiums(t) − surplus_credit(t)`, which makes it a real
-reconciliation instead of a restatement of `net_cf`'s own formula: it crosses the *Brutto* /
-*Zahl* split and fails if the premium is weighted by `pols_if` instead of `pols_prem`.
+premium-paying count rather than read from the frame's `premiums`, and the claims kind by kind
+where `net_cf` subtracts their total, which makes it a reconciliation rather than a restatement
+of `net_cf`'s own formula: it fails if `premiums` came to be weighted by `pols_if`, not `pols_prem`.
 
 | Check | Identity |
 |---|---|
@@ -324,7 +324,7 @@ reconciliation instead of a restatement of `net_cf`'s own formula: it crosses th
 | `check_pols_roll_fwd` | `pols_if(t+1) = pols_if(t) − pols_death(t) − pols_lapse(t)` |
 | `check_dis_roll_fwd` | `pols_dis(t+1) = pols_dis(t) − pols_death_dis(t) − pols_recovery(t) + pols_inception(t)` |
 | `check_runoff_roll_fwd` | `pols_runoff(t+1) = pols_runoff(t) − pols_death_runoff(t) − pols_reactivation(t) + pols_recovery(t)` |
-| `check_prem_split` | `premiums(t) − surplus_credit(t) = prem_zahl_pp(t) × pols_prem(t)` |
+| `check_prem_split` | `prem_charged_inst_pp(t) = prem_inst_pp(t) + prem_rebate_inst_pp(t)` |
 | `check_cover_end` | `claims(t,"BU_RENTE") = 0` wherever `age(t) ≥ benefit_end_age()`, and `premiums(t) = 0` wherever `age(t) ≥ cover_end_age()` |
 
 `check_pols_roll_fwd` is **trivially zero by construction** — `pols_if` is defined by exactly
@@ -342,7 +342,7 @@ arriving in another, or arrives in two. The first fixes the definition, the seco
 | *Wiedereingliederungshilfe* | `wiedereingliederung_months` | `6`, and `0` on model point 12 | Monthly *Renten* paid on each **completed** run-off |
 | *Leistungsdynamik* | `leistungsdyn_rate` | `0.02`, and `0.00` on model point 12 | In-claim escalation on each onset anniversary |
 | *Risikozuschlag* | `rating_factor` | `1.00` | A multiplier on the *Bruttobeitrag* alone |
-| Premium override | `gross_prem_ann` | `0.0` = derive by equivalence | Model point 13 supplies 2 400,00 € p.a. instead |
+| Premium override | `prem_gross_level_std_pp` | `0.0` = derive by equivalence | Model point 13 supplies 2 400,00 € p.a. instead |
 
 Model point 12 is the anchor with both escalations off: its equivalence gives 824,59 € against
 the anchor's 965,16 €, so the *Leistungsdynamik* and the *Wiedereingliederungshilfe* together

@@ -121,11 +121,11 @@ pols_death(t)               pols_death(t)                   Deaths from every st
 pols_lapse(t)               pols_lapse(t)                   Surrenders, active state only
 (none)                      pols_dead_cum(t)                Cumulative deaths
 (none)                      pols_lapse_cum(t)               Cumulative surrenders
-(none)                      premium_due(t)                  Is an instalment due?
-(none)                      premium_pp(t)                   The instalment charged
-(none)                      cum_prem_max_pp(t)              Premium payable to date
+(none)                      prem_due(t)                     Is an instalment due?
+(none)                      prem_charged_inst_pp(t)         The instalment charged
+(none)                      prem_cum_max_pp(t)              Premium payable to date
 (none)                      prem_units_at(t)                The same, in units of P
-(none)                      prem_inst_pp(t)                 premium_pp(t), per unit
+(none)                      prem_inst_pp(t)                 prem_charged_inst_pp(t), per unit
 premiums(t)                 premiums(t)                     Beitrag income
 (none)                      rkw_pp(t)                       Rueckkaufswert per policy
 (none)                      brg_pp(t)                       Beitragsrueckgewaehr per policy
@@ -1106,7 +1106,7 @@ def pols_lapse_cum(t):
     return pols_lapse_cum(t - 1) + pols_lapse(t - 1)
 
 
-def premium_due(t):
+def prem_due(t):
     """Whether an instalment falls due at the start of month ``t``.
 
     ``t % prem_cycle() == 0`` inside the premium term, and for the *Einmalbeitrag*
@@ -1126,7 +1126,7 @@ def premium_due(t):
     return t % prem_cycle() == 0
 
 
-def premium_pp(t):
+def prem_charged_inst_pp(t):
     """The instalment charged per paying policy at the start of month ``t``.
 
     ``premium_mth_pp() x prem_cycle()`` on a due month and zero otherwise, so a
@@ -1142,14 +1142,14 @@ def premium_pp(t):
     monthly, through the timing of the discounting alone, which is the opposite sign to a
     real German tariff.
     """
-    if not premium_due(t):
+    if not prem_due(t):
         return 0.0
     if prem_form() == "single":
         return premium_mth_pp()
     return premium_mth_pp() * prem_cycle()
 
 
-def cum_prem_max_pp(t):
+def prem_cum_max_pp(t):
     """The *Beitrag* payable to date per policy on an **uninterrupted** path.
 
     A deterministic quantity, not a ledger: it is what a policy that never claimed, never
@@ -1172,22 +1172,22 @@ def cum_prem_max_pp(t):
 
 
 def prem_inst_pp(t):
-    """The *Beitrag* per paying unit in month ``t``, :func:`premium_pp`.
+    """The *Beitrag* per paying unit in month ``t``, :func:`prem_charged_inst_pp`.
 
     Collected **in advance**, at the start of the month; the core's :func:`premiums`
     weights it by :func:`pols_prem`, the lives then inside the term and not waived.
     Income-positive, like every other term of :func:`net_cf`.
 
-    Override reason: the premium is ``premium_pp(t)``, the monthly *Beitrag* in a month it
-    is due, products/pflegerentenversicherung/technical-notes.md:551
+    Override reason: the premium is ``prem_charged_inst_pp(t)``, the monthly *Beitrag* in a
+    month it is due, products/pflegerentenversicherung/technical-notes.md:551
     """
-    return premium_pp(t)
+    return prem_charged_inst_pp(t)
 
 
 def rkw_pp(t):
     """The *Rückkaufswert* per surrendering policy at the end of month ``t``.
 
-    ``rkw_prem_ratio(min(y(t), Y)) x cum_prem_max_pp(t) x (1 - stornoabzug_rate())``, with
+    ``rkw_prem_ratio(min(y(t), Y)) x prem_cum_max_pp(t) x (1 - stornoabzug_rate())``, with
     ``Y = data.surrender_table_last_year()`` the table's last policy year, 40 — the
     guaranteed surrender value as a fraction of premiums paid to date, which is the
     scale-free form a German contract states, less any contractual *Stornoabzug*.
@@ -1201,20 +1201,20 @@ def rkw_pp(t):
     """
     ratio = float(data.surrender_table_dict()["rkw_prem_ratio"][     # noqa: F821
         min(policy_year(t), data.surrender_table_last_year())])     # noqa: F821
-    return ratio * cum_prem_max_pp(t) * (1.0 - stornoabzug_rate())
+    return ratio * prem_cum_max_pp(t) * (1.0 - stornoabzug_rate())
 
 
 def brg_pp(t):
     """The *Beitragsrückgewähr* per dying policy at the end of month ``t``.
 
-    ``cum_prem_max_pp(t)`` where the option is on and ``0.0`` where it is not, so
+    ``prem_cum_max_pp(t)`` where the option is on and ``0.0`` where it is not, so
     ``claims(t, "DEATH")`` is structurally zero in the base run.  The **gross** form —
     no offset for annuity already paid — for the reason given at
     :func:`beitragsrueckgewaehr`.
     """
     if not beitragsrueckgewaehr():
         return 0.0
-    return cum_prem_max_pp(t)
+    return prem_cum_max_pp(t)
 
 
 def claims(t, kind=None):
@@ -1787,7 +1787,7 @@ def tariff_benefit_pv():
 def tariff_annuity():
     """U: the expected present value of the premium stream **in units of P**.
 
-    ``sum_{t : premium_due(t)} v**t m tar_pols_prem(t)``.  Dividing the benefit and expense
+    ``sum_{t : prem_due(t)} v**t m tar_pols_prem(t)``.  Dividing the benefit and expense
     values by this is what strikes the level premium, so it is the annuity factor of the
     equivalence and the quantity a reader recomputes to check the premium by hand.
 
@@ -1798,7 +1798,7 @@ def tariff_annuity():
     mult = 1 if prem_form() == "single" else prem_cycle()
     total = 0.0
     for t in range(proj_len()):
-        if premium_due(t):
+        if prem_due(t):
             total += disc_factor_mth(t) * mult * tar_pols_prem(t)
     return total
 
@@ -1878,7 +1878,7 @@ def premium_mth_pp():
 def prem_units_at(t):
     """The number of premium **units of P** payable to date on an uninterrupted path.
 
-    ``cum_prem_max_pp(t) / P`` written without ``P``, so the *Beitragsrückgewähr* leg of the
+    ``prem_cum_max_pp(t) / P`` written without ``P``, so the *Beitragsrückgewähr* leg of the
     equivalence can be assembled before the premium it would otherwise depend on is known.
     Breaking that circularity is the only reason this cells exists.
     """
@@ -2076,7 +2076,7 @@ def check_prem_equiv_resid(t):
     per_payment = float(data.param("load_claim_pp_inst"))            # noqa: F821
     acq_load = float(data.param("load_acq_bsum_once"))               # noqa: F821
 
-    prem_leg = p0 * mult * tar_pols_prem(t) if premium_due(t) else 0.0
+    prem_leg = p0 * mult * tar_pols_prem(t) if prem_due(t) else 0.0
 
     state = tar_ledger(t)
     ben_leg = 0.0
@@ -2193,7 +2193,7 @@ def result_states_columns():
         ("mort_rate_care_pg%d" % n, lambda t: mort_rate_care(t, n)), # noqa: F821
         ("inc_rate", inc_rate),                                      # noqa: F821
         ("lapse_rate", lapse_rate),                                  # noqa: F821
-        ("premium_pp", premium_pp),                                  # noqa: F821
+        ("prem_charged_inst_pp", prem_charged_inst_pp),              # noqa: F821
     )
 
 

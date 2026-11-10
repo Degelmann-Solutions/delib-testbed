@@ -118,7 +118,7 @@ T                          k_conv()                        Projection year of Re
 12 T                       t_conv()                        Month of the first instalment
 (none)                     gtd_end_t()                     Last month of the Rentengarantiezeit
 S                          beitragssumme()                 Beitragssumme at inception
-P0 (1 + delta)^d(k)        prem_base_pp(k)                 Contractual Beitrag before phi
+P0 (1 + delta)^d(k)        prem_gross_pp(k)                Contractual Beitrag before phi
 phi                        prem_freq_load()                Ratenzahlungszuschlag
 P(k)                       prem_pp(k)                      Beitrag charged per paying policy
 (none)                     prem_due(t)                     True in the month it falls due
@@ -132,10 +132,9 @@ alpha_z(k)                 alpha_zuz_pp(k)                 Acquisition charge on
 k                          inflation_years(t)              proj_year(t), from valuation
 u(k)                       unit_cost_pp(k)                 Stueckkosten, inflating
 N(k)                       prem_to_av_pp(k)                Premium credited after charges
-P(k)                       prem_inst_pp(t)                 Premium due per policy in t
+P(k) + Z(k)                prem_inst_pp(t)                 Beitrag and Zuzahlung due in t
 L^p(t)                     pols_prem(t)                    Weight on it: pols_paying(t)
-premiums(t)                premiums(t)                     Laufende Beitraege, fund level
-zuzahlungen(t)             zuzahlungen(t)                  Zuzahlungen, fund level
+premiums(t)                premiums(t)                     Beitraege and Zuzahlungen
 A^p(k, .)                  av_pp_at(k, timing)             Deckungskapital per paying policy
 A^p(k)                     av_pp(k)                        Its start-of-year value
 A^f(k, .)                  av_pu_at(k, timing)             Premium-free block, fund level
@@ -175,7 +174,6 @@ E(t)                       expenses(t)                     Insurer expense outgo
 (none)                     comm_init_rate()                Abschlussprovision rate
 (none)                     comm_renew(t)                   Bestandsprovision
 C(t)                       commissions(t)                  Commission outgo
-(none)                     income_other(t)                 zuzahlungen(t), in net_cf
 net_cf(t)                  net_cf(t)                       Net cash flow, income positive
 liability_cf(t)            liability_cf(t)                 The same stream, outgo positive
 =========================  ==============================  ==============================
@@ -486,9 +484,9 @@ def beitragssumme():
     **including** the *Beitragsdynamik* and **excluding** *Zuzahlungen* and the
     *Ratenzahlungszuschlag*::
 
-        S = sum_{u=0}^{m-1} prem_base_pp x (1 + prem_dyn_rate)^u,   m = ret_age - issue_age
+        S = sum_{u=0}^{m-1} prem_gross_level_pp x (1 + prem_dyn_rate)^u,   m = ret_age - issue_age
 
-    and simply ``prem_base_pp`` for a single premium.  Excluding *Zuzahlungen* is the
+    and simply ``prem_gross_level_pp`` for a single premium.  Excluding *Zuzahlungen* is the
     conservative reading of a question no retrieved source settles, and it matters twice:
     S is the base of the 25 ‰ *Höchstzillmersatz* cap on the acquisition charge written
     into the account, and it is the base of the initial commission.  On a long-dated
@@ -502,40 +500,39 @@ def beitragssumme():
     the schedule, not a level premium times the years, products/basisrente/technical-notes.md:433
     """
     dyn = float(model_point()["prem_dyn_rate"])
-    base = float(model_point()["prem_base_pp"])
+    base = float(model_point()["prem_gross_level_pp"])
     if prem_form() == "single":
         return base
     m = ret_age() - issue_age()
     return sum(base * (1.0 + dyn) ** u for u in range(max(m, 0)))
 
 
-def prem_base_pp(k):
+def prem_gross_pp(k):
     """The contractual *laufender Beitrag* in year k, before the *Ratenzahlungszuschlag*.
 
-    ``prem_base_pp x (1 + prem_dyn_rate)^duration_y(k)`` on the ``regular`` form: the
+    ``prem_gross_level_pp x (1 + prem_dyn_rate)^duration_y(k)`` on the ``regular`` form: the
     *Beitragsdynamik* compounds on the base premium from **inception**, so it is keyed to
-    the policy duration and not to the projection year.  For ``prem_form = "single"`` the
-    *Einmalbeitrag* is paid once, at ``k = 0`` and only where ``duration_init = 0``, and is
-    zero at every other ``k``.
+    the policy duration and not to the projection year.  For ``prem_form = "single"`` it is
+    the *Einmalbeitrag* itself, which carries no *Dynamik*.
 
-    This is the contractual amount.  What is actually charged is :func:`prem_pp`, which
-    applies phi and stops at *Rentenbeginn*.
+    This is the contractual amount and carries no end of the premium term: whether a
+    premium falls due in year k is :func:`prem_due` alone.  What is actually charged is
+    :func:`prem_pp`, which applies phi where one is due.
     """
     if prem_form() == "single":
-        if k == 0 and duration_init() == 0:
-            return float(model_point()["prem_base_pp"])
-        return 0.0
-    return (float(model_point()["prem_base_pp"])
+        return float(model_point()["prem_gross_level_pp"])
+    return (float(model_point()["prem_gross_level_pp"])
             * (1.0 + float(model_point()["prem_dyn_rate"])) ** duration_y(k))
 
 
 def prem_pp(k):
     """P(k): the *laufender Beitrag* charged per premium-paying policy in year k.
 
-    ``prem_base_pp(k) x prem_freq_load()``, taken at the **start** of the year (annual in
+    ``prem_gross_pp(k) x prem_freq_load()``, taken at the **start** of the year (annual in
     advance; a fractionated mode changes the amount through the *Ratenzahlungszuschlag*,
-    not the grid).  Zero from ``k = k_conv()`` — premiums stop at *Rentenbeginn* — and zero
-    on a model point that opens *beitragsfrei*, whose whole cohort is in
+    not the grid).  Zero in a year whose first month :func:`prem_due` does not make a
+    premium payable — premiums stop at *Rentenbeginn*, a single premium is paid once — and
+    zero on a model point that opens *beitragsfrei*, whose whole cohort is in
     :func:`pols_paidup` anyway.  Letting premiums run past *Rentenbeginn* is the seventh
     pitfall.
 
@@ -543,11 +540,11 @@ def prem_pp(k):
     the year: :func:`premiums` is weighted by the **opening** :func:`pols_paying` and is
     not further multiplied by ``(1 - mort_rate)``.
     """
-    if k < 0 or k >= k_conv() or k >= proj_len_y():
+    if not prem_due(12 * k):
         return 0.0
     if int(model_point()["paidup_at_init"]) == 1:
         return 0.0
-    return prem_base_pp(k) * prem_freq_load()
+    return prem_gross_pp(k) * prem_freq_load()
 
 
 def zuz_take_up(k):
@@ -572,13 +569,16 @@ def zuz_pp(k):
     ``zuzahlung_pp x zuz_take_up(k)``, taken at the start of the year alongside the
     *laufender Beitrag* and carrying **no** *Ratenzahlungszuschlag*.  Zero from
     ``k = k_conv()``, zero once ``duration_y(k) >= zuzahlung_end_dur``, and zero on a
-    model point that opens *beitragsfrei*.
+    model point that opens *beitragsfrei*.  The *Zuzahlung* is not bounded by the premium
+    term: its end is ``zuzahlung_end_dur`` and *Rentenbeginn*, not :func:`prem_due`, so a
+    single-premium contract may top up in any year of its *Aufschubphase*.
 
     The *Zuzahlung* is the product's signature premium form — a self-employed buyer tops
-    the contract up out of a good year — and it is the reason ``zuzahlungen`` is published
-    as a column of its own rather than folded into ``premiums``: it is a distinct premium
-    form on a distinct charge basis, carrying ``charge_acq_sp_once`` instead of a share of the
-    *Zillmerung*.
+    the contract up out of a good year — and a distinct premium form on a distinct charge
+    basis, carrying ``charge_acq_sp_once`` instead of a share of the *Zillmerung*.  It is
+    collected with the *laufender Beitrag*, so :func:`prem_inst_pp` and with it the
+    ``premiums`` column hold both; setting ``zuz_take_up`` to zero — which removes about
+    two fifths of the anchor's contribution stream — is the variant that shows its size.
     """
     if k < 0 or k >= k_conv() or k >= proj_len_y():
         return 0.0
@@ -594,7 +594,7 @@ def prem_total_pp(k):
 
     ``(prem_pp(k) + zuz_pp(k)) / (1 - buz_prem_share)``.  A **reporting cells that enters
     no cash flow**: it appears in no :func:`result_cf` column and in :func:`net_cf` at no
-    ``k``.  ``prem_base_pp`` is the *old-age* contribution; the BUZ premium buys a cover
+    ``k``.  ``prem_gross_level_pp`` is the *old-age* contribution; the BUZ premium buys a cover
     this model does not project, and its disability mechanics belong to ``BU_DE_S``.
 
     ``buz_prem_share < 0.50`` is the statutory invariant — the supplementary covers
@@ -715,7 +715,17 @@ def prem_to_av_pp(k):
 
 
 def prem_due(t):
-    """True in the month the year's *Beitrag* falls due, ``t % 12 == 0``.
+    """True in the month the year's *Beitrag* falls due.
+
+    ``t % 12 == 0``, the first month of a projection year, in a projected year before
+    *Rentenbeginn*, ``0 <= proj_year(t) < k_conv()``; on the ``single`` form in the first
+    year alone, and only where ``duration_init = 0``: the *Einmalbeitrag* is paid once, at
+    inception.  This cell is the only source of a zero for the end of the premium term:
+    :func:`prem_pp` reads it at ``12 k``, the first month of its year, and tests neither
+    *Rentenbeginn* nor the single payment itself.  The *Zuzahlung* is not bounded by the
+    premium term and does not read this cell: :func:`zuz_pp` ends with
+    ``zuzahlung_end_dur`` and *Rentenbeginn*, and its month is the first of a projection
+    year, which :func:`prem_inst_pp` tests itself.
 
     The whole *Versicherungsjahr*'s contribution is taken in the **first month** of the
     projection year, with the *Zuzahlung* beside it.  The *Ratenzahlungszuschlag* is the
@@ -725,22 +735,37 @@ def prem_due(t):
     changes nothing.  The account is a *Deckungskapital* struck per *Versicherungsjahr* and
     is credited the same annual contribution whatever the mode.
     """
-    return t % 12 == 0
+    if t % 12 != 0:
+        return False
+    k = proj_year(t)
+    if k < 0 or k >= k_conv() or k >= proj_len_y():
+        return False
+    if prem_form() == "single":
+        return k == 0 and duration_init() == 0
+    return True
 
 
 def prem_inst_pp(t):
-    """P(k): the *Laufender Beitrag* collected per policy in month t, or zero.
+    """P(k) + Z(k): the money collected per paying policy in month t, or zero.
 
-    ``prem_pp(proj_year(t))`` in the month the year's premium falls due and zero in the
-    other eleven; the core's :func:`premiums` weights it by :func:`pols_prem`.  Because the
-    count at the start of a projection year is the annual-step model's own
-    ``pols_paying(k)``, the premium column sums over a year to that model's premium income
-    exactly.
+    ``prem_pp(k) + zuz_pp(k)`` at ``k = proj_year(t)`` in the first month of a projection
+    year, ``t % 12 == 0``, and zero in the other eleven: the *laufender Beitrag*, zero
+    where :func:`prem_due` makes none payable, and, beside it, the *Zuzahlung*, whose month
+    is the first of the year and not :func:`prem_due` (a single-premium contract tops up
+    after its one premium).  The *Zuzahlung* is a single payment that carries no
+    *Ratenzahlungszuschlag* precisely because it is not fractionated.  The core's :func:`premiums` weights it by :func:`pols_prem`,
+    the premium-paying ledger, so the ``premiums`` column is the money collected, as in
+    every product (docs/core.md, "Contract data and charges").  Because the count at the
+    start of a projection year is the annual-step model's own ``pols_paying(k)``, the
+    column sums over a year to that model's premium and *Zuzahlung* income.
 
-    Override reason: the year's premium ``prem_pp(proj_year(t))`` falls due whole in the
-    month ``prem_due`` makes it payable, products/basisrente/model.md:213
+    Override reason: the year's premium ``prem_pp(proj_year(t))`` and *Zuzahlung* fall due
+    whole in the first month of the projection year, products/basisrente/model.md:213
     """
-    return prem_pp(proj_year(t)) if prem_due(t) else 0.0
+    if t % 12 != 0:
+        return 0.0
+    k = proj_year(t)
+    return prem_pp(k) + zuz_pp(k)
 
 
 def pols_prem(t):
@@ -754,24 +779,6 @@ def pols_prem(t):
     cohort pays none, products/basisrente/technical-notes.md:649
     """
     return pols_paying(t)
-
-
-def zuzahlungen(t):
-    """*Zuzahlungen* collected in month t at fund level, an inflow.
-
-    ``zuz_pp(proj_year(t)) x pols_paying(t)`` in the month the year's premium falls due and
-    zero in the other eleven: the *Zuzahlung* is a single payment made alongside the
-    *laufender Beitrag* and carries no *Ratenzahlungszuschlag* precisely because it is not
-    fractionated.
-
-    Published as a column of its own rather than folded into :func:`premiums` because it is
-    a distinct premium form on a distinct charge basis, and because setting ``zuz_take_up``
-    to zero — which removes about two fifths of the anchor's contribution stream — is a
-    legitimate variant a reader should be able to see the size of.
-    """
-    if not prem_due(t):
-        return 0.0
-    return zuz_pp(proj_year(t)) * pols_paying(t)
 
 
 def mort_rate_at_age(x, y):
@@ -886,9 +893,9 @@ def pols_paying(t):
         ``l^p(t + 1) = l^p(t) x (1 - q_mth(t)) - pols_freeze(t)``
 
     — the month's death decrement, and, in the last month of a projection year only, the
-    *Beitragsfreistellung* on its survivors.  The weight on :func:`premiums` and
-    :func:`zuzahlungen`, which are due in the first month of a year, so the count they see
-    is the count the annual-step model saw.
+    *Beitragsfreistellung* on its survivors.  The weight on :func:`premiums`, which is
+    due in the first month of a year, so the count it sees is the count the annual-step
+    model saw.
 
     A model point opens **entirely** paying or **entirely** premium-free.  A part-paid-up
     book is two model points; averaging the two cohorts is the third pitfall.
@@ -1571,7 +1578,7 @@ def comm_init_rate():
 
 
 def comm_renew(t):
-    """The *Bestandsprovision*, ``comm_renew_prem_inst x (premiums(t) + zuzahlungen(t))``.
+    """The *Bestandsprovision*, ``comm_renew_prem_inst x premiums(t)``, *Zuzahlung* included.
 
     The renewal commission is a percentage of a contribution, so it falls in the month the
     contribution does and in no other — the ``t >= 1`` condition excludes the first year's
@@ -1585,24 +1592,7 @@ def comm_renew(t):
         return 0.0
     rate = float(data.charge_table_dict()["comm_renew_prem_inst"][   # noqa: F821
         model_point()["tariff_id"]])
-    return rate * (premiums(t) + zuzahlungen(t))
-
-
-def income_other(t):
-    """The *Zuzahlungen* of month t, :func:`zuzahlungen`, income beside the premium.
-
-    With it the net cash flow is ``premiums + zuzahlungen - claims_death - claims_annuity -
-    claims_survivor - expenses - commissions``.  ``expenses`` does **not** include the
-    commission — the two are separate lines and each is subtracted once — and the
-    *Deckungskapital* is a balance rather than a cash flow and enters nothing.
-    ``prem_total_pp`` enters nothing either: the BUZ premium buys a cover this model does
-    not project.  :func:`check_net_cf` reconstructs the net cash flow from
-    :func:`result_cf`'s own published columns.
-
-    Override reason: the *Zuzahlungen* are income beside the premiums,
-    products/basisrente/technical-notes.md:614
-    """
-    return zuzahlungen(t)
+    return rate * premiums(t)
 
 
 def check_net_cf_resid(t):
@@ -1611,7 +1601,7 @@ def check_net_cf_resid(t):
     Reconstructs ``net_cf(t)`` from :func:`result_cf`'s **own published columns**, read
     through the core's ``result_cf_dict()`` —
 
-        ``premiums + zuzahlungen - claims_death - claims_annuity - claims_survivor
+        ``premiums - claims_death - claims_annuity - claims_survivor
         - expenses - commissions - net_cf``
 
     — rather than from the cells that produced them, so a column added to the frame but not
@@ -1620,11 +1610,17 @@ def check_net_cf_resid(t):
     are excluded from the identity by construction; the *Deckungskapital* is a balance on an
     annual clock and is not a column of this frame at all.
 
-    Override reason: the identity adds the *Zuzahlungen* to the premium as income and is
-    taken as the rebuilt flow less ``net_cf``, products/basisrente/technical-notes.md:687
+    The net cash flow itself is the core's: ``premiums`` less the three claim kinds, the
+    expenses and the commissions.  ``expenses`` does **not** include the commission — the
+    two are separate lines and each is subtracted once — and the *Deckungskapital* is a
+    balance rather than a cash flow and enters nothing.  ``prem_total_pp`` enters nothing
+    either: the BUZ premium buys a cover this model does not project.
+
+    Override reason: the identity is taken as the rebuilt flow less ``net_cf``, the reverse
+    of the core's sign, products/basisrente/technical-notes.md:687
     """
     cf = result_cf_dict()
-    return float(cf["premiums"][t] + cf["zuzahlungen"][t]
+    return float(cf["premiums"][t]
                  - cf["claims_death"][t] - cf["claims_annuity"][t] - cf["claims_survivor"][t]
                  - cf["expenses"][t] - cf["commissions"][t] - cf["net_cf"][t])
 
@@ -1838,10 +1834,10 @@ def result_cf_columns():
     The frame is the table of cash flows, indexed by projection **month** t.
 
     ``pols_if`` is the start-of-month count and the weight applied to every cash flow on the
-    same row; ``pols_paying`` is the premium-paying subset and the weight on the two premium
-    columns, which are non-zero only in the first month of a projection year.  Columns 3 and
-    4 enter ``net_cf`` positively and columns 5 to 9 negatively.  ``liability_cf`` is
-    ``net_cf`` outgo-positive.
+    same row; ``pols_paying`` is the premium-paying subset and the weight on the premium
+    column, which is non-zero only in the first month of a projection year and holds the
+    *laufender Beitrag* and the *Zuzahlung*.  Column 3 enters ``net_cf`` positively and
+    columns 4 to 8 negatively.  ``liability_cf`` is ``net_cf`` outgo-positive.
 
     The *Deckungskapital* is **not** a column here.  It is a balance on the annual clock —
     one premium, one set of charges and one interest credit per *Versicherungsjahr* — and it
@@ -1860,14 +1856,13 @@ def result_cf_columns():
     state, no maturity payment and nothing left to pay.  :func:`result_cf_annual` is the
     same stream summed into projection years, which is the view the technical notes print.
 
-    Override reason: the statement carries the premium-paying count, the *Zuzahlungen* and
-    the three claim kinds of a *Basisrente*, products/basisrente/technical-notes.md:648-657
+    Override reason: the statement carries the premium-paying count and the three claim
+    kinds of a *Basisrente*, products/basisrente/technical-notes.md:648-657
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821
         ("pols_paying", pols_paying),                                # noqa: F821
         ("premiums", premiums),                                      # noqa: F821
-        ("zuzahlungen", zuzahlungen),                                # noqa: F821
         ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
         ("claims_annuity", lambda t: claims(t, "ANNUITY")),          # noqa: F821
         ("claims_survivor", lambda t: claims(t, "SURVIVOR")),        # noqa: F821
@@ -1881,7 +1876,7 @@ def result_cf_columns():
 def result_cf_annual():
     """:func:`result_cf` summed into projection years, indexed by k.
 
-    The seven cash flow columns are **summed** over the twelve months of each projection
+    The six cash flow columns are **summed** over the twelve months of each projection
     year and the two counts are taken at the year's **start**, which is what they are
     everywhere else in the model.  It is a regrouping of the monthly frame and not a second
     projection: no cells is evaluated on a different basis to produce it.
@@ -1893,8 +1888,8 @@ def result_cf_annual():
     row ``k`` and the two can be read side by side.  ``policy_year`` is published as a
     column of :func:`result_pols` for a reader who needs the contractual label.
 
-    The *Aufschubphase* rows reproduce the annual-step model's to the last bit on the
-    premium, the *Zuzahlung* and the commission, which fall on the anniversary and are
+    The *Aufschubphase* rows reproduce the annual-step model's on the premium, which
+    holds the *Zuzahlung*, and the commission, which fall on the anniversary and are
     weighted by a count the finer grid does not change.  The annuity rows do not and are not
     meant to: the instalments are monthly now, and a life that dies during a payout year is
     no longer paid the whole of it.
@@ -1904,7 +1899,7 @@ def result_cf_annual():
     products/basisrente/technical-notes.md:670
     """
     ks = list(range(proj_len_y()))
-    flows = ["premiums", "zuzahlungen", "claims_death", "claims_annuity",
+    flows = ["premiums", "claims_death", "claims_annuity",
              "claims_survivor", "expenses", "commissions", "net_cf", "liability_cf"]
     df = result_cf()
     out = {"pols_if": [pols_if(12 * k) for k in ks],

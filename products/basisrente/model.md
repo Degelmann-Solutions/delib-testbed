@@ -96,7 +96,7 @@ rather than the whole of it, worth −44,25 € on the anchor.
 
 What the grid deliberately does **not** change is the contribution. The *Ratenzahlungszuschlag*
 is how a German tariff prices a fractionated mode — it loads the **amount**, not the
-*Versicherungsperiode* — so `prem_due(t)` puts the whole year's *Beitrag* and *Zuzahlung* in the
+*Versicherungsperiode* — so the model puts the whole year's *Beitrag* and *Zuzahlung* in the
 first month of the projection year whatever `prem_freq` says, and the account they are credited
 to is a *Deckungskapital* struck per *Versicherungsjahr*. Splitting the cash into instalments
 while crediting the account annually would make the fund's cash and the account's credit
@@ -207,10 +207,10 @@ A Basisrente model that offers only a level regular premium models the wrong pro
 [REG-R39]. The contribution has three components and only the first two are contract facts:
 
 ```
-prem_base_pp(k) = prem_base_pp x (1 + prem_dyn_rate)^duration_y(k)  # contractual
-prem_pp(k)      = prem_base_pp(k) x prem_freq_load()                # contractual
-zuz_pp(k)       = zuzahlung_pp x zuz_take_up(duration_y(k) + 1)     # behavioural
-premiums(t)     = prem_pp(proj_year(t)) x pols_paying(t)  if prem_due(t) else 0
+prem_gross_pp(k) = prem_gross_level_pp x (1 + prem_dyn_rate)^duration_y(k)  # contractual
+prem_pp(k)       = prem_gross_pp(k) x prem_freq_load()  if prem_due(12 k) else 0   # contractual
+zuz_pp(k)        = zuzahlung_pp x zuz_take_up(duration_y(k) + 1)     # behavioural
+premiums(t)      = (prem_pp(k) + zuz_pp(k)) x pols_paying(t)  if t % 12 == 0 else 0,  k = proj_year(t)
 ```
 
 All three are annual amounts and take `k`; only the fund-level column is monthly, and it is
@@ -405,8 +405,8 @@ payments and payments are monthly — and three take a projection **year**, beca
 have nothing to say about a month. Calling one with the other's index is a category error rather
 than a rounding question, which is why the two families are named in the table below.
 
-**delib ruling 1 — the `check_net_cf()` identity, in one line:** `net_cf(t) = premiums +
-zuzahlungen − claims_death − claims_annuity − claims_survivor − expenses − commissions`, read
+**delib ruling 1 — the `check_net_cf()` identity, in one line:** `net_cf(t) = premiums
+− claims_death − claims_annuity − claims_survivor − expenses − commissions`, read
 from `result_cf()`'s **own published columns** rather than from the cells that produced them, so
 a column added to the frame but not to `net_cf`, a mis-signed column, or one whose cells and
 frame entry have drifted apart all leave a residual; `pols_if`, `pols_paying` and `av` are two

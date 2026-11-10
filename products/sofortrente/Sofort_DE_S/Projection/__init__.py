@@ -66,7 +66,8 @@ n                proj_len()                            Exclusive end of the fram
 (none)           policy_year(t)                        Contractual policy year, t // 12 + 1
 x_a(t), x_s(t)   age(t, life)                          Attained age of each life
 (none)           calendar_year(t)                      Calendar year of month t
-SP               single_prem()                         The Einmalbeitrag
+SP               prem_gross_level_pp()                 The Einmalbeitrag
+(none)           prem_due(t)                           Is the premium due in month t
 SP_net           net_single_prem()                     SP (1 - alpha)
 alpha            load_acq_sp_once                    Acquisition loading in the tariff
 beta             load_admin_annval_once                     Loading on the annuity value
@@ -240,7 +241,7 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def single_prem():
+def prem_gross_level_pp():
     """SP: the *Einmalbeitrag*, in euros — the contract's whole consideration.
 
     Paid once, at the start of month 0.  There is no premium stream, no *Beitragsdynamik*
@@ -249,7 +250,7 @@ def single_prem():
     around a representative 100 000 €, which is the unit the German market quotes an
     immediate annuity in — *Rente je 100 000 € Einmalbeitrag*.
     """
-    return float(model_point()["single_prem"])
+    return float(model_point()["prem_gross_level_pp"])
 
 
 def issue_age(life=1):
@@ -417,9 +418,9 @@ def annuity_pp_init():
 
     This is the model's one structural fork, and it is **not** two premium forms — a
     *Sofortrente* has exactly one.  A new-business point carries 0 and the model strikes
-    the *garantierte Rente* from :func:`single_prem` by equivalence on the tariff basis; an
-    in-force point carries an annuity struck years ago on a basis this model does not
-    reproduce, and the model uses it as given.  On the second kind
+    the *garantierte Rente* from :func:`prem_gross_level_pp` by equivalence on the tariff
+    basis; an in-force point carries an annuity struck years ago on a basis this model does
+    not reproduce, and the model uses it as given.  On the second kind
     :func:`check_equivalence` returns True without asserting anything, because there is no
     equivalence here to assert.
     """
@@ -648,14 +649,14 @@ def tariff_lives(k, life=1):
 
 
 def net_single_prem():
-    """SP_net: the *Nettoeinmalbeitrag*, ``single_prem() (1 - load_acq_sp_once)``.
+    """SP_net: the *Nettoeinmalbeitrag*, ``prem_gross_level_pp() (1 - load_acq_sp_once)``.
 
     The insurer deducts the acquisition and distribution loading from the *Einmalbeitrag*
     and annuitises the remainder.  An accumulation product's *Deckungskapital* recursion
     degenerates, for a single premium, to exactly this one netting step.  ``alpha`` is
     **[std]**: no charge parameter was established at any carrier.
     """
-    return single_prem() * (1.0 - data.param("load_acq_sp_once"))    # noqa: F821
+    return prem_gross_level_pp() * (1.0 - data.param("load_acq_sp_once"))    # noqa: F821
 
 
 def pay_period_mths():
@@ -764,7 +765,7 @@ def annuity_pp_derived():
     v = 1.0 / (1.0 + rechnungszins())
     p = pay_period_mths()
     fp = first_pay_mth()
-    sp = single_prem()
+    sp = prem_gross_level_pp()
     target = net_single_prem()
     disc = []
     dens = []
@@ -806,7 +807,7 @@ def refund_pv():
     v = 1.0 / (1.0 + rechnungszins())
     p = pay_period_mths()
     fp = first_pay_mth()
-    sp = single_prem()
+    sp = prem_gross_level_pp()
     r = annuity_pp_derived()
     total = 0.0
     for t in range(0, proj_len()):
@@ -914,7 +915,7 @@ def cum_annuity_guar_pp(t):
 def refund_pp(t):
     """K(t): the *Kapitalrückgewähr* payable on a death during month ``t``.
 
-    ``max(single_prem() - cum_annuity_guar_pp(t), 0)`` where the refund is elected, and
+    ``max(prem_gross_level_pp() - cum_annuity_guar_pp(t), 0)`` where the refund is elected, and
     identically zero where it is not.  It starts at the whole *Einmalbeitrag* and runs to
     nothing over roughly the period in which the annuitant recovers the capital nominally.
 
@@ -924,7 +925,7 @@ def refund_pp(t):
     """
     if refund_form() == "none":
         return 0.0
-    return max(single_prem() - cum_annuity_guar_pp(t), 0.0)
+    return max(prem_gross_level_pp() - cum_annuity_guar_pp(t), 0.0)
 
 
 def payment_factor(t):
@@ -982,13 +983,23 @@ def pols_if(t):
     return pols_if_init() * min(1.0, x)
 
 
+def prem_due(t):
+    """Whether the premium falls due in month t: ``t == 0``, the *Einmalbeitrag*'s month.
+
+    The single premium is paid once, at inception.  This cell is the only source of a zero
+    for the end of the premium term, here the one payment: :func:`prem_inst_pp` reads it
+    and does not test the month itself.
+    """
+    return t == 0
+
+
 def prem_inst_pp(t):
     """The *Einmalbeitrag* per policy, at the start of month 0 and nowhere else.
 
-    ``single_prem()`` at ``t = 0``; the core's :func:`premiums` weights it by
-    :func:`pols_prem`.  An in-force model point's frame does not contain ``t = 0``, so it
-    collects nothing: the premium was paid before the valuation date and counting it again
-    is a listed pitfall.
+    ``prem_gross_level_pp()`` where :func:`prem_due` makes it payable, at ``t = 0``; the
+    core's :func:`premiums` weights it by :func:`pols_prem`.  An in-force model point's
+    frame does not contain ``t = 0``, so it collects nothing: the premium was paid before
+    the valuation date and counting it again is a listed pitfall.
 
     There is no premium stream, no *Beitragsdynamik* and no *Ratenzahlungszuschlag* on this
     product — the whole consideration is paid once.
@@ -996,7 +1007,9 @@ def prem_inst_pp(t):
     Override reason: the *Einmalbeitrag* is paid once, at ``t = 0``,
     products/sofortrente/technical-notes.md:592
     """
-    return single_prem() if t == 0 else 0.0
+    if not prem_due(t):
+        return 0.0
+    return prem_gross_level_pp()
 
 
 def pols_prem(t):
@@ -1099,7 +1112,8 @@ def expenses_acq(t):
     amount at ``t = 0``, products/sofortrente/technical-notes.md:617
     """
     if t == 0:
-        return pols_if_init() * (data.param("expense_acq_sp_once") * single_prem()  # noqa: F821
+        return pols_if_init() * (data.param("expense_acq_sp_once")   # noqa: F821
+                                 * prem_gross_level_pp()
                                  + data.param("expense_acq_pp_once"))  # noqa: F821
     return 0.0
 
@@ -1198,7 +1212,7 @@ def check_net_cf_scale(t):
     Override reason: the statement is checked relative to the single premium of the book,
     products/sofortrente/technical-notes.md:648
     """
-    return max(single_prem() * pols_if_init(), 1.0)                  # noqa: F821
+    return max(prem_gross_level_pp() * pols_if_init(), 1.0)                  # noqa: F821
 
 
 def check_lives_roll_fwd_resid(t):
@@ -1270,7 +1284,7 @@ def check_annuity_roll_fwd():
     paid-up annuity, is not taken back off — which is what makes a rising
     *Überschussverwendung* ratchet rather than fluctuate.
     """
-    tol = roll_fwd_tol() * max(single_prem() * pols_if_init(), 1.0)  # noqa: F821
+    tol = roll_fwd_tol() * max(prem_gross_level_pp() * pols_if_init(), 1.0)  # noqa: F821
     stepped = all(abs(check_annuity_roll_fwd_resid(t)) <= tol
                   for t in range(t_start(), proj_len()))
     ratchet = all(annuity_pp(t) >= annuity_pp(t - 1) - tol
@@ -1303,7 +1317,7 @@ def check_refund_run_off():
     directly.  The last is what catches a refund measured against the *total* annuity: the
     *Überschussrente* would retire the capital sooner and the count would not match.
     """
-    tol = roll_fwd_tol() * max(single_prem() * pols_if_init(), 1.0)  # noqa: F821
+    tol = roll_fwd_tol() * max(prem_gross_level_pp() * pols_if_init(), 1.0)  # noqa: F821
     if refund_form() == "none":
         return bool(all(refund_pp(t) == 0.0
                         for t in range(t_start(), proj_len())))
@@ -1317,7 +1331,7 @@ def check_refund_run_off():
         return False
     r = annuity_guar_pp(t_start())
     n_req = 0
-    while n_req * r < single_prem() - tol:
+    while n_req * r < prem_gross_level_pp() - tol:
         n_req = n_req + 1
     t_zero = first_pay_mth() + (n_req - 1) * pay_period_mths()
     if t_zero >= proj_len():
@@ -1349,7 +1363,7 @@ def check_payment_factor_resid(t):
 
 def check_payment_factor():
     """True when the instalment splits exactly into its three legs at every month."""
-    tol = roll_fwd_tol() * max(single_prem() * pols_if_init(), 1.0)  # noqa: F821
+    tol = roll_fwd_tol() * max(prem_gross_level_pp() * pols_if_init(), 1.0)  # noqa: F821
     return bool(all(abs(check_payment_factor_resid(t)) <= tol
                     for t in range(t_start(), proj_len())))
 

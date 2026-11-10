@@ -99,10 +99,10 @@ NOISE_TOLERANCE = 1e-12  # relative: math.isclose(old, new, rel_tol=1e-12, abs_t
 # be classified here (tests/test_baseline_deviations.py pins the map to the headers).
 EURO_COLUMNS: dict[str, tuple[str, ...]] = {
     "basisrente": (
-        "premiums", "zuzahlungen", "claims_death", "claims_annuity", "claims_survivor",
+        "premiums", "claims_death", "claims_annuity", "claims_survivor",
         "expenses", "commissions", "net_cf", "liability_cf"),
     "berufsunfaehigkeit": (
-        "premiums", "surplus_credit", "claims_bu_rente", "claims_reintegration", "claims_lapse",
+        "premiums", "claims_bu_rente", "claims_reintegration", "claims_lapse",
         "expenses", "claim_expenses", "liability_cf", "net_cf"),
     "fondsgebundene_rentenversicherung": (
         "premiums", "prem_to_av", "charge_acq", "charge_admin_prem", "charge_admin_fund",
@@ -126,7 +126,7 @@ EURO_COLUMNS: dict[str, tuple[str, ...]] = {
         "claims_lumpsum", "claims_commutation", "claims_annuity", "expenses", "commissions",
         "net_cf", "liability_cf"),
     "risikolebensversicherung": (
-        "prem_gross", "premiums", "prem_rebate", "claims_death", "claims_lapse",
+        "premiums", "claims_death", "claims_lapse",
         "claims_maturity", "expenses", "commissions", "net_cf", "liability_cf"),
     "sofortrente": (
         "premiums", "annuity_payments", "claims_guarantee", "claims_refund", "expenses",

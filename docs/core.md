@@ -66,7 +66,7 @@ The core's `Projection` holds the annual first-order equivalence that RLV and KL
 
 The term positions carry the byte identity: `x * 1.0` and `x + 0.0` are exact, reassociation is not. So a neutral term stands where the product's own factor stood (KLV's rating factor between `p` and `q`, the death sum outside the sum), and RLV's `(1 + m) * rf` stays one load term.
 
-Core cells that call a cell the product defines, its hook into the chain: `mort_rate_tariff_base` calls `mort_rate_tariff_at_age(x)` (FRV, KLV), `beitragssumme_prem` calls `prem_gross_pp()` (KLV) and `zillmer_amount` calls `alpha_rate()`, the product's *Zillmersatz* (KLV, FRV, Basis, RV, Pflege, Riester). A product without the hook inherits the core cell unused, as with every other core cell.
+Core cells that call a cell the product defines, its hook into the chain: `mort_rate_tariff_base` calls `mort_rate_tariff_at_age(x)` (FRV, KLV), `beitragssumme_prem` calls `prem_gross_level_pp()` (KLV) and `zillmer_amount` calls `alpha_rate()`, the product's *Zillmersatz* (KLV, FRV, Basis, RV, Pflege, Riester). A product without the hook inherits the core cell unused, as with every other core cell.
 
 Still in the products, because unifying them changes results or adds a quantity (each a result-changing commit of its own, listed as open work):
 
@@ -128,13 +128,13 @@ Open work, each a result-changing commit of its own: FRV's and KLV's multiplicat
 
 ## The cash flows
 
-The core's `Projection` holds the monthly cash flows from the counts above, each a procedure of term cells with neutral defaults; a product overrides the terms that carry its own premium, benefit and cost amounts and derives the cell. The amounts themselves (the premium per policy, the death benefit, the surrender value, the annuity, the expense rates, `claim_expenses`, `surplus_credit`, `annuity_payments`, `zuzahlungen`, `zulagen`, FRV's charges and `death_strain`) stay in the products, and a term override delegates to them or holds the expression the product's cell had.
+The core's `Projection` holds the monthly cash flows from the counts above, each a procedure of term cells with neutral defaults; a product overrides the terms that carry its own premium, benefit and cost amounts and derives the cell. The amounts themselves (the premium per policy, the death benefit, the surrender value, the annuity, the expense rates, `claim_expenses`, `annuity_payments`, `zulagen`, FRV's charges and `death_strain`) stay in the products, and a term override delegates to them or holds the expression the product's cell had.
 
-- `premiums(t) = prem_inst_pp(t) * pols_prem(t)`, the premium collected per policy at the start of the month times the count it is collected from, with `prem_inst_pp(t) = 0` and `pols_prem(t) = pols_if(t)`. All ten derive it and override `prem_inst_pp`: KLV and RLV with their instalment, BU `prem_gross_pp(t)`, Pflege `premium_pp(t)`, FRV `prem_pp(t) + topup_pp(t)`, Index, RV and Basis the year's premium where `prem_due(t)`, Riester the *Eigenbeitrag* and the extra contribution where due, Sofort `single_prem()` at `t = 0`. `pols_prem` is overridden by BU (*Beitragsbefreiung*: the *aktiv* ledger plus the disabled inside the *Karenzzeit*), Pflege (the waived lives taken out), Basis (`pols_paying(t)`) and Sofort (`pols_if_init()`, its `pols_if` being a probability). A month with nothing due gives `0 * pols = +0.0`.
+- `premiums(t) = prem_inst_pp(t) * pols_prem(t)`, the premium collected per policy at the start of the month times the count it is collected from, with `prem_inst_pp(t) = 0` and `pols_prem(t) = pols_if(t)`. All ten derive it and override `prem_inst_pp`: KLV and RLV with their instalment, BU the *Zahlbeitrag* instalment `beitragsverrechnung() * prem_charged_inst_pp(t)`, Pflege `prem_charged_inst_pp(t)`, FRV `prem_charged_inst_pp(t) + topup_pp(t)`, Index and RV the year's premium where `prem_due(t)`, Basis the year's premium and *Zuzahlung* there, Riester the *Eigenbeitrag* and the extra contribution where due, Sofort `prem_gross_level_pp()` at `t = 0`. `pols_prem` is overridden by BU (*Beitragsbefreiung*: the *aktiv* ledger plus the disabled inside the *Karenzzeit*), Pflege (the waived lives taken out), Basis (`pols_paying(t)`) and Sofort (`pols_if_init()`, its `pols_if` being a probability). A month with nothing due gives `0 * pols = +0.0`.
 - `claims(t, kind=None)`: the total `sum(claims(t, k) for k in claim_kinds())`, with `claim_kinds() = ("DEATH", "LAPSE", "MATURITY")`; `"DEATH"`, `"LAPSE"` and `"MATURITY"` are `benefit_death_pp(t) * pols_death(t)`, `benefit_lapse_pp(t) * pols_lapse(t)` and `benefit_maturity_pp(t) * pols_maturity(t)`, each benefit 0 by default; any other kind is `claims_other(t, kind)`, which raises `ValueError` in the core. Derived by RLV (`benefit_death_pp = benefit_paid_pp`; lapse and maturity exactly 0 from the neutral benefits), KLV (its death and maturity benefit, `surr_value_pp`, kinds `DEATH, MATURITY, LAPSE`), Index (`db_pp`, `cv_pp`, `mat_pp` at `duration(t)`), RV (`db_pp`, `cv_pp`, kinds `DEATH, LAPSE, COMMUTATION`, the *Kapitalabfindung* in `claims_other`), Riester (`db_pp`, `cv_pp` at `proj_year(t)`, its six kinds, transfer, lump sum, commutation and annuity in `claims_other`), BU (kinds `BU_RENTE, REINTEGRATION, LAPSE`, the first two in `claims_other`, the lapse 0) and Sofort (kinds `GUARANTEE, REFUND`, both in `claims_other`).
 - `expenses(t) = expenses_acq(t) + expenses_maint(t) + expenses_claim(t)`, excluding commission, each term 0 by default. RLV, RV, Sofort and Riester override all three terms (Sofort's claim term is the payment run, Riester's maintenance term the accumulation maintenance plus the annuity expense); Basis overrides acquisition and maintenance, each with the frame guard, and derives the claim term 0; KLV and Index override `expenses_maint` with their per-policy rate, which carries the acquisition expense of the opening month, and KLV `expenses_claim = claim_expenses(t)`.
 - `commissions(t) = comm_init(t) + comm_renew(t)`: `comm_init(t) = comm_init_rate() * beitragssumme() * pols_if(t)` in the frame's first month on new business (`duration_init() == 0`), else 0, and 0 without reading the *Beitragssumme* where `comm_init_rate() = 0`; `comm_renew(t) = 0`. KLV (the cost table's rate), Riester (`comm_acq_bsum_once`) and Basis (its charge table) override the rate and `comm_renew`; Riester's renewal is 0 in the month of the initial commission. RLV (`comm_init_pp()`) and FRV (`comm_acq_pp(t) * pols_if(t)`) override both terms. BU, Index, RV, Pflege and Sofort pay none and inherit exactly 0.
-- `net_cf(t)`, income positive: `premiums(t) + income_other(t)`, less `claims(t, kind)` for each kind of `claim_kinds()` in turn, less `annuity_outgo(t)`, `expenses(t)` and `commissions(t)`, with `income_other(t) = annuity_outgo(t) = 0`. Derived by RLV, KLV, Index, RV (`annuity_outgo = annuity_payments(t)`), Basis (`income_other = zuzahlungen(t)`) and Riester (`income_other = zulagen(t)`). Basis overrides `claim_kinds` with `DEATH, ANNUITY, SURVIVOR` for it.
+- `net_cf(t)`, income positive: `premiums(t) + income_other(t)`, less `claims(t, kind)` for each kind of `claim_kinds()` in turn, less `annuity_outgo(t)`, `expenses(t)` and `commissions(t)`, with `income_other(t) = annuity_outgo(t) = 0`. Derived by RLV, KLV, Index, RV (`annuity_outgo = annuity_payments(t)`), Basis and Riester (`income_other = zulagen(t)`). Basis overrides `claim_kinds` with `DEATH, ANNUITY, SURVIVOR` for it.
 - `liability_cf(t) = -net_cf(t)`, the same stream outgo positive (all but Sofort).
 
 The float order carries the byte identity: `x - 0.0 == x`, `0.0 + x == x` for `x != -0.0` and `a * b == b * a`, so a neutral term adds nothing and a product whose order the core formula keeps derives the cell. Subtracting the kinds one by one is the majority's order (KLV, Index, RV, Basis, Riester); RLV's `p - claims(t)` gives the same bits because its lapse and maturity claims are +0.0. Python's `sum` over floats is compensated (Python 3.12), so the core's claim total equals a product's `sum` over the same kinds, not a product's left-to-right `A + L + D`.
@@ -143,14 +143,14 @@ The overrides, each with its reason in the cell's docstring:
 
 - `claims`: Basis, the death benefit releases the reserve of two cohorts weighted by the survivor's eligibility; FRV, the surrender value formed as count times fund times `(1 - sigma)`, another float order, and no total; Pflege, its total `A + L + D` added left to right.
 - `expenses`: BU, the acquisition charge added to the proportional administration before the flat one, `(acq + prop) + flat`, which the core's `acq + (prop + flat)` would reassociate; FRV, five expenses added left to right (the per-event surrender and annuitisation expenses among them); Pflege, the *Zillmerung* allowance added after the two administration terms.
-- `net_cf`: BU, the *Beitragsverrechnung* before the claim total and the *Leistungsbearbeitungskosten* after the expenses; Pflege, the claim total at once and the claims-handling cost; FRV, the non-unit cash flow, charges and *Stornoabzug* less expenses, commissions and the death strain; Sofort, `-liability_cf(t)`.
+- `net_cf`: BU, the claim total at once and the *Leistungsbearbeitungskosten* after the expenses; Pflege, the claim total at once and the claims-handling cost; FRV, the non-unit cash flow, charges and *Stornoabzug* less expenses, commissions and the death strain; Sofort, `-liability_cf(t)`.
 - `liability_cf`: Sofort, the notes' outgo-positive stream, annuity payments, claims and expenses less the premium.
 
 A product inherits every term also where it has no use for it: Pflege and FRV inherit `claim_kinds` and the benefits unused, and the core's `claims(t, "DEATH")` on Sofort, which has no deaths of that form, is not evaluated. A kind outside a product's `claim_kinds()` but among the core's three (RV's `"MATURITY"`, Riester's `"MATURITY"`) gives the core's product of a neutral benefit and a count rather than a `ValueError`.
 
 Still in the products: the per-policy amounts named above. The expense inflation the cost terms multiply follows in the next section, the result frames and `check_net_cf` after it.
 
-Open work, each a result-changing commit of its own: Pflege's claim total in the compensated `sum`; FRV's lapse claim as amount times count and its five expenses, and Pflege's expenses, in the core's three terms; BU's expenses in the core's three terms; BU's, Pflege's and FRV's net cash flow from the core's terms (`surplus_credit` and `claim_expenses` as outgo terms, FRV's charges as income); Sofort's `liability_cf` as `-net_cf`.
+Open work, each a result-changing commit of its own: Pflege's claim total in the compensated `sum`; FRV's lapse claim as amount times count and its five expenses, and Pflege's expenses, in the core's three terms; BU's expenses in the core's three terms; BU's, Pflege's and FRV's net cash flow from the core's terms (`claim_expenses` as an outgo term, FRV's charges as income); Sofort's `liability_cf` as `-net_cf`.
 
 ## The expense inflation
 
@@ -171,12 +171,12 @@ The power is the same subexpression in the same place as in each product's own f
 The core's `Projection` holds the result frames and the cash-flow reconciliation, each a procedure of term cells: the core holds how a frame is built and checked, the product the columns it publishes and the scale it is checked on.
 
 - `roll_fwd_tol()`, the tolerance the `check_*` identities close to, the item `check_tol` of the core file, 1e-8 for every tariff (RV's form; the row was named `roll_fwd_tol` until the acceptance of 2026-11-09); without the item `param` raises `KeyError`. Every product derives it. Until entry 12 of epic-parameter-files each product held the row in its tariff-type file, Basis, RV and Riester at 1e-9, BU, FRV, KLV, Pflege and RLV at 1e-10, Index and Sofort at 1e-8; entry 12 aligned them to 1e-8, with no result moving, and moved the item to the core. RV had the cell and Pflege read the row inline; the other eight had a Reference and got the row, BU, Index and RLV with their first `param_table.csv`. FRV's `val_tol` (1e-10), the same quantity with the same value, is merged into `check_tol`, which its checks read; RLV's `val_tol` (1e-9 beside its `check_tol` 1e-10) stayed a row of its own until entry 12 of epic-parameter-files aligned both to 1e-8, with no result moving, and is merged into `check_tol` too.
-- `result_cf()`, one column per `(label, cell)` pair of `result_cf_columns()`, each cell evaluated over `t_start() .. proj_len() - 1`, index named `t`. The default columns are the statement the core's cells make: `pols_if`, `premiums`, a `claims_<kind>` column per kind of `claim_kinds()` in its order, `expenses`, `commissions`, `net_cf`, `liability_cf`. KLV derives both. The other nine override `result_cf_columns` with their statement's columns in their order, a column that is not a cell of `t` alone (a claim kind) as a lambda of `t`, the frame's docstring moved to the term: Basis (the paying count, the *Zuzahlungen*, its three kinds), BU (three state counts, the paying count, the *Beitragsverrechnung*, the claims-handling cost, `liability_cf` before `net_cf`), FRV (the premium split into the unit fund, the charges, the *Stornoabzug*, the unit-fund outgo, the death strain), Index (no commission, `liability_cf` before `net_cf`), RV (the annuity count and payments, the *Kapitalabfindung*, no commission), Pflege (the state counts, the claims-handling cost, no commission), Riester (the paying annuity count, the *Zulagen*, six kinds), RLV (the guaranteed premium and the *Beitragsverrechnung* beside the billed premium) and Sofort (the annuity payments, two kinds, no commission).
+- `result_cf()`, one column per `(label, cell)` pair of `result_cf_columns()`, each cell evaluated over `t_start() .. proj_len() - 1`, index named `t`. The default columns are the statement the core's cells make: `pols_if`, `premiums`, a `claims_<kind>` column per kind of `claim_kinds()` in its order, `expenses`, `commissions`, `net_cf`, `liability_cf`. KLV and RLV derive both. The other eight override `result_cf_columns` with their statement's columns in their order, a column that is not a cell of `t` alone (a claim kind) as a lambda of `t`, the frame's docstring moved to the term: Basis (the paying count, its three kinds), BU (three state counts, the paying count, the claims-handling cost, `liability_cf` before `net_cf`), FRV (the premium split into the unit fund, the charges, the *Stornoabzug*, the unit-fund outgo, the death strain), Index (no commission, `liability_cf` before `net_cf`), RV (the annuity count and payments, the *Kapitalabfindung*, no commission), Pflege (the state counts, the claims-handling cost, no commission), Riester (the paying annuity count, the *Zulagen*, six kinds) and Sofort (the annuity payments, two kinds, no commission).
 - `result_cf_annual()`, RV's form: `result_cf` grouped by `policy_year = duration(t) + 1`, the flows summed and each column of `result_cf_counts()` (default `("pols_if",)`) taken at the year's start and placed first. Index, KLV, RLV and RV derive it; RV overrides the counts with `pols_if, pols_annuity`.
 - `result_pols()` and `result_states()`, the monthly frame of `result_cf` over `result_pols_columns()` and `result_states_columns()`, both `()` by default. RLV and Sofort derive `result_pols` and override its columns (RLV's reserves through `res_pp_at` and Sofort's two lives as lambdas); Pflege derives `result_states` and overrides its columns (the grade ledgers and the sums over grades and *Karenz* months as lambdas).
 - `result_cf_dict()`, `result_cf()` as plain dicts by column, `{label: {t: value}}`, in the frame's column order with the frame's values, built once per point; `check_net_cf_resid` reads it instead of a pandas row per month (epic-night-run, entry 6), and every product derives it.
 - `check_net_cf_resid(t)`, the reconciliation KLV and RLV publish: on the frame's values at month `t`, read through `result_cf_dict()`, the columns of `net_cf_income_columns()` (default `premiums`) added left to right, less each column of `net_cf_outgo_columns()` in turn (default a `claims_<kind>` column per kind, then `expenses` and `commissions`), and the residual `net_cf` less that. KLV and RLV derive both terms; Riester overrides the income with `premiums, zulagen` (its kinds give the outgo); RV overrides the outgo with its three claims, `annuity_payments` and `expenses` and derives the income.
-- `check_net_cf()`, every `abs(check_net_cf_resid(t))` within `check_net_cf_tol(t)` over `t_start() .. proj_len() - 1`, with `check_net_cf_tol(t) = roll_fwd_tol() * check_net_cf_scale(t)` and `check_net_cf_scale(t) = 1`. The scale overrides: BU `max(1, abs(bu_rente_pp(t)))`, Index `max(abs(premiums(t)), abs(claims(t)), abs(expenses(t)), 1)`, KLV `max(sum_assured(), 1)`, Pflege `max(pols_if_init() * max(rente_mth(), 1), 1)`, Riester `max(1, guar_pp(k_conv() + 1))`, Sofort `max(single_prem() * pols_if_init(), 1)`. FRV and RLV override the tolerance: FRV `check_tol * max(1, abs(net_cf(t)))`, RLV `check_tol * max(sum_assured(), 1)`. The two terms take `t`, so `tools/run_baseline.py` does not list them as checks.
+- `check_net_cf()`, every `abs(check_net_cf_resid(t))` within `check_net_cf_tol(t)` over `t_start() .. proj_len() - 1`, with `check_net_cf_tol(t) = roll_fwd_tol() * check_net_cf_scale(t)` and `check_net_cf_scale(t) = 1`. The scale overrides: BU `max(1, abs(bu_rente_pp(t)))`, Index `max(abs(premiums(t)), abs(claims(t)), abs(expenses(t)), 1)`, KLV `max(sum_assured(), 1)`, Pflege `max(pols_if_init() * max(rente_mth(), 1), 1)`, Riester `max(1, guar_pp(k_conv() + 1))`, Sofort `max(prem_gross_level_pp() * pols_if_init(), 1)`. FRV and RLV override the tolerance: FRV `check_tol * max(1, abs(net_cf(t)))`, RLV `check_tol * max(sum_assured(), 1)`. The two terms take `t`, so `tools/run_baseline.py` does not list them as checks.
 
 The float order carries the byte identity as before: the core rebuilds the residual in the products' order (income first, then each outgo subtracted), a scale multiplies the tolerance where the product's own expression did, and `float(a) - float(b)` equals `float(a - b)` for RV. A frame's index is set by name (`frame.index.name = "t"`, a `Series` named `policy_year` as the annual grouper), since the grep test reads `Index` as a product prefix.
 
@@ -185,7 +185,7 @@ The overrides, each with its reason in the cell's docstring:
 - `result_cf`, `result_states`, `check_net_cf`: BU, whose model point carries no `duration_init`, so the core's `t_start()` is not defined there; its frames run from the valuation month `t = 0` over its own column terms, its check over its tolerance term.
 - `result_cf_annual`: Basis and Riester, indexed by the projection year `k` of the valuation clock and summed over each year's twelve-month slice.
 - `result_pols`: Basis and RV, the annual state by projection or policy year.
-- `check_net_cf_resid`: Basis (the rebuilt flow less `net_cf`, the reverse of the core's sign, with the *Zuzahlungen* as income), BU (the premium leg from the *Zahlbeitrag* billed times the paying count), FRV (the first two charges as premiums less the premium to the unit fund), Index (the kind-less claim total), Pflege (from the cells of its claim kinds and the claims-handling cost), Sofort (the instalment through the single payment factor); each rebuilds by another route on purpose, its docstring naming the boundary it crosses.
+- `check_net_cf_resid`: Basis (the rebuilt flow less `net_cf`, the reverse of the core's sign), BU (the premium leg from the *Zahlbeitrag* billed times the paying count), FRV (the first two charges as premiums less the premium to the unit fund), Index (the kind-less claim total), Pflege (from the cells of its claim kinds and the claims-handling cost), Sofort (the instalment through the single payment factor); each rebuilds by another route on purpose, its docstring naming the boundary it crosses.
 - `check_net_cf`: Basis (one scale over the run, the largest `abs(net_cf)`), RV (also asserts `liability_cf(t) == -net_cf(t)`).
 
 A product inherits every frame also where it has none: the core's `result_cf_annual`, `result_pols` and `result_states` are derived in products that do not publish them, and nothing evaluates them there.
@@ -230,11 +230,162 @@ The tool prints `<product>: executed <n>, from core <c>, quota <q>` per product,
 
 The premium payment frequency and its loading: `prem_freq()` reads the model point's `prem_freq`, checked against the keys of the product's `prem_freq_table()`, read from `prem_freq_file`, `prem_freq_table.csv` (KLV, Index, Riester, RLV, RV, BU, Basis, FRV, Pflege). The keys are `annual`, `half_yearly`, `quarterly` and `monthly` in every product, and every such table has the index column `prem_freq`, the column `instalments` (the instalments a year, 1, 2, 4 or 12, an `int`), the column `prem_freq_load` where the product charges a *Ratenzahlungszuschlag*, and `provenance` last. `prem_freq_load()` and `instalments()` read the columns of their names at `prem_freq()`, and `prem_cycle()`, the months between instalments, is `12 // instalments()` (BU, KLV, RLV, FRV, Pflege): the months of a year are the calendar, so no table holds the months. `prem_freq_load()` is 1 for a single premium (`prem_form() == "single"`) in every product, so Basis' override of that rule is gone; KLV (1 for an *echt* sub-annual payment) overrides it. Basis' four frequency factors, rows `prem_mode` of its `option_table.csv` until then, are its `prem_freq_table.csv`. FRV's and Pflege's tables have no `prem_freq_load`: FRV's stated instalment already carries any loading, and Pflege folds it into `load_admin_prem_inst`. The annuity payment frequency, the instalments of an annuity a year, is `ann_freq` in every product: Sofort's model-point column `ann_freq`, checked by its product cell `ann_freq()` against the keys of a table of its own (section "Formula literals"), and the row `ann_freq` of Basis' and Riester's tariff-type files.
 
-The premium form: `prem_form()` reads the model point's `prem_form`, `regular` (*laufender Beitrag*) or `single` (*Einmalbeitrag*), and raises `ValueError` for another value (Basis, FRV, Index, RV, RLV, Pflege). The values were `laufend` and `einmal` in FRV, RV and RLV, whose column RV and RLV named `premium_form`, and `level` for the regular premium in Index; Basis and RV read the column without a cell. A product whose model points have no `prem_form` column writes regular premiums only and reads `regular` (KLV, BU, Riester). A single premium carries no *Ratenzahlungszuschlag*, and every single-premium point carries `prem_freq = annual`, the one payment of its year (FRV's point 2 had `monthly`, read by no cell): RLV, whose single premium is the paying term 1 of the same equivalence, reads it as one instalment, the other products not at all. Pflege's *Einmalbeitrag*, the frequency `single` with the sentinel of 0 months until then, is `prem_form = single`. RLV overrides `prem_form` with its gate that `single` requires `prem_term = 1`. BU's `premium_form` (`dynamik` or `level`) and Riester's `contrib_form` are other quantities and keep their names.
+The premium form: `prem_form()` reads the model point's `prem_form`, `regular` (*laufender Beitrag*) or `single` (*Einmalbeitrag*), and raises `ValueError` for another value (Basis, FRV, Index, RV, RLV, Pflege; Sofort's column is `single` on every point, and its own cells read neither it nor `prem_freq_load`). The values were `laufend` and `einmal` in FRV, RV and RLV, whose column RV and RLV named `premium_form`, and `level` for the regular premium in Index; Basis and RV read the column without a cell. A product whose model points have no `prem_form` column writes regular premiums only and reads `regular` (KLV, BU, Riester). A single premium carries no *Ratenzahlungszuschlag*, and every single-premium point carries `prem_freq = annual`, the one payment of its year (FRV's point 2 had `monthly`, read by no cell): RLV, whose single premium is the paying term 1 of the same equivalence, reads it as one instalment, the other products not at all. Pflege's *Einmalbeitrag*, the frequency `single` with the sentinel of 0 months until then, is `prem_form = single`. RLV overrides `prem_form` with its gate that `single` requires `prem_term = 1`. BU's `premium_form` (`dynamik` or `level`) and Riester's `contrib_form` are other quantities and keep their names.
 
-The *Beitragssumme* and the acquisition charge on it: `beitragssumme() = beitragssumme_prem() * beitragssumme_years()`, the annual premium times the paying years (`prem_gross_pp()`, `prem_term()`; KLV). FRV and Pflege override the two terms for their premium form (instalments, a single premium counted once, Pflege's age-85 cap); Basis and RV (schedule sums with *Dynamik*) and Riester (a model-point column) override `beitragssumme`. `zillmer_amount() = zillmer_on() * alpha_rate() * beitragssumme()` with `zillmer_on() = 1`; KLV overrides `zillmer_on` from its model point, FRV's `alpha_rate` is the *Zuzahlungskosten* rate on a single premium (its `beitragssumme()` is then the premium once), and Riester spreads it over five years. BU's `beitragssumme_unit` (per euro of premium) stays.
+The *Beitragssumme* and the acquisition charge on it: `beitragssumme() = beitragssumme_prem() * beitragssumme_years()`, the annual premium times the paying years (`prem_gross_level_pp()`, `prem_term()`; KLV). FRV and Pflege override the two terms for their premium form (instalments, a single premium counted once, Pflege's age-85 cap); Basis and RV (schedule sums with *Dynamik*) and Riester (a model-point column) override `beitragssumme`. `zillmer_amount() = zillmer_on() * alpha_rate() * beitragssumme()` with `zillmer_on() = 1`; KLV overrides `zillmer_on` from its model point, FRV's `alpha_rate` is the *Zuzahlungskosten* rate on a single premium (its `beitragssumme()` is then the premium once), and Riester spreads it over five years. BU's `beitragssumme_unit` (per euro of premium) stays.
 
 The shared loaders in the core's `Data` beside the tables of entry 2: `surplus_table()` (Basis, Riester's `surplus_scenario.csv`), `charge_table()` (FRV; Basis, RV and KLV's `cost_table.csv` override its index term) and `hoechstrechnungszins_table()` (Sofort). KLV's and Index's `surplus_rate_table` and RV's `decl_rate_table` have other keys and stay.
+
+### The premium amounts
+
+A premium amount has one name per quantity in every product, model-point column and cell alike (Moritz, 2026-11-07 and 2026-11-10; entry 16 of epic-parameter-files). The name is built from four parts. `gross` means before the *Ratenzahlungszuschlag* φ, no `gross` means after φ. `level` is the amount at inception; an argument `(k)` or `(t)` is the amount of year k or month t, and the same quantity at another time keeps its stem. `inst` is an instalment, the amount of one month, where no `inst` is an annual amount. `pp` is per policy. All amounts are per policy:
+
+| Quantity | Name |
+|---|---|
+| annual premium before φ at inception (the core's `beitragssumme_prem` reads it) | cell `prem_gross_level_pp()`, column `prem_gross_level_pp` |
+| annual premium before φ of year k (*Dynamik*, term) | `prem_gross_pp(k)` |
+| annual premium after φ of year k | `prem_pp(k)` |
+| its instalment due in month t, before *Beitragsverrechnung* and *Zuzahlung* | `prem_charged_inst_pp(t)` |
+| money collected per policy in month t: the *Zahlbeitrag* instalment plus any *Zuzahlung* (core; `premiums(t)` weights it) | `prem_inst_pp(t)` |
+| annual / instalment *Beitragsverrechnung* | `prem_rebate_pp(k)` / `prem_rebate_inst_pp(t)` |
+| annual *Zahlbeitrag* | `prem_paid_pp(k)` |
+| premiums paid to date after φ (*Beitragsrückgewähr* base) | cell `prem_cum_pp(k)`, column and cell `prem_cum_pp_init` |
+| premiums paid to date before φ (Index guarantee base) | cell `prem_gross_cum_pp(k)`, column and cell `prem_gross_cum_pp_init` |
+| premium due in month t | `prem_due(t)` |
+
+A product whose annual amounts are cells of a month takes `(t)` for `(k)` (RLV's `prem_pp(t)`, BU's `prem_gross_pp(t)`: the amount of the policy year month t falls in). A quantity only one product has keeps a name of its own beside the scheme, listed in the inventory below.
+
+**`prem_due` is the only source of a zero for the end of the premium term**, in every product (Moritz, 2026-11-10). The paying term, *Rentenbeginn* and a single premium's one payment are conditions of `prem_due(t)`, and no premium cell tests them itself: a cell of the year grid reads `prem_due` at the first month of its year (`prem_due(12 * k)`; RLV's annual cells of a month at `12 * duration(t)`), a monthly cell at its month. The zero is written as an early `return 0.0`, never as a product with the predicate, since a product with a negative operand would give `-0.0`. So the contractual amount `prem_gross_pp(k)` carries no term (Basis, Index: nonzero also after the paying term), and every amount paid or charged is 0.0 where `prem_due` is false. A *Beitragsfreistellung* is no end of the term and stays in the cell that tested it (Basis' and Riester's contribution cells, KLV's `prem_pp`, RV's `prem_pp`, FRV's `prem_charged_inst_pp`). Each product's predicate:
+
+| Product | `prem_due(t)` is true where |
+|---|---|
+| Basis | `t % 12 == 0` and the projection year `k = proj_year(t)` lies in the frame before *Rentenbeginn*, `0 <= k < k_conv()`; on a single premium only in year 0 and only where `duration_init == 0`; the *Zuzahlung* does not read it |
+| BU | `duration_mth(t) % prem_cycle() == 0`; the premium is payable to the *Endalter*, where the frame ends, so there is no further condition (the *Beitragsbefreiung* is the count `pols_prem`) |
+| FRV | on a single premium `t == t_start()`; else `t < 12 * prem_term_y()` and `(t - t_start()) % prem_cycle() == 0` |
+| Index | `duration_mth(t) % 12 == 0` and the policy year `k = duration(t)` lies in the frame, `k_start() <= k < proj_len_y()`; on a single premium only `k == k_start()`, else `k < prem_term_y()` |
+| KLV | `duration(t) < prem_term()` and `duration_mth(t) % prem_cycle() == 0` |
+| RV | `duration_mth(t) % 12 == 0` and the policy year `k = duration(t)` lies before *Rentenbeginn* and inside the paying term, `0 <= k < aufschub_y` and `k < prem_term_y()`; on a single premium only `k == 0` |
+| Pflege | `age(t) < prem_end_age()`; on a single premium `t == 0`, else `t % prem_cycle() == 0` |
+| Riester | `t % 12 == 0` while the contract accumulates, `t < t_conv()` |
+| RLV | `t >= 0`, `duration(t) < prem_term()` and `duration_mth(t) % prem_cycle() == 0` |
+| Sofort | `t == 0`, the month of the *Einmalbeitrag* |
+
+What is no premium term and keeps its own test: the phase of an account (Basis' `alpha_amort_pp` and `prem_to_av_pp`, whose *Zillmerung* instalments and *Stückkosten* outlive a single premium; RV's account charges; Riester's interest and benefit cells), the spread of an acquisition charge (Index, FRV), Basis' *Zuzahlung*, which is not bounded by the premium term (Moritz, 2026-11-10): `zuz_pp(k)` tests the *Aufschubphase* and `zuzahlung_end_dur` itself and `prem_inst_pp(t)` the first month of the projection year, as Riester's `zulagen(t)` does, so a single-premium point may pay a *Zuzahlung* after its one premium; the state's *Zulage*, which Riester's `zulagen(t)` pays in the first month of a year also in the conversion month, and the first-order tariff, where the paying term is a term of the equivalence (the core's `tariff_annuity` sums over `prem_term()`, RLV's and KLV's `res_pp_at` credit the net or *Zillmer* premium inside it). Pflege's `prem_cum_max_pp(t)` counts the instalments to date in closed form from `prem_end_age()` rather than through `prem_due`; both count the same months.
+
+**The result column `premiums` holds the same quantity in every product, the money collected** (Moritz, 2026-11-10): `premiums(t) = prem_inst_pp(t) * pols_prem(t)`, the *Zahlbeitrag* including any *Zuzahlung*, with no gross or rebate column beside it. KLV, FRV, Index, RV, Pflege and Sofort publish that. Riester's `zulagen` stays a column of its own, since the state pays it, not the customer. BU publishes it since its result-changing commit: its `premiums` was the instalment before the *Beitragsverrechnung* with the rebate in a column beside it, and is the *Zahlbeitrag* now, the rebate the cell `prem_rebate_inst_pp(t)` that `check_prem_split` closes against the instalment due; `net_cf` and `liability_cf` moved by at most 3.0e-13 euro. RLV published the guaranteed instalments and the rebate in two columns beside `premiums` until its result-changing commit removed them, with the two cells behind them; its other columns are byte-identical and its statement is the core's default, so it derives `result_cf_columns`. Basis published the *Zuzahlungen* in a column of their own until its result-changing commit folded them into `premiums`: `prem_inst_pp(t)` is the year's premium plus `zuz_pp(k)` in the first month of the projection year, `comm_renew` reads `premiums(t)` alone and `income_other` is the core's 0; `net_cf` and `liability_cf` moved by at most 1.0e-12 euro, the commissions by 2.0e-14. So every product's `premiums` is the money collected.
+
+The inventory, every model-point column and cell that holds a premium amount, by product (a column is a column of `model_point_table.csv`):
+
+| Product | Name | Kind | Quantity |
+|---|---|---|---|
+| core | `prem_inst_pp(t)` | cell | the money collected per policy in month t, 0 by default; all ten override it |
+| core | `premiums(t)` | cell | `prem_inst_pp(t) * pols_prem(t)`, the result column |
+| core | `beitragssumme_prem()` | cell | the annual premium of the *Beitragssumme*, `prem_gross_level_pp()` (KLV); FRV and Pflege override it |
+| core | `prem_net_level_pp()` | cell | the net level premium of the first-order equivalence, never a cash flow (RLV, KLV, Pflege) |
+| Basis | `prem_gross_level_pp` | column | annual premium before φ at inception; the *Einmalbeitrag* on `single` |
+| Basis | `prem_gross_pp(k)` | cell | annual premium before φ of year k, with the *Beitragsdynamik* |
+| Basis | `prem_pp(k)` | cell | annual premium after φ of year k |
+| Basis | `zuzahlung_pp`, `zuz_pp(k)` | column, cell | the *Zuzahlung* stated and the one paid in year k after its take-up, a quantity of its own, not bounded by the premium term: it ends with `zuzahlung_end_dur` and *Rentenbeginn* |
+| Basis | `prem_total_pp(k)` | cell | the total contribution including the BUZ share, reporting only |
+| Basis | `prem_to_av_pp(k)` | cell | the premium credited to the account after the charges |
+| Basis | `prem_inst_pp(t)` | cell | the year's `prem_pp` plus `zuz_pp` in the first month of the projection year |
+| BU | `prem_gross_level_std_pp` | column | level annual premium before φ and before the *Risikozuschlag*; 0 means derive by equivalence |
+| BU | `prem_gross_level_pp()` | cell | annual premium before φ at inception, `rating_factor()` times the column or the equivalence premium |
+| BU | `prem_gross_pp(t)` | cell | annual premium before φ of the policy year of month t, with the *Beitragsdynamik* |
+| BU | `prem_charged_inst_pp(t)` | cell | the instalment due in month t, before the *Beitragsverrechnung* |
+| BU | `prem_rebate_inst_pp(t)` | cell | the instalment's *Beitragsverrechnung* |
+| BU | `prem_inst_pp(t)` | cell | the *Zahlbeitrag* instalment, `beitragsverrechnung() * prem_charged_inst_pp(t)` |
+| FRV | `prem_charged_inst_level_pp` | column and cell | the instalment the policy states at inception, φ included; the *Einmalbeitrag* on `single`; not an annual amount |
+| FRV | `prem_charged_inst_pp(t)` | cell | the instalment due in month t, with the *Beitragsdynamik* |
+| FRV | `topup_amount`, `topup_pp(t)` | column, cell | the *Zuzahlung* and its month, a quantity of its own |
+| FRV | `prem_inst_pp(t)` | cell | `prem_charged_inst_pp(t) + topup_pp(t)` |
+| FRV | `prem_cum_pp_init` | column and cell | premiums paid before the valuation date |
+| FRV | `prem_cum_end_pp(t)` | cell | premiums paid to the end of month t, *Zuzahlung* included: another timing than RV's `prem_cum_pp(k)` |
+| FRV | `prem_to_av_pp(t)` | cell | the premium invested in the fund after the charges |
+| Index | `prem_gross_level_pp` | column | annual premium before φ at inception; the *Einmalbeitrag* on `single` |
+| Index | `prem_gross_pp(k)` | cell | annual premium before φ of year k |
+| Index | `prem_pp(k)` | cell | annual premium after φ of year k |
+| Index | `prem_inst_pp(t)` | cell | the year's `prem_pp` in the month it is due |
+| Index | `prem_gross_cum_pp_init` | column and cell | premiums paid before the valuation date, before φ |
+| Index | `prem_gross_cum_pp(k)` | cell | premiums paid to the start of year k, before φ, the base of the *Beitragsgarantie* |
+| Index | `prem_charge_acq_pp(k)`, `prem_charge_acq_min_pp(k)`, `prem_charge_adm_pp(k)`, `prem_to_av_pp(k)` | cell | the charges on the premium and the premium credited to the account |
+| KLV | `prem_gross_level_pp()` | cell | annual premium before φ at inception, from the equivalence |
+| KLV | `prem_pp(k)` | cell | annual premium after φ of year k |
+| KLV | `prem_rebate_pp(k)` | cell | the year's *Beitragsverrechnung* |
+| KLV | `prem_paid_pp(k)` | cell | the annual *Zahlbeitrag*, `prem_pp(k) - prem_rebate_pp(k)` |
+| KLV | `prem_charged_inst_pp(t)` | cell | the instalment due in month t, before the *Beitragsverrechnung* |
+| KLV | `prem_inst_pp(t)` | cell | the *Zahlbeitrag* instalment |
+| KLV | `prem_zill_pp()` | cell | the first-order *Zillmer* premium, a reserving quantity |
+| RV | `prem_gross_level_pp` | column | annual premium before φ at inception; the *Einmalbeitrag* on `single` |
+| RV | `prem_pp_sched(k)` | cell | annual premium after φ of year k as written at inception, without a later *Beitragsfreistellung*; the *Beitragssumme* sums it |
+| RV | `prem_pp(k)` | cell | annual premium after φ of year k |
+| RV | `prem_inst_pp(t)` | cell | the year's `prem_pp` in the month it is due |
+| RV | `prem_cum_pp_init` | column | premiums paid before the valuation date |
+| RV | `prem_cum_pp(k)` | cell | premiums paid to the start of year k, the *Beitragsrückgewähr* base |
+| RV | `prem_to_av_pp(k)` | cell | the *Sparbeitrag* credited to the account |
+| Pflege | `premium_mth` | column and cell | the monthly premium the model point states; 0 means derive by equivalence; a monthly amount, a quantity of its own |
+| Pflege | `premium_mth_pp()` | cell | the monthly premium, stated or derived (the *Einmalbeitrag* on `single`) |
+| Pflege | `prem_charged_inst_pp(t)` | cell | the instalment due in month t |
+| Pflege | `prem_inst_pp(t)` | cell | `prem_charged_inst_pp(t)` |
+| Pflege | `prem_cum_max_pp(t)` | cell | premiums payable to the end of month t on an uninterrupted path |
+| Riester | `contrib_fixed_pp`, `contrib_ratio`, `contrib_extra_pp` | column and cell | the fixed own contribution, the share of the *Mindesteigenbeitrag* paid and the unsubsidised extra contribution; `contrib_form` chooses between the first two |
+| Riester | `eigenbeitrag_pp(k)`, `eigenbeitrag_paid_pp(k)` | cell | the saver's own contribution of year k before and after φ: the share of a contribution the state completes, a quantity of its own |
+| Riester | `contrib_total_pp(k)` | cell | the contribution received in year k, *Zulage* included |
+| Riester | `prem_inst_pp(t)` | cell | the own contribution after φ plus the extra contribution in the month they are due |
+| Riester | `zulage_pp(k)`, `zulagen(t)` | cell | the state's *Zulage*, a result column of its own |
+| Riester | `beitragssumme`, `rider_prem_pp` | column | the *Beitragssumme* as stated and the rider's premium, which no cash flow reads |
+| RLV | `prem_gross_level_pp()` | cell | annual premium before φ at inception, from the equivalence |
+| RLV | `prem_pp(t)` | cell | annual premium after φ of the policy year of month t |
+| RLV | `prem_rebate_pp(t)`, `prem_rebate_inst_pp(t)` | cell | the annual *Beitragsverrechnung* and its instalment |
+| RLV | `prem_paid_pp(t)` | cell | the annual *Zahlbeitrag* |
+| RLV | `prem_charged_inst_pp(t)` | cell | the instalment due in month t, before the *Beitragsverrechnung* |
+| RLV | `prem_inst_pp(t)` | cell | the *Zahlbeitrag* instalment |
+| Sofort | `prem_gross_level_pp` | column and cell | the *Einmalbeitrag*, the premium before any φ at inception |
+| Sofort | `net_single_prem()` | cell | the *Einmalbeitrag* less the acquisition loading, a quantity of its own |
+| Sofort | `prem_inst_pp(t)` | cell | the *Einmalbeitrag* in the month it is due |
+
+The amounts that are not premiums keep their names: Riester's `contrib_*` and its column `beitragssumme`, the core's `beitragssumme()`, Basis' `prem_total_pp`, RV's `prem_pp_sched`, the `prem_to_av*` cells, Index' `prem_sum()`, the *Beitragssumme* on `prem_gross_level_pp` under Index' own name, kept as it is, and BU's `premium_form`, a form and no amount.
+
+The renamed columns and cells, old name to new name, in the order of the commits (where a new name was a current name, the current one was renamed first; where a column and a cell shared the old name, the column first):
+
+| Product | Kind | Old | New |
+|---|---|---|---|
+| Basis | column | `prem_base_pp` | `prem_gross_level_pp` |
+| Basis | cell | `prem_base_pp(k)` | `prem_gross_pp(k)` |
+| Basis | cell and result column | `zuzahlungen(t)` | removed, folded into `premiums` (result commit) |
+| Index | column | `prem_gross_pp` | `prem_gross_level_pp` |
+| Index | cell | `prem_gross_pp(k)` | `prem_pp(k)` |
+| Index | cell | `prem_base_pp(k)` | `prem_gross_pp(k)` |
+| Index | cell | `prem_paid_pp(k)` | `prem_gross_cum_pp(k)` |
+| Index | column and cell | `prem_paid_init` | `prem_gross_cum_pp_init` |
+| RV | column | `prem_gross_pp` | `prem_gross_level_pp` |
+| RV | column | `premium_single_pp` | removed: the *Einmalbeitrag* of model point 2, 50000.00, stands in `prem_gross_level_pp` |
+| BU | cell | `prem_gross_pp(t)` | `prem_charged_inst_pp(t)` |
+| BU | cell | `prem_gross_ann_pp(t)` | `prem_gross_pp(t)` |
+| BU | column | `gross_prem_ann` | `prem_gross_level_std_pp` |
+| BU | cell | `gross_prem_ann()` | removed: `prem_gross_level_pp()` reads the column |
+| BU | cell | `prem_zahl_pp(t)` | `prem_inst_pp(t)`, folded into the core's term (result commit) |
+| BU | cell | `surplus_credit_pp(t)` | `prem_rebate_inst_pp(t)` (result commit) |
+| BU | cell and result column | `surplus_credit(t)` | removed (result commit) |
+| RLV | cell | `prem_gross_pp(t)` | `prem_pp(t)` |
+| RLV | cell | `prem_gross_inst_pp(t)` | `prem_charged_inst_pp(t)` |
+| RLV | cell and result column | `prem_gross(t)`, `prem_rebate(t)` | removed (result commit) |
+| KLV | cell | `prem_gross_pp()` | `prem_gross_level_pp()` |
+| KLV | cell | `prem_charged_pp(k)` | `prem_pp(k)` |
+| KLV | cell | `prem_offset_pp(k)` | `prem_rebate_pp(k)` |
+| FRV | cell | `prem_pp(t)` | `prem_charged_inst_pp(t)` |
+| FRV | column | `prem_pp` | `prem_charged_inst_level_pp` |
+| FRV | cell | `prem_pp_base()` | `prem_charged_inst_level_pp()` |
+| FRV | cell | `cum_prem_pp(t)` | `prem_cum_end_pp(t)` |
+| FRV | column and cell | `cum_prem_init` | `prem_cum_pp_init` |
+| Pflege | cell | `premium_due(t)` | `prem_due(t)` |
+| Pflege | cell | `premium_pp(t)` | `prem_charged_inst_pp(t)` |
+| Pflege | cell | `cum_prem_max_pp(t)` | `prem_cum_max_pp(t)` |
+| Sofort | column and cell | `single_prem` | `prem_gross_level_pp` |
+| Sofort | column | (none) | `prem_form`, added, `single` on every point |
+| FRV, Sofort | cell | (none) | `prem_due(t)`, added |
+
+Every rename and every `prem_due` commit is byte-identical. The `prem_due` commits moved operators and the literal `12` of a year's first month between cells, and the counts of `tools/measure_marginal.py` and `tests/test_measure_marginal.py` follow the roadmap's command: Index 343 to 339, Basis 628 to 625, BU 506 to 505, RLV 292 to 287, KLV 417 to 419, RV 582 to 587, FRV 414 to 416, Riester 590 to 614, M 5,249 to 5,269; M_core 190 unchanged. The result commits removed cells: BU 505 to 502, RLV 287 to 285, Basis 625 to 623, M 5,269 to 5,262. Riester's `guar_pp` then read `prem_due` for the extra contribution as the other sites do: Riester 614 to 617, M 5,262 to 5,265. Basis' `zuz_pp` and `prem_inst_pp` then took their own tests back: Basis 623 to 635, M 5,265 to 5,277.
 
 ## The parameter files
 

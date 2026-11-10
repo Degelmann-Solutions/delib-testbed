@@ -74,7 +74,7 @@ The **contractual policy year is the 1-based label** `policy_year(t) = t // 12 +
 from `t` and never indexed by, and `age(t) = issue_age + policy_year(t) − 1 = issue_age +
 t // 12`. Because a 0-based frame has no `t = −1`, the opening *Anteilspreis* is its own cells,
 `unit_price_open(t)` — `unit_price_init` at `t = t_start()` and `unit_price(t − 1)` after it
-— which is what `av_pp` and `units_bought_pp` read; the ledgers `cum_prem_pp` and
+— which is what `av_pp` and `units_bought_pp` read; the ledgers `prem_cum_end_pp` and
 `cum_charge_acq_pp` likewise seed inside the frame's first month rather than one before it.
 
 ### What the CSVs did and did not do
@@ -217,11 +217,11 @@ new-business one on this chassis.
 ## The *Beitragsrückgewähr*, and two mortality bases at once
 
 The composite death benefit is `max(Fondsguthaben, Summe der gezahlten Beiträge)` [S2], so
-the net amount at risk is `max(cum_prem_pp(t) − F, 0)` — positive early, vanishing once the
+the net amount at risk is `max(prem_cum_end_pp(t) − F, 0)` — positive early, vanishing once the
 fund overtakes the premiums paid (`t = 94` on the anchor cell), returning after a market
-fall. That makes `cum_prem_pp` a genuine **state variable** rather than a reporting
+fall. That makes `prem_cum_end_pp` a genuine **state variable** rather than a reporting
 convenience, and the risk charge a quantity recomputed every month. It is the premiums
-**paid**, gross: `cum_prem_pp(59) = 12 000,00 €` against 9 720,00 € actually invested, so
+**paid**, gross: `prem_cum_end_pp(59) = 12 000,00 €` against 9 720,00 € actually invested, so
 reading the floor off the invested amount would understate the death benefit by 19 %.
 
 The floor at zero in `nar_pp()` is load-bearing. Without it the contract would pay the
@@ -368,7 +368,7 @@ being a *configuration* and not an assumption.
 
 | Module | Switch | Off value | What it does |
 |---|---|---|---|
-| Dynamic lapse | `lapse_dyn_beta` | `0.0` | `lapse_dyn_add(t) = β · max(0, 1 − av_pp(t)/cum_prem_pp(t))` raises the lapse rate while the contract is under water against the premiums paid — unit-linked lapse is market-sensitive precisely because the exit is at fund value on short notice [R1] [R2]. 0.15 is the reference value; **no German calibration for a coefficient of any size exists in this corpus.** Switched on it bites hardest on model point 12, whose stress path leaves the fund far below premiums paid for years |
+| Dynamic lapse | `lapse_dyn_beta` | `0.0` | `lapse_dyn_add(t) = β · max(0, 1 − av_pp(t)/prem_cum_end_pp(t))` raises the lapse rate while the contract is under water against the premiums paid — unit-linked lapse is market-sensitive precisely because the exit is at fund value on short notice [R1] [R2]. 0.15 is the reference value; **no German calibration for a coefficient of any size exists in this corpus.** Switched on it bites hardest on model point 12, whose stress path leaves the fund far below premiums paid for years |
 | *Ablaufmanagement* | `ablauf_flag` (model point) | `False` on twelve of thirteen | A linear ramp of the **gross** return from the scenario's rate to `mmkt_return_ann = 1.50 %` over the last `glide_months = 60` months. With one fund and a deterministic return a reallocation and a change of assumed return are the same thing, so this is the honest representation of what is known — and **nothing about a real *Ablaufmanagement* was established**: not whether it is opt-in, not the ramp length, not the destination. Model point 8 switches it on |
 | *Überschussbeteiligung* | — | not implemented | A unit-linked contract's surplus arises from the risk and cost results only [R5] [R14] [REG-R9] [REG-R18]; the model computes the risk result and credits none of it back. The omission biases the projected *Fondsguthaben* **downward**, the honest direction for a charge demonstration |
 

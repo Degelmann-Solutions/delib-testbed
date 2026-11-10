@@ -205,7 +205,7 @@ Forward moves are deterioration, backward moves are *Herabstufung* and, out of P
 | `pols_in_term(t)`, `pols_waived(t)`, `pols_prem(t)` | In-force units inside the premium term (`age(t) < prem_end_age`); of those, the units in a *Pflegegrad* whose `benefit_pct` is positive — the *Beitragsbefreiung* population; and the difference, the units that actually pay | monthly |
 | `pols_entry(t, g)`, `pols_grad(t, g)` | Lives entering *Pflegegrad* `g` from the active state during month `t`, and lives graduating out of the *Karenz* ledger into `pols_pg(·, g)` | monthly |
 | `pols_death(t)`, `pols_lapse(t)` | Deaths during month `t` from every state; lapses from the active state only, after the insured decrements | monthly |
-| `pols_dead_cum(t)`, `pols_lapse_cum(t)` | Cumulative absorbing counts at the start of month `t`; `cum_prem_max_pp(t)` is premiums payable to date on an uninterrupted path, the base of both the *Rückkaufswert* and the *Beitragsrückgewähr* | monthly |
+| `pols_dead_cum(t)`, `pols_lapse_cum(t)` | Cumulative absorbing counts at the start of month `t`; `prem_cum_max_pp(t)` is premiums payable to date on an uninterrupted path, the base of both the *Rückkaufswert* and the *Beitragsrückgewähr* | monthly |
 | `tar_pols_act(t)`, `tar_pols_pg(t, g)`, `tar_pols_prem(t)` | The same ledgers on the **first-order** basis, without lapse — the pricing engine's state | monthly |
 
 There is **no account value** and **no paid-up state**, and the *Deckungskapital* — a real object of
@@ -547,17 +547,17 @@ grades **starts paying again**, so `pols_prem` is not monotone.
 
 The instalment is charged only on due months:
 
-    premium_due(t)  = (m > 0) and (t % m == 0) and (x(t) < prem_end_age)
-    premium_pp(t)   = P * m           if premium_due(t) else 0
-    premiums(t)     = premium_pp(t) * pols_prem(t)
+    prem_due(t)             = (m > 0) and (t % m == 0) and (x(t) < prem_end_age)
+    prem_charged_inst_pp(t) = P * m           if prem_due(t) else 0
+    premiums(t)             = prem_charged_inst_pp(t) * pols_prem(t)
 
-For the *Einmalbeitrag* (`m = 0`), `premium_pp(0) = P_single` and zero thereafter. A waiver that
+For the *Einmalbeitrag* (`m = 0`), `prem_charged_inst_pp(0) = P_single` and zero thereafter. A waiver that
 begins between two due dates therefore takes effect **at the next due date**, which is the German
 convention for a *Beitragsbefreiung* on a fractionated contract and is stated because the
 alternative — refunding the unearned instalment — is a different and equally arguable rule the model
 does not implement.
 
-`cum_prem_max_pp(t)` is the premium payable to date on an uninterrupted path, `P` times the number
+`prem_cum_max_pp(t)` is the premium payable to date on an uninterrupted path, `P` times the number
 of premium-months elapsed inside the term (for the single-premium form, `P_single` from `t = 0`).
 It is a **deterministic** quantity, not a ledger, and it is what both the *Rückkaufswert* and the
 *Beitragsrückgewähr* are struck on.
@@ -571,8 +571,8 @@ It is a **deterministic** quantity, not a ledger, and it is what both the *Rück
 
 with
 
-    rkw_pp(t) = rkw_prem_ratio(min(y(t), Y)) * cum_prem_max_pp(t) * (1 - stornoabzug_rate)
-    brg_pp(t) = cum_prem_max_pp(t)   if beitragsrueckgewaehr else 0.0
+    rkw_pp(t) = rkw_prem_ratio(min(y(t), Y)) * prem_cum_max_pp(t) * (1 - stornoabzug_rate)
+    brg_pp(t) = prem_cum_max_pp(t)   if beitragsrueckgewaehr else 0.0
 
 Note what `claims(t, "ANNUITY")` is weighted on: `E_g(t)`, the escalation ledger, **not** `ℓ_g(t)` —
 identical in the base run, not identical with the dynamic on, and using `ℓ_g` would silently drop the
@@ -615,7 +615,7 @@ The `tar_*` ledgers obey exactly the recursions above with `w ≡ 0` and the mar
 over `t = 0 … n − 1` on the tariff ledgers:
 
     A  = Σ_t v**t * R * Σ_g π_g * tar_esc_pg(t, g)                  EPV of the annuity
-    U  = Σ_{t : premium_due(t)} v**t * m * tar_pols_prem(t)         EPV of premium in units of P
+    U  = Σ_{t : prem_due(t)} v**t * m * tar_pols_prem(t)         EPV of premium in units of P
     G  = Σ_t v**t * γ * inflation_factor(t) * tar_pols_if(t)        EPV of per-policy admin
     C  = Σ_t v**t * c * inflation_factor(t) * Σ_{g:π_g>0} tar_pols_pg(t, g)
     D1 = Σ_t v**t * (premium-months elapsed at t) * tar_pols_death(t)    (0 unless BRG)
@@ -662,7 +662,7 @@ and then `liability_cf`:
 A second frame, `result_states()`, publishes the ledgers and rates a reader needs to follow the
 projection: `pols_pg1` … `pols_pg5`, `pols_karenz`, `pols_entry`, `pols_grad`, `pols_reactiv`,
 `pols_death`, `pols_lapse`, `mort_rate`, `mort_rate_care_pg5`, `inc_rate`, `lapse_rate` and
-`premium_pp`. It is not part of the house contract and carries no `check_*`.
+`prem_charged_inst_pp`. It is not part of the house contract and carries no `check_*`.
 
 ### The published identities
 
@@ -695,8 +695,8 @@ this list executed in a different sequence.
    with the *Karenz* already served.
 2. **Classify the in-force.** `pols_in_term(t)`, then `pols_waived(t)` from the paying grades, then
    `pols_prem(t)` as the difference. The *Karenz* ledger is in-term and unwaived.
-3. **Collect the *Beitrag*, in advance.** If `premium_due(t)`, `premiums(t) = P × m × pols_prem(t)`;
-   otherwise zero. Accumulate `cum_prem_max_pp(t)`.
+3. **Collect the *Beitrag*, in advance.** If `prem_due(t)`, `premiums(t) = P × m × pols_prem(t)`;
+   otherwise zero. Accumulate `prem_cum_max_pp(t)`.
 4. **Pay the *Pflegerente*, in advance**, on the **escalation** ledger:
    `claims(t, "ANNUITY") = R × Σ_g π_g × esc_pg(t, g)`. The *Karenz* ledger receives nothing.
 5. **Charge start-of-month expenses.** `zillmer_amount()` at `t = 0` only; per-policy administration
@@ -783,7 +783,7 @@ The specific ways an implementation of *this* product looks right and is wrong. 
     below it, and a *Leistungsdynamik* on this basis is not cheap.
 11. **Netting the annuity off a *Beitragsrückgewähr* at the aggregate level.** The floor at zero is
     per life; the model pays the **gross** form. Assert
-    `claims(t, "DEATH") == cum_prem_max_pp(t) × pols_death(t)` on point 9 and `== 0.0` on point 1.
+    `claims(t, "DEATH") == prem_cum_max_pp(t) × pols_death(t)` on point 9 and `== 0.0` on point 1.
 12. **Paying a surrender value out of the paying state.** Assert `pols_lapse(t) ≤ pols_act(t)`,
     `claims(t, "LAPSE") == 0` wherever `pols_act(t) == 0`, and `lapse_rate(t) == 0` once
     `x(t) ≥ prem_end_age` (point 4).
@@ -801,7 +801,7 @@ The specific ways an implementation of *this* product looks right and is wrong. 
     otherwise — have **equal** `premium_mth_pp()` and **unequal** projected annuity totals, the
     female point's being larger [REG-R34].
 16. **Collecting a premium in a month that is not a due date.** Assert `premiums(t) == 0` at every
-    non-due `t` on points 3, 4 and 5, and `premium_pp(t) == premium_mth_pp() × prem_cycle()` at
+    non-due `t` on points 3, 4 and 5, and `prem_charged_inst_pp(t) == premium_mth_pp() × prem_cycle()` at
     every due `t`.
 17. **Using the *Pflegegrad* stock distribution as the entry mix.** The stock is
     13,8 / 40,4 / 29,6 / 11,8 / 4,3 % at end-2023 [R18]; entrants are not. Assert `Σ_g entry_share(g) == 1.0` and that the

@@ -165,7 +165,7 @@ basis and provenance.
 | `ret_age` | int | Attained age at *Rentenbeginn* | 6 (60, the pre-2012 floor), 12 (70) |
 | `pols_if_init` | float | Policies the model point represents | all |
 | `prem_form` | enum {regular, single} | *laufender Beitrag* against *Einmalbeitrag* | 5 (single) |
-| `prem_base_pp` | EUR p.a. | The contractual *laufender Beitrag* at inception, before the *Ratenzahlungszuschlag* and before any *Dynamik*; for `single`, the *Einmalbeitrag* | all but 7, 8 |
+| `prem_gross_level_pp` | EUR p.a. | The contractual *laufender Beitrag* at inception, before the *Ratenzahlungszuschlag* and before any *Dynamik*; for `single`, the *Einmalbeitrag* | all but 7, 8 |
 | `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | Payment frequency; keys `prem_freq_table.csv` for the *Ratenzahlungszuschlag* | 1, 5, 7, 8, 9, 13 annual · 4 half-yearly · 3, 11 quarterly · 2, 6, 10, 12 monthly |
 | `prem_dyn_rate` | rate p.a. | *Beitragsdynamik*, the contractual annual escalation | 1, 2, 3, 4, 6, 9, 11, 12 |
 | `zuzahlung_pp` | EUR p.a. | The nominal annual *Zuzahlung* before take-up | 1, 3, 11 |
@@ -357,7 +357,7 @@ surrender, no assignment, no provider transfer, no commutation. That is the prod
 | `g(t)` | `pols_gtd(t)` | *Rentengarantiezeit* continuations running at the start of month `t` |
 | `A(k)`, `Aᵖ(k)`, `Aᶠ(k)` | `av_at(k, ·)`, `av_pp_at(k, ·)`, `av_pu_at(k, ·)` | *Deckungskapital*: fund level, per paying policy, and premium-free block at fund level |
 | `P(k)`, `Z(k)` | `prem_pp(k)`, `zuz_pp(k)` | the *laufender Beitrag* charged and the *Zuzahlung* paid, per paying policy, per year |
-| `P₀`, `δ`, `φ` | `prem_base_pp`, `prem_dyn_rate`, `prem_freq_load()` | base premium at inception, *Beitragsdynamik*, *Ratenzahlungszuschlag* |
+| `P₀`, `δ`, `φ` | `prem_gross_level_pp`, `prem_dyn_rate`, `prem_freq_load()` | base premium at inception, *Beitragsdynamik*, *Ratenzahlungszuschlag* |
 | `S` | `beitragssumme()` | the *Beitragssumme* at inception |
 | `α`, `α_z`, `β`, `γ`, `u(k)` | `alpha_amort_pp(k)`, `alpha_zuz_pp(k)`, `charge_admin_prem_inst`, `charge_admin_av_ann`, `unit_cost_pp(k)` | the four charges struck against the account, all annual |
 | `N(k)` | `prem_to_av_pp(k)` | premium credited to the account after all four charges |
@@ -382,9 +382,9 @@ The *Beitragsdynamik* compounds on the base premium from inception, so it is key
 duration**, not the projection year — which is what makes an in-force point work:
 
 ```
-prem_base_pp(k) = prem_base_pp × (1 + δ)^d(k)                for prem_form = "regular"
-P(k)            = prem_base_pp(k) × φ        if k < T and not paid-up and premiums are due
-                = 0                          otherwise
+prem_gross_pp(k) = prem_gross_level_pp × (1 + δ)^d(k)                for prem_form = "regular"
+P(k)             = prem_gross_pp(k) × φ        if prem_due(12 k) and not paid-up
+                 = 0                          otherwise
 ```
 
 with `φ = prem_freq_load` at `prem_freq` from `prem_freq_table.csv`. For `prem_form = "single"` the
@@ -402,13 +402,13 @@ Z(k) = zuzahlung_pp × zuz_take_up(d(k))      if k < T and d(k) < zuzahlung_end_
 tariff prices a half-yearly, quarterly or monthly mode by loading the **amount** through `φ`, not by
 moving the *Versicherungsperiode*, and the account the contribution is credited to is a
 *Deckungskapital* struck per *Versicherungsjahr*. So the whole year's *Beitrag* and *Zuzahlung* fall
-in the first month of the projection year — `prem_due(t)`, `t % 12 == 0` — whatever `prem_freq` says,
+in the first month of the projection year — `prem_due(t)`, `t % 12 == 0` and `k < T` — whatever `prem_freq` says,
 and splitting the cash into instalments while crediting the account annually would make the fund's
 cash and the account's credit disagree inside the year for no gain in fidelity.
 
 ```
-premiums(t)    = P(k) × lᵖ(t)     if prem_due(t), else 0,    k = proj_year(t)
-zuzahlungen(t) = Z(k) × lᵖ(t)     if prem_due(t), else 0
+premiums(t)    = ( P(k) + Z(k) ) × lᵖ(t)   if t % 12 == 0, else 0,    k = proj_year(t)
+                 the money collected: the laufender Beitrag and the Zuzahlung beside it
 ```
 
 The weight is the count at the start of the projection year, which is the annual-step model's own
@@ -430,8 +430,8 @@ The *Beitragssumme* is struck once, at inception, on the contractual *laufender 
 (gap 8):
 
 ```
-S = Σ_{u=0}^{m−1} prem_base_pp × (1 + δ)^u          for prem_form = "regular", m = ret_age − issue_age
-  = prem_base_pp                                    for prem_form = "single"
+S = Σ_{u=0}^{m−1} prem_gross_level_pp × (1 + δ)^u          for prem_form = "regular", m = ret_age − issue_age
+  = prem_gross_level_pp                                    for prem_form = "single"
 ```
 
 The zillmerised acquisition charge is capped at `charge_acq_bsum_once × S` and amortised in `acq_spread_years`
@@ -610,8 +610,8 @@ expenses(t)          = expense_acq_pp_once × pols_if_init × 1{t = 0 and durati
                        + expense_admin_pp_ann / 12 × (1 + expense_infl)^k × l(t)     for t < 12T
                        + expense_annuity_pp_ann / 12 × (1 + expense_infl)^k × ( l(t) + g(t) )  for t ≥ 12T
 commissions(t)       = comm_acq_bsum_once × S × pols_if_init × 1{t = 0 and duration_init = 0}
-                       + comm_renew_prem_inst × ( premiums(t) + zuzahlungen(t) )   for t ≥ 1
-net_cf(t)            = premiums(t) + zuzahlungen(t)
+                       + comm_renew_prem_inst × premiums(t)                        for t ≥ 1
+net_cf(t)            = premiums(t)
                        − claims(t, "DEATH") − claims(t, "ANNUITY") − claims(t, "SURVIVOR")
                        − expenses(t) − commissions(t)
 liability_cf(t)      = − net_cf(t)
@@ -646,20 +646,20 @@ order**:
 | # | Column | Content |
 |---|---|---|
 | 1 | `pols_if` | policies in force at the start of the month — the weight on this row |
-| 2 | `pols_paying` | the premium-paying subset; the weight on the two premium columns |
-| 3 | `premiums` | *laufende Beiträge*, in the first month of a projection year and no other |
-| 4 | `zuzahlungen` | *Zuzahlungen*, kept separate because they are a distinct premium form on a distinct charge basis |
-| 5 | `claims_death` | death benefits in the *Aufschubphase*; **structurally 0** where `surv_annuity_rate = 0` |
-| 6 | `claims_annuity` | monthly annuity instalments in the *Rentenphase* |
-| 7 | `claims_survivor` | *Rentengarantiezeit* continuations; **structurally 0** where `guarantee_period_y = 0` |
-| 8 | `expenses` | acquisition, and a twelfth of the annual maintenance or annuity administration |
-| 9 | `commissions` | *Abschluss-* and *Bestandsprovision* |
-| 10 | `net_cf` | income-positive |
-| 11 | `liability_cf` | `−net_cf`, the orientation these notes print |
+| 2 | `pols_paying` | the premium-paying subset; the weight on the premium column |
+| 3 | `premiums` | *laufende Beiträge* and *Zuzahlungen*, the money collected, in the first month of a projection year and no other |
+| 4 | `claims_death` | death benefits in the *Aufschubphase*; **structurally 0** where `surv_annuity_rate = 0` |
+| 5 | `claims_annuity` | monthly annuity instalments in the *Rentenphase* |
+| 6 | `claims_survivor` | *Rentengarantiezeit* continuations; **structurally 0** where `guarantee_period_y = 0` |
+| 7 | `expenses` | acquisition, and a twelfth of the annual maintenance or annuity administration |
+| 8 | `commissions` | *Abschluss-* and *Bestandsprovision* |
+| 9 | `net_cf` | income-positive |
+| 10 | `liability_cf` | `−net_cf`, the orientation these notes print |
 
-Columns 3 and 4 enter `net_cf` positively and 5 to 9 negatively; columns 1 and 2 are counts,
+Column 3 enters `net_cf` positively and 4 to 8 negatively; columns 1 and 2 are counts,
 published because a reader cannot follow the projection without them, and named in
-`check_net_cf()`'s docstring as excluded from the identity.
+`check_net_cf()`'s docstring as excluded from the identity. The *Zuzahlung* has no column of its
+own: it is the cell `zuz_pp(k)`, a distinct premium form on a distinct charge basis.
 
 **The *Deckungskapital* is not a column of this frame.** It is a balance on the annual clock — one
 contribution, one set of charges and one interest credit per *Versicherungsjahr* — so it lives in
@@ -684,7 +684,7 @@ with the other's index is a category error rather than a rounding question.
 
 | Check | Clock | The identity it closes |
 |---|---|---|
-| `check_net_cf()` | month | `net_cf(t) = premiums + zuzahlungen − claims_death − claims_annuity − claims_survivor − expenses − commissions` at every `t`. **delib ruling 1**, mandatory on every model in the library |
+| `check_net_cf()` | month | `net_cf(t) = premiums − claims_death − claims_annuity − claims_survivor − expenses − commissions` at every `t`. **delib ruling 1**, mandatory on every model in the library |
 | `check_pols_roll_fwd()` | month | `pols_paying(t) + pols_paidup(t) = pols_if(t)`, and `pols_if(t+1) = pols_if(t) × (1 − mort_rate_mth(t))` — the **monthly** rate, and the *Beitragsfreistellung* rate does **not** appear |
 | `check_no_capital()` | month | The *nicht kapitalisierbar* invariant: no payment to the policyholder at any `t` other than a monthly annuity instalment or a permitted survivor benefit; `claims_death = 0` wherever the rider is off and wherever `t ≥ t_conv()` |
 | `check_av_roll_fwd()` | year | `av_at(k+1) = av_at(k, "AFT_INT") × (1 − mort_rate(12k))` for `k < k_conv()`; `av_at(k_conv(), "AFT_INT") = 0`, the conversion having emptied the account; and `av(k) = 0` for every `k > k_conv()`. **`av(k_conv())` is not zero** — it is the pre-conversion fund the annuity is struck on, and it is what `result_pols()` publishes in the conversion year |
@@ -790,11 +790,11 @@ a test.
    duration.** Assert `prem_pp(k) = 0` and `zuz_pp(k) = 0` for every `k ≥ k_conv()`, that
    `zuz_pp(k) = 0` once `duration_y(k) ≥ zuzahlung_end_dur`, and that on an in-force point the
    *Beitragsdynamik* is keyed to `duration_y(k)` and not to `k` — model point 6, at
-   `duration_init = 17`, must open at `prem_base_pp × 1.02^17`, not at `prem_base_pp`. On the monthly
+   `duration_init = 17`, must open at `prem_gross_level_pp × 1.02^17`, not at `prem_gross_level_pp`. On the monthly
    frame the same rule says `premiums(t) = 0` for every `t ≥ t_conv()` and in eleven months of twelve
    before it.
 8. **Applying the *Ratenzahlungszuschlag* twice, or to the wrong thing.** It multiplies the *laufender
-   Beitrag* only. Assert `prem_pp(k) / (prem_base_pp × (1+δ)^d(k)) = φ` exactly in every year, that
+   Beitrag* only. Assert `prem_pp(k) / (prem_gross_level_pp × (1+δ)^d(k)) = φ` exactly in every year, that
    `zuz_pp(k)` is invariant to `prem_freq`, and that a single-premium point carries `φ = 1`. **The
    monthly grid does not change this**: φ prices a fractionated mode by loading the amount, so
    `prem_due(t)` still puts the whole year's contribution in the first month of the year, and a model
@@ -846,7 +846,7 @@ a test.
     conclusion and stays with the contract [REG-R14] [REG-R15]. Assert that the shipped model points
     carry four distinct `rechnungszins` values and that `cred_rate(k) ≥ rechnungszins` in every year on every
     point.
-17. **Modelling the BUZ as premium income with no benefit.** `prem_base_pp` is the **old-age**
+17. **Modelling the BUZ as premium income with no benefit.** `prem_gross_level_pp` is the **old-age**
     contribution; the BUZ premium and the *BU-Rente* belong to `BU_DE_S`. Assert `buz_prem_share < 0.50`
     for every model point [R1], that `prem_total_pp(k) > prem_pp(k) + zuz_pp(k)` exactly where
     `buz_prem_share > 0`, and that `prem_total_pp` appears in **no** `result_cf()` column and in
@@ -903,7 +903,7 @@ any of them, and the research file records the absence as gap 3.
 **Configuration.** Model point 1, the anchor cell, exactly as shipped in `model_point_table.csv`:
 `point_id = 1`; `policy_id = DE-BAS-0001`; `sex = M` (reporting only; pricing is unisex [REG-R34]);
 `issue_age = 45`; `issue_year = 2026`; `duration_init = 0`; `ret_age = 67`;
-`pols_if_init = 1.0`; `prem_form = regular`; `prem_base_pp = 6,000.00 €` p.a.; `prem_freq = annual`,
+`pols_if_init = 1.0`; `prem_form = regular`; `prem_gross_level_pp = 6,000.00 €` p.a.; `prem_freq = annual`,
 so `prem_freq_load = 1.000`; `prem_dyn_rate = 0.02`; `zuzahlung_pp = 4,000.00 €` p.a.;
 `zuzahlung_end_dur = 22`; `paidup_at_init = 0`; `av_pp_init = 0.00 €`; `ann_pp_init = 0.00 €`;
 `rechnungszins = 0.0100`; `rentenfaktor_gtd = 28.00 €` per month per 10 000 €; `guarantee_period_y = 0`;
@@ -969,42 +969,42 @@ for the same reason it is trivial: it is `−net_cf` to the last bit.
 year. They are **reported and not summed**, which is why the Total row carries an em dash for all
 three.
 
-| k | age | `pols_if` | `pols_paying` | `av` | `premiums` | `zuzahlungen` | `claims_annuity` | `expenses` | `commissions` | `net_cf` |
-|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 | 45 | 1.000000 | 1.000000 | 0.00 | 6,000.00 | 2,800.00 | 0.00 | 309.95 | 4,094.85 | 4,395.21 |
-| 1 | 46 | 0.998052 | 0.958130 | 7,363.00 | 5,863.76 | 2,682.76 | 0.00 | 61.02 | 128.20 | 8,357.30 |
-| 2 | 47 | 0.995975 | 0.917890 | 14,673.08 | 5,729.84 | 2,570.09 | 0.00 | 62.11 | 124.50 | 8,113.32 |
-| 3 | 48 | 0.993759 | 0.879214 | 21,932.02 | 5,598.18 | 2,461.80 | 0.00 | 63.21 | 120.90 | 7,875.87 |
-| 4 | 49 | 0.991396 | 0.842039 | 29,141.27 | 5,468.70 | 2,357.71 | 0.00 | 64.31 | 117.40 | 7,644.70 |
-| 5 | 50 | 0.988877 | 0.806303 | 36,301.90 | 5,341.35 | 2,741.43 | 0.00 | 65.43 | 121.24 | 7,896.11 |
-| 10 | 55 | 0.973569 | 0.681682 | 77,460.51 | 4,985.80 | 2,317.72 | 0.00 | 71.08 | 109.55 | 7,122.88 |
-| 15 | 60 | 0.952608 | 0.602920 | 118,059.06 | 4,868.70 | 2,170.51 | 0.00 | 76.74 | 105.59 | 6,856.89 |
-| 20 | 65 | 0.924110 | 0.528688 | 159,403.66 | 4,713.62 | 1,903.28 | 0.00 | 82.11 | 99.25 | 6,435.53 |
-| 21 | 66 | 0.917309 | 0.514301 | 167,247.68 | 4,677.05 | 1,851.48 | 0.00 | 83.12 | 97.93 | 6,347.49 |
-| **22** | **67** | 0.910094 | 0.500051 | **175,006.86** | 0.00 | 0.00 | **6,853.32** | 50.46 | 0.00 | −6,903.78 |
-| 23 | 68 | 0.902444 | 0.495848 | 0.00 | 0.00 | 0.00 | 6,861.84 | 51.02 | 0.00 | −6,912.86 |
-| 32 | 77 | 0.810304 | 0.445221 | 0.00 | 0.00 | 0.00 | 6,715.54 | 54.56 | 0.00 | −6,770.10 |
-| 42 | 87 | 0.645714 | 0.354787 | 0.00 | 0.00 | 0.00 | 5,868.88 | 52.62 | 0.00 | −5,921.50 |
-| 52 | 97 | 0.413220 | 0.227044 | 0.00 | 0.00 | 0.00 | 4,089.82 | 40.47 | 0.00 | −4,130.29 |
-| 62 | 107 | 0.170104 | 0.093463 | 0.00 | 0.00 | 0.00 | 1,806.79 | 19.73 | 0.00 | −1,826.52 |
-| 72 | 117 | 0.027890 | 0.015324 | 0.00 | 0.00 | 0.00 | 307.89 | 3.71 | 0.00 | −311.60 |
-| 76 | 121 | 0.008602 | 0.004726 | 0.00 | 0.00 | 0.00 | 111.28 | 1.39 | 0.00 | −112.68 |
-| **Total** | | — | — | — | **112,806.32** | **50,822.07** | **225,576.13** | **3,817.52** | **6,417.27** | **−72,182.53** |
+| k | age | `pols_if` | `pols_paying` | `av` | `premiums` | `claims_annuity` | `expenses` | `commissions` | `net_cf` |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 45 | 1.000000 | 1.000000 | 0.00 | 8,800.00 | 0.00 | 309.95 | 4,094.85 | 4,395.21 |
+| 1 | 46 | 0.998052 | 0.958130 | 7,363.00 | 8,546.52 | 0.00 | 61.02 | 128.20 | 8,357.30 |
+| 2 | 47 | 0.995975 | 0.917890 | 14,673.08 | 8,299.93 | 0.00 | 62.11 | 124.50 | 8,113.32 |
+| 3 | 48 | 0.993759 | 0.879214 | 21,932.02 | 8,059.98 | 0.00 | 63.21 | 120.90 | 7,875.87 |
+| 4 | 49 | 0.991396 | 0.842039 | 29,141.27 | 7,826.41 | 0.00 | 64.31 | 117.40 | 7,644.70 |
+| 5 | 50 | 0.988877 | 0.806303 | 36,301.90 | 8,082.78 | 0.00 | 65.43 | 121.24 | 7,896.11 |
+| 10 | 55 | 0.973569 | 0.681682 | 77,460.51 | 7,303.51 | 0.00 | 71.08 | 109.55 | 7,122.88 |
+| 15 | 60 | 0.952608 | 0.602920 | 118,059.06 | 7,039.21 | 0.00 | 76.74 | 105.59 | 6,856.89 |
+| 20 | 65 | 0.924110 | 0.528688 | 159,403.66 | 6,616.89 | 0.00 | 82.11 | 99.25 | 6,435.53 |
+| 21 | 66 | 0.917309 | 0.514301 | 167,247.68 | 6,528.54 | 0.00 | 83.12 | 97.93 | 6,347.49 |
+| **22** | **67** | 0.910094 | 0.500051 | **175,006.86** | 0.00 | **6,853.32** | 50.46 | 0.00 | −6,903.78 |
+| 23 | 68 | 0.902444 | 0.495848 | 0.00 | 0.00 | 6,861.84 | 51.02 | 0.00 | −6,912.86 |
+| 32 | 77 | 0.810304 | 0.445221 | 0.00 | 0.00 | 6,715.54 | 54.56 | 0.00 | −6,770.10 |
+| 42 | 87 | 0.645714 | 0.354787 | 0.00 | 0.00 | 5,868.88 | 52.62 | 0.00 | −5,921.50 |
+| 52 | 97 | 0.413220 | 0.227044 | 0.00 | 0.00 | 4,089.82 | 40.47 | 0.00 | −4,130.29 |
+| 62 | 107 | 0.170104 | 0.093463 | 0.00 | 0.00 | 1,806.79 | 19.73 | 0.00 | −1,826.52 |
+| 72 | 117 | 0.027890 | 0.015324 | 0.00 | 0.00 | 307.89 | 3.71 | 0.00 | −311.60 |
+| 76 | 121 | 0.008602 | 0.004726 | 0.00 | 0.00 | 111.28 | 1.39 | 0.00 | −112.68 |
+| **Total** | | — | — | — | **163,628.39** | **225,576.13** | **3,817.52** | **6,417.27** | **−72,182.53** |
 
-**The whole *Aufschubphase* of this table is the annual-step model's, to the last bit.** The
-premium, the *Zuzahlung*, the commission, both counts and every account balance are unchanged,
+**The whole *Aufschubphase* of this table is the annual-step model's.** The premium with the
+*Zuzahlung* in it, the commission, both counts and every account balance are unchanged at the cent,
 because twelve geometric monthly death rates compound back to the annual rate exactly. What moved is
 the payout phase — 225 576,13 € against 229 750,01 €, because the *Rente* is now paid one instalment
 at a time — and the expenses, 3 817,52 € against 3 861,77 €, because a mid-year leaver bears only
 the months it was there.
 
 **The Total row is summed over all 924 months at full precision and then rounded**, which
-is not in general the same as adding the rounded cells. Here it differs in five of the six money
-columns: adding the seventy-seven rounded `premiums` cells gives 112 806,36 € against
-112 806,32 €, the rounded `claims_annuity` cells 225 576,12 € against 225 576,13 €, the rounded
+is not in general the same as adding the rounded cells. Here it differs in four of the five money
+columns: adding the seventy-seven
+rounded `claims_annuity` cells gives 225 576,12 € against 225 576,13 €, the rounded
 `expenses` cells 3 817,54 € against 3 817,52 €, the rounded `commissions` cells 6 417,29 € against
-6 417,27 € and the rounded `net_cf` cells −72 182,55 € against −72 182,53 €. `zuzahlungen` happens to
-agree at the cent. The differences are one to four cents and they are not errors; they are what
+6 417,27 € and the rounded `net_cf` cells −72 182,55 € against −72 182,53 €. `premiums` happens to
+agree at the cent. The differences are one to two cents and they are not errors; they are what
 rounding before adding costs, and a test that asserted the sum of the printed
 cells would be asserting the wrong number.
 

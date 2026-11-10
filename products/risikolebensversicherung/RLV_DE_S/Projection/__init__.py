@@ -127,13 +127,13 @@ G                          prem_gross_level_pp()           Bruttobeitrag, before
 Gn                         prem_net_level_pp()             Actuarial Nettopraemie
 v_d                        beitragsverrechnung_rate()      Beitragsverrechnungssatz
 phi                        prem_freq_load()                Ratenzahlungszuschlag
-G phi                      prem_gross_pp(t)                Bruttobeitrag, annual
+G phi                      prem_pp(t)                      Bruttobeitrag, annual
 v_d G phi                  prem_rebate_pp(t)               Beitragsverrechnung, annual
 P(t)                       prem_paid_pp(t)                 Zahlbeitrag, annual
 (none)                     instalments()                   Instalments a year, 1/2/4/12
 (none)                     prem_cycle()                    Months between instalments
 (none)                     prem_due(t)                     Is an instalment due in month t
-(none)                     prem_gross_inst_pp(t)           Gross instalment collected
+(none)                     prem_charged_inst_pp(t)         Gross instalment collected
 (none)                     prem_rebate_inst_pp(t)          Rebate netted off it
 P_inst(t)                  prem_inst_pp(t)                 Zahlbeitrag instalment
 (reserve)                  res_pp_at(y, timing)            First-order Deckungskapital
@@ -144,8 +144,6 @@ pols_death(t)              pols_death(t)                   Expected deaths in mo
 pols_lapse(t)              pols_lapse(t)                   Expected lapses in month t
 pols_maturity(t)           pols_maturity(t)                Expiring survivors, last month
 premiums(t)                premiums(t)                     Zahlbeitrag income, billed
-prem_gross(t)              prem_gross(t)                   Bruttobeitrag, guaranteed
-prem_rebate(t)             prem_rebate(t)                  Beitragsverrechnung, in force
 (none)                     benefit_death_pp(t)             benefit_paid_pp(t)
 claims_death               claims(t, kind)                 Benefit outgo by kind
 z k G                      acq_cost_pp()                   Acquisition cost at issue
@@ -177,7 +175,7 @@ never a name here, and ``prem_net_pp`` is on the library's retired-names registe
 
 The order between the first two is worth stating, because the intuition gets it backwards:
 on the shipped calibration ``prem_paid_pp(0)/phi = 733.01 < prem_net_level_pp() =
-1 084.80 < prem_gross_pp(0)/phi = 1 275.41``. The billed premium sits **below** the
+1 084.80 < prem_pp(0)/phi = 1 275.41``. The billed premium sits **below** the
 actuarial net premium, because ``Gn`` is struck on the loaded first-order rate and 90 % of
 that loading is handed straight back as *Beitragsverrechnung*. A test asserting
 ``Gn < P`` is asserting the absence of the product's central mechanic.
@@ -191,7 +189,7 @@ is ``2.25 x (unisex blend / own-sex rate)``, which on the shipped proxy is **1.6
 male and 3.375 for a female**. That asymmetry is the unisex cross-subsidy and it is a
 product fact, not a modelling artefact. Applying the *Sicherheitszuschlag* to the
 projection is the pitfall; ``claims_death`` must be invariant to ``mort_load_first``
-while ``prem_gross`` is not.
+while ``prem_charged_inst_pp`` is not.
 
 **``B(t)`` is the contractual sum; what a claim pays is not always ``B(t)``.**
 :func:`benefit_pp` is ``S0 f(t) u(t)``, and :func:`benefit_paid_pp` applies the § 161
@@ -211,7 +209,7 @@ same thing. :func:`check_net_cf` is the identity in code.
 
 .. rubric:: Two premium streams, and why one is not enough
 
-This is the German delta and it is visible in the frame rather than buried in a parameter.
+This is the German delta, and both are cells of the model rather than one buried in a parameter.
 The **Bruttobeitrag** ``G`` is struck once, at issue, by first-order equivalence on tariff
 survivorship — mortality only, no lapse — so it is acyclic with respect to everything
 behavioural::
@@ -350,7 +348,7 @@ rather than inherited from the frame:
   does not decline monthly;
 - the § 161 three-year window runs in whole years from issue, tranche by tranche
   (:func:`benefit_paid_pp`), and every boundary it has therefore falls on an anniversary;
-- the *Beitragszahlungsdauer* ends on an anniversary (:func:`prem_gross_pp`) and the
+- the *Beitragszahlungsdauer* ends on an anniversary (:func:`prem_pp`) and the
   *Bestandspflegeprovision* starts on one (:func:`commissions`);
 - expenses inflate **by policy year**, stepping on the anniversary
   (:func:`inflation_factor`), which is ``Sofort_DE_S``'s form rather than ``FRV_DE_S``'s
@@ -604,7 +602,7 @@ def mort_rate(t):
     policy's own sex and smoker status, rated, first-death where there are two lives, and
     loaded for selective lapse where that module is on.  This drives every decrement and
     every claim, and the *Sicherheitszuschlag* must not appear in it: ``claims_death`` is
-    invariant to ``mort_load_first`` while ``prem_gross`` is not, and an
+    invariant to ``mort_load_first`` while ``prem_charged_inst_pp`` is not, and an
     implementation that projects on ``q1`` overstates claims by a factor of about two.
 
     ``mort_be_factor`` is 1.00, so the shipped proxy **is** the best estimate and there is
@@ -962,30 +960,38 @@ def beitragsverrechnung_rate():
 def prem_due(t):
     """Whether a premium instalment falls due at the **beginning** of month t.
 
-    ``duration_mth(t) % prem_cycle() == 0``.  An annual payer is due in the first month of
-    every policy year and nowhere else; a monthly payer is due in every month.  § 168 VVG
-    makes the *Versicherungsperiode* follow the *Zahlweise*, so this cycle is a
-    contractual fact and not a modelling convenience — it is the period the contract is
-    written in.
+    ``duration_mth(t) % prem_cycle() == 0`` inside the *Beitragszahlungsdauer*, ``t >= 0``
+    and ``duration(t) < prem_term()``.  An annual payer is due in the first month of
+    every paying policy year and nowhere else; a monthly payer is due in every month of
+    one.  § 168 VVG makes the *Versicherungsperiode* follow the *Zahlweise*, so this cycle
+    is a contractual fact and not a modelling convenience — it is the period the contract
+    is written in.
+
+    This cell is the only source of a zero for the end of the premium term: the annual
+    amounts :func:`prem_pp` and :func:`prem_rebate_pp` read it at the first month of
+    their policy year, the instalments at their month, and none tests ``prem_term()``
+    itself.  The *abgekürzte Beitragszahlungsdauer* of model point 6 so pays its last
+    premium in month 143 while cover and claims run on to month 239.
     """
+    if t < 0 or duration(t) >= prem_term():
+        return False
     return duration_mth(t) % prem_cycle() == 0
 
 
-def prem_gross_pp(t):
+def prem_pp(t):
     """The **annual** *Bruttobeitrag* per in-force policy for month t's policy year, ``G phi``.
 
     **The guaranteed stream**: the maximum the policyholder can ever be required to pay in
-    a policy year.  Zero for ``duration(t) >= prem_term()``, so the *abgekürzte
-    Beitragszahlungsdauer* of model point 6 pays its last premium in month 143 while cover
-    and claims run on to month 239.  It does **not** enter :func:`net_cf`; it is published
-    beside the billed stream because a model carrying one premium cannot represent this
-    product.
+    a policy year.  Zero in a policy year whose first month :func:`prem_due` makes no
+    premium payable, the years after the *Beitragszahlungsdauer*.  It does **not** enter
+    :func:`net_cf`; it is the amount the *Beitragsverrechnung* is netted against, because
+    a model carrying one premium cannot represent this product.
 
     An **annual** amount, flat across the policy year: the *Bruttobeitrag* is struck once
     at issue and is level for the term.  What is collected in month ``t`` is
-    :func:`prem_gross_inst_pp`, the instalment the elected *Zahlweise* makes due.
+    :func:`prem_charged_inst_pp`, the instalment the elected *Zahlweise* makes due.
     """
-    if t < 0 or duration(t) >= prem_term():
+    if not prem_due(12 * duration(t)):
         return 0.0
     return prem_gross_level_pp() * prem_freq_load()
 
@@ -997,10 +1003,10 @@ def prem_rebate_pp(t):
     than credited to an account — which is what § 153 VVG's *verursachungsorientiert*
     allocation looks like on a product with no account to credit.  Zero where
     ``surplus_form = keine`` and zero once the paying term is over.  An annual amount,
-    like :func:`prem_gross_pp`; :func:`prem_rebate_inst_pp` is what is netted off each
+    like :func:`prem_pp`; :func:`prem_rebate_inst_pp` is what is netted off each
     instalment.
     """
-    if t < 0 or duration(t) >= prem_term():
+    if not prem_due(12 * duration(t)):
         return 0.0
     return beitragsverrechnung_rate() * prem_gross_level_pp() * prem_freq_load()
 
@@ -1008,7 +1014,7 @@ def prem_rebate_pp(t):
 def prem_paid_pp(t):
     """P(t): the **annual** *Zahlbeitrag* per in-force policy — what the customer is billed.
 
-    ``prem_gross_pp(t) - prem_rebate_pp(t)``, formed as the difference so that the split
+    ``prem_pp(t) - prem_rebate_pp(t)``, formed as the difference so that the split
     identity is true by construction rather than by coincidence.  **Not guaranteed**:
     § 153 VVG confers an entitlement to participate in surplus, not to a level, and a
     reduction of the declaration raises this toward the *Bruttobeitrag* with no procedure
@@ -1018,20 +1024,20 @@ def prem_paid_pp(t):
     consecutive renewals.  The stream inside :func:`net_cf` is :func:`prem_inst_pp`,
     collected on the *Zahlweise*'s own cycle.
     """
-    return prem_gross_pp(t) - prem_rebate_pp(t)
+    return prem_pp(t) - prem_rebate_pp(t)
 
 
-def prem_gross_inst_pp(t):
+def prem_charged_inst_pp(t):
     """The *Bruttobeitrag* instalment falling due in month t, or zero.
 
-    ``prem_gross_pp(t) / instalments()`` where :func:`prem_due` makes one due.  The
+    ``prem_pp(t) / instalments()`` where :func:`prem_due` makes one due.  The
     instalments of a policy year therefore sum to exactly that year's annual
     *Bruttobeitrag*, the *Ratenzahlungszuschlag* included: ``phi`` is a multiplier on the
     annual amount and dividing the loaded amount into instalments is what the surcharge
     prices.  Loading each instalment again, or dividing and then loading, charges it
     twice.
     """
-    return prem_gross_pp(t) / instalments() if prem_due(t) else 0.0
+    return prem_pp(t) / instalments() if prem_due(t) else 0.0
 
 
 def prem_rebate_inst_pp(t):
@@ -1047,7 +1053,7 @@ def prem_rebate_inst_pp(t):
 def prem_inst_pp(t):
     """P_inst(t): the *Zahlbeitrag* instalment actually collected per policy in month t.
 
-    ``prem_gross_inst_pp(t) - prem_rebate_inst_pp(t)``, formed as the difference so that
+    ``prem_charged_inst_pp(t) - prem_rebate_inst_pp(t)``, formed as the difference so that
     the split identity holds instalment by instalment as well as year by year.  An annual
     payer therefore collects the whole 733,01 € of the anchor cell in the first month of
     each policy year and nothing in the other eleven; model point 4 is the contrast,
@@ -1062,7 +1068,7 @@ def prem_inst_pp(t):
     Override reason: the *Zahlbeitrag* instalment is the gross instalment less the rebate,
     products/risikolebensversicherung/technical-notes.md:614
     """
-    return prem_gross_inst_pp(t) - prem_rebate_inst_pp(t)
+    return prem_charged_inst_pp(t) - prem_rebate_inst_pp(t)
 
 
 # ==========================================================================
@@ -1148,30 +1154,6 @@ def res_zill_pp_at(y, timing):
 # Cash flows
 
 
-def prem_gross(t):
-    """*Bruttobeitrag* instalments on the in-force cohort — the **guaranteed** stream.
-
-    ``prem_gross_inst_pp(t) l(t)``.  Published beside :func:`premiums` and **not** part of
-    :func:`net_cf`.  It is what the contract guarantees the insurer may charge, so it is
-    also the ``decl_scale = 0`` stress: the whole distance between the two columns is
-    surplus the insurer may withdraw by declaration alone.
-    """
-    return prem_gross_inst_pp(t) * pols_if(t)
-
-
-def prem_rebate(t):
-    """The *Beitragsverrechnung* on the in-force cohort, ``prem_rebate_inst_pp(t) l(t)``.
-
-    The contract-level consequence of the MindZV allocation, not the allocation itself:
-    the statutory minimum binds on the HGB accounts and is a transfer to the *Rückstellung
-    für Beitragsrückerstattung*, and what reaches one policy is this.  It is the middle
-    term of ``prem_gross = premiums + prem_rebate``, which :func:`check_prem_split`
-    asserts at every ``t`` and every *Zahlweise* — instalment by instalment now, and so in
-    every month rather than only at the anniversary.
-    """
-    return prem_rebate_inst_pp(t) * pols_if(t)
-
-
 def benefit_death_pp(t):
     """The *Todesfallleistung* per death in period t, :func:`benefit_paid_pp`.
 
@@ -1238,9 +1220,9 @@ def maint_pp(t):
     3,0 % of the *Zahlbeitrag*, and the gap is the ***Kostenüberschuss***.  The model does
     **not** return it: splitting the MindZV's *übriges Ergebnis* limb, whose minimum share
     is different, has no basis in the research corpus, so the cost result emerges in
-    :func:`net_cf` and stays there.  That is a stated simplification — ``prem_rebate`` is
-    invariant to ``expense_collect_prem_inst`` and ``comm_renew_prem_inst`` while ``net_cf``
-    is not — and not an oversight.
+    :func:`net_cf` and stays there.  That is a stated simplification —
+    ``prem_rebate_inst_pp`` is invariant to ``expense_collect_prem_inst`` and
+    ``comm_renew_prem_inst`` while ``net_cf`` is not — and not an oversight.
     """
     return (data.param("load_admin_sum_ann")                         # noqa: F821
             * benefit_pp(t) * inflation_factor(t) / 12.0
@@ -1377,7 +1359,7 @@ def check_prem_split_resid(t):
     identity asserted on the annual amounts alone would not see a *Zahlweise* that
     fractionates the gross and the rebate on different cycles.
     """
-    return (prem_gross_inst_pp(t) - prem_inst_pp(t)
+    return (prem_charged_inst_pp(t) - prem_inst_pp(t)
             - prem_rebate_inst_pp(t))
 
 
@@ -1400,12 +1382,12 @@ def check_prem_split():
     for t in range(t_start(), proj_len()):
         if abs(check_prem_split_resid(t)) > tol:
             return False
-        if abs(prem_gross_pp(t) - prem_paid_pp(t) - prem_rebate_pp(t)) > tol:
+        if abs(prem_pp(t) - prem_paid_pp(t) - prem_rebate_pp(t)) > tol:
             return False
-        if duration(t) < prem_term() and prem_due(t):
-            if not (0.0 <= prem_rebate_inst_pp(t) < prem_gross_inst_pp(t)):
+        if prem_due(t):
+            if not (0.0 <= prem_rebate_inst_pp(t) < prem_charged_inst_pp(t)):
                 return False
-        elif not (prem_gross_inst_pp(t) == prem_rebate_inst_pp(t)
+        elif not (prem_charged_inst_pp(t) == prem_rebate_inst_pp(t)
                   == prem_inst_pp(t) == 0.0):
             return False
     return True
@@ -1477,46 +1459,6 @@ def check_no_cash_value():
 # Result frames
 
 
-def result_cf_columns():
-    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
-
-    The frame is the table of cash flows, indexed by the 0-based **policy month** t.
-
-    ``pols_if`` is the start-of-month count, which is the weight applied to every cash flow
-    on the same row.  **Two premium columns**: ``prem_gross`` is the guaranteed
-    *Bruttobeitrag* instalment and does **not** enter ``net_cf``; ``premiums`` is the
-    billed *Zahlbeitrag* instalment and does; ``prem_rebate`` is the
-    *Beitragsverrechnung* between them.  All three are the amounts **collected in the
-    month**, so on an annual *Zahlweise* eleven rows in twelve carry zeros in them — which
-    is what an annual-mode policy looks like on a monthly grid, and what
-    :func:`result_cf_annual` sums back up.
-    ``expenses`` **excludes** ``commissions``, which is its own column, and ``net_cf``
-    subtracts both once.  ``claims_lapse`` and ``claims_maturity`` are columns of zeros by
-    statute and by contract and are published rather than dropped.  ``liability_cf`` is
-    ``net_cf`` outgo-positive.
-
-    The frame runs ``t = 12 duration_init ... proj_len() - 1`` contiguously and stops there:
-    cover expires at the end of the last month with nothing payable and no survivors left
-    in force.
-
-    Override reason: the guaranteed premium and the *Beitragsverrechnung* published beside
-    the billed premium, products/risikolebensversicherung/technical-notes.md:682-684
-    """
-    return (
-        ("pols_if", pols_if),                                        # noqa: F821
-        ("prem_gross", prem_gross),                                  # noqa: F821
-        ("premiums", premiums),                                      # noqa: F821
-        ("prem_rebate", prem_rebate),                                # noqa: F821
-        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
-        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
-        ("claims_maturity", lambda t: claims(t, "MATURITY")),        # noqa: F821
-        ("expenses", expenses),                                      # noqa: F821
-        ("commissions", commissions),                                # noqa: F821
-        ("net_cf", net_cf),                                          # noqa: F821
-        ("liability_cf", liability_cf),                              # noqa: F821
-    )
-
-
 def result_pols_columns():
     """The columns of :func:`result_pols`, ``(label, cell)`` pairs in their order.
 
@@ -1551,7 +1493,7 @@ def result_pols_columns():
         ("benefit_pp", benefit_pp),                                  # noqa: F821
         ("benefit_paid_pp", benefit_paid_pp),                        # noqa: F821
         ("suicide_factor", suicide_factor),                          # noqa: F821
-        ("prem_gross_pp", prem_gross_pp),                            # noqa: F821
+        ("prem_pp", prem_pp),                                        # noqa: F821
         ("prem_rebate_pp", prem_rebate_pp),                          # noqa: F821
         ("prem_paid_pp", prem_paid_pp),                              # noqa: F821
         ("prem_inst_pp", prem_inst_pp),                              # noqa: F821

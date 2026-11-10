@@ -1,4 +1,4 @@
-point_id,policy_id,sex,issue_age,duration_mth_init,pols_if_init,ret_age,prem_form,prem_pp,prem_freq,prem_term_y,dynamik_rate,pup_month,db_form,db_pct,sum_assured,charge_id,scenario_id,rentenfaktor_id,unit_price_init,units_init,cum_prem_init,topup_month,topup_amount,wd_month,wd_amount,ablauf_flag,kapitalwahl
+point_id,policy_id,sex,issue_age,duration_mth_init,pols_if_init,ret_age,prem_form,prem_charged_inst_level_pp,prem_freq,prem_term_y,dynamik_rate,pup_month,db_form,db_pct,sum_assured,charge_id,scenario_id,rentenfaktor_id,unit_price_init,units_init,prem_cum_pp_init,topup_month,topup_amount,wd_month,wd_amount,ablauf_flag,kapitalwahl
 1,DE-FRV-0001,M,37,0,1.0,67,regular,200.0,monthly,30,0.0,0,prem_return,0.0,0.0,std_gross,base,std_2026,100.0,0.0,0.0,0,0.0,0,0.0,False,False
 2,DE-FRV-0002,F,50,0,1.0,67,single,50000.0,annual,0,0.0,0,fund,0.0,0.0,std_gross,base,std_2026,100.0,0.0,0.0,0,0.0,0,0.0,False,False
 3,DE-FRV-0003,M,30,0,1.0,67,regular,600.0,quarterly,37,0.0,0,prem_return,0.0,0.0,std_gross,base,std_2026,100.0,0.0,0.0,0,0.0,0,0.0,False,False

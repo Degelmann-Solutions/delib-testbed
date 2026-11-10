@@ -451,7 +451,7 @@ documents:
 - **REG-R6** — VAG §§ 74–110 and § 40, valuation, best estimate, risk margin and the SFCR: the German route by which Solvency II reaches this business.
 - **REG-R8** — VAG § 138, *Prämienkalkulation* and *Gleichbehandlung*: the cross-product entry behind [R11], and why one declared rate applies per tariff generation and rating cell.
 - **REG-R9** — VAG § 139, *Überschussbeteiligung* and the *Sicherungsbedarf* test: cited to say the *Bewertungsreserven* share is **economically empty** on a product whose reserve is nil or nominal.
-- **REG-R10** — VAG §§ 140 and 145, the RfB: where a declared *Beitragsverrechnung* comes out of. The model's `prem_rebate` is the contract-level consequence, not the allocation itself.
+- **REG-R10** — VAG §§ 140 and 145, the RfB: where a declared *Beitragsverrechnung* comes out of. The model's `prem_rebate_inst_pp` is the contract-level consequence, not the allocation itself.
 - **REG-R11** — VAG §§ 141–143, *Verantwortlicher Aktuar* and *Treuhänder*: the office § 163 VVG's procedure runs through [R6], and the office that certifies the tariff bases.
 - **REG-R14** — DeckRV and its § 2, the *Höchstrechnungszins*: the cap behind `rechnungszins = 0.01`.
 - **REG-R15** — the *Höchstrechnungszins* history and the *Sechste Verordnung* of 19 July 2024 setting 1,00 % from 1 January 2025: the anchor cell's pricing rate, and the reason the notes say it **barely matters** here.

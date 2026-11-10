@@ -137,8 +137,8 @@ w^m_l(t)                   lapse_rate_mth(t)               The monthly rate appl
                                                            terminal-year override
 (gate)                     lapse_factor(t)                 0 in the final policy year
 phi                        prem_freq_load()                Ratenzahlungszuschlag
-P_b(k)                     prem_base_pp(k)                 Annual-mode premium due
-P(k)                       prem_gross_pp(k)                Premium actually collected
+P_b(k)                     prem_gross_pp(k)                Annual-mode premium of year k
+P(k)                       prem_pp(k)                      Premium actually collected
 (none)                     prem_inst_pp(t)                 P(k) in a due month, else 0
 (none)                     prem_due(t)                     Whether P falls due in month t
 BS                         prem_sum()                      Beitragssumme
@@ -146,7 +146,7 @@ alpha(k)                   prem_charge_acq_pp(k)           Acquisition charge, t
 alpha_5(k)                 prem_charge_acq_min_pp(k)       The same on the 5-year spread
 beta P(k)                  prem_charge_adm_pp(k)           Premium administration charge
 P+(k)                      prem_to_av_pp(k)                Premium credited to the account
-Pi(k)                      prem_paid_pp(k)                 Cumulative annual-mode premium
+Pi(k)                      prem_gross_cum_pp(k)            Cumulative annual-mode premium
 A(k)                       av_pp(k)                        Deckungskapital at the start
 (within year)              av_pp_at(k, timing)             BEF_PREM / AFT_PREM /
                                                            AFT_CHARGE / AFT_GUAR /
@@ -280,9 +280,9 @@ def guar_locked_init():
     return float(model_point()["guar_locked_init"])
 
 
-def prem_paid_init():
+def prem_gross_cum_pp_init():
     """Annual-mode premiums already paid at ``t_start()``; the base of the guarantee so far."""
-    return float(model_point()["prem_paid_init"])
+    return float(model_point()["prem_gross_cum_pp_init"])
 
 
 def guar_level():
@@ -390,7 +390,7 @@ def index_month(t):
 def prem_sum():
     """``BS``: the *Beitragssumme*, on the **annual-mode** premium.
 
-    ``prem_gross_pp x prem_term_y`` on the level form and the single premium itself on the
+    ``prem_gross_level_pp x prem_term_y`` on the level form and the single premium itself on the
     single form — the premiums payable over the whole contract, counted from issue and not
     from ``t_start()``, because a *Beitragssumme* is a contract fact that an in-force
     point brings with it.
@@ -402,34 +402,32 @@ def prem_sum():
     Getting that wrong is a numbered pitfall.
     """
     if prem_form() == "single":
-        return float(model_point()["prem_gross_pp"])
-    return float(model_point()["prem_gross_pp"]) * prem_term_y()
-
-
-def prem_base_pp(k):
-    """``P_b(k)``: the annual-mode premium due in period k, per policy.
-
-    The level form pays ``prem_gross_pp`` in the first ``prem_term_y()`` policy years,
-    i.e. at ``k < prem_term_y()``, which may be shorter than the projection — model point
-    13 stops paying after policy year 12 (``k = 11``) and runs to policy year 22.  The
-    single form pays the whole premium in the first projected period and nothing
-    afterwards.
-    """
-    if k < k_start() or k >= proj_len_y():
-        return 0.0
-    if prem_form() == "single":
-        return float(model_point()["prem_gross_pp"]) if k == k_start() else 0.0
-    return float(model_point()["prem_gross_pp"]) if k < prem_term_y() else 0.0
+        return float(model_point()["prem_gross_level_pp"])
+    return float(model_point()["prem_gross_level_pp"]) * prem_term_y()
 
 
 def prem_gross_pp(k):
+    """``P_b(k)``: the annual-mode premium of period k, per policy.
+
+    The model point's ``prem_gross_level_pp`` in every period: this tariff has no
+    *Beitragsdynamik*.  It is the contractual amount and carries no end of the premium
+    term; whether a premium falls due in period k is :func:`prem_due` alone, which the
+    cells of the amounts paid and charged read.
+    """
+    return float(model_point()["prem_gross_level_pp"])
+
+
+def prem_pp(k):
     """``P(k)``: the premium actually collected in period k, ``P_b(k) x phi``.
 
-    Annual in advance, at the start of the policy year.  This is the amount that reaches
+    Annual in advance, at the start of the policy year, and zero in a period in which
+    :func:`prem_due` makes none payable.  This is the amount that reaches
     :func:`premiums` and out of which the contractual charges are taken; the amount that
-    drives the *Beitragssumme* is :func:`prem_base_pp`.
+    drives the *Beitragssumme* is :func:`prem_gross_pp`.
     """
-    return prem_base_pp(k) * prem_freq_load()
+    if not prem_due(12 * k):
+        return 0.0
+    return prem_gross_pp(k) * prem_freq_load()
 
 
 def prem_charge_acq_pp(k):
@@ -439,19 +437,19 @@ def prem_charge_acq_pp(k):
     ``min(acq_spread_years, prem_term_y())`` premium-paying years, i.e. over ``k < spread`` —
     2.5 % of the *Beitragssumme* at the DeckRV *Höchstzillmersatz* of 25 per mille, over
     five years, so 324.00 EUR a year on the anchor's 64,800.00 EUR.  On a single premium
-    it is taken in full in the first projected period, there being only one premium to
-    take it from.
+    it is taken in full in the one period :func:`prem_due` makes the premium payable,
+    there being only one premium to take it from.
 
     This is a **charge**, a deduction from the policyholder's account.  The insurer's own
     acquisition **expense** is :func:`exp_acq_pp`, falls in one lump at inception, and is
     the *Zillmer* strain the five-year recovery works off.
     """
-    if k < k_start() or k >= proj_len_y():
+    if not prem_due(12 * k):
         return 0.0
     charge = min(data.param("charge_acq_bsum_once"),                  # noqa: F821
                  data.param("zillmer_cap_bsum")) * prem_sum()         # noqa: F821
     if prem_form() == "single":
-        return charge if k == k_start() else 0.0
+        return charge
     spread = min(data.param("acq_spread_years"), prem_term_y())      # noqa: F821
     return charge / spread if k < spread else 0.0
 
@@ -469,12 +467,12 @@ def prem_charge_acq_min_pp(k):
     A single premium is taken once, so there is no second premium over which to spread
     anything and the two profiles coincide there by construction rather than by parameter.
     """
-    if k < k_start() or k >= proj_len_y():
+    if not prem_due(12 * k):
         return 0.0
     charge = min(data.param("charge_acq_bsum_once"),                  # noqa: F821
                  data.param("zillmer_cap_bsum")) * prem_sum()         # noqa: F821
     if prem_form() == "single":
-        return charge if k == k_start() else 0.0
+        return charge
     spread = min(data.param("surr_spread_years"), prem_term_y())     # noqa: F821
     return charge / spread if k < spread else 0.0
 
@@ -485,7 +483,7 @@ def prem_charge_adm_pp(k):
     *Verwaltungskosten* taken as the premium is credited.  **[std]**: no German insurer
     publishes a charge level for this product.
     """
-    return data.param("charge_admin_prem_inst") * prem_gross_pp(k)   # noqa: F821
+    return data.param("charge_admin_prem_inst") * prem_pp(k)   # noqa: F821
 
 
 def prem_to_av_pp(k):
@@ -496,7 +494,7 @@ def prem_to_av_pp(k):
     values are possible in principle on a tariff whose charges exceed the premium; none of
     the shipped points is one.
     """
-    return prem_gross_pp(k) - prem_charge_acq_pp(k) - prem_charge_adm_pp(k)
+    return prem_pp(k) - prem_charge_acq_pp(k) - prem_charge_adm_pp(k)
 
 
 def prem_to_av(k):
@@ -508,36 +506,54 @@ def prem_to_av(k):
     return prem_to_av_pp(k) * pols_if(12 * k)
 
 
-def prem_paid_pp(k):
+def prem_gross_cum_pp(k):
     """``Pi(k)``: cumulative annual-mode premiums paid to time k, the start of period k.
 
-    Starts at ``prem_paid_init()`` and adds ``P_b(k)`` each year, so ``Pi(n)`` — the value
-    at *Rentenbeginn* — is the whole *Beitragssumme* for a policy that pays throughout.  Non-decreasing by
+    Starts at ``prem_gross_cum_pp_init()`` and adds ``P_b(k)`` in each year
+    :func:`prem_due` makes it payable, so ``Pi(n)`` — the value at *Rentenbeginn* — is the
+    whole *Beitragssumme* for a policy that pays throughout.  Non-decreasing by
     construction, which is half of why :func:`guar_cap_pp` is monotone.
     """
     if k <= k_start():
-        return prem_paid_init()
-    return prem_paid_pp(k - 1) + prem_base_pp(k - 1)
+        return prem_gross_cum_pp_init()
+    if not prem_due(12 * (k - 1)):
+        return prem_gross_cum_pp(k - 1)
+    return prem_gross_cum_pp(k - 1) + prem_gross_pp(k - 1)
 
 
 def prem_due(t):
     """Whether the year's premium falls due at the **beginning** of month t.
 
-    ``duration_mth(t) % 12 == 0`` — the first month of each policy year and no other.  The
-    *Beitrag* of this tariff is payable in advance for the *Versicherungsperiode*, which is
-    the year (§ 12 Abs. 1 VVG), and the *Indexjahr* the whole product turns on is struck on
-    the balance standing at the anniversary: splitting the premium without splitting the
-    *Indexjahr* would credit a policy with a year it did not pay for.  The
-    *Ratenzahlungszuschlag* :func:`prem_freq_load` is what a sub-annual *Zahlweise* costs, and it
-    remains the whole of what the *Zahlweise* does here.
+    ``duration_mth(t) % 12 == 0`` — the first month of a policy year and no other — in a
+    projected policy year of the premium term: ``duration(t) < prem_term_y()`` on the level
+    form, which may be shorter than the projection (model point 13 stops paying after
+    policy year 12, ``k = 11``, and runs to policy year 22), and the first projected
+    period ``k_start()`` alone on the single form, which pays the whole premium there.
+    This cell is the only source of a zero for the end of the premium term: the premium
+    cells of the year grid read it at ``12 k``, the first month of their year, and none
+    tests the term itself.
+
+    The *Beitrag* of this tariff is payable in advance for the *Versicherungsperiode*,
+    which is the year (§ 12 Abs. 1 VVG), and the *Indexjahr* the whole product turns on is
+    struck on the balance standing at the anniversary: splitting the premium without
+    splitting the *Indexjahr* would credit a policy with a year it did not pay for.  The
+    *Ratenzahlungszuschlag* :func:`prem_freq_load` is what a sub-annual *Zahlweise* costs,
+    and it remains the whole of what the *Zahlweise* does here.
     """
-    return duration_mth(t) % 12 == 0
+    if duration_mth(t) % 12 != 0:
+        return False
+    k = duration(t)
+    if k < k_start() or k >= proj_len_y():
+        return False
+    if prem_form() == "single":
+        return k == k_start()
+    return k < prem_term_y()
 
 
 def prem_inst_pp(t):
     """P(k): the year's premium per policy in **month** t, or zero.
 
-    ``prem_gross_pp(duration(t))`` where :func:`prem_due` makes the year's premium payable,
+    ``prem_pp(duration(t))`` where :func:`prem_due` makes the year's premium payable,
     zero in the other eleven months.  The core's :func:`premiums` weights it by the
     in-force at the **start of the policy year**, so premium income is **bit-identical** to
     the annual-step model this replaced.  Not further multiplied by ``(1 - q_d)``: decrements
@@ -547,7 +563,7 @@ def prem_inst_pp(t):
     Override reason: the year's premium falls due whole in the month ``prem_due`` makes it
     payable, products/indexpolice/technical-notes.md:463
     """
-    return prem_gross_pp(duration(t)) if prem_due(t) else 0.0
+    return prem_pp(duration(t)) if prem_due(t) else 0.0
 
 
 # --- the surplus, the election and the option budget -------------------------
@@ -1007,7 +1023,7 @@ def av_min_pp_at(k, timing):
     if timing == "BEF_PREM":
         return av_min_pp(k)
     if timing == "AFT_PREM":
-        return (av_min_pp(k) + prem_gross_pp(k) - prem_charge_acq_min_pp(k)
+        return (av_min_pp(k) + prem_pp(k) - prem_charge_acq_min_pp(k)
                 - prem_charge_adm_pp(k))
     if timing == "AFT_CHARGE":
         return (av_min_pp_at(k, "AFT_PREM")
@@ -1044,12 +1060,12 @@ def credit_cum_pp(k):
 def guar_floor_pp(k):
     """The *Beitragsgarantie* accrued to time k, the start of period k.
 
-    ``guar_level() x prem_paid_pp(k)`` — a fraction of the premiums **actually paid so
+    ``guar_level() x prem_gross_cum_pp(k)`` — a fraction of the premiums **actually paid so
     far**, so it grows with the premium stream and is complete only once the last premium
     is in.  On the anchor it reaches ``0.90 x 64,800.00 = 58,320.00 EUR`` at
     ``k = proj_len_y()``.
     """
-    return guar_level() * prem_paid_pp(k)
+    return guar_level() * prem_gross_cum_pp(k)
 
 
 def guar_cap_pp(k):

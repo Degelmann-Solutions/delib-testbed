@@ -1,4 +1,4 @@
-point_id,policy_id,sex,issue_age,duration_init,pols_if_init,ret_age,prem_form,prem_gross_pp,prem_freq,prem_term_y,av_pp_init,guar_locked_init,prem_paid_init,guar_level,rechnungszins,payoff_form,index_id,elect_id,death_min_rate,ann_option,surr_charge_on
+point_id,policy_id,sex,issue_age,duration_init,pols_if_init,ret_age,prem_form,prem_gross_level_pp,prem_freq,prem_term_y,av_pp_init,guar_locked_init,prem_gross_cum_pp_init,guar_level,rechnungszins,payoff_form,index_id,elect_id,death_min_rate,ann_option,surr_charge_on
 1,DE-IDX-0001,M,40,0,1.0,67,regular,2400.0,annual,27,0.0,0.0,0.0,0.9,0.01,cap,eqidx_vol17,always_index,0.5,annuity,1
 2,DE-IDX-0002,M,40,0,1.0,67,regular,2400.0,annual,27,0.0,0.0,0.0,0.9,0.01,quote,eqidx_vol17,always_index,0.5,annuity,1
 3,DE-IDX-0003,F,40,0,1.0,67,regular,2400.0,annual,27,0.0,0.0,0.0,0.9,0.01,quote,houseidx_vol5,always_index,0.5,annuity,1

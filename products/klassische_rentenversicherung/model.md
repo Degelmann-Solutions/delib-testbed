@@ -90,7 +90,7 @@ row for row the table it was.
 
 **What it did not change.** The premium: § 12 Abs. 1 VVG makes the *Versicherungsperiode* the **year**
 for this tariff and the *Beitrag* is payable in advance for it, so `prem_due(t)` is true in the first
-month of each policy year and nowhere else, and premium income is identical. And what a claim is
+month of each paying policy year and nowhere else, and premium income is identical. And what a claim is
 **paid**: § 169 Abs. 3 VVG strikes the value *zum Schluss der laufenden Versicherungsperiode* and not
 at the cancellation date, so a policy leaving in any month of policy year `k` is paid `cv_pp(k)` or
 `db_pp(k)` — the year-end value it paid the year's premium in advance for. What moved is **when** the
@@ -199,7 +199,7 @@ instead of being free.
 
 Instalments are **not** modelled, on the monthly grid as on the annual one: `prem_freq_load()` charges the
 loaded annual amount in the first month of the policy year, `prem_due(t)` is
-`duration_mth(t) % 12 == 0`, and `instalments` stays documentation — so a monthly payer here pays
+`duration_mth(t) % 12 == 0` in the premium term, and `instalments` stays documentation — so a monthly payer here pays
 1,050 × the annual premium once a year, not twelve times.
 
 That is a decision rather than an omission, and three things fix it. § 12 Abs. 1 VVG makes the

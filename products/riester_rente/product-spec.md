@@ -315,7 +315,7 @@ established is the *rate* at which they occur, which is experience data, not sta
 | *Rentengarantiezeit* | Permitted and drafted into the model wording and both carrier wordings; compatible with the constant-or-rising requirement, and the *förderunschädliche* route for an early death in payment. Representative length **10 years** — which is the length the GDV's own worked example uses [S2] § 1 Abs. 7 and Debeka's [S6] § 1 Abs. 5 | [R1] [R14] [S2] [S6]; length **[std]** (10) |
 | Surplus in payment | Permitted, but the constant-or-rising requirement constrains which surplus system a Riester contract may use: a system whose declared component can be reduced would make the total annuity fall. Base run **none** — a constant annuity | [R1]; legal reading `[unverified]`; base run **[std]** (10) |
 | Death | Before *Rentenbeginn*, **the *Deckungskapital*** — no longer a **[std]** choice but the model wording's own, and named in its title: "Wenn Sie vor dem Rentenzahlungsbeginn sterben, zahlen wir das Deckungskapital" [S2] § 1 Abs. 6, and the same at [S4] § 1 Abs. 4 and [S6] § 1 Abs. 4. Transfer to a **surviving spouse's own certified contract** is *förderunschädlich* (§ 93 Abs. 1 Satz 4 Buchst. c EStG) and, in the GDV wording, free of charge; conversion into a lifelong *Hinterbliebenenrente* is the other *förderunschädliche* route; payment to any other heir is *schädlich* and the *Rückzahlungsbetrag* is deducted first. After *Rentenbeginn*, payments for the remainder of a *Rentengarantiezeit* — which Debeka may commute to the present value of the outstanding instalments [S6] | [R1] [R14] [S2] [S4] [S6]; see (11) |
-| *Kleinbetragsrente* | The provider **may** commute the whole capital to a lump sum **without** *schädliche Verwendung*, taxed under the *Fünftelregelung* (§ 22 Nr. 5 Satz 13 EStG → § 34 Abs. 1), with a four-week election to defer payment to 1 January of the following year. **The threshold is 1,5 %, not 1 %**: § 93 Abs. 3 Satz 2 Nr. 1 EStG defines a *Kleinbetragsrente* as one that "1,5 Prozent der monatlichen Bezugsgröße nach § 18 des Vierten Buches Sozialgesetzbuch nicht übersteigt", aggregated across all of the saver's contracts at that provider (Satz 3). On the 3 955,00 € monthly *Bezugsgröße* used here that is **59,33 €**, and the 39,55 € the model implements is **too low** | [R15] [R21] [REG-R42] [REG-R46]; the *Bezugsgröße* itself `[unverified]`; see (12) and gap 7 |
+| *Kleinbetragsrente* | The provider **may** commute the whole capital to a lump sum **without** *schädliche Verwendung*, taxed under the *Fünftelregelung* (§ 22 Nr. 5 Satz 13 EStG → § 34 Abs. 1), with a four-week election to defer payment to 1 January of the following year. **The threshold is 1,5 %, not 1 %**: § 93 Abs. 3 Satz 2 Nr. 1 EStG defines a *Kleinbetragsrente* as one that "1,5 Prozent der monatlichen Bezugsgröße nach § 18 des Vierten Buches Sozialgesetzbuch nicht übersteigt", aggregated across all of the saver's contracts at that provider (Satz 3). On the 3 955,00 € monthly *Bezugsgröße* used here that is **59,33 €**, which the model implements since 2026-11-09; the 39,55 € it implemented before was **too low** | [R15] [R21] [REG-R42] [REG-R46]; the *Bezugsgröße* itself `[unverified]`; see (12) and gap 7 |
 
 6. **Which surplus components count toward satisfying the *Beitragsgarantie* was not established
    for any Riester tariff** (gap 9), and in particular whether a *Schlussüberschussanteil* — declared
@@ -367,16 +367,16 @@ established is the *rate* at which they occur, which is experience data, not sta
     the contributions and Zulagen, **less tariff costs**, accumulated at the *Rechnungszins* — which
     is exactly the model's account, and is also where the Zulagen charge base is settled (15).
 12. **The retrieved statute settles the threshold against the composite, and the retrieved model
-    wording settles the ordering against it too. Neither has been applied to the model.** The two
-    readings were not irreconcilable, only unchecked: § 93 Abs. 3 Satz 2 Nr. 1 EStG says **1,5 %**
-    [R15], so the correct threshold on the *Bezugsgröße* used here is **59,33 €** and the model's
-    `kleinbetrag_threshold_mth = 39.55` is a third too low. Raising it would make **more** contracts
-    commute and shorten the liability, so the composite's choice was prudent but wrong. Separately,
+    wording settles the ordering against it too. The first is applied to the model, the second is not.** The
+    readings were not irreconcilable, only unchecked: § 93 Abs. 3 Satz 2 Nr. 1 EStG says **1,5 %** [R15], so the
+    correct threshold on the *Bezugsgröße* used here is **59,33 €**, and the model's `kleinbetrag_threshold_mth`
+    is 59.33 since 2026-11-09; the 39.55 before was a third too low. Raising it made **more** contracts commute
+    and shortened the liability, so the composite's choice was prudent but wrong. Separately,
     the model applies the test to the annuity payable **after** an elected *Teilkapitalauszahlung*;
     the GDV wording forbids exactly that — "Eine Abfindung erfolgt nicht, wenn die Leistung nur
     aufgrund einer Teilkapitalauszahlung gemäß Absatz 4 auf eine Kleinbetragsrente sinkt" [S2] § 1
-    Abs. 3 — so the test belongs on the annuity **before** the lump sum. Both are model changes: they
-    move the worked example and the golden tests, and they are recorded here and deferred rather than
+    Abs. 3 — so the test belongs on the annuity **before** the lump sum. That is a model change: it
+    moves the worked example and the golden tests, and it is recorded here and deferred rather than
     made silently. What **is** now settled in the composite's favour is who may commute: it is the
     provider's option in both retrieved wordings — "können wir die Rente … abfinden" [S2], "kann die
     Leistung in Form einer einmaligen Kapitalabfindung erfolgen" [S4]. Gap 7 shrinks from three open

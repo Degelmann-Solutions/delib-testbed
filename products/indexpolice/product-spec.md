@@ -438,7 +438,7 @@ appropriate customer benefit "erscheint zweifelhaft" [R17].
 | Acquisition-cost spread | Over the **first five years** | **[std]** (25); [REG-R28] |
 | *Verwaltungskosten*, premium-based `β` | **3 % of each gross premium** | **[std]** (26) |
 | *Verwaltungskosten*, reserve-based `γ` | **0,25 % of the *Deckungskapital* per year** | **[std]** (26) |
-| *Stückkosten* | **36,00 € per policy per year**, inflating at 1,5 % | **[std]** (26) |
+| *Stückkosten* | **36,00 € per policy per year**, inflating at 2,0 % | **[std]** (26) |
 | *Stornoabzug* | **2 % of the *Deckungskapital***, subject to the § 169 Abs. 3 floor | **[std]** (27) |
 | Option dealing cost and spread | **Inside the Cap**, not a charge line — a wider spread simply produces a lower Cap | structural (28) |
 | House-index level fee and volatility-target drag | **Inside the index**, and therefore inside neither the Cap nor the disclosed costs | structural (28) |

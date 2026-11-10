@@ -801,3 +801,25 @@ No product's branch mean lies more than 10 % above its control (N4); the largest
 All ten products together at M = 5,249, P = 10,000 (1,000 per product), W = 24, fixed cost included, are forecast at **4.7 h** on the branch head (branch mean 4.75 h, min–max 4.72 to 4.78 h over three runs), within the 10 h night; the `main` control gave 4.74 to 4.91 h (mean 4.83 h). Σ t_marginal is 13.7 ms on the branch (13.53 to 13.81) against 14.0 ms on `main` (13.71 to 14.29), Σ fixed 9.48 s against 9.52 s.
 
 Against 5.1 h (R11) the branch mean is 6.9 % lower, against the unrounded 5.06 h 6.1 % lower; with the phase 3 counts (M_core = 186, Σ M_p = 5,119) it would be 4.77 h, 5.8 % lower. R11 is met without a reason to give. The branch mean is 1.6 % below the control's, within the control's spread of 3.6 %, so this session shows no cost of the epic's entries 11 to 18 either, and no gain it could tell from the spread. The same control, `e16c935`, gave 5.49 h in the session above and 4.83 h here, 12 % less at loads below 3 instead of 3 to 10: the session accounts for more than the 9.7 % that the section above reports against phase 3. This figure is the recorded forecast of the branch; the 5.6 h above stays as the measurement of `d849151` on a loaded machine. The assumptions of the command apply: a linear extrapolation without trace pruning, the coverage filter ignored, M the pinned counts, a forecast, not a measurement.
+
+# Runner wall time per product
+
+The wall time of one runner process per product, one product at a time, on its shipped model points: the modelx import, the run, the checks and the hash. Phase 1 ran the traced modelx model without per-contract cleanup; today's runner runs by default on the exported model with cleanup, at W = 1. One run per product on each side, so the figures show the order of magnitude, not a measurement to compare changes with (for that, `tools/measure_marginal.py` above).
+
+- Phase 1: the table of the README from 2026-10-23 (commit `bee4cb6`), modelx 0.33.0, "measured once on one machine"
+- Today: 2026-11-10, commit `586e831`, clean tree, the same machine and packages as above; `uv run python tools/run_baseline.py <product>`, timed in the shell, so `uv`'s start is included
+
+| Product | Model | Points | Checks | Phase 1 | Today |
+|---|---|---:|---:|---:|---:|
+| basisrente | `Basis_DE_S` | 13 | 6 | 5.4 s | 2.7 s |
+| berufsunfaehigkeit | `BU_DE_S` | 13 | 7 | 5.0 s | 2.5 s |
+| fondsgebundene_rentenversicherung | `FRV_DE_S` | 13 | 7 | 5.0 s | 2.1 s |
+| indexpolice | `Index_DE_S` | 13 | 6 | 2.6 s | 2.1 s |
+| kapitallebensversicherung | `KLV_DE_S` | 14 | 10 | 7.0 s | 2.1 s |
+| klassische_rentenversicherung | `RV_DE_S` | 14 | 9 | 38.1 s | 2.3 s |
+| pflegerentenversicherung | `Pflege_DE_S` | 14 | 6 | 36.4 s | 2.7 s |
+| riester_rente | `Riester_DE_S` | 13 | 6 | 4.9 s | 2.3 s |
+| risikolebensversicherung | `RLV_DE_S` | 14 | 5 | 4.7 s | 2.0 s |
+| sofortrente | `Sofort_DE_S` | 14 | 9 | 5.8 s | 2.2 s |
+
+Points and checks are unchanged since phase 1. Today a run is about 2 s whatever the product: the import and the export dominate, while the points themselves take milliseconds (the tables above).

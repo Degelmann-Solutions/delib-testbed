@@ -73,19 +73,10 @@ MIT, see [LICENSE](LICENSE). Files copied from lifelib keep lifelib's licence no
 
 ## Status
 
-Phase 1 is done. The ten products are imported unchanged from lifelib at commit `fb1d195ab5423031cfd6d2548fe25a86b76cd0a1` (2026-09-26); the `delib` tree is identical at `b706d8bbab530cc9ef94e06600e9c9d1468d8cb1` (v0.17.2, 2026-10-10). Every product runs on its own shipped model points with all built-in checks true, and its results are stored as its baseline.
+Phases 1 to 3 are done; phase 4 is under way, starting with the initiative *parameter tables*: each tariff's parameters in layered files read through one loader, then a mortality table factory.
 
-Wall time of one runner process per product, measured once on one machine, one product at a time (modelx 0.33.0); it covers the modelx import, the run, the checks and the hash:
+- **Phase 1.** The ten products are imported unchanged from lifelib at commit `fb1d195ab5423031cfd6d2548fe25a86b76cd0a1` (2026-09-26); the `delib` tree is identical at `b706d8bbab530cc9ef94e06600e9c9d1468d8cb1` (v0.17.2, 2026-10-10). Every product runs on its own shipped model points with all built-in checks true, and its results are stored as its baseline.
+- **Phases 2 and 3.** The runner, the common core and the night run are delivered on `main` (table above).
+- **Phase 4.** The parameters of all ten products are in layered files, read through `param()` ([docs/core.md](docs/core.md), "The parameter files"); the night forecast on that code is 4.7 h at `02b20b1` (2026-11-10), measured before the premium columns of PR #53 and not remeasured since ([docs/performance.md](docs/performance.md), "Parameter tables: night forecast on the final code").
 
-| Product | Model | Points | Checks | Wall time |
-|---|---|---:|---:|---:|
-| basisrente | `Basis_DE_S` | 13 | 6 | 5.4 s |
-| berufsunfaehigkeit | `BU_DE_S` | 13 | 7 | 5.0 s |
-| fondsgebundene_rentenversicherung | `FRV_DE_S` | 13 | 7 | 5.0 s |
-| indexpolice | `Index_DE_S` | 13 | 6 | 2.6 s |
-| kapitallebensversicherung | `KLV_DE_S` | 14 | 10 | 7.0 s |
-| klassische_rentenversicherung | `RV_DE_S` | 14 | 9 | 38.1 s |
-| pflegerentenversicherung | `Pflege_DE_S` | 14 | 6 | 36.4 s |
-| riester_rente | `Riester_DE_S` | 13 | 6 | 4.9 s |
-| risikolebensversicherung | `RLV_DE_S` | 14 | 5 | 4.7 s |
-| sofortrente | `Sofort_DE_S` | 14 | 9 | 5.8 s |
+The wall time of one runner process per product, then and now, is in [docs/performance.md](docs/performance.md), "Runner wall time per product".

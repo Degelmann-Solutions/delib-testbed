@@ -501,9 +501,9 @@ def mort_be_factor():
 def prem_pp_sched(k):
     """P_sched(k): the premium schedule **as written at inception**, per policy.
 
-    Zero after the *Rentenbeginn* and after the paying term; the *Einmalbeitrag* in the
-    first year (``k = 0``) on the ``single`` form; otherwise the loaded gross premium grown
-    by the *Dynamik*.
+    Zero after the *Rentenbeginn* and after the paying term; the *Einmalbeitrag*, the column
+    ``prem_gross_level_pp``, in the first year (``k = 0``) on the ``single`` form; otherwise
+    that column's annual premium loaded for the payment frequency and grown by the *Dynamik*.
 
     It ignores any later *Beitragsfreistellung* on purpose.  The § 4 DeckRV zillmer base is
     the sum of all premiums payable under the contract **as written**, and a later election
@@ -514,8 +514,8 @@ def prem_pp_sched(k):
     if k < 0 or k >= int(mp["aufschub_y"]) or k >= prem_term_y():
         return 0.0
     if prem_form() == "single":
-        return float(mp["premium_single_pp"]) if k == 0 else 0.0
-    return (float(mp["prem_gross_pp"]) * prem_freq_load()
+        return float(mp["prem_gross_level_pp"]) if k == 0 else 0.0
+    return (float(mp["prem_gross_level_pp"]) * prem_freq_load()
             * (1.0 + float(mp["dynamik_rate"])) ** k)
 
 

@@ -138,8 +138,7 @@ The right-hand column names the points that exercise each attribute away from it
 | `duration_init` | int | Complete policy years already elapsed; 0 = new business. Already 0-based, so the frame opens at `t_start() = 12 × duration_init` | 6 (20), 14 (8) |
 | `pols_if_init` | float | Policies represented; `pols_if(t_start())` | all (1.0) |
 | `prem_form` | enum {regular, single} | Recurring or single premium [S11] [REG-R53] | 2 (`single`) |
-| `prem_gross_pp` | EUR p.a. | Annual *Bruttobeitrag* before the frequency loading | all but 2 |
-| `premium_single_pp` | EUR | *Einmalbeitrag* | 2 |
+| `prem_gross_level_pp` | EUR p.a. | Annual *Bruttobeitrag* before the frequency loading; on `prem_form = single` the *Einmalbeitrag* | all; 2 (the *Einmalbeitrag*) |
 | `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | *Zahlweise*; keys `prem_freq_table.csv` for the *Ratenzahlungszuschlag*. The **collection** is annual in advance whatever the elected frequency, § 12 Abs. 1 VVG making the *Versicherungsperiode* the year for this tariff | 3 (monthly), 4 (quarterly), 5 (half-yearly) |
 | `prem_term_y` | int | Premium-paying **years** from inception, a count: premiums fall in policy years `k < prem_term_y` | 4 (20 of 22), 5 (25 of 27) |
 | `aufschub_y` | int | Deferment in **years**, a count: *Rentenbeginn* at the end of month `t = 12 × aufschub_y − 1` | all |
@@ -161,7 +160,8 @@ The right-hand column names the points that exercise each attribute away from it
 | `prem_cum_pp_init` | EUR | Premiums paid before the valuation date — the *Beitragsrückgewähr* base | 6, 14 |
 | `alpha_amort_pp_init` | EUR | Acquisition charge already amortised before the valuation date | 6 (2 592), 14 (900) |
 
-**The fourteen model points.** Point 1 is the worked example's anchor cell. Between them the points
+**The fourteen model points.** Point 1 is the worked example's anchor cell. Point 2 states its
+*Einmalbeitrag* in `prem_gross_level_pp`, the one premium column of every form. Between them the points
 carry both premium forms, all four payment frequencies, two in-force cells on two legacy guarantee
 vintages, both charge sets, all three death-benefit forms with and without surplus, all three payout
 systems, five *Rentengarantiezeit* durations including zero, *Kapitalwahlrecht* take-ups of 0 %,
@@ -453,8 +453,8 @@ flow in `result_cf()` is EUR for the model point as a whole.
 
     P(k) = 0                                                 if k ≥ n, or k ≥ prem_term_y,
                                                              or (pup_year > 0 and k ≥ pup_year − 1)
-         = premium_single_pp                                 if prem_form = single and k = 0
-         = prem_gross_pp × prem_freq_load × (1 + dynamik_rate)^k   if prem_form = regular
+         = prem_gross_level_pp                               if prem_form = single and k = 0
+         = prem_gross_level_pp × prem_freq_load × (1 + dynamik_rate)^k   if prem_form = regular
 
     prem_due(t) = ( t mod 12 == 0 )        the first month of each policy year, and no other
     premiums(t) = P(duration(t)) × l(t)    where prem_due(t), else 0
@@ -936,8 +936,8 @@ Every formula here is **[std]**; nothing in the corpus calibrates any of it (gap
 
 **Configuration.** Model point 1, `point_id = 1`, `policy_id = DE-RV-0001`: `sex = M`;
 `issue_age = 50`; `issue_year = 2026`; `duration_init = 0`, so the frame opens at `t = 0`;
-`pols_if_init = 1.0`; `prem_form = regular`; `prem_gross_pp = 3 000,00 €`;
-`premium_single_pp = 0,00 €`; `prem_freq = annual`, hence `prem_freq_load = 1,000`; `prem_term_y = 17`;
+`pols_if_init = 1.0`; `prem_form = regular`; `prem_gross_level_pp = 3 000,00 €`, the annual
+premium; `prem_freq = annual`, hence `prem_freq_load = 1,000`; `prem_term_y = 17`;
 `aufschub_y = 17`, so the *Rentenbeginn* falls at the end of month `t = 203` — the end of the
 seventeenth policy year — at attained age 67;
 `rechnungszins = 1,00 %`, the 2026 vintage [REG-R15]; `charge_id = zillmer_25`;

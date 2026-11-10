@@ -126,7 +126,7 @@ EURO_COLUMNS: dict[str, tuple[str, ...]] = {
         "claims_lumpsum", "claims_commutation", "claims_annuity", "expenses", "commissions",
         "net_cf", "liability_cf"),
     "risikolebensversicherung": (
-        "prem_gross", "premiums", "prem_rebate", "claims_death", "claims_lapse",
+        "premiums", "claims_death", "claims_lapse",
         "claims_maturity", "expenses", "commissions", "net_cf", "liability_cf"),
     "sofortrente": (
         "premiums", "annuity_payments", "claims_guarantee", "claims_refund", "expenses",

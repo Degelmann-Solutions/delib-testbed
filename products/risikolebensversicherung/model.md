@@ -120,8 +120,8 @@ v_d = min( v_max, decl_scale · surplus_share · (m/(1+m)) · A / (G·ä) )
 — the surplus share, times the margin fraction of the risk element, times the risk share
 of the gross premium. So `Zahlbeitrag / Bruttobeitrag = 0,574725` on the anchor,
 reproducing the research file's frozen **[std]** 0.57 **from the mechanic rather than by
-assumption**. The model publishes `prem_gross` (guaranteed), `premiums` (billed, and the
-one inside `net_cf`) and `prem_rebate` between them.
+assumption**. The model publishes `premiums`, the billed premium inside `net_cf`; the guaranteed
+instalment `prem_charged_inst_pp` and the rebate `prem_rebate_inst_pp` between them are cells.
 
 **What the model deliberately does not do here.** It does not treat `v` as a free input,
 `v` being an output of the surplus mechanic in the real product; it does not return the
@@ -130,7 +130,7 @@ carrying a different minimum share and no basis for splitting a German term tari
 expense result having been established [R9] — the cost result emerges in `net_cf` and
 stays there; and it does not implement § 163 VVG's *Treuhänder* adjustment, essentially
 never used on this product [R6] [unverified]. The lever that matters is `decl_scale`:
-setting it to **0** raises `premiums` to `prem_gross` at every `t` — 21 303,65 € against
+setting it to **0** raises `premiums` to the guaranteed stream at every `t` — 21 303,65 € against
 12 243,75 €, a **74,0 %** increase in the bill with no change to any benefit, decrement or
 guaranteed term, and so with no § 163 procedure, no *Treuhänder* and no remedy. That is
 the largest policyholder risk here, and it is a one-row change in `param_tariff_type.csv`. `surplus_form =
@@ -363,9 +363,9 @@ It is rebuilt **from the frame's own published columns**, and by a different rou
 cells-to-frame boundary — a column dropped, renamed or mis-signed on the way into
 `result_cf()` fails here — and the `claims(t, kind)` dispatch, where a benefit kind can
 exist in the model and not in the subtotal. Which columns are *not* in it is the other
-half of publishing it: `prem_gross` is the
-guaranteed stream and does not enter, and `prem_rebate` is the difference between the two
-premium columns and must not be subtracted again. `expenses` here **excludes**
+half of publishing it: the guaranteed stream is the
+cell `prem_charged_inst_pp` and does not enter, and the rebate `prem_rebate_inst_pp` is already
+netted off `premiums` and must not be subtracted again. `expenses` here **excludes**
 `commissions` — the opposite convention from `frlib.TD_FR_S`, whose notes fold commission
 into the expense total. The two libraries' columns look alike and do not mean the same
 thing; this identity settles the reading.

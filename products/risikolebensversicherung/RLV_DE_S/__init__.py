@@ -23,9 +23,9 @@ MindZV obliges the insurer to allocate at least 90 % of the *Risikoergebnis* to
 policyholders, and on a term product the *Risikoergebnis* is essentially the whole
 technical result, so the spread is wide: on the worked example's anchor cell the
 *Beitragsverrechnungssatz* comes out at 0.4253 and the billed premium at 57,5 % of the
-guaranteed one. The model therefore publishes **two premium streams** — ``prem_gross``,
-the guaranteed one, and ``premiums``, the billed one that enters ``net_cf`` — and
-``prem_rebate`` between them. A model carrying one premium stream cannot represent this
+guaranteed one. The model therefore carries **two premium streams** — the guaranteed
+instalment ``prem_charged_inst_pp`` and ``premiums``, the billed one that enters ``net_cf``,
+with ``prem_rebate_inst_pp`` between them. A model knowing one premium cannot represent this
 product, and the *Beitragsverrechnungssatz* is **derived** from the surplus mechanic
 rather than assumed, because that is what it is in the real contract.
 

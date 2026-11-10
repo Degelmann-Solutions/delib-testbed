@@ -51,10 +51,8 @@ print()
 print("summed into policy years")
 print(proj.result_cf_annual().head(12).round(2).to_string())
 print()
-print("totals over {} months: prem_gross {:,.2f}  premiums {:,.2f}  "
-      "prem_rebate {:,.2f}".format(
-          len(df), df["prem_gross"].sum(), df["premiums"].sum(),
-          df["prem_rebate"].sum()))
+print("totals over {} months: premiums {:,.2f}".format(
+    len(df), df["premiums"].sum()))
 print("                      claims {:,.2f}  expenses {:,.2f}  "
       "commissions {:,.2f}  net_cf {:,.2f}".format(
           df["claims_death"].sum() + df["claims_lapse"].sum()

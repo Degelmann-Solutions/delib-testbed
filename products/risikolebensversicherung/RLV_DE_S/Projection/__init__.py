@@ -144,8 +144,6 @@ pols_death(t)              pols_death(t)                   Expected deaths in mo
 pols_lapse(t)              pols_lapse(t)                   Expected lapses in month t
 pols_maturity(t)           pols_maturity(t)                Expiring survivors, last month
 premiums(t)                premiums(t)                     Zahlbeitrag income, billed
-prem_gross(t)              prem_gross(t)                   Bruttobeitrag, guaranteed
-prem_rebate(t)             prem_rebate(t)                  Beitragsverrechnung, in force
 (none)                     benefit_death_pp(t)             benefit_paid_pp(t)
 claims_death               claims(t, kind)                 Benefit outgo by kind
 z k G                      acq_cost_pp()                   Acquisition cost at issue
@@ -191,7 +189,7 @@ is ``2.25 x (unisex blend / own-sex rate)``, which on the shipped proxy is **1.6
 male and 3.375 for a female**. That asymmetry is the unisex cross-subsidy and it is a
 product fact, not a modelling artefact. Applying the *Sicherheitszuschlag* to the
 projection is the pitfall; ``claims_death`` must be invariant to ``mort_load_first``
-while ``prem_gross`` is not.
+while ``prem_charged_inst_pp`` is not.
 
 **``B(t)`` is the contractual sum; what a claim pays is not always ``B(t)``.**
 :func:`benefit_pp` is ``S0 f(t) u(t)``, and :func:`benefit_paid_pp` applies the § 161
@@ -211,7 +209,7 @@ same thing. :func:`check_net_cf` is the identity in code.
 
 .. rubric:: Two premium streams, and why one is not enough
 
-This is the German delta and it is visible in the frame rather than buried in a parameter.
+This is the German delta, and both are cells of the model rather than one buried in a parameter.
 The **Bruttobeitrag** ``G`` is struck once, at issue, by first-order equivalence on tariff
 survivorship — mortality only, no lapse — so it is acyclic with respect to everything
 behavioural::
@@ -604,7 +602,7 @@ def mort_rate(t):
     policy's own sex and smoker status, rated, first-death where there are two lives, and
     loaded for selective lapse where that module is on.  This drives every decrement and
     every claim, and the *Sicherheitszuschlag* must not appear in it: ``claims_death`` is
-    invariant to ``mort_load_first`` while ``prem_gross`` is not, and an
+    invariant to ``mort_load_first`` while ``prem_charged_inst_pp`` is not, and an
     implementation that projects on ``q1`` overstates claims by a factor of about two.
 
     ``mort_be_factor`` is 1.00, so the shipped proxy **is** the best estimate and there is
@@ -1156,30 +1154,6 @@ def res_zill_pp_at(y, timing):
 # Cash flows
 
 
-def prem_gross(t):
-    """*Bruttobeitrag* instalments on the in-force cohort — the **guaranteed** stream.
-
-    ``prem_charged_inst_pp(t) l(t)``.  Published beside :func:`premiums` and **not** part of
-    :func:`net_cf`.  It is what the contract guarantees the insurer may charge, so it is
-    also the ``decl_scale = 0`` stress: the whole distance between the two columns is
-    surplus the insurer may withdraw by declaration alone.
-    """
-    return prem_charged_inst_pp(t) * pols_if(t)
-
-
-def prem_rebate(t):
-    """The *Beitragsverrechnung* on the in-force cohort, ``prem_rebate_inst_pp(t) l(t)``.
-
-    The contract-level consequence of the MindZV allocation, not the allocation itself:
-    the statutory minimum binds on the HGB accounts and is a transfer to the *Rückstellung
-    für Beitragsrückerstattung*, and what reaches one policy is this.  It is the middle
-    term of ``prem_gross = premiums + prem_rebate``, which :func:`check_prem_split`
-    asserts at every ``t`` and every *Zahlweise* — instalment by instalment now, and so in
-    every month rather than only at the anniversary.
-    """
-    return prem_rebate_inst_pp(t) * pols_if(t)
-
-
 def benefit_death_pp(t):
     """The *Todesfallleistung* per death in period t, :func:`benefit_paid_pp`.
 
@@ -1246,9 +1220,9 @@ def maint_pp(t):
     3,0 % of the *Zahlbeitrag*, and the gap is the ***Kostenüberschuss***.  The model does
     **not** return it: splitting the MindZV's *übriges Ergebnis* limb, whose minimum share
     is different, has no basis in the research corpus, so the cost result emerges in
-    :func:`net_cf` and stays there.  That is a stated simplification — ``prem_rebate`` is
-    invariant to ``expense_collect_prem_inst`` and ``comm_renew_prem_inst`` while ``net_cf``
-    is not — and not an oversight.
+    :func:`net_cf` and stays there.  That is a stated simplification —
+    ``prem_rebate_inst_pp`` is invariant to ``expense_collect_prem_inst`` and
+    ``comm_renew_prem_inst`` while ``net_cf`` is not — and not an oversight.
     """
     return (data.param("load_admin_sum_ann")                         # noqa: F821
             * benefit_pp(t) * inflation_factor(t) / 12.0
@@ -1483,46 +1457,6 @@ def check_no_cash_value():
 
 # ==========================================================================
 # Result frames
-
-
-def result_cf_columns():
-    """The columns of :func:`result_cf`, ``(label, cell)`` pairs in their order.
-
-    The frame is the table of cash flows, indexed by the 0-based **policy month** t.
-
-    ``pols_if`` is the start-of-month count, which is the weight applied to every cash flow
-    on the same row.  **Two premium columns**: ``prem_gross`` is the guaranteed
-    *Bruttobeitrag* instalment and does **not** enter ``net_cf``; ``premiums`` is the
-    billed *Zahlbeitrag* instalment and does; ``prem_rebate`` is the
-    *Beitragsverrechnung* between them.  All three are the amounts **collected in the
-    month**, so on an annual *Zahlweise* eleven rows in twelve carry zeros in them — which
-    is what an annual-mode policy looks like on a monthly grid, and what
-    :func:`result_cf_annual` sums back up.
-    ``expenses`` **excludes** ``commissions``, which is its own column, and ``net_cf``
-    subtracts both once.  ``claims_lapse`` and ``claims_maturity`` are columns of zeros by
-    statute and by contract and are published rather than dropped.  ``liability_cf`` is
-    ``net_cf`` outgo-positive.
-
-    The frame runs ``t = 12 duration_init ... proj_len() - 1`` contiguously and stops there:
-    cover expires at the end of the last month with nothing payable and no survivors left
-    in force.
-
-    Override reason: the guaranteed premium and the *Beitragsverrechnung* published beside
-    the billed premium, products/risikolebensversicherung/technical-notes.md:682-684
-    """
-    return (
-        ("pols_if", pols_if),                                        # noqa: F821
-        ("prem_gross", prem_gross),                                  # noqa: F821
-        ("premiums", premiums),                                      # noqa: F821
-        ("prem_rebate", prem_rebate),                                # noqa: F821
-        ("claims_death", lambda t: claims(t, "DEATH")),              # noqa: F821
-        ("claims_lapse", lambda t: claims(t, "LAPSE")),              # noqa: F821
-        ("claims_maturity", lambda t: claims(t, "MATURITY")),        # noqa: F821
-        ("expenses", expenses),                                      # noqa: F821
-        ("commissions", commissions),                                # noqa: F821
-        ("net_cf", net_cf),                                          # noqa: F821
-        ("liability_cf", liability_cf),                              # noqa: F821
-    )
 
 
 def result_pols_columns():

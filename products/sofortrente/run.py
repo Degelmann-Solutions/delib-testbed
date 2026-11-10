@@ -17,7 +17,7 @@ proj = model.Projection[point_id]
 mp = proj.model_point()
 
 print("model point {}: {} - Einmalbeitrag {:,.2f} EUR, {}{} born {}, entry {}".format(
-    point_id, proj.policy_id(), proj.single_prem(), proj.sex(1), proj.issue_age(1),
+    point_id, proj.policy_id(), proj.prem_gross_level_pp(), proj.sex(1), proj.issue_age(1),
     proj.birth_year(1), proj.issue_year()))
 print("options: Aufschubzeit {} mth, Rentengarantiezeit {} y, refund {}, "
       "Hinterbliebenenrente {:.0%}".format(

@@ -61,8 +61,8 @@
   frequencies from one ``prem_freq_table.csv``, keyed ``annual`` to ``monthly``, with
   ``instalments`` an ``int`` a year, and every model point's ``prem_freq`` is a key; Basis'
   single premium reads no loading, Pflege's is the premium form ``single``, not a frequency.
-  ``prem_form`` is ``regular`` or ``single`` in the six products that have it, and an unknown
-  form raises. Sofort's annuity frequencies are the keys of its ``ann_freq_table.csv``. A
+  ``prem_form`` is ``regular`` or ``single`` in the seven products that have it, and an
+  unknown form raises. Sofort's annuity frequencies are the keys of its ``ann_freq_table.csv``. A
   frequency outside its table raises (FRV, Pflege, Sofort), and a row added to a scratch copy
   admits it. Riester's annuity frequency is a row ``ann_freq``, 12 as an ``int`` as Basis', and
   the *Rentenfaktor* unit of FRV, Index, RV and Riester a row ``rf_unit``, 10000.0 as Basis'.
@@ -3441,13 +3441,14 @@ def test_premium_frequencies_are_one_table_with_instalments(product, product_mod
 # The products with a single and a regular premium form, one model-point column prem_form.
 PREM_FORM_PRODUCTS = sorted(["basisrente", "fondsgebundene_rentenversicherung", "indexpolice",
                              "klassische_rentenversicherung", "pflegerentenversicherung",
-                             "risikolebensversicherung"])
+                             "risikolebensversicherung", "sofortrente"])
 
 
 def test_the_premium_form_is_one_column_with_two_values(product_models):
     """``prem_form`` is ``regular`` or ``single`` wherever a product has the column, the core's
     ``prem_form()`` reads it, and no ``premium_form`` of that meaning is left (BU's
-    ``premium_form``, *Dynamik* or level, is another quantity)."""
+    ``premium_form``, *Dynamik* or level, is another quantity).  Sofort writes single
+    premiums only, ``single`` on every point."""
     having = []
     for product in sorted(MODELS):
         model = product_models(product)
@@ -3455,11 +3456,13 @@ def test_the_premium_form_is_one_column_with_two_values(product_models):
         if "prem_form" not in points.columns:
             continue
         having.append(product)
-        assert set(points["prem_form"]) == {"regular", "single"}, product
+        assert set(points["prem_form"]) <= {"regular", "single"}, product
         for point_id in points.index:
             assert model.Projection[point_id].prem_form() == points.at[point_id, "prem_form"]
         assert "premium_form" not in points.columns, product
     assert having == PREM_FORM_PRODUCTS
+    sofort = product_models("sofortrente").Data.model_point_table()
+    assert set(sofort["prem_form"]) == {"single"}
     bu = product_models("berufsunfaehigkeit").Data.model_point_table()
     assert set(bu["premium_form"]) == {"dynamik", "level"}
 
@@ -3503,13 +3506,17 @@ FREQUENCY_PROBES = {
 
 def test_a_single_premium_is_annual_and_carries_no_frequency_loading(product_models):
     """Every single-premium point carries ``prem_freq = annual`` and ``prem_freq_load`` 1.0,
-    the core's rule for every product; Basis no longer overrides ``prem_freq_load``."""
+    the core's rule for every product; Basis no longer overrides ``prem_freq_load``.  Sofort
+    has no premium frequency: its one premium is paid at ``t = 0``."""
     checked = 0
     for product in sorted(MODELS):
         model = product_models(product)
         points = model.Data.model_point_table()
         if "prem_form" not in points.columns:
             assert model.Projection[int(points.index[0])].prem_form() == "regular"
+            continue
+        if "prem_freq" not in points.columns:
+            assert product == "sofortrente"
             continue
         for point_id in points.index[points["prem_form"] == "single"]:
             assert points.at[point_id, "prem_freq"] == "annual", (product, point_id)

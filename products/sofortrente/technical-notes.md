@@ -94,7 +94,7 @@ repeated in prose.
 |---|---|---|---|
 | `point_id` | int | Key; `Projection` is parameterized by it | all |
 | `policy_id` | str | Reference, reporting only | all |
-| `single_prem` | EUR | The *Einmalbeitrag*, `SP` | all |
+| `prem_gross_level_pp` | EUR | The *Einmalbeitrag*, `SP`; beside it `prem_form`, `single` on every point, which Sofort's own cells do not read | all |
 | `issue_age` | int | Annuitant's age last birthday at *Vertragsbeginn* | all |
 | `issue_year` | int | Calendar year of *Vertragsbeginn*; the *Höchstrechnungszins* vintage | 10, 13 |
 | `birth_year` | int | Annuitant's *Geburtsjahr* — the generational table key | all |
@@ -117,7 +117,7 @@ repeated in prose.
 **Two configurations, not two premium forms.** A *Sofortrente* has exactly one premium form — a
 single *Einmalbeitrag* — so the pair of shapes this model must serve is not `level`/`revisable` but
 **derived** against **given**: a new-business point (`annuity_pp_init == 0`) whose guaranteed annuity
-the model strikes from `single_prem` by equivalence on the tariff basis, and an in-force point
+the model strikes from `prem_gross_level_pp` by equivalence on the tariff basis, and an in-force point
 (`annuity_pp_init > 0`) whose annuity was struck years ago on a basis the model does not reproduce
 and is therefore carried. Model point 10 is the second kind. On it the pricing identity
 `check_equivalence()` is not asserted, and the notes say so rather than letting the check pass
@@ -398,7 +398,7 @@ tagged in the tables above.
 | `t₀`, `n` | `t_start`, `proj_len` | first projected month index; **exclusive end** of the frame |
 | `m`, `p` | `ann_freq`, `pay_period_mths` | instalments per year; months between them, `p = 12/m` |
 | `D`, `G` | `defer_mths`, `guar_years` | deferment in months; guarantee period in years |
-| `SP`, `SP_net` | `single_prem`, `net_single_prem` | *Einmalbeitrag*; `SP(1 − α)` |
+| `SP`, `SP_net` | `prem_gross_level_pp`, `net_single_prem` | *Einmalbeitrag*; `SP(1 − α)` |
 | `α`, `β` | `load_acq_sp_once`, `load_admin_annval_once` | acquisition and annuity-administration loadings |
 | `i`, `v` | `rechnungszins` | tariff *Rechnungszins*; `v = 1/(1 + i)` |
 | `R` | `annuity_pp_derived`, `annuity_guar_pp(t)` | the *garantierte Rente* per instalment |
@@ -645,7 +645,7 @@ product's own roll-forward and pricing identities.
 
 | Check | Identity |
 |---|---|
-| `check_net_cf` | `net_cf(t) == premiums(t) − 1{payment month}·pols_if_init·A(t)·payment_factor(t) − claims(t,"REFUND") − expenses(t)`. The instalment term carries the payment-month indicator, because `payment_factor(t)` is defined at every `t` and only some `t` carry an instalment on a quarterly, half-yearly or annual point. **Not a restatement of the definition**: it rebuilds the annuity outgo through the `max()` payment factor rather than through the two published legs, so it asserts that the split into `annuity_payments` and `claims_guarantee` is exhaustive and non-overlapping; to `roll_fwd_tol()` times `max(single_prem() × pols_if_init(), 1)` |
+| `check_net_cf` | `net_cf(t) == premiums(t) − 1{payment month}·pols_if_init·A(t)·payment_factor(t) − claims(t,"REFUND") − expenses(t)`. The instalment term carries the payment-month indicator, because `payment_factor(t)` is defined at every `t` and only some `t` carry an instalment on a quarterly, half-yearly or annual point. **Not a restatement of the definition**: it rebuilds the annuity outgo through the `max()` payment factor rather than through the two published legs, so it asserts that the split into `annuity_payments` and `claims_guarantee` is exhaustive and non-overlapping; to `roll_fwd_tol()` times `max(prem_gross_level_pp() × pols_if_init(), 1)` |
 | `check_lives_roll_fwd` | `lives_if(t + 1, life) == lives_if(t, life)·(1 − mort_rate_mth(t, life))`, and `Σ_t lives_death(t, life) + lives_if(n, life) == lives_if(t₀, life)` for each life in scope |
 | `check_annuity_roll_fwd` | `annuity_surp_pp(t) == annuity_surp_pp(t − 1) · (1 + ψ)^{1 if t % 12 == 0 else 0}` inside the payment phase, and `annuity_pp(t) ≥ annuity_pp(t − 1)` at every `t` — the *Bonusrente* ratchet |
 | `check_refund_run_off` | `refund_pp(t) == max(refund_pp(t − 1) − R·1{payment month}, 0)`, non-increasing and reaching zero at `⌈SP / R⌉` instalments; identically zero where `refund_form == "none"` |
@@ -730,7 +730,7 @@ becomes a test.
     [REG-R34]. Assert that two points identical but for `sex` produce the **same**
     `annuity_pp_derived()` and **different** `lives_if`.
 11. **Counting the *Einmalbeitrag* on an in-force model point.** Assert `premiums(t) == 0` for every
-    `t` in model point 10's frame, and `Σ premiums == single_prem() × pols_if_init()` on model
+    `t` in model point 10's frame, and `Σ premiums == prem_gross_level_pp() × pols_if_init()` on model
     point 1.
 12. **Opening an in-force point at `t = 0`.** The frame starts at the duration already run. Assert
     `result_cf().index[0] == duration_mth_init()` and `pols_if(t_start()) == pols_if_init()` on model
@@ -802,7 +802,7 @@ Behaviour enters the **basis**, not the projection, as selection effects **[std]
 ## Worked example
 
 **Configuration.** Model point 1, the anchor cell, is the representative design of `product-spec.md`
-with every attribute stated: `policy_id = SOF-000001`; `single_prem = 100,000.00 €`;
+with every attribute stated: `policy_id = SOF-000001`; `prem_form = single`; `prem_gross_level_pp = 100,000.00 €`;
 `issue_age = 65`; `issue_year = 2025`; `birth_year = 1960`; `sex = M`; `defer_years = 0`, so
 `defer_mths() = 0` and `first_pay_mth() = 0`; `guar_years = 10`, so `guar_end_mth() = 120` and the
 first 120 monthly instalments are certain; `refund_form = none`; `surv_pct = 0.00`, with `surv_age`,
@@ -830,7 +830,7 @@ on the **first-order unisex** path and the projection decrements on the **second
 [REG-R34] [REG-R47]. *Surplus.* `surplus_form = teildynamisch` gives `surplus_init_pct = 10 %` and
 `surplus_growth = 1,0 %` p.a. **[std]**, so the *Überschussrente* opens at a tenth of the *garantierte
 Rente* and steps up 1 % at each policy anniversary, ratcheting under the *Bonusrente* mechanic [R23].
-*Expenses.* Acquisition `2,0 % of single_prem + 200 € = 2,200.00 €` at `t = 0` **[std]**; maintenance
+*Expenses.* Acquisition `2,0 % of prem_gross_level_pp + 200 € = 2,200.00 €` at `t = 0` **[std]**; maintenance
 `60 €` a year accrued monthly on `pols_if(t)` **[std]**; `1,50 €` per instalment paid **[std]**; all
 three inflating at `expense_infl = 2,0 %` p.a., stepping at the policy anniversary.
 *Decrements.* Death only — no lapse, no surrender, no paid-up, no option exercise [R1] [R2] [R5].

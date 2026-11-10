@@ -97,7 +97,7 @@ F(t)                       av_pp(t)                         Fondsguthaben, u(t) 
 F_tau(t)                   av_pp_at(t, timing)              BEF_CHARGE / AFT_CHARGE /
                                                             AFT_WD / BEF_DECR
 (in force)                 av_at(t, timing)                 av_pp_at(t, timing) pols_if(t)
-gamma_m                    gamma_rate_mth()                 gamma_rate_ann() / 12
+gamma_m                    gamma_rate_mth()                 charge_admin_av_ann() / 12
 gamma_m F(t)               charge_admin_fund_pp(t)          Fund-based admin charge
 SK                         charge_policy_fee_pp(t)          Stueckkosten
 W(t)                       withdrawals_pp(t)                Teilentnahme
@@ -208,9 +208,9 @@ an effective annual rate, while a German tariff's charge rates are nominal.
 
 .. rubric:: The acquisition charge, its window, and the in-force cell
 
-``zillmer_amount() = alpha_rate x beitragssumme()`` — 2.50 % of the sum of premiums
+``zillmer_amount() = charge_acq_bsum_once x beitragssumme()`` — 2.50 % of the sum of premiums
 **payable**, which is the *Höchstzillmersatz* — spread in equal instalments over
-``acq_window_months() = min(alpha_spread_months, 12 x prem_term_y)`` months at the
+``acq_window_months() = 12 x min(acq_spread_years, prem_term_y)`` months at the
 policy's own premium frequency. On the anchor cell that is 1 800,00 € over 60 monthly
 instalments of 30,00 €, which is **15 % of each of the first 60 premiums, ``t = 0 ... 59``,
 and nothing from ``t = 60``**. On model point 12, whose premium term is two years, the
@@ -582,40 +582,40 @@ def alpha_rate():
     than a guessed interior point, on the ground that a reference implementation should
     demonstrate the binding constraint.  Zero on the *Nettotarif*.
 
-    On a single-premium contract it is :func:`zuzahlung_charge_rate`: there is no
+    On a single-premium contract it is :func:`charge_acq_sp_once`: there is no
     *Beitragssumme* to zillmer against and no five-year spread to obey, so the core's
-    ``zillmer_amount() = alpha_rate() x beitragssumme()`` is ``zuzahlung_charge_rate() x
+    ``zillmer_amount() = alpha_rate() x beitragssumme()`` is ``charge_acq_sp_once() x
     prem_pp_base()`` there (``beitragssumme()`` is the *Einmalbeitrag* counted once), and
     ``alpha_rate() x beitragssumme()``, 2.50 % of 72 000,00 = **1 800,00 EUR** on the
     anchor cell, on a recurring-premium one.
     """
     if prem_form() == "single":
-        return zuzahlung_charge_rate()
-    return float(charge_row()["alpha_rate"])
+        return charge_acq_sp_once()
+    return float(charge_row()["charge_acq_bsum_once"])
 
 
-def alpha_spread_months():
-    """Months over which the acquisition charge is spread — 60 on every shipped tariff.
+def acq_spread_years():
+    """The tariff's own years over which it collects the acquisition charge — 5 on every tariff.
 
-    § 169 VVG requires the *angesetzte Abschluss- und Vertriebskosten* to be spread evenly
-    over the first five contract years, and a unit-linked tariff implements that inside
-    the *Beitragsverrechnung*: only one sixtieth may be withheld per month, so units are
-    bought from the start and the surrender value is positive from the first month.
+    The tariff's window, as Index' ``acq_spread_years``, set equal to the § 169 Abs. 3 VVG
+    floor ``surr_spread_years`` of five contract years but not that floor itself.  A
+    unit-linked tariff collects inside the *Beitragsverrechnung*: one sixtieth a month, so
+    units are bought from the start and the surrender value is positive from the first month.
     """
-    return int(charge_row()["alpha_spread_months"])
+    return int(charge_row()["acq_spread_years"])
 
 
-def beta_rate():
+def charge_admin_prem_inst():
     """*Beitragsbezogene Verwaltungskosten*: the rate on each gross *Beitrag*.
 
     Withheld from the premium before units are bought, for the whole premium-paying term,
     and it stops when premiums stop.  **[std]** at 4.00 % on the composite against an
     argued range of 2 % to 10 %; no carrier level was established.
     """
-    return float(charge_row()["beta_rate"])
+    return float(charge_row()["charge_admin_prem_inst"])
 
 
-def gamma_rate_ann():
+def charge_admin_av_ann():
     """*Kapitalbezogene Verwaltungskosten* (*Gammakosten*): the annual rate on the fund.
 
     **[std]** at 0.30 % p.a. against an argued range of 0.10 % to 1.20 %.  This is the
@@ -623,21 +623,21 @@ def gamma_rate_ann():
     policy decay, and — because it compounds against the whole accumulated fund — the
     dominant component of the reduction in yield on a long contract.
     """
-    return float(charge_row()["gamma_rate_ann"])
+    return float(charge_row()["charge_admin_av_ann"])
 
 
 def gamma_rate_mth():
-    """The monthly *Gammakosten* rate, ``gamma_rate_ann() / 12``.
+    """The monthly *Gammakosten* rate, ``charge_admin_av_ann() / 12``.
 
     Divided, not compounded, because a German tariff quotes a **nominal** monthly charge
     rate.  The fund *return* on the same contract is compounded geometrically because it
     is an effective annual rate.  That asymmetry is deliberate; collapsing it is a listed
     pitfall.  On the composite, ``0.0030 / 12 = 0.00025``.
     """
-    return gamma_rate_ann() / 12.0
+    return charge_admin_av_ann() / 12.0
 
 
-def policy_fee_mth():
+def charge_admin_pp_mth():
     """*Stückkosten*: the fixed euro charge per policy per month.
 
     **[std]** at 3.00 EUR against an argued range of 0 to 5 EUR.  A euro amount rather
@@ -645,17 +645,17 @@ def policy_fee_mth():
     *Fondsguthaben* — the reason insurers set a minimum fund below which
     *Beitragsfreistellung* is refused.
     """
-    return float(charge_row()["policy_fee_mth"])
+    return float(charge_row()["charge_admin_pp_mth"])
 
 
-def zuzahlung_charge_rate():
+def charge_acq_sp_once():
     """*Zuzahlungskosten*: the acquisition charge on a *Zuzahlung* or a *Einmalbeitrag*.
 
     **[std]** at 2.50 % on the composite.  A *Zuzahlung* pays this and **no**
     *beitragsbezogene* charge — it is not a regular *Beitrag* — and on a single-premium
     contract this rate is the whole of the acquisition charge, levied once on receipt.
     """
-    return float(charge_row()["zuzahlung_charge_rate"])
+    return float(charge_row()["charge_acq_sp_once"])
 
 
 def stornoabzug_rate():
@@ -746,15 +746,15 @@ def beitragssumme_years():
 
 
 def acq_window_months():
-    """The months over which the acquisition charge is spread, ``min(60, 12 x term)``.
+    """The months over which the acquisition charge is spread, ``12 x min(5, term)``.
 
-    The five-year statutory spread, cut short where the premium term is shorter than five
-    years: model point 12 pays for two years, so its window is 24 months and not 60.  Zero
+    The tariff's five-year spread, equal to the § 169 floor, cut short where the term is
+    shorter: model point 12 pays for two years, so its window is 24 months and not 60.  Zero
     on a single-premium contract, whose acquisition charge is a one-off.
     """
     if prem_form() == "single":
         return 0
-    return min(alpha_spread_months(), 12 * prem_term_y())
+    return 12 * min(acq_spread_years(), prem_term_y())
 
 
 def acq_instalments():
@@ -789,7 +789,7 @@ def charge_acq_pp(t):
             reg = zillmer_amount()
     elif t < acq_window_months() and prem_pp(t) > 0.0:
         reg = zillmer_amount() / acq_instalments()
-    return reg + zuzahlung_charge_rate() * topup_pp(t)
+    return reg + charge_acq_sp_once() * topup_pp(t)
 
 
 def cum_charge_acq_pp(t):
@@ -812,11 +812,11 @@ def cum_charge_acq_pp(t):
 def charge_admin_prem_pp(t):
     """*Beitragsbezogene Verwaltungskosten* withheld from month t's premium, per policy.
 
-    ``beta_rate() x prem_pp(t)`` — 4.00 % of 200.00 = **8,00 EUR** on the anchor cell,
-    every month a premium falls and none in between.  Charged on the regular *Beitrag*
-    only: a *Zuzahlung* pays its own charge and no second one.
+    ``charge_admin_prem_inst() x prem_pp(t)`` — 4.00 % of 200.00 = **8,00 EUR** on the
+    anchor cell, every month a premium falls and none in between.  Charged on the regular
+    *Beitrag* only: a *Zuzahlung* pays its own charge and no second one.
     """
-    return beta_rate() * prem_pp(t)
+    return charge_admin_prem_inst() * prem_pp(t)
 
 
 def prem_to_av_pp(t):
@@ -1045,7 +1045,7 @@ def charge_policy_fee_pp(t):
     floor at the remaining balance is a **[std]** safeguard against a negative fund and is
     triggered by no shipped model point.
     """
-    return min(policy_fee_mth(),
+    return min(charge_admin_pp_mth(),
                av_pp_at(t, "BEF_CHARGE") - charge_admin_fund_pp(t))
 
 
@@ -1775,7 +1775,7 @@ def check_net_cf_resid(t):
 
 
 def check_net_cf_tol(t):
-    """The tolerance of :func:`check_net_cf` in month t, ``val_tol`` relative to ``net_cf(t)``.
+    """The tolerance of :func:`check_net_cf` in month t, ``check_tol`` relative to ``net_cf(t)``.
 
     :func:`check_net_cf` is true when the cash flow statement reconciles in every projected
     month.
@@ -1783,10 +1783,10 @@ def check_net_cf_tol(t):
     No argument, one bool over all t, the library-wide shape;
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
 
-    Override reason: the statement is checked to val_tol relative to the month's net cash
+    Override reason: the statement is checked to check_tol relative to the month's net cash
     flow, products/fondsgebundene_rentenversicherung/technical-notes.md:655
     """
-    return data.param("val_tol") * max(1.0, abs(net_cf(t)))          # noqa: F821
+    return data.param("check_tol") * max(1.0, abs(net_cf(t)))        # noqa: F821
 
 
 def check_prem_split_resid(t):
@@ -1805,7 +1805,7 @@ def check_prem_split_resid(t):
 def check_prem_split():
     """True when the premium splits exactly three ways in every projected month."""
     return all(abs(check_prem_split_resid(t))
-               <= data.param("val_tol") * max(1.0, abs(premiums(t)))  # noqa: F821
+               <= data.param("check_tol") * max(1.0, abs(premiums(t)))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1826,7 +1826,7 @@ def check_units_roll_fwd_resid(t):
 def check_units_roll_fwd():
     """True when the unit count rolls forward exactly in every projected month."""
     return all(abs(check_units_roll_fwd_resid(t))
-               <= data.param("val_tol") * max(1.0, abs(units_pp(t)))  # noqa: F821
+               <= data.param("check_tol") * max(1.0, abs(units_pp(t)))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1850,7 +1850,7 @@ def check_av_roll_fwd_resid(t):
 def check_av_roll_fwd():
     """True when the *Fondsguthaben* rolls forward exactly in every projected month."""
     return all(abs(check_av_roll_fwd_resid(t))
-               <= data.param("val_tol") * max(1.0, abs(av_pp_at(t, "BEF_DECR")))  # noqa: F821
+               <= data.param("check_tol") * max(1.0, abs(av_pp_at(t, "BEF_DECR")))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1875,7 +1875,7 @@ def check_benefit_funding_resid(t):
 def check_benefit_funding():
     """True when every benefit is funded from the fund or the insurer, in every month."""
     return all(abs(check_benefit_funding_resid(t))
-               <= data.param("val_tol") * max(1.0, abs(av_releases(t)))  # noqa: F821
+               <= data.param("check_tol") * max(1.0, abs(av_releases(t)))  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 
@@ -1911,8 +1911,8 @@ def check_acq_charge_resid(t):
     instalment is charged in a month with no premium.
 
     At ``t = proj_len() - 1`` on a new-business cell it says that the whole acquisition
-    charge has been collected and no more: ``alpha_rate x beitragssumme()`` exactly, which
-    on the anchor is 1 800,00 EUR.
+    charge has been collected and no more: ``charge_acq_bsum_once x beitragssumme()``
+    exactly, which on the anchor is 1 800,00 EUR.
     """
     if prem_form() == "single":
         elapsed = 1 if t >= t_start() else 0
@@ -1928,13 +1928,13 @@ def check_acq_charge_resid(t):
               if 0 < topup_month() <= t and topup_month() >= t_start()
               else 0.0)
     return cum_charge_acq_pp(t) - (elapsed * instalment
-                                   + zuzahlung_charge_rate() * topups)
+                                   + charge_acq_sp_once() * topups)
 
 
 def check_acq_charge():
     """True when the acquisition-charge ledger matches its counted expectation everywhere."""
     return all(abs(check_acq_charge_resid(t))
-               <= data.param("val_tol") * max(1.0, zillmer_amount())  # noqa: F821
+               <= data.param("check_tol") * max(1.0, zillmer_amount())  # noqa: F821
                for t in range(t_start(), proj_len()))
 
 

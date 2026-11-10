@@ -49,11 +49,11 @@ are bit-identical on all thirteen model points.
 quoted in euro a **month** and a *Leibrente* is paid monthly; the annual-step model booked
 twelve instalments together at the start of each payout year on the opening in-force
 count, named that as a pitfall and as a stated approximation, and was generous to the year
-of death by up to a full year's annuity — 4 290,52 € of the anchor cell's payout phase,
-1,6 % of it. Here the instalment is paid to whoever is alive at the start of each month.
+of death by up to a full year's annuity — 4 173,88 € of the anchor cell's payout phase,
+1,8 % of it. Here the instalment is paid to whoever is alive at the start of each month.
 The *Rentengarantiezeit* becomes ``12m`` guaranteed **instalments** beginning in the month
 after the death that triggered them rather than in the following year, which moves
-116,29 € onto model point 4 and 562,91 € onto model point 12; and a policy that dies in
+151,60 € onto model point 4 and 698,90 € onto model point 12; and a policy that dies in
 the third month of a year now bears three twelfths of that year's maintenance expense
 rather than the whole of it.
 
@@ -125,10 +125,10 @@ P(k)                       prem_pp(k)                      Beitrag charged per p
 Z(k)                       zuz_pp(k)                       Zuzahlung per paying policy
 (take-up)                  zuz_take_up(k)                  Zuzahlung utilisation rate
 (none)                     prem_total_pp(k)                Total contribution incl. BUZ
-zill_rate x S              zillmer_amount()                Zillmerised acquisition charge
+charge_acq_bsum_once x S   zillmer_amount()                Zillmerised acquisition charge
 alpha(k)                   alpha_amort_pp(k)               Its annual instalment
 alpha_z(k)                 alpha_zuz_pp(k)                 Acquisition charge on a Zuzahlung
-(none)                     expense_infl()                  Expense inflation, charge table
+(none)                     expense_infl()                  Expense inflation, core, 2 %
 k                          inflation_years(t)              proj_year(t), from valuation
 u(k)                       unit_cost_pp(k)                 Stueckkosten, inflating
 N(k)                       prem_to_av_pp(k)                Premium credited after charges
@@ -271,12 +271,13 @@ and the 1,00 % vintage of 2025 has both branches of the ``max`` live at once —
 point 8 credits its guarantee in every year while the anchor credits the declared path in
 every year.
 
-The reserve charge γ is netted inside the same step, ``(1 + cred_rate(k) - gamma_av)``,
-and the *Stückkosten* are taken before it. γ, β, the *Stückkosten* and the *Zillmerung*
-instalment are **deductions from the policyholder's account** — insurer income — and the
-insurer's own outgo is the acquisition expense, the commission, the maintenance expense
-and the annuity administration. Booking a charge as both is the fourth pitfall, and it is
-why :func:`expenses` is invariant to ``beta_prem``, ``gamma_av`` and ``zill_rate``: those
+The reserve charge γ is netted inside the same step,
+``(1 + cred_rate(k) - charge_admin_av_ann)``, and the *Stückkosten* are taken before it. γ,
+β, the *Stückkosten* and the *Zillmerung* instalment are **deductions from the
+policyholder's account** — insurer income — and the insurer's own outgo is the acquisition
+expense, the commission, the maintenance expense and the annuity administration. Booking a
+charge as both is the fourth pitfall, and it is why :func:`expenses` is invariant to
+``charge_admin_prem_inst``, ``charge_admin_av_ann`` and ``charge_acq_bsum_once``: those
 three move :func:`net_cf` only through the smaller annuity the smaller fund buys at
 *Rentenbeginn*.
 
@@ -498,7 +499,7 @@ def beitragssumme():
     so an in-force model point carries the same S it was written with.
 
     Override reason: the premiums escalate with the *Beitragsdynamik*, so the sum runs over
-    the schedule, not a level premium times the years, products/basisrente/technical-notes.md:432
+    the schedule, not a level premium times the years, products/basisrente/technical-notes.md:433
     """
     dyn = float(model_point()["prem_dyn_rate"])
     base = float(model_point()["prem_base_pp"])
@@ -576,7 +577,7 @@ def zuz_pp(k):
     The *Zuzahlung* is the product's signature premium form — a self-employed buyer tops
     the contract up out of a good year — and it is the reason ``zuzahlungen`` is published
     as a column of its own rather than folded into ``premiums``: it is a distinct premium
-    form on a distinct charge basis, carrying ``alpha_zuz_rate`` instead of a share of the
+    form on a distinct charge basis, carrying ``charge_acq_sp_once`` instead of a share of the
     *Zillmerung*.
     """
     if k < 0 or k >= k_conv() or k >= proj_len_y():
@@ -606,20 +607,20 @@ def prem_total_pp(k):
 
 
 def alpha_rate():
-    """The *Zillmersatz* ``zill_rate`` of the tariff, from *charge_table.csv*.
+    """The *Zillmersatz* ``charge_acq_bsum_once`` of the tariff, from *charge_table.csv*.
 
     :func:`zillmer_amount`, the zillmerised acquisition charge written into the account, is
-    ``zill_rate x beitragssumme()``.  The *Höchstzillmersatz* caps it at **25 ‰ of the
-    *Beitragssumme*** for business written from 1 January 2015, reduced from 40 ‰ by the
-    LVRG; the shipped tariffs carry the two rates and the in-force pre-2015 model points
-    take the older one.
+    ``charge_acq_bsum_once x beitragssumme()``.  The *Höchstzillmersatz* caps it at **25 ‰
+    of the *Beitragssumme*** for business written from 1 January 2015, reduced from 40 ‰ by
+    the LVRG; the shipped tariffs carry the two rates and the in-force pre-2015 model
+    points take the older one.
 
     This is a **deduction from the policyholder's *Deckungskapital***, hence insurer
-    income — not an expense.  The insurer's own acquisition outgo is ``acq_expense_pp``
+    income — not an expense.  The insurer's own acquisition outgo is ``expense_acq_pp_once``
     plus the initial commission, and the German design is precisely that what the insurer
     pays out is sized to what it may write into the reserve.
     """
-    return float(data.charge_table_dict()["zill_rate"][              # noqa: F821
+    return float(data.charge_table_dict()["charge_acq_bsum_once"][   # noqa: F821
         model_point()["tariff_id"]])
 
 
@@ -636,7 +637,7 @@ def alpha_amort_pp(k):
 
     Charging the whole *Zillmerung* in year one is the fifth pitfall.  On the anchor cell
     the instalment is equal at ``k = 0 ... 4``, zero from ``k = 5``, and the five sum to
-    ``zill_rate x beitragssumme()`` exactly.
+    ``charge_acq_bsum_once x beitragssumme()`` exactly.
 
     Whether the AltZertG's five-year spreading of acquisition and distribution costs
     reaches *Basisrentenverträge* at all was not established; the five years here are the
@@ -654,26 +655,13 @@ def alpha_amort_pp(k):
 def alpha_zuz_pp(k):
     """alpha_z(k): the acquisition charge on the year's *Zuzahlung*, per paying policy.
 
-    ``alpha_zuz_rate x zuz_pp(k)``, charged in the year the *Zuzahlung* is paid **[std]**.
+    ``charge_acq_sp_once x zuz_pp(k)``, charged in the year the *Zuzahlung* is paid **[std]**.
     A *Zuzahlung* is not part of the *Beitragssumme* and so carries no share of the
     *Zillmerung*; it carries its own single charge instead, which is the normal German
     treatment of a top-up.  Zero where no *Zuzahlung* is paid.
     """
-    return (float(data.charge_table_dict()["alpha_zuz_rate"][        # noqa: F821
+    return (float(data.charge_table_dict()["charge_acq_sp_once"][    # noqa: F821
         model_point()["tariff_id"]]) * zuz_pp(k))
-
-
-def expense_infl():
-    """The annual expense inflation rate of this tariff, 1,5 % p.a. **[std]**.
-
-    Read from *charge_table.csv* at the model point's ``tariff_id``, beside the
-    *Stückkosten* and the expense levels it inflates, rather than from *param_tariff_type.csv*.
-
-    Override reason: the expense inflation is a column of the charge table keyed by
-    ``tariff_id``, products/basisrente/technical-notes.md:141
-    """
-    return float(data.charge_table_dict()["expense_infl"][           # noqa: F821
-        model_point()["tariff_id"]])
 
 
 def inflation_years(t):
@@ -683,7 +671,7 @@ def inflation_years(t):
     ``k``, stepping on the anniversary; ``inflation_factor(12 k)`` is the factor of year ``k``.
 
     Override reason: the expense inflation compounds over the projection years ``k``,
-    products/basisrente/technical-notes.md:609
+    products/basisrente/technical-notes.md:610
     """
     return proj_year(t)                                              # noqa: F821
 
@@ -691,15 +679,15 @@ def inflation_years(t):
 def unit_cost_pp(k):
     """u(k): the *Stückkosten* charged to the account in year k, per policy.
 
-    ``unit_cost_pp x (1 + expense_infl)^k`` **[std]** — 36,00 € inflating at 1,5 %
+    ``charge_admin_pp_ann x (1 + expense_infl)^k`` **[std]** — 36,00 € inflating at 2,0 %
     a year.  Charged to **both** blocks: a premium-free policy keeps paying the
     *Stückkosten* and the reserve charge and stops paying beta and the *Zillmerung*
     instalment, which is the whole economic content of a *Beitragsfreistellung*.
 
     An account deduction, not an expense.  The insurer's own maintenance outgo is
-    ``maint_expense_pp`` and is a separate line of :func:`expenses`.
+    ``expense_admin_pp_ann`` and is a separate line of :func:`expenses`.
     """
-    return (float(data.charge_table_dict()["unit_cost_pp"][          # noqa: F821
+    return (float(data.charge_table_dict()["charge_admin_pp_ann"][   # noqa: F821
         model_point()["tariff_id"]])
         * inflation_factor(12 * k))
 
@@ -707,7 +695,7 @@ def unit_cost_pp(k):
 def prem_to_av_pp(k):
     """N(k): the premium credited to the account in year k, after all four charges.
 
-    ``(P(k) + Z(k)) x (1 - beta_prem) - alpha_amort_pp(k) - alpha_zuz_pp(k) -
+    ``(P(k) + Z(k)) x (1 - charge_admin_prem_inst) - alpha_amort_pp(k) - alpha_zuz_pp(k) -
     unit_cost_pp(k)``.
 
     **N(k) may be negative** in the first years of a heavily zillmerised contract, and it
@@ -720,7 +708,7 @@ def prem_to_av_pp(k):
     """
     if k < 0 or k >= k_conv() or k >= proj_len_y():
         return 0.0
-    beta = float(data.charge_table_dict()["beta_prem"][              # noqa: F821
+    beta = float(data.charge_table_dict()["charge_admin_prem_inst"][  # noqa: F821
         model_point()["tariff_id"]])
     return ((prem_pp(k) + zuz_pp(k)) * (1.0 - beta)
             - alpha_amort_pp(k) - alpha_zuz_pp(k) - unit_cost_pp(k))
@@ -763,7 +751,7 @@ def pols_prem(t):
     ``(1 - mort_rate(t))`` here applies the death rule twice.
 
     Override reason: the premium is paid by the premium-paying cohort only, the paid-up
-    cohort pays none, products/basisrente/technical-notes.md:648
+    cohort pays none, products/basisrente/technical-notes.md:649
     """
     return pols_paying(t)
 
@@ -814,16 +802,16 @@ def mort_rate_base(t):
     year share one table rate.
 
     Override reason: the first-order table is generational, read at the attained age and the
-    calendar year, products/basisrente/technical-notes.md:924
+    calendar year, products/basisrente/technical-notes.md:925
     """
     return mort_rate_at_age(age(t), calendar_year(t))
 
 
 def mort_be_factor():
-    """The step from the first-order table to the best estimate, 0.85, from *param_tariff_type.csv*.
+    """The step from the first-order table to the best estimate, 1.15, from *param_tariff_type.csv*.
 
-    Override reason: the best estimate is a round 0.85 of the shipped first-order table, a
-    tariff parameter in *param_tariff_type.csv*, products/basisrente/technical-notes.md:322
+    Override reason: the best estimate is 1.15 of the shipped first-order annuitant table, as
+    RV's, a tariff parameter in *param_tariff_type.csv*, products/basisrente/technical-notes.md:323
     """
     return float(data.param("mort_be_factor"))                       # noqa: F821
 
@@ -831,9 +819,9 @@ def mort_be_factor():
 def mort_rate(t):
     """q(t): the best-estimate **annual** death rate of the year month t falls in.
 
-    ``mort_be_factor x mort_rate_base(t)``, the step from the shipped first-order table to
-    a best estimate.  ``mort_be_factor = 0.85`` is **[std]** and is the single largest
-    unanchored number in the payout phase.
+    ``mort_be_factor x mort_rate_base(t)``, the step from the shipped first-order annuitant
+    table up to a best estimate.  ``mort_be_factor = 1.15`` is a Setzung and is the single
+    largest unanchored number in the payout phase.
 
     This is the library's two-speed convention: ``mort_rate`` is the **annual** rate and
     :func:`mort_rate_mth` the monthly rate the recursion actually applies.  Reading this
@@ -952,7 +940,7 @@ def pols_if(t):
 
     Override reason: the count is the sum of the paying and the paid-up ledger, between
     which the *Beitragsfreistellung* moves policies,
-    products/basisrente/technical-notes.md:228
+    products/basisrente/technical-notes.md:229
     """
     return pols_paying(t) + pols_paidup(t)
 
@@ -978,7 +966,7 @@ def pols_if_at(t, timing):
 
     Override reason: the timing ``"AFT_FREEZE"``, after the *Beitragsfreistellung* has moved
     policies between the paying and the paid-up cohort, stands where the core has
-    ``"AFT_DECR"``, products/basisrente/technical-notes.md:231
+    ``"AFT_DECR"``, products/basisrente/technical-notes.md:232
     """
     if timing == "BEF_DECR":
         return pols_if(t)
@@ -1018,7 +1006,7 @@ def pols_death(t):
     running.
 
     Override reason: the deaths are summed over the two cohorts, paying and paid-up, whose
-    deaths release different reserves, products/basisrente/technical-notes.md:508
+    deaths release different reserves, products/basisrente/technical-notes.md:509
     """
     return pols_death_paying(t) + pols_death_paidup(t)
 
@@ -1145,9 +1133,9 @@ def av_pp_at(k, timing):
 
     ``"AFT_INT"``
         after interest, credited at the **end** of the year net of the reserve charge:
-        ``av_pp_at(k, "AFT_PREM") x (1 + cred_rate(k) - gamma_av)``.  A policy that dies
-        during the year has been credited a full year's interest, because deaths fall
-        after crediting.
+        ``av_pp_at(k, "AFT_PREM") x (1 + cred_rate(k) - charge_admin_av_ann)``.  A policy
+        that dies during the year has been credited a full year's interest, because deaths
+        fall after crediting.
 
     All three are zero from ``k = k_conv()`` except ``"BEF_PREM"`` at ``k = k_conv()``
     itself, which is the fund the annuity is struck on.
@@ -1163,7 +1151,7 @@ def av_pp_at(k, timing):
     if timing == "AFT_PREM":
         return av_pp_at(k, "BEF_PREM") + prem_to_av_pp(k)
     if timing == "AFT_INT":
-        gamma = float(data.charge_table_dict()["gamma_av"][          # noqa: F821
+        gamma = float(data.charge_table_dict()["charge_admin_av_ann"][  # noqa: F821
             model_point()["tariff_id"]])
         return av_pp_at(k, "AFT_PREM") * (1.0 + cred_rate(k) - gamma)
     raise ValueError("invalid timing")
@@ -1190,7 +1178,7 @@ def av_pu_at(k, timing):
         *Beitragsfreistellung*.
 
     ``"AFT_INT"``
-        as for the paying block, ``x (1 + cred_rate(k) - gamma_av)``.
+        as for the paying block, ``x (1 + cred_rate(k) - charge_admin_av_ann)``.
     """
     if k < 0 or k >= proj_len_y():
         return 0.0
@@ -1210,7 +1198,7 @@ def av_pu_at(k, timing):
     if timing == "AFT_PREM":
         return av_pu_at(k, "BEF_PREM") - unit_cost_pp(k) * pols_paidup(12 * k)
     if timing == "AFT_INT":
-        gamma = float(data.charge_table_dict()["gamma_av"][          # noqa: F821
+        gamma = float(data.charge_table_dict()["charge_admin_av_ann"][  # noqa: F821
             model_point()["tariff_id"]])
         return av_pu_at(k, "AFT_PREM") * (1.0 + cred_rate(k) - gamma)
     raise ValueError("invalid timing")
@@ -1343,7 +1331,7 @@ def ann_bonus_rate(k):
     It is the mechanism that gives the conversion-basis wedge back to the annuitant — the
     fund is converted on first-order mortality and run off on the best estimate — so this
     lever and ``mort_be_factor`` between them decide the payout phase's whole economics.
-    Both are **[std]** independently.
+    The bonus rate is **[std]**, the factor a Setzung.
     """
     key = scenario_id()
     tt = min(max(k, 0), data.surplus_table_years()[key])             # noqa: F821
@@ -1446,7 +1434,7 @@ def claim_kinds():
     """The three benefit kinds of :func:`claims`: death, annuity and survivor.
 
     Override reason: the claim kinds are death, annuity and the *Rentengarantiezeit*
-    survivor stream, products/basisrente/technical-notes.md:614
+    survivor stream, products/basisrente/technical-notes.md:615
     """
     return ("DEATH", "ANNUITY", "SURVIVOR")
 
@@ -1487,7 +1475,7 @@ def claims(t, kind=None):
 
     Override reason: the death benefit releases the reserve of two cohorts, the paying and
     the paid-up, weighted by the survivor's eligibility, and the annuity kinds are no
-    per-policy amount times a decrement, products/basisrente/technical-notes.md:605
+    per-policy amount times a decrement, products/basisrente/technical-notes.md:606
     """
     if kind is None:
         return sum(claims(t, k) for k in claim_kinds())
@@ -1513,23 +1501,24 @@ def claims(t, kind=None):
 def expenses_acq(t):
     """The acquisition expense, at inception (``t = 0`` and ``duration_init = 0``) only.
 
-    ``acq_expense_pp x pols_if_init()``, zero outside the frame.  **The commission is not
+    ``expense_acq_pp_once x pols_if_init()``, zero outside the frame.  **The commission is not
     in the expenses.**  It is a separate line of the notes' cash flow statement and a
     separate column of :func:`result_cf`, and :func:`net_cf` subtracts each once.  Nor are
     the *charges*: beta, gamma, the *Stückkosten* and the *Zillmerung* amortisation are
     deductions from the policyholder's account and hence insurer **income**.  The expenses
-    are therefore invariant to ``beta_prem``, ``gamma_av`` and ``zill_rate``, and those
-    three move :func:`net_cf` only through the smaller annuity that a smaller fund buys at
-    *Rentenbeginn*.  Booking a charge as an expense as well is the fourth pitfall.
+    are therefore invariant to ``charge_admin_prem_inst``, ``charge_admin_av_ann`` and
+    ``charge_acq_bsum_once``, and those three move :func:`net_cf` only through the smaller
+    annuity that a smaller fund buys at *Rentenbeginn*.  Booking a charge as an expense as
+    well is the fourth pitfall.
 
     Override reason: the acquisition expense falls at inception on new business only,
-    products/basisrente/technical-notes.md:608
+    products/basisrente/technical-notes.md:609
     """
     if t < 0 or t >= proj_len():
         return 0.0
     if t == 0 and duration_init() == 0:
         tariff = model_point()["tariff_id"]
-        return (float(data.charge_table_dict()["acq_expense_pp"][tariff])   # noqa: F821
+        return (float(data.charge_table_dict()["expense_acq_pp_once"][tariff])  # noqa: F821
                 * pols_if_init())
     return 0.0
 
@@ -1550,8 +1539,8 @@ def expenses_maint(t):
     the whole of it, which is the second thing the finer grid changes on this product.
 
     Override reason: the maintenance falls per in-force policy before *Rentenbeginn*,
-    products/basisrente/technical-notes.md:609, and per annuitant and guarantee
-    continuation after it, products/basisrente/technical-notes.md:610
+    products/basisrente/technical-notes.md:610, and per annuitant and guarantee
+    continuation after it, products/basisrente/technical-notes.md:611
     """
     if t < 0 or t >= proj_len():
         return 0.0
@@ -1559,8 +1548,8 @@ def expenses_maint(t):
     tariff = model_point()["tariff_id"]
     infl = inflation_factor(t)
     if t < t_conv():
-        return float(charges["maint_expense_pp"][tariff]) / 12.0 * infl * pols_if(t)
-    return (float(charges["annuity_admin_pp"][tariff]) / 12.0 * infl
+        return float(charges["expense_admin_pp_ann"][tariff]) / 12.0 * infl * pols_if(t)
+    return (float(charges["expense_annuity_pp_ann"][tariff]) / 12.0 * infl
             * (pols_if(t) + pols_gtd(t)))
 
 
@@ -1574,15 +1563,15 @@ def comm_init_rate():
     acquisition commission was paid before the valuation date and is not a projected cash
     flow.
 
-    Override reason: the initial commission is the tariff's ``comm_init_rate`` of the
-    *Beitragssumme*, products/basisrente/technical-notes.md:611
+    Override reason: the initial commission is the tariff's ``comm_acq_bsum_once`` of the
+    *Beitragssumme*, products/basisrente/technical-notes.md:612
     """
-    return float(data.charge_table_dict()["comm_init_rate"][         # noqa: F821
+    return float(data.charge_table_dict()["comm_acq_bsum_once"][     # noqa: F821
         model_point()["tariff_id"]])
 
 
 def comm_renew(t):
-    """The *Bestandsprovision*, ``comm_renew_rate x (premiums(t) + zuzahlungen(t))``, from ``t = 1``.
+    """The *Bestandsprovision*, ``comm_renew_prem_inst x (premiums(t) + zuzahlungen(t))``.
 
     The renewal commission is a percentage of a contribution, so it falls in the month the
     contribution does and in no other — the ``t >= 1`` condition excludes the first year's
@@ -1590,11 +1579,11 @@ def comm_renew(t):
     exactly the annual-step model's rule.  **[std]**.
 
     Override reason: the renewal commission is a rate on the premiums and *Zuzahlungen*
-    from ``t = 1``, products/basisrente/technical-notes.md:612
+    from ``t = 1``, products/basisrente/technical-notes.md:613
     """
     if t < 1 or t >= proj_len():
         return 0.0
-    rate = float(data.charge_table_dict()["comm_renew_rate"][        # noqa: F821
+    rate = float(data.charge_table_dict()["comm_renew_prem_inst"][   # noqa: F821
         model_point()["tariff_id"]])
     return rate * (premiums(t) + zuzahlungen(t))
 
@@ -1611,7 +1600,7 @@ def income_other(t):
     :func:`result_cf`'s own published columns.
 
     Override reason: the *Zuzahlungen* are income beside the premiums,
-    products/basisrente/technical-notes.md:613
+    products/basisrente/technical-notes.md:614
     """
     return zuzahlungen(t)
 
@@ -1632,7 +1621,7 @@ def check_net_cf_resid(t):
     annual clock and is not a column of this frame at all.
 
     Override reason: the identity adds the *Zuzahlungen* to the premium as income and is
-    taken as the rebuilt flow less ``net_cf``, products/basisrente/technical-notes.md:686
+    taken as the rebuilt flow less ``net_cf``, products/basisrente/technical-notes.md:687
     """
     cf = result_cf_dict()
     return float(cf["premiums"][t] + cf["zuzahlungen"][t]
@@ -1651,7 +1640,7 @@ def check_net_cf():
     it means the same thing on a 300 € contribution and on a 30 826 € one.
 
     Override reason: one tolerance over the run, roll_fwd_tol() times the largest
-    abs(net_cf) of the run, products/basisrente/model.md:396
+    abs(net_cf) of the run, products/basisrente/model.md:398
     """
     scale = max([1.0] + [abs(net_cf(t)) for t in range(proj_len())])
     return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol() * scale   # noqa: F821
@@ -1872,7 +1861,7 @@ def result_cf_columns():
     same stream summed into projection years, which is the view the technical notes print.
 
     Override reason: the statement carries the premium-paying count, the *Zuzahlungen* and
-    the three claim kinds of a *Basisrente*, products/basisrente/technical-notes.md:647-657
+    the three claim kinds of a *Basisrente*, products/basisrente/technical-notes.md:648-657
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821
@@ -1912,7 +1901,7 @@ def result_cf_annual():
 
     Override reason: indexed by the projection year k of the valuation clock, the
     annual-step model's own t, and summed over each year's twelve-month slice,
-    products/basisrente/technical-notes.md:669
+    products/basisrente/technical-notes.md:670
     """
     ks = list(range(proj_len_y()))
     flows = ["premiums", "zuzahlungen", "claims_death", "claims_annuity",
@@ -1945,7 +1934,7 @@ def result_pols():
     point projected from issue.
 
     Override reason: the frame is the annual state, indexed by the projection year k, with the
-    year's deaths and freezes summed over its months, products/basisrente/technical-notes.md:672
+    year's deaths and freezes summed over its months, products/basisrente/technical-notes.md:673
     """
     ks = list(range(proj_len_y()))
     return pd.DataFrame(                                             # noqa: F821

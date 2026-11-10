@@ -159,11 +159,11 @@ def charge_table_index():
     """The index columns of *charge_table.csv*: ``charge_id`` and ``item``.
 
     Two charge sets: ``zillmer_25`` for contracts concluded from 1 January 2015 and
-    ``zillmer_40`` for the earlier *Höchstzillmersatz*.  Eight items each — ``alpha_rate``,
-    ``alpha_spread_years``, ``beta_rate``, ``gamma_rate``, ``gamma_pup_rate``,
-    ``stornoabzug_rate``, ``min_annuity_mth`` and ``annuity_admin_rate``, the last of which
-    is recorded and deliberately **not applied**.  Keyed per item so each number carries
-    its own provenance tag.
+    ``zillmer_40`` for the earlier *Höchstzillmersatz*.  Six items each —
+    ``charge_acq_bsum_once``, ``charge_admin_prem_inst``, ``charge_admin_av_ann``,
+    ``charge_admin_pup_av_ann``, ``stornoabzug_rate`` and ``min_annuity_mth``; the
+    five-year spread is the core's ``surr_spread_years``.  Keyed per item so each number
+    carries its own provenance tag.
 
     A **charge** is a deduction the tariff makes from the premium or the
     *Deckungskapital*: it moves money inside the contract and produces no cash flow.  An

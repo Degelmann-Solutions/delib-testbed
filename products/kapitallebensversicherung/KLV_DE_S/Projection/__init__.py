@@ -38,7 +38,7 @@ So the argument of a cells says which clock it is on:
   :func:`bfz_uplift_pp`, :func:`decl_rate`, :func:`term_rate`, :func:`ans_rate`,
   :func:`surplus_base_pp`, :func:`surplus_credit_pp`, :func:`av_sur_pp`, :func:`term_bonus_pp`,
   :func:`bonus_si_pp`, :func:`prem_offset_pp`, :func:`prem_charged_pp`, :func:`prem_paid_pp`
-  and :func:`storno_rate`;
+  and :func:`stornoabzug_rate`;
 * cells that state a **month** take ``t`` — the in force, the claims, the instalments, every
   ``result_cf()`` column, the expense inflation :func:`inflation_factor`, and the ``*_close_pp`` cells that say what a mid-month exit is paid;
 * the **decrement rates take ``t`` and return the year's annual rate**, which is the
@@ -124,8 +124,8 @@ q1(x)               mort_rate_tariff_at_age(x)             First-order tariff ra
 q(t)                mort_rate(t)                           Best-estimate annual mortality
 qm(t)               mort_rate_mth(t)                       The same, applied in month t
 f                   rating_factor()                        Risikozuschlag on the death leg
-alpha, beta, gamma  alpha_rate(), beta_rate(),             Zillmersatz; premium loading;
-                    gamma_rate()                           sum-insured loading
+alpha, beta, gamma  alpha_rate(), load_admin_prem_inst(),  Zillmersatz; premium loading;
+                    load_admin_sum_ann()                   sum-insured loading
 phi                 prem_freq_load()                       Ratenzahlungszuschlag
 (none)              instalments()                          Payments a year
 (pricing)           tariff_death_pv(),                     The equivalence's parts
@@ -174,7 +174,7 @@ B phi               prem_charged_pp(k)                     Annual Zahlbeitrag be
 (none)              premiums(t)                            Premium income in month t
 w(t)                lapse_rate(t)                          Annual surrender rate of the year
 wm(t)               lapse_rate_mth(t)                      The same, applied in month t
-sigma(k)            storno_rate(k)                         Stornoabzug rate
+sigma(k)            stornoabzug_rate(k)                    Stornoabzug rate
 l(t)                pols_if(t)                             In force at the start of month t
 (within month)      pols_if_at(t, timing)                  BEF_DECR / AFT_DEATH / AFT_DECR
 (exits)             pols_death(t), pols_lapse(t),          Expected exits in month t
@@ -185,7 +185,7 @@ l(t)                pols_if(t)                             In force at the start
 RK(t)               benefit_lapse_pp(t)                    surr_value_pp(t), per lapse
 (none)              claim_kinds()                          DEATH / MATURITY / LAPSE
 claims_*            claims(t, kind)                        DEATH / MATURITY / LAPSE
-(none)              expense_infl()                         Its rate, from cost_table.csv
+(none)              expense_infl()                         Its rate, the core item, 2 %
 (none)              inflation_factor(t)                    Expense inflation factor
 (none)              claim_expenses(t)                      Claim handling expense
 (none)              expenses_pp(t)                         Per-policy expense in month t
@@ -254,7 +254,7 @@ reached**. The paid-up sum is bought with the § 169 value, so, writing ``e = bf
 for the 0-based index of the election year, ``bfz_si_pp() = res_guar_pp(e) /
 pu_single_prem(e + 1)``, and the contract
 stays in ``pols_if`` with that reduced sum in place of ``sum_assured()``. Where the sum falls
-short of ``bfz_min_si``, the statute obliges the insurer to pay the § 169 value instead and
+short of ``bfz_min_sum``, the statute obliges the insurer to pay the § 169 value instead and
 **the election becomes a surrender**: :func:`lapse_rate` returns 1.0 for that year and
 :func:`lapse_rate_mth` places the whole of it in the year's **last month**, where the election
 falls. The cohort leaves there as ``claims(t, "LAPSE")`` and every later row is zero. Model
@@ -275,7 +275,7 @@ there.
 
 A surrender at the end of month ``t``, in the policy year ``k = duration(t)``, pays::
 
-    surr_value_pp(t) = res_guar_close_pp(t) x (1 - storno_rate(k))
+    surr_value_pp(t) = res_guar_close_pp(t) x (1 - stornoabzug_rate(k))
                        + av_sur_close_pp(t)
                        + term_surr_share x term_bonus_close_pp(t)
 
@@ -392,8 +392,8 @@ What the finer grid changes is the **cash flows**, and each change is a decision
 - the renewal commission follows the instalment it is charged on.
 
 On the anchor cell that is death claims 2 506,85 → 2 446,09 €, surrender claims
-10 104,99 → 9 112,99 €, expenses 1 327,88 → 1 314,12 € and ``net_cf`` −11 048,31 →
-−9 981,79 €, with ``premiums`` and the *Ablauf* payment unchanged.
+10 104,99 → 9 112,99 €, expenses 1 348,20 → 1 334,17 € and ``net_cf`` −11 068,63 →
+−10 001,84 €, with ``premiums`` and the *Ablauf* payment unchanged.
 :func:`result_cf_annual` sums the frame into policy years so the two can be laid side by side,
 and :func:`result_surplus` stays annual because what it publishes moves once a year.
 """
@@ -637,19 +637,19 @@ def alpha_rate():
     public.  It is charged in the premium whether or not the contract is zillmered; only
     :func:`zillmer_amount` carries ``zillmer_on``.
     """
-    return float(data.charge_table_dict()["alpha_rate"][cost_id()])  # noqa: F821
+    return float(data.charge_table_dict()["load_acq_bsum_once"][cost_id()])  # noqa: F821
 
 
-def beta_rate():
+def load_admin_prem_inst():
     """beta: the collection loading, a fraction of the *Bruttobeitrag* over ``prem_term``.
 
     3,0 % **[std]**.  The *form* - a percentage of the gross premium over the premium-paying
     period - is what the corpus establishes; the level is not.
     """
-    return float(data.charge_table_dict()["beta_rate"][cost_id()])   # noqa: F821
+    return float(data.charge_table_dict()["load_admin_prem_inst"][cost_id()])  # noqa: F821
 
 
-def gamma_rate():
+def load_admin_sum_ann():
     """gamma: the administration loading, a fraction of the *Versicherungssumme* p.a.
 
     1,5 ‰ over the whole *Versicherungsdauer* **[std]**.  Neither the form nor the level is
@@ -658,7 +658,7 @@ def gamma_rate():
     pricing equation funds the running cost and the classical reserve convention assumes the
     ongoing loadings meet it.
     """
-    return float(data.charge_table_dict()["gamma_rate"][cost_id()])  # noqa: F821
+    return float(data.charge_table_dict()["load_admin_sum_ann"][cost_id()])  # noqa: F821
 
 
 # --- pricing on the first-order basis --------------------------------------
@@ -722,8 +722,8 @@ def prem_gross_pp():
     reported, and it rises with :func:`rating_factor` while being identical for two points
     differing only in :func:`sex`.
     """
-    return ((tariff_benefit_pv() + gamma_rate() * sum_assured() * tariff_term_annuity())
-            / ((1.0 - beta_rate()) * tariff_annuity()
+    return ((tariff_benefit_pv() + load_admin_sum_ann() * sum_assured() * tariff_term_annuity())
+            / ((1.0 - load_admin_prem_inst()) * tariff_annuity()
                - alpha_rate() * prem_term()))
 
 
@@ -844,7 +844,7 @@ def is_paid_up(k):
     True only where a *Beitragsfreistellung* was elected (``bfz_year > 0``), the election
     year has passed **and the election succeeded** - that is, the
     *beitragsfreie Versicherungssumme* it bought reached the agreed
-    *Mindestversicherungsleistung* ``bfz_min_si``.  Where it did not, § 165 VVG obliges the
+    *Mindestversicherungsleistung* ``bfz_min_sum``.  Where it did not, § 165 VVG obliges the
     insurer to pay the § 169 value instead and the election **becomes a surrender**; see
     :func:`lapse_rate`.
 
@@ -857,7 +857,7 @@ def is_paid_up(k):
     :func:`res_guar_pp` can price the purchase without depending on its own result.
     """
     return (bfz_year() > 0 and k >= bfz_year()
-            and bfz_si_pp() >= data.param("bfz_min_si"))             # noqa: F821
+            and bfz_si_pp() >= data.param("bfz_min_sum"))            # noqa: F821
 
 
 def res_pp(k):
@@ -946,7 +946,7 @@ def bfz_si_pp():
     the sum bought is worth more than the reserve released - the difference being
     :func:`bfz_uplift_pp`.
 
-    Where the result falls below ``bfz_min_si`` (2 500 € **[std]**) the election is **not** a
+    Where the result falls below ``bfz_min_sum`` (2 500 € **[std]**) the election is **not** a
     *Beitragsfreistellung* at all; see :func:`is_paid_up` and :func:`lapse_rate`.
     """
     if bfz_year() <= 0:
@@ -1336,7 +1336,7 @@ def bfz_fails():
     """Whether a *Beitragsfreistellung* was elected and **failed** the minimum-sum test.
 
     ``bfz_year() > 0 and not is_paid_up(bfz_year())``: the election was made and the
-    *beitragsfreie Versicherungssumme* it bought fell short of ``bfz_min_si``, so § 165 VVG
+    *beitragsfreie Versicherungssumme* it bought fell short of ``bfz_min_sum``, so § 165 VVG
     obliges the insurer to pay the § 169 value instead and the election **becomes a
     surrender**.  Named because two cells need the same test and a monthly grid makes them
     read it at different arguments — :func:`lapse_rate` at a month, :func:`is_paid_up` at a
@@ -1345,7 +1345,7 @@ def bfz_fails():
     return bfz_year() > 0 and not is_paid_up(bfz_year())
 
 
-def storno_rate(k):
+def stornoabzug_rate(k):
     """sigma(k): the *Stornoabzug* rate on a surrender at the end of policy year k.
 
     10 % of the guaranteed value in policy years 1-5, 7,5 % in 6-10, 5 % in 11-15 and 2,5 %
@@ -1359,7 +1359,7 @@ def storno_rate(k):
     five-year spreading denies it.  It bites on the **guaranteed value only**; see
     :func:`surr_value_pp`.
     """
-    rates = data.lapse_table_dict()["storno_rate"]                   # noqa: F821
+    rates = data.lapse_table_dict()["stornoabzug_rate"]              # noqa: F821
     return float(rates[min(policy_year_y(k), int(max(rates)))])
 
 
@@ -1545,7 +1545,7 @@ def benefit_maturity_pp(t):
 def surr_value_pp(t):
     """RK(t): the *Rückkaufswert* payable per policy on a surrender at the end of month t.
 
-    ``res_guar_close_pp(t) * (1 - storno_rate(duration(t))) + av_sur_close_pp(t)
+    ``res_guar_close_pp(t) * (1 - stornoabzug_rate(duration(t))) + av_sur_close_pp(t)
     + term_surr_share * term_bonus_close_pp(t)`` — every leg struck on the balance standing at
     the end of the month of exit, which is the rule :func:`av_sur_close_pp` states.
 
@@ -1561,7 +1561,7 @@ def surr_value_pp(t):
     *Beitragsfreistellung* election is paid under § 165 VVG — the latter falling in the
     election year's last month, where the closing rule makes it the year's own § 169 value.
     """
-    return (res_guar_close_pp(t) * (1.0 - storno_rate(duration(t)))
+    return (res_guar_close_pp(t) * (1.0 - stornoabzug_rate(duration(t)))
             + av_sur_close_pp(t)
             + data.param("term_surr_share") * term_bonus_close_pp(t))  # noqa: F821
 
@@ -1590,19 +1590,6 @@ def benefit_lapse_pp(t):
 
 # --- expenses and commission -----------------------------------------------
 
-def expense_infl():
-    """The annual expense inflation rate of this policy's cost set, 1,8 % p.a. **[std]**.
-
-    Read from *cost_table.csv* at :func:`cost_id`, beside the expense levels it inflates,
-    rather than from *param_tariff_type.csv*: the rate belongs to the cost basis, and a book with
-    two cost sets carries two rates.
-
-    Override reason: the expense inflation is a column of the cost table keyed by
-    ``cost_id``, products/kapitallebensversicherung/technical-notes.md:214
-    """
-    return float(data.charge_table_dict()["expense_infl"][cost_id()])  # noqa: F821
-
-
 def claim_expenses(t):
     """The claim handling expense on the month's exits **[std]**.
 
@@ -1610,7 +1597,7 @@ def claim_expenses(t):
     the only expense line that scales with **claims** rather than with policies, and it is
     inside :func:`expenses`.
     """
-    ce = float(data.charge_table_dict()["claim_expense"][cost_id()])  # noqa: F821
+    ce = float(data.charge_table_dict()["expense_claim_pp_once"][cost_id()])  # noqa: F821
     return ce * (pols_death(t) + pols_lapse(t) + pols_maturity(t))
 
 
@@ -1631,9 +1618,9 @@ def expenses_pp(t):
     new-business strain a real German endowment carries.
     """
     cost = data.charge_table_dict()                                  # noqa: F821
-    acq = (float(cost["acq_expense"][cost_id()])
+    acq = (float(cost["expense_acq_pp_once"][cost_id()])
            if (t == t_start() and duration_init() == 0) else 0.0)
-    return (acq + float(cost["maint_expense"][cost_id()]) / 12.0
+    return (acq + float(cost["expense_admin_pp_ann"][cost_id()]) / 12.0
             * inflation_factor(t))
 
 
@@ -1672,10 +1659,10 @@ def comm_init_rate():
     apply at ``t_start()`` on an in-force point: it was paid at conclusion, long before the
     frame opens.  Commission is excluded from :func:`expenses`.
 
-    Override reason: the initial commission is the cost table's ``comm_init_rate`` of the
+    Override reason: the initial commission is the cost table's ``comm_acq_bsum_once`` of the
     *Beitragssumme*, products/kapitallebensversicherung/technical-notes.md:374
     """
-    return float(data.charge_table_dict()["comm_init_rate"][cost_id()])  # noqa: F821
+    return float(data.charge_table_dict()["comm_acq_bsum_once"][cost_id()])  # noqa: F821
 
 
 def comm_renew(t):
@@ -1692,7 +1679,7 @@ def comm_renew(t):
     first projected policy year, products/kapitallebensversicherung/technical-notes.md:636
     """
     cost = data.charge_table_dict()                                  # noqa: F821
-    return (float(cost["comm_renew_rate"][cost_id()]) * prem_charged_inst_pp(t) * pols_if(t)
+    return (float(cost["comm_renew_prem_inst"][cost_id()]) * prem_charged_inst_pp(t) * pols_if(t)
             if duration(t) > k_start() else 0.0)
 
 
@@ -1926,10 +1913,10 @@ def check_equivalence_resid(t):
     the acquisition cost is in the premium whether or not the contract is zillmered, which is
     why a *gezillmerte* and a non-*gezillmerte* edition of one tariff cost the same.
     """
-    return (prem_gross_pp() * (1.0 - beta_rate()) * tariff_annuity()
+    return (prem_gross_pp() * (1.0 - load_admin_prem_inst()) * tariff_annuity()
             - alpha_rate() * beitragssumme()
             - tariff_benefit_pv()
-            - gamma_rate() * sum_assured() * tariff_term_annuity())
+            - load_admin_sum_ann() * sum_assured() * tariff_term_annuity())
 
 
 def check_equivalence():

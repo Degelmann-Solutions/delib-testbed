@@ -6,7 +6,9 @@ copied whole and byte for byte, plus ``LICENSE-lifelib.txt`` and ``UPSTREAM.md``
 upstream bytes; these tests compare the files with that list.
 
 Phase 3 changes product files and adds symlinks to the common core (``docs/core.md``). A
-product's ``UPSTREAM.md`` names every such path in its section ``## Changed in phase 3``;
+product's ``UPSTREAM.md`` names every such path in its section ``## Changed in phase 3``,
+one row each stating the file's end state against upstream, the import commit ``c23e22e``
+(the history stays in git; ``docs/core.md``, section "Changed files in ``UPSTREAM.md``");
 the hash check skips the listed files, which stay in the hash table with upstream's hash,
 and every symlink in a product folder must be listed and resolve to a core space folder.
 A listed change starting ``added:`` that is no symlink names a regular file phase 3 added,

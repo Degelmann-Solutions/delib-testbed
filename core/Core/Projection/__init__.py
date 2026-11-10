@@ -767,11 +767,11 @@ def claims(t, kind=None):
 
 
 def expense_infl():
-    """The annual expense inflation rate, from *param_tariff_type.csv*.
+    """The annual expense inflation rate, the item ``expense_infl``.
 
-    The row ``expense_infl`` of the product's table; a product without the row raises
-    ``KeyError``.  A product that keys the rate by tariff or cost set overrides the cell with
-    its lookup.
+    One house-wide rate for every tariff; without the item ``param`` raises ``KeyError``.  A
+    product whose costs inflate otherwise, keying the rate by tariff or cost set, overrides the
+    cell with its lookup.
     """
     return float(data.param("expense_infl"))                         # noqa: F821
 
@@ -890,12 +890,12 @@ def liability_cf(t):
 
 
 def roll_fwd_tol():
-    """The tolerance the ``check_*`` identities close to, from *param_tariff_type.csv*.
+    """The tolerance the ``check_*`` identities close to, the item ``check_tol``.
 
     A float comparison tolerance, not an actuarial assumption: each check scales it by the
-    magnitude of what it compares.  A product without the row raises ``KeyError``.
+    magnitude of what it compares.  A tariff without the item raises ``KeyError``.
     """
-    return float(data.param("roll_fwd_tol"))                         # noqa: F821
+    return float(data.param("check_tol"))                            # noqa: F821
 
 
 def result_cf_columns():

@@ -96,7 +96,7 @@ the annual rate exactly and the whole *Aufschubphase* is **bit-identical** to th
 annual-step model this replaced, on all thirteen model points. What the finer grid buys is
 the *Rente*: a *Rentenfaktor* is quoted in euro a **month**, and where the annual model
 booked twelve instalments at the start of each payout year on the opening count — its own
-twelfth pitfall, and a stated approximation worth 4 290,52 € of the anchor's payout phase —
+twelfth pitfall, and a stated approximation worth 4 173,88 € of the anchor's payout phase —
 the instalment is now paid to whoever is alive at the start of each month. The
 *Rentengarantiezeit* is ``12m`` instalments beginning in the month after the death that
 triggered them, and a mid-year death now bears only the months of maintenance expense it

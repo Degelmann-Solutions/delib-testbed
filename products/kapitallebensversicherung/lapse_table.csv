@@ -1,4 +1,4 @@
-policy_year,lapse_rate,storno_rate,provenance
+policy_year,lapse_rate,stornoabzug_rate,provenance
 1,0.0500,0.1000,[std] surrender 5.0 pct - early-duration attrition; GDV aggregates are not surrender rates [R20]. [std] Stornoabzug 10.0 pct of the guaranteed value; observed 5-20 pct at one carrier and sub judice [S3] [R22] [R30]
 2,0.0500,0.1000,[std] surrender 5.0 pct - early-duration attrition; GDV aggregates are not surrender rates [R20]. [std] Stornoabzug 10.0 pct of the guaranteed value; observed 5-20 pct at one carrier and sub judice [S3] [R22] [R30]
 3,0.0350,0.1000,[std] surrender 3.5 pct - flat mid-duration level; GDV aggregates are not surrender rates [R20]. [std] Stornoabzug 10.0 pct of the guaranteed value; observed 5-20 pct at one carrier and sub judice [S3] [R22] [R30]

@@ -209,21 +209,21 @@ per row: delib's second ruling, machine-checked.
 |---|---|---|
 | `model_point_table.csv` | `point_id` | the 22 further attributes of the table above (exempt from `provenance`) |
 | `mort_table.csv` | `sex`, `age` | `mort_rate_1st`, `provenance` |
-| `lapse_table.csv` | `policy_year` (**1-based label**, read as `policy_year(t) = t + 1`) | `lapse_rate`, `storno_rate`, `provenance` |
+| `lapse_table.csv` | `policy_year` (**1-based label**, read as `policy_year(t) = t + 1`) | `lapse_rate`, `stornoabzug_rate`, `provenance` |
 | `surplus_rate_table.csv` | `scenario_id`, `policy_year` (**1-based label**, read as `t + 1`) | `decl_rate`, `term_rate`, `ans_rate`, `provenance` |
-| `cost_table.csv` | `cost_id` | `alpha_rate`, `beta_rate`, `gamma_rate`, `acq_expense`, `maint_expense`, `expense_infl`, `claim_expense`, `comm_init_rate`, `comm_renew_rate`, `provenance` |
+| `cost_table.csv` | `cost_id` | `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_sum_ann`, `expense_acq_pp_once`, `expense_admin_pp_ann`, `expense_claim_pp_once`, `comm_acq_bsum_once`, `comm_renew_prem_inst`, `provenance` |
 | `prem_freq_table.csv` | `prem_freq` | `instalments`, `prem_freq_load`, `provenance` |
 | `deckrv_table.csv` | `issue_year` | `hoechstrechnungszins`, `hoechstzillmersatz`, `provenance` |
-| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor`, `unisex_mix_male`, `suicide_share`, `bfz_min_si`, `term_surr_share`, `bwr_rate`, `surr_spread_years`, `suicide_years`), `basis`, `provenance` |
+| `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance` of the tariff-type parameters; the statutory items `surr_spread_years` and `suicide_years` are in the core file `core/Core/Data/param_core.csv`; `uv run python tools/params.py kapitallebensversicherung` lists every item the tariff reads with its value, layer, basis and provenance |
 
 `cost_table.csv` deliberately carries the **first-order tariff loadings and the second-order expense
 assumptions on the same row**, because the difference between them *is* the *Kostenüberschuss*, and
 `deckrv_table.csv` carries both DeckRV ceilings — § 2's *Höchstrechnungszins* and § 4's
 *Höchstzillmersatz* — keyed by `issue_year`, both being cohort facts that travel with the contract
-[REG-R14] [REG-R15] [REG-R16]. The scalars that are not tables — `suicide_share`,
-`bfz_min_si`, `term_surr_share` and `bwr_rate` — are rows of `param_tariff_type.csv`, were `Projection`
-References (the two behaviour modules are not built, their unread switches removed), and their values and tags are in this section; `mort_be_factor` and `unisex_mix_male` are rows of
-it since phase 3, as are `surr_spread_years` 5 and `suicide_years` 3, formerly literals in its formulas, and all eight are read by the common core's loader.
+[REG-R14] [REG-R15] [REG-R16]. The scalars that are not tables are rows of `param_tariff_type.csv`, and the
+statutory terms (`surr_spread_years`, `suicide_years`) items of the core file `core/Core/Data/param_core.csv`,
+all read by the common core's loader; their values and tags are in this section (the two behaviour modules are not built, their unread switches removed);
+`uv run python tools/params.py kapitallebensversicherung` lists every item the tariff reads with its value, layer, basis and provenance.
 
 Three classes. Class (a) is contractual or statutory and is cited; class (b) is the insurer's current
 discretionary declaration, revisable annually and capable of being zero [S3] [S9]; class (c) is the
@@ -240,7 +240,7 @@ distributing the wedge between them.
 | *Rechnungszins* `rechnungszins` | Model-point column; 1.00% for new business from 1 January 2025, the cohort's rate otherwise | [R7] [R15] [REG-R14] [REG-R15] |
 | *Höchstrechnungszins* ceiling by cohort | 3.50% to 06/1994; 4.00% to 06/2000; 3.25% to 2003; 2.75% to 2006; 2.25% to 2011; 1.75% to 2014; 1.25% to 2016; 0.90% to 2021; 0.25% to 2024; **1.00% from 2025** | [REG-R15]; the split-year convention **[std]** (1) |
 | *Höchstzillmersatz* ceiling by cohort | **40 ‰** of the *Beitragssumme* to 2014, **25 ‰** from 1 January 2015; the rate used at conclusion applies for the whole term | [R7] [S15] [REG-R16] [REG-R20] |
-| *Zillmersatz* `alpha_rate` | 25 ‰ of the *Beitragssumme*, at the ceiling | ceiling [R7] [REG-R16]; the level **[std]**, `product-spec.md` (15) |
+| *Zillmersatz* `load_acq_bsum_once` | 25 ‰ of the *Beitragssumme*, at the ceiling | ceiling [R7] [REG-R16]; the level **[std]**, `product-spec.md` (15) |
 | Premium form and frequency | Level *Bruttobeitrag* over the *Beitragszahlungsdauer*, in advance, ceasing on death [S7], on *Beitragsfreistellung* [R3] and at the end of the *Beitragszahlungsdauer*; *Ratenzahlungszuschlag* 2% half-yearly, 3% quarterly, 5% monthly, applied **only** to `unterjaehrig_form = unecht` | [S3] [S7] [R3] [R28] [R28-family]; single loading values **[std]** |
 | The two benefits | *Erlebensfallleistung* `sum_assured` at the *Ablauf* if the insured is then alive; *Todesfallleistung* `sum_assured × death_ratio` on death before it — each plus the accumulated surplus and the accrued *Schlussüberschussanteil* | [S7] [S11] [R1] [R18-family] |
 | *Rückkaufswert* | The *Deckungskapital* on the *Rechnungsgrundlagen der Prämienkalkulation*, at the **end of the current *Versicherungsperiode***, floored on *Kündigung* by the five-year-spread *Mindestrückkaufswert*, less a *vereinbart*, *beziffert* and *angemessen* *Stornoabzug*, plus the *Überschussguthaben* | [R2] [R22] [R24] [REG-R28]; even-spread reading **[std]** (2) |
@@ -266,7 +266,7 @@ distributing the wedge between them.
 | *Schlussüberschussanteilsatz* `term_rate` | **0.40% p.a.** of the *Deckungskapital*, accrued and paid at the *Ablauf* and on death | **[std]** (4) — **no rate of any kind was established** (gap 1) |
 | *Ansammlungszinssatz* `ans_rate` | **2.70% p.a.**, equal to the declared rate | mechanism [R28]; the § 28 RechVersV disclosure names the rate as a published quantity [REG-R54]; the level **[std]** (5) |
 | Scenarios `low` / `nil` | `low`: `decl_rate` 1.20%, `term_rate` 0.10%, `ans_rate` 1.20%. `nil`: all three **0.00%** | `nil` rests on the sourced statement that the surplus "may also be zero euros" [S9]; both scenarios **[std]** |
-| *Stornoabzug* `storno_rate` | 10% of the guaranteed value in years 1–5, 7.5% in 6–10, 5% in 11–15, 2.5% from 16 | **three carrier schedules on three bases**: 0–20% of the *Deckungskapital*, decaying to nil over the last ten years, sub judice [S3] [R22] [R30]; 50 € + 0,15% of premiums × years remaining [S9]; 100 € + 0,2% of (sum insured − reserve) [S18]; schedule **[std]** |
+| *Stornoabzug* `stornoabzug_rate` | 10% of the guaranteed value in years 1–5, 7.5% in 6–10, 5% in 11–15, 2.5% from 16 | **three carrier schedules on three bases**: 0–20% of the *Deckungskapital*, decaying to nil over the last ten years, sub judice [S3] [R22] [R30]; 50 € + 0,15% of premiums × years remaining [S9]; 100 € + 0,2% of (sum insured − reserve) [S18]; schedule **[std]** |
 | *Bewertungsreserven* rate `bwr_rate` | **0.00%**, a row of `param_tariff_type.csv` | [R1] [R8] [REG-R9]; zero **[std]** |
 
 3. Level for the whole projection is a modelling choice, not a forecast: the corpus supports a
@@ -367,15 +367,15 @@ row per `cost_id`, because the difference between them **is** the *Kostenübersc
 
 | Input | Basis `std_2026` | Class | Tag |
 |---|---|---|---|
-| `alpha_rate` | 25 ‰ of the *Beitragssumme*, zillmered | first order | ceiling [R7] [REG-R16]; level **[std]** |
-| `beta_rate` | 3.0% of the *Bruttobeitrag*, over the *Beitragszahlungsdauer* | first order | form [R28]; level **[std]** |
-| `gamma_rate` | 1.5 ‰ of the *Versicherungssumme* p.a., over the *Versicherungsdauer* | first order | form **not established**, gap 17; **[std]** |
-| `acq_expense` | 300 EUR per policy at issue | second order | **[std]** |
-| `comm_init_rate` | 2.5% of the *Beitragssumme* at conclusion | second order | set at the 25 ‰ *zillmering* ceiling [R7], which is **not** a commission cap — "Eine Deckelung der Provisionen ist gesetzlich nicht vorgesehen" [R29]; **no carrier commission rate is established**, so **[std]** with no observation behind it |
-| `comm_renew_rate` | 1.5% of the *Bruttobeitrag* from year 2 (*Bestandsprovision*) | second order | mechanism [R29]; level **[std]** |
-| `maint_expense` | 45 EUR per in-force policy p.a. | second order | **[std]** |
-| `expense_infl` | 1.8% p.a. | second order | **[std]** |
-| `claim_expense` | 120 EUR per death, maturity or surrender claim | second order | **[std]** |
+| `load_acq_bsum_once` | 25 ‰ of the *Beitragssumme*, zillmered | first order | ceiling [R7] [REG-R16]; level **[std]** |
+| `load_admin_prem_inst` | 3.0% of the *Bruttobeitrag*, over the *Beitragszahlungsdauer* | first order | form [R28]; level **[std]** |
+| `load_admin_sum_ann` | 1.5 ‰ of the *Versicherungssumme* p.a., over the *Versicherungsdauer* | first order | form **not established**, gap 17; **[std]** |
+| `expense_acq_pp_once` | 300 EUR per policy at issue | second order | **[std]** |
+| `comm_acq_bsum_once` | 2.5% of the *Beitragssumme* at conclusion | second order | set at the 25 ‰ *zillmering* ceiling [R7], which is **not** a commission cap — "Eine Deckelung der Provisionen ist gesetzlich nicht vorgesehen" [R29]; **no carrier commission rate is established**, so **[std]** with no observation behind it |
+| `comm_renew_prem_inst` | 1.5% of the *Bruttobeitrag* from year 2 (*Bestandsprovision*) | second order | mechanism [R29]; level **[std]** |
+| `expense_admin_pp_ann` | 45 EUR per in-force policy p.a. | second order | **[std]** |
+| `expense_infl` | 2.0% p.a., the core item, not a column of `cost_table.csv` | second order | **[std]** |
+| `expense_claim_pp_once` | 120 EUR per death, maturity or surrender claim | second order | **[std]** |
 
 **No charge level of any kind was established for any German carrier** (gap 7). The levels are
 placeholders sized so the first-year acquisition outgo — 300 EUR plus 2,5 % of the *Beitragssumme* —
@@ -412,10 +412,10 @@ optional modules are under *Policyholder behaviour modelling*.
 | `q(t)` | `mort_rate(t)` | best-estimate **annual** mortality of month `t`'s policy year, `= mort_rate_base(t) × mort_be_factor` |
 | `qᵐ(t)` | `mort_rate_mth(t)` | the monthly rate applied, `= 1 − (1 − q(t))^(1/12)` **[std]** |
 | (table) | `mort_rate_base(t)` | this policy's own **sex-specific** first-order annual rate |
-| `w(t)`, `σ(k)` | `lapse_rate(t)`, `storno_rate(k)` | **annual** surrender rate of the policy year; *Stornoabzug* rate at duration `k` |
+| `w(t)`, `σ(k)` | `lapse_rate(t)`, `stornoabzug_rate(k)` | **annual** surrender rate of the policy year; *Stornoabzug* rate at duration `k` |
 | `wᵐ(t)` | `lapse_rate_mth(t)` | the monthly rate applied, `= 1 − (1 − w(t))^(1/12)` **[std]** |
 | `l(t)` | `pols_if(t)` | policies in force at the **start** of month `t` |
-| `α`, `β`, `γ`, `φ` | `alpha_rate`, `beta_rate`, `gamma_rate`, `prem_freq_load` | *Zillmersatz*; premium loading; sum-insured loading; *Ratenzahlungszuschlag*, 1.000 where `unterjaehrig_form = echt` |
+| `α`, `β`, `γ`, `φ` | `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_sum_ann`, `prem_freq_load` | *Zillmersatz*; premium loading; sum-insured loading; *Ratenzahlungszuschlag*, 1.000 where `unterjaehrig_form = echt` |
 | `B`, `BS`, `A` | `prem_gross_pp`, `beitragssumme`, `zillmer_amount` | annual *Bruttobeitrag* before `φ`; *Beitragssumme* `= B × m`; zillmered acquisition cost `= zillmer_on × α × BS` |
 | `P^n`, `P^Z` | `prem_net_level_pp`, `prem_zill_pp` | net level premium; Zillmer premium |
 | `V(k)`, `V^n`, `V^Z`, `V^min` | `res_pp(k)`, `res_net_pp`, `res_zill_pp`, `res_min_pp` | *Deckungskapital* at the start of **policy year** `k`, and its three constructions |
@@ -466,7 +466,7 @@ Then the two reserving premiums, and the zillmered cost:
 
 ```
 beitragssumme     = prem_gross_pp · m
-zillmer_amount        = zillmer_on · alpha_rate · beitragssumme
+zillmer_amount        = zillmer_on · load_acq_bsum_once · beitragssumme
 prem_net_level_pp = tariff_benefit_pv / tariff_annuity
 prem_zill_pp      = prem_net_level_pp + zillmer_amount / tariff_annuity
 ```
@@ -514,7 +514,7 @@ because that is what "zum Schluss der laufenden Versicherungsperiode" requires [
 
 ```
 res_guar_pp(t)     = max( res_zill_pp(t+1), res_min_pp(t+1), 0 )
-surr_value_pp(t)   = res_guar_pp(t) · (1 − storno_rate(t)) + av_sur_pp_at(t, "AFT_CREDIT")
+surr_value_pp(t)   = res_guar_pp(t) · (1 − stornoabzug_rate(t)) + av_sur_pp_at(t, "AFT_CREDIT")
                      + term_surr_share · term_bonus_pp(t+1)
 pu_single_prem(t)  = SD/SE · Σ_{j} v₁^(j+1) · jp(x(t)) · q₁(x(t)+j)  +  v₁^(n-k) · (n-k)p(x(t))
 bfz_si_pp          = res_guar_pp(e) / pu_single_prem(e + 1),   e = bfz_year − 1
@@ -533,7 +533,7 @@ Three rules ride on those four lines:
   published deduction is a percentage of the *Deckungskapital* [S3] [R30] (pitfall 6).
 - **`term_surr_share = 0` in the base run [std]**, a row of `param_tariff_type.csv` — the accrued *Schlussüberschussanteil* is paid at the
   *Ablauf* and on death, not on surrender (`product-spec.md`, footnote 12); the parameter is exposed.
-- **The *Mindestversicherungsleistung* test**: if `bfz_si_pp < bfz_min_si` (**2,500 EUR [std]**, a row of `param_tariff_type.csv`) the
+- **The *Mindestversicherungsleistung* test**: if `bfz_si_pp < bfz_min_sum` (**2,500 EUR [std]**, a row of `param_tariff_type.csv`) the
   election is **not** a *Beitragsfreistellung* (lapse rate 1 in that year; 0 through the final policy year, whose end is the *Ablauf*) — § 165 VVG obliges the insurer to pay the § 169 value
   instead, so the model converts the point to a **surrender at the end of year `e = bfz_year − 1`**
   and the projection terminates there [R3] (pitfall 8). Model point 12 exercises that branch.
@@ -622,18 +622,18 @@ benefit_death_pp(t)    = (1 − suicide_share) · benefit_full_pp(t) + suicide_s
                                                             else benefit_full_pp(t)
 benefit_maturity_pp(N) = sum_assured + av_sur_close_pp(N) + bonus_si_close_pp(N)
                          + term_bonus_close_pp(N) + bwr_rate · res_guar_close_pp(N),   N = 12n − 1
-surr_value_pp(t)       = res_guar_close_pp(t) · (1 − storno_rate(k)) + av_sur_close_pp(t)
+surr_value_pp(t)       = res_guar_close_pp(t) · (1 − stornoabzug_rate(k)) + av_sur_close_pp(t)
                          + term_surr_share · term_bonus_close_pp(t)
 
 claims(t, "DEATH")    = pols_death(t)    · benefit_death_pp(t)
 claims(t, "MATURITY") = pols_maturity(t) · benefit_maturity_pp(t)
 claims(t, "LAPSE")    = pols_lapse(t)    · surr_value_pp(t)
 
-expenses(t)    = acq_expense · 1{t = t_start and duration_init = 0}
-                 + maint_expense/12 · inflation_factor(t) · pols_if(t)
-                 + claim_expense · ( pols_death(t) + pols_lapse(t) + pols_maturity(t) )
-commissions(t) = comm_init_rate · beitragssumme · 1{t = t_start and duration_init = 0}
-                 + comm_renew_rate · prem_charged_inst_pp(t) · pols_if(t)   for k > k_start
+expenses(t)    = expense_acq_pp_once · 1{t = t_start and duration_init = 0}
+                 + expense_admin_pp_ann/12 · inflation_factor(t) · pols_if(t)
+                 + expense_claim_pp_once · ( pols_death(t) + pols_lapse(t) + pols_maturity(t) )
+commissions(t) = comm_acq_bsum_once · beitragssumme · 1{t = t_start and duration_init = 0}
+                 + comm_renew_prem_inst · prem_charged_inst_pp(t) · pols_if(t)   for k > k_start
 net_cf(t)      = premiums(t) − claims(t,"DEATH") − claims(t,"MATURITY") − claims(t,"LAPSE")
                  − expenses(t) − commissions(t) liability_cf(t)= − net_cf(t)
 ```
@@ -696,7 +696,7 @@ on every model point.
 | `check_surr_floor()` | § 169 Abs. 3, per **policy year**: `res_guar_pp(k) ≥ res_zill_pp(k+1)`, `≥ res_min_pp(k+1)` and `≥ 0`, and the *Rückkaufswert* at that year's anniversary `surr_value_pp(12k + 11) ≥ 0` |
 | `check_surr_nonneg()` | The *Rückkaufswert* is non-negative in **every month**. Added with the monthly grid, which quotes one in the eleven months of each policy year the annual grid never priced — months paid on the **last** anniversary's § 169 value, which is a different and smaller number |
 | `check_equivalence()` | The first-order pricing equivalence closes: `B·(1 − β)·tariff_annuity − α·BS == tariff_benefit_pv + γ·SE·tariff_term_annuity` |
-| `check_rechnungszins_cap()`, `check_zillmer_cap()` | The two DeckRV cohort ceilings: `rechnungszins ≤ hoechstrechnungszins(issue_year)` under § 2 [REG-R14] [REG-R15], and `alpha_rate ≤ hoechstzillmersatz(issue_year)` with `zillmer_amount ≤ hoechstzillmersatz · beitragssumme` under § 4 [R7] [REG-R16] |
+| `check_rechnungszins_cap()`, `check_zillmer_cap()` | The two DeckRV cohort ceilings: `rechnungszins ≤ hoechstrechnungszins(issue_year)` under § 2 [REG-R14] [REG-R15], and `load_acq_bsum_once ≤ hoechstzillmersatz(issue_year)` with `zillmer_amount ≤ hoechstzillmersatz · beitragssumme` under § 4 [R7] [REG-R16] |
 
 The last two are parameter invariants rather than roll-forward identities, and they live here rather
 than in a build script because a German model point's cohort **is** an assumption: a 4,00 % guarantee
@@ -725,7 +725,7 @@ year and is what the frame publishes.
 6. **Apply the surplus** per `surplus_use` — accumulate it, buy bonus sum insured, or carry it forward
    as next year's premium offset.
 7. **The *Beitragsfreistellung* election**, where `k = bfz_year − 1`: strike `res_guar_pp(k)`, buy
-   `bfz_si_pp`, and test it against `bfz_min_si` — **below the minimum the election becomes a
+   `bfz_si_pp`, and test it against `bfz_min_sum` — **below the minimum the election becomes a
    surrender**, and it falls in that policy year's **last month**.
 8. **Strike the § 169 value** `res_guar_pp(k)` at the year's end, and roll forward `res_pp(k+1)`,
    `av_sur_pp(k+1)`, `bonus_si_pp(k+1)`, `term_bonus_pp(k+1)`, `is_paid_up(k+1)`.
@@ -798,7 +798,7 @@ a test in `tests/test_kapitallebensversicherung_de.py`.
    `check_surr_floor()` against the five-year schedule, separately.
 6. **Deducting the *Stornoabzug* from the *Überschussguthaben*.** Debeka's published deduction is a
    percentage of the *Deckungskapital* [S3] [R30]. Assert
-   `surr_value_pp(t) − av_sur_close_pp(t) == res_guar_close_pp(t) · (1 − storno_rate(duration(t)))` in
+   `surr_value_pp(t) − av_sur_close_pp(t) == res_guar_close_pp(t) · (1 − stornoabzug_rate(duration(t)))` in
    **every month** of the base run, so the accumulated surplus passes through undeducted — and note
    that the deduction band is a **policy-year** band and steps on the anniversary while the value it
    bites on is the one standing at the end of the month.
@@ -943,10 +943,10 @@ Mortality `mort_rate_1st(M, x) = 0.00022 + B · 1.10^x`, `B` fixed by the anchor
 `mort_rate_1st(M, 37) = 0.001200` exactly **[std]**, standing in for **DAV 2008 T**, which is not
 public and is not shipped [R14] [REG-R47] [REG-R48]; the tariff prices and reserves on the **unisex
 blend** `mort_rate_tariff_at_age(37) = ½ · 0.001200 + ½ · 0.000896288505 = 0.001048144253` **[std]**
-[REG-R34], and the anchor cell's own decrement is `mort_rate(0) = 0.001200 × 0.75 = 0.000900`. *Zillmersatz* `alpha_rate = 25 ‰` of the
+[REG-R34], and the anchor cell's own decrement is `mort_rate(0) = 0.001200 × 0.75 = 0.000900`. *Zillmersatz* `load_acq_bsum_once = 25 ‰` of the
 *Beitragssumme* — the § 4 DeckRV ceiling [R7] [REG-R16], the level **[std]**. Premium loading
-`beta_rate = 3.0%` of the *Bruttobeitrag* over the *Beitragszahlungsdauer* — the form is the one the
-corpus establishes [R28], the level **[std]**. Sum loading `gamma_rate = 1.5 ‰` of the
+`load_admin_prem_inst = 3.0%` of the *Bruttobeitrag* over the *Beitragszahlungsdauer* — the form is the one the
+corpus establishes [R28], the level **[std]**. Sum loading `load_admin_sum_ann = 1.5 ‰` of the
 *Versicherungssumme* p.a. over the *Versicherungsdauer* — **the form itself is not established** (gap
 17) and both form and level are **[std]**. *Ratenzahlungszuschlag* `prem_freq_load = 1.000` on the
 annual mode [R28].
@@ -959,7 +959,7 @@ never added on top of the guarantee** [REG-R53]. *Schlussüberschussanteilsatz* 
 of the *Deckungskapital*, accrued and paid at the *Ablauf* and on death, **not** on surrender
 (`term_surr_share = 0`) — **[std]**, no rate of any kind having been established (gap 1).
 *Ansammlungszinssatz* `ans_rate = 2.70%`, equal to the declared rate — **[std]**. *Stornoabzug*
-`storno_rate` 10% of the guaranteed value in policy years 1–5, 7.5% in 6–10, 5% in 11–15 and 2.5% from
+`stornoabzug_rate` 10% of the guaranteed value in policy years 1–5, 7.5% in 6–10, 5% in 11–15 and 2.5% from
 16 — **[std]**, against three observed carrier schedules on three incompatible bases: 0–20 % of the
 *Deckungskapital*, decaying to nil over the last ten years, at Debeka and under collective action
 after a BGH remittal [S3] [R22] [R30]; 50 € + 0,15 % of premiums paid times the years remaining at die
@@ -979,10 +979,10 @@ Suicide share `suicide_share = 0.02` for policy years 1 to 3, with the
 *Rückkaufswert* substituted for the sum insured on that share [R4] [REG-R26] — the **first
 thirty-six months** on the monthly frame, the window being measured in whole years so that its
 boundary falls on an anniversary — the share **[std]**.
-Expenses **[std]** throughout: `acq_expense = 300.00 EUR` at issue, `comm_init_rate = 2.5%` of the
+Expenses **[std]** throughout: `expense_acq_pp_once = 300.00 EUR` at issue, `comm_acq_bsum_once = 2.5%` of the
 *Beitragssumme* at issue — set at the 25 ‰ *zillmering* ceiling [R7], which does not cap commission
-[R29], and with **no carrier commission rate established anywhere in the corpus** — `maint_expense = 45.00 EUR` per in-force policy p.a. inflating at `expense_infl = 1.8%` p.a.,
-`comm_renew_rate = 1.5%` of the *Bruttobeitrag* from year 2, and `claim_expense = 120.00 EUR` per
+[R29], and with **no carrier commission rate established anywhere in the corpus** — `expense_admin_pp_ann = 45.00 EUR` per in-force policy p.a. inflating at `expense_infl = 2.0%` p.a.,
+`comm_renew_prem_inst = 1.5%` of the *Bruttobeitrag* from year 2, and `expense_claim_pp_once = 120.00 EUR` per
 death, maturity or surrender claim. No behaviour modules: `β_shock = 0`, `a = 0`.
 
 All amounts in euros; `pols_if` to six decimals, cash flows and balances to the cent. Totals are summed
@@ -1006,36 +1006,36 @@ whole contract, policy years 1 to 25.
 | policy year | age | pols_if | premiums | claims_death | claims_maturity | claims_lapse | expenses | commissions | net_cf |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 1 | 37 | 1.000000 | 2,004.04 | 43.08 | 0.00 | 2.88 | 350.04 | 1,252.53 | 355.51 |
-| 2 | 38 | 0.949145 | 1,902.13 | 44.26 | 0.00 | 40.88 | 48.26 | 28.53 | 1,740.20 |
-| 3 | 39 | 0.900810 | 1,805.26 | 45.90 | 0.00 | 86.60 | 45.20 | 27.08 | 1,600.47 |
-| 4 | 40 | 0.868365 | 1,740.24 | 49.00 | 0.00 | 142.18 | 44.30 | 26.10 | 1,478.66 |
-| 5 | 41 | 0.837014 | 1,677.41 | 51.41 | 0.00 | 195.02 | 43.41 | 25.16 | 1,362.41 |
-| 6 | 42 | 0.806716 | 1,616.69 | 54.04 | 0.00 | 251.21 | 42.54 | 24.25 | 1,244.66 |
-| 7 | 43 | 0.777431 | 1,558.00 | 56.89 | 0.00 | 293.79 | 41.68 | 23.37 | 1,142.27 |
-| 8 | 44 | 0.749121 | 1,501.27 | 60.00 | 0.00 | 334.28 | 40.84 | 22.52 | 1,043.63 |
-| 9 | 45 | 0.721747 | 1,446.41 | 63.83 | 0.00 | 213.02 | 38.97 | 21.70 | 1,108.90 |
-| 10 | 46 | 0.706081 | 1,415.02 | 68.58 | 0.00 | 237.51 | 38.78 | 21.23 | 1,048.91 |
-| 11 | 47 | 0.690646 | 1,384.08 | 73.79 | 0.00 | 268.03 | 38.60 | 20.76 | 982.91 |
-| 12 | 48 | 0.675431 | 1,353.59 | 78.01 | 0.00 | 876.44 | 40.95 | 20.30 | 337.88 |
-| 13 | 49 | 0.633469 | 1,269.50 | 82.09 | 0.00 | 378.76 | 36.95 | 19.04 | 752.66 |
-| 14 | 50 | 0.616105 | 1,234.70 | 88.23 | 0.00 | 404.57 | 36.56 | 18.52 | 686.82 |
-| 15 | 51 | 0.599079 | 1,200.58 | 94.94 | 0.00 | 429.56 | 36.17 | 18.01 | 621.91 |
-| 16 | 52 | 0.582376 | 1,167.11 | 102.28 | 0.00 | 464.10 | 35.77 | 17.51 | 547.45 |
-| 17 | 53 | 0.565979 | 1,134.25 | 110.30 | 0.00 | 487.85 | 35.37 | 17.01 | 483.71 |
-| 18 | 54 | 0.549875 | 1,101.97 | 119.08 | 0.00 | 510.74 | 34.97 | 16.53 | 420.66 |
-| 19 | 55 | 0.534048 | 1,070.25 | 128.67 | 0.00 | 532.76 | 34.56 | 16.05 | 358.22 |
-| 20 | 56 | 0.518483 | 1,039.06 | 139.15 | 0.00 | 553.89 | 34.14 | 15.59 | 296.29 |
-| 21 | 57 | 0.503165 | 1,008.36 | 150.61 | 0.00 | 574.14 | 33.71 | 15.13 | 234.78 |
-| 22 | 58 | 0.488079 | 978.13 | 163.12 | 0.00 | 593.48 | 33.28 | 14.67 | 173.58 |
-| 23 | 59 | 0.473210 | 948.33 | 176.78 | 0.00 | 611.91 | 32.84 | 14.22 | 112.58 |
-| 24 | 60 | 0.458543 | 918.94 | 191.69 | 0.00 | 629.39 | 32.39 | 13.78 | 51.69 |
-| 25 | 61 | 0.444064 | 889.92 | 210.36 | 28,750.90 | 0.00 | 83.85 | 13.35 | -28,168.54 |
-| **Total** | | **16.648981** | **33,365.26** | **2,446.09** | **28,750.90** | **9,112.99** | **1,314.12** | **1,722.94** | **-9,981.79** |
+| 2 | 38 | 0.949145 | 1,902.13 | 44.26 | 0.00 | 40.88 | 48.34 | 28.53 | 1,740.12 |
+| 3 | 39 | 0.900810 | 1,805.26 | 45.90 | 0.00 | 86.60 | 45.37 | 27.08 | 1,600.31 |
+| 4 | 40 | 0.868365 | 1,740.24 | 49.00 | 0.00 | 142.18 | 44.54 | 26.10 | 1,478.42 |
+| 5 | 41 | 0.837014 | 1,677.41 | 51.41 | 0.00 | 195.02 | 43.73 | 25.16 | 1,362.09 |
+| 6 | 42 | 0.806716 | 1,616.69 | 54.04 | 0.00 | 251.21 | 42.92 | 24.25 | 1,244.28 |
+| 7 | 43 | 0.777431 | 1,558.00 | 56.89 | 0.00 | 293.79 | 42.13 | 23.37 | 1,141.82 |
+| 8 | 44 | 0.749121 | 1,501.27 | 60.00 | 0.00 | 334.28 | 41.35 | 22.52 | 1,043.11 |
+| 9 | 45 | 0.721747 | 1,446.41 | 63.83 | 0.00 | 213.02 | 39.55 | 21.70 | 1,108.31 |
+| 10 | 46 | 0.706081 | 1,415.02 | 68.58 | 0.00 | 237.51 | 39.44 | 21.23 | 1,048.26 |
+| 11 | 47 | 0.690646 | 1,384.08 | 73.79 | 0.00 | 268.03 | 39.33 | 20.76 | 982.18 |
+| 12 | 48 | 0.675431 | 1,353.59 | 78.01 | 0.00 | 876.44 | 41.74 | 20.30 | 337.10 |
+| 13 | 49 | 0.633469 | 1,269.50 | 82.09 | 0.00 | 378.76 | 37.78 | 19.04 | 751.83 |
+| 14 | 50 | 0.616105 | 1,234.70 | 88.23 | 0.00 | 404.57 | 37.45 | 18.52 | 685.93 |
+| 15 | 51 | 0.599079 | 1,200.58 | 94.94 | 0.00 | 429.56 | 37.12 | 18.01 | 620.96 |
+| 16 | 52 | 0.582376 | 1,167.11 | 102.28 | 0.00 | 464.10 | 36.78 | 17.51 | 546.44 |
+| 17 | 53 | 0.565979 | 1,134.25 | 110.30 | 0.00 | 487.85 | 36.44 | 17.01 | 482.64 |
+| 18 | 54 | 0.549875 | 1,101.97 | 119.08 | 0.00 | 510.74 | 36.09 | 16.53 | 419.54 |
+| 19 | 55 | 0.534048 | 1,070.25 | 128.67 | 0.00 | 532.76 | 35.73 | 16.05 | 357.04 |
+| 20 | 56 | 0.518483 | 1,039.06 | 139.15 | 0.00 | 553.89 | 35.37 | 15.59 | 295.07 |
+| 21 | 57 | 0.503165 | 1,008.36 | 150.61 | 0.00 | 574.14 | 34.99 | 15.13 | 233.50 |
+| 22 | 58 | 0.488079 | 978.13 | 163.12 | 0.00 | 593.48 | 34.61 | 14.67 | 172.25 |
+| 23 | 59 | 0.473210 | 948.33 | 176.78 | 0.00 | 611.91 | 34.21 | 14.22 | 111.21 |
+| 24 | 60 | 0.458543 | 918.94 | 191.69 | 0.00 | 629.39 | 33.80 | 13.78 | 50.28 |
+| 25 | 61 | 0.444064 | 889.92 | 210.36 | 28,750.90 | 0.00 | 85.32 | 13.35 | -28,170.01 |
+| **Total** | | **16.648981** | **33,365.26** | **2,446.09** | **28,750.90** | **9,112.99** | **1,334.17** | **1,722.94** | **-10,001.84** |
 
 **The Total row is summed at full precision and then rounded, not summed from the rounded cells
 above it**, and on this cell the two differ. Adding the printed column gives 33,365.24 for
-`premiums` against 33,365.26, 1,314.13 for `expenses` against 1,314.12 and −9,981.78 for `net_cf`
-against −9,981.79 — the accumulation of twenty-five roundings of at most half a cent each.
+`premiums` against 33,365.26 and −10,001.81 for `net_cf`
+against −10,001.84 — the accumulation of twenty-five roundings of at most half a cent each.
 `pols_if` behaves the same way: 16.648981 at full precision against 16.648982 from the printed
 column. The other columns agree to the cent. Where a reader needs the totals to reconcile with
 the printed cells rather than with the model, it is the printed cells that are the approximation.
@@ -1070,8 +1070,8 @@ of 2 004,04 € almost exactly meeting the initial commission of 1 252,53 € pl
 acquisition expense, so **the new-business strain of a *gezillmert* German endowment is in the
 reserve and not in the cash flow**: the *Deckungskapital* opens at −1 252,53 €. The margin then
 runs near a thousand euros a year and decays with the cohort, dipping visibly in policy year 12 —
-337,88 € against 982,91 € — where the surrender rate spikes to 6,0 % at the twelve-year tax
-threshold. The last year is a single outflow of **−28 168,54 €**.
+337,10 € against 982,18 € — where the surrender rate spikes to 6,0 % at the twelve-year tax
+threshold. The last year is a single outflow of **−28 170,01 €**.
 
 ### The state behind it
 
@@ -1154,8 +1154,8 @@ deaths **0,04355790**, surrenders **0,51566656** and maturities **0,44077554** s
 own figure to the last digit, lapse being zero through the whole final policy year under either
 grid; the split between the first two moved by 0,00054, which is what interleaving the two
 decrements monthly genuinely changes. And the cash flow statement closes row by row; summed over
-policy year 12, 1 353,591433 − 78,012539 − 0 − 876,440599 − 40,954555 − 20,303871 =
-**337,879869 €** — `check_net_cf()`, this library's first ruling, asserted in every month from
+policy year 12, 1 353,591433 − 78,012539 − 0 − 876,440599 − 41,738473 − 20,303871 =
+**337,095950 €** — `check_net_cf()`, this library's first ruling, asserted in every month from
 `result_cf()`'s own published columns rather than from the cells behind them.
 
 ### The variant: the *Einmalbeitrag*
@@ -1168,11 +1168,11 @@ that same amount, so the 25 ‰ *Zillmersatz* buys only 1 081,83 € of zillmere
 | policy year | pols_if | premiums | claims_death | claims_maturity | claims_lapse | expenses | commissions | net_cf |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 1 | 1.000000 | 43,273.05 | 43.19 | 0.00 | 147.82 | 350.04 | 1,081.83 | 41,650.17 |
-| 2 | 0.949145 | 0.00 | 45.68 | 0.00 | 1,728.58 | 48.26 | 0.00 | -1,822.52 |
-| 3 | 0.900810 | 0.00 | 48.10 | 0.00 | 1,181.37 | 45.20 | 0.00 | -1,274.68 |
-| 24 | 0.458543 | 0.00 | 236.84 | 0.00 | 813.28 | 32.39 | 0.00 | -1,082.51 |
-| 25 | 0.444064 | 0.00 | 260.17 | 35,570.54 | 0.00 | 83.85 | 0.00 | -35,914.55 |
-| **Total** | **16.648981** | **43,273.05** | **2,894.48** | **35,570.54** | **22,825.77** | **1,314.12** | **1,081.83** | **-20,413.68** |
+| 2 | 0.949145 | 0.00 | 45.68 | 0.00 | 1,728.58 | 48.34 | 0.00 | -1,822.60 |
+| 3 | 0.900810 | 0.00 | 48.10 | 0.00 | 1,181.37 | 45.37 | 0.00 | -1,274.84 |
+| 24 | 0.458543 | 0.00 | 236.84 | 0.00 | 813.28 | 33.80 | 0.00 | -1,083.93 |
+| 25 | 0.444064 | 0.00 | 260.17 | 35,570.54 | 0.00 | 85.32 | 0.00 | -35,916.03 |
+| **Total** | **16.648981** | **43,273.05** | **2,894.48** | **35,570.54** | **22,825.77** | **1,334.17** | **1,081.83** | **-20,433.73** |
 
 Four consequences are visible in five rows. **The § 169 floor is slack from the first
 anniversary** — `res_zill_pp(1)` = 39 648,80 € against `res_min_pp(1)` = 38 783,34 €, the reverse
@@ -1194,9 +1194,9 @@ credited in all three; what differs is where it lands.
 
 | model point | `surplus_use` | maturity benefit per policy | death benefit per policy, month 59 | premiums collected | `net_cf` total |
 |---|---|---:|---:|---:|---:|
-| 1 | `ansammlung` | 65,227.99 | 50,460.89 | 33,365.26 | -9,981.79 |
-| 8 | `bonus` | 63,562.77 | 50,532.10 | 33,365.26 | -8,089.89 |
-| 9 | `beitragsverrechnung` | 52,428.98 | 50,085.64 | 28,016.10 | -8,318.08 |
+| 1 | `ansammlung` | 65,227.99 | 50,460.89 | 33,365.26 | -10,001.84 |
+| 8 | `bonus` | 63,562.77 | 50,532.10 | 33,365.26 | -8,109.94 |
+| 9 | `beitragsverrechnung` | 52,428.98 | 50,085.64 | 28,016.10 | -8,338.13 |
 
 The death benefit is read at **month 59**, the anniversary closing policy year 5 — the instant the
 annual grid priced, and unchanged by the conversion. A death earlier in that policy year is paid
@@ -1237,8 +1237,8 @@ sentences that stopped being true were restated rather than left standing.
    `echt` / `unecht` distinction, which lived entirely in a multiplier, is now a difference in the
    frame as well.
 6. **The totals the timing moved** on the anchor: death claims 2 506,85 → 2 446,09 €, surrender
-   claims 10 104,99 → 9 112,99 €, expenses 1 327,88 → 1 314,12 €, `net_cf` −11 048,31 →
-   −9 981,79 €, and policy year 1 +320,89 → +355,51 €. `premiums` and the *Ablauf* payment are
+   claims 10 104,99 → 9 112,99 €, expenses 1 348,20 → 1 334,17 €, `net_cf` −11 068,63 →
+   −10 001,84 €, and policy year 1 +320,89 → +355,51 €. `premiums` and the *Ablauf* payment are
    unchanged.
 7. **The closure identity's split.** Deaths and surrenders now interleave month by month, so the
    anchor reads 0,04355790 and 0,51566656 against 0,04409376 and 0,51513070; the maturing cohort
@@ -1294,9 +1294,9 @@ The valuation layers consume them and are **cited, never reproduced**.
   contribution to that line and `av_sur_pp(t) × pols_if(t)` is explicitly **not** part of it. Three things
   the model does not do: it does not floor the reserve at zero as the balance sheet does, so the
   negative early *gezillmert* values stay visible; it does not apply the § 4 DeckRV ceiling as a
-  reserving constraint separate from the tariff, the shipped `alpha_rate` already sitting at it; and it
+  reserving constraint separate from the tariff, the shipped `load_acq_bsum_once` already sitting at it; and it
   carries no *Verwaltungskostenrückstellung* for the period after the *Beitragszahlungsdauer*, where the
-  `gamma_rate` cost runs on with no `beta_rate` income — the pricing equation funds it, and the
+  `load_admin_sum_ann` cost runs on with no `load_admin_prem_inst` income — the pricing equation funds it, and the
   classical reserve convention here assumes the ongoing loadings meet the ongoing costs.
 - **The *Zinszusatzreserve*.** An HGB reserve arising when the § 5 Abs. 3 DeckRV *Referenzzins* falls
   below a contract's tariff rate, financed out of the result and, under § 140 VAG's second escape hatch,
@@ -1344,7 +1344,7 @@ In rough order of leverage on this product.
    corpus at all** — the market averages are stated by Assekurata to be for the *klassische private
    Rentenversicherung* [R25], and the base rate is for a mixed book, so that an endowment shares the
    annuity's declaration remains [unverified] (gap 2).
-2. **The *Zillmerung* and the § 169 floor together.** `alpha_rate` at the 25 ‰ ceiling drives the
+2. **The *Zillmerung* and the § 169 floor together.** `load_acq_bsum_once` at the 25 ‰ ceiling drives the
    negative early reserve, the whole early-duration surrender-value profile, the year-one strain and
    the duration at which the contract first earns any interest surplus at all. The ceiling is cited
    [R7] [REG-R16]; **the level is [std] and no German carrier's actual acquisition cost is public**

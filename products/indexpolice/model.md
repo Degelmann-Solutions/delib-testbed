@@ -295,7 +295,7 @@ against what must be **paid** — and conflating them is a numbered pitfall [R2]
 
 ## Inputs are external files
 
-The nine input CSVs, `param_tariff_type.csv` with `roll_fwd_tol`, `expense_infl`, the 10 scalar tariff parameters that were `Projection` References and the five-year spread `surr_spread_years` that was a literal in its formulas among them, live **in this directory**, beside `run.py` — not inside the model
+The nine input CSVs, the tariff-type file `param_tariff_type.csv` among them (the house-wide, technical and statutory items, the DeckRV § 4 cap `zillmer_cap_bsum` among them, are in the core file `core/Core/Data/param_core.csv`; `uv run python tools/params.py indexpolice` lists every item the tariff reads with its value, layer, basis and provenance), live **in this directory**, beside `run.py` — not inside the model
 folder. `Index_DE_S/` holds nothing but formulas:
 
 ```
@@ -421,7 +421,7 @@ size of the credit — 9 139,74 € over the anchor's projection.
 | `check_lock_in()` | `guar_cap_pp` monotone, `index_credit_pp ≥ 0`, `surplus_credit_pp ≥ 0` |
 | `check_index_credit()` | `0 ≤ index_credit_rate(k) ≤ 12 · index_cap(k)`, or `≤ index_quote(k) · max(Y(k), 0)` |
 
-Tolerance is `roll_fwd_tol()` = 1e-8 from `param_tariff_type.csv`, relative to the balance being checked.
+Tolerance is `roll_fwd_tol()` = 1e-8, `check_tol` of the core file `param_core.csv`, relative to the balance being checked.
 
 ## Modules that are off in the base run
 
@@ -522,7 +522,7 @@ deliberately, not a side effect of a provenance pass. The list is complete.
 | *Abschlusskosten* | 2,5 % of `BS`, zillmerised over 5 years | At the DeckRV § 4 Abs. 1 ceiling ("25 Promille der Summe aller Prämien") [R7] — **and equal to both retrieved carrier disclosures**: Allianz's *Einstiegskosten* of "2,5% der kumulierten Anlagen" [S4] and Stuttgarter's *Abschluss- und Vertriebskosten* of 2,50 % of premiums [S11] |
 | *Verwaltungskosten* | `β = 3 %` of premium, `γ = 0,25 %` of the account a year | Inherited from delib products 1 and 2, and **below both retrieved comparators**: Allianz charges 3,5 % of the annual payment plus 1,0 % of value a year plus 0,1 % transaction costs, and a second entry charge of 1,5 % of the payment from year 6 [S4]; Stuttgarter 9,00 % of premiums plus 0,04 % of capital monthly [S11]. Total disclosed cost is 1,6 % a year and 1,80 points respectively |
 | Acquisition expense | 2,5 % of `BS` at inception | Set equal to the charge, so the *Zillmer* strain is visible in `net_cf` rather than assumed away |
-| Maintenance expense | 36,00 € a year inflating at 1,5 % | *Stückkosten*, inflated from **issue** so an in-force point carries its accumulated inflation |
+| Maintenance expense | 36,00 € a year inflating at 2,0 %, the house-wide `expense_infl` | *Stückkosten*, inflated from **issue** so an in-force point carries its accumulated inflation |
 | *Stornoabzug* | 2 % of the floored base | Deliberately mild inside an observed 0–20 % band [R2] |
 | *Ratenzahlungszuschlag* | 1,000 / 1,020 / 1,030 / 1,050 | Market convention; no carrier tariff established |
 | *Mindesttodesfallschutz* | 50 % of `BS` | The EStG condition applies to contracts concluded after 31 March 2009 (§ 52 Abs. 28 Satz 8) — **but § 20 Abs. 1 Nr. 6 Satz 6 Buchst. a states it for a *Kapitallebensversicherungsvertrag***, so reading its 50 % across to a *Rentenversicherung mit Kapitalwahlrecht* is an inference, not the statute [R14]. R+V's own floor is 90 % of premiums [S7] § 1 Ziffer 5 |

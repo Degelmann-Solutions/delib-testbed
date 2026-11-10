@@ -342,7 +342,7 @@ section text quoted was read in that XML on 2026-08-30.
 - Publisher / doc type: GDV; *Statistisches Taschenbuch der Versicherungswirtschaft*, *Die deutsche Lebensversicherung in Zahlen*, and GDV press material on BU.
 - URL: not established for a BU-specific series. `https://www.gdv.de/resource/blob/180978/…/die-deutsche-lebensversicherung-in-zahlen-2024-publikation-pdf-data.pdf` is retrievable and is the general series, but it was not read for this product and no figure is taken from it.
 - Retrieved: **no** — the general publication is reachable; no BU-specific series was located or read, and no figure is asserted.
-- Used for: the market-size framing of the product and the existence of an industry-wide *Anerkennungsquote*, one of the two references behind the **[std]** `accept_factor = 0,80`. Every specific figure of this kind is `[unverified]` and **none is printed**.
+- Used for: the market-size framing of the product and the existence of an industry-wide *Anerkennungsquote*, one of the two references behind the former **[std]** `accept_factor = 0,80`; since the acceptance of 2026-11-09 the value 0,75 rests on bib `DAV-Fortbildung/Tagungen/2022_11_Herbsttagung/HTG22_Tag1_LEBEN_Kurz-Schiergens.pdf` p. 30. Every specific figure of this kind is `[unverified]` and **none is printed**.
 
 (delib-berufsunfaehigkeit-r21)=
 
@@ -350,7 +350,7 @@ section text quoted was read in that XML on 2026-08-30.
 - Publisher / doc type: Franke und Bornberg GmbH, Hannover; recurring study of BU claims practice on data supplied and audited at participating insurers, plus clause-by-clause wording ratings.
 - URL: not established for the *BU-Leistungspraxis* study; the publisher's blog is reachable but the study itself was not located at a public address in this pass.
 - Retrieved: **no** — no address for the study was established; entry kept as a known reference.
-- Used for: the ***Anerkennungsquote*** — its usual publisher, and the principal reference behind `accept_factor = 0,80` **[std]** — with the composition of declines, the burden of proof resting on the insured at the initial claim, and the market's ranking of *Verweisung*, *AU-Klausel* and *Nachversicherungsgarantie* wordings. The recalled 75–80 % level is `[unverified]` and stays so: no retrieved document states it.
+- Used for: the ***Anerkennungsquote*** — its usual publisher, and the principal reference behind the former `accept_factor = 0,80` **[std]**, 0,75 since the acceptance of 2026-11-09 on bib `DAV-Fortbildung/Tagungen/2022_11_Herbsttagung/HTG22_Tag1_LEBEN_Kurz-Schiergens.pdf` p. 30 — with the composition of declines, the burden of proof resting on the insured at the initial claim, and the market's ranking of *Verweisung*, *AU-Klausel* and *Nachversicherungsgarantie* wordings. The recalled 75–80 % level is `[unverified]` and stays so: no retrieved document states it.
 
 (delib-berufsunfaehigkeit-r22)=
 

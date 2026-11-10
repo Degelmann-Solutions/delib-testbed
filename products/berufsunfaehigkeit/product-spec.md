@@ -268,7 +268,7 @@ Footnotes to **[std]** rows:
     progression. **These are constructions inside an argued range, not sourced figures.** The
     mechanic they implement — one base inception table with multiplicative occupational loadings —
     **is** how German BU pricing works [S6], and that much is not a construction.
-13. The *Anerkennungsquote* enters as an **acceptance factor of 0,80 [std] on the inception rate**,
+13. The *Anerkennungsquote* enters as an **acceptance factor of 0,75 [std] on the inception rate**,
     applied to the transition rather than to the benefit, because a declined claim generates no
     annuity at all rather than a smaller one. **The interaction with the decrement table is a
     trap**: the shipped inception proxy is **gross of declinature** by construction, so the factor
@@ -704,7 +704,7 @@ needed; a monthly *BU-Rente* in advance from onset, no *Karenzzeit*, *Leistungsd
 **[std]**; full *Beitragsbefreiung* in claim; benefit ending at the *Leistungsendalter*, on death,
 or on a *Nachprüfung* termination followed by the statutory three-month run-off; *Reaktivierung*
 returning the life to the premium-paying state with a *Wiedereingliederungshilfe* of six monthly
-*Renten* **[std]**; an acceptance factor of 0,80 **[std]** on the inception rate; occupational
+*Renten* **[std]**; an acceptance factor of 0,75 **[std]** on the inception rate; occupational
 rating as a multiplicative factor on that rate, 1,00 office and 3,00 reference manual **[std]**; and
 no surrender or paid-up cash flow modelled.
 

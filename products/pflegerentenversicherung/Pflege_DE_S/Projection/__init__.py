@@ -624,27 +624,27 @@ def det_force(x, g):
     return -math.log(1.0 - min(q, 1.0 - data.param("rate_cap_eps")))  # noqa: F821
 
 
-def rec_age_ref():
+def recov_age_ref():
     """The attained age above which recovery is damped, from *param_tariff_type.csv*.
 
     A shape parameter of the recovery basis; :func:`rec_rate` reads it.
     """
-    return float(data.param("rec_age_ref"))                          # noqa: F821
+    return float(data.param("recov_age_ref"))                        # noqa: F821
 
 
-def rec_age_decay():
-    """The recovery damping per year of age above ``rec_age_ref``, from *param_tariff_type.csv*.
+def recov_age_decay():
+    """The recovery damping per year of age above ``recov_age_ref``, from *param_tariff_type.csv*.
 
     A shape parameter of the recovery basis; :func:`rec_rate` reads it.
     """
-    return float(data.param("rec_age_decay"))                        # noqa: F821
+    return float(data.param("recov_age_decay"))                      # noqa: F821
 
 
 def rec_rate(x, g):
-    """The annual recovery rate from grade ``g`` at age ``x``, damped above ``rec_age_ref``.
+    """The annual recovery rate from grade ``g`` at age ``x``, damped above ``recov_age_ref``.
 
-    ``rec_rate(g) x exp(-rec_age_decay x max(0, x - rec_age_ref))`` with
-    ``rec_age_ref = 75`` and ``rec_age_decay = 0.10`` **[std]**.  The damping is what makes
+    ``rec_rate(g) x exp(-recov_age_decay x max(0, x - recov_age_ref))`` with
+    ``recov_age_ref = 75`` and ``recov_age_decay = 0.10`` **[std]**.  The damping is what makes
     deterioration dominate recovery above 75 — property (b) of a replacement table — and it
     encodes the one thing about *Reaktivierung* that is not in doubt: it is real after
     acute events at younger ages and small at the ages where most claims arise.
@@ -657,7 +657,7 @@ def rec_rate(x, g):
     attained age.
     """
     base = float(data.care_table_dict()["rec_rate"][g])              # noqa: F821
-    return base * math.exp(-rec_age_decay() * max(0.0, x - rec_age_ref()))  # noqa: F821
+    return base * math.exp(-recov_age_decay() * max(0.0, x - recov_age_ref()))  # noqa: F821
 
 
 def rec_force(x, g):
@@ -1309,7 +1309,7 @@ def inflation_years(t):
     The core's :func:`inflation_factor` is then ``(1 + expense_infl)**(t/12)``, applied to the
     per-policy administration cost and to the per-annuity-payment claims cost, both of which
     are euro amounts quoted at ``t = 0`` prices.  Over the anchor cell's sixty-five years it
-    is a factor of about 2.6, which is enough for the per-policy line to decide the viability
+    is a factor of about 3.6 at the 2.0 % rate, which is enough for the per-policy line to decide the viability
     of a small contract on its own.
 
     Override reason: the expense inflation compounds continuously over ``t / 12`` years,
@@ -1448,7 +1448,7 @@ def mort_rate_tariff(t):
     actuary sets it in practice.
 
     Override reason: the first-order rate is the table rate times its prudence margin, the
-    sexes blended, products/pflegerentenversicherung/model.md:203
+    sexes blended, products/pflegerentenversicherung/model.md:204
     """
     if age(t) >= omega_age() - 1:
         return 1.0
@@ -1907,7 +1907,7 @@ def check_net_cf_resid(t):
     quantity nothing checks.
 
     Override reason: rebuilt from the cells of the three claim kinds and the claims-handling
-    cost, products/pflegerentenversicherung/model.md:291
+    cost, products/pflegerentenversicherung/model.md:292
     """
     return net_cf(t) - (premiums(t)
                         - claims(t, "ANNUITY")

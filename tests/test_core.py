@@ -27,7 +27,7 @@
   kind and an unknown kind is rejected; Index and RV pay exactly zero commission; KLV's net
   cash flow subtracts its claims kind by kind; RLV's liability cash flow is its net cash flow
   negated.
-- The outputs and checks: every product reads ``roll_fwd_tol`` from its ``param_tariff_type.csv``
+- The outputs and checks: every product reads ``check_tol`` from the core file ``param_core.csv``
   and a missing row raises; KLV's ``result_cf`` is the core's statement from ``t_start()``;
   RV's annual frame sums the flows and takes its two counts at the year's start; RLV's
   net-cash-flow residual is rebuilt from its frame's columns; KLV's ``check_net_cf`` closes to
@@ -48,11 +48,11 @@
   neither its ``Projection`` nor its parameter files. BU's 11, FRV's 12, Basis' 5,
   Index' 10 and 8 of Sofort's 10 likewise; Sofort's other 2, the bisection settings of its
   refund solve, are literals in its formula. RV and Pflege never had one.
-  Every product's core layer is ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's eleven
-  guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 3 actuarial
-  formula literals (the tax step of ``lapse_tax_step``) are rows of its
-  tariff-type file with their literals' types and values; Index' five-year spread and KLV's
-  five-year spread and three-year suicide window likewise. Every other numeric literal of a
+  Every product's core layer holds the items of ``CORE_ITEMS`` with their types, among them
+  ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's eleven guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 3 actuarial
+  formula literals (the tax step of ``lapse_tax_step``) are parameter items with their
+  literals' types and values, the two statutory limbs in the core file; Index' five-year spread and KLV's
+  five-year spread and three-year suicide window are items of the core file. Every other numeric literal of a
   formula cell of the core and the ten products, but 0, 1, 0.0 and 1.0, is structural and
   listed for its space in ``STRUCTURAL_LITERALS``, and every listed value occurs there.
   BU's claim-year caps are the last ``dur_year`` of its claim-duration table, so a scratch
@@ -756,10 +756,10 @@ CORE_CELLS = {
                    "riester_rente": "derived",
                    "risikolebensversicherung": "derived",
                    "sofortrente": "derived"},
-        "expense_infl": {"basisrente": "override",
+        "expense_infl": {"basisrente": "derived",
                          "fondsgebundene_rentenversicherung": "derived",
                          "indexpolice": "derived",
-                         "kapitallebensversicherung": "override",
+                         "kapitallebensversicherung": "derived",
                          "klassische_rentenversicherung": "derived",
                          "pflegerentenversicherung": "derived",
                          "riester_rente": "derived",
@@ -1089,7 +1089,14 @@ PFLEGE_RENAMED = {
     "admin_prem_pct": "load_admin_prem_inst",
     "admin_mth_pp": "load_admin_pp_mth",
     "claim_expense_pp": "load_claim_pp_inst",
+    "rec_age_ref": "recov_age_ref",
+    "rec_age_decay": "recov_age_decay",
+    "roll_fwd_tol": "check_tol",
 }
+
+# Pflege's values that entry 12 of epic-parameter-files aligned (the acceptance of 2026-11-09):
+# current item -> aligned value, against upstream's.
+PFLEGE_ALIGNED = {"expense_infl": 0.02, "check_tol": 1e-08}
 
 
 def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
@@ -1103,6 +1110,12 @@ def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     assert expense.at["load_acq_bsum_once", "unit"] == "permille_of_beitragssumme"
     expense.at["load_acq_bsum_once", "value"] /= 1000.0
     expense.at["load_acq_bsum_once", "unit"] = "fraction_of_beitragssumme"
+    for item, value in PFLEGE_ALIGNED.items():
+        table = basis if item in basis.index else expense
+        table.at[item, "value"] = value
+    # Items of the core file since entry 12 of epic-parameter-files leave the tariff-type file.
+    basis = basis.drop([item for item in CORE_ITEMS if item in basis.index])
+    expense = expense.drop([item for item in CORE_ITEMS if item in expense.index])
     # The Rechnungszins moved from the table to the model point (a contract attribute).
     moved = ["rechnungszins"]
     points = model.Data.model_point_table()
@@ -1111,13 +1124,13 @@ def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     basis = basis.drop(moved)
     assert list(merged.columns) == ["value", "unit", "basis", "provenance"]
     assert list(merged.index) == list(basis.index) + list(expense.index)
-    assert merged["basis"].isna().all()
+    # Values and order are upstream's but the aligned ones; basis and provenance follow the
+    # acceptance of 2026-11-09, which extended each provenance with its source or reason.
     for item in basis.index:
         assert merged.at[item, "value"] == basis.at[item, "value"], item
         assert pd.isna(merged.at[item, "unit"]), item
-        assert merged.at[item, "provenance"] == basis.at[item, "provenance"], item
     for item in expense.index:
-        for column in ("value", "unit", "provenance"):
+        for column in ("value", "unit"):
             assert merged.at[item, column] == expense.at[item, column], (item, column)
 
 
@@ -1629,38 +1642,40 @@ def test_rlv_liability_cf_is_the_negated_net_cf(product_models):
 
 
 ROLL_FWD_TOL = {
-    "basisrente": 1e-09,
-    "berufsunfaehigkeit": 1e-10,
-    "fondsgebundene_rentenversicherung": 1e-10,
+    "basisrente": 1e-08,
+    "berufsunfaehigkeit": 1e-08,
+    "fondsgebundene_rentenversicherung": 1e-08,
     "indexpolice": 1e-08,
-    "kapitallebensversicherung": 1e-10,
-    "klassische_rentenversicherung": 1e-09,
-    "pflegerentenversicherung": 1e-10,
-    "riester_rente": 1e-09,
-    "risikolebensversicherung": 1e-10,
+    "kapitallebensversicherung": 1e-08,
+    "klassische_rentenversicherung": 1e-08,
+    "pflegerentenversicherung": 1e-08,
+    "riester_rente": 1e-08,
+    "risikolebensversicherung": 1e-08,
     "sofortrente": 1e-08,
 }
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
-def test_roll_fwd_tol_is_read_from_its_tariff_type_file(product, product_models):
+def test_roll_fwd_tol_is_read_from_the_core_file(product, product_models):
     model = product_models(product)
     projection = model.Projection
     assert projection.roll_fwd_tol._is_derived()
     assert "roll_fwd_tol" not in projection.refs
+    assert "roll_fwd_tol" not in model.Data.param_dict()
+    assert "check_tol" in model.Data.param_layers()["core"]
     point_id = model.Data.model_point_table().index[0]
     assert projection[point_id].roll_fwd_tol() == ROLL_FWD_TOL[product]
 
 
 def test_roll_fwd_tol_without_its_row_raises_key_error(tmp_path):
     folder = product_copy(tmp_path, "kapitallebensversicherung")
-    table = folder / "param_tariff_type.csv"
+    table = folder / MODELS["kapitallebensversicherung"] / "CoreData" / "param_core.csv"
     params = pd.read_csv(table, index_col="item")
-    params.drop(index="roll_fwd_tol").to_csv(table)
+    params.drop(index="check_tol").to_csv(table)
     copy = mx.read_model(folder / MODELS["kapitallebensversicherung"], name="TolProbe")
     try:
         point_id = copy.Data.model_point_table().index[0]
-        with pytest.raises(Exception, match="roll_fwd_tol") as raised:
+        with pytest.raises(Exception, match="check_tol") as raised:
             copy.Projection[point_id].roll_fwd_tol()
         assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
     finally:
@@ -1673,7 +1688,7 @@ def test_param_reads_the_tariff_type_layer(product_models):
     assert not data.param_tariff_path().exists()
     assert data.param_core_path() == data.model.path / "CoreData" / "param_core.csv"
     assert data.param_core_path().is_file()
-    for item in ("roll_fwd_tol", "expense_infl"):
+    for item in ("expense_claim_pp_once", "unisex_mix_male"):
         value = data.param(item)
         assert type(value) is float and value == tariff_type_table(
             "risikolebensversicherung").at[item, "value"], item
@@ -1740,6 +1755,18 @@ def test_an_item_of_several_files_has_one_type():
     assert not mixed, mixed
 
 
+def test_basis_is_source_or_setzung():
+    """Every row of every parameter file has ``basis`` ``source`` or ``Setzung``; since entry 12
+    of epic-parameter-files aligned the last values, no row is left empty."""
+    files = sorted(PRODUCTS_DIR.glob("*/param_tariff_type.csv"))
+    files += sorted(PRODUCTS_DIR.glob("*/param_tariff.csv"))
+    files.append(CORE_MODEL / "Data" / "param_core.csv")
+    for path in files:
+        table = pd.read_csv(path, dtype=str, keep_default_na=False)
+        wrong = table.loc[~table["basis"].isin(["source", "Setzung"]), "item"].tolist()
+        assert not wrong, (path, wrong)
+
+
 @pytest.mark.parametrize("product", sorted(MODELS))
 def test_every_product_reads_its_tariff_type_file(product, product_models):
     """``param_file`` is ``param_tariff_type.csv``, in the layer columns, and no
@@ -1767,16 +1794,24 @@ def test_rlv_claim_expense_is_a_tariff_type_row(product_models):
 
 
 # The moved References and literals below are keyed by their current item names, which may
-# differ from the References' names (docs/core.md, "Parameter names").
+# differ from the References' names (docs/core.md, "Parameter names"). An item of the core file
+# stands in the core layer, any other in the tariff-type layer.
 
-# The 32 numeric References Riester's ``Projection`` held, as their former Python literals.
+def param_layer_of(item):
+    """The layer a moved item stands in: the core file for an item of ``CORE_ITEMS``, the
+    tariff-type file for any other."""
+    return "core" if item in CORE_ITEMS else "tariff_type"
+
+
+# The 32 numeric References Riester's ``Projection`` held, as their former Python literals, with
+# the value entry 12 of epic-parameter-files aligned (``kleinbetrag_threshold_mth`` 39.55 to 59.33).
 RIESTER_MOVED_REFERENCES = {
     "valuation_year": 2027,
     "grundzulage": 175.0,
     "kinderzulage_pre2008": 185.0,
     "kinderzulage_post2008": 300.0,
     "berufseinsteiger_bonus": 200.0,
-    "mindest_rate": 0.04,
+    "mindesteigenbeitrag_rate": 0.04,
     "foerder_ceiling": 2100.0,
     "sockelbeitrag": 60.0,
     "zulage_lag": 1,
@@ -1788,7 +1823,7 @@ RIESTER_MOVED_REFERENCES = {
     "slueb_rate": 0.02,
     "bwr_rate": 0.01,
     "teilkapital_cap": 0.3,
-    "kleinbetrag_threshold_mth": 39.55,
+    "kleinbetrag_threshold_mth": 59.33,
     "rentenfaktor_margin": 0.3,
     "annuity_rechnungszins": 0.01,
     "woolhouse": 0.4583333333333333,
@@ -1805,7 +1840,8 @@ RIESTER_MOVED_REFERENCES = {
     "comm_renew_prem_inst": 0.015,
 }
 
-# The 17 numeric References RLV's ``Projection`` held, as their former Python literals; the
+# The 17 numeric References RLV's ``Projection`` held, as their former Python literals;
+# ``val_tol``, aligned to 1e-08 by entry 12 of epic-parameter-files, is read as ``check_tol``; the
 # *Sicherheitszuschlag* ``sicherheitszuschlag_m`` 1.25 is the factor ``mort_load_first``, 1 + m.
 RLV_MOVED_REFERENCES = {
     "mort_load_first": 1.0 + 1.25,
@@ -1824,24 +1860,26 @@ RLV_MOVED_REFERENCES = {
     "shock_lapse_lambda": 0.0,
     "sel_lapse_lambda": 0.0,
     "sel_lapse_ref": 0.25,
-    "val_tol": 1e-09,
+    "check_tol": 1e-08,
 }
 
 # The 4 numeric References KLV's ``Projection`` held and its cells read, as their former
 # Python literals.
 KLV_MOVED_REFERENCES = {
     "suicide_share": 0.02,
-    "bfz_min_si": 2500.0,
+    "bfz_min_sum": 2500.0,
     "term_surr_share": 0.0,
     "bwr_rate": 0.0,
 }
 
-# The 11 numeric References BU's ``Projection`` held, as their former Python literals.
+# The 11 numeric References BU's ``Projection`` held, as their former Python literals, with the
+# values entry 12 of epic-parameter-files aligned (``accept_factor`` 0.8 to 0.75, ``mort_dis_load_first``
+# 0.8 to 0.7).
 BU_MOVED_REFERENCES = {
-    "accept_factor": 0.8,
+    "accept_factor": 0.75,
     "inc_load_first": 1.3,
     "recov_load_first": 0.7,
-    "mort_dis_load_first": 0.8,
+    "mort_dis_load_first": 0.7,
     "mort_actv_load_first": 0.8,
     "load_acq_bsum_once": 0.025,
     "load_admin_prem_inst": 0.09,
@@ -1851,7 +1889,9 @@ BU_MOVED_REFERENCES = {
     "runoff_months": 3,
 }
 
-# The 12 numeric References FRV's ``Projection`` held, as their former Python literals.
+# The 12 numeric References FRV's ``Projection`` held, as their former Python literals;
+# ``val_tol`` 1e-10 is read as ``check_tol``, the same quantity with the same value, which entry 12
+# of epic-parameter-files aligned to 1e-08.
 FRV_MOVED_REFERENCES = {
     "lapse_cap": 0.4,
     "lapse_dyn_beta": 0.0,
@@ -1864,7 +1904,7 @@ FRV_MOVED_REFERENCES = {
     "expense_claim_pp_once": 150.0,
     "expense_surr_pp_once": 50.0,
     "expense_conv_pp_once": 100.0,
-    "val_tol": 1e-10,
+    "check_tol": 1e-08,
 }
 
 # The 3 actuarial literals FRV's formulas held (``lapse_tax_step``), as written there.
@@ -1877,7 +1917,7 @@ FRV_MOVED_LITERALS = {
 # The actuarial literal Index' formulas held (``prem_charge_acq_min_pp``), as written there.
 INDEX_MOVED_LITERALS = {"surr_spread_years": 5}
 
-# The actuarial literals KLV's formulas held (``res_min_pp``, ``benefit_death_pp``), as rows.
+# The actuarial literals KLV's formulas held (``res_min_pp``, ``benefit_death_pp``), as items.
 # ``surr_spread_years`` was ``5.0`` there; its row is ``5``, an ``int`` as Index' row.
 KLV_MOVED_LITERALS = {"surr_spread_years": 5, "suicide_years": 3}
 
@@ -1927,95 +1967,95 @@ REFERENCES_MOVED = (
 )
 
 
-def test_riester_references_are_tariff_type_rows(product_models):
+def test_riester_references_stand_in_their_layer(product_models):
     model = product_models("riester_rente")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(RIESTER_MOVED_REFERENCES) == 32
     for item, literal in RIESTER_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
-def test_rlv_references_are_tariff_type_rows(product_models):
+def test_rlv_references_stand_in_their_layer(product_models):
     model = product_models("risikolebensversicherung")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(RLV_MOVED_REFERENCES) == 17
     assert "sicherheitszuschlag_m" not in model.Projection.refs
     for item, literal in RLV_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
-def test_klv_references_are_tariff_type_rows(product_models):
+def test_klv_references_stand_in_their_layer(product_models):
     model = product_models("kapitallebensversicherung")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(KLV_MOVED_REFERENCES) == 4
     for item, literal in KLV_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
-def test_bu_references_are_tariff_type_rows(product_models):
+def test_bu_references_stand_in_their_layer(product_models):
     model = product_models("berufsunfaehigkeit")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(BU_MOVED_REFERENCES) == 11
     for item, literal in BU_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
-def test_frv_references_are_tariff_type_rows(product_models):
+def test_frv_references_stand_in_their_layer(product_models):
     model = product_models("fondsgebundene_rentenversicherung")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(FRV_MOVED_REFERENCES) == 12
     for item, literal in FRV_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
-def test_frv_literals_are_tariff_type_rows(product_models):
+def test_frv_literals_stand_in_their_layer(product_models):
     data = product_models("fondsgebundene_rentenversicherung").Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(FRV_MOVED_LITERALS) == 3
     for item, literal in FRV_MOVED_LITERALS.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
 
 
-def test_index_literals_are_tariff_type_rows(product_models):
+def test_index_literals_stand_in_their_layer(product_models):
     data = product_models("indexpolice").Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(INDEX_MOVED_LITERALS) == 1
     for item, literal in INDEX_MOVED_LITERALS.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
 
 
-def test_klv_literals_are_tariff_type_rows(product_models):
+def test_klv_literals_stand_in_their_layer(product_models):
     data = product_models("kapitallebensversicherung").Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(KLV_MOVED_LITERALS) == 2
     for item, literal in KLV_MOVED_LITERALS.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
 
 
 # The units and annuity frequencies that are rows rather than literals: product -> item ->
@@ -2031,53 +2071,76 @@ UNIT_AND_FREQUENCY_ROWS = {
 
 
 @pytest.mark.parametrize("product", sorted(UNIT_AND_FREQUENCY_ROWS))
-def test_units_and_frequencies_are_tariff_type_rows(product, product_models):
+def test_units_and_frequencies_stand_in_their_layer(product, product_models):
     data = product_models(product).Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     for item, literal in UNIT_AND_FREQUENCY_ROWS[product].items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
 
 
-def test_basis_references_are_tariff_type_rows(product_models):
+def test_basis_references_stand_in_their_layer(product_models):
     model = product_models("basisrente")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(BASIS_MOVED_REFERENCES) == 5
     for item, literal in BASIS_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
-def test_index_references_are_tariff_type_rows(product_models):
+def test_index_references_stand_in_their_layer(product_models):
     model = product_models("indexpolice")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(INDEX_MOVED_REFERENCES) == 10
     for item, literal in INDEX_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
-def test_sofort_references_are_tariff_type_rows(product_models):
+def test_sofort_references_stand_in_their_layer(product_models):
     model = product_models("sofortrente")
     data = model.Data
-    layer = data.param_layers()["tariff_type"]
+    layers = data.param_layers()
     assert len(SOFORT_MOVED_REFERENCES) == 8
     for item, literal in SOFORT_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
-        assert item in layer, item
+        assert item in layers[param_layer_of(item)], item
         assert item not in model.Projection.refs, item
 
 
 # The items of the core file ``core/Core/Data/param_core.csv``, as their former Python literals.
-CORE_ITEMS = {"rate_cap_eps": 1e-12}
+CORE_ITEMS = {
+    "rate_cap_eps": 1e-12,
+    "check_tol": 1e-08,
+    "suicide_years": 3,
+    "surr_spread_years": 5,
+    "runoff_months": 3,
+    "tax_step_min_year": 13,
+    "tax_step_age": 62,
+    "mmkt_return_ann": 0.015,
+    "expense_infl": 0.02,
+    "zillmer_cap_bsum": 0.025,
+    "valuation_year": 2027,
+    "grundzulage": 175.0,
+    "kinderzulage_pre2008": 185.0,
+    "kinderzulage_post2008": 300.0,
+    "berufseinsteiger_bonus": 200.0,
+    "mindesteigenbeitrag_rate": 0.04,
+    "foerder_ceiling": 2100.0,
+    "sockelbeitrag": 60.0,
+    "zulage_lag": 1,
+    "guar_carve_out_cap": 0.2,
+    "teilkapital_cap": 0.3,
+    "kleinbetrag_threshold_mth": 59.33,
+}
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
@@ -2214,7 +2277,7 @@ def test_param_reads_a_core_item_and_a_tariff_item(tmp_path):
     try:
         assert copy.Data.param("probe_core") == 0.125
         assert copy.Data.param("probe_tariff") == 7
-        assert copy.Data.param("roll_fwd_tol") == 1e-10
+        assert copy.Data.param("check_tol") == 1e-08
     finally:
         copy.close()
     assert (CORE_MODEL / "Data" / "param_core.csv").read_text(encoding="utf-8") == shipped
@@ -2234,7 +2297,7 @@ def test_param_without_the_core_file_raises(tmp_path):
     copy = mx.read_model(model_dir, name="NoCoreProbe")
     try:
         with pytest.raises(Exception, match="param_core.csv"):
-            copy.Data.param("roll_fwd_tol")
+            copy.Data.param("check_tol")
     finally:
         copy.close()
 
@@ -2259,7 +2322,7 @@ def test_param_layers_hold_every_item_once_and_merge_into_param_dict(product, pr
     assert list(data.param_dict()) == list(merged)
 
 
-def _loader_error(model_dir: Path, name: str, item: str = "roll_fwd_tol") -> str:
+def _loader_error(model_dir: Path, name: str, item: str = "check_tol") -> str:
     """The error line of the loader's error on ``param(item)`` in a scratch copy, which must be
     a ``ValueError``.
 
@@ -2282,27 +2345,27 @@ def _loader_error(model_dir: Path, name: str, item: str = "roll_fwd_tol") -> str
 
 def test_param_rejects_an_item_in_two_layers(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
-    _add_params(folder / "param_tariff.csv", {"expense_infl": "0.03"})
+    _add_params(folder / "param_tariff.csv", {"expense_claim_pp_once": "300.0"})
     message = _loader_error(folder / MODELS["risikolebensversicherung"], "TwoLayerProbe")
-    assert "'expense_infl' stands in two layers" in message
+    assert "'expense_claim_pp_once' stands in two layers" in message
     assert str(folder / "param_tariff_type.csv") in message
     assert str(folder / "param_tariff.csv") in message
 
 
 def test_param_rejects_an_item_twice_in_one_file(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
-    _add_params(folder / "param_tariff_type.csv", {"roll_fwd_tol": "1e-10"})
+    _add_params(folder / "param_tariff_type.csv", {"expense_claim_pp_once": "250.0"})
     message = _loader_error(folder / MODELS["risikolebensversicherung"], "TwiceProbe")
-    assert "'roll_fwd_tol' stands twice in" in message
+    assert "'expense_claim_pp_once' stands twice in" in message
     assert str(folder / "param_tariff_type.csv") in message
 
 
 def test_param_rejects_a_core_item_in_the_tariff_type_file(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     model_dir = folder / MODELS["risikolebensversicherung"]
-    _add_params(model_dir / "CoreData" / "param_core.csv", {"roll_fwd_tol": "1e-10"})
+    _add_params(model_dir / "CoreData" / "param_core.csv", {"expense_claim_pp_once": "250.0"})
     message = _loader_error(model_dir, "CoreLockProbe")
-    assert "'roll_fwd_tol' is a core item of" in message
+    assert "'expense_claim_pp_once' is a core item of" in message
     assert str(folder / "param_tariff_type.csv") in message
 
 
@@ -2510,7 +2573,8 @@ def test_an_unused_core_item_is_named(tmp_path):
         copy.close()
     assert usage.problems == []
     assert usage.layers["core"] == {**CORE_ITEMS, "probe_core": 0.125}
-    assert param_usage.unused_core_items([usage]) == sorted(["probe_core", *CORE_ITEMS])
+    unread = [item for item in CORE_ITEMS if item not in usage.reads]
+    assert param_usage.unused_core_items([usage]) == sorted(["probe_core", *unread])
 
 
 def test_klv_result_cf_is_the_core_statement_from_t_start(product_models):
@@ -2634,10 +2698,10 @@ def test_sofort_inflation_factor_steps_on_the_policy_anniversary(product_models)
     assert projection.inflation_years._is_derived()
     for point_id in model.Data.model_point_table().index:
         item = projection[point_id]
-        assert item.expense_infl() == 0.015
+        assert item.expense_infl() == 0.02
         for t in range(item.t_start(), item.proj_len()):
-            assert item.inflation_factor(t) == 1.015 ** item.duration(t), (point_id, t)
-            assert item.inflation_factor(t) == 1.015 ** (t // 12), (point_id, t)
+            assert item.inflation_factor(t) == 1.02 ** item.duration(t), (point_id, t)
+            assert item.inflation_factor(t) == 1.02 ** (t // 12), (point_id, t)
 
 
 def test_pflege_inflation_factor_compounds_continuously(product_models):
@@ -2647,8 +2711,8 @@ def test_pflege_inflation_factor_compounds_continuously(product_models):
     assert projection.inflation_years._is_defined()
     point_id = model.Data.model_point_table().index[0]
     item = projection[point_id]
-    assert item.expense_infl() == 0.015
-    assert item.inflation_factor(6) == 1.015 ** 0.5
+    assert item.expense_infl() == 0.02
+    assert item.inflation_factor(6) == 1.02 ** 0.5
     assert item.inflation_factor(0) == 1.0
 
 
@@ -2749,7 +2813,7 @@ def test_a_prem_freq_outside_the_table_raises(tmp_path):
 
 def test_expense_infl_without_its_row_raises_key_error(tmp_path):
     folder = product_copy(tmp_path, "klassische_rentenversicherung")
-    table = folder / "param_tariff_type.csv"
+    table = folder / MODELS["klassische_rentenversicherung"] / "CoreData" / "param_core.csv"
     params = pd.read_csv(table, index_col="item")
     params.drop(index="expense_infl").to_csv(table)
     copy = mx.read_model(folder / MODELS["klassische_rentenversicherung"], name="InflProbe")
@@ -2974,8 +3038,8 @@ def test_pflege_recovery_is_damped_only_above_the_reference_age(product_models):
     model = product_models("pflegerentenversicherung")
     item = model.Projection[1]
     care = model.Data.care_table()
-    ref = item.rec_age_ref()
-    decay = item.rec_age_decay()
+    ref = item.recov_age_ref()
+    decay = item.recov_age_decay()
     assert (ref, decay) == (75.0, 0.1)
     for g in range(1, 6):
         base = float(care.at[g, "rec_rate"])
@@ -3179,7 +3243,7 @@ def test_klv_surplus_rates_and_stornoabzug_hold_their_last_policy_year(product_m
     last_lapse = int(lapse.index.max())
     k = last_lapse + 5
     assert item.policy_year_y(k) > last_lapse
-    assert item.storno_rate(k) == float(lapse.at[last_lapse, "storno_rate"])
+    assert item.stornoabzug_rate(k) == float(lapse.at[last_lapse, "stornoabzug_rate"])
 
 
 def test_klv_echt_instalments_carry_no_loading(product_models):

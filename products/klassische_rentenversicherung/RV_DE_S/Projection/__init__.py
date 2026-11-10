@@ -233,9 +233,10 @@ buried, and **both take a policy year**: a death in any month of year ``k`` is p
 ``charge_*`` and ``expense_*`` are not synonyms. A **charge** is a deduction the tariff
 makes from the premium or the *Deckungskapital*: it moves money inside the contract and
 produces no cash flow. An **expense** is the insurer's own best-estimate outgo and is a cash
-flow. ``expenses(t)`` is invariant to ``beta_rate`` and ``gamma_rate``; ``av_pp(k+1)`` is
-not. Booking the *Kostenbeitrag* as an expense inflates outgo by the whole charge load and
-is the commonest way to make a German model look conservative.
+flow. ``expenses(t)`` is invariant to ``charge_admin_prem_inst`` and
+``charge_admin_av_ann``; ``av_pp(k+1)`` is not. Booking the *Kostenbeitrag* as an expense
+inflates outgo by the whole charge load and is the commonest way to make a German model
+look conservative.
 
 ``av_pp`` and ``av_sur_pp`` are two accounts, not one balance split in two. The
 *Deckungskapital* carries the guarantee and is credited at ``rechnungszins()``; the
@@ -339,9 +340,9 @@ establishes a rate. Both statutory branches are implemented and both are exercis
   is **reset to** ``pup_value_pp()`` — the § 165 rule that the paid-up benefit is computed on
   the § 169 Abs. 3–5 value — the *Ansammlungsguthaben* is untouched, ``spread_diff_pp`` is set
   to zero because the two accounts have merged, and ``charge_admin_pp`` switches to
-  ``gamma_pup_rate``. No *Stornoabzug* is taken **[std]**: Abs. 5 is drafted for a payout on
-  *Kündigung*, and here the contract continues. The reset is real money and is published as
-  ``pup_uplift(k)``.
+  ``charge_admin_pup_av_ann``. No *Stornoabzug* is taken **[std]**: Abs. 5 is drafted for a
+  payout on *Kündigung*, and here the contract continues. The reset is real money and is
+  published as ``pup_uplift(k)``.
 - **Cash-out** (model point 8). Where the paid-up annuity would fall below the
   *Mindestversicherungsleistung*, § 165 has the contract cashed out at the surrender value
   including profit shares instead of made paid-up. The whole surviving cohort then leaves in
@@ -408,10 +409,10 @@ monthly payments — and it is a thing the annual grid could only approximate.
 
 .. rubric:: Modules that are recorded and not applied
 
-- ``annuity_admin_rate`` ships in ``charge_table.csv`` at 1,5 % of each instalment and is
-  **not applied**. The *Rentenfaktor* is exogenous here and already carries the tariff's
-  payout loading, so deducting a further administration charge from the annuity would charge
-  it twice. ``annuity_payments(t)`` is ``(G + U(k)) a(t)`` exactly.
+- A payout-phase administration charge on each instalment is **not applied**, and
+  ``charge_table.csv`` holds none. The *Rentenfaktor* is exogenous here and already
+  carries the tariff's payout loading, so deducting a further administration charge from
+  the annuity would charge it twice. ``annuity_payments(t)`` is ``(G + U(k)) a(t)`` exactly.
 - ``annuity_due_factor()`` is a **diagnostic and nothing else**. It is the annuity-due
   present value on the shipped mortality proxy at the guarantee interest basis, published so
   that the gap between the [std] *Rentenfaktor* and the [std] annuity table is visible rather
@@ -547,7 +548,7 @@ def beitragssumme():
 def alpha_rate():
     """The *Zillmersatz* of the model point's charge set, from *charge_table.csv*.
 
-    :func:`zillmer_amount`, the total acquisition charge, is ``alpha_rate x
+    :func:`zillmer_amount`, the total acquisition charge, is ``charge_acq_bsum_once x
     beitragssumme()``.  The *Höchstzillmersatz* is 25 ‰ of the *Beitragssumme* for
     contracts concluded from 1 January 2015 and 40 ‰ before, the rate at conclusion
     applying for the whole term; the model uses the cap itself **[std]**, which is what
@@ -555,7 +556,7 @@ def alpha_rate():
     the anchor cell.
     """
     return float(data.charge_table_dict()["value"][                  # noqa: F821
-        (model_point()["charge_id"], "alpha_rate")])
+        (model_point()["charge_id"], "charge_acq_bsum_once")])
 
 
 def alpha_cum_pp(k):
@@ -627,36 +628,35 @@ def charge_acq_pp(k):
 def charge_acq_spread_pp(k):
     """alpha~(k): the same charge spread **evenly over the first five contract years**.
 
-    ``zillmer_amount() / alpha_spread_years`` for ``k = 0 .. 4``, zero after.  This is the
+    ``zillmer_amount() / surr_spread_years`` for ``k = 0 .. 4``, zero after.  This is the
     § 169 Abs. 3 VVG treatment, and it enters no account of its own: it drives
     :func:`spread_diff_pp`, the difference between the tariff *Deckungskapital* and the
     statutory surrender floor.  255,00 € on the anchor cell.
     """
-    years = int(data.charge_table_dict()["value"][                   # noqa: F821
-        (model_point()["charge_id"], "alpha_spread_years")])
+    years = data.param("surr_spread_years")                          # noqa: F821
     return zillmer_amount() / years if 0 <= k < years else 0.0
 
 
 def charge_prem_pp(k):
-    """beta(k): the premium charge, ``beta_rate x P(k)`` **[std]**.
+    """beta(k): the premium charge, ``charge_admin_prem_inst x P(k)`` **[std]**.
 
     4,0 % of each gross premium.  An internal deduction, not an expense: it reduces the
     *Sparbeitrag* and produces no cash flow.
     """
     return float(data.charge_table_dict()["value"][                  # noqa: F821
-        (model_point()["charge_id"], "beta_rate")]) * prem_pp(k)
+        (model_point()["charge_id"], "charge_admin_prem_inst")]) * prem_pp(k)
 
 
 def charge_admin_pp(k):
     """gamma(k): the reserve-based administration charge on the **start-of-year** balance.
 
-    ``gamma_rate x av_pp(k)`` while premiums are being paid and ``gamma_pup_rate x av_pp(k)``
-    while the contract is premium-free **[std]** — a paid-up contract still bears
-    administration cost, and the higher premium-free rate is what makes
-    *Beitragsfreistellung* cost something instead of being free.  Struck on the start-of-year
-    balance so the recursion stays acyclic.
+    ``charge_admin_av_ann x av_pp(k)`` while premiums are being paid and
+    ``charge_admin_pup_av_ann x av_pp(k)`` while the contract is premium-free **[std]** — a
+    paid-up contract still bears administration cost, and the higher premium-free rate is
+    what makes *Beitragsfreistellung* cost something instead of being free.  Struck on the
+    start-of-year balance so the recursion stays acyclic.
     """
-    item = "gamma_pup_rate" if paid_up(k) else "gamma_rate"
+    item = "charge_admin_pup_av_ann" if paid_up(k) else "charge_admin_av_ann"
     return float(data.charge_table_dict()["value"][                  # noqa: F821
         (model_point()["charge_id"], item)]) * av_pp(k)
 
@@ -943,7 +943,7 @@ def spread_diff_pp(k):
     Zero at the frame's start.  That is exact for new business and is a **simplification for
     an in-force point**, where the interest the spread account earned on the amounts not yet
     deducted is discarded; every in-force model point therefore opens at
-    ``duration_init >= alpha_spread_years``, once the charge is fully amortised under both
+    ``duration_init >= surr_spread_years``, once the charge is fully amortised under both
     treatments.  Zero again from the paid-up row ``k = pup_year - 1`` on a converting
     contract, the two accounts having merged at the paid-up value.
     """
@@ -1567,8 +1567,8 @@ def annuity_pp(t):
     :func:`pols_annuity` gives.  ``U`` steps once a year, on the anniversary, because the
     *Überschussrente* is redeclared annually.
 
-    No administration charge is deducted.  ``annuity_admin_rate`` ships in the charge table at
-    1,5 % and is **not applied**: the *Rentenfaktor* is exogenous here and already carries the
+    No administration charge is deducted, and the charge table holds none: the
+    *Rentenfaktor* is exogenous here and already carries the
     tariff's payout loading, so deducting again would charge it twice.
     """
     if duration(t) < int(model_point()["aufschub_y"]):
@@ -1719,9 +1719,9 @@ def expenses_acq(t):
     **These are expenses, not charges.**  The *Kostenbeiträge* the tariff deducts —
     ``charge_acq_pp``, ``charge_prem_pp``, ``charge_admin_pp``, ``charge_risk_pp`` — move
     money inside the contract and are not in :func:`expenses`: it is invariant to
-    ``beta_rate`` and ``gamma_rate`` while ``av_pp(t+1)`` is not.  Booking the charges as
-    expenses inflates outgo by the whole charge load and is the commonest way to make a
-    German model look conservative.
+    ``charge_admin_prem_inst`` and ``charge_admin_av_ann`` while ``av_pp(t+1)`` is not.
+    Booking the charges as expenses inflates outgo by the whole charge load and is the
+    commonest way to make a German model look conservative.
 
     Override reason: the acquisition expense falls once at the frame's start, new business
     only, products/klassische_rentenversicherung/technical-notes.md:659

@@ -168,7 +168,7 @@ cells in the `Data` Space (the `annuallife/TradLife_A` layout). Every file **exc
 | `care_table.csv` | `pflegegrad` | `entry_share`, `det_rate`, `rec_rate`, `mort_mult`, `provenance` | The whole in-care basis in five rows: the distribution of the grade first entered, the annual deterioration rate to the next grade, the annual recovery rate to the previous grade or to active, and the force-of-mortality multiple over an active life of the same age |
 | `lapse_table.csv` | `policy_year` | `lapse_rate`, `provenance` | Annual lapse from the **active** state, policy years 1–40; year 40's rate applies to every later year |
 | `surrender_table.csv` | `policy_year` | `rkw_prem_ratio`, `provenance` | The guaranteed *Rückkaufswert* as a fraction of premiums paid to date, policy years 1–40, clamped as for lapse at its last policy year `Y` (40), which `surrender_table_last_year()` reads from the table |
-| `param_tariff_type.csv` | `item` | `value`, `unit`, `basis`, `provenance` | `omega_age`, `unisex_mix_male`, `rec_age_ref`, `rec_age_decay`, `inc_cap`, `beitragssumme_cap_age`, `roll_fwd_tol`, and the five first-order prudence margins `inc_load_first`, `det_load_first`, `recov_load_first`, `mort_care_load_first`, `mort_actv_load_first` (`unit` empty); then `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_pp_mth`, `load_claim_pp_inst`, `expense_infl`. Upstream's `basis_table.csv` and `expense_table.csv`, merged in phase 3; `rechnungszins` moved to the model point |
+| `param_tariff_type.csv` | `item` | `value`, `unit`, `basis`, `provenance` | The tariff-type parameters, the first-order margins with `unit` empty, the expense loadings with theirs; upstream's `basis_table.csv` and `expense_table.csv`; the house-wide and technical items, `check_tol` and `expense_infl` among them, are in the core file `core/Core/Data/param_core.csv`; `uv run python tools/params.py pflegerentenversicherung` lists every item the tariff reads with its value, layer, basis and provenance |
 
 Eight files, each read by a reader cells in `Data`; the suite asserts there are no orphans.
 
@@ -345,8 +345,8 @@ only from 2017 [S14] — so `entry_share` stays **[std]**. `mort_mult` is a
 multiple on the **force** of active mortality at the same age, carrying the research file's most
 load-bearing biometric statement — the mortality of a *Pflegebedürftiger* is **of the order of two to
 three times an active life's at grade 2 and five to ten times at grade 5** [unverified]. Recovery is
-further damped with age, `rec_rate(g, x) = rec_rate_g * exp(-rec_age_decay * max(0, x - rec_age_ref))`
-with `rec_age_ref = 75` and `rec_age_decay = 0.10` **[std]**, which is what makes deterioration
+further damped with age, `rec_rate(g, x) = rec_rate_g * exp(-recov_age_decay * max(0, x - recov_age_ref))`
+with `recov_age_ref = 75` and `recov_age_decay = 0.10` **[std]**, which is what makes deterioration
 dominate recovery above 75 — property (b) of a replacement table.
 
 Three consequences follow, all three pitfalls. **The annuity in payment is short**, of the order of
@@ -397,7 +397,7 @@ throughout.
 | `load_admin_prem_inst` | 0.030 | fraction of each premium collected | Placeholder; absorbs the *Ratenzahlungszuschlag* the model does not charge separately |
 | `load_admin_pp_mth` | 2.00 | EUR per policy in force per month, `t = 0` prices | Placeholder, a plausible fraction of a mass-market monthly premium |
 | `load_claim_pp_inst` | 1.50 | EUR per annuity payment made | Set **low** — the trigger is determined by a third party [R6], so claims cost is well below a *Berufsunfähigkeitsrente*'s [REG-R29] |
-| `expense_infl` | 0.015 | annual | Placeholder; over a 65-year projection it is a factor of about 2.6 on the per-policy line |
+| `expense_infl` | 0.02 | annual | The house-wide cost inflation, an item of the core file `param_core.csv` (acceptance of 2026-11-09; was 0.015); over a 65-year projection it is a factor of about 3.6 on the per-policy line |
 
 The *Beitragssumme* the acquisition charge is struck on is
 `premium_mth_pp() * 12 * (min(prem_end_age, beitragssumme_cap_age) - issue_age)` with
@@ -680,7 +680,7 @@ on every model point.
 | `check_prem_equiv` | `Σ_t check_prem_equiv_resid(t) ≈ 0`: the gross premium closes the first-order equivalence, assembled from the tariff ledgers rather than from the closed form |
 
 `check_net_cf` is mandatory across the library; the other five are this product's own. All six use
-`roll_fwd_tol` from `param_tariff_type.csv`.
+`check_tol` from the core file `param_core.csv`.
 
 ---
 
@@ -703,7 +703,7 @@ this list executed in a different sequence.
    on `pols_if(t)`, inflated; premium-related administration on the premium just collected; and
    `claim_expenses(t)` on the annuity payments just made.
 6. **Look up the month's forces at `x(t)`.** `μ_A`, and `ι` — **zero while `t < wartezeit_months`**;
-   `μ_g = mort_mult(g) × μ_A`; `δ_g`; `ρ_g`, damped above `rec_age_ref`. Then `w(t)`, zero outside
+   `μ_g = mort_mult(g) × μ_A`; `δ_g`; `ρ_g`, damped above `recov_age_ref`. Then `w(t)`, zero outside
    the premium term.
 7. **Apply the transitions over the month**, constant forces, proportional allocation. From the
    active state: death, entry into care split by `entry_share`, or stay. From each grade, in both
@@ -880,7 +880,7 @@ from year 21 **[std]**, converted by `1 − (1 − q)^(1/12)`. *Rückkaufswert*
 and 0.70 by year 40 **[std]**, with `stornoabzug_rate = 0`. Expenses **[std]**: acquisition
 `25 ‰ × Beitragssumme` at `t = 0`, the *Beitragssumme* being `P × 12 × (85 − 45) = 480 P`;
 administration 3.0 % of each *Beitrag* collected plus 2.00 € per policy in force per month;
-claim expense 1.50 € per annuity payment; expense inflation 1.5 % a year. First-order margins
+claim expense 1.50 € per annuity payment; expense inflation 2.0 % a year. First-order margins
 **[std]**: incidence × 1.25, deterioration × 1.15, recovery × 0.80, in-care mortality × 0.85,
 active mortality × 0.90, and **no lapse** in the tariff basis. Pricing blended 50 / 50 male / female
 **[std]** [REG-R34]; the projection runs on the female basis. No *Wartezeit*, no *Karenzzeit*, no
@@ -898,30 +898,30 @@ Every figure is transcribed from `Projection[1].result_cf()`, money to the cent 
 six decimals. The frame has **780 rows**, `t = 0 … 779`; fourteen are shown. `claims_death` is a
 column of the frame, is **structurally zero at every `t`** here (`beitragsrueckgewaehr = False`), and
 is omitted rather than printed as 780 zeros. The equivalence premium is
-**`premium_mth_pp() = 64.198409` € a month**.
+**`premium_mth_pp() = 64.539230` € a month**.
 
 | `t` | `x(t)` | `pols_if` | `pols_care` | `pols_prem` | `premiums` | `claims_annuity` | `claims_lapse` | `expenses` | `claim_expenses` | `net_cf` |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 | 45 | 1.000000 | 0.000000 | 1.000000 | 64.20 | 0.00 | 0.00 | 774.31 | 0.00 | -710.11 |
-| 1 | 45 | 0.994793 | 0.000056 | 0.994748 | 63.86 | 0.02 | 0.00 | 3.91 | 0.00 | 59.93 |
-| 2 | 45 | 0.989613 | 0.000111 | 0.989523 | 63.53 | 0.04 | 0.00 | 3.89 | 0.00 | 59.59 |
-| 12 | 46 | 0.939288 | 0.000644 | 0.938758 | 60.27 | 0.26 | 0.00 | 3.71 | 0.00 | 56.29 |
-| 60 | 50 | 0.798781 | 0.003771 | 0.795452 | 51.07 | 1.86 | 1.60 | 3.25 | 0.01 | 44.35 |
-| 120 | 55 | 0.698284 | 0.009864 | 0.689306 | 44.25 | 5.52 | 3.92 | 2.95 | 0.02 | 31.85 |
-| 240 | 65 | 0.547048 | 0.035456 | 0.514343 | 33.02 | 21.39 | 5.65 | 2.46 | 0.07 | 3.45 |
-| 360 | 75 | 0.391509 | 0.080375 | 0.318167 | 20.43 | 45.97 | 5.83 | 1.84 | 0.17 | -33.38 |
-| 420 | 80 | 0.276904 | 0.092056 | 0.193720 | 12.44 | 49.35 | 4.20 | 1.31 | 0.21 | -42.64 |
-| 480 | 85 | 0.143383 | 0.073044 | 0.078218 | 5.02 | 36.02 | 1.87 | 0.67 | 0.18 | -33.71 |
-| 540 | 90 | 0.039295 | 0.028934 | 0.013981 | 0.90 | 12.90 | 0.30 | 0.18 | 0.07 | -12.56 |
-| 600 | 95 | 0.003283 | 0.003060 | 0.000696 | 0.04 | 1.20 | 0.01 | 0.02 | 0.01 | -1.19 |
+| 0 | 45 | 1.000000 | 0.000000 | 1.000000 | 64.54 | 0.00 | 0.00 | 778.41 | 0.00 | -713.87 |
+| 1 | 45 | 0.994793 | 0.000056 | 0.994748 | 64.20 | 0.02 | 0.00 | 3.92 | 0.00 | 60.26 |
+| 2 | 45 | 0.989613 | 0.000111 | 0.989523 | 63.86 | 0.04 | 0.00 | 3.90 | 0.00 | 59.92 |
+| 12 | 46 | 0.939288 | 0.000644 | 0.938758 | 60.59 | 0.26 | 0.00 | 3.73 | 0.00 | 56.59 |
+| 60 | 50 | 0.798781 | 0.003771 | 0.795452 | 51.34 | 1.86 | 1.61 | 3.30 | 0.01 | 44.56 |
+| 120 | 55 | 0.698284 | 0.009864 | 0.689306 | 44.49 | 5.52 | 3.94 | 3.04 | 0.02 | 31.98 |
+| 240 | 65 | 0.547048 | 0.035456 | 0.514343 | 33.20 | 21.39 | 5.68 | 2.62 | 0.07 | 3.43 |
+| 360 | 75 | 0.391509 | 0.080375 | 0.318167 | 20.53 | 45.97 | 5.86 | 2.03 | 0.20 | -33.53 |
+| 420 | 80 | 0.276904 | 0.092056 | 0.193720 | 12.50 | 49.35 | 4.23 | 1.48 | 0.25 | -42.81 |
+| 480 | 85 | 0.143383 | 0.073044 | 0.078218 | 5.05 | 36.02 | 1.88 | 0.78 | 0.22 | -33.85 |
+| 540 | 90 | 0.039295 | 0.028934 | 0.013981 | 0.90 | 12.90 | 0.30 | 0.22 | 0.09 | -12.61 |
+| 600 | 95 | 0.003283 | 0.003060 | 0.000696 | 0.04 | 1.20 | 0.01 | 0.02 | 0.01 | -1.20 |
 | 660 | 100 | 0.000055 | 0.000053 | 0.000015 | 0.00 | 0.02 | 0.00 | 0.00 | 0.00 | -0.02 |
 | 779 | 109 | 0.000000 | 0.000000 | 0.000000 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| **Total** | | **268.956131** | **24.241784** | **247.014740** | **15,857.95** | **13,200.11** | **2,191.72** | **1,941.10** | **52.67** | **-1,527.65** |
+| **Total** | | **268.956131** | **24.241784** | **247.014740** | **15,942.14** | **13,200.11** | **2,203.35** | **2,014.04** | **61.74** | **-1,537.11** |
 
 **The Total row is summed over all 780 rows at full precision and then rounded**, not summed from the
-rounded cells, and here the two visibly differ: summing the rounded cells gives premiums 15,857.92,
-`claims_annuity` 13,200.02, `claims_lapse` 2,191.67, expenses 1,941.02, `claim_expenses` 52.58 and
-`net_cf` -1,527.51 — the last of these 0,14 € away. The gap is not noise that cancels. **107 of the
+rounded cells, and here the two visibly differ: summing the rounded cells gives premiums 15,942.06,
+`claims_annuity` 13,200.02, `claims_lapse` 2,203.24, expenses 2,013.94, `claim_expenses` 61.65 and
+`net_cf` -1,537.07 — the last of these 0,04 € away. The gap is not noise that cancels. **107 of the
 780 `claims_annuity` cells are positive amounts below half a cent**, and every one of them rounds
 down to 0.00, so the error accumulates in one direction; `claim_expenses` does the same, its 1,50 €
 per payment falling on a paying population of the order of 1e-5 for the first two decades.
@@ -931,18 +931,18 @@ per payment falling on a paying population of the order of 1e-5 for the first tw
 **Check 1 — the equivalence premium, from the four actuarial values.** The premium is not read off a
 rate card; it is the solution of the first-order equivalence, and the values that determine it are
 published as cells: `tariff_benefit_pv() = A = 17,789.761930`, `tariff_annuity() = U = 313.500018`,
-`epv_admin() = G = 892.884210`, `epv_claim_expense() = C = 69.389246`, with `β = load_admin_prem_inst =
+`epv_admin() = G = 980.607132`, `epv_claim_expense() = C = 81.218362`, with `β = load_admin_prem_inst =
 0.030` and the *Zillmerung* allowance `a1 = 0.025 × 12 × (85 − 45) = 12.000000` in units of `P`:
 
-    P = (17,789.761930 + 892.884210 + 69.389246) / (313.500018 x 0.970 - 12.000000)
-      = 18,752.035386 / 292.095018  =  64.198409
+    P = (17,789.761930 + 980.607132 + 81.218362) / (313.500018 x 0.970 - 12.000000)
+      = 18,851.587424 / 292.095018  =  64.539230
 
 which is `premium_mth_pp()` to the sixth decimal. Two by-products are worth reading. `U` is
 **26,13 years'** worth of discounted premium, against the "of the order of 27 years' worth" the
 research file argues from the other direction. And `prem_net_level_pp() = A / U = 56.745649`, so the
-whole expense loading is `64.198409 / 56.745649 = 1.131336` — **13,13 %** over the net level premium,
-of which the *Zillmerung* allowance alone is 2,53 € a month: strike `a1` out of the denominator and
-the premium falls to `18,752.035386 / 304.095018 = 61.665`.
+whole expense loading is `64.539230 / 56.745649 = 1.137342` — **13,73 %** over the net level premium,
+of which the *Zillmerung* allowance alone is 2,55 € a month: strike `a1` out of the denominator and
+the premium falls to `18,851.587424 / 304.095018 = 61.992`.
 
 **Check 2 — the first month's decrements, from the annual rates.** Nothing here needs the model. Read
 two annual rates out of the CSVs at age 45 female, convert them to forces, allocate one month's exits
@@ -997,27 +997,27 @@ of the whole benefit**, produced by an error no total in the frame would reveal.
 `pols_lapse_cum(780) = 0.506031940072` sum to **1.000000000000** with `pols_if(780) = 1.5e-23`: the
 decrements account for the entire policy, exactly, because `mort_rate` is forced to 1.0 at age 109.
 The cash flow statement closes the same way at every `t` — at `t = 0`,
-`64.198409 − 774.306859 = −710.108450`, with `expenses(0) = 770.380907 + 2.000000 + 1.925952`, the
-allowance `0.025 × 30,815.236279`, the month's per-policy administration and 3,0 % of the *Beitrag*
+`64.539230 − 778.406933 = −713.867703`, with `expenses(0) = 774.470756 + 2.000000 + 1.936177`, the
+allowance `0.025 × 30,978.830231`, the month's per-policy administration and 3,0 % of the *Beitrag*
 just collected. The largest `check_net_cf_resid(t)` anywhere in the frame is 1.4e-14, and
 `check_prem_equiv()` closes to 9.3e-12.
 
 ### Reading the result
 
-**The premium lands at 64,20 € a month, in the lower half of the argued 50,00–100,00 € band** [std].
+**The premium lands at 64,54 € a month, in the lower half of the argued 50,00–100,00 € band** [std].
 Three things put it there. The entry mix is weighted to the two lowest grades, which pay 0 % and
 30 %, so the stock-weighted average benefit is 54,5 % of the *vereinbarte Rente*. The model's own
 mean spell in an **insured** grade is 5,5 years, at the top of the three-to-five the research file
-argues. And the expense loading is 13,13 %, modest because the claims cost is per payment and low.
+argues. And the expense loading is 13,73 %, modest because the claims cost is per payment and low.
 
-**The sign pattern is the product's whole economic story.** Month 0 is -710,11 €, almost all of it the
+**The sign pattern is the product's whole economic story.** Month 0 is -713,87 €, almost all of it the
 25 ‰ *Zillmerung* allowance charged in one go. From `t = 1` the contract runs positive — the level
-*Beitrag* is far above the risk premium — and the monthly margin decays from 59,93 € to 3,45 € by age
+*Beitrag* is far above the risk premium — and the monthly margin decays from 60,26 € to 3,43 € by age
 65. **`net_cf` turns negative for good at `t = 252`, attained age 66**, where the incidence curve
 overtakes the level premium and, in the layer this model does not compute, where the *Deckungskapital*
 peaks. Annuity outgo peaks at 49,82 € in month 407 (age 78) and the population in care at 0.092120 in
 month 417 (age 79); the last three decades are run-off. Undiscounted the contract collects
-15,857.95 € and pays 17,385.60 € of benefit and expense, for -1,527.65 € — not a loss but the
+15,942.14 € and pays 17,479.25 € of benefit and expense, for -1,537.11 € — not a loss but the
 consequence of publishing an **undiscounted** stream whose income falls thirty years before its outgo.
 
 ### A second scenario: the male twin, model point 2
@@ -1027,23 +1027,23 @@ the unisex tension: **the two cells are priced identically and project different
 
 | `t` | `x(t)` | `pols_if` | `pols_care` | `pols_prem` | `premiums` | `claims_annuity` | `claims_lapse` | `expenses` | `claim_expenses` | `net_cf` |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 | 45 | 1.000000 | 0.000000 | 1.000000 | 64.20 | 0.00 | 0.00 | 774.31 | 0.00 | -710.11 |
-| 1 | 45 | 0.994719 | 0.000045 | 0.994683 | 63.86 | 0.02 | 0.00 | 3.91 | 0.00 | 59.93 |
-| 12 | 46 | 0.938452 | 0.000517 | 0.938027 | 60.22 | 0.21 | 0.00 | 3.71 | 0.00 | 56.30 |
-| 120 | 55 | 0.688060 | 0.007570 | 0.681181 | 43.73 | 4.20 | 3.87 | 2.91 | 0.01 | 32.74 |
-| 240 | 65 | 0.517213 | 0.024372 | 0.494872 | 31.77 | 14.23 | 5.44 | 2.35 | 0.05 | 9.71 |
-| 360 | 75 | 0.332372 | 0.045899 | 0.291187 | 18.69 | 24.19 | 5.37 | 1.60 | 0.10 | -12.56 |
-| 420 | 80 | 0.214158 | 0.047250 | 0.172470 | 11.07 | 22.80 | 3.80 | 1.05 | 0.11 | -16.68 |
-| 480 | 85 | 0.098388 | 0.033682 | 0.069319 | 4.45 | 14.73 | 1.72 | 0.49 | 0.08 | -12.58 |
-| 540 | 90 | 0.023361 | 0.012108 | 0.013274 | 0.85 | 4.73 | 0.33 | 0.12 | 0.03 | -4.36 |
+| 0 | 45 | 1.000000 | 0.000000 | 1.000000 | 64.54 | 0.00 | 0.00 | 778.41 | 0.00 | -713.87 |
+| 1 | 45 | 0.994719 | 0.000045 | 0.994683 | 64.20 | 0.02 | 0.00 | 3.92 | 0.00 | 60.26 |
+| 12 | 46 | 0.938452 | 0.000517 | 0.938027 | 60.54 | 0.21 | 0.00 | 3.73 | 0.00 | 56.60 |
+| 120 | 55 | 0.688060 | 0.007570 | 0.681181 | 43.96 | 4.20 | 3.90 | 3.00 | 0.01 | 32.86 |
+| 240 | 65 | 0.517213 | 0.024372 | 0.494872 | 31.94 | 14.23 | 5.47 | 2.50 | 0.05 | 9.69 |
+| 360 | 75 | 0.332372 | 0.045899 | 0.291187 | 18.79 | 24.19 | 5.39 | 1.77 | 0.11 | -12.67 |
+| 420 | 80 | 0.214158 | 0.047250 | 0.172470 | 11.13 | 22.80 | 3.82 | 1.19 | 0.13 | -16.80 |
+| 480 | 85 | 0.098388 | 0.033682 | 0.069319 | 4.47 | 14.73 | 1.73 | 0.57 | 0.10 | -12.66 |
+| 540 | 90 | 0.023361 | 0.012108 | 0.013274 | 0.86 | 4.73 | 0.33 | 0.14 | 0.04 | -4.38 |
 | 600 | 95 | 0.001538 | 0.001188 | 0.000612 | 0.04 | 0.40 | 0.01 | 0.01 | 0.00 | -0.38 |
-| **Total** | | **251.397804** | **13.561865** | **239.326567** | **15,364.38** | **6,936.34** | **2,086.29** | **1,871.13** | **28.29** | **4,442.33** |
+| **Total** | | **251.397804** | **13.561865** | **239.326567** | **15,445.95** | **6,936.34** | **2,097.36** | **1,934.86** | **32.92** | **4,444.47** |
 
-`premium_mth_pp()` is **64.198409** on both cells, to every decimal, because the pricing engine reads
+`premium_mth_pp()` is **64.539230** on both cells, to every decimal, because the pricing engine reads
 the unisex blend and never `sex()`. The projections are not close: the male cell's `claims_annuity`
-total is **6,936.34 €, 52,5 % of the female cell's**, and its `net_cf` total is **+4,442.33 €** against
-**-1,527.65 €**. That 5,969.98 € gap is the cross-subsidy the unisex rule requires, priced on a
-50 / 50 mix; a book written 60 / 40 female against this price carries a tenth of it — about 597 € of
+total is **6,936.34 €, 52,5 % of the female cell's**, and its `net_cf` total is **+4,444.47 €** against
+**-1,537.11 €**. That 5,981.58 € gap is the cross-subsidy the unisex rule requires, priced on a
+50 / 50 mix; a book written 60 / 40 female against this price carries a tenth of it — about 598 € of
 undiscounted net cash flow per policy — unfunded. Two drivers pull in opposite directions and
 incidence wins: male active mortality is higher at every age (`q(M, 45) = 0.0016637` against
 `q(F, 45) = 0.0007796`; `q(M, 85) = 0.1049833` against `0.0699052`), so fewer men survive to claim,
@@ -1058,26 +1058,26 @@ summed at full precision and then rounded:
 | | 1 — anchor | 2 — male twin | 5 — `bahr` grid | 8 — *Leistungsdynamik* |
 |---|---:|---:|---:|---:|
 | Configuration | F 45, `delib_std` | M 45, `delib_std` | F 50, `bahr`, annual | F 45, `d = 0.02` |
-| `premium_mth_pp()` | 64.198409 | 64.198409 | 55.444644 | 72.038378 |
+| `premium_mth_pp()` | 64.539230 | 64.539230 | 55.738573 | 72.379198 |
 | `proj_len()` | 780 | 780 | 720 | 780 |
-| `premiums` | 15,857.95 | 15,364.38 | 12,289.30 | 17,794.54 |
+| `premiums` | 15,942.14 | 15,445.95 | 12,354.45 | 17,878.73 |
 | `claims_annuity` | 13,200.11 | 6,936.34 | 10,110.36 | 15,101.44 |
-| `claims_lapse` | 2,191.72 | 2,086.29 | 1,482.02 | 2,459.37 |
-| `expenses` | 1,941.10 | 1,871.13 | 1,556.50 | 2,093.27 |
-| `claim_expenses` | 52.67 | 28.29 | 57.74 | 52.67 |
-| `net_cf` | -1,527.65 | 4,442.33 | -917.32 | -1,912.22 |
+| `claims_lapse` | 2,203.35 | 2,097.36 | 1,489.87 | 2,471.01 |
+| `expenses` | 2,014.04 | 1,934.86 | 1,611.68 | 2,166.21 |
+| `claim_expenses` | 61.74 | 32.92 | 66.20 | 61.74 |
+| `net_cf` | -1,537.11 | 4,444.47 | -923.68 | -1,921.68 |
 
 **The `bahr` grid is not simply a cheaper contract.** Point 5 enters five years later, so its premium
 is not comparable with the anchor's; the *shape* is. On 10 / 20 / 30 / 40 / 100 % the middle steps are
 roughly two thirds of `delib_std`'s while grade 1 is insured for the first time, and the second effect
-surfaces where a reader would not look for it: `claim_expenses` is **higher** on point 5 (57.74 €)
-than on the anchor (52.67 €) despite a frame sixty months shorter, because a grade-1 life now
+surfaces where a reader would not look for it: `claim_expenses` is **higher** on point 5 (66.20 €)
+than on the anchor (61.74 €) despite a frame sixty months shorter, because a grade-1 life now
 generates an annuity payment and so a per-payment cost — about a tenth of the care-months that
 `delib_std` charges nothing for — and because point 5 sits five years closer to the claim ages. The
 same life is also **waived** on `bahr` and **pays** on `delib_std`.
 
 **The *Leistungsdynamik* costs more than the draft of these notes predicted**, and pitfall 10 has been
-rewritten to the model's number: +14,4 % on the annuity total and +12,2 % on the premium, not the
+rewritten to the model's number: +14,4 % on the annuity total and +12,1 % on the premium, not the
 "less than 5 %" a four-year spell suggests. `esc_pg == pols_pg` exactly on the anchor at all 780 × 5
 combinations — `check_esc_ledger()` asserts it — and diverges on point 8: at `t = 480`,
 `esc_pg(480, 3) = 0.024913` against `pols_pg(480, 3) = 0.022576`, a factor of 1.1035 which is exactly

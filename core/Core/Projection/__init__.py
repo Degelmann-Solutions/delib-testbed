@@ -506,12 +506,12 @@ def hoechstrechnungszins():
 
 
 def beitragssumme_prem():
-    """The annual premium the *Beitragssumme* is struck on: the product's ``prem_gross_pp()``.
+    """The annual premium the *Beitragssumme* is struck on, ``prem_gross_level_pp()``.
 
     Reads the product's level annual gross premium; a product without one inherits this
     cell unused.
     """
-    return prem_gross_pp()                                           # noqa: F821
+    return prem_gross_level_pp()                                     # noqa: F821
 
 
 def beitragssumme_years():

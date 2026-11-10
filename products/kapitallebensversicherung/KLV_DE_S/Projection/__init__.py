@@ -37,7 +37,7 @@ So the argument of a cells says which clock it is on:
   :func:`res_pp_at`, :func:`res_guar_pp`, :func:`pu_single_prem`, :func:`is_paid_up`,
   :func:`bfz_uplift_pp`, :func:`decl_rate`, :func:`term_rate`, :func:`ans_rate`,
   :func:`surplus_base_pp`, :func:`surplus_credit_pp`, :func:`av_sur_pp`, :func:`term_bonus_pp`,
-  :func:`bonus_si_pp`, :func:`prem_offset_pp`, :func:`prem_charged_pp`, :func:`prem_paid_pp`
+  :func:`bonus_si_pp`, :func:`prem_rebate_pp`, :func:`prem_pp`, :func:`prem_paid_pp`
   and :func:`stornoabzug_rate`;
 * cells that state a **month** take ``t`` — the in force, the claims, the instalments, every
   ``result_cf()`` column, the expense inflation :func:`inflation_factor`, and the ``*_close_pp`` cells that say what a mid-month exit is paid;
@@ -132,7 +132,7 @@ phi                 prem_freq_load()                       Ratenzahlungszuschlag
                     tariff_maturity_pv(),
                     tariff_benefit_pv(), tariff_annuity(),
                     tariff_term_annuity()
-B                   prem_gross_pp()                        Annual Bruttobeitrag before phi
+B                   prem_gross_level_pp()                  Annual Bruttobeitrag before phi
 BS                  beitragssumme()                        Beitragssumme = B x m
 A                   zillmer_amount()                       Zillmered acquisition cost
 P^n                 prem_net_level_pp()                    Net level premium
@@ -165,8 +165,8 @@ U(k)                av_sur_pp(k)                           Ueberschussguthaben p
 (aggregate)         av_sur(k), av_sur_at(k, timing)        The same, times pols_if(12k)
 Z(k)                bonus_si_pp(k)                         Bonus sum insured
 (closing)           bonus_si_close_pp(t)                   The same, standing at end of month t
-(offset)            prem_offset_pp(k)                      Beitragsverrechnung offset
-B phi               prem_charged_pp(k)                     Annual Zahlbeitrag before the offset
+(offset)            prem_rebate_pp(k)                      Beitragsverrechnung offset
+B phi               prem_pp(k)                             Annual Zahlbeitrag before the offset
 (none)              prem_paid_pp(k)                        Annual Zahlbeitrag after it
 (none)              prem_cycle(), prem_due(t)              The instalment cycle
 (none)              prem_charged_inst_pp(t)                Instalment charged in month t
@@ -309,7 +309,7 @@ the best estimate has thrown away. ``rating_factor`` is a third thing again: it 
 *Risikozuschlag*, and it multiplies the first-order rate **in the death leg of the pricing and
 the prospective reserve only** — never the survivorship factors, never the benefit, and never
 a best-estimate rate. ``sex`` reaches :func:`mort_rate_base`, and therefore the
-**decrement**, and it reaches nothing else: ``prem_gross_pp()`` is identical for two model
+**decrement**, and it reaches nothing else: ``prem_gross_level_pp()`` is identical for two model
 points differing only in it, which is what model points 1 and 7 exist to make visible. The
 unisex blend behind the tariff is **[std]** - no German insurer publishes the portfolio mix
 behind its own.
@@ -320,13 +320,13 @@ behind its own.
 benefit; ``bonus`` buys paid-up sum insured at first-order rates in :func:`bonus_si_pp`,
 raising the **death** benefit immediately by the full bonus sum but accumulating only at
 ``rechnungszins``; ``beitragsverrechnung`` carries last year's credit forward as this year's
-premium offset in :func:`prem_offset_pp` and neither balance grows. Because
+premium offset in :func:`prem_rebate_pp` and neither balance grows. Because
 ``ans_rate > rechnungszins`` the first gives a higher maturity benefit and the second a higher
 death benefit — exactly the asymmetry the sources record, and the test that distinguishes
 them. A model that sets the two rates equal destroys it.
 
 Under ``beitragsverrechnung`` the **renewal commission is charged on
-:func:`prem_charged_pp`, not on :func:`prem_paid_pp`**: the intermediary is paid on the tariff
+:func:`prem_pp`, not on :func:`prem_paid_pp`**: the intermediary is paid on the tariff
 premium, the surplus offset being a policyholder rebate.
 
 .. rubric:: Modules that are off in the base run
@@ -368,7 +368,7 @@ endowment sits in the **reserve**, which opens at ``-zillmer_amount()``, and not
 **Nothing annual moved, and that is checkable rather than asserted.** Because the monthly
 decrement rates compound back to their policy year's annual values,
 ``[(1 - qm)(1 - wm)]^12 = (1 - q)(1 - w)``, the in force at every anniversary is the
-annual-step recursion term for term. So ``prem_gross_pp()`` is **bit-identical**, and so is
+annual-step recursion term for term. So ``prem_gross_level_pp()`` is **bit-identical**, and so is
 every one of the three reserves at every duration, the § 169 value, the *Beitragssumme*, the
 Zillmer cost, the declared credit, the *Ansammlung* balance, the bonus sum, the accrued
 terminal share and the paid-up sum the § 169 value buys. The equivalence, the Fackler
@@ -564,7 +564,7 @@ def mort_rate_at_age(x):
     :func:`mort_rate_tariff_at_age`, the unisex blend - and the two are deliberately different
     quantities.  A German tariff may not price on sex; a best-estimate projection of a
     particular life must.  ``sex`` therefore reaches the **decrement** and nothing else, and
-    ``prem_gross_pp()`` is identical for two model points differing only in it.
+    ``prem_gross_level_pp()`` is identical for two model points differing only in it.
     """
     return float(data.mort_table_dict()["mort_rate_1st"][            # noqa: F821
         (sex(), int(x))])
@@ -706,7 +706,7 @@ def tariff_maturity_sum():
     return sum_assured()
 
 
-def prem_gross_pp():
+def prem_gross_level_pp():
     """B: the annual *Bruttobeitrag* per policy before the *Ratenzahlungszuschlag*.
 
     Struck by the first-order equivalence principle, which is linear in ``B`` because the
@@ -732,7 +732,7 @@ def prem_zill_pp():
 
     The net premium plus the level annual charge that amortises the zillmered acquisition cost
     over the *Beitragszahlungsdauer*.  It is the premium the Zillmer reserve rolls forward on,
-    which is why :func:`check_res_roll_fwd` reads it and not :func:`prem_charged_pp`: one is a
+    which is why :func:`check_res_roll_fwd` reads it and not :func:`prem_pp`: one is a
     first-order reserving quantity and the other is a cash flow.
     """
     return prem_net_level_pp() + zillmer_amount() / tariff_annuity()
@@ -890,7 +890,7 @@ def res_pp_at(k, timing):
         after the first-order Zillmer premium has been credited, and after any
         :func:`bfz_uplift_pp`.  The premium credited here is ``prem_zill_pp()`` - a
         **first-order reserving quantity**, not the *Zahlbeitrag* of
-        :func:`prem_charged_pp` - and it is credited only while the contract is
+        :func:`prem_pp` - and it is credited only while the contract is
         premium-paying.
 
     ``"AFT_INT"``
@@ -1083,7 +1083,7 @@ def surplus_credit_pp(k):
     """C(k): the surplus allocated to the contract for policy year k, per policy.
 
     ``zins_ueberschuss_rate(k) * surplus_base_pp(k)``.  Zero before the frame opens - a
-    defensive floor only: no cells reads it there, because :func:`prem_offset_pp` returns zero
+    defensive floor only: no cells reads it there, because :func:`prem_rebate_pp` returns zero
     in the first projected year instead of reaching for a predecessor outside the frame.
 
     What it is applied *to* is decided by :func:`surplus_use`, not here: this cells is the
@@ -1195,10 +1195,10 @@ def bonus_si_pp(k):
     return bonus_si_pp(k - 1) + add
 
 
-def prem_offset_pp(k):
+def prem_rebate_pp(k):
     """The *Beitragsverrechnung* offset applied to the year-k *Zahlbeitrag*, per policy.
 
-    ``min(prem_charged_pp(k), surplus_credit_pp(k - 1))`` under ``beitragsverrechnung`` and
+    ``min(prem_pp(k), surplus_credit_pp(k - 1))`` under ``beitragsverrechnung`` and
     zero otherwise: **last** year's declared surplus reduces **this** year's premium, floored
     at zero so that a surplus larger than the premium never becomes a payment to the
     policyholder.  In the first projected year there is no last year, so the offset is zero
@@ -1207,40 +1207,40 @@ def prem_offset_pp(k):
     What it reduces is a *Zahlbeitrag*, not a *Bruttobeitrag*: the tariff premium is unchanged
     and the offset is a **discretionary** rebate the insurer may withdraw without invoking
     § 163 VVG at all.  That is why the renewal commission is charged on
-    :func:`prem_charged_pp` and not on :func:`prem_paid_pp`.
+    :func:`prem_pp` and not on :func:`prem_paid_pp`.
     """
     if surplus_use() != "beitragsverrechnung":
         return 0.0
     if k <= k_start():
         return 0.0
-    return min(prem_charged_pp(k), surplus_credit_pp(k - 1))
+    return min(prem_pp(k), surplus_credit_pp(k - 1))
 
 
 # --- premium ---------------------------------------------------------------
 
-def prem_charged_pp(k):
+def prem_pp(k):
     """The **annual** *Zahlbeitrag* charged per policy in policy year k, before any offset.
 
-    ``prem_gross_pp() * prem_freq_load()`` while ``k < prem_term()`` **and** the contract is
-    not *beitragsfrei*; zero otherwise.  ``m`` premiums fall in years ``k = 0 ... m - 1``,
-    which is the 0-based reading of "payable over the *Beitragszahlungsdauer*".  An annual
+    ``prem_gross_level_pp() * prem_freq_load()`` while ``k < prem_term()`` **and** the
+    contract is not *beitragsfrei*; zero otherwise.  ``m`` premiums fall in years ``k = 0 ...
+    m - 1``, the 0-based reading of "payable over the *Beitragszahlungsdauer*".  An annual
     amount: ``phi`` loads the year's *Bruttobeitrag* once, and what is collected in a month is
     :func:`prem_charged_inst_pp`.
     """
     if k < prem_term() and not is_paid_up(k):
-        return prem_gross_pp() * prem_freq_load()
+        return prem_gross_level_pp() * prem_freq_load()
     return 0.0
 
 
 def prem_paid_pp(k):
     """The **annual** *Zahlbeitrag* actually paid per policy in year k, after the offset.
 
-    ``prem_charged_pp(k) - prem_offset_pp(k)``.  It differs from :func:`prem_charged_pp` only
+    ``prem_pp(k) - prem_rebate_pp(k)``.  It differs from :func:`prem_pp` only
     under ``beitragsverrechnung``, and the difference is a policyholder rebate rather than a
     price change - which is why the two are separate cells and why the commission reads the
     first of them.
     """
-    return prem_charged_pp(k) - prem_offset_pp(k)
+    return prem_pp(k) - prem_rebate_pp(k)
 
 
 def prem_due(t):
@@ -1263,7 +1263,7 @@ def prem_due(t):
 def prem_charged_inst_pp(t):
     """The *Zahlbeitrag* instalment **charged** in month t before any offset, or zero.
 
-    ``prem_charged_pp(duration(t)) / instalments()`` where :func:`prem_due` makes one due.
+    ``prem_pp(duration(t)) / instalments()`` where :func:`prem_due` makes one due.
     The instalments of a policy year therefore sum to exactly that year's annual charge, the
     loading included: ``phi`` multiplies the annual amount once and the division into
     instalments is what it pays for.  Loading each instalment again charges it twice.
@@ -1272,7 +1272,7 @@ def prem_charged_inst_pp(t):
     *Beitragsverrechnung* the intermediary is paid on the tariff premium, the surplus offset
     being a policyholder rebate.
     """
-    return (prem_charged_pp(duration(t)) / instalments()
+    return (prem_pp(duration(t)) / instalments()
             if prem_due(t) else 0.0)
 
 
@@ -1813,7 +1813,7 @@ def check_surplus_roll_fwd_resid(k):
 
     Under ``ansammlung``, ``av_sur_pp(k+1) - [av_sur_pp(k) (1 + a(k)) + C(k)]``; under
     ``bonus``, ``bonus_si_pp(k+1) - [bonus_si_pp(k) + C(k) / pu_single_prem(k+1)]``; under
-    ``beitragsverrechnung``, ``prem_offset_pp(k) - min(prem_charged_pp(k), C(k-1))``.
+    ``beitragsverrechnung``, ``prem_rebate_pp(k) - min(prem_pp(k), C(k-1))``.
 
     One check for three ledgers, because exactly one of them is live on any model point - and
     a model that credits the same surplus to two of them fails here rather than quietly
@@ -1827,8 +1827,8 @@ def check_surplus_roll_fwd_resid(k):
         return (bonus_si_pp(k + 1)
                 - (bonus_si_pp(k)
                    + surplus_credit_pp(k) / pu_single_prem(k + 1)))
-    return prem_offset_pp(k) - min(
-        prem_charged_pp(k),
+    return prem_rebate_pp(k) - min(
+        prem_pp(k),
         surplus_credit_pp(k - 1) if k > k_start() else 0.0)
 
 
@@ -1913,7 +1913,7 @@ def check_equivalence_resid(t):
     the acquisition cost is in the premium whether or not the contract is zillmered, which is
     why a *gezillmerte* and a non-*gezillmerte* edition of one tariff cost the same.
     """
-    return (prem_gross_pp() * (1.0 - load_admin_prem_inst()) * tariff_annuity()
+    return (prem_gross_level_pp() * (1.0 - load_admin_prem_inst()) * tariff_annuity()
             - alpha_rate() * beitragssumme()
             - tariff_benefit_pv()
             - load_admin_sum_ann() * sum_assured() * tariff_term_annuity())
@@ -1923,7 +1923,7 @@ def check_equivalence():
     """True when the first-order pricing equivalence closes.
 
     No argument, one bool; :func:`check_equivalence_resid` gives the signed residual.  It is
-    what makes :func:`prem_gross_pp` a derived quantity rather than an asserted one, and it is
+    what makes :func:`prem_gross_level_pp` a derived quantity rather than an asserted one, and it is
     the only check that would fail if the *Beitragssumme* were formed on the loaded
     *Zahlbeitrag* instead of on the *Bruttobeitrag*.
     """

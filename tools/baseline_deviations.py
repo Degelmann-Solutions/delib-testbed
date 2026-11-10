@@ -102,7 +102,7 @@ EURO_COLUMNS: dict[str, tuple[str, ...]] = {
         "premiums", "zuzahlungen", "claims_death", "claims_annuity", "claims_survivor",
         "expenses", "commissions", "net_cf", "liability_cf"),
     "berufsunfaehigkeit": (
-        "premiums", "surplus_credit", "claims_bu_rente", "claims_reintegration", "claims_lapse",
+        "premiums", "claims_bu_rente", "claims_reintegration", "claims_lapse",
         "expenses", "claim_expenses", "liability_cf", "net_cf"),
     "fondsgebundene_rentenversicherung": (
         "premiums", "prem_to_av", "charge_acq", "charge_admin_prem", "charge_admin_fund",

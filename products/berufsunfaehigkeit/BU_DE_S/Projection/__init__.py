@@ -93,8 +93,7 @@ P                          prem_gross_level_pp()           Level annual Bruttobe
 (none)                     prem_gross_pp(t)                Annual Bruttobeitrag at t
 (none)                     prem_due(t)                     Is an instalment due in month t
 P_b(t)                     prem_charged_inst_pp(t)         Bruttobeitrag instalment at t
-P_z(t)                     prem_zahl_pp(t)                 Zahlbeitrag instalment at t
-(1 - theta) P_b(t)         surplus_credit_pp(t)            Beitragsverrechnung instalment
+(1 - theta) P_b(t)         prem_rebate_inst_pp(t)          Beitragsverrechnung instalment
 BS_unit                    beitragssumme_unit()            Beitragssumme per 1 EUR p.a.
 i(x)                       inc_rate_base(t)                Table inception rate at x(t)
 i(x) kappa alpha upsilon   inc_rate(t)                     Composed annual inception rate
@@ -125,9 +124,8 @@ L_p(t)                     pols_prem(t)                    Premium-paying count
 (none)                     pols_death(t)                   Deaths out of all three ledgers
 (none)                     pols_lapse(t)                   Lapses, from pols_actv only
 (the shadow ledgers)       ``*_first``                      The first-order pricing run
-P_b(t)                     prem_inst_pp(t)                 Bruttobeitrag due per policy
-premiums(t)                premiums(t)                     Gross Bruttobeitrag income
-surplus_credit(t)          surplus_credit(t)               Beitragsverrechnung returned
+P_z(t)                     prem_inst_pp(t)                 Zahlbeitrag instalment at t
+premiums(t)                premiums(t)                     Zahlbeitrag income
 claims_bu_rente etc.       claims(t, kind)                 Benefit outgo by kind
 (none)                     claim_kinds()                   BU_RENTE / REINTEGRATION / LAPSE
 (none)                     claims_other(t, kind)           BU_RENTE and REINTEGRATION
@@ -254,9 +252,9 @@ is one sum over an array rather than a lookup per cohort.
   the lapse rate depend on the premium, which depends on the projection.
 - **The *Zahlbeitrag* re-rating.** ``beitragsverrechnung`` is held constant for the whole
   projection. It is the model's single largest discretionary assumption and the one the
-  product's own consumer literature warns about; a user modelling the risk raises
-  :func:`surplus_credit` toward zero over time, which raises collected premium toward the
-  *Bruttobeitrag* and moves nothing else.
+  product's own consumer literature warns about; a user modelling the risk lowers
+  :func:`prem_rebate_inst_pp` toward zero over time, which raises collected premium
+  toward the *Bruttobeitrag* and moves nothing else.
 - **The *Nachversicherungsgarantie***, not modelled at all: it needs a take-up assumption
   *and* an anti-selection loading on the incremental cover, and neither is sourceable.
 
@@ -970,7 +968,7 @@ def prem_gross_level_pp():
     it is acyclic because no decrement in this model depends on the premium.
 
     This is the *Bruttobeitrag*: the contractually guaranteed **maximum**.  What is
-    actually charged is :func:`prem_zahl_pp`, ``beitragsverrechnung()`` times it.
+    actually charged is :func:`prem_inst_pp`, ``beitragsverrechnung()`` times it.
     """
     prem_std = float(model_point()["prem_gross_level_std_pp"])
     if prem_std > 0.0:
@@ -1021,24 +1019,15 @@ def prem_charged_inst_pp(t):
     return prem_gross_pp(t) * prem_freq_load() * prem_cycle() / 12.0
 
 
-def prem_zahl_pp(t):
-    """P_z(t): the *Zahlbeitrag* instalment actually billed at month t, per policy.
+def prem_rebate_inst_pp(t):
+    """(1 - theta) P_b(t): the *Beitragsverrechnung* netted off the instalment at month t.
 
-    ``beitragsverrechnung() x prem_charged_inst_pp(t)`` — the *Bruttobeitrag* less the
-    *Beitragsverrechnung*.  This is the number a *Produktinformationsblatt* prints beside
-    the *Bruttobeitrag*, and the one the policyholder pays; the gap between them is the
-    anticipated *Ueberschuss* credited in advance, and it can be withdrawn as far as the
-    *Bruttobeitrag* and no further.
-    """
-    return beitragsverrechnung() * prem_charged_inst_pp(t)
-
-
-def surplus_credit_pp(t):
-    """(1 - theta) P_b(t): the *Beitragsverrechnung* credited at month t, per policy.
-
-    Published as its own quantity rather than netted inside the premium, so that the
-    *Ueberschussbeteiligung* is a visible line of the cash flow statement.  A model
-    carrying only the *Zahlbeitrag* silently assumes this credit is permanent.
+    The anticipated *Ueberschuss* of § 153 VVG through § 176, credited in advance against
+    the *Bruttobeitrag* instalment, per policy.  It is a cell of its own and no column of
+    the cash flow statement: the statement's premium is the *Zahlbeitrag*
+    :func:`prem_inst_pp`, and :func:`check_prem_split` closes the two against the
+    instalment due.  A model carrying only the *Zahlbeitrag* silently assumes this credit
+    is permanent.
     """
     return (1.0 - beitragsverrechnung()) * prem_charged_inst_pp(t)
 
@@ -1640,30 +1629,26 @@ def pols_prem(t):
 # --- the cash flows ---
 
 def prem_inst_pp(t):
-    """The **gross** *Bruttobeitrag* instalment per policy at the start of month t.
+    """P_z(t): the *Zahlbeitrag* instalment collected per policy at the start of month t.
 
-    ``prem_charged_inst_pp(t)``, zero in a month that is not a payment month; the core's
-    :func:`premiums` weights it by :func:`pols_prem`.  The premium column is the gross
-    stream; the *Beitragsverrechnung* returned out of it is :func:`surplus_credit`, and the
-    cash actually collected is the difference.  Publishing both is what keeps the
-    *Ueberschussbeteiligung* a visible line rather than a netting hidden inside the premium.
-
-    Override reason: the premium is the *Bruttobeitrag* instalment due in the month,
-    products/berufsunfaehigkeit/technical-notes.md:186
-    """
-    return prem_charged_inst_pp(t)
-
-
-def surplus_credit(t):
-    """The *Beitragsverrechnung* credited back at the start of month t, an outflow.
-
-    ``surplus_credit_pp(t) x pols_prem(t)`` — 30 % of every *Bruttobeitrag* at the
-    shipped ratio.  It is the *Ueberschussbeteiligung* of § 153 VVG through § 176, applied
+    ``beitragsverrechnung() x prem_charged_inst_pp(t)`` — the *Bruttobeitrag* instalment
+    less the *Beitragsverrechnung*, zero in a month that is not a payment month; the
+    core's :func:`premiums` weights it by :func:`pols_prem`.  This is the number a
+    *Produktinformationsblatt* prints beside the *Bruttobeitrag*, and the one the
+    policyholder pays; the gap between them, :func:`prem_rebate_inst_pp`, is the
+    anticipated *Ueberschuss* credited in advance — 30 % of every *Bruttobeitrag* at the
+    shipped ratio, the *Ueberschussbeteiligung* of § 153 VVG through § 176 applied
     immediately as a reduction of the premium charged rather than accumulated, which is
-    the standard *Ueberschussverwendung* in German BU and is why this model carries no
-    surplus account, no RfB and no declaration mechanic.
+    why this model carries no surplus account, no RfB and no declaration mechanic — and
+    it can be withdrawn as far as the *Bruttobeitrag* and no further.
+
+    The premium column of the statement is the money collected, as in every product
+    (docs/core.md, "Contract data and charges").
+
+    Override reason: the premium is the *Zahlbeitrag* instalment, the instalment due less
+    the *Beitragsverrechnung*, products/berufsunfaehigkeit/technical-notes.md:186
     """
-    return surplus_credit_pp(t) * pols_prem(t)
+    return beitragsverrechnung() * prem_charged_inst_pp(t)
 
 
 def claim_kinds():
@@ -1729,8 +1714,9 @@ def expenses(t):
       already incurred it, and charging it again at the valuation date is a numbered
       pitfall.  At 2.5 % of a 37-year *Beitragssumme* it is the largest single expense
       item in the model and it dominates the first month's :func:`net_cf`;
-    * **proportional administration**, ``load_admin_prem_inst x premiums(t)``, in every month a
-      premium is due;
+    * **proportional administration**, ``load_admin_prem_inst x prem_charged_inst_pp(t) x
+      pols_prem(t)``, in every month a premium is due: a share of the *Bruttobeitrag*
+      instalment, before the *Beitragsverrechnung*, not of :func:`premiums`;
     * **flat administration**, ``load_admin_pp_ann / 12`` per in-force policy per month,
       **uninflated**, because a German *Verwaltungskostenzuschlag* is fixed in the tariff
       at conclusion.
@@ -1782,10 +1768,10 @@ def claim_expenses(t):
 def net_cf(t):
     """The net liability cash flow of month t, **income positive**.
 
-    The gross *Bruttobeitrag* less the *Beitragsverrechnung* returned out of it, less the
-    *BU-Rente*, the *Wiedereingliederungshilfe* and the (structurally zero) lapse benefit,
-    less administration expense and *Leistungsbearbeitungskosten*.  The library-wide sign;
-    :func:`liability_cf` publishes the same stream outgo-positive.
+    The *Zahlbeitrag* collected, less the *BU-Rente*, the *Wiedereingliederungshilfe* and
+    the (structurally zero) lapse benefit, less administration expense and
+    *Leistungsbearbeitungskosten*.  The library-wide sign; :func:`liability_cf` publishes
+    the same stream outgo-positive.
 
     The shape to expect is a large first-month strain — the whole acquisition charge falls
     in month 0 — then thin positive margins that thin further as the inception rate
@@ -1793,12 +1779,11 @@ def net_cf(t):
     *Endalter*, which is exactly the *Deckungsrueckstellung* this model does not compute
     being run down.
 
-    Override reason: the *Beitragsverrechnung* is subtracted before the claim total and the
+    Override reason: the claim total is subtracted at once and the
     *Leistungsbearbeitungskosten* after the expenses,
     products/berufsunfaehigkeit/technical-notes.md:557
     """
-    return (premiums(t) - surplus_credit(t) - claims(t)
-            - expenses(t) - claim_expenses(t))
+    return premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
 
 
 # --- the published identities ---
@@ -1810,22 +1795,21 @@ def check_net_cf_resid(t):
     parts, so the headline number of a cash flow model is not the one quantity nothing
     checks.  The identity is
 
-        net_cf(t) = prem_zahl_pp(t) x pols_prem(t)
+        net_cf(t) = prem_inst_pp(t) x pols_prem(t)
                     - claims(t, "BU_RENTE") - claims(t, "REINTEGRATION")
                     - claims(t, "LAPSE") - expenses(t) - claim_expenses(t)
 
     and the premium leg is deliberately rebuilt from the *Zahlbeitrag* **actually billed**
-    times the premium-paying count rather than from ``premiums(t) - surplus_credit(t)``.
-    That makes this a real reconciliation instead of a restatement of :func:`net_cf`'s own
-    formula: it crosses the *Brutto* / *Zahl* split, and it fails if the premium is
-    weighted by :func:`pols_if` instead of :func:`pols_prem` — which is this product's
-    classic implementation error, and one that leaves every total in the frame looking
-    plausible.
+    times the premium-paying count rather than read from the frame's ``premiums``.  It
+    fails if a :func:`premiums` of this product's own came to weight the instalment by
+    :func:`pols_if` instead of :func:`pols_prem` — this product's classic implementation
+    error, and one that leaves every total in the frame looking plausible — and the
+    claims are rebuilt kind by kind where :func:`net_cf` subtracts their total.
 
     Override reason: the premium leg is rebuilt from the *Zahlbeitrag* billed times the
     paying count, not from the frame, products/berufsunfaehigkeit/model.md:185
     """
-    return net_cf(t) - (prem_zahl_pp(t) * pols_prem(t)
+    return net_cf(t) - (prem_inst_pp(t) * pols_prem(t)
                         - claims(t, "BU_RENTE")
                         - claims(t, "REINTEGRATION")
                         - claims(t, "LAPSE")
@@ -1953,18 +1937,19 @@ def check_runoff_roll_fwd():
 def check_prem_split_resid(t):
     """The *Brutto* / *Zahl* split residual in month t; zero everywhere.
 
-    ``premiums(t) - surplus_credit(t) - prem_zahl_pp(t) x pols_prem(t)``.  The two premium
-    columns must reconcile to the *Zahlbeitrag* actually billed, so that a reader can
-    recover the cash collected from the frame without knowing the ratio.  It also fixes
-    the *Ratenzahlungszuschlag*'s place: ``prem_freq_load`` scales the *Bruttobeitrag* and the
-    *Beitragsverrechnung* together, so it cancels out of this identity and
-    ``beitragsverrechnung`` stays exactly the ratio the tariff quotes.
+    ``prem_charged_inst_pp(t) - prem_inst_pp(t) - prem_rebate_inst_pp(t)``, per policy.
+    The *Zahlbeitrag* instalment and the *Beitragsverrechnung* must add up to the
+    *Bruttobeitrag* instalment due, so that the rebate no column publishes is recovered
+    from the premium collected.  It also fixes the *Ratenzahlungszuschlag*'s place:
+    ``prem_freq_load`` scales the *Bruttobeitrag* and the *Beitragsverrechnung* together,
+    so it cancels out of this identity and ``beitragsverrechnung`` stays exactly the ratio
+    the tariff quotes.
     """
-    return premiums(t) - surplus_credit(t) - prem_zahl_pp(t) * pols_prem(t)
+    return prem_charged_inst_pp(t) - prem_inst_pp(t) - prem_rebate_inst_pp(t)
 
 
 def check_prem_split():
-    """True when the two premium columns reconcile to the *Zahlbeitrag* in every month."""
+    """True when *Zahlbeitrag* and *Beitragsverrechnung* add up to the instalment due."""
     return all(abs(check_prem_split_resid(t)) <= roll_fwd_tol()      # noqa: F821
                * max(1.0, abs(prem_gross_pp(t)))
                for t in range(0, proj_len()))
@@ -2012,9 +1997,9 @@ def result_cf_columns():
     run-off — and ``pols_prem`` is the premium-paying count, which is **below**
     ``pols_if`` wherever anyone is in claim past the *Karenzzeit*.
 
-    ``premiums`` is the **gross** *Bruttobeitrag* and ``surplus_credit`` the
-    *Beitragsverrechnung* returned out of it, so the cash actually collected is the
-    difference of the two.  ``claims_lapse`` is a column of zeros — there is no surrender
+    ``premiums`` is the *Zahlbeitrag*, the money collected: the *Bruttobeitrag* instalment
+    less the *Beitragsverrechnung*, which is the cell :func:`prem_rebate_inst_pp` and no
+    column.  ``claims_lapse`` is a column of zeros — there is no surrender
     or paid-up cash flow in this model — and is published rather than dropped so that the
     scope statement is made rather than inferred.  ``liability_cf`` is ``net_cf``
     outgo-positive.
@@ -2024,7 +2009,7 @@ def result_cf_columns():
     simply stops.
 
     Override reason: the statement carries the three state counts, the paying count, the
-    *Beitragsverrechnung*, the three claim kinds and the claims-handling cost,
+    three claim kinds and the claims-handling cost,
     products/berufsunfaehigkeit/technical-notes.md:542-544
     """
     return (
@@ -2034,7 +2019,6 @@ def result_cf_columns():
         ("pols_runoff", pols_runoff),                                # noqa: F821
         ("pols_prem", pols_prem),                                    # noqa: F821
         ("premiums", premiums),                                      # noqa: F821
-        ("surplus_credit", surplus_credit),                          # noqa: F821
         ("claims_bu_rente", lambda t: claims(t, "BU_RENTE")),        # noqa: F821
         ("claims_reintegration",
          lambda t: claims(t, "REINTEGRATION")),                      # noqa: F821
@@ -2092,7 +2076,7 @@ def result_states_columns():
         ("lapse_rate", lapse_rate),                                  # noqa: F821
         ("bu_rente_pp", bu_rente_pp),                                # noqa: F821
         ("prem_charged_inst_pp", prem_charged_inst_pp),              # noqa: F821
-        ("prem_zahl_pp", prem_zahl_pp),                              # noqa: F821
+        ("prem_inst_pp", prem_inst_pp),                              # noqa: F821
     )
 
 

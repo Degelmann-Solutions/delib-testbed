@@ -30,10 +30,10 @@ policyholder, so a recovery does not release the liability in the month it happe
 **The premium is quoted as two numbers.** The *Bruttobeitrag* is the contractually
 guaranteed maximum, struck on *Rechnungsgrundlagen erster Ordnung*; the *Zahlbeitrag*
 actually charged is ``beitragsverrechnung`` times it, the anticipated *Ueberschuss*
-credited in advance under § 153 VVG through § 176. Both are published —
-:func:`~.BU_DE_S.Projection.premiums` is the gross stream and
-:func:`~.BU_DE_S.Projection.surplus_credit` the credit returned out of it — because a
-model carrying only one of them either assumes the credit is permanent or overstates
+credited in advance under § 153 VVG through § 176. Both are cells —
+:func:`~.BU_DE_S.Projection.premiums` is the *Zahlbeitrag* collected and
+:func:`~.BU_DE_S.Projection.prem_rebate_inst_pp` the credit netted off it — because a
+model knowing only one of them either assumes the credit is permanent or overstates
 collected premium by ``1 / 0.70 - 1``. No German BU rate card exists in this library's
 source corpus, so the *Bruttobeitrag* is **derived** by an equivalence on a stated
 first-order basis rather than read from a table.

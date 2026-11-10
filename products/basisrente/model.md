@@ -96,7 +96,7 @@ rather than the whole of it, worth −44,25 € on the anchor.
 
 What the grid deliberately does **not** change is the contribution. The *Ratenzahlungszuschlag*
 is how a German tariff prices a fractionated mode — it loads the **amount**, not the
-*Versicherungsperiode* — so `prem_due(t)` puts the whole year's *Beitrag* and *Zuzahlung* in the
+*Versicherungsperiode* — so the model puts the whole year's *Beitrag* and *Zuzahlung* in the
 first month of the projection year whatever `prem_freq` says, and the account they are credited
 to is a *Deckungskapital* struck per *Versicherungsjahr*. Splitting the cash into instalments
 while crediting the account annually would make the fund's cash and the account's credit
@@ -210,7 +210,7 @@ A Basisrente model that offers only a level regular premium models the wrong pro
 prem_gross_pp(k) = prem_gross_level_pp x (1 + prem_dyn_rate)^duration_y(k)  # contractual
 prem_pp(k)       = prem_gross_pp(k) x prem_freq_load()  if prem_due(12 k) else 0   # contractual
 zuz_pp(k)        = zuzahlung_pp x zuz_take_up(duration_y(k) + 1)     # behavioural
-premiums(t)      = (prem_pp(k) + zuz_pp(k)) x pols_paying(t)  if prem_due(t) else 0,  k = proj_year(t)
+premiums(t)      = (prem_pp(k) + zuz_pp(k)) x pols_paying(t)  if t % 12 == 0 else 0,  k = proj_year(t)
 ```
 
 All three are annual amounts and take `k`; only the fund-level column is monthly, and it is

@@ -567,9 +567,11 @@ def zuz_pp(k):
     """Z(k): the *Zuzahlung* paid per premium-paying policy in year k.
 
     ``zuzahlung_pp x zuz_take_up(k)``, taken at the start of the year alongside the
-    *laufender Beitrag* and carrying **no** *Ratenzahlungszuschlag*.  Zero in a year
-    :func:`prem_due` makes no premium payable, zero once ``duration_y(k) >=
-    zuzahlung_end_dur``, and zero on a model point that opens *beitragsfrei*.
+    *laufender Beitrag* and carrying **no** *Ratenzahlungszuschlag*.  Zero from
+    ``k = k_conv()``, zero once ``duration_y(k) >= zuzahlung_end_dur``, and zero on a
+    model point that opens *beitragsfrei*.  The *Zuzahlung* is not bounded by the premium
+    term: its end is ``zuzahlung_end_dur`` and *Rentenbeginn*, not :func:`prem_due`, so a
+    single-premium contract may top up in any year of its *Aufschubphase*.
 
     The *Zuzahlung* is the product's signature premium form — a self-employed buyer tops
     the contract up out of a good year — and a distinct premium form on a distinct charge
@@ -578,7 +580,7 @@ def zuz_pp(k):
     ``premiums`` column hold both; setting ``zuz_take_up`` to zero — which removes about
     two fifths of the anchor's contribution stream — is the variant that shows its size.
     """
-    if not prem_due(12 * k):
+    if k < 0 or k >= k_conv() or k >= proj_len_y():
         return 0.0
     if int(model_point()["paidup_at_init"]) == 1:
         return 0.0
@@ -719,8 +721,11 @@ def prem_due(t):
     *Rentenbeginn*, ``0 <= proj_year(t) < k_conv()``; on the ``single`` form in the first
     year alone, and only where ``duration_init = 0``: the *Einmalbeitrag* is paid once, at
     inception.  This cell is the only source of a zero for the end of the premium term:
-    :func:`prem_pp` and :func:`zuz_pp` read it at ``12 k``, the first month of their year,
-    and no premium cell tests *Rentenbeginn* or the single payment itself.
+    :func:`prem_pp` reads it at ``12 k``, the first month of its year, and tests neither
+    *Rentenbeginn* nor the single payment itself.  The *Zuzahlung* is not bounded by the
+    premium term and does not read this cell: :func:`zuz_pp` ends with
+    ``zuzahlung_end_dur`` and *Rentenbeginn*, and its month is the first of a projection
+    year, which :func:`prem_inst_pp` tests itself.
 
     The whole *Versicherungsjahr*'s contribution is taken in the **first month** of the
     projection year, with the *Zuzahlung* beside it.  The *Ratenzahlungszuschlag* is the
@@ -743,19 +748,21 @@ def prem_due(t):
 def prem_inst_pp(t):
     """P(k) + Z(k): the money collected per paying policy in month t, or zero.
 
-    ``prem_pp(k) + zuz_pp(k)`` at ``k = proj_year(t)`` in the month the year's premium
-    falls due and zero in the other eleven: the *laufender Beitrag* and, beside it, the
-    *Zuzahlung*, a single payment that carries no *Ratenzahlungszuschlag* precisely because
-    it is not fractionated.  The core's :func:`premiums` weights it by :func:`pols_prem`,
+    ``prem_pp(k) + zuz_pp(k)`` at ``k = proj_year(t)`` in the first month of a projection
+    year, ``t % 12 == 0``, and zero in the other eleven: the *laufender Beitrag*, zero
+    where :func:`prem_due` makes none payable, and, beside it, the *Zuzahlung*, whose month
+    is the first of the year and not :func:`prem_due` (a single-premium contract tops up
+    after its one premium).  The *Zuzahlung* is a single payment that carries no
+    *Ratenzahlungszuschlag* precisely because it is not fractionated.  The core's :func:`premiums` weights it by :func:`pols_prem`,
     the premium-paying ledger, so the ``premiums`` column is the money collected, as in
     every product (docs/core.md, "Contract data and charges").  Because the count at the
     start of a projection year is the annual-step model's own ``pols_paying(k)``, the
     column sums over a year to that model's premium and *Zuzahlung* income.
 
     Override reason: the year's premium ``prem_pp(proj_year(t))`` and *Zuzahlung* fall due
-    whole in the month ``prem_due`` makes them payable, products/basisrente/model.md:213
+    whole in the first month of the projection year, products/basisrente/model.md:213
     """
-    if not prem_due(t):
+    if t % 12 != 0:
         return 0.0
     k = proj_year(t)
     return prem_pp(k) + zuz_pp(k)

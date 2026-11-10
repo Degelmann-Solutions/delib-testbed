@@ -3619,6 +3619,32 @@ def test_prem_due_alone_zeroes_the_premium_after_its_term(product_models):
         assert amount == 0.0
 
 
+def test_basis_zuzahlung_is_not_bounded_by_the_premium_term(tmp_path):
+    """A single-premium point pays a *Zuzahlung* after its one premium: ``zuz_pp`` ends with
+    ``zuzahlung_end_dur`` and *Rentenbeginn*, not with ``prem_due``, and ``prem_inst_pp``
+    collects it in the first month of the projection year."""
+    folder = product_copy(tmp_path, "basisrente")
+    table = folder / "model_point_table.csv"
+    points = pd.read_csv(table, index_col="point_id")
+    assert points.at[5, "prem_form"] == "single" and points.at[5, "duration_init"] == 0
+    points.loc[5, "zuzahlung_pp"] = 2000.0
+    points.loc[5, "zuzahlung_end_dur"] = 3
+    points.to_csv(table)
+    copy = mx.read_model(folder / MODELS["basisrente"], name="ZuzahlungProbe")
+    try:
+        item = copy.Projection[5]
+        assert item.prem_due(0) and not item.prem_due(12)
+        assert item.zuz_pp(1) > 0.0 and item.prem_pp(1) == 0.0
+        assert item.prem_inst_pp(12) == item.zuz_pp(1)
+        assert item.prem_inst_pp(13) == 0.0
+        assert item.premiums(12) > 0.0
+        assert item.zuz_pp(3) == 0.0 and item.prem_inst_pp(36) == 0.0
+        assert item.zuz_pp(item.k_conv()) == 0.0
+        assert item.prem_inst_pp(12 * item.k_conv()) == 0.0
+    finally:
+        copy.close()
+
+
 @pytest.mark.parametrize("product", sorted(FREQUENCY_KEYS))
 def test_annuity_frequencies_are_the_keys_of_their_table(product, product_models):
     data = product_models(product).Data

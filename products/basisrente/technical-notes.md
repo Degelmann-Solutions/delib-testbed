@@ -407,7 +407,7 @@ and splitting the cash into instalments while crediting the account annually wou
 cash and the account's credit disagree inside the year for no gain in fidelity.
 
 ```
-premiums(t)    = ( P(k) + Z(k) ) × lᵖ(t)   if prem_due(t), else 0,    k = proj_year(t)
+premiums(t)    = ( P(k) + Z(k) ) × lᵖ(t)   if t % 12 == 0, else 0,    k = proj_year(t)
                  the money collected: the laufender Beitrag and the Zuzahlung beside it
 ```
 

@@ -236,6 +236,154 @@ The *Beitragssumme* and the acquisition charge on it: `beitragssumme() = beitrag
 
 The shared loaders in the core's `Data` beside the tables of entry 2: `surplus_table()` (Basis, Riester's `surplus_scenario.csv`), `charge_table()` (FRV; Basis, RV and KLV's `cost_table.csv` override its index term) and `hoechstrechnungszins_table()` (Sofort). KLV's and Index's `surplus_rate_table` and RV's `decl_rate_table` have other keys and stay.
 
+### The premium amounts
+
+A premium amount has one name per quantity in every product, model-point column and cell alike (Moritz, 2026-11-07 and 2026-11-10; entry 16 of epic-parameter-files). The name is built from four parts. `gross` means before the *Ratenzahlungszuschlag* φ, no `gross` means after φ. `level` is the amount at inception; an argument `(k)` or `(t)` is the amount of year k or month t, and the same quantity at another time keeps its stem. `inst` is an instalment, the amount of one month, where no `inst` is an annual amount. `pp` is per policy. All amounts are per policy:
+
+| Quantity | Name |
+|---|---|
+| annual premium before φ at inception (the core's `beitragssumme_prem` reads it) | cell `prem_gross_level_pp()`, column `prem_gross_level_pp` |
+| annual premium before φ of year k (*Dynamik*, term) | `prem_gross_pp(k)` |
+| annual premium after φ of year k | `prem_pp(k)` |
+| its instalment due in month t, before *Beitragsverrechnung* and *Zuzahlung* | `prem_charged_inst_pp(t)` |
+| money collected per policy in month t: the *Zahlbeitrag* instalment plus any *Zuzahlung* (core; `premiums(t)` weights it) | `prem_inst_pp(t)` |
+| annual / instalment *Beitragsverrechnung* | `prem_rebate_pp(k)` / `prem_rebate_inst_pp(t)` |
+| annual *Zahlbeitrag* | `prem_paid_pp(k)` |
+| premiums paid to date after φ (*Beitragsrückgewähr* base) | cell `prem_cum_pp(k)`, column and cell `prem_cum_pp_init` |
+| premiums paid to date before φ (Index guarantee base) | cell `prem_gross_cum_pp(k)`, column and cell `prem_gross_cum_pp_init` |
+| premium due in month t | `prem_due(t)` |
+
+A product whose annual amounts are cells of a month takes `(t)` for `(k)` (RLV's `prem_pp(t)`, BU's `prem_gross_pp(t)`: the amount of the policy year month t falls in). A quantity only one product has keeps a name of its own beside the scheme, listed in the inventory below.
+
+**`prem_due` is the only source of a zero for the end of the premium term**, in every product (Moritz, 2026-11-10). The paying term, *Rentenbeginn* and a single premium's one payment are conditions of `prem_due(t)`, and no premium cell tests them itself: a cell of the year grid reads `prem_due` at the first month of its year (`prem_due(12 * k)`; RLV's annual cells of a month at `12 * duration(t)`), a monthly cell at its month. The zero is written as an early `return 0.0`, never as a product with the predicate, since a product with a negative operand would give `-0.0`. So the contractual amount `prem_gross_pp(k)` carries no term (Basis, Index: nonzero also after the paying term), and every amount paid or charged is 0.0 where `prem_due` is false. A *Beitragsfreistellung* is no end of the term and stays in the cell that tested it (Basis' and Riester's contribution cells, KLV's `prem_pp`, RV's `prem_pp`, FRV's `prem_charged_inst_pp`). Each product's predicate:
+
+| Product | `prem_due(t)` is true where |
+|---|---|
+| Basis | `t % 12 == 0` and the projection year `k = proj_year(t)` lies in the frame before *Rentenbeginn*, `0 <= k < k_conv()`; on a single premium only in year 0 and only where `duration_init == 0` |
+| BU | `duration_mth(t) % prem_cycle() == 0`; the premium is payable to the *Endalter*, where the frame ends, so there is no further condition (the *Beitragsbefreiung* is the count `pols_prem`) |
+| FRV | on a single premium `t == t_start()`; else `t < 12 * prem_term_y()` and `(t - t_start()) % prem_cycle() == 0` |
+| Index | `duration_mth(t) % 12 == 0` and the policy year `k = duration(t)` lies in the frame, `k_start() <= k < proj_len_y()`; on a single premium only `k == k_start()`, else `k < prem_term_y()` |
+| KLV | `duration(t) < prem_term()` and `duration_mth(t) % prem_cycle() == 0` |
+| RV | `duration_mth(t) % 12 == 0` and the policy year `k = duration(t)` lies before *Rentenbeginn* and inside the paying term, `0 <= k < aufschub_y` and `k < prem_term_y()`; on a single premium only `k == 0` |
+| Pflege | `age(t) < prem_end_age()`; on a single premium `t == 0`, else `t % prem_cycle() == 0` |
+| Riester | `t % 12 == 0` while the contract accumulates, `t < t_conv()` |
+| RLV | `t >= 0`, `duration(t) < prem_term()` and `duration_mth(t) % prem_cycle() == 0` |
+| Sofort | `t == 0`, the month of the *Einmalbeitrag* |
+
+What is no premium term and keeps its own test: the phase of an account (Basis' `alpha_amort_pp` and `prem_to_av_pp`, whose *Zillmerung* instalments and *Stückkosten* outlive a single premium; RV's account charges; Riester's interest and benefit cells), the spread of an acquisition charge (Index, FRV), the end of the *Zuzahlungen* (Basis' `zuzahlung_end_dur`), the state's *Zulage*, which Riester's `zulagen(t)` pays in the first month of a year also in the conversion month, and the first-order tariff, where the paying term is a term of the equivalence (the core's `tariff_annuity` sums over `prem_term()`, RLV's and KLV's `res_pp_at` credit the net or *Zillmer* premium inside it). Pflege's `prem_cum_max_pp(t)` counts the instalments to date in closed form from `prem_end_age()` rather than through `prem_due`; both count the same months.
+
+**The result column `premiums` holds the same quantity in every product, the money collected** (Moritz, 2026-11-10): `premiums(t) = prem_inst_pp(t) * pols_prem(t)`, the *Zahlbeitrag* including any *Zuzahlung*, with no gross or rebate column beside it. KLV, FRV, Index, RV, Pflege and Sofort publish that. Riester's `zulagen` stays a column of its own, since the state pays it, not the customer. Three products do not follow yet, each aligned in a result-changing commit of its own: BU's `premiums` is the instalment before the *Beitragsverrechnung* with the column `surplus_credit` beside it, RLV publishes `prem_gross` and `prem_rebate` beside `premiums`, and Basis publishes the *Zuzahlungen* in a column `zuzahlungen`.
+
+The inventory, every model-point column and cell that holds a premium amount, by product (a column is a column of `model_point_table.csv`):
+
+| Product | Name | Kind | Quantity |
+|---|---|---|---|
+| core | `prem_inst_pp(t)` | cell | the money collected per policy in month t, 0 by default; all ten override it |
+| core | `premiums(t)` | cell | `prem_inst_pp(t) * pols_prem(t)`, the result column |
+| core | `beitragssumme_prem()` | cell | the annual premium of the *Beitragssumme*, `prem_gross_level_pp()` (KLV); FRV and Pflege override it |
+| core | `prem_net_level_pp()` | cell | the net level premium of the first-order equivalence, never a cash flow (RLV, KLV, Pflege) |
+| Basis | `prem_gross_level_pp` | column | annual premium before φ at inception; the *Einmalbeitrag* on `single` |
+| Basis | `prem_gross_pp(k)` | cell | annual premium before φ of year k, with the *Beitragsdynamik* |
+| Basis | `prem_pp(k)` | cell | annual premium after φ of year k |
+| Basis | `zuzahlung_pp`, `zuz_pp(k)` | column, cell | the *Zuzahlung* stated and the one paid in year k after its take-up, a quantity of its own |
+| Basis | `prem_total_pp(k)` | cell | the total contribution including the BUZ share, reporting only |
+| Basis | `prem_to_av_pp(k)` | cell | the premium credited to the account after the charges |
+| Basis | `prem_inst_pp(t)` | cell | the year's `prem_pp` in the month it is due |
+| Basis | `zuzahlungen(t)` | cell | the *Zuzahlungen* collected in month t, a result column until its result commit |
+| BU | `prem_gross_level_std_pp` | column | level annual premium before φ and before the *Risikozuschlag*; 0 means derive by equivalence |
+| BU | `prem_gross_level_pp()` | cell | annual premium before φ at inception, `rating_factor()` times the column or the equivalence premium |
+| BU | `prem_gross_pp(t)` | cell | annual premium before φ of the policy year of month t, with the *Beitragsdynamik* |
+| BU | `prem_charged_inst_pp(t)` | cell | the instalment due in month t, before the *Beitragsverrechnung* |
+| BU | `prem_zahl_pp(t)`, `surplus_credit_pp(t)` | cell | the *Zahlbeitrag* instalment and the instalment's *Beitragsverrechnung*, named `prem_inst_pp(t)` and `prem_rebate_inst_pp(t)` by BU's result commit |
+| BU | `prem_inst_pp(t)` | cell | `prem_charged_inst_pp(t)` until BU's result commit |
+| FRV | `prem_charged_inst_level_pp` | column and cell | the instalment the policy states at inception, φ included; the *Einmalbeitrag* on `single`; not an annual amount |
+| FRV | `prem_charged_inst_pp(t)` | cell | the instalment due in month t, with the *Beitragsdynamik* |
+| FRV | `topup_amount`, `topup_pp(t)` | column, cell | the *Zuzahlung* and its month, a quantity of its own |
+| FRV | `prem_inst_pp(t)` | cell | `prem_charged_inst_pp(t) + topup_pp(t)` |
+| FRV | `prem_cum_pp_init` | column and cell | premiums paid before the valuation date |
+| FRV | `prem_cum_end_pp(t)` | cell | premiums paid to the end of month t, *Zuzahlung* included: another timing than RV's `prem_cum_pp(k)` |
+| FRV | `prem_to_av_pp(t)` | cell | the premium invested in the fund after the charges |
+| Index | `prem_gross_level_pp` | column | annual premium before φ at inception; the *Einmalbeitrag* on `single` |
+| Index | `prem_gross_pp(k)` | cell | annual premium before φ of year k |
+| Index | `prem_pp(k)` | cell | annual premium after φ of year k |
+| Index | `prem_inst_pp(t)` | cell | the year's `prem_pp` in the month it is due |
+| Index | `prem_gross_cum_pp_init` | column and cell | premiums paid before the valuation date, before φ |
+| Index | `prem_gross_cum_pp(k)` | cell | premiums paid to the start of year k, before φ, the base of the *Beitragsgarantie* |
+| Index | `prem_charge_acq_pp(k)`, `prem_charge_acq_min_pp(k)`, `prem_charge_adm_pp(k)`, `prem_to_av_pp(k)` | cell | the charges on the premium and the premium credited to the account |
+| KLV | `prem_gross_level_pp()` | cell | annual premium before φ at inception, from the equivalence |
+| KLV | `prem_pp(k)` | cell | annual premium after φ of year k |
+| KLV | `prem_rebate_pp(k)` | cell | the year's *Beitragsverrechnung* |
+| KLV | `prem_paid_pp(k)` | cell | the annual *Zahlbeitrag*, `prem_pp(k) - prem_rebate_pp(k)` |
+| KLV | `prem_charged_inst_pp(t)` | cell | the instalment due in month t, before the *Beitragsverrechnung* |
+| KLV | `prem_inst_pp(t)` | cell | the *Zahlbeitrag* instalment |
+| KLV | `prem_zill_pp()` | cell | the first-order *Zillmer* premium, a reserving quantity |
+| RV | `prem_gross_level_pp` | column | annual premium before φ at inception; the *Einmalbeitrag* on `single` |
+| RV | `prem_pp_sched(k)` | cell | annual premium after φ of year k as written at inception, without a later *Beitragsfreistellung*; the *Beitragssumme* sums it |
+| RV | `prem_pp(k)` | cell | annual premium after φ of year k |
+| RV | `prem_inst_pp(t)` | cell | the year's `prem_pp` in the month it is due |
+| RV | `prem_cum_pp_init` | column | premiums paid before the valuation date |
+| RV | `prem_cum_pp(k)` | cell | premiums paid to the start of year k, the *Beitragsrückgewähr* base |
+| RV | `prem_to_av_pp(k)` | cell | the *Sparbeitrag* credited to the account |
+| Pflege | `premium_mth` | column and cell | the monthly premium the model point states; 0 means derive by equivalence; a monthly amount, a quantity of its own |
+| Pflege | `premium_mth_pp()` | cell | the monthly premium, stated or derived (the *Einmalbeitrag* on `single`) |
+| Pflege | `prem_charged_inst_pp(t)` | cell | the instalment due in month t |
+| Pflege | `prem_inst_pp(t)` | cell | `prem_charged_inst_pp(t)` |
+| Pflege | `prem_cum_max_pp(t)` | cell | premiums payable to the end of month t on an uninterrupted path |
+| Riester | `contrib_fixed_pp`, `contrib_ratio`, `contrib_extra_pp` | column and cell | the fixed own contribution, the share of the *Mindesteigenbeitrag* paid and the unsubsidised extra contribution; `contrib_form` chooses between the first two |
+| Riester | `eigenbeitrag_pp(k)`, `eigenbeitrag_paid_pp(k)` | cell | the saver's own contribution of year k before and after φ: the share of a contribution the state completes, a quantity of its own |
+| Riester | `contrib_total_pp(k)` | cell | the contribution received in year k, *Zulage* included |
+| Riester | `prem_inst_pp(t)` | cell | the own contribution after φ plus the extra contribution in the month they are due |
+| Riester | `zulage_pp(k)`, `zulagen(t)` | cell | the state's *Zulage*, a result column of its own |
+| Riester | `beitragssumme`, `rider_prem_pp` | column | the *Beitragssumme* as stated and the rider's premium, which no cash flow reads |
+| RLV | `prem_gross_level_pp()` | cell | annual premium before φ at inception, from the equivalence |
+| RLV | `prem_pp(t)` | cell | annual premium after φ of the policy year of month t |
+| RLV | `prem_rebate_pp(t)`, `prem_rebate_inst_pp(t)` | cell | the annual *Beitragsverrechnung* and its instalment |
+| RLV | `prem_paid_pp(t)` | cell | the annual *Zahlbeitrag* |
+| RLV | `prem_charged_inst_pp(t)` | cell | the instalment due in month t, before the *Beitragsverrechnung* |
+| RLV | `prem_inst_pp(t)` | cell | the *Zahlbeitrag* instalment |
+| RLV | `prem_gross(t)`, `prem_rebate(t)` | cell | the two instalments times the count, result columns until RLV's result commit |
+| Sofort | `prem_gross_level_pp` | column and cell | the *Einmalbeitrag*, the premium before any φ at inception |
+| Sofort | `net_single_prem()` | cell | the *Einmalbeitrag* less the acquisition loading, a quantity of its own |
+| Sofort | `prem_inst_pp(t)` | cell | the *Einmalbeitrag* in the month it is due |
+
+The amounts that are not premiums keep their names: Riester's `contrib_*` and its column `beitragssumme`, the core's `beitragssumme()`, Basis' `prem_total_pp`, RV's `prem_pp_sched`, the `prem_to_av*` cells and BU's `premium_form`, a form and no amount.
+
+The renamed columns and cells, old name to new name, in the order of the commits (where a new name was a current name, the current one was renamed first; where a column and a cell shared the old name, the column first):
+
+| Product | Kind | Old | New |
+|---|---|---|---|
+| Basis | column | `prem_base_pp` | `prem_gross_level_pp` |
+| Basis | cell | `prem_base_pp(k)` | `prem_gross_pp(k)` |
+| Index | column | `prem_gross_pp` | `prem_gross_level_pp` |
+| Index | cell | `prem_gross_pp(k)` | `prem_pp(k)` |
+| Index | cell | `prem_base_pp(k)` | `prem_gross_pp(k)` |
+| Index | cell | `prem_paid_pp(k)` | `prem_gross_cum_pp(k)` |
+| Index | column and cell | `prem_paid_init` | `prem_gross_cum_pp_init` |
+| RV | column | `prem_gross_pp` | `prem_gross_level_pp` |
+| RV | column | `premium_single_pp` | removed: the *Einmalbeitrag* of model point 2, 50000.00, stands in `prem_gross_level_pp` |
+| BU | cell | `prem_gross_pp(t)` | `prem_charged_inst_pp(t)` |
+| BU | cell | `prem_gross_ann_pp(t)` | `prem_gross_pp(t)` |
+| BU | column | `gross_prem_ann` | `prem_gross_level_std_pp` |
+| BU | cell | `gross_prem_ann()` | removed: `prem_gross_level_pp()` reads the column |
+| RLV | cell | `prem_gross_pp(t)` | `prem_pp(t)` |
+| RLV | cell | `prem_gross_inst_pp(t)` | `prem_charged_inst_pp(t)` |
+| KLV | cell | `prem_gross_pp()` | `prem_gross_level_pp()` |
+| KLV | cell | `prem_charged_pp(k)` | `prem_pp(k)` |
+| KLV | cell | `prem_offset_pp(k)` | `prem_rebate_pp(k)` |
+| FRV | cell | `prem_pp(t)` | `prem_charged_inst_pp(t)` |
+| FRV | column | `prem_pp` | `prem_charged_inst_level_pp` |
+| FRV | cell | `prem_pp_base()` | `prem_charged_inst_level_pp()` |
+| FRV | cell | `cum_prem_pp(t)` | `prem_cum_end_pp(t)` |
+| FRV | column and cell | `cum_prem_init` | `prem_cum_pp_init` |
+| Pflege | cell | `premium_due(t)` | `prem_due(t)` |
+| Pflege | cell | `premium_pp(t)` | `prem_charged_inst_pp(t)` |
+| Pflege | cell | `cum_prem_max_pp(t)` | `prem_cum_max_pp(t)` |
+| Sofort | column and cell | `single_prem` | `prem_gross_level_pp` |
+| Sofort | column | (none) | `prem_form`, added, `single` on every point |
+| FRV, Sofort | cell | (none) | `prem_due(t)`, added |
+
+Every rename and every `prem_due` commit is byte-identical. The `prem_due` commits moved operators and the literal `12` of a year's first month between cells, and the counts of `tools/measure_marginal.py` and `tests/test_measure_marginal.py` follow the roadmap's command: Index 343 to 339, Basis 628 to 625, BU 506 to 505, RLV 292 to 287, KLV 417 to 419, RV 582 to 587, FRV 414 to 416, Riester 590 to 614, M 5,249 to 5,269; M_core 190 unchanged.
+
 ## The parameter files
 
 A scalar parameter, a rate, factor, amount or tolerance with one value per tariff, is a row of a parameter file and is read through one lookup in the core's `Data`, `param("<item>")`, always called with the item's name as a string literal, so that a scan of the code finds every item read (`data.param("<item>")` from a `Projection`). Three layers hold the items, each item in exactly one of them for a tariff:

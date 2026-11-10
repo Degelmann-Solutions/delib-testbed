@@ -3549,6 +3549,76 @@ def test_pflege_single_premium_is_a_premium_form_not_a_frequency(product_models)
     assert freqs == set(PREM_FREQ_INSTALMENTS)
 
 
+def test_rv_single_premium_sits_in_the_one_premium_column(product_models):
+    """RV's *Einmalbeitrag* is in ``prem_gross_level_pp`` as every product's: point 2 pays its
+    50,000.00 once, in the first year, and no column ``premium_single_pp`` is left."""
+    model = product_models("klassische_rentenversicherung")
+    points = model.Data.model_point_table()
+    assert "premium_single_pp" not in points.columns
+    assert points.at[2, "prem_form"] == "single"
+    assert points.at[2, "prem_gross_level_pp"] == 50000.0
+    item = model.Projection[2]
+    assert item.prem_pp_sched(0) == 50000.0
+    assert [item.prem_pp_sched(k) for k in range(1, 15)] == [0.0] * 14
+
+
+def test_bu_stated_premium_is_the_level_premium_before_the_risikozuschlag(product_models):
+    """BU's column ``prem_gross_level_std_pp`` is the level annual premium before the
+    *Risikozuschlag*: point 13 states it and ``prem_gross_level_pp()`` is ``rating_factor()``
+    times it; every other point carries 0 and derives its premium by equivalence."""
+    model = product_models("berufsunfaehigkeit")
+    points = model.Data.model_point_table()
+    assert "gross_prem_ann" not in points.columns
+    stated = [int(p) for p in points.index if points.at[p, "prem_gross_level_std_pp"] > 0.0]
+    assert stated == [13]
+    for point_id in points.index:
+        item = model.Projection[int(point_id)]
+        column = float(points.at[point_id, "prem_gross_level_std_pp"])
+        if column > 0.0:
+            assert item.prem_gross_level_pp() == item.rating_factor() * column
+        else:
+            assert item.prem_gross_level_pp() > 0.0, point_id
+
+
+def test_prem_due_alone_zeroes_the_premium_after_its_term(product_models):
+    """After the paying term or from *Rentenbeginn* the contractual annual premium is still
+    its amount, ``prem_due`` is false, and every amount paid or charged is 0.0."""
+    index = product_models("indexpolice").Projection[13]       # pays 12 of 22 policy years
+    k = index.prem_term_y()
+    assert k < index.proj_len_y()
+    assert index.prem_gross_pp(k) == 3000.0 and not index.prem_due(12 * k)
+    for amount in (index.prem_pp(k), index.prem_inst_pp(12 * k), index.prem_charge_acq_pp(k),
+                   index.prem_charge_adm_pp(k), index.prem_to_av_pp(k)):
+        assert amount == 0.0
+    assert index.prem_gross_cum_pp(k + 1) == index.prem_gross_cum_pp(k)
+
+    basis = product_models("basisrente").Projection[1]         # premiums stop at Rentenbeginn
+    k = basis.k_conv()
+    assert basis.prem_gross_pp(k) > 0.0 and not basis.prem_due(12 * k)
+    assert basis.prem_due(12 * (k - 1)) and basis.prem_pp(k - 1) > 0.0
+    for amount in (basis.prem_pp(k), basis.zuz_pp(k), basis.prem_inst_pp(12 * k)):
+        assert amount == 0.0
+    single = product_models("basisrente").Projection[5]        # a single premium, paid once
+    assert single.prem_form() == "single" and single.prem_due(0) and not single.prem_due(12)
+    assert single.prem_gross_pp(1) == 60000.0 and single.prem_pp(0) == 60000.0
+    assert single.prem_pp(1) == 0.0 and single.prem_inst_pp(12) == 0.0
+
+    rlv = product_models("risikolebensversicherung").Projection[6]   # abgekürzte Zahlungsdauer
+    t = 12 * rlv.prem_term()
+    assert t < rlv.proj_len() and rlv.prem_gross_level_pp() > 0.0
+    assert rlv.prem_due(t - 12) and not rlv.prem_due(t)
+    for amount in (rlv.prem_pp(t), rlv.prem_rebate_pp(t), rlv.prem_paid_pp(t),
+                   rlv.prem_charged_inst_pp(t), rlv.prem_rebate_inst_pp(t), rlv.prem_inst_pp(t)):
+        assert amount == 0.0
+
+    rv = product_models("klassische_rentenversicherung").Projection[4]   # pays 20 of 22 years
+    k = rv.prem_term_y()
+    assert float(rv.model_point()["prem_gross_level_pp"]) > 0.0 and not rv.prem_due(12 * k)
+    assert rv.prem_pp_sched(k - 1) > 0.0
+    for amount in (rv.prem_pp_sched(k), rv.prem_pp(k), rv.prem_inst_pp(12 * k)):
+        assert amount == 0.0
+
+
 @pytest.mark.parametrize("product", sorted(FREQUENCY_KEYS))
 def test_annuity_frequencies_are_the_keys_of_their_table(product, product_models):
     data = product_models(product).Data

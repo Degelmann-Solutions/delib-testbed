@@ -2911,9 +2911,9 @@ def test_pflege_surrender_cap_is_read_from_the_surrender_table(tmp_path, product
         for point_id in copy.Data.model_point_table().index:
             item = copy.Projection[point_id]
             for t in range(item.t_start(), item.proj_len()):
-                if item.policy_year(t) < 41 or item.cum_prem_max_pp(t) <= 0.0:
+                if item.policy_year(t) < 41 or item.prem_cum_max_pp(t) <= 0.0:
                     continue
-                expected = 0.9 * item.cum_prem_max_pp(t) * (1.0 - item.stornoabzug_rate())
+                expected = 0.9 * item.prem_cum_max_pp(t) * (1.0 - item.stornoabzug_rate())
                 assert item.rkw_pp(t) == expected, (point_id, t)
                 checked += 1
         assert checked
@@ -3533,7 +3533,7 @@ def test_pflege_single_premium_is_a_premium_form_not_a_frequency(product_models)
         forms.add(item.prem_form())
         if item.prem_form() == "single":
             assert points.at[point_id, "prem_freq"] == "annual"
-            assert [t for t in range(24) if item.premium_due(t)] == [0]
+            assert [t for t in range(24) if item.prem_due(t)] == [0]
         else:
             freqs.add(item.prem_freq())
             assert item.prem_cycle() == 12 // PREM_FREQ_INSTALMENTS[item.prem_freq()]

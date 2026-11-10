@@ -323,7 +323,7 @@ reproduces the worked example while the machinery stays visible and testable.
 | *Wartezeit* | `wartezeit_months` | `0` | point 7 (36) | Zeroes `inc_force(t)` while `t < wartezeit_months()`, so care beginning inside it is not covered at all. Near-universal in the subsidised *Pflege-Bahr* product, near-absent in the underwritten one, because the *Gesundheitsprüfung* does the same screening [R8] |
 | *Karenzzeit* | `karenz_months` | `0` | point 7 (6) | Populates `pols_karenz(t, g, z)`. With `K = 0` the ledger is empty and `pols_grad` degenerates to `pols_entry` |
 | *Leistungsdynamik* | `leistungsdynamik` | `0.00` | point 8 (0.02) | Escalates the annuity **in payment** at `(1 + d)^(1/12)` a month through `esc_pg`. Not a *Beitragsdynamik*, which is not modelled at all |
-| *Beitragsrückgewähr* | `beitragsrueckgewaehr` | `False` | point 9 (`True`) | Makes `claims(t,"DEATH") = cum_prem_max_pp(t) × pols_death(t)`, structurally zero otherwise, and adds the `D1` leg to the equivalence |
+| *Beitragsrückgewähr* | `beitragsrueckgewaehr` | `False` | point 9 (`True`) | Makes `claims(t,"DEATH") = prem_cum_max_pp(t) × pols_death(t)`, structurally zero otherwise, and adds the `D1` leg to the equivalence |
 | *Stornoabzug* | `stornoabzug_rate` | `0.00` | point 10 (0.05) | Reduces the *Rückkaufswert* by a contractual fraction. Zero in the base run because a deduction is admissible only if agreed, appropriate and **quantified in the contract** [R11] [REG-R28], and no level for any German *Pflegerenten* tariff was established |
 
 Model point 9 is the option worth reading twice. At a *Rechnungszins* of 1,00 % a gross return of

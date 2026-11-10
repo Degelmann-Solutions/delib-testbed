@@ -91,7 +91,7 @@ alpha                      accept_factor                   Anerkennungsquote fac
 upsilon                    au_uplift()                     AU-Klausel inception uplift
 P                          prem_gross_level_pp()           Level annual Bruttobeitrag
 (none)                     prem_gross_pp(t)                Annual Bruttobeitrag at t
-(none)                     prem_due(t)                     1 in a payment month, else 0
+(none)                     prem_due(t)                     Is an instalment due in month t
 P_b(t)                     prem_charged_inst_pp(t)         Bruttobeitrag instalment at t
 P_z(t)                     prem_zahl_pp(t)                 Zahlbeitrag instalment at t
 (1 - theta) P_b(t)         surplus_credit_pp(t)            Beitragsverrechnung instalment
@@ -993,25 +993,32 @@ def prem_gross_pp(t):
 
 
 def prem_due(t):
-    """1 in a month a premium instalment falls due, 0 otherwise.
+    """Whether a premium instalment falls due in month t.
 
     ``duration_mth(t) % prem_cycle() == 0``.  On the anchor cell that is every
     month; on model point 4, months 0, 12, 24, ...; and on model point 6, whose valuation
     date is 180 policy months in and whose mode is half-yearly, months 0, 6, 12, ...
+
+    The premium is payable to the *Endalter*, where the frame ends, so the predicate
+    carries no end of a premium term; were there one, it would stand here and in no
+    premium cell.  The *Beitragsbefreiung* is not a term: it is the count
+    :func:`pols_prem`, not the amount.
     """
-    return 1.0 if duration_mth(t) % prem_cycle() == 0 else 0.0
+    return duration_mth(t) % prem_cycle() == 0
 
 
 def prem_charged_inst_pp(t):
     """P_b(t): the *Bruttobeitrag* **instalment** due at the start of month t, per policy.
 
-    ``prem_due(t) x prem_gross_pp(t) x prem_freq_load() x prem_cycle() / 12``, so it
-    is zero in a month that is not a payment month and carries the whole period's premium
-    in one that is.  The *Ratenzahlungszuschlag* scales it, which is why the annual
-    *Bruttobeitrag* of a monthly payer buys a 5 % larger bill than the tariff amount.
+    ``prem_gross_pp(t) x prem_freq_load() x prem_cycle() / 12`` where :func:`prem_due`
+    makes an instalment payable, so it is zero in a month that is not a payment month and
+    carries the whole period's premium in one that is.  The *Ratenzahlungszuschlag* scales
+    it, which is why the annual *Bruttobeitrag* of a monthly payer buys a 5 % larger bill
+    than the tariff amount.
     """
-    return (prem_due(t) * prem_gross_pp(t) * prem_freq_load()
-            * prem_cycle() / 12.0)
+    if not prem_due(t):
+        return 0.0
+    return prem_gross_pp(t) * prem_freq_load() * prem_cycle() / 12.0
 
 
 def prem_zahl_pp(t):

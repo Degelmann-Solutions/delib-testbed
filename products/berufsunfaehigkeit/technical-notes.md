@@ -439,8 +439,8 @@ depends on `P`.
 
 **The instalments actually billed.** With `M` months between payments,
 
-    prem_due(t)      = 1 if u(t) mod M = 0 else 0
-    P_b(t)           = prem_due(t) x prem_gross_level_pp() x (1 + g_B)^(y(t)-1) x φ x M / 12
+    prem_due(t)      = ( u(t) mod M = 0 )
+    P_b(t)           = prem_gross_level_pp() x (1 + g_B)^(y(t)-1) x φ x M / 12   where prem_due(t), else 0
     P_z(t)           = θ x P_b(t)
     surplus_credit_pp(t) = (1 - θ) x P_b(t)
 

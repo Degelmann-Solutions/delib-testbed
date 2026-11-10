@@ -141,7 +141,7 @@ DEFAULT_WORKERS = (1, 4, 8, 12, 16, 24)
 M_CORE = 190
 M_PRODUCT = {
     "basisrente": 625,
-    "berufsunfaehigkeit": 506,
+    "berufsunfaehigkeit": 505,
     "fondsgebundene_rentenversicherung": 414,
     "indexpolice": 339,
     "kapitallebensversicherung": 417,

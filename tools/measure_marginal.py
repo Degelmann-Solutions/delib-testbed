@@ -147,7 +147,7 @@ M_PRODUCT = {
     "kapitallebensversicherung": 419,
     "klassische_rentenversicherung": 587,
     "pflegerentenversicherung": 807,
-    "riester_rente": 614,
+    "riester_rente": 617,
     "risikolebensversicherung": 285,
     "sofortrente": 480,
 }

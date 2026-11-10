@@ -385,7 +385,7 @@ The renamed columns and cells, old name to new name, in the order of the commits
 | Sofort | column | (none) | `prem_form`, added, `single` on every point |
 | FRV, Sofort | cell | (none) | `prem_due(t)`, added |
 
-Every rename and every `prem_due` commit is byte-identical. The `prem_due` commits moved operators and the literal `12` of a year's first month between cells, and the counts of `tools/measure_marginal.py` and `tests/test_measure_marginal.py` follow the roadmap's command: Index 343 to 339, Basis 628 to 625, BU 506 to 505, RLV 292 to 287, KLV 417 to 419, RV 582 to 587, FRV 414 to 416, Riester 590 to 614, M 5,249 to 5,269; M_core 190 unchanged. The result commits removed cells: BU 505 to 502, RLV 287 to 285, Basis 625 to 623, M 5,269 to 5,262.
+Every rename and every `prem_due` commit is byte-identical. The `prem_due` commits moved operators and the literal `12` of a year's first month between cells, and the counts of `tools/measure_marginal.py` and `tests/test_measure_marginal.py` follow the roadmap's command: Index 343 to 339, Basis 628 to 625, BU 506 to 505, RLV 292 to 287, KLV 417 to 419, RV 582 to 587, FRV 414 to 416, Riester 590 to 614, M 5,249 to 5,269; M_core 190 unchanged. The result commits removed cells: BU 505 to 502, RLV 287 to 285, Basis 625 to 623, M 5,269 to 5,262. Riester's `guar_pp` then read `prem_due` for the extra contribution as the other sites do: Riester 614 to 617, M 5,262 to 5,265.
 
 ## The parameter files
 

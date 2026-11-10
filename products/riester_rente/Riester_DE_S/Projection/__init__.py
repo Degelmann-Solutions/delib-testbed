@@ -1217,7 +1217,7 @@ def guar_pp(k):
         return guar_pp_init()
     if k - 1 > k_conv():
         return guar_pp(k - 1)
-    extra = (contrib_extra_pp() if (is_accum_y(k - 1) and not
+    extra = (contrib_extra_pp() if (prem_due(12 * (k - 1)) and not
                                     (bfs_year() >= 0 and k - 1 >= bfs_year()))
              else 0.0)
     return (guar_pp(k - 1) + eigenbeitrag_pp(k - 1) + zulage_pp(k - 1)

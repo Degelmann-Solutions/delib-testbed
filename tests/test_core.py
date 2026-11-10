@@ -756,7 +756,7 @@ CORE_CELLS = {
                    "riester_rente": "derived",
                    "risikolebensversicherung": "derived",
                    "sofortrente": "derived"},
-        "expense_infl": {"basisrente": "override",
+        "expense_infl": {"basisrente": "derived",
                          "fondsgebundene_rentenversicherung": "derived",
                          "indexpolice": "derived",
                          "kapitallebensversicherung": "derived",

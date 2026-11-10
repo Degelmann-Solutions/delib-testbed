@@ -49,11 +49,11 @@ are bit-identical on all thirteen model points.
 quoted in euro a **month** and a *Leibrente* is paid monthly; the annual-step model booked
 twelve instalments together at the start of each payout year on the opening in-force
 count, named that as a pitfall and as a stated approximation, and was generous to the year
-of death by up to a full year's annuity — 4 290,52 € of the anchor cell's payout phase,
-1,6 % of it. Here the instalment is paid to whoever is alive at the start of each month.
+of death by up to a full year's annuity — 4 173,88 € of the anchor cell's payout phase,
+1,8 % of it. Here the instalment is paid to whoever is alive at the start of each month.
 The *Rentengarantiezeit* becomes ``12m`` guaranteed **instalments** beginning in the month
 after the death that triggered them rather than in the following year, which moves
-116,29 € onto model point 4 and 562,91 € onto model point 12; and a policy that dies in
+151,60 € onto model point 4 and 698,90 € onto model point 12; and a policy that dies in
 the third month of a year now bears three twelfths of that year's maintenance expense
 rather than the whole of it.
 
@@ -128,7 +128,7 @@ Z(k)                       zuz_pp(k)                       Zuzahlung per paying 
 charge_acq_bsum_once x S   zillmer_amount()                Zillmerised acquisition charge
 alpha(k)                   alpha_amort_pp(k)               Its annual instalment
 alpha_z(k)                 alpha_zuz_pp(k)                 Acquisition charge on a Zuzahlung
-(none)                     expense_infl()                  Expense inflation, charge table
+(none)                     expense_infl()                  Expense inflation, core, 2 %
 k                          inflation_years(t)              proj_year(t), from valuation
 u(k)                       unit_cost_pp(k)                 Stueckkosten, inflating
 N(k)                       prem_to_av_pp(k)                Premium credited after charges
@@ -664,19 +664,6 @@ def alpha_zuz_pp(k):
         model_point()["tariff_id"]]) * zuz_pp(k))
 
 
-def expense_infl():
-    """The annual expense inflation rate of this tariff, 1,5 % p.a. **[std]**.
-
-    Read from *charge_table.csv* at the model point's ``tariff_id``, beside the
-    *Stückkosten* and the expense levels it inflates, rather than from *param_tariff_type.csv*.
-
-    Override reason: the expense inflation is a column of the charge table keyed by
-    ``tariff_id``, products/basisrente/technical-notes.md:141
-    """
-    return float(data.charge_table_dict()["expense_infl"][           # noqa: F821
-        model_point()["tariff_id"]])
-
-
 def inflation_years(t):
     """The years of expense inflation in month t, ``proj_year(t)``: from the valuation date.
 
@@ -692,7 +679,7 @@ def inflation_years(t):
 def unit_cost_pp(k):
     """u(k): the *Stückkosten* charged to the account in year k, per policy.
 
-    ``charge_admin_pp_ann x (1 + expense_infl)^k`` **[std]** — 36,00 € inflating at 1,5 %
+    ``charge_admin_pp_ann x (1 + expense_infl)^k`` **[std]** — 36,00 € inflating at 2,0 %
     a year.  Charged to **both** blocks: a premium-free policy keeps paying the
     *Stückkosten* and the reserve charge and stops paying beta and the *Zillmerung*
     instalment, which is the whole economic content of a *Beitragsfreistellung*.

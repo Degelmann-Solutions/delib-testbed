@@ -637,7 +637,7 @@ def recov_age_decay():
 
     A shape parameter of the recovery basis; :func:`rec_rate` reads it.
     """
-    return float(data.param("recov_age_decay"))                      # noqa: F821
+    return data.param("recov_age_decay")                             # noqa: F821
 
 
 def rec_rate(x, g):
@@ -1282,7 +1282,7 @@ def beitragssumme_years():
     """
     if prem_form() == "single":
         return 1
-    cap = int(data.param("beitragssumme_cap_age"))                   # noqa: F821
+    cap = data.param("beitragssumme_cap_age")                        # noqa: F821
     return max(0, min(prem_end_age(), cap) - issue_age())
 
 
@@ -1300,7 +1300,7 @@ def alpha_rate():
     date.  That is correct, and it is worth knowing before comparing an in-force point's
     first row with a new-business point's.
     """
-    return float(data.param("load_acq_bsum_once"))                   # noqa: F821
+    return data.param("load_acq_bsum_once")                          # noqa: F821
 
 
 def inflation_years(t):
@@ -1331,8 +1331,8 @@ def expenses(t):
     products/pflegerentenversicherung/technical-notes.md:593, added after the two
     administration terms, an order the core's sum of its terms would reassociate
     """
-    admin_pp = float(data.param("load_admin_pp_mth"))                # noqa: F821
-    admin_pct = float(data.param("load_admin_prem_inst"))            # noqa: F821
+    admin_pp = data.param("load_admin_pp_mth")                       # noqa: F821
+    admin_pct = data.param("load_admin_prem_inst")                   # noqa: F821
     total = admin_pp * inflation_factor(t) * pols_if(t)
     total += admin_pct * premiums(t)
     if t == 0:
@@ -1353,7 +1353,7 @@ def claim_expenses(t):
     adversarial re-assessment that drives a *Berufsunfähigkeitsrente*'s claims cost.
     """
     n = data.pflegegrad_count()                                      # noqa: F821
-    per_payment = float(data.param("load_claim_pp_inst"))            # noqa: F821
+    per_payment = data.param("load_claim_pp_inst")                   # noqa: F821
     total = 0.0
     for g in range(1, n + 1):
         if waiver_flag(g):
@@ -1386,7 +1386,7 @@ def mort_actv_load_first():
 
     Read by :func:`mort_rate_tariff`.
     """
-    return float(data.param("mort_actv_load_first"))                 # noqa: F821
+    return data.param("mort_actv_load_first")                        # noqa: F821
 
 
 def mort_care_load_first():
@@ -1394,7 +1394,7 @@ def mort_care_load_first():
 
     Read by :func:`tar_mort_rate_care`.
     """
-    return float(data.param("mort_care_load_first"))                 # noqa: F821
+    return data.param("mort_care_load_first")                        # noqa: F821
 
 
 def inc_load_first():
@@ -1402,7 +1402,7 @@ def inc_load_first():
 
     Read by :func:`tar_inc_rate`.
     """
-    return float(data.param("inc_load_first"))                       # noqa: F821
+    return data.param("inc_load_first")                              # noqa: F821
 
 
 def inc_cap():
@@ -1410,7 +1410,7 @@ def inc_cap():
 
     Read by :func:`tar_inc_rate`.
     """
-    return float(data.param("inc_cap"))                              # noqa: F821
+    return data.param("inc_cap")                                     # noqa: F821
 
 
 def det_load_first():
@@ -1418,7 +1418,7 @@ def det_load_first():
 
     Read by :func:`tar_det_rate`.
     """
-    return float(data.param("det_load_first"))                       # noqa: F821
+    return data.param("det_load_first")                              # noqa: F821
 
 
 def recov_load_first():
@@ -1426,7 +1426,7 @@ def recov_load_first():
 
     Read by :func:`tar_rec_rate`.
     """
-    return float(data.param("recov_load_first"))                     # noqa: F821
+    return data.param("recov_load_first")                            # noqa: F821
 
 
 def mort_rate_tariff(t):
@@ -1805,7 +1805,7 @@ def tariff_annuity():
 
 def epv_admin():
     """G: the expected present value of the per-policy administration cost, first order."""
-    admin_pp = float(data.param("load_admin_pp_mth"))                # noqa: F821
+    admin_pp = data.param("load_admin_pp_mth")                       # noqa: F821
     total = 0.0
     for t in range(proj_len()):
         total += disc_factor_mth(t) * admin_pp * inflation_factor(t) * tar_pols_if(t)
@@ -1815,7 +1815,7 @@ def epv_admin():
 def epv_claim_expense():
     """C: the expected present value of the per-annuity-payment claims cost, first order."""
     n = data.pflegegrad_count()                                      # noqa: F821
-    per_payment = float(data.param("load_claim_pp_inst"))            # noqa: F821
+    per_payment = data.param("load_claim_pp_inst")                   # noqa: F821
     total = 0.0
     for t in range(proj_len()):
         row = 0.0
@@ -1858,12 +1858,12 @@ def premium_mth_pp():
     """
     if premium_mth() > 0.0:
         return premium_mth()
-    acq_load = float(data.param("load_acq_bsum_once"))               # noqa: F821
-    admin_pct = float(data.param("load_admin_prem_inst"))            # noqa: F821
+    acq_load = data.param("load_acq_bsum_once")                      # noqa: F821
+    admin_pct = data.param("load_admin_prem_inst")                   # noqa: F821
     if prem_form() == "single":
         a1 = acq_load
     else:
-        cap = int(data.param("beitragssumme_cap_age"))               # noqa: F821
+        cap = data.param("beitragssumme_cap_age")                    # noqa: F821
         years = max(0, min(prem_end_age(), cap) - issue_age())
         a1 = acq_load * 12.0 * years
     d1 = 0.0
@@ -2071,10 +2071,10 @@ def check_prem_equiv_resid(t):
     p0 = premium_mth_pp() / rating_factor()
     single = prem_form() == "single"
     mult = 1 if single else prem_cycle()
-    admin_pct = float(data.param("load_admin_prem_inst"))            # noqa: F821
-    admin_pp = float(data.param("load_admin_pp_mth"))                # noqa: F821
-    per_payment = float(data.param("load_claim_pp_inst"))            # noqa: F821
-    acq_load = float(data.param("load_acq_bsum_once"))               # noqa: F821
+    admin_pct = data.param("load_admin_prem_inst")                   # noqa: F821
+    admin_pp = data.param("load_admin_pp_mth")                       # noqa: F821
+    per_payment = data.param("load_claim_pp_inst")                   # noqa: F821
+    acq_load = data.param("load_acq_bsum_once")                      # noqa: F821
 
     prem_leg = p0 * mult * tar_pols_prem(t) if prem_due(t) else 0.0
 
@@ -2097,7 +2097,7 @@ def check_prem_equiv_resid(t):
         if single:
             exp_leg += p0 * acq_load
         else:
-            cap = int(data.param("beitragssumme_cap_age"))           # noqa: F821
+            cap = data.param("beitragssumme_cap_age")                # noqa: F821
             years = max(0, min(prem_end_age(), cap) - issue_age())
             exp_leg += p0 * acq_load * 12.0 * years
 

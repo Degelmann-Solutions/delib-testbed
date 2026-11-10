@@ -667,7 +667,7 @@ def mort_be_factor():
     it because the direction of prudence forks by product, a tariff parameter in
     *param_tariff_type.csv*, products/riester_rente/technical-notes.md:418
     """
-    return float(data.param("mort_be_factor"))                       # noqa: F821
+    return data.param("mort_be_factor")                              # noqa: F821
 
 
 def mort_rate(t):

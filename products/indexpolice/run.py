@@ -30,7 +30,7 @@ print("premium form = {}   {:,.2f} EUR a year x {} years {} -> collected "
       "{:,.2f} EUR   Beitragssumme {:,.2f} EUR".format(
           proj.prem_form(), proj.prem_gross_pp(proj.k_start()),
           proj.prem_term_y(), proj.prem_freq(),
-          proj.prem_pp(proj.k_start()), proj.prem_sum()))
+          proj.prem_pp(proj.k_start()), proj.beitragssumme()))
 print("payoff = {}   index = {}   Cap {:.2%} monthly   Quote {:.2%}   "
       "election = {}".format(
           proj.payoff_form(), proj.index_id(), proj.index_cap(proj.k_start()),
@@ -38,7 +38,7 @@ print("payoff = {}   index = {}   Cap {:.2%} monthly   Quote {:.2%}   "
 print("guarantee = {:.0%} of Beitragssumme at i_g = {:.2%}   "
       "Beitragsgarantie {:,.2f} EUR   Stornoabzug {}".format(
           proj.guar_level(), proj.rechnungszins(),
-          proj.guar_level() * proj.prem_sum(),
+          proj.guar_level() * proj.beitragssumme(),
           "on" if proj.surr_charge_on() else "off"))
 print()
 k0 = proj.k_start()

@@ -141,7 +141,7 @@ P_b(k)                     prem_gross_pp(k)                Annual-mode premium o
 P(k)                       prem_pp(k)                      Premium actually collected
 (none)                     prem_inst_pp(t)                 P(k) in a due month, else 0
 (none)                     prem_due(t)                     Whether P falls due in month t
-BS                         prem_sum()                      Beitragssumme
+BS                         beitragssumme()                 Beitragssumme
 alpha(k)                   prem_charge_acq_pp(k)           Acquisition charge, tariff
 alpha_5(k)                 prem_charge_acq_min_pp(k)       The same on the 5-year spread
 beta P(k)                  prem_charge_adm_pp(k)           Premium administration charge
@@ -387,23 +387,32 @@ def index_month(t):
 
 # --- the premium and its charges ---------------------------------------------
 
-def prem_sum():
-    """``BS``: the *Beitragssumme*, on the **annual-mode** premium.
+def prem_gross_level_pp():
+    """The level annual-mode premium per policy, the model point's ``prem_gross_level_pp``.
 
-    ``prem_gross_level_pp x prem_term_y`` on the level form and the single premium itself on the
-    single form — the premiums payable over the whole contract, counted from issue and not
-    from ``t_start()``, because a *Beitragssumme* is a contract fact that an in-force
-    point brings with it.
+    The premium the core's ``beitragssumme_prem()`` strikes ``BS``, the *Beitragssumme*, on:
+    ``beitragssumme()`` is this premium times :func:`beitragssumme_years`, the premiums
+    payable over the whole contract, counted from issue and not from ``t_start()``, because
+    a *Beitragssumme* is a contract fact that an in-force point brings with it.
 
     The *Ratenzahlungszuschlag* does **not** enter it.  A frequency surcharge is the price
     of paying in instalments, not more insurance bought, so it may not inflate the
     acquisition charge or the *Mindesttodesfallschutz* floor: on model point 4 the premium
-    collected is 2,520.00 EUR a year while ``prem_sum()`` is 2,400.00 x 32 = 76,800.00 EUR.
-    Getting that wrong is a numbered pitfall.
+    collected is 2,520.00 EUR a year while ``beitragssumme()`` is 2,400.00 x 32 = 76,800.00
+    EUR.  Getting that wrong is a numbered pitfall.
+    """
+    return float(model_point()["prem_gross_level_pp"])
+
+
+def beitragssumme_years():
+    """The premium years of the *Beitragssumme*: ``prem_term_y()``, 1 for an *Einmalbeitrag*.
+
+    Override reason: the premium term is the model point's ``prem_term_y``, and a single
+    premium is counted once, products/indexpolice/technical-notes.md:422
     """
     if prem_form() == "single":
-        return float(model_point()["prem_gross_level_pp"])
-    return float(model_point()["prem_gross_level_pp"]) * prem_term_y()
+        return 1
+    return prem_term_y()
 
 
 def prem_gross_pp(k):
@@ -447,7 +456,7 @@ def prem_charge_acq_pp(k):
     if not prem_due(12 * k):
         return 0.0
     charge = min(data.param("charge_acq_bsum_once"),                  # noqa: F821
-                 data.param("zillmer_cap_bsum")) * prem_sum()         # noqa: F821
+                 data.param("zillmer_cap_bsum")) * beitragssumme()    # noqa: F821
     if prem_form() == "single":
         return charge
     spread = min(data.param("acq_spread_years"), prem_term_y())      # noqa: F821
@@ -470,7 +479,7 @@ def prem_charge_acq_min_pp(k):
     if not prem_due(12 * k):
         return 0.0
     charge = min(data.param("charge_acq_bsum_once"),                  # noqa: F821
-                 data.param("zillmer_cap_bsum")) * prem_sum()         # noqa: F821
+                 data.param("zillmer_cap_bsum")) * beitragssumme()    # noqa: F821
     if prem_form() == "single":
         return charge
     spread = min(data.param("surr_spread_years"), prem_term_y())     # noqa: F821
@@ -1185,7 +1194,7 @@ def db_pp(k):
     index credit**: the payoff exists only at the *Indexjahr* end **[std]**, so a death in
     month 7 forfeits it.
     """
-    return max(av_pp_at(k, "AFT_GUAR"), death_min_rate() * prem_sum())
+    return max(av_pp_at(k, "AFT_GUAR"), death_min_rate() * beitragssumme())
 
 
 def min_surr_pp(k):
@@ -1334,7 +1343,7 @@ def exp_acq_pp(t):
     """
     if t != t_start() or duration_init() != 0:
         return 0.0
-    return data.param("expense_acq_bsum_once") * prem_sum()          # noqa: F821
+    return data.param("expense_acq_bsum_once") * beitragssumme()     # noqa: F821
 
 
 def exp_maint_pp(k):

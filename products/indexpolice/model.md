@@ -473,7 +473,7 @@ symbols; the full mapping lives in the `Projection` Space docstring. Six cases n
 
 | Notes | Cells | Why |
 |---|---|---|
-| `P_b(t)`, `P(t)`, `BS` | `prem_gross_pp` / `prem_pp` / `prem_sum` | Three different amounts. The *Ratenzahlungszuschlag* multiplies what is **collected** and does not enter the *Beitragssumme*, so it may not inflate the acquisition charge or the *Mindesttodesfallschutz* floor: on model point 4 the premium collected is 2 520,00 € a year while `prem_sum()` is 76 800,00 € |
+| `P_b(t)`, `P(t)`, `BS` | `prem_gross_pp` / `prem_pp` / `beitragssumme` | Three different amounts. The *Ratenzahlungszuschlag* multiplies what is **collected** and does not enter the *Beitragssumme*, so it may not inflate the acquisition charge or the *Mindesttodesfallschutz* floor: on model point 4 the premium collected is 2 520,00 € a year while `beitragssumme()` is 76 800,00 € |
 | `G(t)` | `index_base_pp` | The participating capital is the **opening** balance, before the year's premium — a separate cells rather than an inline `av_pp(k)`, because it is the quantity the whole payoff is struck on and the [std] reading that a different source would rescale |
 | `B(t)`, `U(t)`, `X(t)` | `opt_budget_pp` / `surplus_credit_pp` / `index_credit_pp` | One budget, two destinations, one payoff. Named separately so `check_surplus_alloc()` can be written on the parts |
 | `S(t)`, `Y(t)`, `rho(t)` | `index_sum` / `index_return_year` / `index_credit_rate` | The capped **sum**, the compounded **raw** year return and the rate actually credited are three different numbers, and confusing any two of them is a numbered pitfall |

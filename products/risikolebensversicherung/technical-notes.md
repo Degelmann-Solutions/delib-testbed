@@ -232,10 +232,10 @@ anchor cell.**
 | `lapse_rate(t)` | **Annual** lapse rate of the policy year; **0** through the whole final policy year | lookup |
 | `lapse_rate_mth(t)` | The monthly rate applied after the death decrement, `1 − (1 − lapse_rate(t))^(1/12)` **[std]** | monthly |
 | `suicide_factor(t)` | § 161 benefit switch, `< 1` inside three years of issue and of each increment | anniversary |
-| `prem_pp(t)` | **Annual** *Bruttobeitrag* per in-force policy, loaded for frequency; **0** for `duration(t) ≥ prem_term` | anniversary |
+| `prem_pp(t)` | **Annual** *Bruttobeitrag* per in-force policy, loaded for frequency; **0** in a policy year in which `prem_due` makes none payable | anniversary |
 | `prem_rebate_pp(t)` | **Annual** *Beitragsverrechnung* per in-force policy | anniversary |
 | `prem_paid_pp(t)` | **Annual** *Zahlbeitrag* per in-force policy = `prem_pp − prem_rebate_pp` | anniversary |
-| `instalments()`, `prem_cycle()`, `prem_due(t)` | Instalments a year (1/2/4/12), months between them, whether one falls due this month | *Zahlweise* |
+| `instalments()`, `prem_cycle()`, `prem_due(t)` | Instalments a year (1/2/4/12), months between them, whether one falls due this month, which also ends the *Beitragszahlungsdauer*: false for `duration(t) ≥ prem_term` | *Zahlweise* |
 | `prem_charged_inst_pp(t)`, `prem_rebate_inst_pp(t)`, `prem_inst_pp(t)` | The three annual amounts divided into instalments, zero in a month none is due | monthly |
 | `res_pp_at(y, timing)` | First-order **net** *Deckungskapital* per policy at **policy year** `y` — a **pricing diagnostic**, not a balance-sheet provision | prospective, annual |
 | `res_zill_pp_at(y, timing)` | The same reserve less the unamortised Zillmer balance; **negative for much of the term** | prospective, annual |
@@ -608,7 +608,7 @@ its total does not.
     commissions(t) = comm_pp·1{t = 0 and duration_init = 0}
                      + c_r·P_inst(t)·l(t)·1{duration(t) ≥ 1}
 
-    prem_due(t)            = 1{ duration_mth(t) mod (12/r) = 0 }
+    prem_due(t)            = 1{ duration_mth(t) mod (12/r) = 0 and duration(t) < k }
     prem_charged_inst_pp(t)  = prem_pp(t)/r · prem_due(t)
     prem_rebate_inst_pp(t) = prem_rebate_pp(t)/r · prem_due(t)
     P_inst(t)              = prem_charged_inst_pp(t) − prem_rebate_inst_pp(t)

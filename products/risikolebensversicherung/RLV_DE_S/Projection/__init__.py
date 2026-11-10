@@ -962,12 +962,21 @@ def beitragsverrechnung_rate():
 def prem_due(t):
     """Whether a premium instalment falls due at the **beginning** of month t.
 
-    ``duration_mth(t) % prem_cycle() == 0``.  An annual payer is due in the first month of
-    every policy year and nowhere else; a monthly payer is due in every month.  § 168 VVG
-    makes the *Versicherungsperiode* follow the *Zahlweise*, so this cycle is a
-    contractual fact and not a modelling convenience — it is the period the contract is
-    written in.
+    ``duration_mth(t) % prem_cycle() == 0`` inside the *Beitragszahlungsdauer*, ``t >= 0``
+    and ``duration(t) < prem_term()``.  An annual payer is due in the first month of
+    every paying policy year and nowhere else; a monthly payer is due in every month of
+    one.  § 168 VVG makes the *Versicherungsperiode* follow the *Zahlweise*, so this cycle
+    is a contractual fact and not a modelling convenience — it is the period the contract
+    is written in.
+
+    This cell is the only source of a zero for the end of the premium term: the annual
+    amounts :func:`prem_pp` and :func:`prem_rebate_pp` read it at the first month of
+    their policy year, the instalments at their month, and none tests ``prem_term()``
+    itself.  The *abgekürzte Beitragszahlungsdauer* of model point 6 so pays its last
+    premium in month 143 while cover and claims run on to month 239.
     """
+    if t < 0 or duration(t) >= prem_term():
+        return False
     return duration_mth(t) % prem_cycle() == 0
 
 
@@ -975,17 +984,16 @@ def prem_pp(t):
     """The **annual** *Bruttobeitrag* per in-force policy for month t's policy year, ``G phi``.
 
     **The guaranteed stream**: the maximum the policyholder can ever be required to pay in
-    a policy year.  Zero for ``duration(t) >= prem_term()``, so the *abgekürzte
-    Beitragszahlungsdauer* of model point 6 pays its last premium in month 143 while cover
-    and claims run on to month 239.  It does **not** enter :func:`net_cf`; it is published
-    beside the billed stream because a model carrying one premium cannot represent this
-    product.
+    a policy year.  Zero in a policy year whose first month :func:`prem_due` makes no
+    premium payable, the years after the *Beitragszahlungsdauer*.  It does **not** enter
+    :func:`net_cf`; it is the amount the *Beitragsverrechnung* is netted against, because
+    a model carrying one premium cannot represent this product.
 
     An **annual** amount, flat across the policy year: the *Bruttobeitrag* is struck once
     at issue and is level for the term.  What is collected in month ``t`` is
     :func:`prem_charged_inst_pp`, the instalment the elected *Zahlweise* makes due.
     """
-    if t < 0 or duration(t) >= prem_term():
+    if not prem_due(12 * duration(t)):
         return 0.0
     return prem_gross_level_pp() * prem_freq_load()
 
@@ -1000,7 +1008,7 @@ def prem_rebate_pp(t):
     like :func:`prem_pp`; :func:`prem_rebate_inst_pp` is what is netted off each
     instalment.
     """
-    if t < 0 or duration(t) >= prem_term():
+    if not prem_due(12 * duration(t)):
         return 0.0
     return beitragsverrechnung_rate() * prem_gross_level_pp() * prem_freq_load()
 
@@ -1402,7 +1410,7 @@ def check_prem_split():
             return False
         if abs(prem_pp(t) - prem_paid_pp(t) - prem_rebate_pp(t)) > tol:
             return False
-        if duration(t) < prem_term() and prem_due(t):
+        if prem_due(t):
             if not (0.0 <= prem_rebate_inst_pp(t) < prem_charged_inst_pp(t)):
                 return False
         elif not (prem_charged_inst_pp(t) == prem_rebate_inst_pp(t)

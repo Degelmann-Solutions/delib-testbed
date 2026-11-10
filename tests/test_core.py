@@ -843,7 +843,7 @@ CORE_CELLS = {
                        "risikolebensversicherung": "override",
                        "sofortrente": "derived"},
         "commissions": dict.fromkeys(MODELS, "derived"),
-        "income_other": {"basisrente": "override",
+        "income_other": {"basisrente": "derived",
                          "indexpolice": "derived",
                          "kapitallebensversicherung": "derived",
                          "klassische_rentenversicherung": "derived",
@@ -3979,7 +3979,7 @@ def test_basis_net_cf_resid_reads_the_frame_through_its_dict(product_models):
                 assert columns[label][t] == frame.at[t, label], (point_id, label, t)
         for t in frame.index:
             row = frame.loc[t]
-            expected = float(row["premiums"] + row["zuzahlungen"]
+            expected = float(row["premiums"]
                              - row["claims_death"] - row["claims_annuity"]
                              - row["claims_survivor"] - row["expenses"]
                              - row["commissions"] - row["net_cf"])

@@ -68,10 +68,10 @@ print()
 print("annual state")
 print(proj.result_pols().head(8).round(4).to_string())
 print()
-print("totals over {} months ({} years): premiums {:,.2f}  Zuzahlungen {:,.2f}  "
+print("totals over {} months ({} years): premiums {:,.2f}  "
       "annuities {:,.2f}".format(
           proj.proj_len(), proj.proj_len_y(), df["premiums"].sum(),
-          df["zuzahlungen"].sum(), df["claims_annuity"].sum()))
+          df["claims_annuity"].sum()))
 print("                      death {:,.2f}  survivor {:,.2f}  expenses {:,.2f}  "
       "commissions {:,.2f}".format(
           df["claims_death"].sum(), df["claims_survivor"].sum(),

@@ -99,7 +99,7 @@ NOISE_TOLERANCE = 1e-12  # relative: math.isclose(old, new, rel_tol=1e-12, abs_t
 # be classified here (tests/test_baseline_deviations.py pins the map to the headers).
 EURO_COLUMNS: dict[str, tuple[str, ...]] = {
     "basisrente": (
-        "premiums", "zuzahlungen", "claims_death", "claims_annuity", "claims_survivor",
+        "premiums", "claims_death", "claims_annuity", "claims_survivor",
         "expenses", "commissions", "net_cf", "liability_cf"),
     "berufsunfaehigkeit": (
         "premiums", "claims_bu_rente", "claims_reintegration", "claims_lapse",

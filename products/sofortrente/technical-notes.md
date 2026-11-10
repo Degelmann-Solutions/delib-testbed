@@ -589,7 +589,7 @@ downside rather than the model reserving for it.
 **Premium.** One inflow, and only on a new-business point, because an in-force point's frame does not
 contain `t = 0`:
 
-    premiums(t) = SP × pols_if_init      if t == 0,  else 0
+    premiums(t) = SP × pols_if_init      if prem_due(t), t == 0,  else 0
 
 **Annuity payments and guarantee claims.** The instalment splits into a payment to a living payee and
 a payment to a beneficiary inside the guarantee:

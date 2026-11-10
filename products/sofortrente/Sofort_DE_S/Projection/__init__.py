@@ -67,6 +67,7 @@ n                proj_len()                            Exclusive end of the fram
 x_a(t), x_s(t)   age(t, life)                          Attained age of each life
 (none)           calendar_year(t)                      Calendar year of month t
 SP               prem_gross_level_pp()                 The Einmalbeitrag
+(none)           prem_due(t)                           Is the premium due in month t
 SP_net           net_single_prem()                     SP (1 - alpha)
 alpha            load_acq_sp_once                    Acquisition loading in the tariff
 beta             load_admin_annval_once                     Loading on the annuity value
@@ -982,13 +983,23 @@ def pols_if(t):
     return pols_if_init() * min(1.0, x)
 
 
+def prem_due(t):
+    """Whether the premium falls due in month t: ``t == 0``, the *Einmalbeitrag*'s month.
+
+    The single premium is paid once, at inception.  This cell is the only source of a zero
+    for the end of the premium term, here the one payment: :func:`prem_inst_pp` reads it
+    and does not test the month itself.
+    """
+    return t == 0
+
+
 def prem_inst_pp(t):
     """The *Einmalbeitrag* per policy, at the start of month 0 and nowhere else.
 
-    ``prem_gross_level_pp()`` at ``t = 0``; the core's :func:`premiums` weights it by
-    :func:`pols_prem`.  An in-force model point's frame does not contain ``t = 0``, so it
-    collects nothing: the premium was paid before the valuation date and counting it again
-    is a listed pitfall.
+    ``prem_gross_level_pp()`` where :func:`prem_due` makes it payable, at ``t = 0``; the
+    core's :func:`premiums` weights it by :func:`pols_prem`.  An in-force model point's
+    frame does not contain ``t = 0``, so it collects nothing: the premium was paid before
+    the valuation date and counting it again is a listed pitfall.
 
     There is no premium stream, no *Beitragsdynamik* and no *Ratenzahlungszuschlag* on this
     product — the whole consideration is paid once.
@@ -996,7 +1007,9 @@ def prem_inst_pp(t):
     Override reason: the *Einmalbeitrag* is paid once, at ``t = 0``,
     products/sofortrente/technical-notes.md:592
     """
-    return prem_gross_level_pp() if t == 0 else 0.0
+    if not prem_due(t):
+        return 0.0
+    return prem_gross_level_pp()
 
 
 def pols_prem(t):

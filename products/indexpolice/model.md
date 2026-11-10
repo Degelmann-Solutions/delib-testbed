@@ -114,7 +114,7 @@ table it was.
 |---|---|---|---|
 | `claims_death` / `claims_lapse` | 3 780,63 € / 12 476,88 € | **3 744,94 € / 12 507,30 €** | Deaths and surrenders compete month by month rather than once a year. The total exits at every anniversary are unchanged; the split is not |
 | `expenses` | 2 376,60 € | **2 365,47 €** | A policy leaving mid-year bears administration for the months it was there |
-| `premiums`, `claims_maturity` | 42 474,94 € / 31 240,67 € | **unchanged** | The *Beitrag* is payable in advance for the *Versicherungsperiode*, which § 12 Abs. 1 VVG makes the year; `prem_due(t)` is true in the first month of each policy year and nowhere else |
+| `premiums`, `claims_maturity` | 42 474,94 € / 31 240,67 € | **unchanged** | The *Beitrag* is payable in advance for the *Versicherungsperiode*, which § 12 Abs. 1 VVG makes the year; `prem_due(t)` is true in the first month of each policy year of the premium term and nowhere else |
 
 **Time-like inputs.** No CSV value changed. `lapse_table.csv` is keyed on the 0-based policy
 year and is read through `duration(t)`; `index_return_table.csv` keeps one row per policy

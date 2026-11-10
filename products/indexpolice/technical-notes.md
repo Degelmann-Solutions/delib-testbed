@@ -84,7 +84,7 @@ shipped index path so that the mechanics are asserted against them cell by cell.
   mechanic. `index_month(t) = t % 12 + 1` is the alignment stated as arithmetic.
 - **Timing conventions [std].** The premium at the **start of the policy year** — annual in advance,
   which is what § 12 Abs. 1 VVG makes the *Versicherungsperiode* for this tariff, so `prem_due(t)` is
-  true in the first month of each policy year and nowhere else; the premium charges deducted as the
+  true in the first month of each paying policy year and nowhere else; the charges deducted as the
   premium is credited; the reserve charge and the guaranteed interest struck on the post-premium
   balance, once a year; the insurer's acquisition expense in the frame's first month and a twelfth of
   the year's maintenance each month, on the opening in-force of that month; decrements and benefits at
@@ -448,18 +448,18 @@ amount times the count it is struck on.
 
 ### The premium
 
-    P_b(k) = prem_gross_level_pp  for k < prem_term_y  (level form: policy years 1 … prem_term_y)
-           = prem_gross_level_pp  for k = k₀ only      (single form)
+    P_b(k) = prem_gross_level_pp  in every policy year, the contractual amount
+    due(k) = k < prem_term_y      (level form: policy years 1 … prem_term_y);  k = k₀ only  (single form)
+    P(k)   = P_b(k) · φ           where due(k)
            = 0                    otherwise
-    P(k)   = P_b(k) · φ
     α(k)   = min(charge_acq_bsum_once, zillmer_cap_bsum) · BS / min(acq_spread_years, prem_term_y)   for
              k < min(acq_spread_years, prem_term_y), i.e. the first that many premium-paying
              years, 0 afterwards
     α₅(k)  = the same with acq_spread_years replaced by 5, unconditionally
     P⁺(k)  = P(k) − α(k) − charge_admin_prem_inst · P(k)
-    Π(k+1) = Π(k) + P_b(k),      Π(k₀) = prem_gross_cum_pp_init
+    Π(k+1) = Π(k) + P_b(k) where due(k),      Π(k₀) = prem_gross_cum_pp_init
 
-    prem_due(t) = ( t mod 12 == 0 )     the first month of each policy year, and no other
+    prem_due(t) = ( t mod 12 == 0 ) and due(duration(t))     the first month of a paying policy year, and no other
     premiums(t) = P(duration(t)) · l(t) where prem_due(t), else 0
 
 `φ` multiplies the premium **collected**; it does **not** enter `BS`, and therefore does not enter the

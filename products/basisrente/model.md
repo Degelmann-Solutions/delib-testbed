@@ -207,10 +207,10 @@ A Basisrente model that offers only a level regular premium models the wrong pro
 [REG-R39]. The contribution has three components and only the first two are contract facts:
 
 ```
-prem_base_pp(k) = prem_base_pp x (1 + prem_dyn_rate)^duration_y(k)  # contractual
-prem_pp(k)      = prem_base_pp(k) x prem_freq_load()                # contractual
-zuz_pp(k)       = zuzahlung_pp x zuz_take_up(duration_y(k) + 1)     # behavioural
-premiums(t)     = prem_pp(proj_year(t)) x pols_paying(t)  if prem_due(t) else 0
+prem_gross_pp(k) = prem_gross_level_pp x (1 + prem_dyn_rate)^duration_y(k)  # contractual
+prem_pp(k)       = prem_gross_pp(k) x prem_freq_load()                # contractual
+zuz_pp(k)        = zuzahlung_pp x zuz_take_up(duration_y(k) + 1)     # behavioural
+premiums(t)      = prem_pp(proj_year(t)) x pols_paying(t)  if prem_due(t) else 0
 ```
 
 All three are annual amounts and take `k`; only the fund-level column is monthly, and it is

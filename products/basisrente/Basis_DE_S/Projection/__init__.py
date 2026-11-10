@@ -118,7 +118,7 @@ T                          k_conv()                        Projection year of Re
 12 T                       t_conv()                        Month of the first instalment
 (none)                     gtd_end_t()                     Last month of the Rentengarantiezeit
 S                          beitragssumme()                 Beitragssumme at inception
-P0 (1 + delta)^d(k)        prem_base_pp(k)                 Contractual Beitrag before phi
+P0 (1 + delta)^d(k)        prem_gross_pp(k)                Contractual Beitrag before phi
 phi                        prem_freq_load()                Ratenzahlungszuschlag
 P(k)                       prem_pp(k)                      Beitrag charged per paying policy
 (none)                     prem_due(t)                     True in the month it falls due
@@ -486,9 +486,9 @@ def beitragssumme():
     **including** the *Beitragsdynamik* and **excluding** *Zuzahlungen* and the
     *Ratenzahlungszuschlag*::
 
-        S = sum_{u=0}^{m-1} prem_base_pp x (1 + prem_dyn_rate)^u,   m = ret_age - issue_age
+        S = sum_{u=0}^{m-1} prem_gross_level_pp x (1 + prem_dyn_rate)^u,   m = ret_age - issue_age
 
-    and simply ``prem_base_pp`` for a single premium.  Excluding *Zuzahlungen* is the
+    and simply ``prem_gross_level_pp`` for a single premium.  Excluding *Zuzahlungen* is the
     conservative reading of a question no retrieved source settles, and it matters twice:
     S is the base of the 25 ‰ *Höchstzillmersatz* cap on the acquisition charge written
     into the account, and it is the base of the initial commission.  On a long-dated
@@ -502,17 +502,17 @@ def beitragssumme():
     the schedule, not a level premium times the years, products/basisrente/technical-notes.md:433
     """
     dyn = float(model_point()["prem_dyn_rate"])
-    base = float(model_point()["prem_base_pp"])
+    base = float(model_point()["prem_gross_level_pp"])
     if prem_form() == "single":
         return base
     m = ret_age() - issue_age()
     return sum(base * (1.0 + dyn) ** u for u in range(max(m, 0)))
 
 
-def prem_base_pp(k):
+def prem_gross_pp(k):
     """The contractual *laufender Beitrag* in year k, before the *Ratenzahlungszuschlag*.
 
-    ``prem_base_pp x (1 + prem_dyn_rate)^duration_y(k)`` on the ``regular`` form: the
+    ``prem_gross_level_pp x (1 + prem_dyn_rate)^duration_y(k)`` on the ``regular`` form: the
     *Beitragsdynamik* compounds on the base premium from **inception**, so it is keyed to
     the policy duration and not to the projection year.  For ``prem_form = "single"`` the
     *Einmalbeitrag* is paid once, at ``k = 0`` and only where ``duration_init = 0``, and is
@@ -523,16 +523,16 @@ def prem_base_pp(k):
     """
     if prem_form() == "single":
         if k == 0 and duration_init() == 0:
-            return float(model_point()["prem_base_pp"])
+            return float(model_point()["prem_gross_level_pp"])
         return 0.0
-    return (float(model_point()["prem_base_pp"])
+    return (float(model_point()["prem_gross_level_pp"])
             * (1.0 + float(model_point()["prem_dyn_rate"])) ** duration_y(k))
 
 
 def prem_pp(k):
     """P(k): the *laufender Beitrag* charged per premium-paying policy in year k.
 
-    ``prem_base_pp(k) x prem_freq_load()``, taken at the **start** of the year (annual in
+    ``prem_gross_pp(k) x prem_freq_load()``, taken at the **start** of the year (annual in
     advance; a fractionated mode changes the amount through the *Ratenzahlungszuschlag*,
     not the grid).  Zero from ``k = k_conv()`` — premiums stop at *Rentenbeginn* — and zero
     on a model point that opens *beitragsfrei*, whose whole cohort is in
@@ -547,7 +547,7 @@ def prem_pp(k):
         return 0.0
     if int(model_point()["paidup_at_init"]) == 1:
         return 0.0
-    return prem_base_pp(k) * prem_freq_load()
+    return prem_gross_pp(k) * prem_freq_load()
 
 
 def zuz_take_up(k):
@@ -594,7 +594,7 @@ def prem_total_pp(k):
 
     ``(prem_pp(k) + zuz_pp(k)) / (1 - buz_prem_share)``.  A **reporting cells that enters
     no cash flow**: it appears in no :func:`result_cf` column and in :func:`net_cf` at no
-    ``k``.  ``prem_base_pp`` is the *old-age* contribution; the BUZ premium buys a cover
+    ``k``.  ``prem_gross_level_pp`` is the *old-age* contribution; the BUZ premium buys a cover
     this model does not project, and its disability mechanics belong to ``BU_DE_S``.
 
     ``buz_prem_share < 0.50`` is the statutory invariant — the supplementary covers

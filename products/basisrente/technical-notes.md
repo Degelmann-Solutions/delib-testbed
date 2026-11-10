@@ -165,7 +165,7 @@ basis and provenance.
 | `ret_age` | int | Attained age at *Rentenbeginn* | 6 (60, the pre-2012 floor), 12 (70) |
 | `pols_if_init` | float | Policies the model point represents | all |
 | `prem_form` | enum {regular, single} | *laufender Beitrag* against *Einmalbeitrag* | 5 (single) |
-| `prem_base_pp` | EUR p.a. | The contractual *laufender Beitrag* at inception, before the *Ratenzahlungszuschlag* and before any *Dynamik*; for `single`, the *Einmalbeitrag* | all but 7, 8 |
+| `prem_gross_level_pp` | EUR p.a. | The contractual *laufender Beitrag* at inception, before the *Ratenzahlungszuschlag* and before any *Dynamik*; for `single`, the *Einmalbeitrag* | all but 7, 8 |
 | `prem_freq` | enum {annual, half_yearly, quarterly, monthly} | Payment frequency; keys `prem_freq_table.csv` for the *Ratenzahlungszuschlag* | 1, 5, 7, 8, 9, 13 annual · 4 half-yearly · 3, 11 quarterly · 2, 6, 10, 12 monthly |
 | `prem_dyn_rate` | rate p.a. | *Beitragsdynamik*, the contractual annual escalation | 1, 2, 3, 4, 6, 9, 11, 12 |
 | `zuzahlung_pp` | EUR p.a. | The nominal annual *Zuzahlung* before take-up | 1, 3, 11 |
@@ -357,7 +357,7 @@ surrender, no assignment, no provider transfer, no commutation. That is the prod
 | `g(t)` | `pols_gtd(t)` | *Rentengarantiezeit* continuations running at the start of month `t` |
 | `A(k)`, `Aᵖ(k)`, `Aᶠ(k)` | `av_at(k, ·)`, `av_pp_at(k, ·)`, `av_pu_at(k, ·)` | *Deckungskapital*: fund level, per paying policy, and premium-free block at fund level |
 | `P(k)`, `Z(k)` | `prem_pp(k)`, `zuz_pp(k)` | the *laufender Beitrag* charged and the *Zuzahlung* paid, per paying policy, per year |
-| `P₀`, `δ`, `φ` | `prem_base_pp`, `prem_dyn_rate`, `prem_freq_load()` | base premium at inception, *Beitragsdynamik*, *Ratenzahlungszuschlag* |
+| `P₀`, `δ`, `φ` | `prem_gross_level_pp`, `prem_dyn_rate`, `prem_freq_load()` | base premium at inception, *Beitragsdynamik*, *Ratenzahlungszuschlag* |
 | `S` | `beitragssumme()` | the *Beitragssumme* at inception |
 | `α`, `α_z`, `β`, `γ`, `u(k)` | `alpha_amort_pp(k)`, `alpha_zuz_pp(k)`, `charge_admin_prem_inst`, `charge_admin_av_ann`, `unit_cost_pp(k)` | the four charges struck against the account, all annual |
 | `N(k)` | `prem_to_av_pp(k)` | premium credited to the account after all four charges |
@@ -382,9 +382,9 @@ The *Beitragsdynamik* compounds on the base premium from inception, so it is key
 duration**, not the projection year — which is what makes an in-force point work:
 
 ```
-prem_base_pp(k) = prem_base_pp × (1 + δ)^d(k)                for prem_form = "regular"
-P(k)            = prem_base_pp(k) × φ        if k < T and not paid-up and premiums are due
-                = 0                          otherwise
+prem_gross_pp(k) = prem_gross_level_pp × (1 + δ)^d(k)                for prem_form = "regular"
+P(k)             = prem_gross_pp(k) × φ        if k < T and not paid-up and premiums are due
+                 = 0                          otherwise
 ```
 
 with `φ = prem_freq_load` at `prem_freq` from `prem_freq_table.csv`. For `prem_form = "single"` the
@@ -430,8 +430,8 @@ The *Beitragssumme* is struck once, at inception, on the contractual *laufender 
 (gap 8):
 
 ```
-S = Σ_{u=0}^{m−1} prem_base_pp × (1 + δ)^u          for prem_form = "regular", m = ret_age − issue_age
-  = prem_base_pp                                    for prem_form = "single"
+S = Σ_{u=0}^{m−1} prem_gross_level_pp × (1 + δ)^u          for prem_form = "regular", m = ret_age − issue_age
+  = prem_gross_level_pp                                    for prem_form = "single"
 ```
 
 The zillmerised acquisition charge is capped at `charge_acq_bsum_once × S` and amortised in `acq_spread_years`
@@ -790,11 +790,11 @@ a test.
    duration.** Assert `prem_pp(k) = 0` and `zuz_pp(k) = 0` for every `k ≥ k_conv()`, that
    `zuz_pp(k) = 0` once `duration_y(k) ≥ zuzahlung_end_dur`, and that on an in-force point the
    *Beitragsdynamik* is keyed to `duration_y(k)` and not to `k` — model point 6, at
-   `duration_init = 17`, must open at `prem_base_pp × 1.02^17`, not at `prem_base_pp`. On the monthly
+   `duration_init = 17`, must open at `prem_gross_level_pp × 1.02^17`, not at `prem_gross_level_pp`. On the monthly
    frame the same rule says `premiums(t) = 0` for every `t ≥ t_conv()` and in eleven months of twelve
    before it.
 8. **Applying the *Ratenzahlungszuschlag* twice, or to the wrong thing.** It multiplies the *laufender
-   Beitrag* only. Assert `prem_pp(k) / (prem_base_pp × (1+δ)^d(k)) = φ` exactly in every year, that
+   Beitrag* only. Assert `prem_pp(k) / (prem_gross_level_pp × (1+δ)^d(k)) = φ` exactly in every year, that
    `zuz_pp(k)` is invariant to `prem_freq`, and that a single-premium point carries `φ = 1`. **The
    monthly grid does not change this**: φ prices a fractionated mode by loading the amount, so
    `prem_due(t)` still puts the whole year's contribution in the first month of the year, and a model
@@ -846,7 +846,7 @@ a test.
     conclusion and stays with the contract [REG-R14] [REG-R15]. Assert that the shipped model points
     carry four distinct `rechnungszins` values and that `cred_rate(k) ≥ rechnungszins` in every year on every
     point.
-17. **Modelling the BUZ as premium income with no benefit.** `prem_base_pp` is the **old-age**
+17. **Modelling the BUZ as premium income with no benefit.** `prem_gross_level_pp` is the **old-age**
     contribution; the BUZ premium and the *BU-Rente* belong to `BU_DE_S`. Assert `buz_prem_share < 0.50`
     for every model point [R1], that `prem_total_pp(k) > prem_pp(k) + zuz_pp(k)` exactly where
     `buz_prem_share > 0`, and that `prem_total_pp` appears in **no** `result_cf()` column and in
@@ -903,7 +903,7 @@ any of them, and the research file records the absence as gap 3.
 **Configuration.** Model point 1, the anchor cell, exactly as shipped in `model_point_table.csv`:
 `point_id = 1`; `policy_id = DE-BAS-0001`; `sex = M` (reporting only; pricing is unisex [REG-R34]);
 `issue_age = 45`; `issue_year = 2026`; `duration_init = 0`; `ret_age = 67`;
-`pols_if_init = 1.0`; `prem_form = regular`; `prem_base_pp = 6,000.00 €` p.a.; `prem_freq = annual`,
+`pols_if_init = 1.0`; `prem_form = regular`; `prem_gross_level_pp = 6,000.00 €` p.a.; `prem_freq = annual`,
 so `prem_freq_load = 1.000`; `prem_dyn_rate = 0.02`; `zuzahlung_pp = 4,000.00 €` p.a.;
 `zuzahlung_end_dur = 22`; `paidup_at_init = 0`; `av_pp_init = 0.00 €`; `ann_pp_init = 0.00 €`;
 `rechnungszins = 0.0100`; `rentenfaktor_gtd = 28.00 €` per month per 10 000 €; `guarantee_period_y = 0`;

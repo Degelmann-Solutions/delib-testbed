@@ -145,7 +145,7 @@ M_PRODUCT = {
     "fondsgebundene_rentenversicherung": 414,
     "indexpolice": 339,
     "kapitallebensversicherung": 419,
-    "klassische_rentenversicherung": 582,
+    "klassische_rentenversicherung": 587,
     "pflegerentenversicherung": 807,
     "riester_rente": 590,
     "risikolebensversicherung": 287,

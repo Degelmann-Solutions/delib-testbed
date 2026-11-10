@@ -96,7 +96,7 @@ citations do establish is the shape of each recursion, and that is what this fil
   certainty geometrically empties the cohort eleven months early.
 - **Timing conventions [std].** The premium at the **start of the policy year**, which is what
   § 12 Abs. 1 VVG makes the *Versicherungsperiode* for this tariff, so `prem_due(t)` is true in the
-  first month of each policy year and nowhere else; charges deducted immediately after; the
+  first month of each paying policy year and nowhere else; charges deducted immediately after; the
   *Rechnungszins* credited on the post-premium, post-charge balance at the **end of the year**; the
   declared surplus credited to the *Ansammlungsguthaben* at the end of the year; death and surrender
   at the **end of each month**, deaths before surrenders; the *Rentenbeginn* events after the
@@ -409,7 +409,7 @@ documentation even on a monthly grid.** § 12 Abs. 1 VVG makes the *Versicherung
 where premiums are not measured in shorter periods, the *Deckungskapital* this model turns on is
 defined at anniversaries, and § 169 Abs. 3 pays a mid-period exit the value struck at the **end** of
 that period — so the consistent reading is a premium payable in advance for the whole year and a
-value earned for the whole year, and `prem_due(t)` is true in the first month of each policy year
+value earned for the whole year, and `prem_due(t)` is true in the first month of a paying policy year
 only. Modelling the instalments would require an unearned-premium convention on mid-year exits that
 no source in this corpus establishes. `KLV_DE_S` is the contrast and the reason this is a decision
 rather than an omission: there the *echt* / *unecht* distinction turns on whether the
@@ -451,12 +451,12 @@ flow in `result_cf()` is EUR for the model point as a whole.
 
 ### The premium and the *Beitragssumme*
 
-    P(k) = 0                                                 if k ≥ n, or k ≥ prem_term_y,
+    P(k) = 0                                                 if not prem_due(12 k),
                                                              or (pup_year > 0 and k ≥ pup_year − 1)
-         = prem_gross_level_pp                               if prem_form = single and k = 0
+         = prem_gross_level_pp                               if prem_form = single
          = prem_gross_level_pp × prem_freq_load × (1 + dynamik_rate)^k   if prem_form = regular
 
-    prem_due(t) = ( t mod 12 == 0 )        the first month of each policy year, and no other
+    prem_due(t) = ( t mod 12 == 0 ) and k < n and k < prem_term_y, k = duration(t); single form: k = 0 only
     premiums(t) = P(duration(t)) × l(t)    where prem_due(t), else 0
 
     beitragssumme    = Σ_{u=0..min(prem_term_y, n)−1} P_sched(u)

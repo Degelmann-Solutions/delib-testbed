@@ -55,7 +55,7 @@ Spreading either geometrically would empty the cohort eleven months early.
 It did not change the premium. § 12 Abs. 1 VVG makes the *Versicherungsperiode* the **year**
 for this tariff, the *Beitrag* is payable in advance for it, and the *Deckungskapital* the
 whole model turns on is defined at anniversaries and nowhere between them — so
-``prem_due(t)`` is true in the first month of each policy year and nowhere else, and premium
+``prem_due(t)`` is true in the first month of each paying year and nowhere else, and premium
 income is identical to the annual-step model's. The *Ratenzahlungszuschlag* remains the whole
 of what the *Zahlweise* does here. (``KLV_DE_S`` is the contrast: there the ``echt`` reading
 makes the period genuinely monthly, two model points differ in nothing else, and the
@@ -501,8 +501,9 @@ def mort_be_factor():
 def prem_pp_sched(k):
     """P_sched(k): the premium schedule **as written at inception**, per policy.
 
-    Zero after the *Rentenbeginn* and after the paying term; the *Einmalbeitrag*, the column
-    ``prem_gross_level_pp``, in the first year (``k = 0``) on the ``single`` form; otherwise
+    Zero in a year whose first month :func:`prem_due` makes no premium payable, after the
+    *Rentenbeginn*, after the paying term and after a single premium's one payment; the
+    *Einmalbeitrag*, the column ``prem_gross_level_pp``, on the ``single`` form; otherwise
     that column's annual premium loaded for the payment frequency and grown by the *Dynamik*.
 
     It ignores any later *Beitragsfreistellung* on purpose.  The § 4 DeckRV zillmer base is
@@ -510,11 +511,11 @@ def prem_pp_sched(k):
     does not retrospectively shrink that base — which is why :func:`beitragssumme` sums
     this cells and not :func:`prem_pp`.
     """
-    mp = model_point()
-    if k < 0 or k >= int(mp["aufschub_y"]) or k >= prem_term_y():
+    if not prem_due(12 * k):
         return 0.0
+    mp = model_point()
     if prem_form() == "single":
-        return float(mp["prem_gross_level_pp"]) if k == 0 else 0.0
+        return float(mp["prem_gross_level_pp"])
     return (float(mp["prem_gross_level_pp"]) * prem_freq_load()
             * (1.0 + float(mp["dynamik_rate"])) ** k)
 
@@ -587,13 +588,27 @@ def prem_cum_pp(k):
 def prem_due(t):
     """Whether the year's premium falls due at the **beginning** of month t.
 
-    ``duration_mth(t) % 12 == 0`` — the first month of each policy year and no other.  The
-    *Versicherungsperiode* of this tariff is the year (§ 12 Abs. 1 VVG) and the *Beitrag* is
-    payable in advance for it, so a monthly grid moves **when the exposed count is measured**
-    and not when the money arrives.  See :func:`prem_freq_load` for why the *Ratenzahlungszuschlag*
-    is the whole of what the *Zahlweise* does here.
+    ``duration_mth(t) % 12 == 0`` — the first month of a policy year and no other — in a
+    policy year ``k = duration(t)`` of the premium term: before the *Rentenbeginn*, ``k <
+    aufschub_y``, inside the paying term, ``k < prem_term_y()``, and on the ``single`` form
+    in the first year alone, ``k = 0``.  This cell is the only source of a zero for the end
+    of the premium term: the schedule :func:`prem_pp_sched` reads it at ``12 k``, the first
+    month of its year, and no premium cell tests the term itself.  A
+    *Beitragsfreistellung* is no end of the term and stays in :func:`prem_pp`.
+
+    The *Versicherungsperiode* of this tariff is the year (§ 12 Abs. 1 VVG) and the
+    *Beitrag* is payable in advance for it, so a monthly grid moves **when the exposed
+    count is measured** and not when the money arrives.  See :func:`prem_freq_load` for why
+    the *Ratenzahlungszuschlag* is the whole of what the *Zahlweise* does here.
     """
-    return duration_mth(t) % 12 == 0
+    if duration_mth(t) % 12 != 0:
+        return False
+    k = duration(t)
+    if k < 0 or k >= int(model_point()["aufschub_y"]) or k >= prem_term_y():
+        return False
+    if prem_form() == "single":
+        return k == 0
+    return True
 
 
 def prem_inst_pp(t):

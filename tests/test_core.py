@@ -300,6 +300,8 @@ CORE_CELLS = {
         "model_point_table_dict": dict.fromkeys(MODELS, "derived"),
         "param_core_path": dict.fromkeys(MODELS, "derived"),
         "param_tariff_path": dict.fromkeys(MODELS, "derived"),
+        "param_paths": dict.fromkeys(MODELS, "derived"),
+        "param_rows": dict.fromkeys(MODELS, "derived"),
         "param_layers": dict.fromkeys(MODELS, "derived"),
         "param_dict": dict.fromkeys(MODELS, "derived"),
         "param": dict.fromkeys(MODELS, "derived"),
@@ -2492,7 +2494,8 @@ def test_the_usage_scan_finds_no_problem(product, product_models):
     assert usage.problems == []
     assert usage.indirect == {}
     assert usage.reads and set(usage.reads) <= set(model.Data.param_dict())
-    assert {"param", "param_dict", "param_layers"} <= usage.reachable
+    assert {"param", "param_dict", "param_layers", "param_rows",
+            "param_paths"} <= usage.reachable
 
 
 def test_no_core_item_is_unused(product_models):
@@ -2602,7 +2605,7 @@ def test_the_usage_scan_reports_a_declared_cell_that_does_not_exist(tmp_path):
     assert "probe_nowhere" in problems[0] and "no cell" in problems[0]
 
 
-@pytest.mark.parametrize("reader", ["param_dict", "param_layers"])
+@pytest.mark.parametrize("reader", ["param_dict", "param_layers", "param_rows", "param_paths"])
 def test_the_usage_scan_reports_a_read_around_param(tmp_path, reader):
     copy = _usage_copy(tmp_path, "BypassProbe")
     try:

@@ -52,43 +52,70 @@ def param_tariff_path():
     return input_dir() / "param_tariff.csv"
 
 
-def param_layers():
-    """The parameter layers of the tariff: ``{layer: {item: value}}``, built once per model.
+def param_paths():
+    """The file of each parameter layer: ``{layer: path}``, built once per model.
 
-    The layers in turn, ``"core"`` from ``param_core_path()``, ``"tariff_type"`` from the
-    tariff-type file ``param_file`` and, where it exists, ``"tariff"`` from the tariff file
-    ``param_tariff_path()``; each file has exactly the columns ``item``, ``value``, ``basis``
-    and ``provenance``, in that order.  A value's text, stripped, that is digits only after an
-    optional sign is a Python ``int``, ``int(text)``; any other is a Python ``float``,
-    ``float(text)``, so ``1_000`` and ``1e3`` are floats.  There is no type column: a value
-    keeps the notation it is written in.
-
-    The loader checks the files as it reads them and raises ``ValueError`` naming the file
-    and, for a row, the item: a file it cannot parse (a row wider than the header), a header
-    other than the four columns (naming the header found),
-    an item that is empty or padded with whitespace, a value that is empty, no number or not
-    finite (``nan``, ``inf``), an item standing twice in one file, an item of the core file in
-    a product file (the core lock), an item standing in both product files (uniqueness).
+    The layers in turn, ``"core"`` the core file ``param_core_path()``, ``"tariff_type"`` the
+    tariff-type file ``input_dir() / param_file`` and, where it exists, ``"tariff"`` the
+    tariff file ``param_tariff_path()``.  Read by ``param_rows()`` and ``param_layers()`` and
+    by the usage scan ``core/param_usage.py`` (the files' names).
     """
     paths = {"core": param_core_path(),
              "tariff_type": input_dir() / param_file}                 # noqa: F821
     if param_tariff_path().is_file():
         paths["tariff"] = param_tariff_path()
+    return paths
+
+
+def param_rows():
+    """The data rows of each layer file: ``{layer: [[item, value, basis, provenance], ...]}``.
+
+    Each file of ``param_paths()`` read once per model as text (``dtype=str``,
+    ``keep_default_na=False``), in the order of the file.  The file is read without a header,
+    so a row wider than the header is a parse error, never an index, and raises
+    ``ValueError`` naming the file; so does a file that is missing or cannot be opened, and
+    a header other than the columns ``item``, ``value``, ``basis`` and ``provenance``, in
+    that order, naming the header found.  Read by
+    ``param_layers()`` and by the parameter tool ``tools/params.py`` (basis and provenance).
+    """
     columns = ["item", "value", "basis", "provenance"]
+    rows = {}
+    for layer, path in param_paths().items():
+        try:
+            table = pd.read_csv(path, header=None, dtype=str,         # noqa: F821
+                                keep_default_na=False).values.tolist()
+        except (OSError, ValueError) as error:
+            raise ValueError(f"parameter file {path} cannot be read: {error}") from None
+        if table[0] != columns:
+            raise ValueError(
+                f"parameter file {path} has the columns {table[0]}, not {columns}")
+        rows[layer] = table[1:]
+    return rows
+
+
+def param_layers():
+    """The parameter layers of the tariff: ``{layer: {item: value}}``, built once per model.
+
+    The layers of ``param_rows()`` in turn, ``"core"``, ``"tariff_type"`` and, where its file
+    exists, ``"tariff"`` (``param_paths()``).  A value's text, stripped, that is digits only
+    after an optional sign is a Python ``int``, ``int(text)``; any other is a Python
+    ``float``, ``float(text)``, so ``1_000`` and ``1e3`` are floats.  There is no type column:
+    a value keeps the notation it is written in.
+
+    The loader checks the files as it reads them and raises ``ValueError`` naming the file
+    and, for a row, the item: a file it cannot parse (a row wider than the header) or a
+    header other than the four columns (both in ``param_rows()``),
+    an item that is empty or padded with whitespace, a value that is empty, no number or not
+    finite (``nan``, ``inf``), an item standing twice in one file, an item of the core file in
+    a product file (the core lock), an item standing in both product files (uniqueness).
+    """
+    paths = param_paths()
     layers = {}
     seen = {}
-    for layer, path in paths.items():
-        # Read headerless, so a row wider than the header is a parse error, never an index.
-        try:
-            rows = pd.read_csv(path, header=None, dtype=str,          # noqa: F821
-                               keep_default_na=False).values.tolist()
-        except ValueError as error:
-            raise ValueError(f"parameter file {path} cannot be read: {error}") from None
-        if rows[0] != columns:
-            raise ValueError(
-                f"parameter file {path} has the columns {rows[0]}, not {columns}")
+    for layer, rows in param_rows().items():
+        path = paths[layer]
         values = {}
-        for item, text, *_ in rows[1:]:
+        for item, text, *_ in rows:
             if not item or item != item.strip():
                 raise ValueError(
                     f"parameter item {item!r} in {path} is empty or padded with whitespace")

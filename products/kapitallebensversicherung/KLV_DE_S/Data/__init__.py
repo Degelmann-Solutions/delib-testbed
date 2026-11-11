@@ -158,7 +158,7 @@ def charge_table_index():
     spend — because the difference between them **is** the *Kostenüberschuss*.
 
     Override reason: the tariff loadings and the expense basis share one row per
-    ``cost_id``, products/kapitallebensversicherung/technical-notes.md:214
+    ``cost_id``, products/kapitallebensversicherung/technical-notes.md:215
     """
     return "cost_id"
 

@@ -148,6 +148,7 @@ Every column of `model_point_table.csv` is published as a cells of the same name
 | `rating_factor` | float | *Risikozuschlag* multiplier on the risk premium; 1.00 at standard rates [R5] | 14 (1.50) |
 | `av_sur_pp_init` | EUR | *Überschussguthaben* carried at the valuation date | 10 |
 | `bonus_si_init` | EUR | Bonus sum insured already bought (*Bonussystem*, in force) | — |
+| `term_bonus_pp_init` | EUR | Accrued *Schlussüberschussanteil* carried at the valuation date; `term_bonus_pp(k_start())` | — |
 | `bfz_year` | int | **Contractual, 1-based policy year** at whose end *Beitragsfreistellung* is elected; 0 = never; ≤ `duration_init` = already paid-up. Not a frame index: the election falls at the end of the 0-based policy year `bfz_year − 1` — month `12(bfz_year − 1) + 11` — so the contract is paid-up from policy year `bfz_year` onwards. The column stays 1-based because 0 has to remain free to mean "never" | 11 (10), 12 (3) |
 
 `sum_assured` and `death_ratio` are the two halves of the *gemischte Versicherung*, and the
@@ -186,7 +187,7 @@ something it does not. Every one satisfies the *Mindesttodesfallschutz* [R12] [R
 | `pols_if(t)` | Policies in force at the **start** of **month** `t`; `pols_if(t_start()) = pols_if_init()`. `pols_if_at(t, timing)` gives `"BEF_DECR"` / `"AFT_DEATH"` / `"AFT_DECR"` | monthly decrements |
 | `res_pp(k)` | Guaranteed *Deckungskapital* per policy at the **start** of **policy year** `k`, on the first-order basis. `res_pp_at(k, timing)` gives `"BEF_PREM"` / `"AFT_PREM"` / `"AFT_INT"` | annual, prospective, with a roll-forward check |
 | `av_sur_pp(k)`, `bonus_si_pp(k)` | *Überschussguthaben* per policy at the start of **policy year** `k`, nil unless `surplus_use = ansammlung`, with `av_sur_pp_at(k, timing)` and `av_sur_at(k, timing)` per the house convention for a *verzinsliche Ansammlung* side account — library-wide `av_pp` is the **principal** balance, which in this product is the reserve `res_pp` and not an account; and the bonus sum insured bought out of surplus, nil unless `surplus_use = bonus` | annual recursion |
-| `term_bonus_pp(k)` | Accrued *Schlussüberschussanteil* at the start of **policy year** `k`, payable at the *Ablauf* and on death, not on surrender in the base run | annual accrual |
+| `term_bonus_pp(k)` | Accrued *Schlussüberschussanteil* at the start of **policy year** `k`, payable at the *Ablauf* and on death, not on surrender in the base run; `term_bonus_pp(k_start()) = term_bonus_pp_init()` | annual accrual |
 | `*_close_pp(t)` | The four balances above — and the § 169 value — **standing at the end of month `t`**: the year's own closing figure in an anniversary month, and the one struck at the last anniversary otherwise. What a mid-year exit is actually paid | derived, monthly |
 | `is_paid_up(k)` | Whether the contract is *beitragsfrei* at the start of **policy year** `k`; true from `k = bfz_year` onwards, the election falling at the end of policy year `bfz_year − 1` | set once, at the `bfz_year` election |
 | `bfz_si_pp` | *Beitragsfreie Versicherungssumme* bought at the *Beitragsfreistellung*, or 0 where the *Mindestversicherungsleistung* test fails and the election became a surrender | once per model point |
@@ -933,8 +934,8 @@ auf den Todes- und Erlebensfall* proper; `prem_freq` **annual** and `unterjaehri
 `prem_freq_load = 1.000` and the *Ratenzahlungszuschlag* is inert; `rechnungszins` **1.00%**, the
 *Höchstrechnungszins* for new business written from 1 January 2025 [R7] [REG-R15]; `zillmer_on` **1**;
 `cost_id` **`std_2026`**; `surplus_use` **`ansammlung`**; `scenario_id` **`base`**; `rating_factor`
-**1.00**; `av_sur_pp_init` **0.00**; `bonus_si_init` **0.00**; `bfz_year` **0**, so no
-*Beitragsfreistellung* is elected. The *Bruttobeitrag* is **not** a model point column: it is derived
+**1.00**; `av_sur_pp_init` **0.00**; `bonus_si_init` **0.00**; `term_bonus_pp_init` **0.00**;
+`bfz_year` **0**, so no *Beitragsfreistellung* is elected. The *Bruttobeitrag* is **not** a model point column: it is derived
 by the equivalence principle above and reported in the table, because **no German endowment premium
 rate table is public, for any carrier** (gap 16).
 

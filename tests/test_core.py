@@ -392,7 +392,7 @@ CORE_CELLS = {
         "issue_year": {"basisrente": "derived",
                        "kapitallebensversicherung": "derived",
                        "klassische_rentenversicherung": "derived",
-                       "riester_rente": "override",
+                       "riester_rente": "derived",
                        "sofortrente": "derived"},
         "duration_init": {"basisrente": "derived",
                           "indexpolice": "derived",
@@ -2519,9 +2519,38 @@ def test_the_usage_scan_finds_no_problem(product, product_models):
             "param_paths"} <= usage.reachable
 
 
+# The products whose model points all open at the valuation date 1 January 2027, the core item
+# ``valuation_year``: every point's year of issue plus its completed policy years is the
+# valuation year, on its policy anniversary (entry 23 of epic-parameter-files). Basis and KLV
+# are not among them: their in-force points could not be rolled forward to it by the model.
+VALUATION_DATE_PRODUCTS = ("riester_rente",)
+
+# The core items no cell reads, each with the test that reads it: the valuation date is the
+# date the model points are built against, not a parameter of a formula.
+CORE_ITEMS_READ_BY_TESTS = {
+    "valuation_year": "test_every_model_point_opens_at_the_valuation_date",
+}
+
+
+@pytest.mark.parametrize("product", VALUATION_DATE_PRODUCTS)
+def test_every_model_point_opens_at_the_valuation_date(product, product_models):
+    model = product_models(product)
+    year = model.Data.param("valuation_year")
+    points = model.Data.model_point_table()
+    for point_id, row in points.iterrows():
+        if "duration_init" in points.columns:
+            elapsed = int(row["duration_init"])
+        else:
+            assert int(row["duration_mth_init"]) % 12 == 0, point_id
+            elapsed = int(row["duration_mth_init"]) // 12
+        assert int(row["issue_year"]) + elapsed == year, point_id
+
+
 def test_no_core_item_is_unused(product_models):
     usages = [param_usage.scan(product_models(product)) for product in sorted(MODELS)]
-    assert param_usage.unused_core_items(usages) == []
+    assert param_usage.unused_core_items(usages) == sorted(CORE_ITEMS_READ_BY_TESTS)
+    for test in CORE_ITEMS_READ_BY_TESTS.values():
+        assert callable(globals().get(test)), test
 
 
 def test_the_usage_scan_counts_a_core_cell_only_where_it_is_reachable(product_models):

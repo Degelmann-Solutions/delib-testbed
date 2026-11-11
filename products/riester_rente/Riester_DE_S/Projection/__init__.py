@@ -127,7 +127,7 @@ d(k)                       duration_y(k)                   Contract years done a
 d(t)                       duration(t)                     The same, read from a month
 (none)                     duration_mth(t)                 Contract months done
 12 d(0)                    clock_offset_mth()              Contract months done at t = 0
-(none)                     issue_year()                    Year of issue, 2027 - d(0)
+(none)                     issue_year()                    Year of issue, model point
 (none)                     policy_year(t)                  Contractual 1-based label
 d(k) + 1                   policy_year_y(k)                The same, in projection year k
 tau(k)                     calendar_year_y(k)              Calendar year of year k
@@ -565,19 +565,6 @@ def clock_offset_mth():
     products/riester_rente/technical-notes.md:35
     """
     return 12 * duration_init()
-
-
-def issue_year():
-    """The calendar year of issue, ``valuation_year - duration_init()``.
-
-    The model point carries no year of issue: every point opens at the common **1 January
-    2027** valuation date, on its policy anniversary, so the core's ``calendar_year_y(k) =
-    issue_year() + duration_y(k)`` is ``2027 + k``.
-
-    Override reason: every model point opens at the common 1 January 2027 valuation date,
-    so the year of issue is counted back from it, products/riester_rente/technical-notes.md:40
-    """
-    return data.param("valuation_year") - duration_init()            # noqa: F821
 
 
 def is_accum_y(k):

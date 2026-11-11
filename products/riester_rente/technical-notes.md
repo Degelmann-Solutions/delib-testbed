@@ -38,8 +38,8 @@ German terms of art keep their German form in prose.
   The contractual contract year is `duration_y(k) + 1 = duration_init + k + 1`, which is `k + 1`
   only on a point projected from its own inception (`duration_init = 0`). The
   valuation date is **1 January 2027** (`valuation_year`, an item of the core file `param_core.csv`) [std] — the first day on which the product is closed to new
-  business [REG-R44] — so `calendar_year_y(k) = 2027 + k` and the calendar year steps on the
-  anniversary. The contract is annual in every
+  business [REG-R44] — every point carries its year of issue `issue_year = 2027 − duration_init`, so
+  `calendar_year_y(k) = 2027 + k` and the calendar year steps on the anniversary. The contract is annual in every
   respect the annual clock carries: the Zulage is an annual entitlement determined on a calendar
   year and paid once by the ZfA [R9] [R10] [R11], the *Überschuss* is declared annually, the two
   charges and the interest credit fall once a year, and the *Beitragsgarantie* is tested once. The
@@ -119,7 +119,7 @@ reaches it through a `data` Reference and holds no `*_file` Reference and no `in
 
 | File | Index columns | Value columns |
 |---|---|---|
-| `model_point_table.csv` | `point_id` | the twenty-six attributes tabulated below |
+| `model_point_table.csv` | `point_id` | the twenty-seven attributes tabulated below |
 | `mort_table_accum.csv` | `age` (16–110) | `qx`, `provenance` |
 | `annuity_mort_table.csv` | `age` (55–110) | `qx_base`, `improvement`, `provenance` |
 | `lapse_table.csv` | `policy_year` (1–60) | `lapse_rate`, `transfer_rate`, `provenance` |
@@ -178,6 +178,7 @@ value; the thirteen points are described under *Worked example*.
 | `point_id` | int | Row key; `Projection` is parameterized by it | all |
 | `sex` | enum {M, F} | Reporting only. Pricing, the conversion and every rate are **unisex** [R23] | all |
 | `issue_age` | int | Attained age at conclusion of the contract | all |
+| `issue_year` | int | Calendar year of conclusion, `2027 − duration_init`: every point opens at the 1 January 2027 valuation date, on its policy anniversary; the core's `issue_year()` reads it | 2 (2027), 3 (2018) |
 | `duration_init` | int | Completed contract years at the valuation date; 0 for a point projected from issue | 2, 6, 13 at 0 or 1 |
 | `pols_if_init` | float | Policies represented; `result_cf()`'s first `pols_if` equals it exactly | all |
 | `ret_age` | int | Attained age at which the payout phase starts; bounded below by 62 for a contract concluded from 2012 [R1] | 13 (at the statutory floor, 62) |

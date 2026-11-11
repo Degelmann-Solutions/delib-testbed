@@ -634,18 +634,20 @@ expenses(t)    = expense_acq_pp_once · 1{t = t_start and duration_init = 0}
                  + expense_admin_pp_ann/12 · inflation_factor(t) · pols_if(t)
                  + expense_claim_pp_once · ( pols_death(t) + pols_lapse(t) + pols_maturity(t) )
 commissions(t) = comm_acq_bsum_once · beitragssumme · 1{t = t_start and duration_init = 0}
-                 + comm_renew_prem_inst · prem_charged_inst_pp(t) · pols_if(t)   for k > k_start
+                 + comm_renew_prem_inst · prem_charged_inst_pp(t) · pols_if(t)   for k ≥ 1
 net_cf(t)      = premiums(t) − claims(t,"DEATH") − claims(t,"MATURITY") − claims(t,"LAPSE")
                  − expenses(t) − commissions(t) liability_cf(t)= − net_cf(t)
 ```
 
-Three orientations worth naming. **`sum_death` is `sum_assured × death_ratio` and the surplus is added
+Four orientations worth naming. **`sum_death` is `sum_assured × death_ratio` and the surplus is added
 to it whole** — the *Überschussguthaben*, the bonus sum and the accrued terminal bonus are payable on
 death as well as at maturity [S11] [S16], so the two benefits differ only in their guaranteed leg.
 **The renewal commission is charged on the instalment of `prem_pp`, not of `prem_paid_pp`**:
 under *Beitragsverrechnung* the intermediary is paid on the tariff premium, the surplus offset being a
-policyholder rebate. And **every ``*_close_pp`` is the balance standing at the end of the month of
-exit**, which is the year's own closing figure in an anniversary month and the previous anniversary's
+policyholder rebate. **The renewal commission is paid from the second policy year from issue**,
+`k ≥ 1`, the first year's being the initial commission's, so an in-force point pays it from its first
+projected month (decision of 2026-11-11). And **every ``*_close_pp`` is the balance standing at the
+end of the month of exit**, which is the year's own closing figure in an anniversary month and the previous anniversary's
 in the other eleven — the rule stated under *Model scope and conventions*.
 
 `result_cf()` is a `DataFrame` indexed by the **month** `t` (`df.index.name == "t"`), contiguous from

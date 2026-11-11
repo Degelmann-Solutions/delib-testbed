@@ -1590,7 +1590,7 @@ def claim_kinds():
     """The benefit kinds of :func:`claims` in the order of its total: death, maturity, lapse.
 
     Override reason: the claim columns are death, maturity and lapse in that order,
-    products/kapitallebensversicherung/technical-notes.md:655
+    products/kapitallebensversicherung/technical-notes.md:657
     """
     return ("DEATH", "MATURITY", "LAPSE")
 
@@ -1688,19 +1688,21 @@ def comm_init_rate():
 def comm_renew(t):
     """The 1,5 % *Bestandsprovision* on each *Bruttobeitrag* **instalment** **[std]**.
 
-    From the second projected policy year; not at ``t_start()`` on an in-force point.  The
-    **rate** is a policy-year rate and steps on the anniversary; the **base** is the
-    instalment actually charged, so a fractionated payer earns the renewal commission in
-    instalments too.  It is charged on :func:`prem_charged_inst_pp` and **not** on
-    :func:`prem_inst_pp`: under *Beitragsverrechnung* the intermediary is paid on the tariff
-    premium, the surplus offset being a policyholder rebate rather than a price reduction.
+    From the second policy year from issue, ``duration(t) > 0``: the first year's
+    intermediary is paid by the initial commission.  An in-force point pays it from its first
+    projected month, its first policy year lying before the frame.  The **rate** is a
+    policy-year rate and steps on the anniversary; the **base** is the instalment actually
+    charged, so a fractionated payer earns the renewal commission in instalments too.  It is
+    charged on :func:`prem_charged_inst_pp` and **not** on :func:`prem_inst_pp`: under
+    *Beitragsverrechnung* the intermediary is paid on the tariff premium, the surplus offset
+    being a policyholder rebate rather than a price reduction.
 
-    Override reason: the renewal commission is a rate on the charged instalment after the
-    first projected policy year, products/kapitallebensversicherung/technical-notes.md:637
+    Override reason: the renewal commission is a rate on the charged instalment from the
+    second policy year, products/kapitallebensversicherung/technical-notes.md:637
     """
     cost = data.charge_table_dict()                                  # noqa: F821
     return (float(cost["comm_renew_prem_inst"][cost_id()]) * prem_charged_inst_pp(t) * pols_if(t)
-            if duration(t) > k_start() else 0.0)
+            if duration(t) > 0 else 0.0)
 
 
 # --- output ----------------------------------------------------------------
@@ -1718,7 +1720,7 @@ def check_net_cf_scale(t):
     failed.
 
     Override reason: the statement is checked relative to the sum insured,
-    products/kapitallebensversicherung/technical-notes.md:692
+    products/kapitallebensversicherung/technical-notes.md:694
     """
     return max(sum_assured(), 1.0)                                   # noqa: F821
 

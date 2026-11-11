@@ -22,14 +22,16 @@ In a reachable cell a call ``param("<item>")`` (or ``data.param("<item>")``) wit
 literal reads that item.  Any other reference to ``param`` is an indirect read, which the cell
 has to declare in ``param_indirect()``, ``{cell: (item, ...)}``; the declared items count as
 read by the cell.  A cell other than the loader cells must not reference the readers behind
-``param`` (``param_dict``, ``param_layers``).
+``param`` (``param_dict``, ``param_layers``) or the files they read (``param_core_path``,
+``param_tariff_path``, ``param_file``), and a product must not define ``param_core_path``:
+the core file is the one beside the core's loaders.
 
 The problems of one product: a call or declared item naming an item no layer holds, an item
 of the tariff-type or the tariff layer that no reachable cell reads, an undeclared indirect
-read, a declared cell that does not exist, and a bypass of ``param``.  An item of the core
-file is checked across all products together, ``unused_core_items(usages)``: it is used if
-any product reads it.  ``tools/params.py``, the view of a tariff's parameters, builds on
-this scan.
+read, a declared cell that does not exist, a bypass of ``param`` through a reader or a file
+path, and a product-defined ``param_core_path``.  An item of the core file is checked across
+all products together, ``unused_core_items(usages)``: it is used if any product reads it.
+``tools/params.py``, the view of a tariff's parameters, builds on this scan.
 """
 import ast
 import textwrap
@@ -39,6 +41,7 @@ SPACES = ("Projection", "Data")
 ROOT_PREFIXES = ("result_", "check_")
 LOADER = "param"
 READERS = frozenset({"param_dict", "param_layers"})
+PATHS = frozenset({"param_core_path", "param_tariff_path", "param_file"})
 LOADER_CELLS = READERS | {LOADER}
 PRODUCT_LAYERS = ("tariff_type", "tariff")
 
@@ -152,10 +155,13 @@ def scan(model) -> Usage:
     for name in sorted(cells):
         if name in LOADER_CELLS:
             continue
-        bypass = sorted(set().union(*map(_references, trees[name])) & READERS)
+        bypass = sorted(set().union(*map(_references, trees[name])) & (READERS | PATHS))
         if bypass:
             problems.append(f"cell {name} reads the parameters around param(): "
                             f"{', '.join(bypass)}")
+    if data.cells["param_core_path"]._is_defined():
+        problems.append("Data defines param_core_path; the core file is the core's "
+                        "param_core.csv beside its loaders")
 
     for item in sorted(reads):
         if not any(item in layer for layer in layers.values()):

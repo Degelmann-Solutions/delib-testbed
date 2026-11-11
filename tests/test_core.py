@@ -2614,6 +2614,36 @@ def test_the_usage_scan_reports_a_read_around_param(tmp_path, reader):
     assert "probe_bypass" in problems[0] and reader in problems[0]
 
 
+@pytest.mark.parametrize(("source", "path"), [
+    ("data.param_core_path()", "param_core_path"),
+    ("data.param_tariff_path()", "param_tariff_path"),
+    ("data.param_file", "param_file"),
+])
+def test_the_usage_scan_reports_a_read_around_param_through_a_file_path(tmp_path, source,
+                                                                         path):
+    copy = _usage_copy(tmp_path, "PathBypassProbe")
+    try:
+        _add_cell(copy, "Projection", f"def probe_path():\n    return {source}\n")
+        problems = param_usage.scan(copy).problems
+    finally:
+        copy.close()
+    assert len(problems) == 1, problems
+    assert "probe_path" in problems[0] and path in problems[0]
+
+
+def test_the_usage_scan_reports_a_product_defined_core_path(tmp_path):
+    copy = _usage_copy(tmp_path, "CorePathProbe")
+    try:
+        copy.Data.cells["param_core_path"].formula = (
+            'def param_core_path():\n    return _model.path / "CoreData" / "param_core.csv"\n')
+        assert copy.Data.cells["param_core_path"]._is_defined()
+        problems = param_usage.scan(copy).problems
+    finally:
+        copy.close()
+    assert len(problems) == 1, problems
+    assert "param_core_path" in problems[0] and "Data defines" in problems[0]
+
+
 def test_the_usage_scan_reports_a_declared_missing_item_of_an_unreachable_cell(tmp_path):
     """RLV inherits the core's ``omega_age`` unreached; a declared item no layer holds is a
     problem there too."""

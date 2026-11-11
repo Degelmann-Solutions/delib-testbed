@@ -3006,6 +3006,48 @@ def test_pflege_grade_count_is_read_from_the_care_table(product_models):
     assert "mort_rate_care_pg%d" % count in columns
 
 
+def _status_init_error(item) -> str:
+    """The error line of ``status_init()``'s error, which must be a ``ValueError``; modelx
+    wraps it in a ``FormulaError`` whose text also holds the formula source."""
+    with pytest.raises(Exception) as raised:
+        item.status_init()
+    if isinstance(raised.value, ValueError):
+        return f"ValueError: {raised.value}"
+    head = str(raised.value).split("Formula traceback:", 1)[0]
+    line = [text for text in head.splitlines() if text.strip()][-1]
+    assert line.startswith("ValueError: "), str(raised.value)
+    return line
+
+
+def test_pflege_status_init_reads_its_states_from_the_care_table(tmp_path, product_models):
+    """``status_init`` accepts ``aktiv`` and ``pg1`` up to the top grade of
+    ``care_table.csv``: on a four-grade copy ``pg4`` is accepted and ``pg5`` is not."""
+    shipped = product_models("pflegerentenversicherung")
+    for point_id, status in shipped.Data.model_point_table()["status"].items():
+        assert shipped.Projection[point_id].status_init() == status
+    folder = product_copy(tmp_path, "pflegerentenversicherung")
+    care = folder / "care_table.csv"
+    lines = care.read_text(encoding="utf-8").splitlines(keepends=True)
+    assert lines[-1].startswith("5,")
+    care.write_text("".join(lines[:-1]), encoding="utf-8")
+    table = folder / "model_point_table.csv"
+    rows = table.read_text(encoding="utf-8").splitlines(keepends=True)
+    assert rows[1].startswith("1,") and ",aktiv," in rows[1]
+    for status in ("pg4", "pg5", "pg0", "foo"):
+        rows[1] = re.sub(r",(aktiv|pg\d|foo),", f",{status},", rows[1], count=1)
+        table.write_text("".join(rows), encoding="utf-8")
+        copy = mx.read_model(folder / MODELS["pflegerentenversicherung"], name="StatusProbe")
+        try:
+            assert copy.Data.pflegegrad_count() == 4
+            item = copy.Projection[1]
+            if status == "pg4":
+                assert item.status_init() == "pg4"
+            else:
+                assert _status_init_error(item) == f"ValueError: invalid status '{status}'"
+        finally:
+            copy.close()
+
+
 def test_pflege_surrender_cap_is_read_from_the_surrender_table(tmp_path, product_models):
     """The policy-year cap of ``rkw_pp`` is the table's last row, so a 41st row is read too."""
     data = product_models("pflegerentenversicherung").Data

@@ -230,7 +230,8 @@ def pflegegrad_count():
 
     Built once per model; the grades run from 1 without a gap, as the table's index
     ``pflegegrad`` does.  The projection's state ledgers, their checks and the frame of
-    ``result_states`` loop over ``1 .. pflegegrad_count()`` and read the top grade as it.
+    ``result_states`` loop over ``1 .. pflegegrad_count()`` and read the top grade as it,
+    and ``status_init`` accepts the states ``aktiv`` and ``pg1`` to ``pg<n>`` from it.
     """
     return len(care_table())
 

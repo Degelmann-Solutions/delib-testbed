@@ -291,16 +291,18 @@ _spaces = []
 # Cells
 
 def status_init():
-    """The state at the projection start: ``aktiv`` or ``pg1`` … ``pg5``.
+    """The state at the projection start: ``aktiv`` or ``pg1`` up to the top grade of
+    ``care_table.csv``, ``pg<n>`` with ``n = data.pflegegrad_count()``.
 
     An ``aktiv`` point seeds :func:`pols_act`; a point in claim seeds :func:`pols_pg` at
     its grade with the *Karenzzeit* already served, because a life in payment at the
     valuation date has served whatever deferral its contract carried.  Model point 12 is
-    the in-claim case.
+    the in-claim case.  Any other status raises ``ValueError``.
     """
+    n = data.pflegegrad_count()                                      # noqa: F821
     v = str(model_point()["status"])
-    if v not in ("aktiv", "pg1", "pg2", "pg3", "pg4", "pg5"):
-        raise ValueError("invalid status")
+    if v not in ("aktiv",) + tuple("pg%d" % g for g in range(1, n + 1)):
+        raise ValueError("invalid status %r" % v)
     return v
 
 

@@ -88,9 +88,10 @@ before drawing any conclusion from the output.
 **Model points.** Fourteen, covering the plain *Leibrente*, each death-benefit option in
 turn, a joint-life cell with a younger second life, all four payment frequencies, both
 payment timings, all four *Überschussverwendung* forms, a five-year *Aufschubzeit*, an
-in-force point carrying an annuity struck in 2012 on a 1,75 % tariff, a pre-2025
-*Höchstrechnungszins* vintage, both ends of the issue-age envelope and a cell with the
-*Überschussrente* switched off. Model point 1 is the anchor cell of the worked example in
+in-force point carrying an annuity struck in 2012 on a 1,75 % tariff, a 2027 point keeping
+the 0,25 % of the 2022–2024 *Höchstrechnungszins* vintage, both ends of the issue-age
+envelope and a cell with the *Überschussrente* switched off. Every point opens at the
+valuation date 1 January 2027. Model point 1 is the anchor cell of the worked example in
 the technical notes.
 
 **Verification.** ``tests/test_sofortrente_de.py`` asserts the notes' worked example — the

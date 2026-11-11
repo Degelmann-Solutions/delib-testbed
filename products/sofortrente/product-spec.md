@@ -170,8 +170,8 @@ the footnote says so in those words: a **[std]** with no range is weaker than on
 | *Aufschubzeit* (deferment) | **0 years** representative; **0 to 15 years** offered | **[std]** (3) |
 | Underwriting | **None.** No medical evidence, no *Gesundheitsprüfung* | **[std]** (4), [unverified] |
 | Sex | Tariff **unisex** for business written from 21 December 2012; the profession's tables are sex-distinct | [REG-R34]; [REG-R49] |
-| *Rechnungszins* | **1,00 %** for a 2025 or 2026 contract, at or below the *Höchstrechnungszins* of the contract's own vintage | [REG-R14] [REG-R15]; 1,00 % read in three carriers' AVB [S2] [S3] [S4] |
-| Anchor model cell | 100 000 €, annuitant male aged 65 (born 1960), inception 2025, *Rechnungszins* 1,00 %, *Rentengarantiezeit* 10 years, monthly *vorschüssig*, *teildynamische Überschussrente* | **[std]** (5) |
+| *Rechnungszins* | **1,00 %** for a 2025 to 2027 contract, at or below the *Höchstrechnungszins* of the contract's own vintage | [REG-R14] [REG-R15]; 1,00 % read in three carriers' AVB [S2] [S3] [S4] |
+| Anchor model cell | 100 000 €, annuitant male aged 65 (born 1962), inception 2027, the valuation date 1 January 2027, *Rechnungszins* 1,00 %, *Rentengarantiezeit* 10 years, monthly *vorschüssig*, *teildynamische Überschussrente* | **[std]** (5) |
 
 1. **One carrier's upper limit is now established and the lower is not**: Allianz gives a
    *Höchsteintrittsalter* of **85 Jahre** for the lifelong form [S7], and [S2]'s bAV wrapper a
@@ -207,7 +207,7 @@ the footnote says so in those words: a **[std]** with no range is weaker than on
 5. Age 65 is where the corroborated *Ertragsanteil* applies [R13] and where the [std] annuity table
    is anchored; the 10-year guarantee sits at the short end of the market's typical band (15 years to
    age 70, 10 thereafter, most choosing 10 to 20 [R23]) so the certain window fits a readable
-   worked-example table; and the 2025 inception puts the cell on the current 1,00 % rate [REG-R15].
+   worked-example table; and the 2027 inception, the book's valuation date, puts the cell on the 1,00 % rate in force since 2025 [REG-R15].
 
 ### Premiums — the *Einmalbeitrag*
 
@@ -835,7 +835,8 @@ its absence here a real gap [REG-R25] [S15]. **§§ 165–170** — *Beitragsfre
 § 138 Abs. 1 VAG's requirement that premiums fund the reserve, caps the rate at which a new tariff
 may be priced [REG-R14] [REG-R8]. **The rate applies at conclusion and stays with the contract for
 its whole term** — which is why the German book is a stack of cohorts and every delib model point
-carries its cohort's rate: 3,50 % to mid-1994; 4,00 % to mid-2000; 3,25 %; 2,75 %; 2,25 %; 1,75 %;
+carries a rate at or below its cohort's cap, this product's point 13 keeping the 0,25 % of
+2022–2024 on a 2027 issue. The caps: 3,50 % to mid-1994; 4,00 % to mid-2000; 3,25 %; 2,75 %; 2,25 %; 1,75 %;
 1,25 %; 0,90 %; 0,25 % for 2022–2024; **1,00 % from 2025**, by the *Sechste Verordnung zur Änderung
 von Verordnungen nach dem VAG* of 19 July 2024, BGBl. 2024 I Nr. 250 [REG-R15]. The ministry sets it
 on an annual DAV recommendation — **practice, not law** — carrying a ***Sicherheitsabschlag* of

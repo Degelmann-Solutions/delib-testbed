@@ -536,8 +536,10 @@ def mort_rate_gen(x, table_sex, cohort, basis):
     calendar year in which the life attains age ``x``, so the exponent is simply that year
     less ``mort_base_year`` and the shipped tables are the period tables of 2025.
 
-    The exponent may be **negative** — an in-force point issued in 2012 attains its ages
-    before 2025 and reads correspondingly heavier mortality — and it is not floored.
+    The exponent may be **negative** — a cohort attaining an age before 2025 reads
+    correspondingly heavier mortality there — and it is not floored.  No shipped point
+    reads one: every frame opens at the valuation date 1 January 2027, the in-force point
+    issued in 2012, born 1947, at age 80 with exponent 2.
 
     The result is capped at 1.  A negative exponent scales the rate **up**, and at the top
     of the proxy's age range the second-order series is already close to 1, so the cap is

@@ -94,8 +94,8 @@ BASELINE = {
         ("check_annuity_roll_fwd", "check_death_option_xor", "check_equivalence",
          "check_guarantee_certain", "check_lives_roll_fwd", "check_net_cf",
          "check_payment_factor", "check_refund_run_off", "check_tariff_int_rate"),
-        "c90503ea871423baf2596d7907e6c70dfe7071d8d23b2152503bceaf91d379e1",
-        "faf9c84febdd479452b2e17685507d95d29f72f2ef692ece78e5619b46c83fbe",
+        "fb4644f8a7f74d09d2d0f73029cb8c9c9f5e026f4237fbbca6d3e48d15afdffd",
+        "195d2c63fdd3dec208aa070b8f70d4224c5d01abe69cd49c87629d2f9b92f3b4",
     ),
 }
 

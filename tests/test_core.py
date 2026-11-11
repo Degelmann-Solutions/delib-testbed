@@ -2519,11 +2519,21 @@ def test_the_usage_scan_finds_no_problem(product, product_models):
             "param_paths"} <= usage.reachable
 
 
-# The products whose model points all open at the valuation date 1 January 2027, the core item
-# ``valuation_year``: every point's year of issue plus its completed policy years is the
-# valuation year, on its policy anniversary (entry 23 of epic-parameter-files).
-VALUATION_DATE_PRODUCTS = ("basisrente", "kapitallebensversicherung",
-                           "klassische_rentenversicherung", "riester_rente", "sofortrente")
+# The products with a calendar year, those whose model points carry ``issue_year``: each of
+# their points opens at the valuation date 1 January 2027, the core item ``valuation_year``,
+# its year of issue plus its completed policy years being the valuation year, on its policy
+# anniversary (entry 23 of epic-parameter-files). Read off the files, so a product gaining
+# the column is checked without a list to keep.
+VALUATION_DATE_PRODUCTS = tuple(sorted(
+    product for product in MODELS
+    if "issue_year" in (PRODUCTS_DIR / product / "model_point_table.csv")
+    .read_text().splitlines()[0].split(",")))
+
+
+def test_the_products_with_a_calendar_year_are_five():
+    assert VALUATION_DATE_PRODUCTS == (
+        "basisrente", "kapitallebensversicherung", "klassische_rentenversicherung",
+        "riester_rente", "sofortrente")
 
 # The core items no cell reads, each with the test that reads it: the valuation date is the
 # date the model points are built against, not a parameter of a formula.

@@ -57,24 +57,53 @@ def param_layers():
 
     The layers in turn, ``"core"`` from ``param_core_path()``, ``"tariff_type"`` from the
     tariff-type file ``param_file`` and, where it exists, ``"tariff"`` from the tariff file
-    ``param_tariff_path()``; each file has the columns ``item``, ``value``, ``basis`` and
-    ``provenance``.  A value whose text is an integer literal is a Python ``int``, any other a
-    Python ``float``, the value the same literal has in Python.
+    ``param_tariff_path()``; each file has exactly the columns ``item``, ``value``, ``basis``
+    and ``provenance``, in that order.  A value's text, stripped, that is digits only after an
+    optional sign is a Python ``int``, ``int(text)``; any other is a Python ``float``,
+    ``float(text)``, so ``1_000`` and ``1e3`` are floats.  There is no type column: a value
+    keeps the notation it is written in.
 
-    The loader checks the files as it reads them and raises ``ValueError`` naming the item
-    and the file or files: an item standing twice in one file, an item of the core file in a
-    product file (the core lock), an item standing in both product files (uniqueness).
+    The loader checks the files as it reads them and raises ``ValueError`` naming the file
+    and, for a row, the item: a file it cannot parse (a row wider than the header), a header
+    other than the four columns (naming the header found),
+    an item that is empty or padded with whitespace, a value that is empty, no number or not
+    finite (``nan``, ``inf``), an item standing twice in one file, an item of the core file in
+    a product file (the core lock), an item standing in both product files (uniqueness).
     """
     paths = {"core": param_core_path(),
              "tariff_type": input_dir() / param_file}                 # noqa: F821
     if param_tariff_path().is_file():
         paths["tariff"] = param_tariff_path()
+    columns = ["item", "value", "basis", "provenance"]
     layers = {}
     seen = {}
     for layer, path in paths.items():
-        table = pd.read_csv(path, dtype=str, keep_default_na=False)  # noqa: F821
+        # Read headerless, so a row wider than the header is a parse error, never an index.
+        try:
+            rows = pd.read_csv(path, header=None, dtype=str,          # noqa: F821
+                               keep_default_na=False).values.tolist()
+        except ValueError as error:
+            raise ValueError(f"parameter file {path} cannot be read: {error}") from None
+        if rows[0] != columns:
+            raise ValueError(
+                f"parameter file {path} has the columns {rows[0]}, not {columns}")
         values = {}
-        for item, text in zip(table["item"], table["value"]):
+        for item, text, *_ in rows[1:]:
+            if not item or item != item.strip():
+                raise ValueError(
+                    f"parameter item {item!r} in {path} is empty or padded with whitespace")
+            text = text.strip()
+            if not text:
+                raise ValueError(f"parameter {item!r} has no value in {path}")
+            try:
+                value = int(text) if text.lstrip("+-").isdigit() else float(text)
+            except ValueError:
+                raise ValueError(
+                    f"parameter {item!r} has the value {text!r} in {path}, no number"
+                ) from None
+            if not abs(value) < float("inf"):
+                raise ValueError(
+                    f"parameter {item!r} has the value {text!r} in {path}, not finite")
             if item in values:
                 raise ValueError(f"parameter {item!r} stands twice in {path}")
             if item in seen:
@@ -85,8 +114,7 @@ def param_layers():
                         f" file {path} must not hold it")
                 raise ValueError(
                     f"parameter {item!r} stands in two layers: {first_path} and {path}")
-            text = text.strip()
-            values[item] = int(text) if text.lstrip("+-").isdigit() else float(text)
+            values[item] = value
         for item in values:
             seen[item] = (layer, path)
         layers[layer] = values

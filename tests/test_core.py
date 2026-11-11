@@ -2391,6 +2391,73 @@ def test_param_rejects_a_core_item_in_the_tariff_file(tmp_path):
     assert str(folder / "param_tariff.csv") in message
 
 
+@pytest.mark.parametrize(("text", "name", "words"), [
+    ("", "EmptyValueProbe", "has no value in"),
+    ("  ", "BlankValueProbe", "has no value in"),
+    ("abc", "NoNumberProbe", "has the value 'abc' in"),
+    ("+-3", "TwoSignsProbe", "has the value '+-3' in"),
+    ("nan", "NanProbe", "not finite"),
+    ("inf", "InfProbe", "not finite"),
+    ("-inf", "NegInfProbe", "not finite"),
+])
+def test_param_rejects_a_value_that_is_no_finite_number(tmp_path, text, name, words):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    _add_params(folder / "param_tariff_type.csv", {"probe_value": text})
+    message = _loader_error(folder / MODELS["risikolebensversicherung"], name)
+    assert "'probe_value'" in message and words in message, message
+    assert str(folder / "param_tariff_type.csv") in message
+
+
+@pytest.mark.parametrize(("item", "name"), [
+    (" check_tol", "PaddedCoreItemProbe"),
+    ("probe_pad ", "PaddedItemProbe"),
+])
+def test_param_rejects_an_item_padded_with_whitespace(tmp_path, item, name):
+    """A padded item would be a key of its own and slip past the core lock; it is rejected,
+    not stripped."""
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    _add_params(folder / "param_tariff_type.csv", {item: "1.0"})
+    message = _loader_error(folder / MODELS["risikolebensversicherung"], name)
+    assert repr(item) in message and "padded with whitespace" in message, message
+    assert str(folder / "param_tariff_type.csv") in message
+
+
+def test_param_rejects_an_empty_item(tmp_path):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    _add_params(folder / "param_tariff_type.csv", {"": "1.0"})
+    message = _loader_error(folder / MODELS["risikolebensversicherung"], "EmptyItemProbe")
+    assert "item '' in" in message, message
+    assert str(folder / "param_tariff_type.csv") in message
+
+
+@pytest.mark.parametrize(("change", "name"), [
+    (lambda table: table.drop(columns="basis"), "MissingColumnProbe"),
+    (lambda table: table.insert(2, "unit", "") or table, "ExtraColumnProbe"),
+    (lambda table: table[["item", "basis", "value", "provenance"]], "SwappedColumnProbe"),
+])
+def test_param_rejects_a_file_with_other_columns(tmp_path, change, name):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    path = folder / "param_tariff_type.csv"
+    table = change(pd.read_csv(path, dtype=str, keep_default_na=False))
+    table.to_csv(path, index=False)
+    message = _loader_error(folder / MODELS["risikolebensversicherung"], name)
+    assert f"parameter file {path} has the columns {list(table.columns)}" in message, message
+
+
+@pytest.mark.parametrize("every_row", [False, True], ids=["one_row", "every_row"])
+def test_param_rejects_a_row_wider_than_the_header(tmp_path, every_row):
+    """A row with a field more than the header is a parse error naming the file; with every
+    row wide it does not become an index whose rows come back shifted."""
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    path = folder / "param_tariff_type.csv"
+    header, *rows = path.read_text(encoding="utf-8").splitlines()
+    rows = [row + ",x" if every_row or number == 1 else row for number, row in enumerate(rows)]
+    path.write_text("\n".join([header, *rows]) + "\n", encoding="utf-8")
+    name = "WideRowsProbe" if every_row else "WideRowProbe"
+    message = _loader_error(folder / MODELS["risikolebensversicherung"], name)
+    assert f"parameter file {path} cannot be read" in message, message
+
+
 def load_param_usage():
     """The static usage scan ``core/param_usage.py``, a plain module beside the core model."""
     spec = importlib.util.spec_from_file_location("param_usage", CORE_DIR / "param_usage.py")

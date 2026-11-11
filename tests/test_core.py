@@ -1783,6 +1783,27 @@ def test_basis_is_source_or_setzung():
         assert not wrong, (path, wrong)
 
 
+def test_no_product_doc_calls_a_core_item_a_row_of_the_tariff_type_file():
+    """A core item, a row of ``core/Core/Data/param_core.csv``, is no row of a product's
+    ``param_tariff_type.csv``: no product ``.md`` file names one, in backticks, within the same table
+    cell and the 80 characters before "a row of `param_tariff_type.csv`" (or "rows of", or
+    "the tariff-type file")."""
+    core_items = pd.read_csv(CORE_MODEL / "Data" / "param_core.csv", dtype=str,
+                             keep_default_na=False)["item"].tolist()
+    phrase = re.compile(r"rows? of (`param_tariff_type\.csv`|the tariff-type file)")
+    docs = sorted(PRODUCTS_DIR.glob("*/*.md"))
+    assert len(docs) >= 40, docs
+    found = []
+    for path in docs:
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            for match in phrase.finditer(line):
+                before = line[max(0, match.start() - 80):match.start()].rsplit("|", 1)[-1]
+                for item in core_items:
+                    if re.search(rf"`{re.escape(item)}\b", before):
+                        found.append((str(path.relative_to(PRODUCTS_DIR)), number, item))
+    assert not found, found
+
+
 @pytest.mark.parametrize("product", sorted(MODELS))
 def test_every_product_reads_its_tariff_type_file(product, product_models):
     """``param_file`` is ``param_tariff_type.csv``, in the layer columns, and no

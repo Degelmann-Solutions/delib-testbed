@@ -1102,6 +1102,15 @@ PFLEGE_RENAMED = {
 # current item -> aligned value, against upstream's.
 PFLEGE_ALIGNED = {"expense_infl": 0.02, "check_tol": 1e-08}
 
+# Each unit of upstream's ``expense_table.csv`` (the acquisition rate's as a fraction) -> the
+# words that end the row's provenance in ``param_tariff_type.csv``, which has no unit column.
+PFLEGE_UNIT_WORDS = {
+    "fraction_of_beitragssumme": "; a fraction of the Beitragssumme",
+    "fraction_of_premium": "; a fraction of the premium",
+    "eur_per_policy_per_month": "; in euros per policy a month",
+    "eur_per_annuity_payment": "; in euros per annuity payment",
+}
+
 
 def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     product = "pflegerentenversicherung"
@@ -1126,16 +1135,17 @@ def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     for item in moved:
         assert (points[item] == basis.at[item, "value"]).all(), item
     basis = basis.drop(moved)
-    assert list(merged.columns) == ["value", "unit", "basis", "provenance"]
+    assert list(merged.columns) == ["value", "basis", "provenance"]
     assert list(merged.index) == list(basis.index) + list(expense.index)
     # Values and order are upstream's but the aligned ones; basis and provenance follow the
     # acceptance of 2026-11-09, which extended each provenance with its source or reason.
+    # The expense rows' units stand in words at the end of their provenance.
     for item in basis.index:
         assert merged.at[item, "value"] == basis.at[item, "value"], item
-        assert pd.isna(merged.at[item, "unit"]), item
     for item in expense.index:
-        for column in ("value", "unit"):
-            assert merged.at[item, column] == expense.at[item, column], (item, column)
+        assert merged.at[item, "value"] == expense.at[item, "value"], item
+        words = PFLEGE_UNIT_WORDS[expense.at[item, "unit"]]
+        assert merged.at[item, "provenance"].endswith(words), item
 
 
 def test_sofort_issue_age_reads_the_second_life_from_surv_age(product_models):
@@ -1774,14 +1784,12 @@ def test_basis_is_source_or_setzung():
 @pytest.mark.parametrize("product", sorted(MODELS))
 def test_every_product_reads_its_tariff_type_file(product, product_models):
     """``param_file`` is ``param_tariff_type.csv``, in the layer columns, and no
-    ``param_table.csv`` is left; Pflege keeps its ``unit`` column before ``basis``."""
+    ``param_table.csv`` is left."""
     assert product_models(product).Data.param_file == "param_tariff_type.csv"
     folder = PRODUCTS_DIR / product
     assert not (folder / "param_table.csv").exists()
     header = (folder / "param_tariff_type.csv").read_text(encoding="utf-8").splitlines()[0]
-    expected = ("item,value,unit,basis,provenance" if product == "pflegerentenversicherung"
-                else "item,value,basis,provenance")
-    assert header == expected
+    assert header == "item,value,basis,provenance"
 
 
 def test_rlv_claim_expense_is_a_tariff_type_row(product_models):

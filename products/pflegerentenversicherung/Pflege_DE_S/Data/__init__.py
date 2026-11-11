@@ -93,7 +93,7 @@ The bases and conventions: the terminal age ``omega_age``, the unisex mix ``unis
 recovery-damping shape ``recov_age_ref`` / ``recov_age_decay``, the ``inc_cap`` shape device,
 the *Beitragssumme* convention ``beitragssumme_cap_age`` and the five first-order prudence margins ``inc_load_first``,
 ``det_load_first``, ``recov_load_first``, ``mort_care_load_first`` and
-``mort_actv_load_first``, none of them cited; the *Rechnungszins* is a model-point column. The expense assumptions are rows too, with their ``unit``:
+``mort_actv_load_first``, none of them cited; the *Rechnungszins* is a model-point column. The expense assumptions are rows too, each unit at the end of its provenance:
 ``load_acq_bsum_once`` (fraction of *Beitragssumme*, charged once at ``t = 0``), ``load_admin_prem_inst``
 (fraction of each *Beitrag* collected), ``load_admin_pp_mth`` (EUR per policy in force per month
 at ``t = 0`` prices) and ``load_claim_pp_inst`` (EUR per annuity payment made), with the

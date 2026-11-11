@@ -354,7 +354,7 @@ def beitragssumme():
     the projection actually collects, because the § 86 minimum moves with income.
 
     Override reason: the *Beitragssumme* is a contractual figure of the model point, not a
-    premium times the years, products/riester_rente/technical-notes.md:185
+    premium times the years, products/riester_rente/technical-notes.md:186
     """
     return float(model_point()["beitragssumme"])
 
@@ -652,7 +652,7 @@ def mort_be_factor():
 
     Override reason: the best estimate sits at 0.75 of the first-order death table, below
     it because the direction of prudence forks by product, a tariff parameter in
-    *param_tariff_type.csv*, products/riester_rente/technical-notes.md:418
+    *param_tariff_type.csv*, products/riester_rente/technical-notes.md:419
     """
     return data.param("mort_be_factor")                              # noqa: F821
 
@@ -676,7 +676,7 @@ def mort_rate(t):
 
     Override reason: the basis switches at ``t_conv()``, from the accumulation death table
     to the generational annuitant table with its own factor,
-    products/riester_rente/technical-notes.md:628
+    products/riester_rente/technical-notes.md:629
     """
     if age(t) >= omega_age() - 1:
         return 1.0
@@ -690,7 +690,7 @@ def lapse_factor(t):
     """The factor on the table surrender rate: 0 from ``t_conv()``, else 1.
 
     Override reason: a contract in payment cannot be surrendered, so the rate is zero from
-    ``t_conv()``, products/riester_rente/technical-notes.md:766
+    ``t_conv()``, products/riester_rente/technical-notes.md:767
     """
     if not is_accum(t):
         return 0.0
@@ -737,8 +737,8 @@ def pols_if(t):
     now compete month by month instead of running in sequence inside one year end.
 
     Override reason: the *Anbieterwechsel* is a third exit beside deaths and lapses,
-    products/riester_rente/technical-notes.md:618, and a commuted contract leaves whole in
-    its conversion month, products/riester_rente/technical-notes.md:622
+    products/riester_rente/technical-notes.md:619, and a commuted contract leaves whole in
+    its conversion month, products/riester_rente/technical-notes.md:623
     """
     if t < 0 or t > proj_len():
         return 0.0
@@ -762,7 +762,7 @@ def pols_death(t):
 
     Override reason: zero outside the frame and in the conversion month of a commuted
     contract, where the *Kleinbetragsrenten-Abfindung* takes the whole cohort,
-    products/riester_rente/technical-notes.md:622
+    products/riester_rente/technical-notes.md:623
     """
     if t < 0 or t >= proj_len():
         return 0.0
@@ -1543,7 +1543,7 @@ def benefit_death_pp(t):
     Gross of the *Rückzahlungsbetrag*.  Zero in payout.
 
     Override reason: a death pays the contract year's ``db_pp(k)``,
-    products/riester_rente/technical-notes.md:657
+    products/riester_rente/technical-notes.md:658
     """
     return db_pp(proj_year(t))
 
@@ -1554,7 +1554,7 @@ def benefit_lapse_pp(t):
     Net of the *Stornoabzug* and gross of the *Rückzahlungsbetrag*.
 
     Override reason: a surrender pays the contract year's ``cv_pp(k)``,
-    products/riester_rente/technical-notes.md:658
+    products/riester_rente/technical-notes.md:659
     """
     return cv_pp(proj_year(t))
 
@@ -1586,7 +1586,7 @@ def claims_other(t, kind):
 
     Override reason: the transfer, the lump sum, the commutation and the annuity are paid on
     their own counts, ``pols_transfer``, ``pols_conv`` and ``pols_annuity_pay``,
-    products/riester_rente/technical-notes.md:659, :657, :658 and :659
+    products/riester_rente/technical-notes.md:660, :657, :658 and :659
     """
     if kind == "TRANSFER":
         return transfer_value_pp(proj_year(t)) * pols_transfer(t)
@@ -1616,7 +1616,7 @@ def prem_inst_pp(t):
     own ``l(k)``, and that column sums over a year to that model's premium income exactly.
 
     Override reason: the contribution is the *Eigenbeitrag* after the *Ratenzuschlag* plus
-    the unsubsidised extra, due once a year, products/riester_rente/technical-notes.md:664
+    the unsubsidised extra, due once a year, products/riester_rente/technical-notes.md:665
     """
     if not prem_due(t):
         return 0.0
@@ -1668,7 +1668,7 @@ def expenses_acq(t):
     because no German insurer publishes a unit cost; the commission is excluded.
 
     Override reason: the acquisition expense is a fixed amount plus a rate on the
-    *Beitragssumme* at issue, products/riester_rente/technical-notes.md:425
+    *Beitragssumme* at issue, products/riester_rente/technical-notes.md:426
     """
     if t == 0 and duration_init() == 0:
         return (data.param("expense_acq_pp_once")                    # noqa: F821
@@ -1690,8 +1690,8 @@ def expenses_maint(t):
     maintenance rather than the whole of it.
 
     Override reason: maintenance falls on the in-force in accumulation,
-    products/riester_rente/technical-notes.md:667, and the annuity expense on the
-    annuitants paid, products/riester_rente/technical-notes.md:668
+    products/riester_rente/technical-notes.md:668, and the annuity expense on the
+    annuitants paid, products/riester_rente/technical-notes.md:669
     """
     maint = (data.param("expense_admin_pp_ann") / 12.0               # noqa: F821
              * inflation_factor(t)
@@ -1703,7 +1703,7 @@ def expenses_claim(t):
     """``expense_claim_pp_once`` per death, surrender or transfer, whole in the month of the event.
 
     Override reason: the claim expense is an amount per death, surrender or transfer,
-    products/riester_rente/technical-notes.md:669
+    products/riester_rente/technical-notes.md:670
     """
     return data.param("expense_claim_pp_once") * (pols_death(t) + pols_lapse(t)  # noqa: F821
                                           + pols_transfer(t))
@@ -1719,7 +1719,7 @@ def comm_init_rate():
     once.
 
     Override reason: the initial commission is ``comm_acq_bsum_once`` of the *Beitragssumme* at
-    issue, products/riester_rente/technical-notes.md:670
+    issue, products/riester_rente/technical-notes.md:671
     """
     return data.param("comm_acq_bsum_once")                          # noqa: F821
 
@@ -1733,7 +1733,7 @@ def comm_renew(t):
     the month of the initial commission, which is paid instead of it.
 
     Override reason: the renewal commission is a rate on the *Eigenbeitrag* and the Zulagen
-    in the month they fall, products/riester_rente/technical-notes.md:671
+    in the month they fall, products/riester_rente/technical-notes.md:672
     """
     if t == 0 and duration_init() == 0:
         return 0.0
@@ -1754,7 +1754,7 @@ def income_other(t):
     the first month of a projection year.
 
     Override reason: the Zulagen are income beside the contributions,
-    products/riester_rente/technical-notes.md:673
+    products/riester_rente/technical-notes.md:674
     """
     return zulagen(t)
 
@@ -1781,7 +1781,7 @@ def net_cf_income_columns():
     removes the most tempting way to break the identity.
 
     Override reason: the *Zulagen* are income beside the contribution,
-    products/riester_rente/technical-notes.md:714
+    products/riester_rente/technical-notes.md:715
     """
     return ("premiums", "zulagen")
 
@@ -1799,7 +1799,7 @@ def check_net_cf_scale(t):
     of the month that failed.
 
     Override reason: the statement is checked relative to the guaranteed annuity at
-    Rentenbeginn, products/riester_rente/technical-notes.md:714
+    Rentenbeginn, products/riester_rente/technical-notes.md:715
     """
     return max(1.0, guar_pp(k_conv() + 1))                           # noqa: F821
 
@@ -2022,7 +2022,7 @@ def result_cf_columns():
     the end rather than being truncated.
 
     Override reason: the statement carries the annuity-paying count, the *Zulagen* and the
-    six claim kinds, products/riester_rente/technical-notes.md:693-692
+    six claim kinds, products/riester_rente/technical-notes.md:694-696
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821
@@ -2059,7 +2059,7 @@ def result_cf_annual():
 
     Override reason: indexed by the projection year k of the valuation clock, the
     annual-step model's own t, and summed over each year's twelve-month slice,
-    products/riester_rente/technical-notes.md:700
+    products/riester_rente/technical-notes.md:701
     """
     ks = list(range(proj_len_y()))
     flows = ["premiums", "zulagen", "claims_death", "claims_lapse", "claims_transfer",

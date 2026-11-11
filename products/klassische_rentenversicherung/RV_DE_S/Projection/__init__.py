@@ -278,9 +278,9 @@ sitting in the *Ansammlungsguthaben*.
 ``rechnungszins()`` reads the model point, not a Reference. A German life book is a layered
 stack of guarantee vintages: the *Höchstrechnungszins* applies to contracts concluded while
 it is in force and existing contracts keep the rate they were written on. Points 1, 6 and 14
-credit 1,00 %, 2,75 % and 0,90 % in the same run, from the same tables. Re-running point 6 on a
-single global 1,00 % rate moves its *Deckungskapital* at *Rentenbeginn* by −4,9 % and its
-*Ansammlungsguthaben* by +98 %, while the conversion capital moves by −0,5 %: the vintage error
+credit 1,00 %, 2,75 % and 0,90 % in the same run, from the same tables. Re-running point 6 from
+its rolled-forward state of 1 January 2027 on a single global 1,00 % rate moves its
+*Deckungskapital* at *Rentenbeginn* by −4,9 % and its *Ansammlungsguthaben* by +98 %, while the conversion capital moves by −0,5 %: the vintage error
 is a **misallocation between the two accounts**, not a hole in the total, and it therefore
 survives a reasonableness check on the headline figure.
 
@@ -489,7 +489,7 @@ def mort_be_factor():
 
     Override reason: for an annuity the best estimate sits above the first-order table, a
     factor of 1.15 and a tariff parameter in *param_tariff_type.csv*,
-    products/klassische_rentenversicherung/model.md:513
+    products/klassische_rentenversicherung/model.md:514
     """
     return data.param("mort_be_factor")                              # noqa: F821
 

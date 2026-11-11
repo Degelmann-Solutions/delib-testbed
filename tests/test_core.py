@@ -2535,6 +2535,7 @@ def test_the_products_with_a_calendar_year_are_five():
         "basisrente", "kapitallebensversicherung", "klassische_rentenversicherung",
         "riester_rente", "sofortrente")
 
+
 # The core items no cell reads, each with the test that reads it: the valuation date is the
 # date the model points are built against, not a parameter of a formula.
 CORE_ITEMS_READ_BY_TESTS = {

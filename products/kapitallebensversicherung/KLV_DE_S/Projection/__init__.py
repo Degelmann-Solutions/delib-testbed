@@ -1109,8 +1109,9 @@ def term_bonus_pp(k):
 
     ``S(k+1) = S(k) + term_rate(k) * surplus_base_pp(k)``, opening at :func:`term_bonus_pp_init`
     at ``k_start()``, zero on new business.  It is paid at the *Ablauf* and on death and
-    **not** on surrender in the base run, ``term_surr_share`` being zero - the choice that does not invent an entitlement the sources do not describe.  It
-    accrues but never compounds: no source describes interest on an accrued terminal share.
+    **not** on surrender in the base run, ``term_surr_share`` being zero - the choice that
+    does not invent an entitlement the sources do not describe.  It accrues but never
+    compounds: no source describes interest on an accrued terminal share.
     """
     if k <= k_start():
         return term_bonus_pp_init()

@@ -136,7 +136,7 @@ def mort_table_index():
     anchor is and what a replacement must preserve.
 
     Override reason: the table carries a first- and a second-order basis, keyed by
-    ``basis``, ``sex`` and ``age``, products/sofortrente/technical-notes.md:376
+    ``basis``, ``sex`` and ``age``, products/sofortrente/technical-notes.md:383
     """
     return ["basis", "sex", "age"]
 

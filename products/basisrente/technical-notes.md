@@ -204,8 +204,8 @@ that date, rolled forward one year by the model itself from the state they had a
 `pols_if_init`, `av_pp_init` and `ann_pp_init` are the model's own `pols_paying(12)` and `av_pp(1)`
 (point 6), `pols_paidup(12)` and `av_pu_at(1, "BEF_PREM") / pols_paidup(12)` (point 14),
 `pols_if(12)` and `av_pu_at(1, "BEF_PREM") / pols_if(12)` (point 7), and `pols_if(12)` and `ann_pp(1)`
-(point 8), written at full precision. All four policies froze at the same instant, so point 14's
-per-policy reserve is exact: it equals the paying cohort's `av_pp(1)`.
+(point 8), written at full precision. Point 14's policies all froze together at the end of policy
+year 18, so its per-policy reserve is exact: it equals the paying cohort's `av_pp(1)`.
 
 **What restarts at the valuation date is accepted, not removed.** `t` and `k` count from the
 valuation date (*Model scope and conventions*), and three assumptions are read on that clock: the

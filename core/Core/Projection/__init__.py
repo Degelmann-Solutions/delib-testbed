@@ -176,7 +176,13 @@ def prem_term_y():
 
 
 def issue_year():
-    """The calendar year of issue, from the model point's ``issue_year`` column."""
+    """The calendar year of issue, from the model point's ``issue_year`` column.
+
+    A contract fact, kept as concluded.  A model point that opens at the valuation date
+    **1 January 2027** (the core item ``valuation_year``), on its policy anniversary, has
+    ``issue_year() + duration_init() == valuation_year``; on the valuation clock
+    ``calendar_year_y(k) = issue_year() + duration_y(k)`` is then ``valuation_year + k``.
+    """
     return int(model_point()["issue_year"])                          # noqa: F821
 
 

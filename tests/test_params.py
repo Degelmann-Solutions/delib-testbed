@@ -4,9 +4,16 @@
   value and layer those of ``param_layers()``, each row's basis and provenance those of the
   item's row in the core file or the product's ``param_tariff_type.csv``, and the rows stand
   in layer order, within a layer in the order of its file.
-- ``main(["--all"])`` exits 0 and names every product; an unknown product exits 2.
+- ``main(["--all"])`` exits 0, names every product and writes nothing on stderr; an unknown
+  product exits 2, and so does a product named twice, by the same name or by a name and a
+  path of the same folder.
 - A scratch copy whose tariff-type file lost a read item lists it with layer ``missing`` and
-  no value, and exits 1.
+  no value, names it in one stderr line and exits 1.
+- A scratch copy with a tariff-type item nobody reads, or with a ``Projection`` cell reading a
+  parameter by a computed name, is listed and its scan problem stands on stderr; exit 1.
+- A scratch copy whose loader fails (an item standing twice) is not listed, its error line
+  stands on stderr, the next product is listed; exit 1, also under ``--all``; so is a
+  scratch copy without its tariff-type file.
 - A scratch copy whose read item moved from the tariff-type file into a new tariff file lists
   it with layer ``tariff``, its value, basis and provenance, after the tariff-type rows, and
   exits 0.
@@ -80,8 +87,7 @@ def test_the_rows_agree_with_the_scan_and_the_loader(product):
 def test_all_exits_0_and_names_every_product(capsys):
     assert params.main(["--all"]) == 0
     out, err = capsys.readouterr()
-    headers = [line.split(":", 1)[0] for line in out.splitlines() if line.endswith(" items read")]
-    assert headers == PRODUCTS
+    assert headers(out) == PRODUCTS
     assert err == ""
 
 
@@ -101,9 +107,97 @@ def test_an_unknown_product_exits_2(capsys):
     assert "nosuch" in err
 
 
-def test_a_read_item_in_no_layer_is_missing_and_exits_1(tmp_path, capsys):
+def rlv_copy(tmp_path) -> Path:
     folder = tmp_path / "risikolebensversicherung"
     shutil.copytree(PRODUCTS_DIR / "risikolebensversicherung", folder)
+    return folder
+
+
+def add_row(folder: Path, item: str, value: str) -> None:
+    path = folder / "param_tariff_type.csv"
+    path.write_text(path.read_text(encoding="utf-8") + f"{item},{value},Setzung,test fixture\n",
+                    encoding="utf-8")
+
+
+def headers(out: str) -> list[str]:
+    return [line.split(":", 1)[0] for line in out.splitlines() if line.endswith(" items read")]
+
+
+def test_a_product_named_twice_exits_2(capsys):
+    assert params.main(["risikolebensversicherung", "risikolebensversicherung"]) == 2
+    out, err = capsys.readouterr()
+    assert out == "" and "named twice" in err and err.startswith("usage:")
+    path = str(PRODUCTS_DIR / "risikolebensversicherung")
+    assert params.main(["risikolebensversicherung", path]) == 2
+    out, err = capsys.readouterr()
+    assert out == "" and "named twice" in err
+
+
+def test_an_unread_item_is_reported_and_exits_1(tmp_path, capsys):
+    folder = rlv_copy(tmp_path)
+    add_row(folder, "probe_unused", "1.5")
+    assert params.main([str(folder)]) == 1
+    out, err = capsys.readouterr()
+    assert headers(out) == ["risikolebensversicherung"]
+    assert "probe_unused" not in out
+    assert err.splitlines() == [
+        "risikolebensversicherung: item 'probe_unused' of the tariff_type layer"
+        " (param_tariff_type.csv) is read by no reachable cell"]
+
+
+def test_an_undeclared_indirect_read_is_reported_and_exits_1(tmp_path, capsys):
+    folder = rlv_copy(tmp_path)
+    path = model_dir(folder) / "Projection" / "__init__.py"
+    marker = "# ---------------------------------------------------------------------------\n# References"
+    text = path.read_text(encoding="utf-8")
+    assert text.count(marker) == 1
+    cell = ('def probe_indirect():\n'
+            '    name = "expense_infl"\n'
+            '    return data.param(name)                                      # noqa: F821\n'
+            '\n\n')
+    path.write_text(text.replace(marker, cell + marker), encoding="utf-8")
+    assert params.main([str(folder)]) == 1
+    out, err = capsys.readouterr()
+    assert headers(out) == ["risikolebensversicherung"]
+    assert err.splitlines() == [
+        "risikolebensversicherung: cell probe_indirect reads a parameter by a computed name"
+        " and is not declared in param_indirect()"]
+
+
+def test_a_loader_error_is_reported_and_the_next_product_listed(tmp_path, capsys,
+                                                                monkeypatch):
+    folder = rlv_copy(tmp_path)
+    add_row(folder, "decl_scale", "1.0")
+    expected = (f"risikolebensversicherung: ValueError: parameter 'decl_scale' stands twice"
+                f" in {folder / 'param_tariff_type.csv'}")
+    assert params.main([str(folder), "kapitallebensversicherung"]) == 1
+    out, err = capsys.readouterr()
+    assert headers(out) == ["kapitallebensversicherung"]
+    assert not out.startswith("\n")
+    assert err.splitlines() == [expected]
+
+    monkeypatch.setattr(params, "product_names",
+                        lambda: [str(folder), "kapitallebensversicherung"])
+    assert params.main(["--all"]) == 1
+    out, err = capsys.readouterr()
+    assert headers(out) == ["kapitallebensversicherung"]
+    assert err.splitlines() == [expected]
+
+
+def test_a_missing_tariff_type_file_is_a_loader_error(tmp_path, capsys):
+    folder = rlv_copy(tmp_path)
+    path = folder / "param_tariff_type.csv"
+    path.unlink()
+    assert params.main([str(folder), "kapitallebensversicherung"]) == 1
+    out, err = capsys.readouterr()
+    assert headers(out) == ["kapitallebensversicherung"]
+    assert len(err.splitlines()) == 1
+    assert err.startswith(f"risikolebensversicherung: ValueError: parameter file {path}"
+                          f" cannot be read: ")
+
+
+def test_a_read_item_in_no_layer_is_missing_and_exits_1(tmp_path, capsys):
+    folder = rlv_copy(tmp_path)
     path = folder / "param_tariff_type.csv"
     frame = pd.read_csv(path, dtype=str, keep_default_na=False)
     assert "decl_scale" in set(frame["item"])
@@ -121,12 +215,12 @@ def test_a_read_item_in_no_layer_is_missing_and_exits_1(tmp_path, capsys):
     assert params.main([str(folder)]) == 1
     out, err = capsys.readouterr()
     assert any(line.split() == ["decl_scale", "missing"] for line in out.splitlines())
-    assert "decl_scale" in err
+    assert len(err.splitlines()) == 1
+    assert "'decl_scale'" in err and "stands in no layer" in err
 
 
 def test_an_item_of_the_tariff_file_is_listed_in_the_tariff_layer(tmp_path, capsys):
-    folder = tmp_path / "risikolebensversicherung"
-    shutil.copytree(PRODUCTS_DIR / "risikolebensversicherung", folder)
+    folder = rlv_copy(tmp_path)
     path = folder / "param_tariff_type.csv"
     frame = pd.read_csv(path, dtype=str, keep_default_na=False)
     moved = frame["item"] == "decl_scale"

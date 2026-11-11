@@ -152,7 +152,7 @@ wording [S1] [R24], conversion at `max(garantierter, aktueller Rentenfaktor)` [S
 | Age basis | Age last birthday at inception, stepping at the policy anniversary | **[std]** (3) |
 | Sex | Recorded, and **may not enter the tariff**: sex-based premium and benefit differences are prohibited for contracts concluded from 21 December 2012 | [REG-R34] |
 | Premium envelope | 600 € to 24 000 € a year recurring; 5 000 € to 250 000 € single | **[std]** (2) |
-| Anchor model cell | Male, issue age 50, issue year 2026, *Aufschubdauer* 17 years (*Rentenbeginn* at 67), 3 000,00 € recurring annual premium, *Rechnungszins* 1,00 %, *Beitragsrückgewähr* death benefit, *Rentengarantiezeit* 10 years, *Kapitalwahlrecht* take-up 30 % | **[std]** (4) |
+| Anchor model cell | Male, issue age 50, issue year 2027 (new business at the valuation date 1 January 2027), *Aufschubdauer* 17 years (*Rentenbeginn* at 67), 3 000,00 € recurring annual premium, *Rechnungszins* 1,00 %, *Beitragsrückgewähr* death benefit, *Rentengarantiezeit* 10 years, *Kapitalwahlrecht* take-up 30 % | **[std]** (4) |
 
 1. **The market split between recurring and single premium was not established** (gap 13). The
    aggregate is that *Einmalbeitragsgeschäft* is about 30 % of German life premium income and grew
@@ -649,7 +649,7 @@ on the *Ertragsanteil* basis in every cohort.
 A German in-force book therefore carries **at least three tax cohorts** — pre-2005, 2005–2011 with
 the age test at 60, and 2012 onwards with it at 62 — cut by the *Alterseinkünftegesetz* watershed of
 1 January 2005 and the 31 December 2011 line [REG-R38] [REG-R45]. **delib's composite is a post-2011
-contract**: `issue_year` is 2026 on the anchor, the table's earliest vintage is 2005, and the
+contract**: `issue_year` is 2027 on the anchor, the table's earliest vintage is 2005, and the
 pre-2005 cohort appears in it nowhere.
 
 On the annuity side the whole statutory table is now on the record, at **§ 22 Nr. 1 Satz 3 Buchst. a

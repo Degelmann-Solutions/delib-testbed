@@ -471,7 +471,7 @@ def proj_len():
     ``proj_len() = 672``: 672 monthly rows, ``t = 0 ... 671``.
 
     Override reason: the horizon is the longest of the annuitant's survival, the guarantee
-    period and the second life's survival, products/sofortrente/technical-notes.md:438
+    period and the second life's survival, products/sofortrente/technical-notes.md:445
     """
     n = max(horizon_mths(1), guar_end_mth())
     if surv_pct() > 0.0:
@@ -488,7 +488,7 @@ def age(t, life=1):
     internal-consistency convention rather than a contract fact.
 
     Override reason: a joint-life contract has two lives; ``life=2`` is the second life's
-    attained age, products/sofortrente/technical-notes.md:407
+    attained age, products/sofortrente/technical-notes.md:414
     """
     return issue_age(life) + t // 12
 
@@ -536,8 +536,10 @@ def mort_rate_gen(x, table_sex, cohort, basis):
     calendar year in which the life attains age ``x``, so the exponent is simply that year
     less ``mort_base_year`` and the shipped tables are the period tables of 2025.
 
-    The exponent may be **negative** — an in-force point issued in 2012 attains its ages
-    before 2025 and reads correspondingly heavier mortality — and it is not floored.
+    The exponent may be **negative** — a cohort attaining an age before 2025 reads
+    correspondingly heavier mortality there — and it is not floored.  No shipped point
+    reads one: every frame opens at the valuation date 1 January 2027, the in-force point
+    issued in 2012, born 1947, at age 80 with exponent 2.
 
     The result is capped at 1.  A negative exponent scales the rate **up**, and at the top
     of the proxy's age range the second-order series is already close to 1, so the cap is
@@ -562,7 +564,7 @@ def mort_rate(t, life=1):
     does not exist, its model point columns are zeros, and nothing may read them.
 
     Override reason: the rate is read for each life, the argument ``life``, on the
-    generational surface at its birth cohort, products/sofortrente/technical-notes.md:456
+    generational surface at its birth cohort, products/sofortrente/technical-notes.md:463
     """
     if life == 2 and surv_pct() == 0.0:
         return 0.0
@@ -578,7 +580,7 @@ def mort_rate_mth(t, life=1):
 
     Override reason: the rate is read for each life, the argument ``life``, and at the
     closing age the survival path steps to zero in that month,
-    products/sofortrente/technical-notes.md:458
+    products/sofortrente/technical-notes.md:465
     """
     return 1.0 - (1.0 - mort_rate(t, life)) ** (1.0 / 12.0)
 
@@ -595,7 +597,7 @@ def mort_rate_tariff(t, life=1):
     listed pitfall.
 
     Override reason: the tariff rate is generational and unisex, read at each life's birth
-    cohort with the argument ``life`` for the second life, products/sofortrente/model.md:212
+    cohort with the argument ``life`` for the second life, products/sofortrente/model.md:213
     """
     if life == 2 and surv_pct() == 0.0:
         return 0.0
@@ -973,7 +975,7 @@ def pols_if(t):
 
     Override reason: the weight is the probability that any payment obligation remains over
     two lives and the guarantee period, not a policy count,
-    products/sofortrente/technical-notes.md:186
+    products/sofortrente/technical-notes.md:192
     """
     g = certain_floor(t)
     la = lives_if(t, 1)
@@ -1005,7 +1007,7 @@ def prem_inst_pp(t):
     product — the whole consideration is paid once.
 
     Override reason: the *Einmalbeitrag* is paid once, at ``t = 0``,
-    products/sofortrente/technical-notes.md:592
+    products/sofortrente/technical-notes.md:599
     """
     if not prem_due(t):
         return 0.0
@@ -1017,7 +1019,7 @@ def pols_prem(t):
 
     Override reason: ``pols_if`` is the probability that a payment obligation remains, not
     a count, so the premium is weighted by the count the point stands for,
-    products/sofortrente/technical-notes.md:193
+    products/sofortrente/technical-notes.md:199
     """
     return pols_if_init()
 
@@ -1062,7 +1064,7 @@ def claim_kinds():
     contract cannot be terminated, so § 169 VVG is displaced and there is nothing to pay.
 
     Override reason: the claim columns are the guarantee and the refund,
-    products/sofortrente/technical-notes.md:636
+    products/sofortrente/technical-notes.md:643
     """
     return ("GUARANTEE", "REFUND")
 
@@ -1083,8 +1085,8 @@ def claims_other(t, kind):
 
     Raises ``ValueError`` for any other kind.
 
-    Override reason: the guarantee instalment, products/sofortrente/technical-notes.md:599,
-    and the refund, products/sofortrente/technical-notes.md:613, are paid on the survival
+    Override reason: the guarantee instalment, products/sofortrente/technical-notes.md:606,
+    and the refund, products/sofortrente/technical-notes.md:620, are paid on the survival
     probabilities of the annuitant, not on a count of deaths
     """
     if kind == "GUARANTEE":
@@ -1109,7 +1111,7 @@ def expenses_acq(t):
     other with it or the modelled profit moves silently.
 
     Override reason: the acquisition expense is a rate on the single premium plus a fixed
-    amount at ``t = 0``, products/sofortrente/technical-notes.md:617
+    amount at ``t = 0``, products/sofortrente/technical-notes.md:624
     """
     if t == 0:
         return pols_if_init() * (data.param("expense_acq_sp_once")   # noqa: F821
@@ -1122,7 +1124,7 @@ def expenses_maint(t):
     """The maintenance expense, ``(expense_admin_pp_ann / 12) inflation_factor(t) pols_if(t)``.
 
     Override reason: maintenance is a twelfth of the annual amount, inflated, on the
-    obligation weight, products/sofortrente/technical-notes.md:618
+    obligation weight, products/sofortrente/technical-notes.md:625
     """
     return ((data.param("expense_admin_pp_ann") / 12.0)                # noqa: F821
             * inflation_factor(t) * pols_if(t))
@@ -1137,7 +1139,7 @@ def expenses_claim(t):
     beneficiary's instalment costs the same to pay as the annuitant's.
 
     Override reason: the payment expense falls per instalment paid, weighted by the
-    payment factor, products/sofortrente/technical-notes.md:619
+    payment factor, products/sofortrente/technical-notes.md:626
     """
     if is_payment_mth(t):
         return (data.param("expense_pay_pp_inst") * inflation_factor(t)  # noqa: F821
@@ -1155,7 +1157,7 @@ def liability_cf(t):
     only in prose.
 
     Override reason: the liability cash flow is the notes' outgo-positive stream, annuity
-    payments, claims and expenses less the premium, products/sofortrente/technical-notes.md:629
+    payments, claims and expenses less the premium, products/sofortrente/technical-notes.md:636
     """
     return annuity_payments(t) + claims(t) + expenses(t) - premiums(t)
 
@@ -1170,7 +1172,7 @@ def net_cf(t):
     *Deckungsrückstellung* is held against; this model does not compute one.
 
     Override reason: the net cash flow is the negative of the outgo-positive liability cash
-    flow, products/sofortrente/technical-notes.md:630
+    flow, products/sofortrente/technical-notes.md:637
     """
     return -liability_cf(t)
 
@@ -1190,7 +1192,7 @@ def check_net_cf_resid(t):
     instalment, or a guarantee counted additively, leaves a residual here.
 
     Override reason: the instalment outgo is rebuilt through the single payment factor, not
-    through the two published legs, products/sofortrente/model.md:324
+    through the two published legs, products/sofortrente/model.md:327
     """
     if is_payment_mth(t):
         paid = pols_if_init() * annuity_pp(t) * payment_factor(t)
@@ -1210,7 +1212,7 @@ def check_net_cf_scale(t):
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
 
     Override reason: the statement is checked relative to the single premium of the book,
-    products/sofortrente/technical-notes.md:648
+    products/sofortrente/technical-notes.md:655
     """
     return max(prem_gross_level_pp() * pols_if_init(), 1.0)                  # noqa: F821
 
@@ -1476,7 +1478,7 @@ def result_cf_columns():
     expired, so nothing remains to be paid.
 
     Override reason: the statement carries the annuity payments and its two claim kinds, no
-    commission, and liability_cf before net_cf, products/sofortrente/technical-notes.md:635-636
+    commission, and liability_cf before net_cf, products/sofortrente/technical-notes.md:642-643
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821
@@ -1501,7 +1503,7 @@ def result_pols_columns():
     instalments.
 
     Override reason: the frame publishes the two survival paths, the payment factor, the
-    instalment split and the refund run-off, products/sofortrente/technical-notes.md:637
+    instalment split and the refund run-off, products/sofortrente/technical-notes.md:644
     """
     return (
         ("lives_if_1", lambda t: lives_if(t, 1)),                    # noqa: F821

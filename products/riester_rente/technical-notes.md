@@ -38,8 +38,8 @@ German terms of art keep their German form in prose.
   The contractual contract year is `duration_y(k) + 1 = duration_init + k + 1`, which is `k + 1`
   only on a point projected from its own inception (`duration_init = 0`). The
   valuation date is **1 January 2027** (`valuation_year`, an item of the core file `param_core.csv`) [std] — the first day on which the product is closed to new
-  business [REG-R44] — so `calendar_year_y(k) = 2027 + k` and the calendar year steps on the
-  anniversary. The contract is annual in every
+  business [REG-R44] — every point carries its year of issue `issue_year = 2027 − duration_init`, so
+  `calendar_year_y(k) = 2027 + k` and the calendar year steps on the anniversary. The contract is annual in every
   respect the annual clock carries: the Zulage is an annual entitlement determined on a calendar
   year and paid once by the ZfA [R9] [R10] [R11], the *Überschuss* is declared annually, the two
   charges and the interest credit fall once a year, and the *Beitragsgarantie* is tested once. The
@@ -119,7 +119,7 @@ reaches it through a `data` Reference and holds no `*_file` Reference and no `in
 
 | File | Index columns | Value columns |
 |---|---|---|
-| `model_point_table.csv` | `point_id` | the twenty-six attributes tabulated below |
+| `model_point_table.csv` | `point_id` | the twenty-seven attributes tabulated below |
 | `mort_table_accum.csv` | `age` (16–110) | `qx`, `provenance` |
 | `annuity_mort_table.csv` | `age` (55–110) | `qx_base`, `improvement`, `provenance` |
 | `lapse_table.csv` | `policy_year` (1–60) | `lapse_rate`, `transfer_rate`, `provenance` |
@@ -178,6 +178,7 @@ value; the thirteen points are described under *Worked example*.
 | `point_id` | int | Row key; `Projection` is parameterized by it | all |
 | `sex` | enum {M, F} | Reporting only. Pricing, the conversion and every rate are **unisex** [R23] | all |
 | `issue_age` | int | Attained age at conclusion of the contract | all |
+| `issue_year` | int | Calendar year of conclusion, `2027 − duration_init`: every point opens at the 1 January 2027 valuation date, on its policy anniversary; the core's `issue_year()` reads it | 2 (2027), 3 (2018) |
 | `duration_init` | int | Completed contract years at the valuation date; 0 for a point projected from issue | 2, 6, 13 at 0 or 1 |
 | `pols_if_init` | float | Policies represented; `result_cf()`'s first `pols_if` equals it exactly | all |
 | `ret_age` | int | Attained age at which the payout phase starts; bounded below by 62 for a contract concluded from 2012 [R1] | 13 (at the statutory floor, 62) |
@@ -394,7 +395,7 @@ documents now show to be wrong.
 
 | What the model does | What the retrieved document says | Direction of the error |
 |---|---|---|
-| `kleinbetrag_threshold_mth = 39.55` (a row of `param_tariff_type.csv`), being **1 %** of the monthly *Bezugsgröße*; **corrected** to 59.33 on the acceptance of 2026-11-09 | § 93 Abs. 3 Satz 2 Nr. 1 EStG: "eine monatliche Rente …, die **1,5 Prozent** der monatlichen Bezugsgröße nach § 18 des Vierten Buches Sozialgesetzbuch nicht übersteigt" [R15]. On the 2026 *Bezugsgröße* of 3 955,00 €, **59,33 €** | The threshold was **a third too low**, so **too few** model points commuted. Model points 4, 5, 10 and 13 commuted at 39,55 €; at 59,33 € model points 7, 9 and 11 join them |
+| `kleinbetrag_threshold_mth = 39.55` (an item of the core file `param_core.csv`), being **1 %** of the monthly *Bezugsgröße*; **corrected** to 59.33 on the acceptance of 2026-11-09 | § 93 Abs. 3 Satz 2 Nr. 1 EStG: "eine monatliche Rente …, die **1,5 Prozent** der monatlichen Bezugsgröße nach § 18 des Vierten Buches Sozialgesetzbuch nicht übersteigt" [R15]. On the 2026 *Bezugsgröße* of 3 955,00 €, **59,33 €** | The threshold was **a third too low**, so **too few** model points commuted. Model points 4, 5, 10 and 13 commuted at 39,55 €; at 59,33 € model points 7, 9 and 11 join them |
 | `is_kleinbetrag()` tests the annuity payable **after** the elected *Teilkapitalauszahlung* | [S2] § 1 Abs. 3: "**Eine Abfindung erfolgt nicht, wenn die Leistung nur aufgrund einer Teilkapitalauszahlung gemäß Absatz 4 auf eine Kleinbetragsrente sinkt.**" The test belongs on the annuity the whole conversion capital would buy | The test trips **more often** than the wording allows: a point whose lump sum alone takes the annuity under the threshold commutes, as model point 11 does (60,90 € a month on its whole capital, 42,63 € after the lump sum) |
 | Administration charge of **4,0 %** applied to the *Eigenbeitrag* and the Zulage **at the same rate** | [S4] § 11 Abs. 2: **2,1 %** of each *Eigenbeitrag* and **6,0 %** of each Zulage — the Zulagen charged at nearly three times the rate | The composite **undercharges** the Zulagen relative to the one tariff observed, which matters most on the low-income cells where the Zulagen are the majority of the contribution |
 
@@ -422,7 +423,7 @@ not from data.
 | Income growth | **2,0 %** p.a. on the anchor's `income_schedule` path | A round real-plus-inflation number; it decides when the 2 100 € ceiling binds and so the shape of the contribution stream |
 | Commutation take-up | **Computed, not assumed** — the model tests the annuity against the threshold | The one behavioural quantity here that does not need a rate |
 | *Teilkapitalauszahlung* take-up | **30 %** on the anchor, 0 % on model point 12 | German commentary reports the lump sum as usual `[unverified]`; **gap 10 records that this rests on nothing** |
-| Expenses `expense_admin_pp_ann`, `expense_annuity_pp_ann`, `expense_claim_pp_once`, `expense_acq_pp_once`, `expense_acq_bsum_once`, rows of `param_tariff_type.csv` | **30.00** p.a. per in-force policy inflating at **2,0 %** (`expense_infl`, a row of `param_tariff_type.csv`); **24.00** p.a. per annuitant; **80.00** per claim; **150.00 + 2,0 %** of `beitragssumme` at issue | No German insurer publishes a unit cost. The per-policy maintenance figure carries the Zulage administration — the *Dauerzulageantrag* (§ 89 Abs. 1a), the annual data transmission (§ 89 Abs. 3), the quarterly reclaim remittance (§ 90 Abs. 3), the *Leistungsmitteilung* (§ 22 Nr. 5 Satz 7, due on first receipt and on change rather than annually) and the separate annual information duty of AltZertG § 7a [R4] [R11] [R12] — which is a real and product-specific cost |
+| Expenses `expense_admin_pp_ann`, `expense_annuity_pp_ann`, `expense_claim_pp_once`, `expense_acq_pp_once`, `expense_acq_bsum_once`, rows of `param_tariff_type.csv` | **30.00** p.a. per in-force policy inflating at **2,0 %** (`expense_infl`, an item of the core file `param_core.csv`); **24.00** p.a. per annuitant; **80.00** per claim; **150.00 + 2,0 %** of `beitragssumme` at issue | No German insurer publishes a unit cost. The per-policy maintenance figure carries the Zulage administration — the *Dauerzulageantrag* (§ 89 Abs. 1a), the annual data transmission (§ 89 Abs. 3), the quarterly reclaim remittance (§ 90 Abs. 3), the *Leistungsmitteilung* (§ 22 Nr. 5 Satz 7, due on first receipt and on change rather than annually) and the separate annual information duty of AltZertG § 7a [R4] [R11] [R12] — which is a real and product-specific cost |
 | Commission | **2,5 %** of `beitragssumme` at issue, **1,5 %** of contributions thereafter (`comm_acq_bsum_once`, `comm_renew_prem_inst`, rows of `param_tariff_type.csv`) | The initial rate is set at the *Höchstzillmersatz* [REG-R16] [REG-R20]. **The cash leaves at issue while the charge is recovered over five years** [R1]; that gap is the new-business strain and it is carried by the insurer |
 
 9. ***Beitragsfreistellung* is the German Riester book's dominant exit** [R25], and the model

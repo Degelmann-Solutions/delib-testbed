@@ -117,7 +117,7 @@ option: ``guarantee_period`` and ``survivor`` are reductions in the *Rentenfakto
 a German tariff pays for those covers out of the annuity rather than by scaling the death
 benefit.
 
-``model_point_table.csv`` is the thirteen policies, indexed by ``point_id``, which is
+``model_point_table.csv`` is the fourteen model points, indexed by ``point_id``, which is
 :mod:`~.Basis_DE_S.Projection`'s only parameter.
 """
 

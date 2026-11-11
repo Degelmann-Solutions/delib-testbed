@@ -93,10 +93,10 @@ month and the *Beitragsfreistellung* transition after the deaths of the year's l
 The decrements carry the library's two speeds — ``mort_rate(t)`` is the **annual** rate of
 the year and ``mort_rate_mth(t)`` its geometric twelfth — so twelve months compound back to
 the annual rate exactly and the whole *Aufschubphase* is **bit-identical** to the
-annual-step model this replaced, on all thirteen model points. What the finer grid buys is
+annual-step model this replaced, on all fourteen model points. What the finer grid buys is
 the *Rente*: a *Rentenfaktor* is quoted in euro a **month**, and where the annual model
 booked twelve instalments at the start of each payout year on the opening count — its own
-twelfth pitfall, and a stated approximation worth 4 173,88 € of the anchor's payout phase —
+twelfth pitfall, and a stated approximation worth 4 182,97 € of the anchor's payout phase —
 the instalment is now paid to whoever is alive at the start of each month. The
 *Rentengarantiezeit* is ``12m`` instalments beginning in the month after the death that
 triggered them, and a mid-year death now bears only the months of maintenance expense it
@@ -118,8 +118,9 @@ example reproduces exactly. **This model is a mechanics demonstration, not a pri
 reserving result.** Replace the decrement, charge and surplus tables with company data
 before drawing any conclusion from the output.
 
-**Model points.** Thirteen, covering both premium forms, all four payment frequencies,
-all three in-force shapes (accumulating, *beitragsfrei*, already in payment), the
+**Model points.** Fourteen, every one opening at the valuation date 1 January 2027,
+covering both premium forms, all four payment frequencies, all three in-force shapes
+(accumulating, *beitragsfrei*, already in payment), a part-paid-up book as two points, the
 survivor's annuity and the *Rentengarantiezeit* separately and together, both age-floor
 cohorts, four guarantee vintages, and four boundary cases — the whole *Höchstbetrag*, a
 *Kleinbetragsrente* this model annuitises rather than commuting, the 50 % BUZ rule at

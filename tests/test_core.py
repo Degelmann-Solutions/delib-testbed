@@ -300,6 +300,8 @@ CORE_CELLS = {
         "model_point_table_dict": dict.fromkeys(MODELS, "derived"),
         "param_core_path": dict.fromkeys(MODELS, "derived"),
         "param_tariff_path": dict.fromkeys(MODELS, "derived"),
+        "param_paths": dict.fromkeys(MODELS, "derived"),
+        "param_rows": dict.fromkeys(MODELS, "derived"),
         "param_layers": dict.fromkeys(MODELS, "derived"),
         "param_dict": dict.fromkeys(MODELS, "derived"),
         "param": dict.fromkeys(MODELS, "derived"),
@@ -390,7 +392,7 @@ CORE_CELLS = {
         "issue_year": {"basisrente": "derived",
                        "kapitallebensversicherung": "derived",
                        "klassische_rentenversicherung": "derived",
-                       "riester_rente": "override",
+                       "riester_rente": "derived",
                        "sofortrente": "derived"},
         "duration_init": {"basisrente": "derived",
                           "indexpolice": "derived",
@@ -1102,6 +1104,15 @@ PFLEGE_RENAMED = {
 # current item -> aligned value, against upstream's.
 PFLEGE_ALIGNED = {"expense_infl": 0.02, "check_tol": 1e-08}
 
+# Each unit of upstream's ``expense_table.csv`` (the acquisition rate's as a fraction) -> the
+# words that end the row's provenance in ``param_tariff_type.csv``, which has no unit column.
+PFLEGE_UNIT_WORDS = {
+    "fraction_of_beitragssumme": "; a fraction of the Beitragssumme",
+    "fraction_of_premium": "; a fraction of the premium",
+    "eur_per_policy_per_month": "; in euros per policy a month",
+    "eur_per_annuity_payment": "; in euros per annuity payment",
+}
+
 
 def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     product = "pflegerentenversicherung"
@@ -1126,16 +1137,17 @@ def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     for item in moved:
         assert (points[item] == basis.at[item, "value"]).all(), item
     basis = basis.drop(moved)
-    assert list(merged.columns) == ["value", "unit", "basis", "provenance"]
+    assert list(merged.columns) == ["value", "basis", "provenance"]
     assert list(merged.index) == list(basis.index) + list(expense.index)
     # Values and order are upstream's but the aligned ones; basis and provenance follow the
     # acceptance of 2026-11-09, which extended each provenance with its source or reason.
+    # The expense rows' units stand in words at the end of their provenance.
     for item in basis.index:
         assert merged.at[item, "value"] == basis.at[item, "value"], item
-        assert pd.isna(merged.at[item, "unit"]), item
     for item in expense.index:
-        for column in ("value", "unit"):
-            assert merged.at[item, column] == expense.at[item, column], (item, column)
+        assert merged.at[item, "value"] == expense.at[item, "value"], item
+        words = PFLEGE_UNIT_WORDS[expense.at[item, "unit"]]
+        assert merged.at[item, "provenance"].endswith(words), item
 
 
 def test_sofort_issue_age_reads_the_second_life_from_surv_age(product_models):
@@ -1771,17 +1783,36 @@ def test_basis_is_source_or_setzung():
         assert not wrong, (path, wrong)
 
 
+def test_no_product_doc_calls_a_core_item_a_row_of_the_tariff_type_file():
+    """A core item, a row of ``core/Core/Data/param_core.csv``, is no row of a product's
+    ``param_tariff_type.csv``: no product ``.md`` file names one, in backticks, within the same table
+    cell and the 80 characters before "a row of `param_tariff_type.csv`" (or "rows of", or
+    "the tariff-type file")."""
+    core_items = pd.read_csv(CORE_MODEL / "Data" / "param_core.csv", dtype=str,
+                             keep_default_na=False)["item"].tolist()
+    phrase = re.compile(r"rows? of (`param_tariff_type\.csv`|the tariff-type file)")
+    docs = sorted(PRODUCTS_DIR.glob("*/*.md"))
+    assert len(docs) >= 40, docs
+    found = []
+    for path in docs:
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            for match in phrase.finditer(line):
+                before = line[max(0, match.start() - 80):match.start()].rsplit("|", 1)[-1]
+                for item in core_items:
+                    if re.search(rf"`{re.escape(item)}\b", before):
+                        found.append((str(path.relative_to(PRODUCTS_DIR)), number, item))
+    assert not found, found
+
+
 @pytest.mark.parametrize("product", sorted(MODELS))
 def test_every_product_reads_its_tariff_type_file(product, product_models):
     """``param_file`` is ``param_tariff_type.csv``, in the layer columns, and no
-    ``param_table.csv`` is left; Pflege keeps its ``unit`` column before ``basis``."""
+    ``param_table.csv`` is left."""
     assert product_models(product).Data.param_file == "param_tariff_type.csv"
     folder = PRODUCTS_DIR / product
     assert not (folder / "param_table.csv").exists()
     header = (folder / "param_tariff_type.csv").read_text(encoding="utf-8").splitlines()[0]
-    expected = ("item,value,unit,basis,provenance" if product == "pflegerentenversicherung"
-                else "item,value,basis,provenance")
-    assert header == expected
+    assert header == "item,value,basis,provenance"
 
 
 def test_rlv_claim_expense_is_a_tariff_type_row(product_models):
@@ -2383,6 +2414,73 @@ def test_param_rejects_a_core_item_in_the_tariff_file(tmp_path):
     assert str(folder / "param_tariff.csv") in message
 
 
+@pytest.mark.parametrize(("text", "name", "words"), [
+    ("", "EmptyValueProbe", "has no value in"),
+    ("  ", "BlankValueProbe", "has no value in"),
+    ("abc", "NoNumberProbe", "has the value 'abc' in"),
+    ("+-3", "TwoSignsProbe", "has the value '+-3' in"),
+    ("nan", "NanProbe", "not finite"),
+    ("inf", "InfProbe", "not finite"),
+    ("-inf", "NegInfProbe", "not finite"),
+])
+def test_param_rejects_a_value_that_is_no_finite_number(tmp_path, text, name, words):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    _add_params(folder / "param_tariff_type.csv", {"probe_value": text})
+    message = _loader_error(folder / MODELS["risikolebensversicherung"], name)
+    assert "'probe_value'" in message and words in message, message
+    assert str(folder / "param_tariff_type.csv") in message
+
+
+@pytest.mark.parametrize(("item", "name"), [
+    (" check_tol", "PaddedCoreItemProbe"),
+    ("probe_pad ", "PaddedItemProbe"),
+])
+def test_param_rejects_an_item_padded_with_whitespace(tmp_path, item, name):
+    """A padded item would be a key of its own and slip past the core lock; it is rejected,
+    not stripped."""
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    _add_params(folder / "param_tariff_type.csv", {item: "1.0"})
+    message = _loader_error(folder / MODELS["risikolebensversicherung"], name)
+    assert repr(item) in message and "padded with whitespace" in message, message
+    assert str(folder / "param_tariff_type.csv") in message
+
+
+def test_param_rejects_an_empty_item(tmp_path):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    _add_params(folder / "param_tariff_type.csv", {"": "1.0"})
+    message = _loader_error(folder / MODELS["risikolebensversicherung"], "EmptyItemProbe")
+    assert "item '' in" in message, message
+    assert str(folder / "param_tariff_type.csv") in message
+
+
+@pytest.mark.parametrize(("change", "name"), [
+    (lambda table: table.drop(columns="basis"), "MissingColumnProbe"),
+    (lambda table: table.insert(2, "unit", "") or table, "ExtraColumnProbe"),
+    (lambda table: table[["item", "basis", "value", "provenance"]], "SwappedColumnProbe"),
+])
+def test_param_rejects_a_file_with_other_columns(tmp_path, change, name):
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    path = folder / "param_tariff_type.csv"
+    table = change(pd.read_csv(path, dtype=str, keep_default_na=False))
+    table.to_csv(path, index=False)
+    message = _loader_error(folder / MODELS["risikolebensversicherung"], name)
+    assert f"parameter file {path} has the columns {list(table.columns)}" in message, message
+
+
+@pytest.mark.parametrize("every_row", [False, True], ids=["one_row", "every_row"])
+def test_param_rejects_a_row_wider_than_the_header(tmp_path, every_row):
+    """A row with a field more than the header is a parse error naming the file; with every
+    row wide it does not become an index whose rows come back shifted."""
+    folder = product_copy(tmp_path, "risikolebensversicherung")
+    path = folder / "param_tariff_type.csv"
+    header, *rows = path.read_text(encoding="utf-8").splitlines()
+    rows = [row + ",x" if every_row or number == 1 else row for number, row in enumerate(rows)]
+    path.write_text("\n".join([header, *rows]) + "\n", encoding="utf-8")
+    name = "WideRowsProbe" if every_row else "WideRowProbe"
+    message = _loader_error(folder / MODELS["risikolebensversicherung"], name)
+    assert f"parameter file {path} cannot be read" in message, message
+
+
 def load_param_usage():
     """The static usage scan ``core/param_usage.py``, a plain module beside the core model."""
     spec = importlib.util.spec_from_file_location("param_usage", CORE_DIR / "param_usage.py")
@@ -2417,12 +2515,53 @@ def test_the_usage_scan_finds_no_problem(product, product_models):
     assert usage.problems == []
     assert usage.indirect == {}
     assert usage.reads and set(usage.reads) <= set(model.Data.param_dict())
-    assert {"param", "param_dict", "param_layers"} <= usage.reachable
+    assert {"param", "param_dict", "param_layers", "param_rows",
+            "param_paths"} <= usage.reachable
+
+
+# The products with a calendar year, those whose model points carry ``issue_year``: each of
+# their points opens at the valuation date 1 January 2027, the core item ``valuation_year``,
+# its year of issue plus its completed policy years being the valuation year, on its policy
+# anniversary (entry 23 of epic-parameter-files). Read off the files, so a product gaining
+# the column is checked without a list to keep.
+VALUATION_DATE_PRODUCTS = tuple(sorted(
+    product for product in MODELS
+    if "issue_year" in (PRODUCTS_DIR / product / "model_point_table.csv")
+    .read_text().splitlines()[0].split(",")))
+
+
+def test_the_products_with_a_calendar_year_are_five():
+    assert VALUATION_DATE_PRODUCTS == (
+        "basisrente", "kapitallebensversicherung", "klassische_rentenversicherung",
+        "riester_rente", "sofortrente")
+
+
+# The core items no cell reads, each with the test that reads it: the valuation date is the
+# date the model points are built against, not a parameter of a formula.
+CORE_ITEMS_READ_BY_TESTS = {
+    "valuation_year": "test_every_model_point_opens_at_the_valuation_date",
+}
+
+
+@pytest.mark.parametrize("product", VALUATION_DATE_PRODUCTS)
+def test_every_model_point_opens_at_the_valuation_date(product, product_models):
+    model = product_models(product)
+    year = model.Data.param("valuation_year")
+    points = model.Data.model_point_table()
+    for point_id, row in points.iterrows():
+        if "duration_init" in points.columns:
+            elapsed = int(row["duration_init"])
+        else:
+            assert int(row["duration_mth_init"]) % 12 == 0, point_id
+            elapsed = int(row["duration_mth_init"]) // 12
+        assert int(row["issue_year"]) + elapsed == year, point_id
 
 
 def test_no_core_item_is_unused(product_models):
     usages = [param_usage.scan(product_models(product)) for product in sorted(MODELS)]
-    assert param_usage.unused_core_items(usages) == []
+    assert param_usage.unused_core_items(usages) == sorted(CORE_ITEMS_READ_BY_TESTS)
+    for test in CORE_ITEMS_READ_BY_TESTS.values():
+        assert callable(globals().get(test)), test
 
 
 def test_the_usage_scan_counts_a_core_cell_only_where_it_is_reachable(product_models):
@@ -2527,7 +2666,7 @@ def test_the_usage_scan_reports_a_declared_cell_that_does_not_exist(tmp_path):
     assert "probe_nowhere" in problems[0] and "no cell" in problems[0]
 
 
-@pytest.mark.parametrize("reader", ["param_dict", "param_layers"])
+@pytest.mark.parametrize("reader", ["param_dict", "param_layers", "param_rows", "param_paths"])
 def test_the_usage_scan_reports_a_read_around_param(tmp_path, reader):
     copy = _usage_copy(tmp_path, "BypassProbe")
     try:
@@ -2537,6 +2676,36 @@ def test_the_usage_scan_reports_a_read_around_param(tmp_path, reader):
         copy.close()
     assert len(problems) == 1, problems
     assert "probe_bypass" in problems[0] and reader in problems[0]
+
+
+@pytest.mark.parametrize(("source", "path"), [
+    ("data.param_core_path()", "param_core_path"),
+    ("data.param_tariff_path()", "param_tariff_path"),
+    ("data.param_file", "param_file"),
+])
+def test_the_usage_scan_reports_a_read_around_param_through_a_file_path(tmp_path, source,
+                                                                         path):
+    copy = _usage_copy(tmp_path, "PathBypassProbe")
+    try:
+        _add_cell(copy, "Projection", f"def probe_path():\n    return {source}\n")
+        problems = param_usage.scan(copy).problems
+    finally:
+        copy.close()
+    assert len(problems) == 1, problems
+    assert "probe_path" in problems[0] and path in problems[0]
+
+
+def test_the_usage_scan_reports_a_product_defined_core_path(tmp_path):
+    copy = _usage_copy(tmp_path, "CorePathProbe")
+    try:
+        copy.Data.cells["param_core_path"].formula = (
+            'def param_core_path():\n    return _model.path / "CoreData" / "param_core.csv"\n')
+        assert copy.Data.cells["param_core_path"]._is_defined()
+        problems = param_usage.scan(copy).problems
+    finally:
+        copy.close()
+    assert len(problems) == 1, problems
+    assert "param_core_path" in problems[0] and "Data defines" in problems[0]
 
 
 def test_the_usage_scan_reports_a_declared_missing_item_of_an_unreachable_cell(tmp_path):
@@ -2896,6 +3065,48 @@ def test_pflege_grade_count_is_read_from_the_care_table(product_models):
                product_models("pflegerentenversicherung").Projection[1].result_states_columns()]
     assert columns[:count] == ["pols_pg%d" % g for g in range(1, count + 1)]
     assert "mort_rate_care_pg%d" % count in columns
+
+
+def _status_init_error(item) -> str:
+    """The error line of ``status_init()``'s error, which must be a ``ValueError``; modelx
+    wraps it in a ``FormulaError`` whose text also holds the formula source."""
+    with pytest.raises(Exception) as raised:
+        item.status_init()
+    if isinstance(raised.value, ValueError):
+        return f"ValueError: {raised.value}"
+    head = str(raised.value).split("Formula traceback:", 1)[0]
+    line = [text for text in head.splitlines() if text.strip()][-1]
+    assert line.startswith("ValueError: "), str(raised.value)
+    return line
+
+
+def test_pflege_status_init_reads_its_states_from_the_care_table(tmp_path, product_models):
+    """``status_init`` accepts ``aktiv`` and ``pg1`` up to the top grade of
+    ``care_table.csv``: on a four-grade copy ``pg4`` is accepted and ``pg5`` is not."""
+    shipped = product_models("pflegerentenversicherung")
+    for point_id, status in shipped.Data.model_point_table()["status"].items():
+        assert shipped.Projection[point_id].status_init() == status
+    folder = product_copy(tmp_path, "pflegerentenversicherung")
+    care = folder / "care_table.csv"
+    lines = care.read_text(encoding="utf-8").splitlines(keepends=True)
+    assert lines[-1].startswith("5,")
+    care.write_text("".join(lines[:-1]), encoding="utf-8")
+    table = folder / "model_point_table.csv"
+    rows = table.read_text(encoding="utf-8").splitlines(keepends=True)
+    assert rows[1].startswith("1,") and ",aktiv," in rows[1]
+    for status in ("pg4", "pg5", "pg0", "foo"):
+        rows[1] = re.sub(r",(aktiv|pg\d|foo),", f",{status},", rows[1], count=1)
+        table.write_text("".join(rows), encoding="utf-8")
+        copy = mx.read_model(folder / MODELS["pflegerentenversicherung"], name="StatusProbe")
+        try:
+            assert copy.Data.pflegegrad_count() == 4
+            item = copy.Projection[1]
+            if status == "pg4":
+                assert item.status_init() == "pg4"
+            else:
+                assert _status_init_error(item) == f"ValueError: invalid status '{status}'"
+        finally:
+            copy.close()
 
 
 def test_pflege_surrender_cap_is_read_from_the_surrender_table(tmp_path, product_models):

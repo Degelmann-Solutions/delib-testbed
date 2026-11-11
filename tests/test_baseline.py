@@ -25,11 +25,11 @@ BASELINE_DIR = ROOT / "baseline"
 # product: (model points, check cells, recipe hash, SHA-256 of baseline/<product>/result_cf.csv)
 BASELINE = {
     "basisrente": (
-        13,
+        14,
         ("check_annuity_roll_fwd", "check_av_roll_fwd", "check_conversion", "check_net_cf",
          "check_no_capital", "check_pols_roll_fwd"),
-        "1a956a09391fd7075cf89bafc470f7a68149f393e808f88872cacb16fe29f46b",
-        "76e715d858300d3c3bc696505ec952e16fa56165d619487c6454475055aa6c17",
+        "ebbca4d2757fbf9f8861d8272e25f8596fd04ddef2c373705f6ec24e625bf7e2",
+        "62bd45506d6b91cb48a8d22a6d5b0384d115e07dd88ea4c43cc84d1e1f4932a6",
     ),
     "berufsunfaehigkeit": (
         13,
@@ -57,16 +57,16 @@ BASELINE = {
         ("check_decrement_closure", "check_equivalence", "check_net_cf", "check_pols_roll_fwd",
          "check_rechnungszins_cap", "check_res_roll_fwd", "check_surplus_roll_fwd",
          "check_surr_floor", "check_surr_nonneg", "check_zillmer_cap"),
-        "b4eb8092ced889e9ac0f229dc4a374a709246836daf2899fecfeb6298ae7d311",
-        "851a9b74cbb5fc499dbafa16aeb3993654fd55f38a2a01774623167d831092fd",
+        "3dd986da71ab29796d3499883732247475906135aaefdfef569d125ab491edb7",
+        "793a26a2fe4fbe9835bb05d6abc61776b635e033c7daefe2db74ec35c06d3c31",
     ),
     "klassische_rentenversicherung": (
         14,
         ("check_annuity_conv", "check_annuity_guarantee", "check_av_roll_fwd",
          "check_av_sur_roll_fwd", "check_cv_floor", "check_decrement_closure", "check_net_cf",
          "check_pols_roll_fwd", "check_prem_split"),
-        "98b08ceab6f19d6518011e4a34c2526afdcddd074f30e326bbfd9e12848b875d",
-        "d043b200e01045fa23e1e1b478b4216b7d055b628437a6e011a04fabaf293bfc",
+        "dcbda7929a0ec5d654c368061c5380528efc8dc8712851e385db86ae8e80ce5b",
+        "cf9e4b3a2d781b3de18883f996bdf95415ad34607e1e446cf97b14cf3e6720fb",
     ),
     "pflegerentenversicherung": (
         14,
@@ -94,8 +94,8 @@ BASELINE = {
         ("check_annuity_roll_fwd", "check_death_option_xor", "check_equivalence",
          "check_guarantee_certain", "check_lives_roll_fwd", "check_net_cf",
          "check_payment_factor", "check_refund_run_off", "check_tariff_int_rate"),
-        "c90503ea871423baf2596d7907e6c70dfe7071d8d23b2152503bceaf91d379e1",
-        "faf9c84febdd479452b2e17685507d95d29f72f2ef692ece78e5619b46c83fbe",
+        "fb4644f8a7f74d09d2d0f73029cb8c9c9f5e026f4237fbbca6d3e48d15afdffd",
+        "195d2c63fdd3dec208aa070b8f70d4224c5d01abe69cd49c87629d2f9b92f3b4",
     ),
 }
 

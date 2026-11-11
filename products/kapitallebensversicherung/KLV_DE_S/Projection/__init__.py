@@ -479,7 +479,7 @@ def surplus_use():
 def av_sur_pp_init():
     """The *Überschussguthaben* per policy carried at ``t_start()``, in euros.
 
-    Zero for new business; model point 10 opens at duration 14 with 6 000 € already
+    Zero for new business; model point 10 opens at duration 15 with 6 363,97 € already
     accumulated.  It is **not** part of the *Deckungsrückstellung*: § 341f HGB forms that
     provision *excluding verzinslich angesammelte Überschussanteile*, and the separation is
     the reason this balance is a cells of its own rather than part of :func:`res_pp`.
@@ -495,6 +495,16 @@ def bonus_si_init():
     without a formula change.
     """
     return float(model_point()["bonus_si_init"])
+
+
+def term_bonus_pp_init():
+    """The accrued *Schlussüberschussanteil* per policy carried at ``t_start()``, in euros.
+
+    Zero on every point that opens at issue.  An in-force point carries what its past policy
+    years accrued, so that :func:`term_bonus_pp` goes on from it rather than from zero and
+    the death and maturity benefits keep the terminal bonus of the years before the frame.
+    """
+    return float(model_point()["term_bonus_pp_init"])
 
 
 def bfz_year():
@@ -591,7 +601,7 @@ def hoechstrechnungszins():
 
     Override reason: the ceiling is read from the product's year-keyed *deckrv_table.csv*,
     clamped to its range, with the split years 1994 and 2000 at the higher rate,
-    products/kapitallebensversicherung/technical-notes.md:252
+    products/kapitallebensversicherung/technical-notes.md:253
     """
     rates = data.deckrv_table_dict()["hoechstrechnungszins"]         # noqa: F821
     y = min(max(issue_year(), int(min(rates))), int(max(rates)))
@@ -680,7 +690,7 @@ def tariff_death_sum():
     The core's :func:`tariff_death_pv` multiplies its sum over the policy years by it.
 
     Override reason: the death leg pays the guaranteed Todesfallleistung SD,
-    products/kapitallebensversicherung/technical-notes.md:441
+    products/kapitallebensversicherung/technical-notes.md:442
     """
     return sum_death()
 
@@ -689,7 +699,7 @@ def tariff_death_load(y):
     """f: the *Risikozuschlag* :func:`rating_factor`, on the **claim rate in the death leg only**.
 
     Override reason: the Risikozuschlag loads the death leg only, never the survival leg,
-    products/kapitallebensversicherung/technical-notes.md:461
+    products/kapitallebensversicherung/technical-notes.md:462
     """
     return rating_factor()
 
@@ -701,7 +711,7 @@ def tariff_maturity_sum():
     of the term by it.
 
     Override reason: the endowment pays the Erlebensfallleistung SE at maturity,
-    products/kapitallebensversicherung/technical-notes.md:442
+    products/kapitallebensversicherung/technical-notes.md:443
     """
     return sum_assured()
 
@@ -1097,13 +1107,14 @@ def surplus_credit_pp(k):
 def term_bonus_pp(k):
     """S(k): the accrued *Schlussüberschussanteil* at the start of policy year k, per policy.
 
-    ``S(k+1) = S(k) + term_rate(k) * surplus_base_pp(k)``, opening at zero.  It is paid at the
-    *Ablauf* and on death and **not** on surrender in the base run, ``term_surr_share`` being
-    zero - the choice that does not invent an entitlement the sources do not describe.  It
-    accrues but never compounds: no source describes interest on an accrued terminal share.
+    ``S(k+1) = S(k) + term_rate(k) * surplus_base_pp(k)``, opening at :func:`term_bonus_pp_init`
+    at ``k_start()``, zero on new business.  It is paid at the *Ablauf* and on death and
+    **not** on surrender in the base run, ``term_surr_share`` being zero - the choice that
+    does not invent an entitlement the sources do not describe.  It accrues but never
+    compounds: no source describes interest on an accrued terminal share.
     """
     if k <= k_start():
-        return 0.0
+        return term_bonus_pp_init()
     return term_bonus_pp(k - 1) + term_rate(k - 1) * surplus_base_pp(k - 1)
 
 
@@ -1296,7 +1307,7 @@ def prem_inst_pp(t):
 
     Override reason: the instalment is the year's *Zahlbeitrag*, net of the
     *Beitragsverrechnung*, over the elected instalments where one falls due,
-    products/kapitallebensversicherung/technical-notes.md:610
+    products/kapitallebensversicherung/technical-notes.md:611
     """
     return (prem_paid_pp(duration(t)) / instalments()
             if prem_due(t) else 0.0)
@@ -1333,7 +1344,7 @@ def lapse_rate(t):
 
     Override reason: § 165 VVG turns a *Beitragsfreistellung* election that fails the
     minimum-sum test into a surrender, a rate of 1 in that year, and the final year's end is
-    the *Ablauf*, products/kapitallebensversicherung/technical-notes.md:537
+    the *Ablauf*, products/kapitallebensversicherung/technical-notes.md:538
     """
     if duration(t) >= proj_len_y() - 1:
         return 0.0
@@ -1395,7 +1406,7 @@ def pols_if(t):
 
     Override reason: the roll-forward subtracts no maturity, so ``pols_if(proj_len())`` is
     the maturing cohort its checks read, and it multiplies the survival factors, another
-    float order, products/kapitallebensversicherung/technical-notes.md:616
+    float order, products/kapitallebensversicherung/technical-notes.md:617
     """
     if t < t_start() or t > proj_len():
         return 0.0
@@ -1516,7 +1527,7 @@ def benefit_death_pp(t):
     to zero is a defensible variant.  Paying **nil** on the excluded share is not.
 
     Override reason: a death pays the full benefit, with the *Rückkaufswert* on the suicide
-    share in the first three years, products/kapitallebensversicherung/technical-notes.md:620
+    share in the first three years, products/kapitallebensversicherung/technical-notes.md:621
     """
     if duration(t) < data.param("suicide_years"):                    # noqa: F821
         return ((1.0 - data.param("suicide_share")) * benefit_full_pp(t)  # noqa: F821
@@ -1542,7 +1553,7 @@ def benefit_maturity_pp(t):
     A *beitragsfrei* contract matures on ``bfz_si_pp()`` in place of :func:`sum_assured`.
 
     Override reason: the *Ablauf* pays the sum assured plus the surplus balances,
-    products/kapitallebensversicherung/technical-notes.md:623
+    products/kapitallebensversicherung/technical-notes.md:624
     """
     if t != proj_len() - 1:
         return 0.0
@@ -1580,7 +1591,7 @@ def claim_kinds():
     """The benefit kinds of :func:`claims` in the order of its total: death, maturity, lapse.
 
     Override reason: the claim columns are death, maturity and lapse in that order,
-    products/kapitallebensversicherung/technical-notes.md:654
+    products/kapitallebensversicherung/technical-notes.md:657
     """
     return ("DEATH", "MATURITY", "LAPSE")
 
@@ -1593,7 +1604,7 @@ def benefit_lapse_pp(t):
     decides a payment rather than only a label.
 
     Override reason: a lapse pays the *Rückkaufswert*,
-    products/kapitallebensversicherung/technical-notes.md:630
+    products/kapitallebensversicherung/technical-notes.md:631
     """
     return surr_value_pp(t)
 
@@ -1646,8 +1657,8 @@ def expenses_maint(t):
     ``FRV_DE_S`` — so ``expenses`` means the same quantity across the library.
 
     Override reason: the in-force carries the acquisition expense at issue,
-    products/kapitallebensversicherung/technical-notes.md:632, and the monthly maintenance,
-    products/kapitallebensversicherung/technical-notes.md:633, in one per-policy rate
+    products/kapitallebensversicherung/technical-notes.md:633, and the monthly maintenance,
+    products/kapitallebensversicherung/technical-notes.md:634, in one per-policy rate
     """
     return expenses_pp(t) * pols_if(t)
 
@@ -1656,7 +1667,7 @@ def expenses_claim(t):
     """The claim handling expense, :func:`claim_expenses`.
 
     Override reason: the claim expense falls per death, lapse and maturity,
-    products/kapitallebensversicherung/technical-notes.md:634
+    products/kapitallebensversicherung/technical-notes.md:635
     """
     return claim_expenses(t)
 
@@ -1670,7 +1681,7 @@ def comm_init_rate():
     frame opens.  Commission is excluded from :func:`expenses`.
 
     Override reason: the initial commission is the cost table's ``comm_acq_bsum_once`` of the
-    *Beitragssumme*, products/kapitallebensversicherung/technical-notes.md:374
+    *Beitragssumme*, products/kapitallebensversicherung/technical-notes.md:375
     """
     return float(data.charge_table_dict()["comm_acq_bsum_once"][cost_id()])  # noqa: F821
 
@@ -1678,19 +1689,21 @@ def comm_init_rate():
 def comm_renew(t):
     """The 1,5 % *Bestandsprovision* on each *Bruttobeitrag* **instalment** **[std]**.
 
-    From the second projected policy year; not at ``t_start()`` on an in-force point.  The
-    **rate** is a policy-year rate and steps on the anniversary; the **base** is the
-    instalment actually charged, so a fractionated payer earns the renewal commission in
-    instalments too.  It is charged on :func:`prem_charged_inst_pp` and **not** on
-    :func:`prem_inst_pp`: under *Beitragsverrechnung* the intermediary is paid on the tariff
-    premium, the surplus offset being a policyholder rebate rather than a price reduction.
+    From the second policy year from issue, ``duration(t) > 0``: the first year's
+    intermediary is paid by the initial commission.  An in-force point pays it from its first
+    projected month, its first policy year lying before the frame.  The **rate** is a
+    policy-year rate and steps on the anniversary; the **base** is the instalment actually
+    charged, so a fractionated payer earns the renewal commission in instalments too.  It is
+    charged on :func:`prem_charged_inst_pp` and **not** on :func:`prem_inst_pp`: under
+    *Beitragsverrechnung* the intermediary is paid on the tariff premium, the surplus offset
+    being a policyholder rebate rather than a price reduction.
 
-    Override reason: the renewal commission is a rate on the charged instalment after the
-    first projected policy year, products/kapitallebensversicherung/technical-notes.md:636
+    Override reason: the renewal commission is a rate on the charged instalment from the
+    second policy year, products/kapitallebensversicherung/technical-notes.md:637
     """
     cost = data.charge_table_dict()                                  # noqa: F821
     return (float(cost["comm_renew_prem_inst"][cost_id()]) * prem_charged_inst_pp(t) * pols_if(t)
-            if duration(t) > k_start() else 0.0)
+            if duration(t) > 0 else 0.0)
 
 
 # --- output ----------------------------------------------------------------
@@ -1708,7 +1721,7 @@ def check_net_cf_scale(t):
     failed.
 
     Override reason: the statement is checked relative to the sum insured,
-    products/kapitallebensversicherung/technical-notes.md:691
+    products/kapitallebensversicherung/technical-notes.md:694
     """
     return max(sum_assured(), 1.0)                                   # noqa: F821
 

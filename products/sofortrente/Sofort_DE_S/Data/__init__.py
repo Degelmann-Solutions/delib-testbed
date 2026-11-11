@@ -83,8 +83,9 @@ proxy ``lambda_SECOND(x) = 0.0150`` to age 70, tapering linearly to zero at 105,
 ``q(x, sex, cohort, basis) = q_table x (1 - lambda)^(cohort + x - mort_base_year)`` with
 ``mort_base_year = 2025``, so the shipped tables are the period tables of calendar year
 2025 and the exponent is the calendar year the life attains age ``x``, less 2025. The
-exponent is **negative** for a cohort attaining an age before 2025 — an in-force point
-issued in 2012 reads pre-2025 mortality — and is not floored.
+exponent is **negative** for a cohort attaining an age before 2025, and is not floored;
+no shipped point reads one, every frame opening at the valuation date 1 January 2027 —
+the in-force point issued in 2012, born 1947, at age 80 with exponent 2.
 
 **What a replacement must preserve.** Three things, and a substitution that keeps only
 the first is not a substitution for this table. (i) The **generational structure**: a
@@ -135,7 +136,7 @@ def mort_table_index():
     anchor is and what a replacement must preserve.
 
     Override reason: the table carries a first- and a second-order basis, keyed by
-    ``basis``, ``sex`` and ``age``, products/sofortrente/technical-notes.md:376
+    ``basis``, ``sex`` and ``age``, products/sofortrente/technical-notes.md:383
     """
     return ["basis", "sex", "age"]
 

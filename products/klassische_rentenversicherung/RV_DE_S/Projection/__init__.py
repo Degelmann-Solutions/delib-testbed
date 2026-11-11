@@ -74,19 +74,19 @@ Three things did change, and they are the point of the conversion.
   annual-step model paid ``12 (G + U)`` at the start of each payout year — a compression
   carried as a **[std]** that was generous to the payout phase by roughly half a year's
   interest on a year's annuity and by a full year of survivorship on instalments a decedent
-  did not live to collect. On the anchor cell the annuity outgo falls from 23 485,03 € to
-  23 115,89 €, and it falls on every one of the ten model points that reach a *Rentenbeginn*.
+  did not live to collect. On the anchor cell the annuity outgo falls from 23 566,22 € to
+  23 196,34 €, and it falls on every one of the twelve model points that pay an annuity.
   The *Rentengarantiezeit* is now ``12m`` guaranteed **instalments** rather than ``m``
   annual lumps.
 - **The decrements compete monthly.** Deaths and surrenders are taken in the same order as
   before — deaths first, surrenders on the survivors of them — but twelve times a year rather
   than once, so a life that the annual ordering would have counted as a death may surrender
-  first. The **total** exits are unchanged at every anniversary; the split moves, by 16,87 €
+  first. The **total** exits are unchanged at every anniversary; the split moves, by 16,64 €
   of claims from death to lapse on the anchor cell.
 - **Expenses are borne for the months a policy was there.** ``expenses_pp(t)`` is a twelfth
   of the year's amount, inflated by ``(1 + expense_infl())^duration(t)``, so a policy leaving
   mid-year no longer bears a full year of administration. The anchor cell's expenses fall
-  from 1 669,77 € to 1 646,77 €.
+  from 1 672,08 € to 1 649,05 €.
 
 The *Rentenbeginn* falls at the **end of the deferment period** of ``n = aufschub_y`` years,
 which is the end of month ``12n - 1`` and the same instant as the start of month ``12n``.
@@ -269,8 +269,8 @@ and never more. On the anchor cell that is 1,00 % into ``int_credited_pp`` and 1
 ``bonus_credited_pp`` against a 2,55 % declaration. On model point 6 — a 2,75 % legacy
 vintage against the same declaration — ``bonus_rate(k)`` is **zero in every policy year**
 while ``int_credited_pp(k)`` is the largest in the table. A model that credits 1,00 % *and* a further
-2,55 % puts 56,82 € into the anchor cell's first year against 40,82 €, and reaches 63 768,69 €
-of accumulated value at the *Rentenbeginn* against 58 788,98 € — 8,5 % too much, the whole of it
+2,55 % puts 56,82 € into the anchor cell's first year against 40,82 €, and reaches 63 772,39 €
+of accumulated value at the *Rentenbeginn* against 58 792,42 € — 8,5 % too much, the whole of it
 sitting in the *Ansammlungsguthaben*.
 
 .. rubric:: The guarantee vintage is a model-point attribute
@@ -279,8 +279,8 @@ sitting in the *Ansammlungsguthaben*.
 stack of guarantee vintages: the *Höchstrechnungszins* applies to contracts concluded while
 it is in force and existing contracts keep the rate they were written on. Points 1, 6 and 14
 credit 1,00 %, 2,75 % and 0,90 % in the same run, from the same tables. Re-running point 6 on a
-single global 1,00 % rate moves its *Deckungskapital* at *Rentenbeginn* by −7,7 % and its
-*Ansammlungsguthaben* by +156 %, while the conversion capital moves by −0,8 %: the vintage error
+single global 1,00 % rate moves its *Deckungskapital* at *Rentenbeginn* by −4,9 % and its
+*Ansammlungsguthaben* by +98 %, while the conversion capital moves by −0,5 %: the vintage error
 is a **misallocation between the two accounts**, not a hole in the total, and it therefore
 survives a reasonableness check on the headline figure.
 
@@ -737,7 +737,7 @@ def prem_to_av_pp(k):
 
     ``P(k) - charge_from_prem_pp(k)``.  This is the amount credited to the
     *Deckungskapital* — the premium "insofar as it is not required for risk and expense
-    cover".  1 600,63 € of the anchor cell's 3 000,00 € first premium, the rest being the
+    cover".  1 600,70 € of the anchor cell's 3 000,00 € first premium, the rest being the
     whole zillmered acquisition charge.
     """
     return prem_pp(k) - charge_from_prem_pp(k)
@@ -1038,7 +1038,7 @@ def mort_rate_tariff(t):
     That is why this cell depends on :func:`calendar_year` as well as :func:`age`.  A
     period-table proxy, priced at an annuitisation decades ahead, understates the liability
     by a margin that dwarfs every other assumption — on the anchor cell the annuitant reaches
-    67 in 2043, thirty-eight improvement years after the proxy's 2005 base.
+    67 in 2044, thirty-nine improvement years after the proxy's 2005 base.
 
     This is the basis the *Risikobeitrag* and the guaranteed benefits are struck on, and
     **not** the basis the projection's decrements run on.

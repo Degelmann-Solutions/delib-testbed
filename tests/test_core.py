@@ -2523,7 +2523,7 @@ def test_the_usage_scan_finds_no_problem(product, product_models):
 # ``valuation_year``: every point's year of issue plus its completed policy years is the
 # valuation year, on its policy anniversary (entry 23 of epic-parameter-files). Basis and KLV
 # are not among them: their in-force points could not be rolled forward to it by the model.
-VALUATION_DATE_PRODUCTS = ("riester_rente",)
+VALUATION_DATE_PRODUCTS = ("klassische_rentenversicherung", "riester_rente")
 
 # The core items no cell reads, each with the test that reads it: the valuation date is the
 # date the model points are built against, not a parameter of a formula.

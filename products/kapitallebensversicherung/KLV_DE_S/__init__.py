@@ -114,7 +114,7 @@ from the output.
 
 **Model points.** Fourteen, covering both premium forms, all four payment frequencies with
 the *echte* and *unechte* readings of a sub-annual one, all three *Überschussverwendung*
-systems, an in-force 2012 cohort on a 1,75 % guarantee opening at ``t = 168``, a successful
+systems, an in-force 2012 cohort on a 1,75 % guarantee opening at ``t = 180``, a successful
 and a failing *Beitragsfreistellung*, a non-*gezillmert* tariff, and a short unequal-sums
 contract at a *Risikozuschlag* on the ``nil`` surplus scenario. Model point 1 is the
 anchor cell of the worked example in the technical notes.

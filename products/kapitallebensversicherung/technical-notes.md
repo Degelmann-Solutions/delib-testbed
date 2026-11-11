@@ -132,8 +132,8 @@ Every column of `model_point_table.csv` is published as a cells of the same name
 | `smoker` | enum {N, S} | Feeds `rating_factor`; no published scale [R14] | 14 (S) |
 | `issue_year` | int | Cohort identity: fixes the DeckRV ceilings [REG-R15] and the tax cohort [R10] | 10 (2012) |
 | `issue_age` | int | Age last birthday at issue | all |
-| `duration_init` | int | Completed policy **years** at the valuation date; 0 = new business. An **elapsed count**, so already 0-based: it *is* `k_start()`, and `t_start() = 12 ×` it | 10 (14) |
-| `pols_if_init` | float | Policies represented at `t_start()` | all |
+| `duration_init` | int | Completed policy **years** at the valuation date 1 January 2027, `issue_year + duration_init = 2027`; 0 = new business. An **elapsed count**, so already 0-based: it *is* `k_start()`, and `t_start() = 12 ×` it | 10 (15) |
+| `pols_if_init` | float | Policies represented at `t_start()` | all; 10 (0.971217) |
 | `policy_term` | int | *Versicherungsdauer*, in years; equals `proj_len_y()`, and `proj_len() = 12 ×` it | all |
 | `prem_term` | int | *Beitragszahlungsdauer* ≤ `policy_term`; **1 = *Einmalbeitrag*** | 2 (1), 3 (15) |
 | `sum_assured` | EUR | Guaranteed *Erlebensfallleistung* (*Versicherungssumme*) | all |
@@ -148,7 +148,7 @@ Every column of `model_point_table.csv` is published as a cells of the same name
 | `rating_factor` | float | *Risikozuschlag* multiplier on the risk premium; 1.00 at standard rates [R5] | 14 (1.50) |
 | `av_sur_pp_init` | EUR | *Überschussguthaben* carried at the valuation date | 10 |
 | `bonus_si_init` | EUR | Bonus sum insured already bought (*Bonussystem*, in force) | — |
-| `term_bonus_pp_init` | EUR | Accrued *Schlussüberschussanteil* carried at the valuation date; `term_bonus_pp(k_start())` | — |
+| `term_bonus_pp_init` | EUR | Accrued *Schlussüberschussanteil* carried at the valuation date; `term_bonus_pp(k_start())` | 10 |
 | `bfz_year` | int | **Contractual, 1-based policy year** at whose end *Beitragsfreistellung* is elected; 0 = never; ≤ `duration_init` = already paid-up. Not a frame index: the election falls at the end of the 0-based policy year `bfz_year − 1` — month `12(bfz_year − 1) + 11` — so the contract is paid-up from policy year `bfz_year` onwards. The column stays 1-based because 0 has to remain free to mean "never" | 11 (10), 12 (3) |
 
 `sum_assured` and `death_ratio` are the two halves of the *gemischte Versicherung*, and the
@@ -172,7 +172,7 @@ something it does not. Every one satisfies the *Mindesttodesfallschutz* [R12] [R
 | 7 | Quarterly (3 % loading), female — the unisex-pricing pair with 1 | `prem_freq` quarterly, `sex` **F** |
 | 8 | ***Bonussystem*** — pairs with 1 for the [R28] maturity/death asymmetry | `surplus_use` **bonus** |
 | 9 | ***Beitragsverrechnung*** — the surplus reduces the *Zahlbeitrag* instead of a benefit | `surplus_use` **beitragsverrechnung** |
-| 10 | **In force**, a 2012 cohort on a 1,75 % guarantee, opening at `t_start()` = 14 with an *Überschussguthaben* | issue 2012, M 40, term 30, `duration_init` 14, `rechnungszins` **1.75%**, `av_sur_pp_init` 6,000 |
+| 10 | **In force**, a 2012 cohort on a 1,75 % guarantee, opening at `k_start()` = 15 (`t_start()` = 180) with an *Überschussguthaben* and an accrued *Schlussüberschussanteil* | issue 2012, M 40, term 30, `duration_init` 15, `pols_if_init` 0.971217, `rechnungszins` **1.75%**, `av_sur_pp_init` 6,363.97, `term_bonus_pp_init` 85.04 |
 | 11 | ***Beitragsfreistellung*** succeeding: premiums cease at the end of policy year 10 (`k` = 9, month 119), the contract stays in force | as 1 with `bfz_year` = **10** |
 | 12 | **Boundary.** *Beitragsfreistellung* **failing** the *Mindestversicherungsleistung*, so the election becomes a surrender at the end of policy year 3 — `k` = 2, and the whole cohort leaves in **month 35** [R3] | M 45, term 20, SI **6,000**, `bfz_year` = **3** |
 | 13 | **Non-*gezillmert*** — the § 169 floor is then slack and the three reserves coincide. **[std]**: all four retrieved wordings that state a method apply § 4 DeckRV *Zillmerung* [S7] [S9] [S18], so this point exercises the ceiling being a maximum rather than a market option anyone was observed taking | as 1 with `zillmer_on` = **0** |
@@ -923,7 +923,7 @@ All formulas are **[std]**; no German calibration evidence exists for any of the
 ## Worked example
 
 **Configuration.** Model point 1, the anchor cell of `model_point_table.csv`: `policy_id`
-`DE-KLV-0001`; `sex` **M**; `smoker` **N**; `issue_year` **2026**; `issue_age` **37**;
+`DE-KLV-0001`; `sex` **M**; `smoker` **N**; `issue_year` **2027**; `issue_age` **37**;
 `duration_init` **0**, so `t_start() = 0` and the projection opens at issue; `pols_if_init` **1.0**;
 `policy_term` **25**, so `proj_len_y() = 25` and `proj_len() = 300`, the frame is `t` = 0 … 299
 **months** and the annual table below — the monthly frame summed into policy years — is the

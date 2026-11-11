@@ -479,7 +479,7 @@ def surplus_use():
 def av_sur_pp_init():
     """The *Überschussguthaben* per policy carried at ``t_start()``, in euros.
 
-    Zero for new business; model point 10 opens at duration 14 with 6 000 € already
+    Zero for new business; model point 10 opens at duration 15 with 6 363,97 € already
     accumulated.  It is **not** part of the *Deckungsrückstellung*: § 341f HGB forms that
     provision *excluding verzinslich angesammelte Überschussanteile*, and the separation is
     the reason this balance is a cells of its own rather than part of :func:`res_pp`.

@@ -70,7 +70,7 @@ mortality table, what it is *not*.
 `t = t_start() … proj_len() - 1`, contiguous, with `t_start() = 12 × duration_init()` —
 `duration_init` being an elapsed count of policy **years**, so the conversion is a multiplication.
 The anchor cell publishes **300 rows, `t` = 0 to 299**, and the in-force point 10
-(`duration_init` = 14) **192 rows, `t` = 168 to 359**. There is no `t = proj_len()` row;
+(`duration_init` = 15) **180 rows, `t` = 180 to 359**. There is no `t = proj_len()` row;
 `pols_if(proj_len())` is defined for the closure identities and weights no cash flow.
 
 **Almost nothing on this product is monthly, and the argument of a cells says so.** Cells that

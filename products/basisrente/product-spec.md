@@ -158,7 +158,7 @@ mechanics by delib product 4.
 | Earliest *Rentenbeginn* | Completion of the **62nd** year of life for contracts concluded **after 31 December 2011**; the **60th** for contracts concluded on or before that date | [R1] [R8] [REG-R39] — § 10 Abs. 1 Nr. 2 Buchst. b aa and § 10 Abs. 6 EStG (3) |
 | Latest and representative *Rentenbeginn* | **No statutory ceiling**; contracts commonly allow deferral past the statutory retirement age. Representative attained age **67** | [R1]; **[std]** (2) (4) |
 | Annuity form | **Monthly, lifelong, on the taxpayer's own life.** No term-certain annuity, no *Auszahlungsplan* of the Riester type, no annuity on any other single life | [R1] [REG-R39] |
-| Anchor model cell | Entry age 45, *Rentenbeginn* 67, conclusion year 2026, *laufender Beitrag* 6 000,00 € p.a. annual in advance with a 2 % *Beitragsdynamik*, *Zuzahlung* 4 000,00 € p.a., *Rechnungszins* 1,00 %, guaranteed *Rentenfaktor* 28,00 €, no riders | **[std]** (5) |
+| Anchor model cell | Entry age 45, *Rentenbeginn* 67, conclusion year 2027, new business at the valuation date 1 January 2027, *laufender Beitrag* 6 000,00 € p.a. annual in advance with a 2 % *Beitragsdynamik*, *Zuzahlung* 4 000,00 € p.a., *Rechnungszins* 1,00 %, guaranteed *Rentenfaktor* 28,00 €, no riders | **[std]** (5) |
 
 Footnotes to **[std]** rows:
 

@@ -25,11 +25,11 @@ BASELINE_DIR = ROOT / "baseline"
 # product: (model points, check cells, recipe hash, SHA-256 of baseline/<product>/result_cf.csv)
 BASELINE = {
     "basisrente": (
-        13,
+        14,
         ("check_annuity_roll_fwd", "check_av_roll_fwd", "check_conversion", "check_net_cf",
          "check_no_capital", "check_pols_roll_fwd"),
-        "faf0d3baddc4ec0d6adc10e45fbcc1e463f5755bbab3435ead223500067aeb7d",
-        "a04b2e124de82fd0a7ca7705251987fa36bd241fbfd9933f1d3faaf011e65528",
+        "ebbca4d2757fbf9f8861d8272e25f8596fd04ddef2c373705f6ec24e625bf7e2",
+        "62bd45506d6b91cb48a8d22a6d5b0384d115e07dd88ea4c43cc84d1e1f4932a6",
     ),
     "berufsunfaehigkeit": (
         13,

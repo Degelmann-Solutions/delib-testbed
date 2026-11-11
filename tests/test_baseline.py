@@ -28,8 +28,8 @@ BASELINE = {
         13,
         ("check_annuity_roll_fwd", "check_av_roll_fwd", "check_conversion", "check_net_cf",
          "check_no_capital", "check_pols_roll_fwd"),
-        "1a956a09391fd7075cf89bafc470f7a68149f393e808f88872cacb16fe29f46b",
-        "76e715d858300d3c3bc696505ec952e16fa56165d619487c6454475055aa6c17",
+        "faf0d3baddc4ec0d6adc10e45fbcc1e463f5755bbab3435ead223500067aeb7d",
+        "a04b2e124de82fd0a7ca7705251987fa36bd241fbfd9933f1d3faaf011e65528",
     ),
     "berufsunfaehigkeit": (
         13,

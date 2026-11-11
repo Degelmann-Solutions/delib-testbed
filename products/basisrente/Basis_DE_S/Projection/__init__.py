@@ -776,7 +776,7 @@ def pols_prem(t):
     ``(1 - mort_rate(t))`` here applies the death rule twice.
 
     Override reason: the premium is paid by the premium-paying cohort only, the paid-up
-    cohort pays none, products/basisrente/technical-notes.md:649
+    cohort pays none, products/basisrente/technical-notes.md:653
     """
     return pols_paying(t)
 
@@ -809,7 +809,7 @@ def mort_rate_base(t):
     year share one table rate.
 
     Override reason: the first-order table is generational, read at the attained age and the
-    calendar year, products/basisrente/technical-notes.md:925
+    calendar year, products/basisrente/technical-notes.md:929
     """
     return mort_rate_at_age(age(t), calendar_year(t))
 
@@ -1581,14 +1581,17 @@ def comm_renew(t):
     """The *Bestandsprovision*, ``comm_renew_prem_inst x premiums(t)``, *Zuzahlung* included.
 
     The renewal commission is a percentage of a contribution, so it falls in the month the
-    contribution does and in no other — the ``t >= 1`` condition excludes the first year's
-    premium at ``t = 0`` and admits every later one at ``t = 12, 24, ...``, which is
-    exactly the annual-step model's rule.  **[std]**.
+    contribution does and in no other.  It is paid from **policy year 2**: the condition
+    ``duration(t) >= 1`` excludes the premium of the first policy year, on which the
+    initial commission is paid, and admits every later one.  On a new-business point that is
+    the premium at ``t = 0`` alone, ``t = 12, 24, ...`` paying it, the annual-step model's
+    rule; an in-force point is past its first policy year and pays it on its premium at
+    ``t = 0`` as well.  **[std]**.
 
     Override reason: the renewal commission is a rate on the premiums and *Zuzahlungen*
-    from ``t = 1``, products/basisrente/technical-notes.md:613
+    from policy year 2, products/basisrente/technical-notes.md:613
     """
-    if t < 1 or t >= proj_len():
+    if duration(t) < 1 or t >= proj_len():
         return 0.0
     rate = float(data.charge_table_dict()["comm_renew_prem_inst"][   # noqa: F821
         model_point()["tariff_id"]])
@@ -1617,7 +1620,7 @@ def check_net_cf_resid(t):
     either: the BUZ premium buys a cover this model does not project.
 
     Override reason: the identity is taken as the rebuilt flow less ``net_cf``, the reverse
-    of the core's sign, products/basisrente/technical-notes.md:687
+    of the core's sign, products/basisrente/technical-notes.md:691
     """
     cf = result_cf_dict()
     return float(cf["premiums"][t]
@@ -1857,7 +1860,7 @@ def result_cf_columns():
     same stream summed into projection years, which is the view the technical notes print.
 
     Override reason: the statement carries the premium-paying count and the three claim
-    kinds of a *Basisrente*, products/basisrente/technical-notes.md:648-657
+    kinds of a *Basisrente*, products/basisrente/technical-notes.md:652-661
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821
@@ -1896,7 +1899,7 @@ def result_cf_annual():
 
     Override reason: indexed by the projection year k of the valuation clock, the
     annual-step model's own t, and summed over each year's twelve-month slice,
-    products/basisrente/technical-notes.md:670
+    products/basisrente/technical-notes.md:674
     """
     ks = list(range(proj_len_y()))
     flows = ["premiums", "claims_death", "claims_annuity",
@@ -1929,7 +1932,7 @@ def result_pols():
     point projected from issue.
 
     Override reason: the frame is the annual state, indexed by the projection year k, with the
-    year's deaths and freezes summed over its months, products/basisrente/technical-notes.md:673
+    year's deaths and freezes summed over its months, products/basisrente/technical-notes.md:677
     """
     ks = list(range(proj_len_y()))
     return pd.DataFrame(                                             # noqa: F821

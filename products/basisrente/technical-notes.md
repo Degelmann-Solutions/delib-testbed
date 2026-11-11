@@ -327,7 +327,7 @@ best-estimate factor for a Basisrente, and the research file records the absence
 | Eligible-survivor probability `elig_surv_prob` | **0.55** | The probability that a spouse or registered partner, or a *Kindergeld*-eligible child, exists at the moment of death [R1]. On a contract taken at 45 and running to 67 the child channel has usually closed, so this is in substance a marriage-survival probability. **One of the most consequential [std] numbers in the whole delib library** |
 | Acquisition expense `expense_acq_pp_once` | **250,00 €** at inception | Round-number placeholder |
 | Initial commission `comm_acq_bsum_once` | **2,5 % of `beitragssumme`**, paid at inception | Sized to the *Zillmerung* cap [R16], the German design in which what the insurer pays out is what it may write into the reserve. **A carrier's published figure now matches it exactly**: NÜRNBERGER's *Muster*-PIB puts *Abschluss- und Vertriebskosten* at "*2,50 % der vereinbarten Beiträge*", 900,00 € on a 36 000 € *Beitragssumme* [S13] — that is the cost, not the commission, but on the German design they are the same lever. [S2]'s 1 575 € specimen *Abschlussprovision* stays [unverified] |
-| Renewal commission `comm_renew_prem_inst` | **1,5 %** of premiums plus *Zuzahlungen* from year 2 | Market convention; no level established |
+| Renewal commission `comm_renew_prem_inst` | **1,5 %** of premiums plus *Zuzahlungen* from policy year 2 | Market convention; no level established |
 | Maintenance expense `expense_admin_pp_ann` | **60,00 €** per in-force policy p.a., inflating | Placeholder |
 | Annuity administration `expense_annuity_pp_ann` | **36,00 €** per annuitant p.a., inflating | Placeholder; the payout phase is administratively cheaper than the accumulation phase |
 | Expense inflation `expense_infl` | **2,0 %** p.a. | The house-wide rate, the item `expense_infl` of the core file `core/Core/Data/param_core.csv`, not a column of `charge_table.csv` |
@@ -610,7 +610,7 @@ expenses(t)          = expense_acq_pp_once × pols_if_init × 1{t = 0 and durati
                        + expense_admin_pp_ann / 12 × (1 + expense_infl)^k × l(t)     for t < 12T
                        + expense_annuity_pp_ann / 12 × (1 + expense_infl)^k × ( l(t) + g(t) )  for t ≥ 12T
 commissions(t)       = comm_acq_bsum_once × S × pols_if_init × 1{t = 0 and duration_init = 0}
-                       + comm_renew_prem_inst × premiums(t)                        for t ≥ 1
+                       + comm_renew_prem_inst × premiums(t)                        for d(t) ≥ 1
 net_cf(t)            = premiums(t)
                        − claims(t, "DEATH") − claims(t, "ANNUITY") − claims(t, "SURVIVOR")
                        − expenses(t) − commissions(t)
@@ -622,9 +622,13 @@ The **amount** released by a death is the annual `db_pp(k)`, struck at the end o
 and not how much, and the year's total is the annual-step model's to the last bit. The expense
 inflation factor steps on the anniversary, so the twelve months of a year carry the same monthly
 amount and a policy that dies in the third month bears three twelfths of it. The renewal commission
-is a percentage of a contribution and so falls in the month the contribution does; `t ≥ 1` excludes
-the first year's premium at `t = 0` and admits every later one at `t = 12, 24, …`, which is the
-annual-step model's rule unchanged.
+is a percentage of a contribution and so falls in the month the contribution does; `d(t) ≥ 1`
+excludes the premium of the first policy year, on which the initial commission is paid, and admits
+every later one. On a new-business point that is the premium at `t = 0` alone and the commission falls
+at `t = 12, 24, …`, the annual-step model's rule unchanged; an in-force point is past its first policy
+year and pays it on its premium at `t = 0` too (decision of 2026-11-11: the earlier `t ≥ 1` read the
+first projected premium as the first policy year's, which holds for new business only, and left model
+point 6 without its *Bestandsprovision* of 79,39 € in its policy year 18).
 
 **The death benefit is booked as a single amount and is not a lump sum to a beneficiary.** [R1]
 requires everything paid to a survivor to be paid **as an annuity**; what the model books at the
@@ -943,7 +947,7 @@ binds on this cell, and model point 13 exercises the other branch [R17] [S1]. *C
 `charge_admin_prem_inst = 7.5 %` **[std]**; `charge_admin_av_ann = 0.35 %` p.a. **[std]**; `charge_admin_pp_ann = 36.00 €` p.a.
 inflating at `expense_infl = 2.0 %` **[std]**. *Insurer expense and commission*, all **[std]**:
 `expense_acq_pp_once = 250.00 €` at inception; `comm_acq_bsum_once = 2.5 %` of `beitragssumme()` at
-inception; `comm_renew_prem_inst = 1.5 %` of premiums plus *Zuzahlungen* from the second projection year;
+inception; `comm_renew_prem_inst = 1.5 %` of premiums plus *Zuzahlungen* from the second policy year;
 `expense_admin_pp_ann = 60.00 €` per in-force policy p.a. inflating; `expense_annuity_pp_ann = 36.00 €` per
 annuitant p.a. inflating. *Behaviour*, all **[std]**: `bf_rate = 4.0 %` at durations 1–5, `3.0 %` at
 6–10, `2.0 %` at 11+; `zuz_take_up = 0.70` at durations 1–5, `0.85` at 6–15, `0.90` at 16+;

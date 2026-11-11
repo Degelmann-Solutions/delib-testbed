@@ -1,6 +1,6 @@
 # The common core of phase 3: layout and conventions
 
-Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates, the policy counts, the cash flows, the expense inflation, the outputs and checks, the contract data and charges, the parameter files and the formula literals, how the core quota is measured and bounded, and the conventions every core commit follows: commit trailers, the rules for measuring speed, the reason on a product override, and how a product's `UPSTREAM.md` states, against upstream, the files phase 3 changed. The tests that enforce the conventions are `tests/test_core.py`, `tests/test_provenance.py`, `tests/test_core_quota.py` and `tests/test_baseline_deviations.py` (with the tool `tools/baseline_deviations.py`).
+Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates, the policy counts, the cash flows, the expense inflation, the outputs and checks, the contract data and charges, the parameter files and the formula literals, how the core quota is measured and bounded, and the conventions every core commit follows: commit trailers, the rules for measuring speed, the reason on a product override, and how a product's `UPSTREAM.md` states, against upstream, the files phase 3 changed; beside them, the process rules for stacked pull requests, which no test enforces. The tests that enforce the conventions are `tests/test_core.py`, `tests/test_provenance.py`, `tests/test_core_quota.py` and `tests/test_baseline_deviations.py` (with the tool `tools/baseline_deviations.py`).
 
 ## Layout
 
@@ -581,6 +581,13 @@ The structural literals, by class and place:
 
 `STRUCTURAL_LITERALS` in `tests/test_core.py` lists, for the core and each product, the reprs of the structural literals its formula cells hold, and `test_formula_literals_are_listed_as_structural` walks every formula cell as above and fails on a literal not listed for its space, naming space, cell, line and value, and on a listed value its space no longer holds. The test catches a new literal whose value is not yet listed for its space, which is then either listed here and there as structural or moved into a parameter file or a table; a new literal of a value already listed for its space passes it and is a matter for review.
 
+## Pull requests
+
+Rules for a story built as a stack of pull requests, learnt in epic-parameter-files (retrospective A9: PRs #43 to #49 were merged into the branch of their base PR #42 after #42 was in `main`, and only the collecting PR #51 brought them there):
+
+- **A stacked PR is retargeted before its base is merged.** Before a base PR is merged, its followers are retargeted to `main` (`gh pr edit <n> --base main`), or the stack is merged bottom-up, each follower retargeted to `main` once the PR below it is in. A PR merged into its base's branch after that branch is merged lands on a dead branch, not on `main`.
+- **After a rebase, `baseline_revision` follows.** Once a plan's commits reach `main` rewritten (by a rebase or a squash), its `baseline_revision` moves to the rewritten commit there, not left at the SHA of the old branch, which other clones do not have.
+
 ## Commit trailers
 
 Every commit that touches the core or a product model follows these rules from the first phase-3 commit on. Trailers stand in the last paragraph of the commit message, before `Co-Authored-By`.
@@ -617,9 +624,10 @@ Every commit that touches the core or a product model follows these rules from t
 
 ## Measuring rules
 
-Rules for a story or experiment that measures speed (`tools/measure_marginal.py`), learnt in epic-night-run:
+Rules for a story or experiment that measures speed (`tools/measure_marginal.py`), learnt in epic-night-run and epic-parameter-files:
 
 - **A rise above 10 % is reasoned with a control.** If a product's `t_marginal` on the branch lies more than 10 % above `main` (epic-night-run, N4), the rise is explained only with alternating runs of a `main` control in the same session: a worktree of `main` (`git worktree add /tmp/<story>-main main`), the same command run in turn on the branch and in the worktree, at least three times each, `uptime` before every run. The plan records the figures of every run and the load average they ran at. A rise that stays within the control's own spread is noise; one beyond it has a cause to name before the commit lands.
+- **A forecast plan provides the controls from the start.** A plan that measures a forecast (`tools/measure_marginal.py`) provides from the start targeted alternating control runs per product: the `main` worktree and the run order of the rule above, planned for every product, and run for every product whose `t_marginal` rises above 10 %, not only for the one first noticed (epic-parameter-files, entry 13; retrospective A10).
 - **Every measured figure carries its load average**, the `uptime` taken just before the run; a figure without one cannot reason a rise (N4); older figures without one are compared only with that caveat stated.
 - **A failing test is recorded with its name** in the plan, and whether it passed on rerun; "one flaky test" is not a record.
 - **Measure again after a review patch that touches a timed path.** A figure stands only for the code it was measured on; a patch to a cell, the runner or the export after the measurement makes the figure stale, and the measurement is repeated on the patched code before it is recorded.

@@ -193,8 +193,9 @@ def param_indirect():
     """The cells that read parameters other than by a literal ``param("<item>")``.
 
     ``{cell: (item, ...)}``, each such cell with the items it reads; empty in the core.  A
-    product (or a table factory reading its items by a computed name) overrides it.  Only
-    the static usage scan ``core/param_usage.py`` reads it, never a run.
+    product with such a cell overrides it.  The table factory does not declare its read by
+    a computed name here: the scan reads the items of a chosen table off the factory's
+    ``items()``.  Only the static usage scan ``core/param_usage.py`` reads it, never a run.
     """
     return {}
 

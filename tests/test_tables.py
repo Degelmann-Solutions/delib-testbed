@@ -46,6 +46,21 @@ The derivation hooks of the core's ``Projection``:
   both engines of the runner with the same results, the factory called without a birth
   year; with a ``birth_year`` cell and the generational fixture table the hooks pass the
   birth year on, and without the cell the generational table raises.
+
+The usage scan ``core/param_usage.py`` (``docs/core.md``, "The usage check and the view"):
+
+- Every shipped product is clean, with no table and no choice, and no table is unchosen
+  across the ten.
+- On a scratch copy of Index that chooses a fixture table (``choosing_copy``) the scan holds
+  the factory's ``items()`` and the choice, counts the chosen table's items as read by the
+  cells reading the choice item and no other table's item, and reports nothing; a copy with
+  the fixture tables and no choice reads no tables item, and neither does one whose choice
+  item no cell reads.
+- The scan reports a chosen name the factory lacks, naming the item, its file and the name,
+  in the tariff-type and the tariff file; an item of the tables layer that is in no table's
+  items; an item a chosen table names that the layer lacks; a product-defined
+  ``param_tables_path``; and a cell referencing ``param_tables_path``.
+- ``unchosen_tables`` names, sorted, the tables no scanned model chooses.
 """
 from __future__ import annotations
 
@@ -807,3 +822,147 @@ def test_a_switched_copy_runs_through_both_engines(tmp_path, monkeypatch):
     assert sha != shipped[2]
     assert after[1] and after[1].items() <= at_end.items()
     assert all(key[0] == "period_fixture" and key[3] is None for key in at_end)
+
+
+# --------------------------------------------------------------------------- the usage scan
+
+def fixture_items(table: str) -> tuple[str, ...]:
+    """The items of a fixture table, as its definition names them."""
+    return tuple(f"{table}_{name}" for name in FIXTURE_DEFINITIONS[table][2])
+
+
+def choosing_copy(tmp_path: Path, table: str, file: str = "param_tariff_type.csv") -> Path:
+    """A scratch copy of Index with the fixture tables that chooses ``table`` as its
+    ``mort_table`` in ``file`` and is otherwise clean in the usage scan: ``switched_copy``
+    without its row ``unisex_mix_male``, which no reachable cell of Index reads."""
+    folder = switched_copy(tmp_path, table)
+    path = folder / "param_tariff_type.csv"
+    rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    choice = [row for row in rows if row.startswith("mort_table,")]
+    dropped = [row for row in rows if row.startswith(("unisex_mix_male,", "mort_table,"))]
+    assert len(choice) == 1 and len(dropped) == 2
+    path.write_text("".join(row for row in rows if row not in dropped), encoding="utf-8")
+    _add_params(folder / file, {"mort_table": table})
+    return folder
+
+
+def scan_of(folder: Path, name: str, edit=None):
+    """The usage scan of a scratch copy of Index, after ``edit(model)`` changed its model."""
+    model = mx.read_model(folder / MODELS[INDEX], name=name)
+    try:
+        if edit is not None:
+            edit(model)
+        return param_usage.scan(model)
+    finally:
+        model.close()
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_the_scan_of_a_shipped_product_holds_no_table_and_no_problem(product, product_models):
+    usage = param_usage.scan(product_models(product))
+    assert usage.problems == []
+    assert usage.tables == {} and usage.choices == {}
+    assert usage.layers["tables"] == {}
+
+
+def test_no_table_is_unchosen_in_the_ten_products(product_models):
+    usages = [param_usage.scan(product_models(product)) for product in sorted(MODELS)]
+    assert len(usages) == 10
+    assert param_usage.unchosen_tables(usages) == []
+
+
+@pytest.mark.parametrize("file", ["param_tariff_type.csv", "param_tariff.csv"])
+def test_the_scan_counts_the_items_of_a_chosen_table_as_read(tmp_path, file):
+    usage = scan_of(choosing_copy(tmp_path, "period_fixture", file), "ChosenScanProbe")
+    assert usage.problems == []
+    assert usage.tables == {table: fixture_items(table) for table in FIXTURE_DEFINITIONS}
+    assert usage.choices == {"mort_table": "period_fixture"}
+    readers = usage.reads["mort_table"]
+    assert readers == {"mort_table_name"} and readers <= usage.reachable
+    for item in fixture_items("period_fixture"):
+        assert usage.reads[item] == readers, item
+    read = set(usage.reads) & set(usage.layers["tables"])
+    assert read == set(fixture_items("period_fixture"))
+    assert len(usage.layers["tables"]) > len(read)
+
+
+def test_the_scan_reads_no_tables_item_without_a_choice(tmp_path):
+    usage = scan_of(fixture_copy(tmp_path), "NoChoiceScanProbe")
+    assert usage.problems == []
+    assert list(usage.tables) == list(FIXTURE_DEFINITIONS) and usage.choices == {}
+    assert usage.layers["tables"] and not set(usage.reads) & set(usage.layers["tables"])
+    assert "mort_table" not in usage.reads
+
+
+def test_the_scan_reads_no_item_of_a_table_whose_choice_no_cell_reads(tmp_path):
+    folder = fixture_copy(tmp_path)
+    _add_params(folder / "param_tariff_type.csv", {"probe_table": "period_fixture"})
+    usage = scan_of(folder, "UnreadChoiceScanProbe")
+    assert usage.choices == {"probe_table": "period_fixture"}
+    assert usage.problems == ["item 'probe_table' of the tariff_type layer"
+                              " (param_tariff_type.csv) is read by no reachable cell"]
+    assert not set(usage.reads) & set(usage.layers["tables"])
+
+
+@pytest.mark.parametrize("file", ["param_tariff_type.csv", "param_tariff.csv"])
+def test_the_scan_reports_a_chosen_name_the_factory_lacks(tmp_path, file):
+    usage = scan_of(choosing_copy(tmp_path, "nosuch_table", file), "UnknownChoiceScanProbe")
+    layer = "tariff" if file == "param_tariff.csv" else "tariff_type"
+    assert usage.problems == [f"item 'mort_table' of the {layer} layer ({file}) names the"
+                              f" table 'nosuch_table', which the factory does not hold"]
+    assert usage.choices == {"mort_table": "nosuch_table"}
+    assert not set(usage.reads) & set(usage.layers["tables"])
+
+
+def test_the_scan_reports_a_tables_item_of_no_table(tmp_path):
+    """A row that is no table's item, and one that starts with a table's name but is not
+    among the items its definition names."""
+    folder = choosing_copy(tmp_path, "period_fixture")
+    _add_params(tables_file(folder, INDEX), {"stray_item": "1.5", "period_fixture_m_c": "2"})
+    usage = scan_of(folder, "StrayItemScanProbe")
+    assert usage.problems == [
+        "item 'stray_item' of the tables layer (param_tables.csv) belongs to no table",
+        "item 'period_fixture_m_c' of the tables layer (param_tables.csv) belongs to no table"]
+    assert "stray_item" not in usage.reads and "period_fixture_m_c" not in usage.reads
+
+
+def test_the_scan_reports_an_item_a_chosen_table_names_and_the_layer_lacks(tmp_path):
+    usage = scan_of(choosing_copy(tmp_path, "broken_fixture"), "BrokenTableScanProbe")
+    assert usage.problems == [
+        "item 'broken_fixture_f_b' read by mort_table_name stands in no layer"]
+    assert set(fixture_items("broken_fixture")) <= set(usage.reads)
+
+
+def test_the_scan_reports_a_product_defined_tables_path(tmp_path):
+    def edit(model):
+        model.Data.cells["param_tables_path"].formula = (
+            'def param_tables_path():\n'
+            '    return _model.path / "CoreData" / "param_tables.csv"\n')
+        assert model.Data.cells["param_tables_path"]._is_defined()
+
+    usage = scan_of(choosing_copy(tmp_path, "period_fixture"), "TablesPathScanProbe", edit)
+    assert usage.problems == ["Data defines param_tables_path; the table parameter file is the"
+                              " core's param_tables.csv beside its loaders"]
+
+
+def test_the_scan_reports_a_read_around_param_through_the_tables_path(tmp_path):
+    def edit(model):
+        model.Projection.new_cells(
+            name="probe_path",
+            formula="def probe_path():\n    return data.param_tables_path()\n")
+
+    usage = scan_of(choosing_copy(tmp_path, "period_fixture"), "TablesBypassScanProbe", edit)
+    assert usage.problems == [
+        "cell probe_path reads the parameters around param(): param_tables_path"]
+
+
+def test_unchosen_tables_names_the_tables_no_model_chooses(tmp_path):
+    others = sorted(set(FIXTURE_DEFINITIONS) - {"period_fixture"})
+    period = scan_of(choosing_copy(tmp_path / "period", "period_fixture"), "UnchosenProbeA")
+    assert param_usage.unchosen_tables([period]) == others
+    gen = scan_of(choosing_copy(tmp_path / "gen", "gen_fixture"), "UnchosenProbeB")
+    none = scan_of(fixture_copy(tmp_path / "none"), "UnchosenProbeC")
+    assert param_usage.unchosen_tables([none]) == sorted(FIXTURE_DEFINITIONS)
+    assert param_usage.unchosen_tables([none, period, gen]) == sorted(
+        set(others) - {"gen_fixture"})
+    assert param_usage.unchosen_tables([]) == []

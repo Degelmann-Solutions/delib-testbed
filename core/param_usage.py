@@ -4,7 +4,8 @@ A plain module beside the core model, not a model space: ``mx.read_model`` of ``
 does not see it.  ``scan(model)`` reads a product's modelx model, the formula sources of its
 ``Projection`` and ``Data`` cells only, and evaluates no ``Projection`` cell; of the loader it
 evaluates ``param_layers()``, ``param_paths()`` (for the files' names) and the term
-``param_indirect()``.
+``param_indirect()``, and of the table factory ``CoreTables`` the cell ``items()`` only,
+``{table: (item, ...)}``, no rate.
 
 A read counts for a product only where its cell is reachable:
 
@@ -24,28 +25,42 @@ literal reads that item.  Any other reference to ``param`` is an indirect read, 
 has to declare in ``param_indirect()``, ``{cell: (item, ...)}``; the declared items count as
 read by the cell.  A cell other than the loader cells must not reference the readers behind
 ``param`` (``param_dict``, ``param_layers``, ``param_rows``, ``param_paths``) or the files
-they read (``param_core_path``, ``param_tariff_path``, ``param_file``), and a product must not
-define ``param_core_path``: the core file is the one beside the core's loaders.
+they read (``param_core_path``, ``param_tables_path``, ``param_tariff_path``,
+``param_file``), and a product must not define ``param_core_path`` or ``param_tables_path``:
+the core file and the table parameter file are the ones beside the core's loaders.
+
+A tariff chooses its tables by the items named ``<role>_table`` of its tariff-type and tariff
+layers, each holding a table name.  The product reads the items of exactly the tables these
+items name: every item ``items()`` lists for a chosen table counts as read by the cells that
+read the choice item.  The factory's own read by a computed name is therefore not declared
+in ``param_indirect()``, and an item of a table no choice names is not read.
 
 The problems of one product: a call or declared item naming an item no layer holds, an item
 of the tariff-type or the tariff layer that no reachable cell reads, an undeclared indirect
 read, a declared cell that does not exist, a bypass of ``param`` through a reader or a file
-path, and a product-defined ``param_core_path``.  An item of the core file is checked across
-all products together, ``unused_core_items(usages)``: it is used if any product reads it.
+path, a product-defined ``param_core_path`` or ``param_tables_path``, a choice item naming a
+table the factory does not hold, and an item of the tables layer that ``items()`` lists for
+no table.  An item of the core file is checked across all products together,
+``unused_core_items(usages)``: it is used if any product reads it; so is a table,
+``unchosen_tables(usages)``: it is chosen if any product's choice item names it.
 ``tools/params.py``, the view of a tariff's parameters, builds on this scan.
 """
 import ast
 import textwrap
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 SPACES = ("Projection", "Data")
 ROOT_PREFIXES = ("result_", "check_")
 LOADER = "param"
 READERS = frozenset({"param_dict", "param_layers", "param_rows", "param_paths"})
-CORE_PATH = "param_core_path"
-PATHS = frozenset({CORE_PATH, "param_tariff_path", "param_file"})
+# the files beside the core's loaders, each with what the problem line calls it
+CORE_PATHS = {"param_core_path": "the core file is the core's param_core.csv",
+              "param_tables_path": "the table parameter file is the core's param_tables.csv"}
+PATHS = frozenset({*CORE_PATHS, "param_tariff_path", "param_file"})
 LOADER_CELLS = READERS | {LOADER}
 PRODUCT_LAYERS = ("tariff_type", "tariff")
+TABLES_LAYER = "tables"
+CHOICE_SUFFIX = "_table"
 
 
 @dataclass(frozen=True)
@@ -55,6 +70,8 @@ class Usage:
     ``layers`` is ``param_layers()``, ``reads`` maps each item read to the reachable cells
     reading it, ``reachable`` the names of the reachable cells, ``indirect`` the declared
     ``param_indirect()`` and ``problems`` one line per problem, empty for a clean model.
+    ``tables`` is the factory's ``items()``, ``{table: (item, ...)}``, and ``choices`` the
+    table choices of the product layers, ``{choice item: table name}``.
     """
 
     layers: dict
@@ -62,6 +79,8 @@ class Usage:
     reachable: frozenset
     indirect: dict
     problems: list
+    tables: dict = field(default_factory=dict)
+    choices: dict = field(default_factory=dict)
 
 
 def _references(tree: ast.AST) -> set[str]:
@@ -126,6 +145,10 @@ def scan(model) -> Usage:
     layers = data.param_layers()
     indirect = dict(data.param_indirect())
     files = {layer: path.name for layer, path in data.param_paths().items()}
+    tables = dict(model.CoreTables.items())
+    choices = {item: value for layer in PRODUCT_LAYERS
+               for item, value in layers.get(layer, {}).items()
+               if item.endswith(CHOICE_SUFFIX)}
     problems = []
 
     reads = {}
@@ -153,6 +176,10 @@ def scan(model) -> Usage:
                 problems.append(f"param_indirect() declares item {item!r} for cell {name}, "
                                 f"which no layer holds")
 
+    for choice, table in choices.items():
+        for item in tables.get(table, ()) if choice in reads else ():
+            reads.setdefault(item, set()).update(reads[choice])
+
     for name in sorted(cells):
         if name in LOADER_CELLS:
             continue
@@ -160,9 +187,9 @@ def scan(model) -> Usage:
         if bypass:
             problems.append(f"cell {name} reads the parameters around param(): "
                             f"{', '.join(bypass)}")
-    if data.cells[CORE_PATH]._is_defined():
-        problems.append(f"Data defines {CORE_PATH}; the core file is the core's "
-                        "param_core.csv beside its loaders")
+    for path, file in CORE_PATHS.items():
+        if data.cells[path]._is_defined():
+            problems.append(f"Data defines {path}; {file} beside its loaders")
 
     for item in sorted(reads):
         if not any(item in layer for layer in layers.values()):
@@ -173,10 +200,21 @@ def scan(model) -> Usage:
             if item not in reads:
                 problems.append(f"item {item!r} of the {layer} layer ({files[layer]}) "
                                 f"is read by no reachable cell")
+    for layer in PRODUCT_LAYERS:
+        for item in layers.get(layer, {}):
+            if item in choices and choices[item] not in tables:
+                problems.append(f"item {item!r} of the {layer} layer ({files[layer]}) names "
+                                f"the table {choices[item]!r}, which the factory does not hold")
+    listed = set().union(*tables.values())
+    for item in layers[TABLES_LAYER]:
+        if item not in listed:
+            problems.append(f"item {item!r} of the {TABLES_LAYER} layer "
+                            f"({files[TABLES_LAYER]}) belongs to no table")
 
     return Usage(layers=layers,
                  reads={item: frozenset(names) for item, names in reads.items()},
-                 reachable=frozenset(reachable), indirect=indirect, problems=problems)
+                 reachable=frozenset(reachable), indirect=indirect, problems=problems,
+                 tables=tables, choices=choices)
 
 
 def unused_core_items(usages) -> list[str]:
@@ -185,3 +223,11 @@ def unused_core_items(usages) -> list[str]:
     core = set().union(*(usage.layers["core"] for usage in usages))
     read = set().union(*(usage.reads for usage in usages))
     return sorted(core - read)
+
+
+def unchosen_tables(usages) -> list[str]:
+    """The tables of the factory that no choice item of the scanned models names, sorted."""
+    usages = list(usages)
+    held = set().union(*(usage.tables for usage in usages))
+    chosen = set().union(*(usage.choices.values() for usage in usages))
+    return sorted(held - chosen)

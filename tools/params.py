@@ -16,14 +16,17 @@ list of items of its own. An item's **value** and **layer** are those of
 ``model.Data.param_layers()``; its **basis** and **provenance** are those of the item's row
 in that layer of ``model.Data.param_rows()``, the loader's reading of the layer files. The
 tool reads no file and builds no path of its own. A core item the tariff does not read is not
-listed. A read item that no layer holds (a problem the scan also reports) is listed with
-layer ``missing`` and no value.
+listed. Of the layer ``tables``, the numbers of the table factory's tables, the items of the
+tables the tariff chooses by its ``<role>_table`` items are listed and no other table's: the
+scan counts exactly those as read (``docs/core.md``, "The usage check and the view"). A read
+item that no layer holds (a problem the scan also reports) is listed with layer ``missing``
+and no value.
 
 Output
 ------
 Per product, in the order given (``--all``: name order), a header line ``<product>: <n>
 items read``, then a column header and one fixed-width line per item: item, value (its
-``repr``), layer, basis, provenance. The items stand in layer order ``core``,
+``repr``), layer, basis, provenance. The items stand in layer order ``core``, ``tables``,
 ``tariff_type``, ``tariff``, within a layer in the order of its file, the ``missing`` ones
 last by name. A blank line separates the products. After a product's listing every problem
 of ``scan(model).problems`` stands on stderr, one line ``<product>: <problem>`` each. A

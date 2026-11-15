@@ -2751,9 +2751,10 @@ def test_a_core_item_read_by_one_product_is_used():
     is used, one that none reads is named."""
     layers = {"core": {"probe_core": 0.125}, "tariff_type": {}}
     reader = param_usage.Usage(layers=layers, reads={"probe_core": frozenset({"cell"})},
-                               reachable=frozenset({"cell"}), indirect={}, problems=[])
+                               reachable=frozenset({"cell"}), indirect={}, problems=[],
+                               tables={}, choices={})
     other = param_usage.Usage(layers=layers, reads={}, reachable=frozenset(), indirect={},
-                              problems=[])
+                              problems=[], tables={}, choices={})
     assert param_usage.unused_core_items([reader, other]) == []
     assert param_usage.unused_core_items([other, other]) == ["probe_core"]
 

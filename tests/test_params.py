@@ -21,9 +21,13 @@
   layer ``tables``, value, basis and provenance, after the core items and before the
   tariff-type items, and no other table's, and exits 0; a copy with the fixture tables and
   no choice lists no item of the layer.
+- A scratch copy whose choice stands in a tariff file lists the choice with layer ``tariff``
+  and its table's items with layer ``tables``, and exits 0.
 - A scratch copy whose choice names a table the factory lacks, whose table parameter file
-  holds an item of no table, or whose chosen table names an item the layer lacks (listed as
-  ``missing``) has the scan's line on stderr and exits 1.
+  holds an item of no table, whose chosen table names an item the layer lacks (listed as
+  ``missing``), whose tariff-type file holds an item of a table, whose core file holds a
+  table choice, or whose ``Projection`` reads an item of the tables layer itself has the
+  scan's line on stderr and exits 1.
 """
 from __future__ import annotations
 
@@ -354,3 +358,62 @@ def test_an_item_a_chosen_table_lacks_is_missing_and_exits_1(tmp_path, capsys):
     assert any(line.split() == ["broken_fixture_f_b", "missing"] for line in out.splitlines())
     assert err.splitlines() == [
         f"{INDEX}: item 'broken_fixture_f_b' read by mort_table_name stands in no layer"]
+
+
+def test_a_choice_in_the_tariff_file_is_listed_in_the_tariff_layer(tmp_path, capsys):
+    folder = choosing_copy(tmp_path, "period_fixture", "param_tariff.csv")
+    table, listed = tables_rows(folder, "ParamsTariffChoice")
+    assert [row["item"] for row in listed] == list(fixture_items("period_fixture"))
+    assert table[-1] == {"item": "mort_table", "value": "period_fixture", "layer": "tariff",
+                         "basis": "", "provenance": "[std] test fixture"}
+    layers = [row["layer"] for row in table]
+    assert layers == sorted(layers, key=["core", "tables", "tariff_type", "tariff"].index)
+
+    assert params.main([str(folder)]) == 0
+    out, err = capsys.readouterr()
+    assert err == ""
+    split = [line.split() for line in out.splitlines()]
+    assert ["mort_table", "'period_fixture'", "tariff"] in [line[:3] for line in split]
+    for row in listed:
+        assert [row["item"], repr(row["value"]), "tables"] in [line[:3] for line in split]
+
+
+def test_an_item_of_a_table_in_another_layer_is_reported_and_exits_1(tmp_path, capsys):
+    folder = choosing_copy(tmp_path, "broken_fixture")
+    add_row(folder, "broken_fixture_f_b", "1.092")
+    assert params.main([str(folder)]) == 1
+    out, err = capsys.readouterr()
+    assert headers(out) == [INDEX]
+    assert err.splitlines() == [
+        f"{INDEX}: item 'broken_fixture_f_b' of the table 'broken_fixture' stands in the"
+        f" tariff_type layer (param_tariff_type.csv), not in the tables layer"]
+
+
+def test_a_table_choice_in_the_core_file_is_reported_and_exits_1(tmp_path, capsys):
+    folder = fixture_copy(tmp_path)
+    _add_params(model_dir(folder) / "CoreData" / "param_core.csv",
+                {"mort_table": "period_fixture"})
+    assert params.main([str(folder)]) == 1
+    out, err = capsys.readouterr()
+    assert headers(out) == [INDEX] and "_fixture" not in out
+    assert err.splitlines() == [
+        f"{INDEX}: item 'mort_table' of the core layer (param_core.csv) is a table choice"
+        f" outside the tariff-type and tariff files"]
+
+
+def test_a_cell_reading_a_tables_item_directly_is_reported_and_exits_1(tmp_path, capsys):
+    folder = fixture_copy(tmp_path)
+    path = model_dir(folder) / "Projection" / "__init__.py"
+    marker = "# " + "-" * 75 + "\n# References"
+    text = path.read_text(encoding="utf-8")
+    assert text.count(marker) == 1
+    cell = ('def probe_direct():\n'
+            '    return data.param("gen_fixture_m_a")                        # noqa: F821\n'
+            '\n\n')
+    path.write_text(text.replace(marker, cell + marker), encoding="utf-8")
+    assert params.main([str(folder)]) == 1
+    out, err = capsys.readouterr()
+    assert headers(out) == [INDEX]
+    assert err.splitlines() == [
+        f"{INDEX}: cell probe_direct reads the item 'gen_fixture_m_a' of the tables layer"
+        f" directly, not through the table factory"]

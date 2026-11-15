@@ -33,13 +33,16 @@ A tariff chooses its tables by the items named ``<role>_table`` of its tariff-ty
 layers, each holding a table name.  The product reads the items of exactly the tables these
 items name: every item ``items()`` lists for a chosen table counts as read by the cells that
 read the choice item.  The factory's own read by a computed name is therefore not declared
-in ``param_indirect()``, and an item of a table no choice names is not read.
+in ``param_indirect()``, and an item of a table no choice names is not read.  A cell of
+``Projection`` or ``Data`` does not read an item of the tables layer itself, by a literal
+call or a declaration: a table's items are read through the factory.
 
 The problems of one product: a call or declared item naming an item no layer holds, an item
 of the tariff-type or the tariff layer that no reachable cell reads, an undeclared indirect
 read, a declared cell that does not exist, a bypass of ``param`` through a reader or a file
 path, a product-defined ``param_core_path`` or ``param_tables_path``, a choice item naming a
-table the factory does not hold, an item named ``<role>_table`` in the core or the tables
+table the factory does not hold, a reachable cell reading an item of the tables layer
+directly, an item named ``<role>_table`` in the core or the tables
 layer (a table choice outside the tariff-type and tariff files), an item of the tables layer
 that ``items()`` lists for no table, and an item ``items()`` lists for a table that stands
 in another layer than the tables layer.  An item of the core file is checked across all
@@ -50,7 +53,7 @@ names it and that a reachable cell reads.
 """
 import ast
 import textwrap
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 SPACES = ("Projection", "Data")
 ROOT_PREFIXES = ("result_", "check_")
@@ -82,8 +85,8 @@ class Usage:
     reachable: frozenset
     indirect: dict
     problems: list
-    tables: dict = field(default_factory=dict)
-    choices: dict = field(default_factory=dict)
+    tables: dict
+    choices: dict
 
 
 def _references(tree: ast.AST) -> set[str]:
@@ -178,6 +181,12 @@ def scan(model) -> Usage:
             elif not any(item in layer for layer in layers.values()):
                 problems.append(f"param_indirect() declares item {item!r} for cell {name}, "
                                 f"which no layer holds")
+
+    for item in sorted(reads):
+        if item in layers[TABLES_LAYER]:
+            for name in sorted(reads[item]):
+                problems.append(f"cell {name} reads the item {item!r} of the tables layer "
+                                f"directly, not through the table factory")
 
     for choice, table in choices.items():
         for item in tables.get(table, ()) if choice in reads else ():

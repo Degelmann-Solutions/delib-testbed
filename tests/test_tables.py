@@ -62,6 +62,8 @@ The usage scan ``core/param_usage.py`` (``docs/core.md``, "The usage check and t
   ``param_tables_path``; and a cell referencing ``param_tables_path``.
 - The scan reports an item of a table that stands in another layer than the tables layer,
   and an item named ``<role>_table`` in the core or the tables file.
+- The scan reports a reachable cell that reads an item of the tables layer itself, by a
+  literal call or a ``param_indirect()`` declaration.
 - ``unchosen_tables`` names, sorted, the tables no scanned model chooses; a table whose
   choice item no cell reads is not chosen.
 """
@@ -959,6 +961,28 @@ def test_the_scan_reports_an_item_a_chosen_table_names_and_the_layer_lacks(tmp_p
     assert usage.problems == [
         "item 'broken_fixture_f_b' read by mort_table_name stands in no layer"]
     assert set(fixture_items("broken_fixture")) <= set(usage.reads)
+
+
+def test_the_scan_reports_a_cell_reading_a_tables_item_directly(tmp_path):
+    """By a literal call and by a declared indirect read; the table stays unchosen."""
+    def edit(model):
+        model.Projection.new_cells(
+            name="probe_direct",
+            formula='def probe_direct():\n    return data.param("gen_fixture_m_a")\n')
+        model.Projection.new_cells(
+            name="probe_declared",
+            formula='def probe_declared():\n    name = "gen_fixture_f_a"\n'
+                    '    return data.param(name)\n')
+        model.Data.cells["param_indirect"].formula = (
+            'def param_indirect():\n    return {"probe_declared": ("gen_fixture_f_a",)}\n')
+
+    usage = scan_of(fixture_copy(tmp_path), "DirectTablesReadScanProbe", edit)
+    assert usage.problems == [
+        "cell probe_declared reads the item 'gen_fixture_f_a' of the tables layer directly,"
+        " not through the table factory",
+        "cell probe_direct reads the item 'gen_fixture_m_a' of the tables layer directly,"
+        " not through the table factory"]
+    assert "gen_fixture" in param_usage.unchosen_tables([usage])
 
 
 def test_the_scan_reports_a_product_defined_tables_path(tmp_path):

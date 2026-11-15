@@ -80,11 +80,15 @@ def base_year(table):
 
 
 def select_factors(table):
-    """The select factors of ``table`` by duration, ``sel_1`` first; empty without selection."""
+    """The select factors of ``table`` by duration, ``sel_1`` first; empty without selection.
+
+    Read by name, ``sel_1`` to ``sel_<count>`` with ``count`` the number of ``sel_``
+    parameters the table names, so a gap in the numbering or a name that is no number is
+    the loader's ``KeyError``.
+    """
     _law, _trend, names = definition(table)
-    numbers = sorted(int(name.removeprefix("sel_")) for name in names
-                     if name.startswith("sel_"))
-    return tuple(parameter(table, "sel_" + str(number)) for number in numbers)
+    count = sum(name.startswith("sel_") for name in names)
+    return tuple(parameter(table, "sel_" + str(number + 1)) for number in range(count))
 
 
 def base_rate(table, sex, x):

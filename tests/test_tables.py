@@ -29,7 +29,8 @@ The space ``core/Core/Tables``:
   the table and the argument; the generational table applies its trend from its base year
   to the calendar year ``birth_year + x`` and not to the closure; the select table applies
   the factor of the duration and holds the last; a table naming an item the layer lacks
-  raises the loader's ``KeyError``; ``items()`` lists every table's items.
+  raises the loader's ``KeyError``, and so does a gap in a table's select factors;
+  ``items()`` lists every table's items.
 - The runner's export engine, running the copy's points with per-contract cleanup, computes
   the same results as the modelx engine and keeps the rates of an earlier point in
   ``CoreTables`` after the point's item is deleted.
@@ -371,6 +372,7 @@ FIXTURE_DEFINITIONS = {
                     FIXTURE_LAW_ITEMS + ("m_trend", "f_trend", "base_year")),
     "sel_fixture": ("law_fixture", "None", FIXTURE_LAW_ITEMS + ("sel_2", "sel_1", "sel_3")),
     "broken_fixture": ("law_fixture", "None", FIXTURE_LAW_ITEMS),
+    "gap_fixture": ("law_fixture", "None", FIXTURE_LAW_ITEMS + ("sel_1", "sel_3")),
 }
 FIXTURE_LAW_VALUES = {"m_a": "0.0000201", "m_b": "1.09", "f_a": "0.0000107", "f_b": "1.092",
                       "first_age": "0", "end_age": "121"}
@@ -382,6 +384,7 @@ FIXTURE_VALUES = {
     "sel_fixture": FIXTURE_LAW_VALUES | {"sel_1": "3.5", "sel_2": "2.25", "sel_3": "1.5"},
     "broken_fixture": {name: value for name, value in FIXTURE_LAW_VALUES.items()
                        if name != "f_b"},
+    "gap_fixture": FIXTURE_LAW_VALUES | {"sel_1": "3.5", "sel_3": "1.5"},
 }
 MARKER = "# " + "-" * 75 + "\n# References"
 INDEX = "indexpolice"
@@ -591,6 +594,15 @@ def test_a_table_naming_an_item_the_layer_lacks_raises_the_loaders_key_error(fix
     assert fixture_tables.q("broken_fixture", "M", 40) == law("M", 40)
     line = raised_line(lambda: fixture_tables.q("broken_fixture", "F", 40))
     assert line == "KeyError: 'broken_fixture_f_b'"
+
+
+def test_a_gap_in_the_select_factors_raises_the_loaders_key_error(fixture_tables):
+    """``sel_1`` and ``sel_3`` are two factors, read as ``sel_1`` and ``sel_2``: duration 2
+    does not silently get ``sel_3``."""
+    for cell in (lambda: fixture_tables.select_factors("gap_fixture"),
+                 lambda: fixture_tables.q("gap_fixture", "M", 40, duration=1),
+                 lambda: fixture_tables.q("gap_fixture", "M", 40, duration=2)):
+        assert raised_line(cell) == "KeyError: 'gap_fixture_sel_2'"
 
 
 # --------------------------------------------------------------------------- the runner

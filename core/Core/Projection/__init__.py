@@ -6,9 +6,9 @@
 """The shared by-policy cells; a product's ``Projection`` inherits them as ``CoreProjection``.
 
 The space is parameterized by ``point_id``, like the product's ``Projection``. Its cells use
-the names the product's ``Projection`` defines: ``data`` for the product's ``Data`` and
-``point_id`` for the selected model point. Its one Reference, the Module ``types``, is
-inherited by every product's ``Projection``.
+the names the product's ``Projection`` defines: ``data`` for the product's ``Data``,
+``tables`` for the table factory and ``point_id`` for the selected model point. Its one
+Reference, the Module ``types``, is inherited by every product's ``Projection``.
 """
 
 from modelx.serialize.jsonvalues import *
@@ -267,6 +267,25 @@ def omega_age():
     return data.param("omega_age")                                   # noqa: F821
 
 
+def omega_age_table():
+    """The limiting age read off the table of the main mortality role, its end age.
+
+    The first age the table has nobody reach.  A product whose mortality comes from the
+    table factory overrides ``omega_age()`` with it.
+    """
+    return tables.end_age(mort_table_name())                         # noqa: F821
+
+
+def birth_year():
+    """The year of birth a generational table is read at; 0, none, for a period table.
+
+    A product whose model point carries a birth year overrides it.  0 stands for no birth
+    year because modelx refuses ``None`` as the value of a cell of a product's
+    ``Projection``; ``mort_rate_table`` hands it to the table factory as ``None``.
+    """
+    return 0
+
+
 def ret_age():
     """The attained age at *Rentenbeginn*, from the model point's ``ret_age`` column."""
     return int(model_point()["ret_age"])                             # noqa: F821
@@ -334,11 +353,41 @@ def mort_be_factor():
     return 1.0
 
 
+def mort_be_trend(t):
+    """The best-estimate trend term on the table rate in month t; 1, neutral.
+
+    A product whose best estimate improves otherwise than its table's own trend overrides it.
+    """
+    return 1.0
+
+
+def mort_table_name():
+    """The table of the main mortality role, the tariff's item ``mort_table``."""
+    return data.param("mort_table")                                  # noqa: F821
+
+
+def mort_rate_table(sex_code, x):
+    """The rate of the main role's table for ``sex_code`` at attained age x.
+
+    ``tables.q`` at ``mort_table_name()`` and ``birth_year()``, no birth year (0) passed as
+    ``None``: the one read of the table factory in the core.  A product with several roles
+    or a select table reads ``tables.q`` in a cell of its own.
+    """
+    return tables.q(mort_table_name(), sex_code, x, birth_year() or None)   # noqa: F821
+
+
+def mort_rate_at_age(x):
+    """The table death rate at attained age x on the model point's own sex.
+
+    The base of the best estimate, ``mort_rate_table(sex(), x)``.
+    """
+    return mort_rate_table(sex(), x)                                 # noqa: F821
+
+
 def mort_rate_base(t):
     """The annual table death rate in month t before the best-estimate factor.
 
-    ``mort_rate_at_age(age(t))``: reads the product's ``mort_rate_at_age``, its table rate at
-    an attained age; a product without one inherits this cell unused.  Flat across a policy
+    ``mort_rate_at_age(age(t))``: the table rate at the attained age.  Flat across a policy
     year, the attained age stepping on the anniversary.
     """
     return mort_rate_at_age(age(t))                                  # noqa: F821
@@ -347,11 +396,11 @@ def mort_rate_base(t):
 def mort_rate(t):
     """q(t): the best-estimate **annual** death rate of the policy year containing month t.
 
-    ``min(1, mort_rate_base(t) x mort_be_factor())``: the table rate stepped to the best
-    estimate, capped at 1.  The annual rate, flat across a policy year; ``mort_rate_mth``
-    is the monthly rate the recursion applies.
+    ``min(1, mort_rate_base(t) x mort_be_factor() x mort_be_trend(t))``: the table rate
+    stepped to the best estimate, capped at 1.  The annual rate, flat across a policy year;
+    ``mort_rate_mth`` is the monthly rate the recursion applies.
     """
-    return min(1.0, mort_rate_base(t) * mort_be_factor())            # noqa: F821
+    return min(1.0, mort_rate_base(t) * mort_be_factor() * mort_be_trend(t))   # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -582,12 +631,16 @@ def mort_load_tariff(t):
     return 1.0
 
 
-def mort_rate_tariff_base(t):
-    """The first-order base rate in month t, ``mort_rate_tariff_at_age(age(t))``.
+def mort_rate_tariff_at_age(x):
+    """The first-order base rate at attained age x: the unisex blend of the table's rates.
 
-    Reads the product's ``mort_rate_tariff_at_age``, its first-order rate at an attained
-    age; a product without one inherits this cell unused.
+    ``unisex_blend`` of ``mort_rate_table("M", x)`` and ``mort_rate_table("F", x)``.
     """
+    return unisex_blend(mort_rate_table("M", x), mort_rate_table("F", x))   # noqa: F821
+
+
+def mort_rate_tariff_base(t):
+    """The first-order base rate in month t, ``mort_rate_tariff_at_age(age(t))``."""
     return mort_rate_tariff_at_age(age(t))                           # noqa: F821
 
 

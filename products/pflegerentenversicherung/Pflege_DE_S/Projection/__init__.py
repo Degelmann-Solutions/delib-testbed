@@ -481,6 +481,9 @@ def mort_rate_at_age(x):
 
     A lookup into *mort_table.csv* at ``(sex(), x)``; the core's ``mort_rate_base(t)`` reads
     it at ``age(t)``.
+
+    Override reason: the product reads its own mortality file until its switch to the
+    table factory, docs/core.md, section "The table factory"
     """
     return float(data.mort_table_dict()["mort_rate"][(sex(), x)])    # noqa: F821
 

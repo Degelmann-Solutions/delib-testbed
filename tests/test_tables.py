@@ -33,6 +33,18 @@ The space ``core/Core/Tables``:
 - The runner's export engine, running the copy's points with per-contract cleanup, computes
   the same results as the modelx engine and keeps the rates of an earlier point in
   ``CoreTables`` after the point's item is deleted.
+
+The derivation hooks of the core's ``Projection``:
+
+- No shipped product reaches a hook that reads the factory: ``mort_table_name``,
+  ``mort_rate_table`` and ``omega_age_table`` are derived and unreachable in the usage scan
+  of every product.
+- On a scratch copy of Index that deletes its own ``mort_rate_at_age`` and chooses a fixture
+  table in its tariff-type file, the hooks deliver the table's rate on the point's own sex,
+  its unisex blend and its end age, ``mort_rate`` stands on them, and the copy runs through
+  both engines of the runner with the same results, the factory called without a birth
+  year; with a ``birth_year`` cell and the generational fixture table the hooks pass the
+  birth year on, and without the cell the generational table raises.
 """
 from __future__ import annotations
 
@@ -46,7 +58,7 @@ import modelx as mx
 import pytest
 
 from test_core import (CORE_MODEL, MODELS, PRODUCTS_DIR, ROOT, _add_params, _formula_cells,
-                       _loader_error, product_copy)
+                       _loader_error, param_usage, product_copy)
 
 RLV = "risikolebensversicherung"
 TABLES_FILE = "param_tables.csv"
@@ -663,3 +675,123 @@ def test_the_runner_keeps_the_rates_of_an_earlier_point(tmp_path, monkeypatch):
         assert first.items() <= after[point_id].items(), point_id
     assert first.items() <= at_end.items()
     assert len(at_end) > len(first)
+
+
+# --------------------------------------------------------------------------- the hooks
+
+TABLE_HOOKS = ("mort_table_name", "mort_rate_table", "omega_age_table")
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_no_shipped_product_reaches_a_hook_that_reads_the_factory(product, product_models):
+    model = product_models(product)
+    reachable = param_usage.scan(model).reachable
+    for hook in TABLE_HOOKS:
+        assert model.Projection.cells[hook]._is_derived(), hook
+        assert hook not in reachable, hook
+    assert "mort_table" not in model.Data.param_dict()
+
+
+def switched_copy(tmp_path: Path, table: str, birth_year: int | None = None) -> Path:
+    """A scratch copy of Index with the fixture tables that has no ``mort_rate_at_age`` of
+    its own and chooses ``table`` as its ``mort_table``; with ``birth_year``, a cell of that
+    name returning it."""
+    folder = fixture_copy(tmp_path)
+    path = folder / MODELS[INDEX] / "Projection" / "__init__.py"
+    replace_cell(path, "mort_rate_at_age", "" if birth_year is None else (
+        'def birth_year():\n'
+        '    """A fixture birth year.\n\n'
+        '    Override reason: test fixture, tests/test_tables.py\n    """\n'
+        f'    return {birth_year}\n'))
+    _add_params(folder / "param_tariff_type.csv", {"mort_table": table,
+                                                   "unisex_mix_male": "0.45"})
+    return folder
+
+
+def test_the_hooks_deliver_the_chosen_table(tmp_path):
+    folder = switched_copy(tmp_path, "period_fixture")
+    model = mx.read_model(folder / MODELS[INDEX], name="SwitchedProbe")
+    try:
+        projection, tables = model.Projection, model.CoreTables
+        for hook in TABLE_HOOKS + ("mort_rate_at_age", "mort_rate_tariff_at_age", "birth_year",
+                                   "mort_be_trend", "mort_rate_base", "mort_rate"):
+            assert projection.cells[hook]._is_derived(), hook
+        points = model.Data.model_point_table()
+        sexes = set()
+        for point_id in points.index[:4]:
+            item = projection[point_id]
+            sex = points.at[point_id, "sex"]
+            sexes.add(sex)
+            assert item.mort_table_name() == "period_fixture"
+            assert item.birth_year() == 0          # no birth year: the factory gets None
+            assert item.omega_age_table() == 121 == tables.end_age("period_fixture")
+            for x in (0, 40, 67, 119, 120):
+                rate = tables.q("period_fixture", sex, x)
+                assert item.mort_rate_table(sex, x) == rate
+                assert item.mort_rate_at_age(x) == rate
+                assert rate == (law(sex, x) if x < 120 else 1.0)
+                male, female = (tables.q("period_fixture", s, x) for s in "MF")
+                assert item.mort_rate_tariff_at_age(x) == 0.45 * male + (1.0 - 0.45) * female
+            assert item.mort_rate_tariff_at_age(120) == 1.0
+            for t in (item.t_start(), item.t_start() + 13, item.proj_len() - 1):
+                rate = tables.q("period_fixture", sex, item.age(t))
+                assert item.mort_be_trend(t) == 1.0 and item.mort_be_factor() == 1.0
+                assert item.mort_rate_base(t) == rate
+                assert item.mort_rate(t) == rate
+            line = raised_line(lambda: item.mort_rate_at_age(121))
+            assert line.startswith("ValueError: table 'period_fixture': x 121 is outside")
+        assert sexes == {"M", "F"}
+    finally:
+        model.close()
+
+
+def test_the_hooks_pass_the_birth_year_on(tmp_path):
+    folder = switched_copy(tmp_path, "gen_fixture", birth_year=1975)
+    model = mx.read_model(folder / MODELS[INDEX], name="SwitchedGenProbe")
+    try:
+        item, tables = model.Projection[1], model.CoreTables
+        sex = item.sex()
+        trend = float(FIXTURE_VALUES["gen_fixture"][sex.lower() + "_trend"])
+        assert item.birth_year() == 1975
+        rate = item.mort_rate_at_age(50)
+        assert rate == tables.q("gen_fixture", sex, 50, 1975)
+        assert rate == law(sex, 50) * (1.0 - trend) ** (1975 + 50 - 1999)
+        assert item.omega_age_table() == 121
+    finally:
+        model.close()
+
+
+def test_a_generational_table_without_a_birth_year_cell_raises(tmp_path):
+    folder = switched_copy(tmp_path, "gen_fixture")
+    model = mx.read_model(folder / MODELS[INDEX], name="SwitchedNoBirthProbe")
+    try:
+        line = raised_line(lambda: model.Projection[1].mort_rate_at_age(50))
+        assert line == ("ValueError: table 'gen_fixture': birth_year is missing, the table is"
+                        " generational")
+    finally:
+        model.close()
+
+
+def test_a_chosen_table_the_factory_does_not_hold_raises(tmp_path):
+    folder = switched_copy(tmp_path, "dav2008t_proxy")
+    model = mx.read_model(folder / MODELS[INDEX], name="SwitchedUnknownProbe")
+    try:
+        item = model.Projection[1]
+        for call in (lambda: item.mort_rate_at_age(50), lambda: item.mort_rate(item.t_start())):
+            assert raised_line(call) == "ValueError: table 'dav2008t_proxy' is not defined"
+    finally:
+        model.close()
+
+
+def test_a_switched_copy_runs_through_both_engines(tmp_path, monkeypatch):
+    folder = switched_copy(tmp_path, "period_fixture")
+    runner = load_runner()
+    traced = runner.run_product(folder, engine="modelx")
+    shipped = runner.run_product(PRODUCTS_DIR / INDEX, engine="modelx")
+    (count, checks, sha, failures, _lines, digests), after, at_end = run_spying_on_the_factory(
+        folder, monkeypatch)
+    assert failures == [] and traced[3] == []
+    assert (count, checks, sha, digests) == (traced[0], traced[1], traced[2], traced[5])
+    assert sha != shipped[2]
+    assert after[1] and after[1].items() <= at_end.items()
+    assert all(key[0] == "period_fixture" and key[3] is None for key in at_end)

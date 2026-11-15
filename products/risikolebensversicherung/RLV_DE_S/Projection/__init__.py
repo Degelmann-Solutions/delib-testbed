@@ -530,6 +530,9 @@ def mort_rate_at_age(sex_code, smoker_code, x):
     orders and both lives are built from this one cells, which is what keeps the model's
     unsourced mortality level to a single number.  A **[std]** proxy for DAV 2008 T; see
     the ``Data`` docstring for the anchors a replacement must preserve.
+
+    Override reason: the product reads its own mortality file until its switch to the
+    table factory, docs/core.md, section "The table factory"
     """
     return float(data.mort_table_dict()["mort_rate"][                # noqa: F821
         (mort_table_id(), sex_code, smoker_code, int(x))])

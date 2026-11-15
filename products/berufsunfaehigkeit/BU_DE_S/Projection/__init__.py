@@ -651,6 +651,9 @@ def mort_rate_at_age(x):
     A lookup into the ``mort_rate_actv`` column of *mortality_table.csv*, clamped to the
     table's range 18-70.  It applies to the *aktiv* ledger **and to the § 174 run-off**,
     whose lives have recovered and are no longer impaired lives.
+
+    Override reason: the product reads its own mortality file until its switch to the
+    table factory, docs/core.md, section "The table factory"
     """
     lo, hi = data.mort_table_ages()                                  # noqa: F821
     return float(data.mort_table_dict()["mort_rate_actv"][min(max(x, lo), hi)])   # noqa: F821

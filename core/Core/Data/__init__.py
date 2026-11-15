@@ -47,6 +47,14 @@ def param_core_path():
     return _model.path / "CoreData" / "param_core.csv"               # noqa: F821
 
 
+def param_tables_path():
+    """The table parameter file, ``param_tables.csv`` beside the core's loaders.
+
+    Found as the core file is, through the product's ``CoreData`` space folder.
+    """
+    return _model.path / "CoreData" / "param_tables.csv"             # noqa: F821
+
+
 def param_tariff_path():
     """The optional tariff parameter file, ``param_tariff.csv`` in the product folder."""
     return input_dir() / "param_tariff.csv"
@@ -55,12 +63,14 @@ def param_tariff_path():
 def param_paths():
     """The file of each parameter layer: ``{layer: path}``, built once per model.
 
-    The layers in turn, ``"core"`` the core file ``param_core_path()``, ``"tariff_type"`` the
-    tariff-type file ``input_dir() / param_file`` and, where it exists, ``"tariff"`` the
-    tariff file ``param_tariff_path()``.  Read by ``param_rows()`` and ``param_layers()`` and
-    by the usage scan ``core/param_usage.py`` (the files' names).
+    The layers in turn, ``"core"`` the core file ``param_core_path()``, ``"tables"`` the table
+    parameter file ``param_tables_path()``, ``"tariff_type"`` the tariff-type file
+    ``input_dir() / param_file`` and, where it exists, ``"tariff"`` the tariff file
+    ``param_tariff_path()``.  Read by ``param_rows()`` and ``param_layers()`` and by the usage
+    scan ``core/param_usage.py`` (the files' names).
     """
     paths = {"core": param_core_path(),
+             "tables": param_tables_path(),
              "tariff_type": input_dir() / param_file}                 # noqa: F821
     if param_tariff_path().is_file():
         paths["tariff"] = param_tariff_path()
@@ -71,7 +81,8 @@ def param_rows():
     """The data rows of each layer file: ``{layer: [[item, value, basis, provenance], ...]}``.
 
     Each file of ``param_paths()`` read once per model as text (``dtype=str``,
-    ``keep_default_na=False``), in the order of the file.  The file is read without a header,
+    ``keep_default_na=False``), in the order of the file; a file holding the header alone is
+    a layer without items.  The file is read without a header,
     so a row wider than the header is a parse error, never an index, and raises
     ``ValueError`` naming the file; so does a file that is missing or cannot be opened, and
     a header other than the columns ``item``, ``value``, ``basis`` and ``provenance``, in
@@ -96,18 +107,24 @@ def param_rows():
 def param_layers():
     """The parameter layers of the tariff: ``{layer: {item: value}}``, built once per model.
 
-    The layers of ``param_rows()`` in turn, ``"core"``, ``"tariff_type"`` and, where its file
-    exists, ``"tariff"`` (``param_paths()``).  A value's text, stripped, that is digits only
-    after an optional sign is a Python ``int``, ``int(text)``; any other is a Python
-    ``float``, ``float(text)``, so ``1_000`` and ``1e3`` are floats.  There is no type column:
-    a value keeps the notation it is written in.
+    The layers of ``param_rows()`` in turn, ``"core"``, ``"tables"``, ``"tariff_type"`` and,
+    where its file exists, ``"tariff"`` (``param_paths()``).  A value's text, stripped, that
+    is digits only after an optional sign is a Python ``int``, ``int(text)``; any other is a
+    Python ``float``, ``float(text)``, so ``1_000`` and ``1e3`` are floats.  There is no type
+    column: a value keeps the notation it is written in.
+
+    An item whose name ends in ``_table`` is a table choice, ``<role>_table``, and holds a
+    table name, a ``str``, where every other item holds a number.  The loader checks the
+    name's form only, lower-case ASCII letters, digits and underscores after a first
+    letter; whether a table of that name exists is not the loader's to know.
 
     The loader checks the files as it reads them and raises ``ValueError`` naming the file
     and, for a row, the item: a file it cannot parse (a row wider than the header) or a
     header other than the four columns (both in ``param_rows()``),
     an item that is empty or padded with whitespace, a value that is empty, no number or not
-    finite (``nan``, ``inf``), an item standing twice in one file, an item of the core file in
-    a product file (the core lock), an item standing in both product files (uniqueness).
+    finite (``nan``, ``inf``), a table choice whose value is no name, an item standing twice
+    in one file, an item of the core file or the table parameter file in a later file (the
+    core lock, naming both files), an item standing in both product files (uniqueness).
     """
     paths = param_paths()
     layers = {}
@@ -122,22 +139,29 @@ def param_layers():
             text = text.strip()
             if not text:
                 raise ValueError(f"parameter {item!r} has no value in {path}")
-            try:
-                value = int(text) if text.lstrip("+-").isdigit() else float(text)
-            except ValueError:
-                raise ValueError(
-                    f"parameter {item!r} has the value {text!r} in {path}, no number"
-                ) from None
-            if not abs(value) < float("inf"):
-                raise ValueError(
-                    f"parameter {item!r} has the value {text!r} in {path}, not finite")
+            if item.endswith("_table"):
+                if not (text.isascii() and text[0].isalpha() and text == text.lower()
+                        and text.replace("_", "a").isalnum()):
+                    raise ValueError(
+                        f"parameter {item!r} has the value {text!r} in {path}, no table name")
+                value = text
+            else:
+                try:
+                    value = int(text) if text.lstrip("+-").isdigit() else float(text)
+                except ValueError:
+                    raise ValueError(
+                        f"parameter {item!r} has the value {text!r} in {path}, no number"
+                    ) from None
+                if not abs(value) < float("inf"):
+                    raise ValueError(
+                        f"parameter {item!r} has the value {text!r} in {path}, not finite")
             if item in values:
                 raise ValueError(f"parameter {item!r} stands twice in {path}")
             if item in seen:
                 first_layer, first_path = seen[item]
-                if first_layer == "core":
+                if first_layer in ("core", "tables"):
                     raise ValueError(
-                        f"parameter {item!r} is a core item of {first_path}; the product"
+                        f"parameter {item!r} is a {first_layer} item of {first_path}; the"
                         f" file {path} must not hold it")
                 raise ValueError(
                     f"parameter {item!r} stands in two layers: {first_path} and {path}")

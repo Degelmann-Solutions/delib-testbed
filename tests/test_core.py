@@ -299,6 +299,7 @@ CORE_CELLS = {
         "hoechstrechnungszins_table": {"sofortrente": "derived"},
         "model_point_table_dict": dict.fromkeys(MODELS, "derived"),
         "param_core_path": dict.fromkeys(MODELS, "derived"),
+        "param_tables_path": dict.fromkeys(MODELS, "derived"),
         "param_tariff_path": dict.fromkeys(MODELS, "derived"),
         "param_paths": dict.fromkeys(MODELS, "derived"),
         "param_rows": dict.fromkeys(MODELS, "derived"),
@@ -2339,12 +2340,12 @@ def test_param_without_the_core_file_raises(tmp_path):
 
 @pytest.mark.parametrize("product", sorted(MODELS))
 def test_param_layers_hold_every_item_once_and_merge_into_param_dict(product, product_models):
-    """Every product reads the core and the tariff-type layer (and the tariff layer only where
-    the file exists), each item in one layer, and ``param_dict()`` is their merge."""
+    """Every product reads the core, the tables and the tariff-type layer (and the tariff layer
+    only where the file exists), each item in one layer, and ``param_dict()`` is their merge."""
     data = product_models(product).Data
     layers = data.param_layers()
-    expected = ["core", "tariff_type"] + (["tariff"] if data.param_tariff_path().is_file()
-                                          else [])
+    expected = ["core", "tables", "tariff_type"] + (
+        ["tariff"] if data.param_tariff_path().is_file() else [])
     assert list(layers) == expected
     tariff_type = pd.read_csv(data.input_dir() / data.param_file, dtype=str,
                               keep_default_na=False)["item"].tolist()

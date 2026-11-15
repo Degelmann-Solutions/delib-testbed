@@ -59,8 +59,8 @@ def test_ten_products():
 
 @pytest.mark.parametrize("product", PRODUCTS)
 def test_the_rows_agree_with_the_scan_and_the_loader(product):
-    """No shipped product has a tariff file, so the layers are the core file and the
-    product's ``param_tariff_type.csv``."""
+    """No shipped product has a tariff file, so the layers are the core file, the table
+    parameter file beside it and the product's ``param_tariff_type.csv``."""
     folder = PRODUCTS_DIR / product
     model = mx.read_model(model_dir(folder))
     try:
@@ -69,8 +69,9 @@ def test_the_rows_agree_with_the_scan_and_the_loader(product):
         layers = model.Data.param_layers()
     finally:
         model.close()
-    assert list(layers) == ["core", "tariff_type"]
-    frames = {"core": read(CORE_FILE), "tariff_type": read(folder / "param_tariff_type.csv")}
+    assert list(layers) == ["core", "tables", "tariff_type"]
+    frames = {"core": read(CORE_FILE), "tables": read(CORE_FILE.with_name("param_tables.csv")),
+              "tariff_type": read(folder / "param_tariff_type.csv")}
     assert [row["item"] for row in table] and len(table) == len(reads)
     assert {row["item"] for row in table} == set(reads)
     order = [(layer, item) for layer, values in layers.items()
@@ -238,7 +239,7 @@ def test_an_item_of_the_tariff_file_is_listed_in_the_tariff_layer(tmp_path, caps
                          "layer": "tariff", "basis": expected["basis"],
                          "provenance": expected["provenance"]}
     assert [row["layer"] for row in table[:-1]] == sorted(
-        (row["layer"] for row in table[:-1]), key=["core", "tariff_type"].index)
+        (row["layer"] for row in table[:-1]), key=["core", "tables", "tariff_type"].index)
     assert table[-2]["layer"] == "tariff_type"
 
     assert params.main([str(folder)]) == 0

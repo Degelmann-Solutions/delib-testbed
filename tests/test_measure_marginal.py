@@ -153,7 +153,7 @@ def _roadmap_records():
 
 def test_the_counts_cover_every_product_and_sum_to_the_new_m():
     assert sorted(mm.M_PRODUCT) == mm.product_names()
-    assert mm.M_CORE == 192 and mm.M_NEW == 5279
+    assert mm.M_CORE == 225 and mm.M_NEW == 5312
     assert mm.M_NEW == mm.M_CORE + sum(mm.M_PRODUCT.values())
 
 
@@ -176,11 +176,11 @@ def test_the_counts_equal_the_roadmaps_counting_command():
 def test_combined_forecast_reproduces_the_roadmap():
     fc = mm.combined_forecast(_roadmap_records(), mm.M_NEW, 10000, 10)
     assert fc["pool_per_product"] == 1000
-    assert fc["hours"] * 3600 == pytest.approx(132608, abs=1)
+    assert fc["hours"] * 3600 == pytest.approx(137824, abs=1)
     assert fc["fits_night"] is False
     (line,) = mm.combined_lines(fc, 10)
     assert line.startswith("all 10 products together, W = 24: ")
-    for phrase in ("= 36.8 h (does not fit the 10 h night)", "M = 5,279", "M_core = 192",
+    for phrase in ("= 38.3 h (does not fit the 10 h night)", "M = 5,312", "M_core = 225",
                    "Σ M_p = 5,087", "P = 1,000 per product", "fixed cost included"):
         assert phrase in line
 
@@ -188,16 +188,16 @@ def test_combined_forecast_reproduces_the_roadmap():
 def test_combined_forecast_of_a_subset_counts_only_the_measured_products():
     fc = mm.combined_forecast([_ok("basisrente", 2.0, 0.010)], mm.M_NEW, 10000, 10)
     assert fc["products"] == ["basisrente"] and fc["m_products"] == {"basisrente": 635}
-    assert fc["hours"] * 3600 == pytest.approx((192 + 635) * (2.0 + 1000 * 0.010))
+    assert fc["hours"] * 3600 == pytest.approx((225 + 635) * (2.0 + 1000 * 0.010))
     assert mm.combined_lines(fc, 10)[0].startswith("1 of 10 products together (basisrente), W = 24: ")
 
 
 def test_another_m_scales_core_and_product_counts():
     base = mm.combined_forecast(_roadmap_records(), mm.M_NEW, 10000, 10)
-    double = mm.combined_forecast(_roadmap_records(), 10558, 10000, 10)
+    double = mm.combined_forecast(_roadmap_records(), 10624, 10000, 10)
     assert double["hours"] == pytest.approx(2 * base["hours"])
-    assert double["m_core"] == pytest.approx(384) and sum(double["m_products"].values()) == pytest.approx(10174)
-    assert "M = 10,558 (M_core = 384, Σ M_p = 10,174)" in mm.combined_lines(double, 10)[0]
+    assert double["m_core"] == pytest.approx(450) and sum(double["m_products"].values()) == pytest.approx(10174)
+    assert "M = 10,624 (M_core = 450, Σ M_p = 10,174)" in mm.combined_lines(double, 10)[0]
 
 
 def test_no_combined_forecast_if_a_product_is_not_ok():
@@ -328,7 +328,7 @@ def test_one_product_prints_a_row_per_worker_count_and_the_forecast(runs):
         [w, str(N_POINTS), str(FACTOR * N_POINTS)] for w in ("1", "2")]
     assert all(row.endswith(" ok") for row in rows)
     assert rows[0].split()[-2] != "-" and rows[1].split()[-2] == "-"   # MB/contract at W = 1 only
-    assert "Assumptions: M = 5,279 mutants, P = 10,000 contracts, W = 1,2 worker(s);" in stdout
+    assert "Assumptions: M = 5,312 mutants, P = 10,000 contracts, W = 1,2 worker(s);" in stdout
     for w in (1, 2):
         assert f"{PRODUCT}, W = {w}: M·P·t_marginal(W) = " in stdout
         assert f"{PRODUCT}, W = {w}: with fixed cost per mutant, M·(fixed(W) + P·t_marginal(W)) = " in stdout
@@ -336,7 +336,7 @@ def test_one_product_prints_a_row_per_worker_count_and_the_forecast(runs):
     combined = [f"1 of 10 products together ({PRODUCT}), W = {w}: " for w in (1, 2)]
     assert [line[:len(c)] for line, c in zip(lines[-2:], combined)] == combined
     for line in lines[-2:]:
-        assert "M = 5,279 (M_core = 192, Σ M_p = 285)" in line
+        assert "M = 5,312 (M_core = 225, Σ M_p = 285)" in line
         assert "P = 1,000 per product, fixed cost included" in line
     assert "FAILED" not in stderr
 
@@ -345,7 +345,7 @@ def test_json_holds_inputs_runs_medians_derived_and_forecast_per_worker_count(ru
     data = runs["json"]
     assert data is not None
     assert (data["factor"], data["repeats"], data["cleanup"], data["engine"], data["mutants"],
-            data["pool"], data["workers"]) == (FACTOR, 1, True, "export", 5279, 10000, [1, 2])
+            data["pool"], data["workers"]) == (FACTOR, 1, True, "export", 5312, 10000, [1, 2])
     assert [(r["product"], r["workers"]) for r in data["products"]] == [(PRODUCT, 1), (PRODUCT, 2)]
     for record in data["products"]:
         assert record["status"] == "ok"
@@ -357,7 +357,7 @@ def test_json_holds_inputs_runs_medians_derived_and_forecast_per_worker_count(ru
         m = record["medians"]
         assert d["t_marginal_s"] == pytest.approx((m["run_s_kn"] - m["run_s_n"]) / ((FACTOR - 1) * N_POINTS))
         assert d["fixed_s"] == pytest.approx(m["import_s"] + m["run_s_n"] - N_POINTS * d["t_marginal_s"])
-        assert record["forecast"]["hours"] == pytest.approx(5279 * 10000 * d["t_marginal_s"] / 3600)
+        assert record["forecast"]["hours"] == pytest.approx(5312 * 10000 * d["t_marginal_s"] / 3600)
         for run in record["runs"]:
             assert run["mem_kib"] == run["maxrss_kib"] + run["worker_pss_kib"]
             assert (run["worker_pss_kib"] > 0) == (record["workers"] > 1)
@@ -366,9 +366,9 @@ def test_json_holds_inputs_runs_medians_derived_and_forecast_per_worker_count(ru
     assert [c["workers"] for c in data["combined"]] == [1, 2]
     for c, record in zip(data["combined"], data["products"]):
         assert (c["products"], c["mutants"], c["m_core"], c["m_products"], c["pool_per_product"]) == (
-            [PRODUCT], 5279, 192, {PRODUCT: 285}, 1000)
+            [PRODUCT], 5312, 225, {PRODUCT: 285}, 1000)
         d = record["derived"]
-        assert c["hours"] == pytest.approx((192 + 285) * (d["fixed_s"] + 1000 * d["t_marginal_s"]) / 3600)
+        assert c["hours"] == pytest.approx((225 + 285) * (d["fixed_s"] + 1000 * d["t_marginal_s"]) / 3600)
         assert c["fits_night"] == (c["hours"] <= 10)
 
 
@@ -685,6 +685,41 @@ def test_mutant_cache_of_bu_drops_the_two_entries_of_one_core_cell(tmp_path, mon
     holders = {name for name in (p.name for p in warm.iterdir())
                if common & set(pickle.loads((warm / name).read_bytes())[0])}
     assert holders == set(dropped)
+
+
+def test_a_tables_cell_is_held_by_one_piece_and_a_derived_core_cell_by_two(tmp_path, monkeypatch):
+    """No product space inherits the table factory, so a mutant of one of its cells misses
+    one piece, that of ``CoreTables``; ``mutant_cache`` finds the pieces by the cell's name."""
+    import pickle
+
+    spec = importlib.util.spec_from_file_location("run_baseline", ROOT / "tools" / "run_baseline.py")
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+    monkeypatch.setitem(sys.modules, "run_baseline", runner)
+    warm = tmp_path / "warm"
+    model = runner.mx.read_model(runner.model_dir(FOLDER))
+    try:
+        tables_cells = set(model.CoreTables.cells)
+        derived = {name for name, cell in model.Projection.cells.items() if cell._is_derived()}
+        others = (set(model.CoreProjection.cells) | set(model.CoreData.cells)
+                  | set(model.Projection.cells) | set(model.Data.cells))
+        runner.export_model(model, tmp_path / "export", 24, warm)
+    finally:
+        model.close()
+    assert tables_cells and not tables_cells & others
+    held = [set(pickle.loads(entry.read_bytes())[0]) for entry in mm.cache_entries(warm)]
+    assert held
+    for cell in sorted(tables_cells):
+        assert sum(cell in names for names in held) == 1, cell
+    assert "mort_be_trend" in derived
+    assert sum("mort_be_trend" in names for names in held) == 2
+
+    # the worst-placed cell a Tables cell: its one piece is dropped
+    fake = tmp_path / "fake"
+    write_entries(fake, {"a": (["core", "a1"], 150), "t": (["q", "definition"], 400),
+                         "c": (["core", "c1"], 160)})
+    copy = mm.mutant_cache(fake, tmp_path / "copy")
+    assert sorted(p.name for p in copy.iterdir()) == ["a", "c"]
 
 
 def test_transform_cache_mutant_warms_once_and_misses_one_piece_per_run(tmp_path, monkeypatch):

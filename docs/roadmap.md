@@ -47,7 +47,7 @@ M = 500 was an estimate for term life alone from phase 1 (above, "Phase 2: how t
 - O6 numeric literals, judged without sign (`-1` is `1`): the values `0`, `1`, `0.0`, `1.0` and `True`/`False` are excluded, and so is any literal anywhere inside a subscript's index or an argument of `range(...)` (operators there still count for O1–O5); an `int` gives 2 mutants (±1), a `float` 1 (×(1+δ)).
 - Not counted: `in`, `not in`, `is`, `is not`, unary operators, strings and docstrings.
 
-**Where.** Only formula cells: the module-level `def`s and non-underscore `name = lambda` assignments in a `Projection/__init__.py`, each walked whole (nested lambdas, comprehensions, defaults). The built-in checks (`check_*`) and comparisons guarding a `raise` count like any other code. Not counted: module-level references (`name = 175.0`, parameters as in O7), the `Data` spaces (loaders, paths) and the product-level `__init__.py`. Core cells count once, in `core/Core/Projection`; a product counts only the cells its own `Projection` defines, overrides and product-only cells alike. A core cell that a product overrides still counts as a core mutant.
+**Where.** Only formula cells: the module-level `def`s and non-underscore `name = lambda` assignments in a `Projection/__init__.py` and in the core's table factory `core/Core/Tables/__init__.py`, each walked whole (nested lambdas, comprehensions, defaults). The built-in checks (`check_*`) and comparisons guarding a `raise` count like any other code. Not counted: module-level references (`name = 175.0`, parameters as in O7), the `Data` spaces (loaders, paths) and the product-level `__init__.py`. Core cells count once, in `core/Core/Projection` and `core/Core/Tables`, the `core` row being their sum; a product counts only the cells its own `Projection` defines, overrides and product-only cells alike. A core cell that a product overrides still counts as a core mutant. The table factory `Tables` is a core space since epic-table-factory, read by the products' `Projection` and inherited by none, so its cells are core mutants too: a mutant there runs every product. It did not exist at the recount commit, where the command counts `core/Core/Projection` alone.
 
 **Forecast.** With P = 1,000 contracts per product and, per product `p`, `f_p = fixed(W)` and `t_p = t_marginal(W)` at W = 24, in seconds:
 
@@ -71,7 +71,7 @@ CMP2 = (ast.Eq, ast.NotEq)                                 # O2: 2 mutants each
 ARITH = (ast.Add, ast.Sub, ast.Mult, ast.Div)              # O3: 1 mutant each
 
 def cells(path):
-    """The formula cells of a Projection: module-level defs and non-underscore name = lambda."""
+    """The formula cells of a space: module-level defs and non-underscore name = lambda."""
     for node in ast.parse(path.read_text()).body:
         if isinstance(node, ast.FunctionDef):
             yield node
@@ -128,7 +128,10 @@ FT = {
 }
 P, NIGHT = 1000, 36000.0
 
-rows = [("core", space(Path("core/Core/Projection/__init__.py")))]
+# the core's Projection and, where the code has it, its table factory Tables
+core = [space(path) for path in (Path("core/Core/Projection/__init__.py"),
+                                 Path("core/Core/Tables/__init__.py")) if path.exists()]
+rows = [("core", [sum(o) for o in zip(*core)])]
 for path in sorted(Path("products").glob("*/*/Projection/__init__.py")):
     rows.append((path.parts[1], space(path)))
 assert [r[0] for r in rows[1:]] == sorted(FT)

@@ -60,9 +60,11 @@ with the night run's cache: before the timed runs of a product and ``W`` one unt
 warms a cache on the shipped model (verified like a timed run); every timed run then gets
 its own copy of it without the entries of the worst-placed mutant (``mutant_cache``). A
 mutant misses every piece holding its cell, one for a product cell and two for a core cell
-(its piece of ``CoreProjection`` and the piece of ``Projection`` that inherits it); the cells
-are found by name in the cached entries, and the worst-placed one is the cell whose pieces
-are largest together. Since the runner cuts pieces of similar size, that is a core cell, so
+(its piece of ``CoreProjection`` and the piece of ``Projection`` that inherits it), but one
+for a cell of the core's table factory, which no product space inherits (its piece of
+``CoreTables``); the cells are found by name in the cached entries, so a cell is in as many
+pieces as hold its name, and the worst-placed one is the cell whose pieces are largest
+together. Since the runner cuts pieces of similar size, that is a core cell, so
 ``fixed(W)`` is a core mutant's; it is used for the product mutants too, for whom it is
 slightly high. A source change that shifts a later cut between pieces, which would make the
 later pieces of that space miss as well, is not modelled; this is stated, not corrected. If
@@ -136,9 +138,9 @@ DEFAULT_WORKERS = (1, 4, 8, 12, 16, 24)
 
 # The new M, counted by where each mutant sits: the counts the command of docs/roadmap.md,
 # section "The new M", prints on this code (the roadmap records them at 790706b, the merge of
-# PR #38). Every commit that moves a literal out of O6 updates them; recounting is the roadmap's
+# PR #38). M_CORE counts the cells of the core's Projection and of its table factory Tables. Every commit that moves a literal out of O6 updates them; recounting is the roadmap's
 # command, not this tool's, and tests/test_measure_marginal.py runs it against these constants.
-M_CORE = 192
+M_CORE = 225
 M_PRODUCT = {
     "basisrente": 635,
     "berufsunfaehigkeit": 502,
@@ -431,7 +433,10 @@ def mutant_cache(warm: Path, target: Path) -> Path:
     An entry is the pickled ``(func_attrs, code)`` of one piece, ``func_attrs`` keyed by the
     piece's cell names. A mutant changes one cell, so its export misses every piece that
     holds the cell and hits every other one: one piece for a product cell, two for a core
-    cell (its piece of ``CoreProjection`` and the piece of ``Projection`` that inherits it).
+    cell (its piece of ``CoreProjection`` and the piece of ``Projection`` that inherits it),
+    one for a cell of the core's table factory, which no product space inherits (its piece
+    of ``CoreTables``). The pieces of a cell are found by its name alone, so nothing here
+    knows the spaces.
     The worst-placed cell is the name whose entries have the largest summed file size; all
     its entries are dropped, so every timed run transforms what the most expensive mutant
     would. Entries that do not unpickle to a dict and a code string are copied but not

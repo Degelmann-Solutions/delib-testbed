@@ -13,6 +13,9 @@ each writing its figures with ``--json``; the tests read those figures and call 
 - A bound above a measured quota makes the report exit 1 and name the product on stderr.
 - The static usage scan ``core/param_usage.py`` reaches every executed ``Projection`` cell of
   every product (``Data`` cells are not compared, the quota does not count them).
+- No shipped product executes a cell of the table factory. A scratch copy that reads a
+  fixture table through the core's hooks does: the factory's executed cells are listed as
+  ``tables.<cell>`` and count as core, beside the hooks of its ``Projection``.
 """
 from __future__ import annotations
 
@@ -24,6 +27,8 @@ from pathlib import Path
 
 import modelx as mx
 import pytest
+
+from test_tables import switched_copy
 
 ROOT = Path(__file__).resolve().parent.parent
 TOOL = ROOT / "tools" / "core_quota.py"
@@ -125,6 +130,31 @@ def test_the_usage_scan_reaches_every_executed_cell(product, quotas):
         reachable = param_usage.scan(model).reachable
     finally:
         model.close()
-    executed = set(quotas[product]["executed_cells"])
+    executed = {name for name in quotas[product]["executed_cells"]
+                if not name.startswith(core_quota.TABLES_PREFIX)}
     assert executed
     assert sorted(executed - reachable) == []
+
+
+@pytest.mark.parametrize("product", PRODUCTS)
+def test_no_shipped_product_executes_a_cell_of_the_table_factory(product, quotas):
+    figures = quotas[product]
+    assert not [name for name in figures["executed_cells"] if "." in name]
+
+
+def test_the_executed_cells_of_the_table_factory_count_as_core(tmp_path, quotas):
+    """Index without its own ``mort_rate_at_age``, on a period fixture table: the override is
+    gone from the executed product cells, the core's hooks and the factory's cells are in."""
+    shipped = quotas["indexpolice"]
+    figures = core_quota.measure(switched_copy(tmp_path, "period_fixture"))
+    tables = {"tables." + name for name in (
+        "definitions", "definition", "parameter", "first_age", "end_age", "select_factors",
+        "base_rate", "q", "law_fixture")}
+    hooks = {"mort_table_name", "mort_rate_table", "birth_year"}
+    assert {name for name in figures["executed_cells"] if "." in name} == tables
+    assert set(figures["executed_cells"]) == set(shipped["executed_cells"]) | tables | hooks
+    assert set(figures["core_cells"]) == (set(shipped["core_cells"]) | tables | hooks
+                                          | {"mort_rate_at_age"})
+    assert figures["executed"] == shipped["executed"] + len(tables) + len(hooks)
+    assert figures["core"] == shipped["core"] + len(tables) + len(hooks) + 1
+    assert figures["quota"] == figures["core"] / figures["executed"]

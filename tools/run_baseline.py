@@ -89,7 +89,8 @@ temporary file and ``os.replace``, so concurrent runs can share it; a failed wri
 and its temporary file removed). The exported package is the same text with or without the
 cache (``tests/test_runner.py``). A mutant changes the source of the pieces holding the
 mutated cell, so only they miss: one for a product cell, two for a core cell (its piece of
-``CoreProjection`` and the piece of ``Projection`` that inherits it); the cache is never
+``CoreProjection`` and the piece of ``Projection`` that inherits it), one for a cell of the
+table factory (its piece of ``CoreTables``, which no space inherits); the cache is never
 cleaned and grows by the pieces of every mutant. Without the option nothing is cached.
 
 Checks

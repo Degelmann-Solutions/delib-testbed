@@ -17,7 +17,11 @@ the point's ``Projection`` ItemSpace that then holds a value (``len(cell) > 0``)
 **executed formula**; the executed set is the union over the points. An executed cell counts
 as **core** when the product's static ``Projection`` cell of that name is derived from the
 core base (``_is_derived()``); an override of a core cell and a product-only cell count as
-product. ``Data`` cells (the loaders) are not counted. The quota is core over executed::
+product. The cells of the core's table factory ``CoreTables`` that hold a value after the
+points ran are executed formulas too, and core: the space takes no ``point_id`` and no
+product space inherits it, so they are read off the model's one ``CoreTables`` and listed
+as ``tables.<cell>``, a name no ``Projection`` cell can have. ``Data`` cells (the loaders)
+are not counted. The quota is core over executed::
 
     quota = |core| / |executed|
 
@@ -61,6 +65,8 @@ LOWER_BOUND = 0.20
 # Moritz, 2026-10-29 (epic-night-run Notes, variant c, as recorded in a5a4781): BU's own
 # bound at its measured quota.
 PRODUCT_BOUNDS = {"berufsunfaehigkeit": 28 / 148}
+# The prefix of an executed cell of the table factory in the cell lists.
+TABLES_PREFIX = "tables."
 
 
 def bound_for(product: str) -> float:
@@ -69,7 +75,8 @@ def bound_for(product: str) -> float:
 
 
 def measure(folder: Path) -> dict:
-    """The executed and core cells of one product's ``Projection`` (see module docstring)."""
+    """The executed and core cells of one product's ``Projection`` and of the table factory
+    it read (see module docstring)."""
     model = mx.read_model(model_dir(folder))
     try:
         checks = check_names(model)
@@ -86,6 +93,10 @@ def measure(folder: Path) -> dict:
                 del model.Projection[point_id]
         static = model.Projection.cells
         core = {name for name in executed if static[name]._is_derived()}
+        tables = {TABLES_PREFIX + name for name, cell in model.CoreTables.cells.items()
+                  if len(cell) > 0}
+        executed |= tables
+        core |= tables
     finally:
         model.close()
     return {

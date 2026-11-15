@@ -2041,6 +2041,8 @@ def result_fund():
 
 data = ("Interface", ("..", "Data"), "auto")
 
+tables = ("Interface", ("..", "CoreTables"), "auto")
+
 point_id = 1
 
 pd = ("Module", "pandas")

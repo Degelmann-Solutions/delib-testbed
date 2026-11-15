@@ -1658,6 +1658,8 @@ def result_index():
 
 data = ("Interface", ("..", "Data"), "auto")
 
+tables = ("Interface", ("..", "CoreTables"), "auto")
+
 point_id = 1
 
 

@@ -142,11 +142,11 @@ def core_files() -> list[Path]:
                   if p.is_file() and "__pycache__" not in p.parts)
 
 
-def test_the_core_is_a_model_with_data_and_projection():
+def test_the_core_is_a_model_with_data_projection_and_tables():
     assert (CORE_MODEL / "_system.json").is_file()
     model = mx.read_model(CORE_MODEL)
     try:
-        assert sorted(model.spaces) == ["Data", "Projection"]
+        assert sorted(model.spaces) == ["Data", "Projection", "Tables"]
         assert model.Projection.formula.parameters == ("point_id",)
     finally:
         model.close()

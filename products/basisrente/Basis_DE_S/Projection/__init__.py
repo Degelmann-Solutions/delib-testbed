@@ -1968,6 +1968,8 @@ def result_pols():
 
 data = ("Interface", ("..", "Data"), "auto")
 
+tables = ("Interface", ("..", "CoreTables"), "auto")
+
 point_id = 1
 
 

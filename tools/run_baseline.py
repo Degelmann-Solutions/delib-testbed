@@ -49,7 +49,9 @@ lines and all its checks have been read, also when the point raised, so the Item
 earlier points do not accumulate. Under the export engine it first breaks the item's
 reference cycles (``release_item``), so the deleted item is freed at once and not only at
 the next full garbage collection. ``--no-cleanup`` keeps every ItemSpace alive until
-``run_product`` returns, as in phase 2a. The second output
+``run_product`` returns, as in phase 2a. The cleanup deletes the point's ``Projection``
+item only: ``CoreTables``, the table factory, takes no ``point_id``, and the rates it has
+computed stay for the later points of the run or worker. The second output
 line names the mode, ``cleanup: on`` or ``cleanup: off``. The results, the hash and the
 written bytes are the same in both modes; how cells are computed and traced is unchanged.
 
@@ -57,8 +59,8 @@ Workers
 -------
 ``--workers W`` (default 1) splits the points of one run over ``W`` worker processes. The
 parent reads and exports the model once, as above; for the export it runs modelx's formula
-transform of each top-level space (``CoreData``, ``CoreProjection``, ``Data``,
-``Projection``) in up to ``W`` processes forked for the export alone, and the exported code
+transform of each top-level space (``CoreData``, ``CoreProjection``, ``CoreTables``,
+``Data``, ``Projection``) in up to ``W`` processes forked for the export alone, and the exported code
 is the same as at ``W`` = 1. If anything in that parallel export raises, the runner prints
 one line on stderr, ``parallel export raised <type>: <message>; exporting serially``, removes
 the partial package and runs the export again serially, so a failing export fails as at

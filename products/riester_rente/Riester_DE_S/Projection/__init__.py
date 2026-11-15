@@ -2122,6 +2122,8 @@ def result_acct():
 
 data = ("Interface", ("..", "Data"), "auto")
 
+tables = ("Interface", ("..", "CoreTables"), "auto")
+
 point_id = 1
 
 pd = ("Module", "pandas")

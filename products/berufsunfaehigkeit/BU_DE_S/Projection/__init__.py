@@ -2101,6 +2101,8 @@ def result_states():
 
 data = ("Interface", ("..", "Data"), "auto")
 
+tables = ("Interface", ("..", "CoreTables"), "auto")
+
 point_id = 1
 
 

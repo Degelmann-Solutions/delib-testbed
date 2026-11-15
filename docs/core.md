@@ -4,22 +4,24 @@ Phase 3 moves the quantities the ten products share into one core. This file des
 
 ## Layout
 
-- `core/Core/` is a modelx model of its own, with the spaces `Data` and `Projection`. It holds the shared cells and nothing product-specific: no product folder name, model name or model prefix appears anywhere under `core/` (grep test in `tests/test_core.py`). Because it is a readable model, the tests can load it without a product. Beside it, `core/param_usage.py` is a plain Python module, the static usage scan of the parameter reads (section "The parameter files"); `mx.read_model` of `core/Core` does not see it.
+- `core/Core/` is a modelx model of its own, with the spaces `Data`, `Projection` and `Tables`. It holds the shared cells and nothing product-specific: no product folder name, model name or model prefix appears anywhere under `core/` (grep test in `tests/test_core.py`). Because it is a readable model, the tests can load it without a product. Beside it, `core/param_usage.py` is a plain Python module, the static usage scan of the parameter reads (section "The parameter files"); `mx.read_model` of `core/Core` does not see it.
 - `core/Core/Projection` is parameterized by `point_id`, like every product's `Projection`; its cells are written against the product's names (`data`, `point_id`), which the product space provides. Its one Reference is the Module `types`, for the read-only `model_point()`; a product's `Projection` inherits it, under both engines.
 - `core/Core/Data` holds the shared input loaders. Its cells use the product's References (`pd`, `model_point_file`, `param_file`, `mort_file`, `lapse_file`, `rentenfaktor_file`, `prem_freq_file`, `surplus_file`, `charge_file`, `hoechstrechnungszins_file`), which the product's `Data` defines; the core's `Data` defines no References. The scalar parameters are read through one lookup, `param("<item>")`, over the core file and the product's parameter files (section "The parameter files"). A loader reads its file at an index term (`mort_table_index()`, `lapse_table_index()`, `rentenfaktor_table_index()`, `surplus_table_index()`, `charge_table_index()`), the majority's index columns; a product whose file has other keys overrides the term with the literal it reads, not the loader.
+- `core/Core/Tables` is the table factory (section "The table factory"). It takes no parameter and holds no contract data. Its one Reference is `data`, the sibling `Data`, through which it reads the table parameters; a product's `Projection` reads it through the Reference `tables`, and no product space inherits it.
 - Beside each loader `<reader>()` stands a dict cell `<reader>_dict()`, the same table as plain Python dicts, built once per model from the loader's DataFrame, so that a lookup that runs many times per contract reads a dict rather than `DataFrame.at`. The model point table is held by row, `model_point_table_dict()[point_id][column]`; every other table by column, `<reader>_dict()[column][key]`, keyed as the loader indexes it (a tuple for several index columns, in the file's order). A dict cell derives from its loader by name, so a product's override of the loader or its index term flows through, and it is built only where something reads it. The loaders keep returning their DataFrames. The core's `Projection` reads its lookups through the dict cells (`model_point`, `prem_freq`, `prem_freq_load`, `instalments`, `lapse_rate_base`, `hoechstrechnungszins`), keyed and wrapped as before, and its parameters (`omega_age`, `unisex_mix_male`, `expense_infl`, `roll_fwd_tol`) through `param`; the products' own lookups move to them in entries 6–9 of the night-run epic.
-- A product inherits every core cell, also one it has no use for: a product without a lapse table still has a derived `lapse_table`, which nothing evaluates. `CORE_CELLS` in `tests/test_core.py` lists, for every cell in the core, the products that derive it and those that override it with a reason.
+- A product inherits every cell of the core's `Data` and `Projection`, also one it has no use for: a product without a lapse table still has a derived `lapse_table`, which nothing evaluates. `CORE_CELLS` in `tests/test_core.py` lists, for every cell in the core, the products that derive it and those that override it with a reason.
 
 ## How a product reaches the core
 
-modelx `bases` work only inside one model, and each product is its own model. The core therefore enters each product's model folder as two symlinks next to the product's own spaces:
+modelx `bases` work only inside one model, and each product is its own model. The core therefore enters each product's model folder as three symlinks next to the product's own spaces:
 
 ```text
 products/<product>/<Model>/CoreData       -> ../../../core/Core/Data
 products/<product>/<Model>/CoreProjection -> ../../../core/Core/Projection
+products/<product>/<Model>/CoreTables     -> ../../../core/Core/Tables
 ```
 
-The product's `__init__.py` lists `CoreData` and `CoreProjection` in `_spaces` (before `Data` and `Projection`), and its `Data` and `Projection` name them as bases in the serialized format of `mx.write_model`, one leading dot for a sibling space:
+The product's `__init__.py` lists `CoreData`, `CoreProjection` and `CoreTables` in `_spaces` (before `Data` and `Projection`), and its `Data` and `Projection` name the first two as bases in the serialized format of `mx.write_model`, one leading dot for a sibling space:
 
 ```python
 _bases = [
@@ -28,6 +30,15 @@ _bases = [
 ```
 
 `mx.read_model` follows the symlinks, so the product stays a self-contained modelx model: `run.py` and the runner `tools/run_baseline.py` read it unchanged, under `--engine export` and `--engine modelx`. A product cell that the product space does not define is derived from the core; under `--engine modelx` the trace shows the core's formula. `Data.input_dir()` resolves from the product's model path, so a core cell reads the product's own input files.
+
+`CoreTables` is a base of no space. The product's `Projection` reaches it through a Reference beside `data`, and the factory reaches the product's `Data` through its own Reference `data`, which resolves to the sibling `Data` in whichever model holds the space:
+
+```python
+tables = ("Interface", ("..", "CoreTables"), "auto")   # in the product's Projection
+data = ("Interface", ("..", "Data"), "auto")           # in core/Core/Tables
+```
+
+So a product cannot override a cell of the factory, and the factory's cells are computed once per model, not once per `Projection[point_id]`: the runner's per-contract cleanup deletes the point's `Projection` item and leaves `CoreTables` as it is, under both engines.
 
 `shutil.copytree` follows symlinks by default, so a scratch copy of a product folder (tests, `tools/measure_marginal.py`) holds real copies of the core spaces and runs the same way.
 

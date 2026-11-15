@@ -1,6 +1,6 @@
 # The common core of phase 3: layout and conventions
 
-Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates, the policy counts, the cash flows, the expense inflation, the outputs and checks, the contract data and charges, the parameter files and the formula literals, how the core quota is measured and bounded, and the conventions every core commit follows: commit trailers, the rules for measuring speed, the reason on a product override, and how a product's `UPSTREAM.md` states, against upstream, the files phase 3 changed; beside them, the process rules for stacked pull requests, which no test enforces. The tests that enforce the conventions are `tests/test_core.py`, `tests/test_provenance.py`, `tests/test_core_quota.py` and `tests/test_baseline_deviations.py` (with the tool `tools/baseline_deviations.py`).
+Phase 3 moves the quantities the ten products share into one core. This file describes where the core lives, how a product reaches it, what the core holds of the time axis, the tariff basis, the decrement rates, the policy counts, the cash flows, the expense inflation, the outputs and checks, the contract data and charges, the parameter files, the table factory and the formula literals, how the core quota is measured and bounded, and the conventions every core commit follows: commit trailers, the rules for measuring speed, the reason on a product override, and how a product's `UPSTREAM.md` states, against upstream, the files phase 3 changed; beside them, the process rules for stacked pull requests, which no test enforces. The tests that enforce the conventions are `tests/test_core.py`, `tests/test_tables.py` (the table factory), `tests/test_provenance.py`, `tests/test_core_quota.py` and `tests/test_baseline_deviations.py` (with the tool `tools/baseline_deviations.py`).
 
 ## Layout
 
@@ -428,7 +428,7 @@ Whether every item is read and every call names an item is checked statically, b
 
 The core file lives beside the core's loaders rather than at `core/param_core.csv`, and `param_core_path()` finds it as `_model.path / "CoreData" / "param_core.csv"`, through the product's `CoreData` symlink: `param_file` resolves against `input_dir()`, the product folder, and a scratch copy of a product folder (tests, `tools/measure_marginal.py`) copies the `CoreData` folder through the symlink and with it the core file, so a copy reads its own core file and a test can give it a fixture item without touching the core (Moritz, 2026-11-04). `param_tables_path()` finds the table parameter file the same way, `_model.path / "CoreData" / "param_tables.csv"`, so a copy has its own and a test can give it a fixture table. `mx.read_model` ignores a CSV file in a space folder, and `tests/test_provenance.py` does not descend into the symlinked folder, so the file adds no cell and no product file.
 
-Every parameter read goes through `param`: the core's parameter cells `omega_age`, `unisex_mix_male`, `expense_infl` and `roll_fwd_tol` and the products' own reads (RV, Pflege, Basis, FRV, KLV, Riester) call `data.param("<item>")` and take its value as `param` types it, `int` for a digits-only text and `float` otherwise; a cast stays only where it converts, `float()` on the two counts Pflege's `recov_age_ref` (75) and FRV's `glide_months` (60). The former DataFrame and dict readers `param_table()` and `param_table_dict()` had no reader left and are gone; `tests/test_core.py` fails on a source that still names them.
+Every parameter read goes through `param`: the core's parameter cells `omega_age`, `unisex_mix_male`, `expense_infl`, `roll_fwd_tol` and `mort_table_name` and the products' own reads (RV, Pflege, Basis, FRV, KLV, Riester) call `data.param("<item>")` and take its value as `param` types it, `int` for a digits-only text and `float` otherwise; a cast stays only where it converts, `float()` on the two counts Pflege's `recov_age_ref` (75) and FRV's `glide_months` (60). The former DataFrame and dict readers `param_table()` and `param_table_dict()` had no reader left and are gone; `tests/test_core.py` fails on a source that still names them.
 
 ### Parameter names
 
@@ -559,6 +559,95 @@ The cost, charge and commission columns of the products' own tables hold the sam
 FRV's spread changed unit with its name: `acq_window_months` reads `12 * min(acq_spread_years(), prem_term_y())`, was `min(alpha_spread_months(), 12 * prem_term_y())`, the same integer. These renames are byte-identical too. The other columns of the tables (model points, decrement and frequency tables, KLV's `deckrv_table.csv`, `prem_freq_load`, `ter_ann`, `terminal_bonus_rate`, `min_annuity_mth`, `transfer_rate`) keep their names; KLV's and Basis' `expense_infl` columns are removed, their rate the core item (section "The expense inflation").
 
 A value the product docs quote (`model.md`, `technical-notes.md`, the anchor amounts) is the value of the tariff-type file, `param_tariff_type.csv`, on the anchor model point. The product docs do not count, span or enumerate the items to say what a parameter file holds: they point to the file, `param_tariff_type.csv` and where relevant the core file `core/Core/Data/param_core.csv`, and to `uv run python tools/params.py <product>`, which lists every item a tariff reads with its value, layer, basis and provenance; a value cited for one item stays where the docs explain it. A tariff file `param_tariff.csv` that sets an item otherwise changes the number without changing the docs; the docs then describe the tariff type, not that tariff (Moritz, 2026-11-08).
+
+## The table factory
+
+The table factory is the one place the mortality rates of the ten products are to come from, through one cell, `q`: a tariff chooses a table by name and sets its factors on it, and no product ships a mortality table or holds a mortality formula. What is built is the scaffold (epic-table-factory, entry 1): the space, its parameter layer, the name-valued table choices, the lookup and the core's hooks. The factory holds no table yet, every product still reads its own mortality file, and no result has moved. A table enters with the switch of its first reader, and each product switches in a result-changing commit of its own.
+
+The tables will be proxies. The DAV tables they stand in for are the DAV's property and are not redistributed; a proxy is a law with a few parameters, chosen to be roughly realistic, each parameter with a source or marked as a Setzung.
+
+### The factory's space
+
+The factory is the third space of the core, `core/Core/Tables`. It enters each product model as the symlink `CoreTables`, beside `CoreData` and `CoreProjection`, and is listed in the model's `_spaces` (section "How a product reaches the core").
+
+No product space inherits it, unlike the other two core spaces. A product's `Projection` reads it through the Reference `tables`; the factory reads the parameter loader through its Reference `data`. A product therefore cannot override a cell of the factory: a table is the same for every product that reads it. `tests/test_tables.py` checks in every product that `CoreTables` is that symlink, is a base of no space and holds the core's cells and no other.
+
+The factory holds no contract data. The space takes no parameter, so there is one `CoreTables` per model and no `CoreTables[point_id]`, and its cells read only `data.param(...)` and each other; a test walks the source for any other name. What depends on the contract reaches the factory as an argument of `q`. The runner's per-contract cleanup deletes the point's `Projection` item and leaves the space alone, so a rate is computed once per run and worker and looked up afterwards; the test runs a scratch copy through the export engine and finds the first point's rates still held after every later point.
+
+### The registry
+
+One cell names every table, `definitions()`, `{table: (law, trend, parameters)}`:
+
+```python
+def definitions():
+    return {}          # no table yet; an entry will read, for example,
+    # "<table>": (<law cell>, <trend cell or None>, ("m_a", "f_a", "first_age", "end_age"))
+```
+
+- `law` is the cell that gives the table's rate and `trend` the cell that gives its annual improvement rate, `None` for a period table. Both are cells of the space with the signature `(table, sex, x)`; the dict holds the cells themselves. A law reads its numbers through `parameter(table, name)` and holds none: a new table with an existing law, or another value for a table, is a change to `param_tables.csv` alone.
+- `parameters` names the table's parameters. The item of a parameter is `<table>_<parameter>`, so a parameter by sex is named `m_<parameter>` or `f_<parameter>`, and the table-wide ones are `first_age`, `end_age` (the first age nobody reaches), `base_year` and `sel_<n>`.
+- A table is generational where its trend is not `None`, and select where it names a parameter `sel_<n>`.
+
+The other cells: `definition(table)`, the entry of one table, a `ValueError` for an unknown name; `items()`, `{table: (item, ...)}`, the items of each table, which the usage scan will read; `parameter(table, name)`, `data.param(table + "_" + name)`, the factory's one read by a computed name; `first_age(table)`, `end_age(table)` and `base_year(table)`; `select_factors(table)`, the values of `sel_1`, `sel_2`, … in that order; `base_rate(table, sex, x)` and `trend(table, sex, x)` (below); and `q`.
+
+Below `q` the machinery does not say mortality: a law is a function of its parameters and a key, and no cell name but `q` contains `mort` or `q` (a test checks it), so the other decrements can join later. The source holds no numeric literal but 0 and 1, which a test checks too: a table's numbers are rows of its parameter file.
+
+### The lookup
+
+One cell hands out rates:
+
+```python
+tables.q(table, sex, x, birth_year=None, duration=None)
+```
+
+- `table` is the table's name, `sex` is `M` or `F`, `x` the attained age.
+- `birth_year` is required for a generational table and refused for a period table. The rate at age `x` is that of the calendar year `birth_year + x`: the base rate times `(1 - trend) ** (birth_year + x - base_year)`.
+- `duration` is required for a select table and refused for a table without selection. It is the year since the claim began, counted from 1; the rate is multiplied by `sel_<duration>`, and past the last select year the last factor holds.
+- The rate is capped at 1. At the table's last age, `end_age - 1`, it is exactly 1, whatever the trend and the selection: the closure is the table's.
+- Rates are computed in double precision and are not rounded.
+
+Where a call does not fit the table, `q` raises a `ValueError` naming the table and the argument: an unknown table, a `sex` other than `M` and `F`, an age outside `first_age .. end_age - 1`, a missing or a refused `birth_year` or `duration`, a `duration` below 1. It never clamps an age; a product that needs a guard keeps it in a cell of its own, with its reason. A table that names a parameter the tables layer does not hold raises the loader's `KeyError`. With no table defined, every call raises on the table's name, in every shipped product.
+
+Beside `q` stand the two cells a best-estimate trend term needs: `base_rate(table, sex, x)`, the law's own rate after the checks of table, sex and age, neither capped nor closed, and `trend(table, sex, x)`, the trend law's annual improvement rate, a `ValueError` on a period table. `q` takes no derivation argument.
+
+### The table parameters
+
+The numbers of a table are rows of `core/Core/Data/param_tables.csv`, the layer `tables` of the parameter loader, with the columns of every layer file and checked the same way (section "The parameter files"). The core lock covers it: an item of the tables layer stands in no other layer. The file holds the header alone until the first table enters.
+
+### The table choice
+
+A tariff chooses its tables in its tariff-type file (or its tariff file, where it deviates), in items named `<role>_table`:
+
+```csv
+item,value,basis,provenance
+mort_table,<table>,Setzung,"…"
+```
+
+These are the only items whose value is a name; the loader checks the name's form, and `q` checks at run time that the table exists. `mort_table` is the item of a product's main mortality role, read by the core's `mort_table_name()`. A product with several roles has one item per role and maps the contract to a role in a cell of its own. No shipped tariff has such an item yet.
+
+### The derivation
+
+What a tariff makes of a table rate stays in `Projection`, in the core's term cells, which a product overrides where it differs. Two factors stand on the table rate, each on its own, never one on the other:
+
+```text
+tariff rate   = unisex_blend(q(table, M), q(table, F)) × <rate>_load_first
+best estimate = q(table, own sex) × mort_be_factor × mort_be_trend
+```
+
+The hooks that read the factory are core cells with fixed names, listed in section "The decrement rates": `mort_table_name()`, `birth_year()`, `mort_rate_table(sex_code, x)`, `mort_rate_at_age(x)`, `mort_rate_tariff_at_age(x)`, `omega_age_table()` and the neutral trend term `mort_be_trend(t)`. A switch adds none. Until its switch a product overrides `mort_rate_at_age` or `mort_rate_tariff_at_age` with its own table read, so no shipped product reaches a hook that reads the factory, and no core cell switches between the old and the new mortality. `tests/test_tables.py` runs a scratch copy of Index that deletes its own `mort_rate_at_age` and chooses a fixture table: the hooks deliver the table's rate and its end age, under both engines.
+
+A fixture table lives in the tests only: its laws are written into the scratch copy's `CoreTables` and its numbers into the copy's `param_tables.csv`, and it carries none of the names the factory's tables will have.
+
+### Mutants and quota
+
+The factory's cells are core formulas. The roadmap's counting command adds `core/Core/Tables` to its `core` row: the scaffold moved M_core from 190 to 192 in `Projection` (the trend term in `mort_rate`, the `or` of `mort_rate_table`) and to 225 with the 33 of `Tables`, M from 5,277 to 5,312. The core quota counts an executed cell of `CoreTables` as core, `tables.<cell>` (section "The core quota"). A mutant of a factory cell misses one piece of the runner's transform cache, its piece of `CoreTables`, where a mutant of an inherited core cell misses two; `tools/measure_marginal.py` finds a cell's pieces by its name.
+
+### Not built yet
+
+- The tables, their laws and their rows, and the tariffs' choices: they enter with the switches, from one values package.
+- The usage scan and the view. `core/param_usage.py` scans `Projection` and `Data` and does not yet read `items()`, so an item of the tables layer is not yet checked for a reader, and `tools/params.py` does not yet show a chosen table's items (entry 2).
+- `omega_age()` read off the table in the core: it keeps reading the item until the last product has switched.
+- Lapse, incidence, recovery and deterioration rates stay in the products' own files. Grid tables, whose rates are listed and not computed, are not built: every table planned is parametric.
 
 ## Formula literals
 

@@ -39,10 +39,13 @@ The problems of one product: a call or declared item naming an item no layer hol
 of the tariff-type or the tariff layer that no reachable cell reads, an undeclared indirect
 read, a declared cell that does not exist, a bypass of ``param`` through a reader or a file
 path, a product-defined ``param_core_path`` or ``param_tables_path``, a choice item naming a
-table the factory does not hold, and an item of the tables layer that ``items()`` lists for
-no table.  An item of the core file is checked across all products together,
-``unused_core_items(usages)``: it is used if any product reads it; so is a table,
-``unchosen_tables(usages)``: it is chosen if any product's choice item names it.
+table the factory does not hold, an item named ``<role>_table`` in the core or the tables
+layer (a table choice outside the tariff-type and tariff files), an item of the tables layer
+that ``items()`` lists for no table, and an item ``items()`` lists for a table that stands
+in another layer than the tables layer.  An item of the core file is checked across all
+products together, ``unused_core_items(usages)``: it is used if any product reads it; so is
+a table, ``unchosen_tables(usages)``: it is chosen if any product has a choice item that
+names it and that a reachable cell reads.
 ``tools/params.py``, the view of a tariff's parameters, builds on this scan.
 """
 import ast
@@ -205,6 +208,17 @@ def scan(model) -> Usage:
             if item in choices and choices[item] not in tables:
                 problems.append(f"item {item!r} of the {layer} layer ({files[layer]}) names "
                                 f"the table {choices[item]!r}, which the factory does not hold")
+    for layer in ("core", TABLES_LAYER):
+        for item in layers[layer]:
+            if item.endswith(CHOICE_SUFFIX):
+                problems.append(f"item {item!r} of the {layer} layer ({files[layer]}) is a "
+                                f"table choice outside the tariff-type and tariff files")
+    for table, items in tables.items():
+        for item in items:
+            for layer, values in layers.items():
+                if layer != TABLES_LAYER and item in values:
+                    problems.append(f"item {item!r} of the table {table!r} stands in the "
+                                    f"{layer} layer ({files[layer]}), not in the tables layer")
     listed = set().union(*tables.values())
     for item in layers[TABLES_LAYER]:
         if item not in listed:
@@ -226,8 +240,10 @@ def unused_core_items(usages) -> list[str]:
 
 
 def unchosen_tables(usages) -> list[str]:
-    """The tables of the factory that no choice item of the scanned models names, sorted."""
+    """The tables of the factory that none of the scanned models chooses, sorted: a table is
+    chosen where a choice item names it that a reachable cell reads."""
     usages = list(usages)
     held = set().union(*(usage.tables for usage in usages))
-    chosen = set().union(*(usage.choices.values() for usage in usages))
+    chosen = {table for usage in usages for choice, table in usage.choices.items()
+              if choice in usage.reads}
     return sorted(held - chosen)

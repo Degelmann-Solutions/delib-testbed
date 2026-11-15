@@ -60,7 +60,10 @@ The usage scan ``core/param_usage.py`` (``docs/core.md``, "The usage check and t
   in the tariff-type and the tariff file; an item of the tables layer that is in no table's
   items; an item a chosen table names that the layer lacks; a product-defined
   ``param_tables_path``; and a cell referencing ``param_tables_path``.
-- ``unchosen_tables`` names, sorted, the tables no scanned model chooses.
+- The scan reports an item of a table that stands in another layer than the tables layer,
+  and an item named ``<role>_table`` in the core or the tables file.
+- ``unchosen_tables`` names, sorted, the tables no scanned model chooses; a table whose
+  choice item no cell reads is not chosen.
 """
 from __future__ import annotations
 
@@ -902,6 +905,31 @@ def test_the_scan_reads_no_item_of_a_table_whose_choice_no_cell_reads(tmp_path):
     assert usage.problems == ["item 'probe_table' of the tariff_type layer"
                               " (param_tariff_type.csv) is read by no reachable cell"]
     assert not set(usage.reads) & set(usage.layers["tables"])
+    assert param_usage.unchosen_tables([usage]) == sorted(FIXTURE_DEFINITIONS)
+
+
+def test_the_scan_reports_an_item_of_a_table_in_another_layer(tmp_path):
+    """The item ``broken_fixture`` lacks in the tables layer, held by the tariff-type file:
+    ``param`` would find it, the scan reports it."""
+    folder = choosing_copy(tmp_path, "broken_fixture")
+    _add_params(folder / "param_tariff_type.csv", {"broken_fixture_f_b": "1.092"})
+    usage = scan_of(folder, "TableItemElsewhereScanProbe")
+    assert usage.problems == [
+        "item 'broken_fixture_f_b' of the table 'broken_fixture' stands in the tariff_type"
+        " layer (param_tariff_type.csv), not in the tables layer"]
+
+
+@pytest.mark.parametrize(("layer", "file"), [("core", "param_core.csv"),
+                                             ("tables", TABLES_FILE)])
+def test_the_scan_reports_a_table_choice_in_the_core_or_the_tables_file(tmp_path, layer, file):
+    folder = fixture_copy(tmp_path)
+    _add_params(folder / MODELS[INDEX] / "CoreData" / file, {"mort_table": "period_fixture"})
+    usage = scan_of(folder, "ChoiceElsewhereScanProbe")
+    assert usage.choices == {}
+    assert (f"item 'mort_table' of the {layer} layer ({file}) is a table choice outside the"
+            f" tariff-type and tariff files") in usage.problems
+    assert len(usage.problems) == (1 if layer == "core" else 2)
+    assert not set(usage.reads) & set(fixture_items("period_fixture"))
 
 
 @pytest.mark.parametrize("file", ["param_tariff_type.csv", "param_tariff.csv"])

@@ -142,11 +142,11 @@ def core_files() -> list[Path]:
                   if p.is_file() and "__pycache__" not in p.parts)
 
 
-def test_the_core_is_a_model_with_data_and_projection():
+def test_the_core_is_a_model_with_data_projection_and_tables():
     assert (CORE_MODEL / "_system.json").is_file()
     model = mx.read_model(CORE_MODEL)
     try:
-        assert sorted(model.spaces) == ["Data", "Projection"]
+        assert sorted(model.spaces) == ["Data", "Projection", "Tables"]
         assert model.Projection.formula.parameters == ("point_id",)
     finally:
         model.close()
@@ -299,6 +299,7 @@ CORE_CELLS = {
         "hoechstrechnungszins_table": {"sofortrente": "derived"},
         "model_point_table_dict": dict.fromkeys(MODELS, "derived"),
         "param_core_path": dict.fromkeys(MODELS, "derived"),
+        "param_tables_path": dict.fromkeys(MODELS, "derived"),
         "param_tariff_path": dict.fromkeys(MODELS, "derived"),
         "param_paths": dict.fromkeys(MODELS, "derived"),
         "param_rows": dict.fromkeys(MODELS, "derived"),
@@ -609,6 +610,29 @@ CORE_CELLS = {
                      "kapitallebensversicherung": "derived",
                      "klassische_rentenversicherung": "derived",
                      "riester_rente": "derived"},
+        # The derivation hooks of the table factory (docs/core.md, "The table factory"): a
+        # product that defines the name reads its own mortality file until its switch.
+        "birth_year": {"sofortrente": "override"},
+        "omega_age_table": {},
+        "mort_table_name": {},
+        "mort_rate_table": {},
+        "mort_rate_at_age": {"basisrente": "override",
+                             "berufsunfaehigkeit": "override",
+                             "indexpolice": "override",
+                             "kapitallebensversicherung": "override",
+                             "klassische_rentenversicherung": "override",
+                             "pflegerentenversicherung": "override",
+                             "riester_rente": "override",
+                             "risikolebensversicherung": "override",
+                             "sofortrente": "override"},
+        "mort_rate_tariff_at_age": {"fondsgebundene_rentenversicherung": "override",
+                                    "kapitallebensversicherung": "override"},
+        "mort_be_trend": {"berufsunfaehigkeit": "derived",
+                          "fondsgebundene_rentenversicherung": "derived",
+                          "indexpolice": "derived",
+                          "kapitallebensversicherung": "derived",
+                          "klassische_rentenversicherung": "derived",
+                          "pflegerentenversicherung": "derived"},
         "mort_be_factor": {"basisrente": "override",
                            "fondsgebundene_rentenversicherung": "override",
                            "kapitallebensversicherung": "override",
@@ -2339,12 +2363,12 @@ def test_param_without_the_core_file_raises(tmp_path):
 
 @pytest.mark.parametrize("product", sorted(MODELS))
 def test_param_layers_hold_every_item_once_and_merge_into_param_dict(product, product_models):
-    """Every product reads the core and the tariff-type layer (and the tariff layer only where
-    the file exists), each item in one layer, and ``param_dict()`` is their merge."""
+    """Every product reads the core, the tables and the tariff-type layer (and the tariff layer
+    only where the file exists), each item in one layer, and ``param_dict()`` is their merge."""
     data = product_models(product).Data
     layers = data.param_layers()
-    expected = ["core", "tariff_type"] + (["tariff"] if data.param_tariff_path().is_file()
-                                          else [])
+    expected = ["core", "tables", "tariff_type"] + (
+        ["tariff"] if data.param_tariff_path().is_file() else [])
     assert list(layers) == expected
     tariff_type = pd.read_csv(data.input_dir() / data.param_file, dtype=str,
                               keep_default_na=False)["item"].tolist()
@@ -2727,9 +2751,10 @@ def test_a_core_item_read_by_one_product_is_used():
     is used, one that none reads is named."""
     layers = {"core": {"probe_core": 0.125}, "tariff_type": {}}
     reader = param_usage.Usage(layers=layers, reads={"probe_core": frozenset({"cell"})},
-                               reachable=frozenset({"cell"}), indirect={}, problems=[])
+                               reachable=frozenset({"cell"}), indirect={}, problems=[],
+                               tables={}, choices={})
     other = param_usage.Usage(layers=layers, reads={}, reachable=frozenset(), indirect={},
-                              problems=[])
+                              problems=[], tables={}, choices={})
     assert param_usage.unused_core_items([reader, other]) == []
     assert param_usage.unused_core_items([other, other]) == ["probe_core"]
 

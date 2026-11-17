@@ -1173,6 +1173,9 @@ def mort_rate_tariff_at_age(x):
     two mortality reads, and **no cells reads both**: a German fondsgebundene contract
     prices its death charge on a death table and its conversion guarantee on an annuity
     table, and using one for both misprices one of them.
+
+    Override reason: the product reads its own mortality file until its switch to the
+    table factory, docs/core.md, section "The table factory"
     """
     return float(data.mort_table_dict()["qx_tariff"][x])             # noqa: F821
 
@@ -2040,6 +2043,8 @@ def result_fund():
 # References
 
 data = ("Interface", ("..", "Data"), "auto")
+
+tables = ("Interface", ("..", "CoreTables"), "auto")
 
 point_id = 1
 

@@ -620,6 +620,9 @@ def mort_rate_at_age(x):
     A **[std]** proxy for DAV 2008 T, read from *mort_table_accum.csv* and carrying no
     improvement dimension.  Forced to 1 at ``omega_age() - 1`` so the closure identity is
     exact there whatever the table says.
+
+    Override reason: the product reads its own mortality file until its switch to the
+    table factory, docs/core.md, section "The table factory"
     """
     if x >= omega_age() - 1:
         return 1.0
@@ -2121,6 +2124,8 @@ def result_acct():
 # References
 
 data = ("Interface", ("..", "Data"), "auto")
+
+tables = ("Interface", ("..", "CoreTables"), "auto")
 
 point_id = 1
 

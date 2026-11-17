@@ -556,6 +556,9 @@ def mort_rate_tariff_at_age(x):
     ``mort_rate_1st(M, 37) = 0.001200`` exactly, standing in for DAV 2008 T, which is the
     property of the Deutsche Aktuarvereinigung, is not public and is not redistributed here;
     see the ``Data`` docstring for what a replacement must preserve.
+
+    Override reason: the product reads its own mortality file until its switch to the
+    table factory, docs/core.md, section "The table factory"
     """
     rates = data.mort_table_dict()["mort_rate_1st"]                  # noqa: F821
     return unisex_blend(float(rates[("M", int(x))]),
@@ -575,6 +578,9 @@ def mort_rate_at_age(x):
     quantities.  A German tariff may not price on sex; a best-estimate projection of a
     particular life must.  ``sex`` therefore reaches the **decrement** and nothing else, and
     ``prem_gross_level_pp()`` is identical for two model points differing only in it.
+
+    Override reason: the product reads its own mortality file until its switch to the
+    table factory, docs/core.md, section "The table factory"
     """
     return float(data.mort_table_dict()["mort_rate_1st"][            # noqa: F821
         (sex(), int(x))])
@@ -2044,6 +2050,8 @@ def result_surplus():
 # References
 
 data = ("Interface", ("..", "Data"), "auto")
+
+tables = ("Interface", ("..", "CoreTables"), "auto")
 
 point_id = 1
 

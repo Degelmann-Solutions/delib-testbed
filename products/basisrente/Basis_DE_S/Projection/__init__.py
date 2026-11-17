@@ -793,6 +793,9 @@ def mort_rate_at_age(x, y):
 
     First order, so it carries the DAV's prudential margins.  The guaranteed
     *Rentenfaktor* is struck on this basis; the projection runs on :func:`mort_rate`.
+
+    Override reason: the product reads its own mortality file until its switch to the
+    table factory, docs/core.md, section "The table factory"
     """
     table = data.mort_table_dict()                                   # noqa: F821
     rate = (float(table["qx"][x])
@@ -1967,6 +1970,8 @@ def result_pols():
 # References
 
 data = ("Interface", ("..", "Data"), "auto")
+
+tables = ("Interface", ("..", "CoreTables"), "auto")
 
 point_id = 1
 

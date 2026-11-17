@@ -115,6 +115,7 @@ _allow_none = False
 _spaces = [
     "CoreData",
     "CoreProjection",
+    "CoreTables",
     "Data",
     "Projection"
 ]

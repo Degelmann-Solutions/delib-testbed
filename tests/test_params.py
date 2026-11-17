@@ -17,6 +17,17 @@
 - A scratch copy whose read item moved from the tariff-type file into a new tariff file lists
   it with layer ``tariff``, its value, basis and provenance, after the tariff-type rows, and
   exits 0.
+- A scratch copy of Index whose tariff chooses a fixture table lists that table's items with
+  layer ``tables``, value, basis and provenance, after the core items and before the
+  tariff-type items, and no other table's, and exits 0; a copy with the fixture tables and
+  no choice lists no item of the layer.
+- A scratch copy whose choice stands in a tariff file lists the choice with layer ``tariff``
+  and its table's items with layer ``tables``, and exits 0.
+- A scratch copy whose choice names a table the factory lacks, whose table parameter file
+  holds an item of no table, whose chosen table names an item the layer lacks (listed as
+  ``missing``), whose tariff-type file holds an item of a table, whose core file holds a
+  table choice, or whose ``Projection`` reads an item of the tables layer itself has the
+  scan's line on stderr and exits 1.
 """
 from __future__ import annotations
 
@@ -36,6 +47,10 @@ CORE_FILE = ROOT / "core" / "Core" / "Data" / "param_core.csv"
 
 sys.path.insert(0, str(ROOT / "tools"))
 from run_baseline import model_dir  # noqa: E402
+
+from test_core import _add_params  # noqa: E402
+from test_tables import (FIXTURE_DEFINITIONS, FIXTURE_VALUES, INDEX, choosing_copy,  # noqa: E402
+                         fixture_copy, fixture_items, tables_file)
 
 
 def load_tool(name: str, path: Path):
@@ -59,8 +74,8 @@ def test_ten_products():
 
 @pytest.mark.parametrize("product", PRODUCTS)
 def test_the_rows_agree_with_the_scan_and_the_loader(product):
-    """No shipped product has a tariff file, so the layers are the core file and the
-    product's ``param_tariff_type.csv``."""
+    """No shipped product has a tariff file, so the layers are the core file, the table
+    parameter file beside it and the product's ``param_tariff_type.csv``."""
     folder = PRODUCTS_DIR / product
     model = mx.read_model(model_dir(folder))
     try:
@@ -69,8 +84,9 @@ def test_the_rows_agree_with_the_scan_and_the_loader(product):
         layers = model.Data.param_layers()
     finally:
         model.close()
-    assert list(layers) == ["core", "tariff_type"]
-    frames = {"core": read(CORE_FILE), "tariff_type": read(folder / "param_tariff_type.csv")}
+    assert list(layers) == ["core", "tables", "tariff_type"]
+    frames = {"core": read(CORE_FILE), "tables": read(CORE_FILE.with_name("param_tables.csv")),
+              "tariff_type": read(folder / "param_tariff_type.csv")}
     assert [row["item"] for row in table] and len(table) == len(reads)
     assert {row["item"] for row in table} == set(reads)
     order = [(layer, item) for layer, values in layers.items()
@@ -238,7 +254,7 @@ def test_an_item_of_the_tariff_file_is_listed_in_the_tariff_layer(tmp_path, caps
                          "layer": "tariff", "basis": expected["basis"],
                          "provenance": expected["provenance"]}
     assert [row["layer"] for row in table[:-1]] == sorted(
-        (row["layer"] for row in table[:-1]), key=["core", "tariff_type"].index)
+        (row["layer"] for row in table[:-1]), key=["core", "tables", "tariff_type"].index)
     assert table[-2]["layer"] == "tariff_type"
 
     assert params.main([str(folder)]) == 0
@@ -246,3 +262,158 @@ def test_an_item_of_the_tariff_file_is_listed_in_the_tariff_layer(tmp_path, caps
     assert any(line.split()[:3] == ["decl_scale", repr(float(expected["value"])), "tariff"]
                for line in out.splitlines())
     assert err == ""
+
+
+# --------------------------------------------------------------------------- the tables layer
+
+def tables_rows(folder: Path, name: str) -> tuple[list[dict], list[dict]]:
+    """The tool's rows for a scratch copy, and those of them in the layer ``tables``."""
+    model = mx.read_model(model_dir(folder), name=name)
+    try:
+        table = params.rows(model)
+    finally:
+        model.close()
+    return table, [row for row in table if row["layer"] == "tables"]
+
+
+def test_the_items_of_a_chosen_table_are_listed_in_the_tables_layer(tmp_path, capsys):
+    folder = choosing_copy(tmp_path, "period_fixture")
+    table, listed = tables_rows(folder, "ParamsChosenTable")
+    values = FIXTURE_VALUES["period_fixture"]
+    assert [row["item"] for row in listed] == list(fixture_items("period_fixture"))
+    for row, name in zip(listed, FIXTURE_DEFINITIONS["period_fixture"][2]):
+        expected = int(values[name]) if values[name].isdigit() else float(values[name])
+        assert row == {"item": f"period_fixture_{name}", "value": expected, "layer": "tables",
+                       "basis": "", "provenance": "[std] test fixture"}
+        assert type(row["value"]) is type(expected)
+    # after the core items and before the tariff-type items, each layer present
+    layers = [row["layer"] for row in table]
+    assert layers == sorted(layers, key=["core", "tables", "tariff_type"].index)
+    assert set(layers) == {"core", "tables", "tariff_type"}
+    assert {"item": "mort_table", "value": "period_fixture", "layer": "tariff_type",
+            "basis": "", "provenance": "[std] test fixture"} in table
+
+    assert params.main([str(folder)]) == 0
+    out, err = capsys.readouterr()
+    assert err == ""
+    assert headers(out) == [INDEX]
+    lines = [line.split() for line in out.splitlines()]
+    position = {line[0]: number for number, line in enumerate(lines) if line}
+    for row in listed:
+        assert lines[position[row["item"]]] == [row["item"], repr(row["value"]), "tables",
+                                                "[std]", "test", "fixture"]
+    assert (position["check_tol"] < position["period_fixture_m_a"]
+            < position["mort_table"])
+    assert lines[position["mort_table"]][1:3] == ["'period_fixture'", "tariff_type"]
+    # no other table's item
+    others = set(FIXTURE_DEFINITIONS) - {"period_fixture"}
+    assert others and not any(table in out for table in others)
+
+
+def test_no_tables_item_is_listed_without_a_choice(tmp_path, capsys):
+    folder = fixture_copy(tmp_path)
+    table, listed = tables_rows(folder, "ParamsNoChoice")
+    assert table and listed == []
+    assert params.main([str(folder)]) == 0
+    out, err = capsys.readouterr()
+    assert err == "" and headers(out) == [INDEX]
+    assert "_fixture" not in out and " tables " not in out
+
+
+def test_a_chosen_name_the_factory_lacks_is_reported_and_exits_1(tmp_path, capsys):
+    folder = choosing_copy(tmp_path, "nosuch_table")
+    assert params.main([str(folder)]) == 1
+    out, err = capsys.readouterr()
+    assert headers(out) == [INDEX]
+    assert any(line.split()[:3] == ["mort_table", "'nosuch_table'", "tariff_type"]
+               for line in out.splitlines())
+    assert "_fixture" not in out
+    assert err.splitlines() == [
+        f"{INDEX}: item 'mort_table' of the tariff_type layer (param_tariff_type.csv) names"
+        f" the table 'nosuch_table', which the factory does not hold"]
+
+
+def test_a_tables_item_of_no_table_is_reported_and_exits_1(tmp_path, capsys):
+    folder = choosing_copy(tmp_path, "period_fixture")
+    _add_params(tables_file(folder, INDEX), {"stray_item": "1.5"})
+    assert params.main([str(folder)]) == 1
+    out, err = capsys.readouterr()
+    assert headers(out) == [INDEX]
+    assert "stray_item" not in out and "period_fixture_m_a" in out
+    assert err.splitlines() == [
+        f"{INDEX}: item 'stray_item' of the tables layer (param_tables.csv) belongs to no"
+        f" table"]
+
+
+def test_an_item_a_chosen_table_lacks_is_missing_and_exits_1(tmp_path, capsys):
+    folder = choosing_copy(tmp_path, "broken_fixture")
+    table, listed = tables_rows(folder, "ParamsBrokenTable")
+    assert table[-1] == {"item": "broken_fixture_f_b", "value": None, "layer": "missing",
+                         "basis": "", "provenance": ""}
+    assert [row["item"] for row in listed] == [
+        item for item in fixture_items("broken_fixture") if item != "broken_fixture_f_b"]
+
+    assert params.main([str(folder)]) == 1
+    out, err = capsys.readouterr()
+    assert any(line.split() == ["broken_fixture_f_b", "missing"] for line in out.splitlines())
+    assert err.splitlines() == [
+        f"{INDEX}: item 'broken_fixture_f_b' read by mort_table_name stands in no layer"]
+
+
+def test_a_choice_in_the_tariff_file_is_listed_in_the_tariff_layer(tmp_path, capsys):
+    folder = choosing_copy(tmp_path, "period_fixture", "param_tariff.csv")
+    table, listed = tables_rows(folder, "ParamsTariffChoice")
+    assert [row["item"] for row in listed] == list(fixture_items("period_fixture"))
+    assert table[-1] == {"item": "mort_table", "value": "period_fixture", "layer": "tariff",
+                         "basis": "", "provenance": "[std] test fixture"}
+    layers = [row["layer"] for row in table]
+    assert layers == sorted(layers, key=["core", "tables", "tariff_type", "tariff"].index)
+
+    assert params.main([str(folder)]) == 0
+    out, err = capsys.readouterr()
+    assert err == ""
+    split = [line.split() for line in out.splitlines()]
+    assert ["mort_table", "'period_fixture'", "tariff"] in [line[:3] for line in split]
+    for row in listed:
+        assert [row["item"], repr(row["value"]), "tables"] in [line[:3] for line in split]
+
+
+def test_an_item_of_a_table_in_another_layer_is_reported_and_exits_1(tmp_path, capsys):
+    folder = choosing_copy(tmp_path, "broken_fixture")
+    add_row(folder, "broken_fixture_f_b", "1.092")
+    assert params.main([str(folder)]) == 1
+    out, err = capsys.readouterr()
+    assert headers(out) == [INDEX]
+    assert err.splitlines() == [
+        f"{INDEX}: item 'broken_fixture_f_b' of the table 'broken_fixture' stands in the"
+        f" tariff_type layer (param_tariff_type.csv), not in the tables layer"]
+
+
+def test_a_table_choice_in_the_core_file_is_reported_and_exits_1(tmp_path, capsys):
+    folder = fixture_copy(tmp_path)
+    _add_params(model_dir(folder) / "CoreData" / "param_core.csv",
+                {"mort_table": "period_fixture"})
+    assert params.main([str(folder)]) == 1
+    out, err = capsys.readouterr()
+    assert headers(out) == [INDEX] and "_fixture" not in out
+    assert err.splitlines() == [
+        f"{INDEX}: item 'mort_table' of the core layer (param_core.csv) is a table choice"
+        f" outside the tariff-type and tariff files"]
+
+
+def test_a_cell_reading_a_tables_item_directly_is_reported_and_exits_1(tmp_path, capsys):
+    folder = fixture_copy(tmp_path)
+    path = model_dir(folder) / "Projection" / "__init__.py"
+    marker = "# " + "-" * 75 + "\n# References"
+    text = path.read_text(encoding="utf-8")
+    assert text.count(marker) == 1
+    cell = ('def probe_direct():\n'
+            '    return data.param("gen_fixture_m_a")                        # noqa: F821\n'
+            '\n\n')
+    path.write_text(text.replace(marker, cell + marker), encoding="utf-8")
+    assert params.main([str(folder)]) == 1
+    out, err = capsys.readouterr()
+    assert headers(out) == [INDEX]
+    assert err.splitlines() == [
+        f"{INDEX}: cell probe_direct reads the item 'gen_fixture_m_a' of the tables layer"
+        f" directly, not through the table factory"]

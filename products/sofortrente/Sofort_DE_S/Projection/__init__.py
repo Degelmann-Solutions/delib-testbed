@@ -280,6 +280,10 @@ def birth_year(life=1):
     so a 65-year-old born in 1960 and a 65-year-old born in 1970 are priced on different
     mortality.  Reading the surface by projection year instead walks diagonally across
     cohorts, which is this product's classic mortality error.
+
+    Override reason: a joint-life contract has two lives, one birth year per life from the
+    model point; ``life=2`` reads the survivor's ``surv_birth_year``,
+    products/sofortrente/technical-notes.md:100
     """
     if life == 1:
         return int(model_point()["birth_year"])
@@ -505,6 +509,9 @@ def mort_rate_at_age(x, table_sex, basis):
     Ages outside the table are clamped to its ends.  The upper clamp is the one that
     matters: on a joint-life point the frame runs to the *second* life's horizon, so the
     annuitant's attained age passes the closing row while their survival is already zero.
+
+    Override reason: the product reads its own mortality file until its switch to the
+    table factory, docs/core.md, section "The table factory"
     """
     if table_sex == "U":
         return (unisex_mix_male() * mort_rate_at_age(x, "M", basis)
@@ -1523,6 +1530,8 @@ def result_pols_columns():
 # References
 
 data = ("Interface", ("..", "Data"), "auto")
+
+tables = ("Interface", ("..", "CoreTables"), "auto")
 
 point_id = 1
 

@@ -1012,6 +1012,9 @@ def mort_rate_at_age(x):
     ``q_base`` from *mort_table.csv*, a **[std]** Gompertz proxy anchored at
     ``q_base(M, 50) = 0.002000``.  The real basis is DAV 2004 R, which is the property of the
     Deutsche Aktuarvereinigung, is not public and is not redistributed here.
+
+    Override reason: the product reads its own mortality file until its switch to the
+    table factory, docs/core.md, section "The table factory"
     """
     return float(data.mort_table_dict()["q_base"][                   # noqa: F821
         (sex(), int(x))])
@@ -2158,6 +2161,8 @@ def result_pols():
 # References
 
 data = ("Interface", ("..", "Data"), "auto")
+
+tables = ("Interface", ("..", "CoreTables"), "auto")
 
 point_id = 1
 

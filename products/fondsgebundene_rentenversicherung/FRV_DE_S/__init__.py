@@ -39,16 +39,18 @@ the frame rather than merely asserted in prose.
 
 **Two mortality bases at once.** The *Risikobeitrag* the tariff charges is priced on a
 **death** table (DAV 2008 T, first order); the projection decrements on the
-**second-order** best estimate. The wedge between them is the *Risikoergebnis*, and with
-the shipped flat ``mort_be_factor = 0.75`` it is exactly 25 % of the *Risikobeitrag*
-collected. A model that uses one basis for both makes the risk result identically zero
+**second-order** best estimate. The wedge between them is the *Risikoergebnis*. The tariff
+rate is the unisex blend of the death table and the best estimate the shipped flat
+``mort_be_factor = 0.75`` on the rate of the policy's own sex, so the wedge is no fixed
+share of the *Risikobeitrag* collected: about 14 % of it on a man and about 36 % on a
+woman. A model that uses one basis for both makes the risk result identically zero
 and deletes the mechanic. The *Rentenfaktor* rests on a third basis again — an annuity
 table, DAV 2004 R — which is why no cells reads both tables.
 
 **Spaces.** The model contains two:
 
 :mod:`~.FRV_DE_S.Data`
-    Reads the eight input CSVs and holds their filename References. It takes no
+    Reads the seven input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.FRV_DE_S.Projection`

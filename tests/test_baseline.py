@@ -42,8 +42,8 @@ BASELINE = {
         13,
         ("check_acq_charge", "check_av_roll_fwd", "check_benefit_funding", "check_net_cf",
          "check_pols_roll_fwd", "check_prem_split", "check_units_roll_fwd"),
-        "5192889291029e236a6a3e596fd21d7c116431c58e9cd707d160a7b6751478a6",
-        "c85973f4cfe6c96547900d10bd0d8d711467cad5373bb696961d07e17a38a865",
+        "80d7ecd36b06a80876b3e48f8450df7453539e94e77071b7d62f4a5f34908552",
+        "b53f1878a92a5bd554674870f278915bd76a12bf4548c0838c702902d031931b",
     ),
     "indexpolice": (
         13,

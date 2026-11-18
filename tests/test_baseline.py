@@ -49,8 +49,8 @@ BASELINE = {
         13,
         ("check_av_roll_fwd", "check_index_credit", "check_lock_in", "check_net_cf",
          "check_pols_roll_fwd", "check_surplus_alloc"),
-        "262bdd337e4ecdfe2ec2da67e3fb84b645bd60fe8ee3667ac3d3bc173b72b060",
-        "7f734e5bf6ab90dfc9717bdae4519542c8f27125f94918440d4e3edeb7635449",
+        "383d0b16c9feffdd233d1f471ed1aac9a06cdec0d75ae30d8ae71c6765b872a2",
+        "822be82bf34333faf01f24a1baaebd66d784795185505441ffbf52fbc96705d6",
     ),
     "kapitallebensversicherung": (
         14,

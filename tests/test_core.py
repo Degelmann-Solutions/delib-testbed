@@ -618,7 +618,7 @@ CORE_CELLS = {
         "mort_rate_table": {},
         "mort_rate_at_age": {"basisrente": "override",
                              "berufsunfaehigkeit": "override",
-                             "indexpolice": "override",
+                             "indexpolice": "derived",
                              "kapitallebensversicherung": "override",
                              "klassische_rentenversicherung": "override",
                              "pflegerentenversicherung": "override",
@@ -635,6 +635,7 @@ CORE_CELLS = {
                           "pflegerentenversicherung": "derived"},
         "mort_be_factor": {"basisrente": "override",
                            "fondsgebundene_rentenversicherung": "override",
+                           "indexpolice": "override",
                            "kapitallebensversicherung": "override",
                            "klassische_rentenversicherung": "override",
                            "riester_rente": "override",
@@ -1756,12 +1757,14 @@ def test_no_param_table_reader_remains(product_models):
 
 @pytest.mark.parametrize("product", sorted(MODELS))
 def test_param_equals_the_file_value(product, product_models):
-    """``param(item)`` is the value pandas reads for every item of the tariff-type file."""
+    """``param(item)`` is the value pandas reads for every item of the tariff-type file; a
+    table choice is the name as written, and pandas reads a column with one as text."""
     data = product_models(product).Data
     values = tariff_type_table(product)["value"].to_dict()
     assert values
     for item, value in values.items():
-        assert data.param(item) == value, item
+        expected = value if item.endswith("_table") else float(value)
+        assert data.param(item) == expected, item
 
 
 @pytest.mark.parametrize("product, omega", [("klassische_rentenversicherung", 121),

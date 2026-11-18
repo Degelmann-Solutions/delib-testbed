@@ -3,8 +3,9 @@
 The loader's part, on scratch copies of RLV:
 
 - Every shipped product reads the table parameter file ``param_tables.csv`` beside the core
-  file as its layer ``tables``, second of the layers; the shipped file holds the header alone,
-  so the layer is empty, and a copy without the file raises.
+  file as its layer ``tables``, second of the layers; the shipped file holds the rows of the
+  factory's tables, each with its value, basis and provenance, and no other, and a copy
+  without the file raises.
 - A fixture item of a copy's ``param_tables.csv`` is read through ``param`` like any other.
 - An item named ``<role>_table`` holds a table name and is loaded as a ``str``, in the
   tariff-type and the tariff file; a number or a value of another form raises, and a name
@@ -20,10 +21,14 @@ The space ``core/Core/Tables``:
   core's cells and no other, so no product defines one.
 - Its source holds no numeric literal but 0 and 1 and no cell name containing ``mort`` or
   ``q`` besides ``q``, and its cells read only ``data.param`` and each other.
-- No table is defined: ``q`` raises a ``ValueError`` naming the table for any name, in every
-  product.
+- One table is defined, ``dav2008t_proxy`` on the law ``makeham``, in every product: ``q``
+  gives ``a + b * c ** x`` in the law's float operations for both sexes, capped at 1 and
+  exactly 1 at the closing age 120, the figures of the values package to their six digits;
+  an age outside 0 to 120, a ``birth_year`` and a ``duration`` raise, and so does any other
+  table name.
 - On a scratch copy of Index with fixture tables and laws written into its ``CoreTables``
-  and ``param_tables.csv`` (``fixture_copy``): the period table gives its law's rate
+  and ``param_tables.csv`` beside the shipped table (``fixture_copy``): the period table
+  gives its law's rate
   unrounded, 1 at the last age and at most 1; an age outside the table, another sex, a
   missing or a refused ``birth_year`` or ``duration`` and a duration below 1 raise, naming
   the table and the argument; the generational table applies its trend from its base year
@@ -37,29 +42,35 @@ The space ``core/Core/Tables``:
 
 The derivation hooks of the core's ``Projection``:
 
-- No shipped product reaches a hook that reads the factory: ``mort_table_name``,
-  ``mort_rate_table`` and ``omega_age_table`` are derived and unreachable in the usage scan
-  of every product.
-- On a scratch copy of Index that deletes its own ``mort_rate_at_age`` and chooses a fixture
-  table in its tariff-type file, the hooks deliver the table's rate on the point's own sex,
+- Only a switched product reaches a hook that reads the factory: ``mort_table_name`` and
+  ``mort_rate_table`` are derived everywhere, reachable in the usage scan of Index, which
+  chooses ``dav2008t_proxy``, and unreachable in the other nine, which hold no choice.
+- Index reads its death rates through the factory alone: on every shipped point
+  ``mort_rate(t)`` is ``q(dav2008t_proxy, sex, age(t))`` times its ``mort_be_factor`` 0.75,
+  through the core's cells, none overridden but the factor; its folder holds no mortality
+  file or column, its ``Data`` no Reference ``mort_file``, and no ``mort_table`` loader is
+  reachable.
+- On a scratch copy of Index that chooses a fixture table in its tariff-type file
+  (``switched_copy``), the hooks deliver the table's rate on the point's own sex,
   its unisex blend and its end age, ``mort_rate`` stands on them, and the copy runs through
   both engines of the runner with the same results, the factory called without a birth
   year; with a ``birth_year`` cell and the generational fixture table the hooks pass the
   birth year on, and without the cell the generational table raises.
 - A table rate of 1 passes through the core's derivation as 1 (AD-12): on a copy whose
-  fixture table closes at the last age a point attains, with a best-estimate factor and a trend
-  term below 1 and a loading above 1, ``mort_rate`` and ``mort_rate_tariff`` are 1 at the end age minus
+  fixture table closes at the last age a point attains, with Index' best-estimate factor and a
+  trend term below 1 and a loading above 1, ``mort_rate`` and ``mort_rate_tariff`` are 1 at the end age minus
   one and the factor and the loading times the table rate the year before.
 
 The usage scan ``core/param_usage.py`` (``docs/core.md``, "The usage check and the view"):
 
-- Every shipped product is clean, with no table and no choice, and no table is unchosen
-  across the ten.
+- Every shipped product is clean and holds the factory's table; Index holds its choice and
+  reads the table's items through ``mort_table_name``, the other nine hold no choice and
+  read no tables item, and no table is unchosen across the ten.
 - On a scratch copy of Index that chooses a fixture table (``choosing_copy``) the scan holds
   the factory's ``items()`` and the choice, counts the chosen table's items as read by the
   cells reading the choice item and no other table's item, and reports nothing; a copy with
-  the fixture tables and no choice reads no tables item, and neither does one whose choice
-  item no cell reads.
+  the fixture tables, a table read of its own and no choice (``unswitched_copy``) reads no
+  tables item, and neither does one whose choice item no cell reads.
 - The scan reports a chosen name the factory lacks, naming the item, its file and the name,
   in the tariff-type and the tariff file; an item of the tables layer that is in no table's
   items; an item a chosen table names that the layer lacks; a product-defined
@@ -75,6 +86,7 @@ from __future__ import annotations
 
 import ast
 import builtins
+import csv
 import importlib
 import importlib.util
 from pathlib import Path
@@ -87,6 +99,34 @@ from test_core import (CORE_MODEL, MODELS, PRODUCTS_DIR, ROOT, _add_params, _for
 
 RLV = "risikolebensversicherung"
 TABLES_FILE = "param_tables.csv"
+
+
+# The tables the factory holds, {table: (law cell, parameters)}, the rows of the table
+# parameter file, {item: (value as written, basis)}, each a row of the accepted values
+# package, and the products that have switched to the factory, {product: its ``mort_table``}.
+SHIPPED_TABLES = {
+    "dav2008t_proxy": ("makeham", ("m_a", "m_b", "m_c", "f_a", "f_b", "f_c",
+                                   "first_age", "end_age")),
+}
+SHIPPED_ITEMS = {table: tuple(f"{table}_{name}" for name in names)
+                 for table, (_law, names) in SHIPPED_TABLES.items()}
+SHIPPED_ROWS = {
+    "dav2008t_proxy_m_a": ("0.00022", "Setzung"),
+    "dav2008t_proxy_m_b": ("2.8820182383e-05", "Setzung"),
+    "dav2008t_proxy_m_c": ("1.1", "Setzung"),
+    "dav2008t_proxy_f_a": ("0.00016", "Setzung"),
+    "dav2008t_proxy_f_b": ("2.1653029589e-05", "Setzung"),
+    "dav2008t_proxy_f_c": ("1.1", "Setzung"),
+    "dav2008t_proxy_first_age": ("0", "Setzung"),
+    "dav2008t_proxy_end_age": ("121", "Setzung"),
+}
+SHIPPED_LAYER = {item: (int(text) if text.isdigit() else float(text))
+                 for item, (text, _basis) in SHIPPED_ROWS.items()}
+SHIPPED_PROVENANCE = {
+    "dav2008t_proxy": "[std] proxy of DAV 2008 T, first order, not the table itself, whose"
+                      " values are DAV property and are not shipped; ",
+}
+SWITCHED = {"indexpolice": "dav2008t_proxy"}
 
 
 def tables_file(folder: Path, product: str = RLV) -> Path:
@@ -112,21 +152,38 @@ def product_models():
         model.close()
 
 
-def test_the_shipped_tables_file_holds_the_header_alone():
+def test_the_shipped_tables_file_holds_the_rows_of_its_tables_and_no_other():
     path = CORE_MODEL / "Data" / TABLES_FILE
-    assert path.read_text(encoding="utf-8") == "item,value,basis,provenance\n"
+    text = path.read_text(encoding="utf-8")
+    assert text.isascii()
+    with path.open(encoding="utf-8", newline="") as handle:
+        header, *rows = list(csv.reader(handle))
+    assert header == ["item", "value", "basis", "provenance"]
+    assert all(len(row) == 4 for row in rows)
+    assert [row[0] for row in rows] == [item for table in SHIPPED_TABLES
+                                        for item in SHIPPED_ITEMS[table]]
+    assert {row[0]: (row[1], row[2]) for row in rows} == SHIPPED_ROWS
+    for item, _value, _basis, provenance in rows:
+        (table,) = [table for table in SHIPPED_TABLES if item in SHIPPED_ITEMS[table]]
+        assert provenance.startswith(SHIPPED_PROVENANCE[table]), item
+        assert len(provenance) > len(SHIPPED_PROVENANCE[table]), item
+    assert len({row[3] for row in rows if not row[0].endswith(("_m_c", "_f_c"))}) == len(
+        [row for row in rows if not row[0].endswith(("_m_c", "_f_c"))])
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
-def test_the_tables_layer_is_the_second_layer_and_empty(product, product_models):
+def test_the_tables_layer_is_the_second_layer_and_holds_the_tables(product, product_models):
     data = product_models(product).Data
     assert data.param_tables_path() == data.model.path / "CoreData" / TABLES_FILE
     assert data.param_tables_path().is_file()
     assert list(data.param_paths()) == ["core", "tables", "tariff_type"]
     assert data.param_paths()["tables"] == data.param_tables_path()
-    assert data.param_rows()["tables"] == []
+    assert [(row[0], row[1], row[2]) for row in data.param_rows()["tables"]] == [
+        (item, value, basis) for item, (value, basis) in SHIPPED_ROWS.items()]
     assert list(data.param_layers()) == ["core", "tables", "tariff_type"]
-    assert data.param_layers()["tables"] == {}
+    layer = data.param_layers()["tables"]
+    assert layer == SHIPPED_LAYER
+    assert all(type(layer[item]) is type(value) for item, value in SHIPPED_LAYER.items())
 
 
 def test_param_without_the_tables_file_raises(tmp_path):
@@ -144,7 +201,8 @@ def test_param_reads_an_item_of_the_tables_layer(tmp_path):
     copy = mx.read_model(folder / MODELS[RLV], name="TablesItemProbe")
     try:
         data = copy.Data
-        assert data.param_layers()["tables"] == {"fixture_end_age": 121, "fixture_m_a": 0.0005}
+        assert data.param_layers()["tables"] == SHIPPED_LAYER | {"fixture_end_age": 121,
+                                                                 "fixture_m_a": 0.0005}
         assert data.param("fixture_end_age") == 121
         assert type(data.param("fixture_end_age")) is int
         assert data.param("fixture_m_a") == 0.0005
@@ -239,7 +297,7 @@ def test_param_rejects_an_item_twice_in_the_tables_file(tmp_path):
 
 TABLES_SOURCE = CORE_MODEL / "Tables" / "__init__.py"
 TABLES_CELLS = ["definitions", "definition", "items", "parameter", "first_age", "end_age",
-                "base_year", "select_factors", "base_rate", "trend", "q"]
+                "base_year", "select_factors", "base_rate", "trend", "makeham", "q"]
 
 
 def raised_line(call) -> str:
@@ -266,7 +324,12 @@ def test_the_core_holds_the_tables_space_without_a_parameter():
         assert list(tables.cells) == TABLES_CELLS
         assert tables.data is model.Data
         assert tables.bases == []
-        assert tables.definitions() == {} and tables.items() == {}
+        assert list(tables.definitions()) == list(SHIPPED_TABLES)
+        for table, (law_name, names) in SHIPPED_TABLES.items():
+            law_cell, trend_cell, held = tables.definitions()[table]
+            assert f".Tables.{law_name}(table, sex, x)" in repr(law_cell)
+            assert trend_cell is None and held == names
+        assert tables.items() == SHIPPED_ITEMS
     finally:
         model.close()
 
@@ -301,13 +364,100 @@ def test_a_product_holds_the_factory_as_a_symlink_and_inherits_it_nowhere(produc
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
-@pytest.mark.parametrize("table", ["dav2008t_proxy", "nosuch"])
-def test_no_table_is_defined_in_a_shipped_product(product, table, product_models):
+def test_every_shipped_product_holds_the_factorys_tables_and_no_other(product, product_models):
+    """Also a product no cell of which reads the table: the factory is model-wide."""
     tables = product_models(product).CoreTables
-    assert tables.definitions() == {}
-    line = raised_line(lambda: tables.q(table, "M", 40))
-    assert line == f"ValueError: table {table!r} is not defined"
-    assert raised_line(lambda: tables.end_age(table)).startswith("KeyError")
+    assert list(tables.definitions()) == list(SHIPPED_TABLES)
+    assert tables.items() == SHIPPED_ITEMS
+    assert tables.q("dav2008t_proxy", "M", 40) == makeham_rate("M", 40)
+    assert tables.end_age("dav2008t_proxy") == 121 and tables.first_age("dav2008t_proxy") == 0
+    line = raised_line(lambda: tables.q("nosuch", "M", 40))
+    assert line == "ValueError: table 'nosuch' is not defined"
+    assert raised_line(lambda: tables.end_age("nosuch")).startswith("KeyError")
+
+
+DAV2008T = "dav2008t_proxy"
+
+
+def makeham_rate(sex: str, x: int, table: str = DAV2008T) -> float:
+    """The rate of the law ``makeham`` from the rows of a shipped table, in the float
+    operations of the law's cell: ``a + b * c ** x``."""
+    a, b, c = (SHIPPED_LAYER[f"{table}_{sex.lower()}_{name}"] for name in "abc")
+    return a + b * c ** x
+
+
+@pytest.fixture(scope="module")
+def shipped_tables(product_models):
+    """The factory as a shipped product holds it, read off RLV, which reads no table of it."""
+    return product_models(RLV).CoreTables
+
+
+@pytest.mark.parametrize("sex", ["M", "F"])
+def test_dav2008t_proxy_gives_its_makeham_rate_capped_at_1(shipped_tables, sex):
+    assert SHIPPED_LAYER["dav2008t_proxy_m_a"] == 0.00022
+    assert SHIPPED_LAYER["dav2008t_proxy_m_b"] == 2.8820182383e-05
+    assert SHIPPED_LAYER["dav2008t_proxy_f_a"] == 0.00016
+    assert SHIPPED_LAYER["dav2008t_proxy_f_b"] == 2.1653029589e-05
+    assert SHIPPED_LAYER["dav2008t_proxy_m_c"] == 1.1 == SHIPPED_LAYER["dav2008t_proxy_f_c"]
+    a, b = {"M": (0.00022, 2.8820182383e-05), "F": (0.00016, 2.1653029589e-05)}[sex]
+    capped = []
+    for x in range(0, 120):
+        rate = shipped_tables.q(DAV2008T, sex, x)
+        assert type(rate) is float
+        assert rate == min(1.0, a + b * 1.1 ** x) == min(1.0, makeham_rate(sex, x)), x
+        assert shipped_tables.base_rate(DAV2008T, sex, x) == a + b * 1.1 ** x, x
+        assert shipped_tables.makeham(DAV2008T, sex, x) == a + b * 1.1 ** x, x
+        if a + b * 1.1 ** x > 1.0:
+            capped.append(x)
+    # the cap binds from 110 for a man and 113 for a woman, below it the rate is the law's
+    assert capped == list(range({"M": 110, "F": 113}[sex], 120))
+    assert shipped_tables.q(DAV2008T, sex, capped[0]) == 1.0
+    assert shipped_tables.q(DAV2008T, sex, capped[0] - 1) < 1.0
+    assert shipped_tables.q(DAV2008T, sex, 40) != round(makeham_rate(sex, 40), 10)
+    assert raised_line(lambda: shipped_tables.trend(DAV2008T, sex, 40)) == (
+        "ValueError: table 'dav2008t_proxy': a period table has no trend")
+    assert shipped_tables.select_factors(DAV2008T) == ()
+
+
+# The values package's "New table" figures of dav2008t_proxy, six significant digits.
+PACKAGE_RATES = {
+    ("M", 30): 0.000722895, ("M", 40): 0.00152438, ("M", 50): 0.00360323, ("M", 65): 0.0143526,
+    ("F", 30): 0.000537832, ("F", 40): 0.00114, ("F", 50): 0.00270187, ("F", 65): 0.010778,
+}
+
+
+@pytest.mark.parametrize(("sex", "x"), sorted(PACKAGE_RATES))
+def test_dav2008t_proxy_gives_the_rates_of_the_values_package(shipped_tables, sex, x):
+    rate = shipped_tables.q(DAV2008T, sex, x)
+    assert float(f"{rate:.6g}") == PACKAGE_RATES[(sex, x)]
+    # the anchor of the table: q(M, 37) = 0.0012, and women three years of age behind
+    assert shipped_tables.q(DAV2008T, "M", 37) == pytest.approx(0.0012, rel=1e-9)
+    assert shipped_tables.q(DAV2008T, "F", 40) - 0.00016 == pytest.approx(
+        shipped_tables.q(DAV2008T, "M", 37) - 0.00022, rel=1e-9)
+
+
+@pytest.mark.parametrize("sex", ["M", "F"])
+def test_dav2008t_proxy_closes_at_120_and_raises_outside_its_ages(shipped_tables, sex):
+    rate = shipped_tables.q(DAV2008T, sex, 120)
+    assert rate == 1.0 and type(rate) is float
+    assert shipped_tables.q(DAV2008T, sex, 0) == makeham_rate(sex, 0)
+    for x in (121, -1, 150):
+        for cell in (shipped_tables.q, shipped_tables.base_rate):
+            line = raised_line(lambda: cell(DAV2008T, sex, x))
+            assert line == (f"ValueError: table 'dav2008t_proxy': x {x!r} is outside its ages"
+                            f" 0 to 120"), line
+
+
+def test_dav2008t_proxy_is_a_period_table_without_selection(shipped_tables):
+    for x in (40, 120):
+        line = raised_line(lambda: shipped_tables.q(DAV2008T, "M", x, 1960))
+        assert line == ("ValueError: table 'dav2008t_proxy': birth_year 1960 is given, the"
+                        " table is a period table")
+        assert line == raised_line(lambda: shipped_tables.q(DAV2008T, "M", x, birth_year=1960))
+        line = raised_line(lambda: shipped_tables.q(DAV2008T, "M", x, None, 1))
+        assert line == ("ValueError: table 'dav2008t_proxy': duration 1 is given, the table"
+                        " has no selection")
+        assert line == raised_line(lambda: shipped_tables.q(DAV2008T, "M", x, duration=1))
 
 
 def test_the_factory_source_holds_no_number_but_0_and_1():
@@ -375,7 +525,7 @@ def test_the_factory_cells_read_only_data_param_and_each_other(tmp_path):
 
 
 # The fixture tables of a scratch copy: laws no shipped table has, numbers of no real table,
-# and names that are none of the tables the factory will hold.
+# and names that are none of the tables the factory holds or will hold.
 FIXTURE_LAWS = '''
 def law_fixture(table, sex, x):
     """A fixture law: ``a * b ** x`` on the rate, by sex."""
@@ -414,18 +564,36 @@ MARKER = "# " + "-" * 75 + "\n# References"
 INDEX = "indexpolice"
 
 
+ALL_TABLES = list(SHIPPED_TABLES) + list(FIXTURE_DEFINITIONS)
+
+
+def add_cells(path: Path, source: str) -> None:
+    """Append the cells of ``source`` to a space file, before its References."""
+    text = path.read_text(encoding="utf-8")
+    assert text.count(MARKER) == 1
+    path.write_text(text.replace(MARKER, source.lstrip("\n") + "\n" + MARKER),
+                    encoding="utf-8")
+
+
 def write_fixture_tables(model_dir: Path) -> None:
-    """Write the fixture tables into a scratch copy: their definitions and laws into its
-    ``CoreTables`` and their numbers into its ``param_tables.csv``."""
+    """Write the fixture tables into a scratch copy, beside the shipped tables: their
+    definitions, after the shipped ones, and laws into its ``CoreTables`` and their numbers
+    into its ``param_tables.csv``."""
     path = model_dir / "CoreTables" / "__init__.py"
     assert path.is_file() and not (model_dir / "CoreTables").is_symlink()
     text = path.read_text(encoding="utf-8")
-    assert text.count("    return {}\n") == 1 and text.count(MARKER) == 1
-    entries = "".join(f"        {table!r}: ({law}, {trend}, {names!r}),\n"
-                      for table, (law, trend, names) in FIXTURE_DEFINITIONS.items())
-    text = text.replace("    return {}\n", "    return {\n" + entries + "    }\n")
-    path.write_text(text.replace(MARKER, FIXTURE_LAWS.lstrip("\n") + "\n" + MARKER),
-                    encoding="utf-8")
+    (cell,) = [node for node in ast.parse(text).body
+               if isinstance(node, ast.FunctionDef) and node.name == "definitions"]
+    (held,) = [node.value for node in ast.walk(cell) if isinstance(node, ast.Return)]
+    assert isinstance(held, ast.Dict) and held.end_lineno > held.lineno
+    assert [key.value for key in held.keys] == list(SHIPPED_TABLES)
+    lines = text.splitlines(keepends=True)
+    assert lines[held.end_lineno - 1] == "    }\n"
+    lines[held.end_lineno - 1:held.end_lineno - 1] = [
+        f"        {table!r}: ({law}, {trend}, {names!r}),\n"
+        for table, (law, trend, names) in FIXTURE_DEFINITIONS.items()]
+    path.write_text("".join(lines), encoding="utf-8")
+    add_cells(path, FIXTURE_LAWS)
     _add_params(model_dir / "CoreData" / TABLES_FILE,
                 {f"{table}_{name}": value for table, values in FIXTURE_VALUES.items()
                  for name, value in values.items()})
@@ -453,19 +621,23 @@ def fixture_tables(tmp_path_factory):
 
 
 def test_the_fixture_is_written_into_the_copy_only(fixture_tables):
-    assert list(fixture_tables.definitions()) == list(FIXTURE_DEFINITIONS)
-    assert "law_fixture" not in TABLES_SOURCE.read_text(encoding="utf-8")
-    assert (CORE_MODEL / "Data" / TABLES_FILE).read_text(
-        encoding="utf-8") == "item,value,basis,provenance\n"
+    assert list(fixture_tables.definitions()) == ALL_TABLES
+    assert "_fixture" not in TABLES_SOURCE.read_text(encoding="utf-8")
+    assert "_fixture" not in (CORE_MODEL / "Data" / TABLES_FILE).read_text(encoding="utf-8")
     known = ("dav2008t_proxy", "dav2008t_nr_proxy", "dav2008t_r_proxy", "dav2004r_proxy",
              "dav1997ti_proxy", "pflege_aktive_proxy")
+    assert set(SHIPPED_TABLES) <= set(known)
     assert not set(FIXTURE_DEFINITIONS) & set(known)
+    # the shipped table is the same beside the fixture tables
+    assert fixture_tables.q("dav2008t_proxy", "F", 50) == makeham_rate("F", 50)
     assert not any(name.endswith("_proxy") for name in FIXTURE_DEFINITIONS)
 
 
 def test_items_lists_the_items_of_every_table(fixture_tables):
     items = fixture_tables.items()
-    assert list(items) == list(FIXTURE_DEFINITIONS)
+    assert list(items) == ALL_TABLES
+    for table in SHIPPED_TABLES:
+        assert items[table] == SHIPPED_ITEMS[table]
     for table, (_law, _trend, names) in FIXTURE_DEFINITIONS.items():
         assert items[table] == tuple(f"{table}_{name}" for name in names)
     held = set(fixture_tables.data.param_layers()["tables"])
@@ -639,17 +811,6 @@ def load_runner():
     return module
 
 
-def replace_cell(path: Path, name: str, source: str) -> None:
-    """Replace the module-level cell ``name`` of a space file by ``source`` ('' deletes it)."""
-    text = path.read_text(encoding="utf-8")
-    cells = [node for node in ast.parse(text).body
-             if isinstance(node, ast.FunctionDef) and node.name == name]
-    assert len(cells) == 1, name
-    lines = text.splitlines(keepends=True)
-    lines[cells[0].lineno - 1:cells[0].end_lineno] = [source]
-    path.write_text("".join(lines), encoding="utf-8")
-
-
 def held_rates(space_model) -> dict:
     """The rates the factory of an exported model holds, by the arguments of ``q``."""
     return dict(space_model.CoreTables._v_q)
@@ -684,15 +845,15 @@ def run_spying_on_the_factory(folder: Path, monkeypatch, **run):
 
 
 def test_the_runner_keeps_the_rates_of_an_earlier_point(tmp_path, monkeypatch):
-    """Index' own table lookup replaced, in the copy, by a read of the period fixture table:
-    the two engines agree, and the rates point 1 computed are still held after its item and
-    every later point's item are deleted."""
+    """The copy of Index reads the period fixture table in a cell of its own, which
+    overrides the core's hook: the two engines agree, and the rates point 1 computed are
+    still held after its item and every later point's item are deleted."""
     folder = fixture_copy(tmp_path)
-    replace_cell(folder / MODELS[INDEX] / "Projection" / "__init__.py", "mort_rate_at_age",
-                 'def mort_rate_at_age(x):\n'
-                 '    """The fixture table\'s rate.\n\n'
-                 '    Override reason: test fixture, tests/test_tables.py\n    """\n'
-                 '    return tables.q("period_fixture", sex(), x)\n')
+    add_cells(folder / MODELS[INDEX] / "Projection" / "__init__.py",
+              'def mort_rate_at_age(x):\n'
+              '    """The fixture table\'s rate.\n\n'
+              '    Override reason: test fixture, tests/test_tables.py\n    """\n'
+              '    return tables.q("period_fixture", sex(), x)\n')
     runner = load_runner()
     traced = runner.run_product(folder, engine="modelx")
     shipped = runner.run_product(PRODUCTS_DIR / INDEX, engine="modelx")
@@ -719,28 +880,126 @@ TABLE_HOOKS = ("mort_table_name", "mort_rate_table", "omega_age_table")
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
-def test_no_shipped_product_reaches_a_hook_that_reads_the_factory(product, product_models):
+def test_only_a_switched_product_reaches_a_hook_that_reads_the_factory(product, product_models):
     model = product_models(product)
     reachable = param_usage.scan(model).reachable
     for hook in TABLE_HOOKS:
         assert model.Projection.cells[hook]._is_derived(), hook
-        assert hook not in reachable, hook
-    assert "mort_table" not in model.Data.param_dict()
+    assert "omega_age_table" not in reachable
+    if product in SWITCHED:
+        assert {"mort_table_name", "mort_rate_table", "mort_rate_at_age"} <= reachable
+        assert model.Data.param_dict()["mort_table"] == SWITCHED[product]
+    else:
+        for hook in TABLE_HOOKS:
+            assert hook not in reachable, hook
+        assert "mort_table" not in model.Data.param_dict()
+
+
+# The best-estimate rates of the values package for Index, six significant digits.
+INDEX_PACKAGE_RATES = {
+    ("M", 30): 0.000542171, ("M", 40): 0.00114328, ("M", 50): 0.00270242, ("M", 65): 0.0107644,
+    ("F", 30): 0.000403374, ("F", 40): 0.000855, ("F", 50): 0.0020264, ("F", 65): 0.00808351,
+}
+
+
+def test_index_best_estimate_is_the_factorys_rate_times_its_factor(product_models):
+    model = product_models(INDEX)
+    projection, tables = model.Projection, model.CoreTables
+    cells = projection.cells
+    for name in TABLE_HOOKS + ("birth_year", "mort_rate_at_age", "mort_rate_base",
+                               "mort_be_trend", "mort_rate", "mort_rate_mth", "pols_death"):
+        assert cells[name]._is_derived(), name
+    assert cells["mort_be_factor"]._is_defined()
+    assert "Override reason:" in cells["mort_be_factor"].formula.source
+    assert model.Data.param("mort_be_factor") == 0.75
+    assert model.Data.param("mort_table") == "dav2008t_proxy"
+    seen = set()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        sex = item.sex()
+        assert item.mort_table_name() == "dav2008t_proxy"
+        assert item.mort_be_factor() == 0.75 and item.birth_year() == 0
+        for t in range(item.t_start(), item.proj_len()):
+            x = item.age(t)
+            rate = tables.q("dav2008t_proxy", sex, x)
+            assert rate == makeham_rate(sex, x) < 1.0
+            assert item.mort_rate_at_age(x) == rate == item.mort_rate_base(t)
+            assert item.mort_rate(t) == rate * 0.75, (point_id, t)
+            assert item.mort_rate_mth(t) == 1.0 - (1.0 - rate * 0.75) ** (1.0 / 12.0)
+            if (sex, x) in INDEX_PACKAGE_RATES:
+                assert float(f"{item.mort_rate(t):.6g}") == INDEX_PACKAGE_RATES[(sex, x)]
+                seen.add((sex, x))
+    assert {("M", 40), ("M", 50), ("M", 65), ("F", 40), ("F", 50), ("F", 65)} <= seen
+    assert {key[0] for key in tables.q} == {"dav2008t_proxy"}
+
+
+def test_index_holds_no_mortality_file_reference_or_formula(product_models):
+    folder = PRODUCTS_DIR / INDEX
+    assert not (folder / "mort_table.csv").exists()
+    for path in sorted(folder.glob("*.csv")):
+        with path.open(encoding="utf-8", newline="") as handle:
+            header = next(csv.reader(handle))
+        assert not [column for column in header if "mort" in column or column == "qx"], path
+    model = product_models(INDEX)
+    assert "mort_file" not in model.Data.refs
+    assert not [name for name in model.Data.refs if "mort" in name]
+    own = sorted(name for name, cell in model.Projection.cells.items()
+                 if "mort" in name and cell._is_defined())
+    assert own == ["mort_be_factor"]
+    assert not [name for name, cell in model.Data.cells.items()
+                if "mort" in name and cell._is_defined()]
+    reachable = param_usage.scan(model).reachable
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & reachable
+    for space in ("Data", "Projection"):
+        source = (folder / MODELS[INDEX] / space / "__init__.py").read_text(encoding="utf-8")
+        for name in ("mort_table.csv", "mort_file", "mort_table_dict", "mort_table()"):
+            assert name not in source, (space, name)
+    # every death rate of a run comes through the factory's one lookup
+    item = model.Projection[1]
+    item.result_cf()
+    assert len(model.CoreTables.q) > 0
+    assert len(model.Data.cells["mort_table"]) == 0
+    assert len(model.Data.cells["mort_table_dict"]) == 0
+
+
+def unswitched_copy(tmp_path: Path) -> Path:
+    """A scratch copy of Index with the fixture tables that chooses no table: without its
+    row ``mort_table`` and with a ``mort_rate_at_age`` of its own that reads no table, as a
+    product before its switch."""
+    folder = fixture_copy(tmp_path)
+    path = folder / "param_tariff_type.csv"
+    rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    choice = [row for row in rows if row.startswith("mort_table,")]
+    assert len(choice) == 1
+    path.write_text("".join(row for row in rows if row not in choice), encoding="utf-8")
+    add_cells(folder / MODELS[INDEX] / "Projection" / "__init__.py",
+              'def mort_rate_at_age(x):\n'
+              '    """A rate of its own, read off no table.\n\n'
+              '    Override reason: test fixture, tests/test_tables.py\n    """\n'
+              '    return 0.001 if sex() == "M" else 0.0007\n')
+    return folder
 
 
 def switched_copy(tmp_path: Path, table: str, birth_year: int | None = None) -> Path:
-    """A scratch copy of Index with the fixture tables that has no ``mort_rate_at_age`` of
-    its own and chooses ``table`` as its ``mort_table``; with ``birth_year``, a cell of that
-    name returning it."""
+    """A scratch copy of Index with the fixture tables that chooses ``table`` as its
+    ``mort_table`` in place of the shipped choice; with ``birth_year``, a cell of that name
+    returning it. Index has no ``mort_rate_at_age`` of its own, and its ``mort_be_factor``
+    0.75 stands."""
     folder = fixture_copy(tmp_path)
     path = folder / MODELS[INDEX] / "Projection" / "__init__.py"
-    replace_cell(path, "mort_rate_at_age", "" if birth_year is None else (
-        'def birth_year():\n'
-        '    """A fixture birth year.\n\n'
-        '    Override reason: test fixture, tests/test_tables.py\n    """\n'
-        f'    return {birth_year}\n'))
-    _add_params(folder / "param_tariff_type.csv", {"mort_table": table,
-                                                   "unisex_mix_male": "0.45"})
+    assert "def mort_rate_at_age(" not in path.read_text(encoding="utf-8")
+    if birth_year is not None:
+        add_cells(path,
+                  'def birth_year():\n'
+                  '    """A fixture birth year.\n\n'
+                  '    Override reason: test fixture, tests/test_tables.py\n    """\n'
+                  f'    return {birth_year}\n')
+    path = folder / "param_tariff_type.csv"
+    rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    choice = [row for row in rows if row.startswith("mort_table,")]
+    assert len(choice) == 1
+    path.write_text("".join(row for row in rows if row not in choice), encoding="utf-8")
+    _add_params(path, {"mort_table": table, "unisex_mix_male": "0.45"})
     return folder
 
 
@@ -771,9 +1030,9 @@ def test_the_hooks_deliver_the_chosen_table(tmp_path):
             assert item.mort_rate_tariff_at_age(120) == 1.0
             for t in (item.t_start(), item.t_start() + 13, item.proj_len() - 1):
                 rate = tables.q("period_fixture", sex, item.age(t))
-                assert item.mort_be_trend(t) == 1.0 and item.mort_be_factor() == 1.0
+                assert item.mort_be_trend(t) == 1.0 and item.mort_be_factor() == 0.75
                 assert item.mort_rate_base(t) == rate
-                assert item.mort_rate(t) == rate
+                assert item.mort_rate(t) == rate * 0.75
             line = raised_line(lambda: item.mort_rate_at_age(121))
             assert line.startswith("ValueError: table 'period_fixture': x 121 is outside")
         assert sexes == {"M", "F"}
@@ -809,25 +1068,18 @@ def test_a_generational_table_without_a_birth_year_cell_raises(tmp_path):
 
 
 def test_a_chosen_table_the_factory_does_not_hold_raises(tmp_path):
-    folder = switched_copy(tmp_path, "dav2008t_proxy")
+    folder = switched_copy(tmp_path, "dav2004r_proxy")
     model = mx.read_model(folder / MODELS[INDEX], name="SwitchedUnknownProbe")
     try:
         item = model.Projection[1]
         for call in (lambda: item.mort_rate_at_age(50), lambda: item.mort_rate(item.t_start())):
-            assert raised_line(call) == "ValueError: table 'dav2008t_proxy' is not defined"
+            assert raised_line(call) == "ValueError: table 'dav2004r_proxy' is not defined"
     finally:
         model.close()
 
 
+# Index' own ``mort_be_factor`` is 0.75, a factor below 1; the copy adds a trend term and a load.
 THRU_CELLS = '''
-def mort_be_factor():
-    """A fixture best-estimate factor below 1.
-
-    Override reason: test fixture, tests/test_tables.py
-    """
-    return 0.75
-
-
 def mort_be_trend(t):
     """A fixture best-estimate trend term below 1.
 
@@ -855,11 +1107,7 @@ def test_a_table_rate_of_1_passes_through_the_factor_and_the_load(tmp_path):
     assert text.count("period_fixture_end_age,121,") == 1
     tables_path.write_text(text.replace("period_fixture_end_age,121,",
                                         "period_fixture_end_age,67,"), encoding="utf-8")
-    path = model_dir / "Projection" / "__init__.py"
-    text = path.read_text(encoding="utf-8")
-    assert text.count(MARKER) == 1
-    path.write_text(text.replace(MARKER, THRU_CELLS.lstrip("\n") + "\n" + MARKER),
-                    encoding="utf-8")
+    add_cells(model_dir / "Projection" / "__init__.py", THRU_CELLS)
     model = mx.read_model(model_dir, name="ThruProbe")
     try:
         cells = model.Projection.cells
@@ -908,6 +1156,8 @@ def test_a_switched_copy_runs_through_both_engines(tmp_path, monkeypatch):
     assert sha != shipped[2]
     assert after[1] and after[1].items() <= at_end.items()
     assert all(key[0] == "period_fixture" and key[3] is None for key in at_end)
+    # the shipped choice is replaced in the copy: no rate of the shipped table is read
+    assert not [key for key in at_end if key[0] in SHIPPED_TABLES]
 
 
 # --------------------------------------------------------------------------- the usage scan
@@ -919,8 +1169,9 @@ def fixture_items(table: str) -> tuple[str, ...]:
 
 def choosing_copy(tmp_path: Path, table: str, file: str = "param_tariff_type.csv") -> Path:
     """A scratch copy of Index with the fixture tables that chooses ``table`` as its
-    ``mort_table`` in ``file`` and is otherwise clean in the usage scan: ``switched_copy``
-    without its row ``unisex_mix_male``, which no reachable cell of Index reads."""
+    ``mort_table`` in ``file``, in place of the shipped choice, and is otherwise clean in the
+    usage scan: ``switched_copy`` without its row ``unisex_mix_male``, which no reachable
+    cell of Index reads."""
     folder = switched_copy(tmp_path, table)
     path = folder / "param_tariff_type.csv"
     rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
@@ -944,24 +1195,43 @@ def scan_of(folder: Path, name: str, edit=None):
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
-def test_the_scan_of_a_shipped_product_holds_no_table_and_no_problem(product, product_models):
+def test_the_scan_of_a_shipped_product_holds_the_tables_and_no_problem(product, product_models):
     usage = param_usage.scan(product_models(product))
     assert usage.problems == []
-    assert usage.tables == {} and usage.choices == {}
-    assert usage.layers["tables"] == {}
+    assert usage.tables == SHIPPED_ITEMS
+    assert usage.layers["tables"] == SHIPPED_LAYER
+    read = set(usage.reads) & set(usage.layers["tables"])
+    if product in SWITCHED:
+        table = SWITCHED[product]
+        assert usage.choices == {"mort_table": table}
+        readers = usage.reads["mort_table"]
+        assert readers == {"mort_table_name"} and readers <= usage.reachable
+        assert read == set(SHIPPED_ITEMS[table])
+        for item in SHIPPED_ITEMS[table]:
+            assert usage.reads[item] == readers, item
+    else:
+        assert usage.choices == {} and read == set()
+        assert "mort_table" not in usage.reads
 
 
 def test_no_table_is_unchosen_in_the_ten_products(product_models):
     usages = [param_usage.scan(product_models(product)) for product in sorted(MODELS)]
     assert len(usages) == 10
     assert param_usage.unchosen_tables(usages) == []
+    chosen = {table for usage in usages for table in usage.choices.values()}
+    assert chosen == set(SHIPPED_TABLES) == set(SWITCHED.values())
+    # without the products that chose it, the table would be reported
+    others = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
+              if product not in SWITCHED]
+    assert param_usage.unchosen_tables(others) == sorted(SHIPPED_TABLES)
 
 
 @pytest.mark.parametrize("file", ["param_tariff_type.csv", "param_tariff.csv"])
 def test_the_scan_counts_the_items_of_a_chosen_table_as_read(tmp_path, file):
     usage = scan_of(choosing_copy(tmp_path, "period_fixture", file), "ChosenScanProbe")
     assert usage.problems == []
-    assert usage.tables == {table: fixture_items(table) for table in FIXTURE_DEFINITIONS}
+    assert usage.tables == SHIPPED_ITEMS | {table: fixture_items(table)
+                                            for table in FIXTURE_DEFINITIONS}
     assert usage.choices == {"mort_table": "period_fixture"}
     readers = usage.reads["mort_table"]
     assert readers == {"mort_table_name"} and readers <= usage.reachable
@@ -973,22 +1243,22 @@ def test_the_scan_counts_the_items_of_a_chosen_table_as_read(tmp_path, file):
 
 
 def test_the_scan_reads_no_tables_item_without_a_choice(tmp_path):
-    usage = scan_of(fixture_copy(tmp_path), "NoChoiceScanProbe")
+    usage = scan_of(unswitched_copy(tmp_path), "NoChoiceScanProbe")
     assert usage.problems == []
-    assert list(usage.tables) == list(FIXTURE_DEFINITIONS) and usage.choices == {}
+    assert list(usage.tables) == ALL_TABLES and usage.choices == {}
     assert usage.layers["tables"] and not set(usage.reads) & set(usage.layers["tables"])
     assert "mort_table" not in usage.reads
 
 
 def test_the_scan_reads_no_item_of_a_table_whose_choice_no_cell_reads(tmp_path):
-    folder = fixture_copy(tmp_path)
+    folder = unswitched_copy(tmp_path)
     _add_params(folder / "param_tariff_type.csv", {"probe_table": "period_fixture"})
     usage = scan_of(folder, "UnreadChoiceScanProbe")
     assert usage.choices == {"probe_table": "period_fixture"}
     assert usage.problems == ["item 'probe_table' of the tariff_type layer"
                               " (param_tariff_type.csv) is read by no reachable cell"]
     assert not set(usage.reads) & set(usage.layers["tables"])
-    assert param_usage.unchosen_tables([usage]) == sorted(FIXTURE_DEFINITIONS)
+    assert param_usage.unchosen_tables([usage]) == sorted(ALL_TABLES)
 
 
 def test_the_scan_reports_an_item_of_a_table_in_another_layer(tmp_path):
@@ -1005,7 +1275,7 @@ def test_the_scan_reports_an_item_of_a_table_in_another_layer(tmp_path):
 @pytest.mark.parametrize(("layer", "file"), [("core", "param_core.csv"),
                                              ("tables", TABLES_FILE)])
 def test_the_scan_reports_a_table_choice_in_the_core_or_the_tables_file(tmp_path, layer, file):
-    folder = fixture_copy(tmp_path)
+    folder = unswitched_copy(tmp_path)
     _add_params(folder / MODELS[INDEX] / "CoreData" / file, {"mort_table": "period_fixture"})
     usage = scan_of(folder, "ChoiceElsewhereScanProbe")
     assert usage.choices == {}
@@ -1045,7 +1315,8 @@ def test_the_scan_reports_an_item_a_chosen_table_names_and_the_layer_lacks(tmp_p
 
 
 def test_the_scan_reports_a_cell_reading_a_tables_item_directly(tmp_path):
-    """By a literal call and by a declared indirect read; the table stays unchosen."""
+    """By a literal call and by a declared indirect read; the table stays unchosen. The
+    copy keeps the shipped choice, whose table is read through the factory."""
     def edit(model):
         model.Projection.new_cells(
             name="probe_direct",
@@ -1063,7 +1334,7 @@ def test_the_scan_reports_a_cell_reading_a_tables_item_directly(tmp_path):
         " not through the table factory",
         "cell probe_direct reads the item 'gen_fixture_m_a' of the tables layer directly,"
         " not through the table factory"]
-    assert "gen_fixture" in param_usage.unchosen_tables([usage])
+    assert param_usage.unchosen_tables([usage]) == sorted(FIXTURE_DEFINITIONS)
 
 
 def test_the_scan_reports_a_product_defined_tables_path(tmp_path):
@@ -1090,12 +1361,17 @@ def test_the_scan_reports_a_read_around_param_through_the_tables_path(tmp_path):
 
 
 def test_unchosen_tables_names_the_tables_no_model_chooses(tmp_path):
-    others = sorted(set(FIXTURE_DEFINITIONS) - {"period_fixture"})
+    others = sorted(set(ALL_TABLES) - {"period_fixture"})
     period = scan_of(choosing_copy(tmp_path / "period", "period_fixture"), "UnchosenProbeA")
     assert param_usage.unchosen_tables([period]) == others
     gen = scan_of(choosing_copy(tmp_path / "gen", "gen_fixture"), "UnchosenProbeB")
-    none = scan_of(fixture_copy(tmp_path / "none"), "UnchosenProbeC")
-    assert param_usage.unchosen_tables([none]) == sorted(FIXTURE_DEFINITIONS)
+    none = scan_of(unswitched_copy(tmp_path / "none"), "UnchosenProbeC")
+    assert param_usage.unchosen_tables([none]) == sorted(ALL_TABLES)
     assert param_usage.unchosen_tables([none, period, gen]) == sorted(
         set(others) - {"gen_fixture"})
+    # the copy with the shipped choice chooses the shipped table and no fixture table
+    shipped = scan_of(fixture_copy(tmp_path / "shipped"), "UnchosenProbeD")
+    assert param_usage.unchosen_tables([shipped]) == sorted(FIXTURE_DEFINITIONS)
+    assert param_usage.unchosen_tables([none, period, gen, shipped]) == sorted(
+        set(FIXTURE_DEFINITIONS) - {"period_fixture", "gen_fixture"})
     assert param_usage.unchosen_tables([]) == []

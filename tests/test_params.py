@@ -17,10 +17,14 @@
 - A scratch copy whose read item moved from the tariff-type file into a new tariff file lists
   it with layer ``tariff``, its value, basis and provenance, after the tariff-type rows, and
   exits 0.
+- Index lists its choice ``mort_table`` and its ``mort_be_factor`` in the layer
+  ``tariff_type`` and the eight items of ``dav2008t_proxy`` in the layer ``tables``, each
+  with its value, basis and provenance, and exits 0; the nine products that choose no table
+  list no item of the layer.
 - A scratch copy of Index whose tariff chooses a fixture table lists that table's items with
   layer ``tables``, value, basis and provenance, after the core items and before the
-  tariff-type items, and no other table's, and exits 0; a copy with the fixture tables and
-  no choice lists no item of the layer.
+  tariff-type items, and no other table's, the shipped one's neither, and exits 0; a copy
+  with the fixture tables and no choice lists no item of the layer.
 - A scratch copy whose choice stands in a tariff file lists the choice with layer ``tariff``
   and its table's items with layer ``tables``, and exits 0.
 - A scratch copy whose choice names a table the factory lacks, whose table parameter file
@@ -49,8 +53,9 @@ sys.path.insert(0, str(ROOT / "tools"))
 from run_baseline import model_dir  # noqa: E402
 
 from test_core import _add_params  # noqa: E402
-from test_tables import (FIXTURE_DEFINITIONS, FIXTURE_VALUES, INDEX, choosing_copy,  # noqa: E402
-                         fixture_copy, fixture_items, tables_file)
+from test_tables import (FIXTURE_DEFINITIONS, FIXTURE_VALUES, INDEX, SHIPPED_ITEMS,  # noqa: E402
+                         SHIPPED_PROVENANCE, SHIPPED_ROWS, SWITCHED, choosing_copy,
+                         fixture_copy, fixture_items, tables_file, unswitched_copy)
 
 
 def load_tool(name: str, path: Path):
@@ -276,6 +281,44 @@ def tables_rows(folder: Path, name: str) -> tuple[list[dict], list[dict]]:
     return table, [row for row in table if row["layer"] == "tables"]
 
 
+def test_index_lists_its_choice_its_factor_and_the_items_of_its_table(capsys):
+    table, listed = tables_rows(PRODUCTS_DIR / INDEX, "ParamsShippedIndex")
+    assert [row["item"] for row in listed] == list(SHIPPED_ITEMS["dav2008t_proxy"])
+    for row in listed:
+        text, basis = SHIPPED_ROWS[row["item"]]
+        assert row["value"] == (int(text) if text.isdigit() else float(text))
+        assert row["basis"] == basis
+        assert row["provenance"].startswith(SHIPPED_PROVENANCE["dav2008t_proxy"])
+    by_item = {row["item"]: row for row in table}
+    assert (by_item["mort_table"]["value"], by_item["mort_table"]["layer"],
+            by_item["mort_table"]["basis"]) == ("dav2008t_proxy", "tariff_type", "Setzung")
+    assert (by_item["mort_be_factor"]["value"], by_item["mort_be_factor"]["layer"],
+            by_item["mort_be_factor"]["basis"]) == (0.75, "tariff_type", "source")
+    assert by_item["mort_table"]["provenance"] and by_item["mort_be_factor"]["provenance"]
+
+    assert params.main([INDEX]) == 0
+    out, err = capsys.readouterr()
+    assert err == "" and headers(out) == [INDEX]
+    split = [line.split() for line in out.splitlines()]
+    assert ["mort_table", "'dav2008t_proxy'", "tariff_type", "Setzung"] in [
+        line[:4] for line in split]
+    assert ["mort_be_factor", "0.75", "tariff_type", "source"] in [line[:4] for line in split]
+    for item, (text, basis) in SHIPPED_ROWS.items():
+        value = int(text) if text.isdigit() else float(text)
+        assert [item, repr(value), "tables", basis] in [line[:4] for line in split], item
+    assert len([line for line in split if "dav2008t_proxy" in " ".join(line[:2])]) == 9
+
+
+@pytest.mark.parametrize("product", [name for name in PRODUCTS if name not in SWITCHED])
+def test_a_product_that_chooses_no_table_lists_no_tables_item(product, capsys):
+    table, listed = tables_rows(PRODUCTS_DIR / product, "ParamsNoTable")
+    assert table and listed == []
+    assert params.main([product]) == 0
+    out, err = capsys.readouterr()
+    assert err == "" and "dav2008t_proxy" not in out
+    assert not [line for line in out.splitlines() if line.split()[2:3] == ["tables"]]
+
+
 def test_the_items_of_a_chosen_table_are_listed_in_the_tables_layer(tmp_path, capsys):
     folder = choosing_copy(tmp_path, "period_fixture")
     table, listed = tables_rows(folder, "ParamsChosenTable")
@@ -306,18 +349,18 @@ def test_the_items_of_a_chosen_table_are_listed_in_the_tables_layer(tmp_path, ca
             < position["mort_table"])
     assert lines[position["mort_table"]][1:3] == ["'period_fixture'", "tariff_type"]
     # no other table's item
-    others = set(FIXTURE_DEFINITIONS) - {"period_fixture"}
+    others = set(FIXTURE_DEFINITIONS) - {"period_fixture"} | set(SHIPPED_ITEMS)
     assert others and not any(table in out for table in others)
 
 
 def test_no_tables_item_is_listed_without_a_choice(tmp_path, capsys):
-    folder = fixture_copy(tmp_path)
+    folder = unswitched_copy(tmp_path)
     table, listed = tables_rows(folder, "ParamsNoChoice")
     assert table and listed == []
     assert params.main([str(folder)]) == 0
     out, err = capsys.readouterr()
     assert err == "" and headers(out) == [INDEX]
-    assert "_fixture" not in out and " tables " not in out
+    assert "_fixture" not in out and " tables " not in out and "_proxy" not in out
 
 
 def test_a_chosen_name_the_factory_lacks_is_reported_and_exits_1(tmp_path, capsys):
@@ -390,7 +433,7 @@ def test_an_item_of_a_table_in_another_layer_is_reported_and_exits_1(tmp_path, c
 
 
 def test_a_table_choice_in_the_core_file_is_reported_and_exits_1(tmp_path, capsys):
-    folder = fixture_copy(tmp_path)
+    folder = unswitched_copy(tmp_path)
     _add_params(model_dir(folder) / "CoreData" / "param_core.csv",
                 {"mort_table": "period_fixture"})
     assert params.main([str(folder)]) == 1

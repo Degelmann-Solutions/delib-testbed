@@ -34,9 +34,12 @@ def definitions():
     improvement rate, or ``None`` for a period table, each with the signature
     ``(table, sex, x)``; ``parameters`` names the table's parameters, and the item of a
     parameter is ``<table>_<parameter>``.  A table is generational where its trend is not
-    ``None`` and select where it names a parameter ``sel_<n>``.  No table is defined yet.
+    ``None`` and select where it names a parameter ``sel_<n>``.
     """
-    return {}
+    return {
+        "dav2008t_proxy": (makeham, None, (
+            "m_a", "m_b", "m_c", "f_a", "f_b", "f_c", "first_age", "end_age")),
+    }
 
 
 def definition(table):
@@ -118,6 +121,17 @@ def trend(table, sex, x):
     if law is None:
         raise ValueError(f"table {table!r}: a period table has no trend")
     return law(table, sex, x)
+
+
+def makeham(table, sex, x):
+    """The law of Makeham on the rate: ``a + b * c ** x``, with the parameters of ``sex``.
+
+    Reads ``<m or f>_a``, ``<m or f>_b`` and ``<m or f>_c`` of ``table``; the law of
+    Gompertz is the case ``a = 0``.
+    """
+    key = sex.lower()
+    return (parameter(table, key + "_a")
+            + parameter(table, key + "_b") * parameter(table, key + "_c") ** x)
 
 
 def q(table, sex, x, birth_year=None, duration=None):

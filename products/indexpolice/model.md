@@ -112,15 +112,15 @@ table it was.
 
 | | Annual grid | Monthly grid | Why |
 |---|---|---|---|
-| `claims_death` / `claims_lapse` | 3 780,63 € / 12 476,88 € | **3 744,94 € / 12 507,30 €** | Deaths and surrenders compete month by month rather than once a year. The total exits at every anniversary are unchanged; the split is not |
-| `expenses` | 2 376,60 € | **2 365,47 €** | A policy leaving mid-year bears administration for the months it was there |
-| `premiums`, `claims_maturity` | 42 474,94 € / 31 240,67 € | **unchanged** | The *Beitrag* is payable in advance for the *Versicherungsperiode*, which § 12 Abs. 1 VVG makes the year; `prem_due(t)` is true in the first month of each policy year of the premium term and nowhere else |
+| `claims_death` / `claims_lapse` | 3 496,07 € / 12 527,43 € | **3 463,12 € / 12 555,47 €** | Deaths and surrenders compete month by month rather than once a year. The total exits at every anniversary are unchanged; the split is not |
+| `expenses` | 2 425,59 € | **2 413,96 €** | A policy leaving mid-year bears administration for the months it was there |
+| `premiums`, `claims_maturity` | 42 587,06 € / 31 584,64 € | **unchanged** | The *Beitrag* is payable in advance for the *Versicherungsperiode*, which § 12 Abs. 1 VVG makes the year; `prem_due(t)` is true in the first month of each policy year of the premium term and nowhere else |
 
 **Time-like inputs.** No CSV value changed. `lapse_table.csv` is keyed on the 0-based policy
 year and is read through `duration(t)`; `index_return_table.csv` keeps one row per policy
 year and twelve return columns `m01 … m12`, which `index_month(t)` now selects directly;
 `election_table.csv` and `surplus_rate_table.csv` are keyed on the same 0-based policy year;
-`mort_table.csv` is keyed on attained age, reached through `age(t)`. On the model point
+the death rate of the table factory is read at the attained age, `age(t)`. On the model point
 table, `duration_init` is an elapsed count of policy **years** and is `k_start()`, with
 `t_start()` twelve times it.
 
@@ -295,7 +295,7 @@ against what must be **paid** — and conflating them is a numbered pitfall [R2]
 
 ## Inputs are external files
 
-The nine input CSVs, the tariff-type file `param_tariff_type.csv` among them (the house-wide, technical and statutory items, the DeckRV § 4 cap `zillmer_cap_bsum` among them, are in the core file `core/Core/Data/param_core.csv`; `uv run python tools/params.py indexpolice` lists every item the tariff reads with its value, layer, basis and provenance), live **in this directory**, beside `run.py` — not inside the model
+The eight input CSVs, the tariff-type file `param_tariff_type.csv` among them (the house-wide, technical and statutory items, the DeckRV § 4 cap `zillmer_cap_bsum` among them, are in the core file `core/Core/Data/param_core.csv`; `uv run python tools/params.py indexpolice` lists every item the tariff reads with its value, layer, basis and provenance), live **in this directory**, beside `run.py` — not inside the model
 folder. `Index_DE_S/` holds nothing but formulas:
 
 ```
@@ -305,7 +305,6 @@ products/indexpolice/
   index_param_table.csv
   surplus_rate_table.csv
   election_table.csv
-  mort_table.csv
   lapse_table.csv
   prem_freq_table.csv
   param_tariff_type.csv
@@ -343,7 +342,6 @@ is checked out.
 | `index_param_file` | `index_param_table()` | `index_param_table.csv` |
 | `surplus_rate_file` | `surplus_rate_table()` | `surplus_rate_table.csv` |
 | `election_file` | `election_table()` | `election_table.csv` |
-| `mort_file` | `mort_table()` | `mort_table.csv` |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` |
 | `prem_freq_file` | `prem_freq_table()` | `prem_freq_table.csv` |
 | `param_file` | `param()` | `param_tariff_type.csv` |
@@ -369,8 +367,8 @@ row. Their contractual reading is `policy year = k + 1`: the lapse table's
 *Einkommensteuergesetz* step at policy year 12 is the row `k = 11`, the `switch_at_15`
 election path holds `w = 1` through `k = 14`, and the two constructed *Indexjahre* of
 `eqidx_vol17` are the rows `k = 8` (Example A) and `k = 9` (Example B).
-`mort_table.csv` is keyed on `(sex, age)` and `prem_freq_table.csv` on `prem_freq`, neither
-of them time axes. In `model_point_table.csv` nothing shifts: `duration_init` is an elapsed count
+`prem_freq_table.csv` is keyed on `prem_freq`, no time axis, and the death rates are no file
+of this folder: the table factory gives them by sex and attained age. In `model_point_table.csv` nothing shifts: `duration_init` is an elapsed count
 of completed policy years and is 0-based by nature — it *is* `t_start()` — while
 `prem_term_y` is a term length, `issue_age` and `ret_age` are ages, and none of them
 is a point on the frame's axis.
@@ -382,7 +380,7 @@ is a point on the frame's axis.
 | `index_param_table.csv` | `cap` and `quote` by `(index_id, t)` | **[std]**, 3,00 % monthly and 60 % on the equity path, 6,00 % and 100 % on the house path; 3,00 % is the midpoint of an argued 1,5–5,0 % band. **Two carrier figures are now on record and neither is a market panel** [R21]: Allianz's worked illustration runs at a Cap of **3,2 %** with a *Partizipationssatz* of 75,00 % [S2] [S5], and Stuttgarter **publishes** a *Partizipationsquote* of **70 %** on its house multi-asset index for 1.2.2026–31.1.2027 [S8] — below the 100 % this file ships on the house path. Per year because the insurer redetermines them each *Indexjahr*; level here only because nothing else could be established |
 | `surplus_rate_table.csv` | The declared *Überschussanteilsatz* by policy year (`k = 0 … 39`) | **[std]** 2,50 % level — **below the 2026 evidence**, Assekurata's survey giving *Indexpolicen* an average declared 3,07 % and classic private annuities 2,62 % [R20], and Stuttgarter publishing 2,16 % for its own safe arm [S8]. **This rate is the option budget**; the model consumes a declared rate and does not derive one from an investment result under the MindZV minimum [R8] |
 | `election_table.csv` | `w` by `(elect_id, k)` (`k = 0 … 39`), four paths | **[std]** and **behavioural**. No election distribution for this product family is established, in either direction |
-| `mort_table.csv` | `qx` by sex and attained age 20–100 | **[std]** Gompertz proxy `0.001200 × 1.095^(age − 40)` with `qx(F) = 0.65 × qx(M)`. **Not** DAV 2008 T or DAV 2004 R: those are proprietary, are cited by name and are never shipped [REG-R48] [REG-R49]. **The anchor a replacement must preserve is `qx(M, 40) = 0.001200`.** It is a period table with no selection effect, and here mortality is a *timing* assumption rather than an amount one — but both properties matter greatly to the *Rentenfaktor*, which is why that is an input and not a computed quantity |
+| (no file) `mort_table`, `mort_be_factor` in `param_tariff_type.csv` | The death rates: the table `dav2008t_proxy` of the core's table factory (`docs/core.md`, "The table factory"), by sex and attained age 0–120, its parameters rows of `core/Core/Data/param_tables.csv`, and the factor 0,75 from the table to the best estimate | **[std]** first-order proxy of DAV 2008 T on the law of Makeham, `q(M, x) = 0.00022 + 2.8820182383e-05 × 1.10^x`, women with `0.00016` and `2.1653029589e-05`; the best estimate is `0,75 ×` the table, the first-order margin of DAV 2008 T being 34 %. **Not** DAV 2008 T or DAV 2004 R: those are proprietary, are cited by name and are never shipped [REG-R48] [REG-R49]. The table is shared with the other tariffs that choose it, so a tariff changes its mortality by its factor or its choice, not by the table's rows. It is a period table with no selection effect, and here mortality is a *timing* assumption rather than an amount one — but both properties matter greatly to the *Rentenfaktor*, which is why that is an input and not a computed quantity |
 | `lapse_table.csv` | Base surrender by year, keyed on the 0-based policy year: 5 % at `k = 0–1` (policy years 1–2), 3 % at `k = 2–10`, **6 % at `k = 11`, policy year 12**, 2 % from `k = 12` | **[std]**. The policy-year-12 step is the § 20 Abs. 1 Nr. 6 EStG threshold [R14] and is the shape's whole point; **no index-specific *Stornoquote* exists**, and the two market-wide GDV measures are irreconcilable [R19] |
 | `prem_freq_table.csv` | The *Ratenzahlungszuschlag* multiplier by frequency: 1,000 / 1,020 / 1,030 / 1,050 | **[std]** market convention; no carrier tariff established |
 
@@ -410,7 +408,7 @@ statement carry the same list of kinds. Read against `result_cf()` it catches th
 this product invites above all: adding `guar_int`, `surplus_credit` or `index_credit` into
 `net_cf`. Those are movements of the policyholder's account and reach the insurer's cash
 flow only later, through a benefit; any of them entering here would leave a residual the
-size of the credit — 9 139,74 € over the anchor's projection.
+size of the credit — 9 168,50 € over the anchor's projection.
 
 | Check | What it asserts |
 |---|---|
@@ -516,7 +514,7 @@ deliberately, not a side effect of a provenance pass. The list is complete.
 | *Indexjahr* alignment | aligned with the policy year | R+V's rule exactly ([S7] § 3 Ziffer 3), and a simplification against the other two: Allianz contemplates an *Indexjahr* that does not start with a *Versicherungsjahr* [S2] Ziffer 3.5, and Stuttgarter runs a common 1.2.–31.1. window for all contracts [S8]. An annual-grid model has no other defensible alignment |
 | Mid-year exit treatment | no credit in the year of exit | **No longer a standardization.** Both retrieved AVB credit the participation only at the start of the following *Indexjahr* and refund no unspent budget; on surrender Allianz adds a pro-rata *Schlussüberschussanteil* and *Sockelbetrag* only [S2] Ziffer 3.3 and 9.2, [S7] § 3 Ziffer 5 [R2] |
 | Election path | `w = 1` in the base run | A modelling choice so the model demonstrates the index arm, not a claim about behaviour |
-| Mortality | Gompertz proxy anchored at `qx(M, 40) = 0.001200` | DAV 2008 T and DAV 2004 R are proprietary and are never shipped [REG-R48] [REG-R49] |
+| Mortality | `0,75 ×` the table factory's `dav2008t_proxy`, a first-order Makeham proxy of DAV 2008 T anchored at `q(M, 37) = 0.0012` | DAV 2008 T and DAV 2004 R are proprietary and are never shipped [REG-R48] [REG-R49]; the factor steps from the first order to the best estimate |
 | Surrender | 5 / 5 / 3 … 6 (year 12) / 2 %, zero in the final year | No index-specific rate exists; the year-12 step is the EStG threshold [R14], and the terminal zero is a convention that moves real money here |
 | Decrement order | death, then surrender on the survivors of death | Sequential rather than competing rates; declared rather than assumed |
 | *Abschlusskosten* | 2,5 % of `BS`, zillmerised over 5 years | At the DeckRV § 4 Abs. 1 ceiling ("25 Promille der Summe aller Prämien") [R7] — **and equal to both retrieved carrier disclosures**: Allianz's *Einstiegskosten* of "2,5% der kumulierten Anlagen" [S4] and Stuttgarter's *Abschluss- und Vertriebskosten* of 2,50 % of premiums [S11] |

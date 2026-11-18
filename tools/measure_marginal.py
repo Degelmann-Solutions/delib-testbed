@@ -141,7 +141,7 @@ DEFAULT_WORKERS = (1, 4, 8, 12, 16, 24)
 # PR #38). M_CORE counts the cells of the core's Projection and of its table factory Tables.
 # Every commit that moves a literal out of O6 updates them; recounting is the roadmap's
 # command, not this tool's, and tests/test_measure_marginal.py runs it against these constants.
-M_CORE = 226
+M_CORE = 232
 M_PRODUCT = {
     "basisrente": 635,
     "berufsunfaehigkeit": 502,

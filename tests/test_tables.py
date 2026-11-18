@@ -46,6 +46,10 @@ The derivation hooks of the core's ``Projection``:
   both engines of the runner with the same results, the factory called without a birth
   year; with a ``birth_year`` cell and the generational fixture table the hooks pass the
   birth year on, and without the cell the generational table raises.
+- A table rate of 1 passes through the core's derivation as 1 (AD-12): on a copy whose
+  fixture table closes at the last age a point attains, with a best-estimate factor below 1
+  and a loading above 1, ``mort_rate`` and ``mort_rate_tariff`` are 1 at the end age minus
+  one and the factor and the loading times the table rate the year before.
 
 The usage scan ``core/param_usage.py`` (``docs/core.md``, "The usage check and the view"):
 
@@ -811,6 +815,73 @@ def test_a_chosen_table_the_factory_does_not_hold_raises(tmp_path):
         item = model.Projection[1]
         for call in (lambda: item.mort_rate_at_age(50), lambda: item.mort_rate(item.t_start())):
             assert raised_line(call) == "ValueError: table 'dav2008t_proxy' is not defined"
+    finally:
+        model.close()
+
+
+THRU_CELLS = '''
+def mort_be_factor():
+    """A fixture best-estimate factor below 1.
+
+    Override reason: test fixture, tests/test_tables.py
+    """
+    return 0.75
+
+
+def mort_load_tariff(t):
+    """A fixture loading above 1.
+
+    Override reason: test fixture, tests/test_tables.py
+    """
+    return 1.25
+
+'''
+
+
+def test_a_table_rate_of_1_passes_through_the_factor_and_the_load(tmp_path):
+    # the fixture table closes at 66, the last age an Index point attains (ret_age 67)
+    folder = switched_copy(tmp_path, "period_fixture")
+    model_dir = folder / MODELS[INDEX]
+    tables_path = model_dir / "CoreData" / TABLES_FILE
+    text = tables_path.read_text(encoding="utf-8")
+    assert text.count("period_fixture_end_age,121,") == 1
+    tables_path.write_text(text.replace("period_fixture_end_age,121,",
+                                        "period_fixture_end_age,67,"), encoding="utf-8")
+    path = model_dir / "Projection" / "__init__.py"
+    text = path.read_text(encoding="utf-8")
+    assert text.count(MARKER) == 1
+    path.write_text(text.replace(MARKER, THRU_CELLS.lstrip("\n") + "\n" + MARKER),
+                    encoding="utf-8")
+    model = mx.read_model(model_dir, name="ThruProbe")
+    try:
+        cells = model.Projection.cells
+        assert not cells["mort_be_factor"]._is_derived()
+        assert not cells["mort_load_tariff"]._is_derived()
+        for name in ("mort_rate_base", "mort_rate", "mort_rate_tariff_base", "mort_rate_tariff"):
+            assert cells[name]._is_derived(), name
+        points = model.Data.model_point_table()
+        sexes = set()
+        for point_id in points.index[:4]:
+            item = model.Projection[point_id]
+            sexes.add(item.sex())
+            assert item.omega_age_table() == 67 == item.ret_age()
+            last = item.proj_len() - 1
+            assert item.age(last) == 66
+            # at the closing age, end age minus one: 1, not the factor and not the load
+            assert item.mort_rate_base(last) == 1.0 == item.mort_rate_tariff_base(last)
+            assert item.mort_be_factor() == 0.75 and item.mort_load_tariff(last) == 1.25
+            assert item.mort_rate(last) == 1.0
+            assert item.mort_rate_tariff(last) == 1.0
+            # the year before, the factor and the load act on the table rate
+            before = last - 12
+            assert item.age(before) == 65
+            rate = law(item.sex(), 65)
+            blend = 0.45 * law("M", 65) + (1.0 - 0.45) * law("F", 65)
+            assert item.mort_rate_base(before) == rate < 1.0
+            assert item.mort_rate(before) == rate * 0.75 * 1.0
+            assert item.mort_rate_tariff_base(before) == blend < 1.0
+            assert item.mort_rate_tariff(before) == 1.25 * blend
+        assert sexes == {"M", "F"}
     finally:
         model.close()
 

@@ -39,6 +39,9 @@ def definitions():
     return {
         "dav2008t_proxy": (makeham, None, (
             "m_a", "m_b", "m_c", "f_a", "f_b", "f_c", "first_age", "end_age")),
+        "dav1997ti_proxy": (makeham, None, (
+            "m_a", "m_b", "m_c", "f_a", "f_b", "f_c",
+            "sel_1", "sel_2", "sel_3", "sel_4", "sel_5", "sel_6", "first_age", "end_age")),
     }
 
 

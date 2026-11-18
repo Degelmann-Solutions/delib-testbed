@@ -13,9 +13,11 @@ each writing its figures with ``--json``; the tests read those figures and call 
 - A bound above a measured quota makes the report exit 1 and name the product on stderr.
 - The static usage scan ``core/param_usage.py`` reaches every executed ``Projection`` cell of
   every product (``Data`` cells are not compared, the quota does not count them).
-- Only a switched product executes cells of the table factory: Index does, the cells behind
-  ``q`` with the law ``makeham``, listed as ``tables.<cell>`` and counted as core beside the
-  hooks of its ``Projection``; the other nine execute none.
+- Only a switched product executes cells of the table factory: Index and BU do, the cells
+  behind ``q`` with the law ``makeham``, listed as ``tables.<cell>`` and counted as core
+  beside the hooks of their ``Projection``; the other eight execute none. BU's hook for its
+  second role, ``mort_rate_dis_at_age``, is a product cell, and its tariff rates execute the
+  core's unisex blend.
 - A scratch copy of Index on a fixture table executes the same cells with the fixture law in
   place of ``makeham``; one with a ``mort_rate_at_age`` of its own and no choice executes
   neither the factory's cells nor the hooks, and its override counts as a product cell.
@@ -155,13 +157,23 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
         assert not executed
         assert not FACTORY_HOOKS - {"birth_year"} & set(figures["executed_cells"])
         return
-    assert product == "indexpolice"
+    assert product in ("berufsunfaehigkeit", "indexpolice")
+    # both shipped tables are on the law ``makeham``, the select one too
     assert executed == FACTORY_CELLS | {"tables.makeham"}
     assert executed <= set(figures["core_cells"])
     assert FACTORY_HOOKS | {"mort_rate_at_age"} <= set(figures["core_cells"])
-    # the one mortality cell of its own, the best-estimate factor, is a product cell
+    # the best-estimate factor is a product cell, in Index the one mortality cell of its own
     assert "mort_be_factor" in figures["executed_cells"]
     assert "mort_be_factor" not in figures["core_cells"]
+    blend = {"mort_rate_tariff_at_age", "unisex_blend", "unisex_mix_male"}
+    if product == "berufsunfaehigkeit":
+        # the hook of the second role is BU's, the unisex blend of its tariff rates the core's
+        assert "mort_rate_dis_at_age" in figures["executed_cells"]
+        assert "mort_rate_dis_at_age" not in figures["core_cells"]
+        assert blend <= set(figures["core_cells"])
+        assert (figures["executed"], figures["core"]) == (165, 48)
+    else:
+        assert not blend & set(figures["executed_cells"])
 
 
 def test_a_copy_on_a_fixture_table_executes_the_fixture_law(tmp_path, quotas):

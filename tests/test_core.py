@@ -14,8 +14,7 @@
 - The tariff basis: KLV, RLV, BU and Pflege read their rate from the model point;
   the monthly discount factor equals the annual one on a year start; the tariff
   survivorship is 1 at issue; the net level premium is the benefit value over the annuity.
-- The decrement rates: BU's derived death rate is its table rate at the neutral factor, KLV's
-  its table rate times 0.75; an annual certainty falls in the anniversary month (Basis and RV
+- The decrement rates: BU's and KLV's derived death rate is the table rate times 0.75; an annual certainty falls in the anniversary month (Basis and RV
   deaths at the terminal age, KLV's failed *Beitragsfreistellung*); FRV splits mortality
   linearly; Index and RLV close the lapse in the final policy year without reading the table.
 - The policy counts: RLV and BU read their count from the model point; RLV opens at it; RLV and
@@ -243,7 +242,6 @@ CORE_CELLS = {
         "input_dir": dict.fromkeys(MODELS, "derived"),
         "model_point_table": dict.fromkeys(MODELS, "derived"),
         "mort_table_index": {"basisrente": "override",
-                             "berufsunfaehigkeit": "override",
                              "fondsgebundene_rentenversicherung": "override",
                              "indexpolice": "derived",
                              "kapitallebensversicherung": "derived",
@@ -562,11 +560,13 @@ CORE_CELLS = {
                             "pflegerentenversicherung": "derived"},
         "disc_factor": {"kapitallebensversicherung": "derived",
                         "risikolebensversicherung": "derived"},
-        "unisex_mix_male": {"kapitallebensversicherung": "derived",
+        "unisex_mix_male": {"berufsunfaehigkeit": "derived",
+                            "kapitallebensversicherung": "derived",
                             "pflegerentenversicherung": "derived",
                             "risikolebensversicherung": "derived",
                             "sofortrente": "derived"},
-        "unisex_blend": {"kapitallebensversicherung": "derived",
+        "unisex_blend": {"berufsunfaehigkeit": "derived",
+                         "kapitallebensversicherung": "derived",
                          "pflegerentenversicherung": "derived"},
         "mort_load_tariff": {"fondsgebundene_rentenversicherung": "derived",
                              "kapitallebensversicherung": "derived",
@@ -617,7 +617,7 @@ CORE_CELLS = {
         "mort_table_name": {},
         "mort_rate_table": {},
         "mort_rate_at_age": {"basisrente": "override",
-                             "berufsunfaehigkeit": "override",
+                             "berufsunfaehigkeit": "derived",
                              "indexpolice": "derived",
                              "kapitallebensversicherung": "override",
                              "klassische_rentenversicherung": "override",
@@ -625,7 +625,8 @@ CORE_CELLS = {
                              "riester_rente": "override",
                              "risikolebensversicherung": "override",
                              "sofortrente": "override"},
-        "mort_rate_tariff_at_age": {"fondsgebundene_rentenversicherung": "override",
+        "mort_rate_tariff_at_age": {"berufsunfaehigkeit": "derived",
+                                    "fondsgebundene_rentenversicherung": "override",
                                     "kapitallebensversicherung": "override"},
         "mort_be_trend": {"berufsunfaehigkeit": "derived",
                           "fondsgebundene_rentenversicherung": "derived",
@@ -634,6 +635,7 @@ CORE_CELLS = {
                           "klassische_rentenversicherung": "derived",
                           "pflegerentenversicherung": "derived"},
         "mort_be_factor": {"basisrente": "override",
+                           "berufsunfaehigkeit": "override",
                            "fondsgebundene_rentenversicherung": "override",
                            "indexpolice": "override",
                            "kapitallebensversicherung": "override",
@@ -1377,16 +1379,18 @@ def test_annual_discount_factor_is_the_rechnungszins_power(product, product_mode
     assert item.disc_factor(3) == (1.0 + item.rechnungszins()) ** -3
 
 
-def test_bu_mort_rate_is_its_table_rate_at_the_neutral_factor(product_models):
+def test_bu_mort_rate_steps_its_table_by_the_factor_from_its_tariff_type_file(product_models):
     model = product_models("berufsunfaehigkeit")
     projection = model.Projection
     assert projection.mort_rate._is_derived()
-    assert projection.mort_be_factor._is_derived()
+    assert projection.mort_rate_at_age._is_derived()
+    assert projection.mort_be_factor._is_defined()
+    assert model.Data.param("mort_be_factor") == 0.75
     for point_id in model.Data.model_point_table().index:
         item = projection[point_id]
-        assert item.mort_be_factor() == 1.0
+        assert item.mort_be_factor() == 0.75
         for t in range(item.proj_len()):
-            assert item.mort_rate(t) == item.mort_rate_at_age(item.age(t)), (point_id, t)
+            assert item.mort_rate(t) == item.mort_rate_at_age(item.age(t)) * 0.75, (point_id, t)
 
 
 def test_klv_mort_rate_steps_its_table_by_the_factor_from_its_tariff_type_file(product_models):
@@ -1936,13 +1940,14 @@ KLV_MOVED_REFERENCES = {
 
 # The 11 numeric References BU's ``Projection`` held, as their former Python literals, with the
 # values entry 12 of epic-parameter-files aligned (``accept_factor`` 0.8 to 0.75, ``mort_dis_load_first``
-# 0.8 to 0.7).
+# 0.8 to 0.7) and the value BU's switch to the table factory set (``mort_actv_load_first`` 0.8
+# to 0.6, the load now on a first-order death table).
 BU_MOVED_REFERENCES = {
     "accept_factor": 0.75,
     "inc_load_first": 1.3,
     "recov_load_first": 0.7,
     "mort_dis_load_first": 0.7,
-    "mort_actv_load_first": 0.8,
+    "mort_actv_load_first": 0.6,
     "load_acq_bsum_once": 0.025,
     "load_admin_prem_inst": 0.09,
     "load_admin_pp_ann": 18.0,
@@ -3366,7 +3371,6 @@ PRODUCT_BOUNDS = {
     },
     "berufsunfaehigkeit": {
         "inception_table_ages": ("inception_table", None, "age", "range"),
-        "mort_table_ages": ("mort_table", None, "age", "range"),
     },
 }
 PRODUCT_ROWS = {"fondsgebundene_rentenversicherung": {"charge_table_rows": "charge_table"}}
@@ -3941,19 +3945,15 @@ def test_sofort_ages_outside_the_tables_hold_their_ends(product_models):
             improve.at[(basis, hi), "improve_rate"]), basis
 
 
-def test_bu_ages_outside_the_tables_hold_their_ends(product_models):
+def test_bu_ages_outside_the_inception_table_hold_its_ends(product_models):
+    """The mortality lookups clamp nothing: they read the table factory
+    (``tests/test_tables.py``)."""
     model = product_models("berufsunfaehigkeit")
     inception = model.Data.inception_table()
-    mort = model.Data.mort_table()
     item = model.Projection[model.Data.model_point_table().index[0]]
     assert (int(inception.index.min()), int(inception.index.max())) == (18, 66)
-    assert (int(mort.index.min()), int(mort.index.max())) == (18, 70)
     assert item.inc_rate_at_age(10) == float(inception.at[18, "inc_rate"])
     assert item.inc_rate_at_age(80) == float(inception.at[66, "inc_rate"])
-    for cell, column in (("mort_rate_at_age", "mort_rate_actv"),
-                         ("mort_rate_dis_at_age", "mort_rate_dis")):
-        assert item.cells[cell](10) == float(mort.at[18, column]), cell
-        assert item.cells[cell](80) == float(mort.at[70, column]), cell
 
 
 def _bu_roll_reference(qy, ry, g, ppols, pval, n):
@@ -4042,13 +4042,6 @@ def test_bu_rate_tuples_by_age_equal_the_cells_by_claim_year(product_models):
             year = item.mort_rate_dis_first_mth_year(item.age_first(s))
             assert year == tuple(item.mort_rate_dis_first_mth(s, 12 * cy + 1)
                                  for cy in range(11)), (point_id, s)
-    mort = model.Data.mort_table()
-    item = model.Projection[model.Data.model_point_table().index[0]]
-    assert (int(mort.index.min()), int(mort.index.max())) == (18, 70)
-    assert item.mort_rate_dis_mth_year(10) == item.mort_rate_dis_mth_year(18)
-    assert item.mort_rate_dis_mth_year(80) == item.mort_rate_dis_mth_year(70)
-    assert item.mort_rate_dis_first_mth_year(10) == item.mort_rate_dis_first_mth_year(18)
-    assert item.mort_rate_dis_first_mth_year(80) == item.mort_rate_dis_first_mth_year(70)
 
 
 def test_bu_cohort_arrays_seed_age_and_step(product_models):
@@ -4152,7 +4145,7 @@ def test_bu_claim_years_are_read_from_the_claim_duration_table(tmp_path, product
     assert type(last) is int and last == int(table.index.max()) == len(table) == 11
     folder = product_copy(tmp_path, "berufsunfaehigkeit")
     path = folder / "claim_duration_table.csv"
-    path.write_text(path.read_text(encoding="utf-8") + '12,0.005,1.1,"[std] test fixture"\n',
+    path.write_text(path.read_text(encoding="utf-8") + '12,0.005,"[std] test fixture"\n',
                     encoding="utf-8")
     copy = mx.read_model(folder / MODELS["berufsunfaehigkeit"], name="ClaimYearProbe")
     try:
@@ -4161,7 +4154,10 @@ def test_bu_claim_years_are_read_from_the_claim_duration_table(tmp_path, product
         assert [item.claim_year(z) for z in (1, 12, 13, 132, 133, 144, 145, 999)] == [
             1, 1, 2, 11, 12, 12, 12, 12]
         assert item.recov_rates()[11] == 0.005 and len(item.recov_rates()) == 12
-        assert item.mort_dis_sel_factors()[11] == 1.1 and len(item.mort_dis_sel_factors()) == 12
+        # the mortality tuples run over the twelve claim years too, the twelfth at the
+        # table factory's last select factor like every year from the sixth
+        for year in (item.mort_rate_dis_mth_year(40), item.mort_rate_dis_first_mth_year(40)):
+            assert len(year) == 12 and year[11] == year[5] and year[4] > year[5]
         assert item.cohort_year_idx(300).tolist() == np.minimum(np.arange(300) // 12, 11).tolist()
     finally:
         copy.close()

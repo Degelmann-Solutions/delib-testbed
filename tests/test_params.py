@@ -19,8 +19,10 @@
   exits 0.
 - Index lists its choice ``mort_table`` and its ``mort_be_factor`` in the layer
   ``tariff_type`` and the eight items of ``dav2008t_proxy`` in the layer ``tables``, each
-  with its value, basis and provenance, and exits 0; the nine products that choose no table
-  list no item of the layer.
+  with its value, basis and provenance, and exits 0; BU lists its two choices,
+  ``mort_table`` and ``mort_dis_table``, its derivation items and the items of both tables,
+  eight of ``dav2008t_proxy`` and fourteen of ``dav1997ti_proxy``; the eight products that
+  choose no table list no item of the layer.
 - A scratch copy of Index whose tariff chooses a fixture table lists that table's items with
   layer ``tables``, value, basis and provenance, after the core items and before the
   tariff-type items, and no other table's, the shipped one's neither, and exits 0; a copy
@@ -53,7 +55,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 from run_baseline import model_dir  # noqa: E402
 
 from test_core import _add_params  # noqa: E402
-from test_tables import (FIXTURE_DEFINITIONS, FIXTURE_VALUES, INDEX, SHIPPED_ITEMS,  # noqa: E402
+from test_tables import (BU, FIXTURE_DEFINITIONS, FIXTURE_VALUES, INDEX, SHIPPED_ITEMS,  # noqa: E402
                          SHIPPED_PROVENANCE, SHIPPED_ROWS, SWITCHED, choosing_copy,
                          fixture_copy, fixture_items, tables_file, unswitched_copy)
 
@@ -303,10 +305,49 @@ def test_index_lists_its_choice_its_factor_and_the_items_of_its_table(capsys):
     assert ["mort_table", "'dav2008t_proxy'", "tariff_type", "Setzung"] in [
         line[:4] for line in split]
     assert ["mort_be_factor", "0.75", "tariff_type", "source"] in [line[:4] for line in split]
-    for item, (text, basis) in SHIPPED_ROWS.items():
+    for item in SHIPPED_ITEMS["dav2008t_proxy"]:
+        text, basis = SHIPPED_ROWS[item]
         value = int(text) if text.isdigit() else float(text)
         assert [item, repr(value), "tables", basis] in [line[:4] for line in split], item
     assert len([line for line in split if "dav2008t_proxy" in " ".join(line[:2])]) == 9
+    # no item of the table it does not choose
+    assert "dav1997ti_proxy" not in out
+
+
+def test_bu_lists_its_two_choices_and_the_items_of_both_tables(capsys):
+    table, listed = tables_rows(PRODUCTS_DIR / BU, "ParamsShippedBu")
+    assert SWITCHED[BU] == {"mort_table": "dav2008t_proxy", "mort_dis_table": "dav1997ti_proxy"}
+    assert [row["item"] for row in listed] == [
+        item for chosen in ("dav2008t_proxy", "dav1997ti_proxy") for item in SHIPPED_ITEMS[chosen]]
+    assert len(listed) == 8 + 14
+    for row in listed:
+        text, basis = SHIPPED_ROWS[row["item"]]
+        assert row["value"] == (int(text) if text.isdigit() else float(text))
+        assert row["basis"] == basis
+        (chosen,) = [name for name in SHIPPED_ITEMS if row["item"] in SHIPPED_ITEMS[name]]
+        assert row["provenance"].startswith(SHIPPED_PROVENANCE[chosen])
+    by_item = {row["item"]: row for row in table}
+    expected = {"mort_table": ("dav2008t_proxy", "Setzung"),
+                "mort_dis_table": ("dav1997ti_proxy", "Setzung"),
+                "mort_be_factor": (0.75, "source"), "unisex_mix_male": (0.5, "Setzung"),
+                "mort_actv_load_first": (0.6, "Setzung"), "mort_dis_load_first": (0.7, "source")}
+    for item, (value, basis) in expected.items():
+        row = by_item[item]
+        assert (row["value"], row["layer"], row["basis"]) == (value, "tariff_type", basis), item
+        assert row["provenance"], item
+
+    assert params.main([BU]) == 0
+    out, err = capsys.readouterr()
+    assert err == "" and headers(out) == [BU]
+    split = [line.split() for line in out.splitlines()]
+    for item, (value, basis) in expected.items():
+        assert [item, repr(value), "tariff_type", basis] in [line[:4] for line in split], item
+    for item, (text, basis) in SHIPPED_ROWS.items():
+        value = int(text) if text.isdigit() else float(text)
+        assert [item, repr(value), "tables", basis] in [line[:4] for line in split], item
+    # the two choices and the items of both tables, 2 + 8 + 14 lines
+    assert len([line for line in out.splitlines()
+                if "dav2008t_proxy" in line or "dav1997ti_proxy" in line]) == 24
 
 
 @pytest.mark.parametrize("product", [name for name in PRODUCTS if name not in SWITCHED])
@@ -315,7 +356,7 @@ def test_a_product_that_chooses_no_table_lists_no_tables_item(product, capsys):
     assert table and listed == []
     assert params.main([product]) == 0
     out, err = capsys.readouterr()
-    assert err == "" and "dav2008t_proxy" not in out
+    assert err == "" and "_proxy" not in out
     assert not [line for line in out.splitlines() if line.split()[2:3] == ["tables"]]
 
 

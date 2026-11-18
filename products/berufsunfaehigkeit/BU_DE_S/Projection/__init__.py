@@ -43,12 +43,16 @@ Reference                 Cells                              File
 model_point_file          data.model_point_table()           model_point_table.csv
 inception_file            data.inception_table()             inception_table.csv
 claim_duration_file       data.claim_duration_table()        claim_duration_table.csv
-mort_file                 data.mort_table()                  mortality_table.csv
 occupation_file           data.occupation_table()            occupation_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 prem_freq_file            data.prem_freq_table()             prem_freq_table.csv
 param_file                data.param()                       param_tariff_type.csv
 ========================  =================================  ==========================
+
+No mortality file is among them: the death rates come from the core's table factory,
+reached through the ``tables`` Reference.  The tariff chooses its two tables in
+*param_tariff_type.csv*, ``mort_table`` for the active lives and the § 174 run-off and
+``mort_dis_table`` for the lives in claim.
 
 .. rubric:: Naming
 
@@ -102,7 +106,6 @@ r(z)                       recov_rate(z)                   Annual reactivation r
 r_m(z)                     recov_rate_mth(z)               The same, monthly
 q^a(x)                     mort_rate(t)                    Annual active-lives mortality
 q^a_m(t)                   mort_rate_mth(t)                The same, monthly
-s(z)                       mort_dis_sel_factor(z)          Disabled-mortality select factor
 q^i(x, z)                  mort_rate_dis(t, z)             Annual disabled-lives mortality
 q^i_m(t, z)                mort_rate_dis_mth(t, z)         The same, monthly
 w(y)                       lapse_rate(t)                   Annual Stornoquote
@@ -165,13 +168,14 @@ and is three months behind :func:`pols_recovery`.
 
 The ``*_first`` cells are a **second projection**, not a variant of the first. They run
 the same four-ledger chain on *Rechnungsgrundlagen erster Ordnung* — inception x 1.30,
-reactivation x 0.70, disabled-lives mortality x 0.70, active-lives mortality x 0.80,
-**no lapse** — over the contract's **original** term from ``issue_age``, indexed by
-``s`` rather than ``t``. They exist only to fix :func:`prem_gross_level_pp` and never
-touch a published cash flow. Running them from inception rather than from the valuation
-date is what gives an in-force model point the *Bruttobeitrag* its contract was actually
-struck at: model point 6 is model point 1 fifteen years on, and the two must price the
-same.
+reactivation x 0.70, disabled-lives mortality x 0.70, active-lives mortality x 0.60 of
+its first-order death table, which is 0.80 of the best estimate, each mortality on the
+unisex blend of its table, **no lapse** — over the contract's **original** term from
+``issue_age``, indexed by ``s`` rather than ``t``. They exist only to fix
+:func:`prem_gross_level_pp` and never touch a published cash flow. Running them from
+inception rather than from the valuation date is what gives an in-force model point the
+*Bruttobeitrag* its contract was actually struck at: model point 6 is model point 1
+fifteen years on, and the two must price the same.
 
 .. rubric:: The premium is derived, not read
 
@@ -274,11 +278,14 @@ event with no cash-flow consequence here — right in amount, early in timing.
 
 .. rubric:: Unisex
 
-``sex`` is a model-point attribute for reporting purposes only and **must not** enter the
-premium: sex-differentiated pricing has been unlawful in Germany for contracts written
-from 21 December 2012. The shipped decrement tables are unisex, so in the base
-parameterization ``sex`` moves nothing at all — model points 1 and 2 differ in it and in
-nothing else, and their frames are identical.
+``sex`` **must not** enter the premium: sex-differentiated pricing has been unlawful in
+Germany for contracts written from 21 December 2012. The first-order pricing run
+therefore reads both mortality tables as the unisex blend of their two sexes, with the
+male share ``unisex_mix_male``, and the inception, reactivation and lapse tables are
+unisex. The best estimate reads the two mortality tables on the model point's own sex,
+so ``sex`` moves the projected decrements and cash flows and not the *Bruttobeitrag* —
+model points 1 and 2 differ in it and in nothing else, and they are struck at the same
+premium while their frames differ.
 
 .. rubric:: Sign convention
 
@@ -645,32 +652,40 @@ def inc_rate_at_age(x):
     return float(data.inception_table_dict()["inc_rate"][min(max(x, lo), hi)])   # noqa: F821
 
 
-def mort_rate_at_age(x):
-    """q^a(x): the table active-lives mortality rate at attained age x, per year.
+def mort_be_factor():
+    """The step from the first-order death table to the best estimate of active lives, 0.75.
 
-    A lookup into the ``mort_rate_actv`` column of *mortality_table.csv*, clamped to the
-    table's range 18-70.  It applies to the *aktiv* ledger **and to the § 174 run-off**,
-    whose lives have recovered and are no longer impaired lives.
+    The active-lives death rates are those of the tariff's table, ``mort_table`` in
+    *param_tariff_type.csv*, read through the core's ``mort_rate_at_age(x)`` from the table
+    factory on the model point's sex; the factor stands on them in the core's
+    ``mort_rate(t)``, which rolls the *aktiv* ledger **and the § 174 run-off**, whose lives
+    have recovered and are no longer impaired lives.  It acts on that table only: the
+    table of the lives in claim stands at the best-estimate level
+    (:func:`mort_rate_dis_at_age`).
 
-    Override reason: the product reads its own mortality file until its switch to the
-    table factory, docs/core.md, section "The table factory"
+    Override reason: the best estimate of active lives is 0.75 of the first-order death
+    table, a tariff parameter in *param_tariff_type.csv*,
+    products/berufsunfaehigkeit/technical-notes.md:305
     """
-    lo, hi = data.mort_table_ages()                                  # noqa: F821
-    return float(data.mort_table_dict()["mort_rate_actv"][min(max(x, lo), hi)])   # noqa: F821
+    return data.param("mort_be_factor")                              # noqa: F821
 
 
-def mort_rate_dis_at_age(x):
-    """q^i(x): the table disabled-lives mortality rate at attained age x, per year.
+def mort_rate_dis_at_age(sex_code, x):
+    """q^i(x, d): the table disabled-lives mortality rates of ``sex_code`` at attained age x,
+    per year, by claim year, as a tuple.
 
-    The ``mort_rate_dis`` column of *mortality_table.csv*, **before** the claim-duration
-    select factor, clamped to the table's range.  Four times the active rate at every
-    age; with the first claim year's select factor of 3.0 that is twelve times active
-    mortality in the first year of a claim, falling to 4.8x ultimate.  **Using one rate
-    for both states is a numbered pitfall**, which is why the two live in separate
-    columns.
+    ``tables.q`` at the tariff's table of the lives in claim, ``mort_dis_table`` in
+    *param_tariff_type.csv*, read at each claim year 1 to
+    ``data.claim_duration_last_year()`` as the table's ``duration`` and indexed by
+    ``claim_year(z) - 1``: the table is select on the claim year, 3.0 times its ultimate
+    level in the first year of a claim falling to 1.2 times from the sixth, and it is
+    distinct by sex.  The product's one read of the table factory besides the core's
+    hooks, which read the table of the active lives.  The age is not clamped: the table
+    covers the ages 18 to 120.  **Using one rate for both states is a numbered pitfall**,
+    which is why the two are two tables.  See :func:`recov_rates` for why it is a tuple.
     """
-    lo, hi = data.mort_table_ages()                                  # noqa: F821
-    return float(data.mort_table_dict()["mort_rate_dis"][min(max(x, lo), hi)])   # noqa: F821
+    return tuple(tables.q(data.param("mort_dis_table"), sex_code, x, duration=year)   # noqa: F821
+                 for year in range(1, data.claim_duration_last_year() + 1))  # noqa: F821
 
 
 def recov_rates():
@@ -685,18 +700,6 @@ def recov_rates():
     """
     rates = data.claim_duration_table_dict()["recov_rate"]           # noqa: F821
     return tuple(float(rates[y])
-                 for y in range(1, data.claim_duration_last_year() + 1))  # noqa: F821
-
-
-def mort_dis_sel_factors():
-    """The eleven disabled-mortality select factors by claim year, as a tuple.
-
-    3.0 / 2.0 / 1.6 / 1.4 / 1.3 and 1.2 from claim year 6, read once from
-    *claim_duration_table.csv*, claim years 1 to ``data.claim_duration_last_year()``.  See
-    :func:`recov_rates` for why it is a tuple.
-    """
-    factors = data.claim_duration_table_dict()["mort_dis_sel_factor"]   # noqa: F821
-    return tuple(float(factors[y])
                  for y in range(1, data.claim_duration_last_year() + 1))  # noqa: F821
 
 
@@ -729,25 +732,18 @@ def inc_rate_mth(t):
     return 1.0 - (1.0 - inc_rate(t)) ** (1.0 / 12.0)
 
 
-def mort_dis_sel_factor(z):
-    """s(z): the disabled-mortality select factor at claim duration z.
-
-    ``mort_dis_sel_factors()[claim_year(z) - 1]``: 3.0 in the first claim year falling to
-    1.2 from the sixth.  Disabled-lives mortality is select on **claim duration**, not on
-    attained age alone, and a model that drops the duration dimension understates deaths
-    in exactly the months where the claim reserve is largest.
-    """
-    return mort_dis_sel_factors()[claim_year(z) - 1]
-
-
 def mort_rate_dis(t, z):
     """q^i(x(t), z): the **annual** disabled-lives mortality rate at month t, duration z.
 
-    ``mort_rate_dis_at_age(age(t)) x mort_dis_sel_factor(z)``.  Twelve times
-    :func:`mort_rate` at duration 1 and 4.8 times it ultimately; it is never equal to it,
-    at any age or duration.
+    ``mort_rate_dis_at_age(sex(), age(t))[claim_year(z) - 1]``: the rate of the table of
+    the lives in claim on the model point's own sex at the claim year, without a factor,
+    since that table stands at the best-estimate level.  Disabled-lives mortality is
+    select on **claim duration**, not on attained age alone, and a model that drops the
+    duration dimension understates deaths in exactly the months where the claim reserve is
+    largest.  It is another table than that of :func:`mort_rate` and is never read for an
+    active life.
     """
-    return mort_rate_dis_at_age(age(t)) * mort_dis_sel_factor(z)
+    return mort_rate_dis_at_age(sex(), age(t))[claim_year(z) - 1]
 
 
 def mort_rate_dis_mth(t, z):
@@ -765,13 +761,12 @@ def mort_rate_dis_mth_year(x):
 
     ``mort_rate_dis_mth(t, z)`` depends on ``z`` only through ``claim_year(z)`` and on
     ``t`` only through ``age(t)``, so the whole cohort vector needs eleven numbers per
-    year of age rather than one per cohort and month.  This is what the disabled-ledger
-    recursions read, at ``age(t)``; :func:`mort_rate_dis_mth` is the addressable view of
-    the same numbers and the two agree by construction.
+    year of age rather than one per cohort and month: the twelfth of the table's rate on
+    the own sex at each claim year 1 to ``data.claim_duration_last_year()``.  This is what
+    the disabled-ledger recursions read, at ``age(t)``; :func:`mort_rate_dis_mth` is the
+    addressable view of the same numbers and the two agree by construction.
     """
-    q = mort_rate_dis_at_age(x)
-    return tuple(1.0 - (1.0 - q * s) ** (1.0 / 12.0)
-                 for s in mort_dis_sel_factors())
+    return tuple(1.0 - (1.0 - q) ** (1.0 / 12.0) for q in mort_rate_dis_at_age(sex(), x))
 
 
 def recov_rate(z):
@@ -845,28 +840,55 @@ def recov_rate_first_mth_year():
                  for r in recov_rates())
 
 
+def mort_rate_first_at_age(x):
+    """The **annual** first-order active-lives mortality rate at attained age x.
+
+    ``mort_rate_tariff_at_age(x) x mort_actv_load_first``: the core's unisex blend of the
+    table of the active lives, since sex must not enter the premium, times a load
+    **below** one: on this contract an active death releases a liability, so it is
+    favourable to the insurer and a prudent basis does not anticipate it.  The load stands
+    on the first-order death table, not on the best estimate, and puts the rate 20 % below
+    the best estimate of the blend.  The same reasoning is why the first-order basis
+    carries **no lapse at all**.  A blend of 1, the table's closing age or its cap, is a
+    certainty and passes through as 1, whatever the load.
+    """
+    q = mort_rate_tariff_at_age(x)
+    if q >= 1.0:
+        return 1.0
+    return min(1.0, q * data.param("mort_actv_load_first"))          # noqa: F821
+
+
 def mort_rate_first_mth(s):
     """The monthly first-order active-lives mortality rate at month s of the pricing run.
 
-    ``mort_rate_at_age(age_first(s)) x mort_actv_load_first``, and that load is **below**
-    one: on this contract an active death releases a liability, so it is favourable to
-    the insurer and a prudent basis does not anticipate it.  The same reasoning is why
-    the first-order basis carries **no lapse at all**.
+    ``1 - (1 - mort_rate_first_at_age(age_first(s)))^(1/12)``.
     """
-    return 1.0 - (1.0 - mort_rate_at_age(age_first(s))
-                  * data.param("mort_actv_load_first")) ** (1.0 / 12.0)  # noqa: F821
+    return 1.0 - (1.0 - mort_rate_first_at_age(age_first(s))) ** (1.0 / 12.0)
+
+
+def mort_rate_dis_first_at_age(x):
+    """The **annual** first-order disabled-lives mortality rates at attained age x, by claim
+    year, as a tuple.
+
+    ``unisex_blend(q_M, q_F) x mort_dis_load_first`` at each claim year, the two rates
+    those of :func:`mort_rate_dis_at_age` for the two sexes at the same age and claim
+    year: sex must not enter the premium, and the load is again **below** one so that
+    claims run longer on the pricing basis than on the best-estimate one.  A blend of 1
+    passes through as 1, whatever the load.
+    """
+    load = data.param("mort_dis_load_first")                         # noqa: F821
+    blends = [unisex_blend(q_m, q_f) for q_m, q_f in zip(mort_rate_dis_at_age("M", x),
+                                                        mort_rate_dis_at_age("F", x))]
+    return tuple(1.0 if q >= 1.0 else min(1.0, q * load) for q in blends)
 
 
 def mort_rate_dis_first_mth(s, z):
     """The monthly first-order disabled-lives mortality rate at month s, duration z.
 
-    ``mort_rate_dis_at_age(age_first(s)) x mort_dis_sel_factor(z) x mort_dis_load_first``,
-    the load again **below** one so that claims run longer on the pricing basis than on
-    the best-estimate one.
+    ``1 - (1 - mort_rate_dis_first_at_age(age_first(s))[claim_year(z) - 1])^(1/12)``, the
+    addressable view of :func:`mort_rate_dis_first_mth_year`.
     """
-    return 1.0 - (1.0 - mort_rate_dis_at_age(age_first(s))
-                  * mort_dis_sel_factor(z)
-                  * data.param("mort_dis_load_first")) ** (1.0 / 12.0)  # noqa: F821
+    return 1.0 - (1.0 - mort_rate_dis_first_at_age(age_first(s))[claim_year(z) - 1]) ** (1.0 / 12.0)
 
 
 def mort_rate_dis_first_mth_year(x):
@@ -875,9 +897,7 @@ def mort_rate_dis_first_mth_year(x):
     Keyed by age rather than by month, as :func:`mort_rate_dis_mth_year`: the shadow
     ledgers read it at ``age_first(s)``, which changes once a year.
     """
-    q = mort_rate_dis_at_age(x) * data.param("mort_dis_load_first")  # noqa: F821
-    return tuple(1.0 - (1.0 - q * f) ** (1.0 / 12.0)
-                 for f in mort_dis_sel_factors())
+    return tuple(1.0 - (1.0 - q) ** (1.0 / 12.0) for q in mort_rate_dis_first_at_age(x))
 
 
 # --- benefit and premium amounts ---
@@ -1347,7 +1367,7 @@ def pols_lapse(t):
     compute, so a lapse is a pure decrement and ``claims(t, "LAPSE")`` is zero.
 
     Override reason: the lapses come from the *aktiv* ledger only, after its deaths; lives
-    in claim or run-off do not lapse, products/berufsunfaehigkeit/technical-notes.md:182
+    in claim or run-off do not lapse, products/berufsunfaehigkeit/technical-notes.md:185
     """
     return (pols_actv(t) - pols_death_actv(t)) * lapse_rate_mth(t)
 
@@ -1487,8 +1507,9 @@ def pols_dis(t):
 def pols_death_dis(t):
     """Deaths out of the disabled ledger at the end of month t.
 
-    At disabled-lives mortality, which is select on claim duration: twelve times the
-    active rate in the first claim year, 4.8 times it ultimately.
+    At disabled-lives mortality, the table of the lives in claim, which is select on
+    claim duration: 3.0 times its ultimate level in the first claim year, 1.2 times from
+    the sixth.
     """
     return dis_exits(t)[0]
 
@@ -1575,7 +1596,7 @@ def pols_death(t):
     model.
 
     Override reason: the deaths are the sum of the three ledgers' deaths, active, disabled
-    and run-off, each at its own rate, products/berufsunfaehigkeit/technical-notes.md:497
+    and run-off, each at its own rate, products/berufsunfaehigkeit/technical-notes.md:518
     """
     return pols_death_actv(t) + pols_death_dis(t) + pols_death_runoff(t)
 
@@ -1623,7 +1644,7 @@ def pols_prem(t):
 
     Override reason: lives in claim past the *Karenzzeit* pay no premium (*Beitragsbefreiung*),
     so the premium-paying count is the *aktiv* ledger plus the disabled inside the
-    *Karenzzeit*, products/berufsunfaehigkeit/technical-notes.md:174
+    *Karenzzeit*, products/berufsunfaehigkeit/technical-notes.md:177
     """
     dis = dis_cohorts(t)[0]
     return pols_actv(t) + sum(dis[:karenz_months()].tolist())
@@ -1649,7 +1670,7 @@ def prem_inst_pp(t):
     (docs/core.md, "Contract data and charges").
 
     Override reason: the premium is the *Zahlbeitrag* instalment, the instalment due less
-    the *Beitragsverrechnung*, products/berufsunfaehigkeit/technical-notes.md:186
+    the *Beitragsverrechnung*, products/berufsunfaehigkeit/technical-notes.md:189
     """
     return beitragsverrechnung() * prem_charged_inst_pp(t)
 
@@ -1658,7 +1679,7 @@ def claim_kinds():
     """The three benefit kinds of :func:`claims`: ``BU_RENTE``, ``REINTEGRATION``, ``LAPSE``.
 
     Override reason: the claims are the *BU-Rente*, the *Wiedereingliederungshilfe* and the
-    zero lapse benefit, products/berufsunfaehigkeit/technical-notes.md:530
+    zero lapse benefit, products/berufsunfaehigkeit/technical-notes.md:551
     """
     return ("BU_RENTE", "REINTEGRATION", "LAPSE")
 
@@ -1686,9 +1707,9 @@ def claims_other(t, kind):
     published scope statement rather than a missing column.
 
     Override reason: the *BU-Rente* is paid to the disabled cohorts past the *Karenzzeit*
-    and the run-off slots, products/berufsunfaehigkeit/technical-notes.md:521, the
+    and the run-off slots, products/berufsunfaehigkeit/technical-notes.md:542, the
     *Wiedereingliederungshilfe* on completed run-offs,
-    products/berufsunfaehigkeit/technical-notes.md:522, no per-policy amount times a
+    products/berufsunfaehigkeit/technical-notes.md:543, no per-policy amount times a
     decrement
     """
     if kind == "BU_RENTE":
@@ -1730,7 +1751,7 @@ def expenses(t):
 
     Override reason: the acquisition charge is added to the proportional administration
     before the flat administration, ``(acq + prop) + flat``, an order the core's
-    ``acq + maint + claim`` would reassociate, products/berufsunfaehigkeit/technical-notes.md:524
+    ``acq + maint + claim`` would reassociate, products/berufsunfaehigkeit/technical-notes.md:545
     """
     acq = 0.0
     if t == 0 and duration_mth_init() == 0:
@@ -1784,7 +1805,7 @@ def net_cf(t):
 
     Override reason: the claim total is subtracted at once and the
     *Leistungsbearbeitungskosten* after the expenses,
-    products/berufsunfaehigkeit/technical-notes.md:557
+    products/berufsunfaehigkeit/technical-notes.md:578
     """
     return premiums(t) - claims(t) - expenses(t) - claim_expenses(t)
 
@@ -1810,7 +1831,7 @@ def check_net_cf_resid(t):
     claims are rebuilt kind by kind where :func:`net_cf` subtracts their total.
 
     Override reason: the premium leg is rebuilt from the *Zahlbeitrag* billed times the
-    paying count, not from the frame, products/berufsunfaehigkeit/model.md:185
+    paying count, not from the frame, products/berufsunfaehigkeit/model.md:188
     """
     return net_cf(t) - (prem_inst_pp(t) * pols_prem(t)
                         - claims(t, "BU_RENTE")
@@ -1823,7 +1844,7 @@ def check_net_cf_scale(t):
     """The scale of :func:`check_net_cf`'s tolerance in month t: the *BU-Rente*, at least 1.
 
     Override reason: the statement is checked relative to the month's BU-Rente per policy,
-    products/berufsunfaehigkeit/technical-notes.md:557
+    products/berufsunfaehigkeit/technical-notes.md:578
     """
     return max(1.0, abs(bu_rente_pp(t)))                            # noqa: F821
 
@@ -2013,7 +2034,7 @@ def result_cf_columns():
 
     Override reason: the statement carries the three state counts, the paying count, the
     three claim kinds and the claims-handling cost,
-    products/berufsunfaehigkeit/technical-notes.md:542-544
+    products/berufsunfaehigkeit/technical-notes.md:563-565
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821
@@ -2065,7 +2086,7 @@ def result_states_columns():
     rate applied to a cohort is ``recov_rate(z)`` and belongs to the cohort.
 
     Override reason: the frame publishes the transitions, the rates and the per-policy
-    amounts of the three-state ledger, products/berufsunfaehigkeit/technical-notes.md:546
+    amounts of the three-state ledger, products/berufsunfaehigkeit/technical-notes.md:567
     """
     return (
         ("pols_inception", pols_inception),                          # noqa: F821

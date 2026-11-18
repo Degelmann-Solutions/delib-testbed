@@ -61,8 +61,8 @@ value moved with this frame change. `lapse_table.csv` is keyed by `policy_year` 
 6 the ultimate — a contractual 1-based label read through `policy_year(t)`, so the file is
 left alone. `claim_duration_table.csv` is keyed by `dur_year` 1–10 with row 11 the ultimate,
 the **claim** year since onset, on the 1-based claim-duration clock `z` and independent of
-`t`; unchanged. `inception_table.csv` and `mortality_table.csv` are keyed by attained `age`,
-reached through `age(t)`; unchanged. In `model_point_table.csv`, `duration_mth_init` and
+`t`; unchanged. `inception_table.csv` is keyed by attained `age`, reached through `age(t)`;
+unchanged. The mortality tables are the table factory's, read at `age(t)` too. In `model_point_table.csv`, `duration_mth_init` and
 `claim_duration_init` are **elapsed counts**, already 0-based by nature, and neither is a
 point on the frame's axis — the frame always opens at `t = 0` and carries the elapsed
 duration as an offset inside `duration_mth(t)` — so both are unchanged.
@@ -90,8 +90,8 @@ its liability has ceased it remains obliged to pay **to the end of the third mon
 notice reaches the policyholder**, so a recovery does not stop the annuity in the month it
 happens. `pols_recovery(t)` feeds run-off slot 1, the slots roll at **active-lives** mortality —
 these lives have recovered and are no longer impaired — and only the slot-3 survivors rejoin
-`pols_actv` as `pols_reactivation(t)`. On the anchor cell the tail is 194,08 € of the 12 350,92 €
-of *BU-Rente*, **1,6 % of all benefit**: small in aggregate, structural in kind. A model
+`pols_actv` as `pols_reactivation(t)`. On the anchor cell the tail is 196,90 € of the 12 739,97 €
+of *BU-Rente*, **1,5 % of all benefit**: small in aggregate, structural in kind. A model
 returning a recovery straight to the active ledger loses three monthly *Renten* per recovery and
 fails `check_runoff_roll_fwd()` immediately.
 
@@ -128,7 +128,7 @@ advance under § 153 VVG through § 176, with the MindZV risk-result minimum beh
 `prem_rebate_inst_pp(t)`, which `check_prem_split` closes against the instalment due. A
 model that knows only the *Zahlbeitrag* silently assumes the credit is permanent; one booking
 the *Bruttobeitrag* as premium overstates collected premium by `1/0,70 − 1 = 42,86 %`. Over the anchor
-cell's 444 months `Σ prem_charged_inst_pp × pols_prem / Σ premiums = 23,636.5239 / 16,545.5667 =
+cell's 444 months `Σ prem_charged_inst_pp × pols_prem / Σ premiums = 23,641.6145 / 16,549.1301 =
 1.428571428571429`, which is `1 / 0.70` to fifteen figures — necessarily so, because `prem_freq_load`
 scales *Bruttobeitrag* and *Beitragsverrechnung* **together** and cancels out of the ratio.
 
@@ -141,8 +141,11 @@ the one the product's own consumer literature warns about [S13] [S16].
 
 The `*_first` cells are a **second projection**, not a variant of the first: the same
 four-ledger chain on *Rechnungsgrundlagen erster Ordnung* — inception × 1,30, reactivation
-× 0,70, disabled-lives mortality × 0,70, active-lives mortality × 0,80, **no lapse** — run
+× 0,70, disabled-lives mortality × 0,70 and active-lives mortality × 0,60, each on the unisex
+blend of its table, **no lapse** — run
 over the contract's **original** term from `issue_age` and indexed by `s` rather than `t`.
+The active load stands on a first-order death table, whose best estimate is 0,75 of it, so the
+first-order active mortality is 0,80 of the best estimate of the blend.
 Prudence for a disability product means a claim that starts more often, ends less often and
 lasts longer; it also means fewer premium-paying lives lost, because here an active death and
 a lapse both *release* a liability and a prudent basis does not anticipate a favourable event.
@@ -154,19 +157,19 @@ administration loadings are proportional to it:
 P = (PV_rente + PV_wgh + PV_cost + PV_admin)
     / ( PV_prem x (1 - load_admin_prem_inst) - load_acq_bsum_once x BS_unit )
 
-  = (23,343.4233891260 + 503.7539625017 + 318.4378872394 + 544.9704391415)
-    / (29.1512391470 x 0.91 - 0.025 x 37)
-  = 24,710.5856780086 / 25.6026276238  =    965.1581877099 EUR p.a.
+  = (23,276.6704838629 + 501.5816580277 + 317.1647699960 + 543.6526329150)
+    / (29.0814446085 x 0.91 - 0.025 x 37)
+  = 24,639.0695448016 / 25.5391145937  =    964.7581733650 EUR p.a.
 ```
 
-so the monthly instalment is `P × 1,05 / 12 = 84,4513` € and the *Zahlbeitrag* `0,70 ×` that
-`= 59,1159` €. **The recursion is acyclic**: no decrement depends on the premium, so nothing
+so the monthly instalment is `P × 1,05 / 12 = 84,4163` € and the *Zahlbeitrag* `0,70 ×` that
+`= 59,0914` €. **The recursion is acyclic**: no decrement depends on the premium, so nothing
 in the `pv_*` cells depends on `P`. The equivalence is struck **before** the *Risikozuschlag*
 and **without lapse**, deliberately on both counts, and `PV_prem` is struck on `P / 12` in
 every month — so `prem_freq_load` is a genuine loading on the tariff premium rather than a
 re-expression of it. Running the shadow from inception rather than from the valuation date is
 what gives an in-force point the premium its contract was struck at: **model point 6 is model
-point 1 fifteen years on, and the two price identically at 965,1582 € p.a.** Model point 13
+point 1 fifteen years on, and the two price identically at 964,7582 € p.a.** Model point 13
 supplies `prem_gross_level_std_pp = 2 400,00 €` instead, so the override branch ships too.
 
 ## The *Beitragsbefreiung* is the absence of a premium, not a benefit
@@ -191,7 +194,7 @@ premium** **[std]** — the waiver runs with the benefit. On the anchor `karenz_
 months. The *Karenzzeit* is **not** the *Prognosezeitraum* and **not** the *Sechs-Monats-Fiktion*;
 both of those are part of the *definition* of BU, and the *Karenzzeit* defers the pension alone —
 "Die Karenzzeit gilt nur für die Rente" [S4]. With `K = 0` the first *BU-Rente* falls in the month
-**after** an onset — `claims(1, "BU_RENTE") = 0,11 €`.
+**after** an onset — `claims(1, "BU_RENTE") = 0,10 €`.
 
 ## Two escalations, two clocks
 
@@ -218,7 +221,7 @@ internally consistent, acyclic, and understating what the market would charge.
   occ_factor() × accept_factor × au_uplift()`, and those are the **only three** multipliers on
   it. So it moves every claim and every decrement and reaches the premium only through the
   equivalence. Model point 3 is the anchor at BG4: `inc_rate` scales by exactly 3,00 while
-  the premium scales by **2,932141**, slightly *below* it, because the flat administration
+  the premium scales by **2,932349**, slightly *below* it, because the flat administration
   and assessment charges do not scale with the risk.
 - **`rating_factor`** (ρ) loads the ***Bruttobeitrag* alone**. Model point 11 carries 1,50: its
   premium and surplus credit scale by exactly 1,50 while every decrement, claim and claim
@@ -232,16 +235,19 @@ the benefit: a declined claim generates no annuity at all rather than a smaller 
 shipped table is **gross of declinature**, so a user substituting one already net of it must
 set the factor to 1,00 or the effect is counted twice [REG-R53].
 
-`sex` is a model-point attribute for reporting only and **must not price**: sex-differentiated
-premiums and benefits have been unlawful in Germany for contracts written from 21 December 2012
-[R15] [REG-R34]. Model points 1 and 2 differ in `sex` alone, and their frames are identical.
+`sex` **must not price**: sex-differentiated premiums and benefits have been unlawful in Germany
+for contracts written from 21 December 2012 [R15] [REG-R34]. The first-order pricing run reads
+both mortality tables as the unisex blend of their two sexes (`unisex_mix_male` 0,50), so model
+points 1 and 2, which differ in `sex` alone, are struck at the same *Bruttobeitrag*. The best
+estimate reads the two tables on the own sex, so their frames differ: the woman of model point 1
+draws 12 739,97 € of *BU-Rente* over the projection, the man of model point 2 11 898,90 €.
 
 ## The *Leistungsendalter* stops the benefit and holds the mass
 
 `cover_end_age` and `benefit_end_age` are separate contractual terms, not synonyms. Model point 9
 carries cover to 67 and benefit to 63: from attained age 63 the *BU-Rente* and the
 claim-maintenance cost are exactly zero while the premium runs on for four more years, collecting
-a further 2 244,03 €.
+a further 1 508,79 €.
 
 What is easy to get wrong is the population. **The mass is held, not deleted**: the ledgers
 keep rolling past `benefit_end_age`, so `check_states()` and `check_pols_roll_fwd()` still close
@@ -272,7 +278,7 @@ rather than to the payment. The alternative reading is defensible and is named.
 
 ## Inputs are external files
 
-The eight input CSVs, `param_tariff_type.csv` among them, live **in this directory**, beside `run.py`, and `BU_DE_S/` holds nothing
+The seven input CSVs, `param_tariff_type.csv` among them, live **in this directory**, beside `run.py`, and `BU_DE_S/` holds nothing
 but formulas — `__init__.py`, `_system.json`, `Data/__init__.py` and `Projection/__init__.py`, no
 `_data/`, no IOSpec, no embedded values. This follows lifelib's `annuallife/TradLife_A`, which
 keeps its inputs beside the model; it is the opposite of `basiclife/BasicTerm_S`, which stores
@@ -289,15 +295,22 @@ counts the reads against a registered file set. `Data.input_dir()` resolves the 
 
 **The trade-off:** the model is not portable on its own — copy `BU_DE_S/` without the CSVs and
 it reads fine, then fails on first evaluation. What you gain is that a diff of the model shows
-logic changes only, and an input can be swapped in place: point `Data.mort_file` at
+logic changes only, and an input can be swapped in place: point `Data.inception_file` at
 another same-schema file and the projection follows, with no formula change.
+
+**No mortality file is among them.** The death rates come from the core's table factory
+(`docs/core.md`, "The table factory"): the tariff chooses `dav2008t_proxy` in the row `mort_table`
+of `param_tariff_type.csv` for the active lives and the § 174 run-off and `dav1997ti_proxy` in
+the row `mort_dis_table` for the lives in claim, and `Projection` reads both through the one
+lookup `tables.q`, the first through the core's cells, the second in its cell
+`mort_rate_dis_at_age` at each claim year as the table's select duration. The tables' parameters
+are rows of `core/Core/Data/param_tables.csv`.
 
 | Reference | Cells | File | Contents and provenance |
 |---|---|---|---|
 | `model_point_file` | `model_point_table()` | `model_point_table.csv` | Thirteen model points. **Point 1 is the worked-example anchor cell** (aktiv / F30 / BG1 / 1 500 € a month / cover and benefit to 67 / no *Karenzzeit* / monthly). Points 2–13 exercise the unisex twin, the occupational factor, the `dynamik` form, a *Karenzzeit*, an in-force active policy, an in-force claim, an *Endalter* of 60, a *Leistungsendalter* below the *Versicherungsdauer*, the *AU-Klausel*, a *Risikozuschlag*, both escalations off, and a premium override. **The one file with no `provenance` column** — a model point is a configuration, not an assumption, and it is the only exemption from delib's second ruling |
 | `inception_file` | `inception_table()` | `inception_table.csv` | Annual *Invalidisierungswahrscheinlichkeit* by attained age 18–66. **[std]** two-slope Gompertz proxy `0.00110 × 1.06^(min(x,45)−30) × 1.13^(max(x,45)−45)`, unisex and **gross of declinature**; DAV 1997 I is DAV property and is **not shipped** [R16]. **The anchor a replacement must preserve is `inc_rate(30) = 0.001100`**, with the age shape and a declaration of whether it is gross or net of declinature |
-| `claim_duration_file` | `claim_duration_table()` | `claim_duration_table.csv` | `recov_rate` and `mort_dis_sel_factor` by claim year 1–10, row 11 the ultimate. **[std]**; DAV 1997 RI and DAV 1997 TI are not shipped [R16]. **What must be preserved is the duration shape** — reactivation 0,250 in claim year 1 falling to 0,006 and near zero after about five years, disabled mortality select at 3,0 falling to 1,2. A flat reactivation rate is worth roughly a factor of two on projected benefit |
-| `mort_file` | `mort_table()` | `mortality_table.csv` | `mort_rate_actv` and `mort_rate_dis` by attained age 18–70. **[std]** Gompertz proxies, active `0.00035 × 1.095^(age−30)` and disabled **exactly 4,00×** it; DAV 2008 T [R17] and DAV 1997 TI [R16] are not shipped. Anchored at `mort_rate_actv(30) = 0.000350`. **What must be preserved is the excess of disabled over active mortality** — never one rate for both states |
+| `claim_duration_file` | `claim_duration_table()` | `claim_duration_table.csv` | `recov_rate` by claim year 1–10, row 11 the ultimate. **[std]**; DAV 1997 RI is not shipped [R16]. **What must be preserved is the duration shape** — reactivation 0,250 in claim year 1 falling to 0,006 and near zero after about five years. A flat reactivation rate is worth roughly a factor of two on projected benefit. The select factors of disabled-lives mortality, on the same duration, are items of the table factory's `dav1997ti_proxy` |
 | `occupation_file` | `occupation_table()` | `occupation_table.csv` | The five *Berufsgruppen* with loadings and labels: BG1 1,00, BG2 1,40, BG3 2,10, BG4 3,00, BG5 4,50. **[std]**, anchored at 1,00 for office and 3,00 for the reference manual class inside the recalled 2×–4× band [S6]. Carrier classifications are **not comparable with one another** |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` | Annual *Stornoquote* by policy year 1–5, row 6 the ultimate: 4,0 / 4,0 / 3,5 / 3,0 / 2,5 / 2,0 %. **[std]**, and **low by the standards of every other delib product** — a product fact, not a modelling choice, because cover cannot be replaced once health has changed [S16]. The 30-day *Widerruf* sits inside year 1 [REG-R23] |
 | `prem_freq_file` | `prem_freq_table()` | `prem_freq_table.csv` | `instalments` (1 / 2 / 4 / 12) and the *Ratenzahlungszuschlag* `prem_freq_load` (1,00 / 1,02 / 1,03 / 1,05). **[std]**: the ladder is the recalled German market convention and no retrieved document confirms it |
@@ -344,9 +357,9 @@ arriving in another, or arrives in two. The first fixes the definition, the seco
 | *Risikozuschlag* | `rating_factor` | `1.00` | A multiplier on the *Bruttobeitrag* alone |
 | Premium override | `prem_gross_level_std_pp` | `0.0` = derive by equivalence | Model point 13 supplies 2 400,00 € p.a. instead |
 
-Model point 12 is the anchor with both escalations off: its equivalence gives 824,59 € against
-the anchor's 965,16 €, so the *Leistungsdynamik* and the *Wiedereingliederungshilfe* together
-are worth **140,57 € p.a.**, 14,6 % of the *Bruttobeitrag* — not additively, because both are
+Model point 12 is the anchor with both escalations off: its equivalence gives 824,13 € against
+the anchor's 964,76 €, so the *Leistungsdynamik* and the *Wiedereingliederungshilfe* together
+are worth **140,63 € p.a.**, 14,6 % of the *Bruttobeitrag* — not additively, because both are
 paid out of the same claim population.
 
 Three constructions the notes describe are **not implemented**, each because doing so would
@@ -368,9 +381,9 @@ structure, plus a risk margin [REG-R1] [REG-R2] [REG-R4]; **nothing in this libr
 and `rechnungszins` appears only inside the equivalence.
 
 The shape to expect is a large first-month strain — the whole acquisition charge falls in month
-0, 892,77 € of the 901,87 € of expense against an 84,45 € instalment, so `net_cf(0) = −842,81
-€` — then thin positive margins that decay, cross zero between months 265 and 266 at attained
-age 52, and reach −72,00 € in the last month. That crossing is the *Deckungsrückstellung* this
+0, 892,40 € of the 901,50 € of expense against an 84,42 € instalment, so `net_cf(0) = −842,46
+€` — then thin positive margins that decay, cross zero between months 264 and 265 at attained
+age 52, and reach −77,52 € in the last month. That crossing is the *Deckungsrückstellung* this
 model does not compute being built and run down.
 
 `expenses` is administration only — acquisition, the proportional loading and the flat charge.
@@ -407,9 +420,10 @@ Five names needed care:
 | `i(x)` vs the composed rate | `inc_rate_base` / `inc_rate` | The table rate and the rate after κ, α and υ, published separately so a substituted table already net of declinature is visible |
 | `l_r(t,k)` vs `V_r(t,k)` | `pols_runoff_slot` / `runoff_val` | A count and a value: the run-off carries frozen *BU-Renten*, so both are needed |
 
-`status`, `sex`, `au_klausel` and `claim_duration_init` drive little or nothing in the base
+`status`, `au_klausel` and `claim_duration_init` drive little or nothing in the base
 parameterization and are exposed as documented cells rather than dropped: a silently missing
-column is worse than an inert one.
+column is worse than an inert one. `sex` selects the sex both mortality tables are read at for
+the best estimate and never reaches the premium.
 
 ## Standardizations used
 
@@ -422,14 +436,14 @@ only the *levels* that no retrievable document supplies.
 | Inception table | `0.00110 × 1.06^(min(x,45)−30) × 1.13^(max(x,45)−45)`, anchored at `i(30) = 0.001100` | DAV 1997 I is not public and is not shipped [R16]. The **shape** is what the research establishes — flat to 30, moderate through the forties, sharply accelerating after — and the level is anchored so the worked example reproduces exactly |
 | Occupational loadings | BG1 1,00 … BG5 4,50 | One base table with occupational loadings is how German BU pricing works; the 1,00 / 3,00 anchors sit inside the recalled 2×–4× manual/office band, the rest interpolated geometrically. **No retrieved document supports the classification**: the NÜRNBERGER AVB was read in full for the 2026-08-30 pass and never uses the word *Berufsgruppe*, and no *Berufsgruppenverzeichnis* is published at a public address [S6] |
 | Reactivation table | 0,250 → 0,006 by claim year | DAV 1997 RI is not shipped [R16]. Front-loading is the established shape; the levels are construction, and there is **no age-at-disablement dimension**, which the real table has |
-| Active-lives mortality | `0.00035 × 1.095^(age−30)` | DAV 2008 T is not shipped [R17]. An insured-lives *Todesfall*-character shape, not a population table |
-| Disabled-lives mortality | exactly **4,00 ×** the active column, times select factors 3,0 / 2,0 / 1,6 / 1,4 / 1,3 / 1,2 | DAV 1997 TI is not shipped [R16]. Defining the column *from* the active one rather than rounding its own formula independently makes `mort_rate_dis(t,z) / mort_rate(t)` exactly 12,0 at claim duration 1 and 4,8 ultimately at every age, so "never one rate for both states" is an exact identity instead of a tolerance |
+| Active-lives mortality | **0,75 ×** the table factory's `dav2008t_proxy`, `0.00022 + 2.8820182383e-05 × 1.10^age` for a man and `0.00016 + 2.1653029589e-05 × 1.10^age` for a woman | DAV 2008 T is not shipped [R17]. A first-order Makeham proxy, an insured-lives *Todesfall*-character shape, not a population table; `mort_be_factor` 0,75 is the step to the best estimate, the first-order margin of DAV 2008 T being 34 % (bib `DAV-Fortbildung/DAV vor Ort/Niedersachsen-Bremen/NBr-2022-11-08_Keil_Klimwandel-und-LV.pdf` p. 4) |
+| Disabled-lives mortality | the table factory's `dav1997ti_proxy`: `0.00140 × 1.095^(age−30)` times 1,2 for a man and 0,8 for a woman, times its select factors 3,0 / 2,0 / 1,6 / 1,4 / 1,3 / 1,2 by claim year | DAV 1997 TI is not shipped [R16]. The table stands at the best-estimate level and is read without a factor; the split by sex is set so that a blend of half men gives the unisex level. On the anchor at 30 it is 8,3 times active mortality at claim duration 1 and 3,3 times ultimately; the ratio moves with age and sex and is never 1 |
 | `accept_factor` | **0,75** | The *Anerkennungsquote*, set against the German BU claim acceptance in bib `DAV-Fortbildung/Tagungen/2022_11_Herbsttagung/HTG22_Tag1_LEBEN_Kurz-Schiergens.pdf` p. 30 [R21] [R20] (acceptance of 2026-11-09; was 0,80, recalled at 75–80 % and unverified). Applied to the **inception rate**, on a table that is gross of declinature |
 | `au_uplift` | **1,00** everywhere | No source quantifies the *AU-Klausel*'s effect on incidence. An inert switch is honest; an invented loading is not |
 | Lapse table | 4,0 % falling to 2,0 % | No German insurer publishes a BU *Stornoquote*. The level is low, which is a product fact [S16]; **lapse selection is not modelled**, and the direction of that error is one-sided |
 | Monthly conversion | `p_m = 1 − (1 − p)^(1/12)` on every annual rate | One convention applied uniformly to `i`, `r`, `q^a`, `q^i` and `w` |
-| Processing order | mortality → lapse → inception; then disabled deaths → terminations; then the run-off | Taking incidence first gives `0.000068776010` against `0.000068540443` in month 0 — 0,34 %, compounding over 444 months |
-| First-order loads | 1,30 / 0,70 / 0,70 / 0,80, **no lapse** | Prudence for a disability product forks: higher incidence, lower reactivation, lower disabled and active mortality, and no anticipation of a favourable decrement |
+| Processing order | mortality → lapse → inception; then disabled deaths → terminations; then the run-off | Taking incidence first gives `0.000068776010` against `0.000068540138` in month 0 — 0,34 %, compounding over 444 months |
+| First-order loads | 1,30 / 0,70 / 0,70 / 0,60, **no lapse** | Prudence for a disability product forks: higher incidence, lower reactivation, lower disabled and active mortality, and no anticipation of a favourable decrement. The two mortality loads stand on the unisex blend of their tables, `unisex_mix_male` 0,50; the active one on a first-order death table, 0,60 = 0,80 × 0,75, so the first order stays 20 % below the best estimate |
 | `rechnungszins` | **1,00 % p.a.** | The *Höchstrechnungszins*. **The figure is sourced**: DeckRV § 2 Abs. 1 fixes it "auf 1 Prozent", and § 2 Abs. 2 makes the rate used at conclusion apply for the whole term [R13]. **The 1 January 2025 commencement is not in the consolidated text and stays `[unverified]`** [REG-R15]. Used only in the equivalence. A model-point column, fixed at conclusion for the whole term; every shipped point carries this rate |
 | `pols_if_init` | **1,0** on every model point | The policy count a model point stands for, the opening value of `pols_if`: the model is a per-policy probability projection. A model-point column since phase 3, where it was the literal 1.0 |
 | `load_acq_bsum_once` | **2,5 % of the *Beitragssumme***, once at issue | Sits **at** the § 4 DeckRV *Höchstzillmersatz*: "Der Zillmersatz darf 25 Promille der Summe aller Prämien nicht überschreiten" [R13] [REG-R16], restated by both retrieved AVB as 2,5 % of the premiums payable over the term [S1] [S6]. The ceiling is the only sourced number in the charge structure, and the level is a choice to sit at it |
@@ -439,7 +453,7 @@ only the *levels* that no retrievable document supplies.
 | `prem_freq_load` | 1,00 / 1,02 / 1,03 / 1,05 | The recalled German *Ratenzahlungszuschlag* ladder `[unverified]` — the retrieved AVB name the frequencies (single, monthly, quarterly, half-yearly, annual) but no loading [S1]; it scales *Brutto* and *Beitragsverrechnung* together |
 | `beitragsverrechnung` | **0,70**, held constant | Midpoint of the recalled 0,60–0,75 common range inside a 0,50–0,80 band `[unverified]` — **no retrieved document gives a ratio**, though two now state the mechanic in their own words [S6] [S12]. **The largest single parameter uncertainty in the model**, and holding it constant its largest discretionary assumption |
 | `leistungsdyn_rate` | **2 % p.a.** | Midpoint of the recalled 1–3 % menu. A BU model without in-claim escalation misses the product's dominant long-duration sensitivity |
-| `wiedereingliederung_months` | **6**, paid on the **completed** run-off | Recalled range 3–12 monthly *Renten*. Paying it on every recovery instead overstates it by exactly the run-off's own mortality — 393,80 € against 385,13 € on the anchor cell |
+| `wiedereingliederung_months` | **6**, paid on the **completed** run-off | Recalled range 3–12 monthly *Renten*. Paying it on every recovery instead overstates it by exactly the run-off's own mortality — 399,59 € against 390,68 € on the anchor cell |
 | Run-off values not escalated | no *Leistungsdynamik* inside the three months | Three months is inside one onset anniversary in every realistic case, and it removes a second duration dimension |
 | *Karenzzeit* premium | still payable inside it | The *Beitragsbefreiung* runs with the **benefit**, so a life not yet paid still pays |
 | *Leistungsendalter* premium | **not** resumed after it | The waiver is read as keyed to the **state**. The alternative reading is defensible and is named |
@@ -461,7 +475,7 @@ conditions and four carrier AVB — see `sources.md`.
 list(range(proj_len()))`, so 444 rows `t = 0 … 443` on the anchor cell, ending at the last
 index `proj_len() − 1` — then all eighteen printed rows of the notes' worked
 example to the cent and the state ledgers to six decimals, the full-precision totals against
-the sum-of-rounded-cells the notes also print, the derived *Bruttobeitrag* of 965,1582 € p.a.
+the sum-of-rounded-cells the notes also print, the derived *Bruttobeitrag* of 964,7582 € p.a.
 reached two independent ways, month 0 rebuilt term by term with a calculator, the first
 inception and the first *BU-Rente* from the annual rates, the § 174 run-off traced through one
 cohort, the four-way decrement closure, the *Brutto* / *Zahl* ratio surviving aggregation, the

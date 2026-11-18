@@ -34,7 +34,11 @@
   ``mort_base_year`` nor ``unisex_mix_male``; Riester lists its two choices ``mort_table`` and
   ``annuity_mort_table``, its two factors, its new ``unisex_mix_male`` and the items of both
   tables, eight of ``dav2008t_proxy`` and fourteen of ``dav2004r_proxy``, and no
-  ``mort_base_year``; the two products that choose no table list no item of the layer.
+  ``mort_base_year``; Sofort lists its choice ``mort_table``, ``mort_be_factor`` 1.2,
+  ``mort_be_trend_factor`` 0.8, each with the provenance of the values package, its kept
+  ``unisex_mix_male`` and the fourteen items of ``dav2004r_proxy``, and neither
+  ``mort_base_year`` nor ``omega_age``; Pflege, which chooses no table, lists no item of the
+  layer.
 - A scratch copy of Index whose tariff chooses a fixture table lists that table's items with
   layer ``tables``, value, basis and provenance, after the core items and before the
   tariff-type items, and no other table's, the shipped one's neither, and exits 0; a copy
@@ -68,7 +72,7 @@ from run_baseline import model_dir  # noqa: E402
 
 from test_core import _add_params  # noqa: E402
 from test_tables import (BASIS, BU, FIXTURE_DEFINITIONS, FIXTURE_VALUES, FRV,  # noqa: E402
-                         INDEX, KLV, RIESTER, RV, SHIPPED_ITEMS, SHIPPED_PROVENANCE,
+                         INDEX, KLV, RIESTER, RV, SHIPPED_ITEMS, SHIPPED_PROVENANCE, SOFORT,
                          SHIPPED_ROWS, SWITCHED,
                          choosing_copy, fixture_copy, fixture_items, tables_file,
                          unswitched_copy)
@@ -514,6 +518,58 @@ def test_basis_lists_its_choice_its_factor_and_the_items_of_its_table(capsys):
     assert "dav2008t_proxy" not in out and "dav1997ti_proxy" not in out
     assert not [line for line in split
                 if line[:1] in (["mort_base_year"], ["unisex_mix_male"])]
+
+
+def test_sofort_lists_its_choice_its_derivation_items_and_the_items_of_its_table(capsys):
+    table, listed = tables_rows(PRODUCTS_DIR / SOFORT, "ParamsShippedSofort")
+    assert SWITCHED[SOFORT] == {"mort_table": "dav2004r_proxy"}
+    assert [row["item"] for row in listed] == list(SHIPPED_ITEMS["dav2004r_proxy"])
+    assert len(listed) == 14
+    for row in listed:
+        text, basis = SHIPPED_ROWS[row["item"]]
+        assert row["value"] == (int(text) if text.isdigit() else float(text))
+        assert row["basis"] == basis == "Setzung"
+        assert row["provenance"].startswith(SHIPPED_PROVENANCE["dav2004r_proxy"])
+    by_item = {row["item"]: row for row in table}
+    expected = {"mort_table": "dav2004r_proxy", "mort_be_factor": 1.2,
+                "mort_be_trend_factor": 0.8, "unisex_mix_male": 0.45}
+    for item, value in expected.items():
+        row = by_item[item]
+        assert (row["value"], row["layer"], row["basis"]) == (value, "tariff_type", "Setzung")
+        assert row["provenance"], item
+    # the values package's provenance of the three new rows, verbatim
+    assert by_item["mort_table"]["provenance"] == (
+        "the first-order annuitant table of both lives, the proxy of DAV 2004 R its file names,"
+        " read at each life's birth year")
+    assert by_item["mort_be_factor"]["provenance"] == (
+        "step from the first-order annuitant table to the best estimate, 1.20, the ratio of the"
+        " second-order to the first-order series of Sofort's former file; Basis, RV and"
+        " Riester's payout step from the same table with 1.15; the direction is sourced (bib"
+        " DAV-Fortbildung/DAV vor Ort/Koeln-Bonn-Duesseldorf/2026_08_04_qx-Club_Gottschalk_"
+        "Kundennutzen.pdf p. 15-16), the level is not")
+    assert by_item["mort_be_trend_factor"]["provenance"] == (
+        "the best estimate improves at 0.8 of the table's trend: Sofort's first-order"
+        " improvement is 1.25 times the second-order one today, and 1 / 1.25 = 0.8; the margin"
+        " of an annuity table reaches the trend as well as the level")
+    # the two items the table's own replaced
+    assert "mort_base_year" not in by_item and "omega_age" not in by_item
+    assert by_item["dav2004r_proxy_base_year"]["value"] == 2005
+    assert by_item["dav2004r_proxy_end_age"]["value"] == 121
+
+    assert params.main([SOFORT]) == 0
+    out, err = capsys.readouterr()
+    assert err == "" and headers(out) == [SOFORT]
+    split = [line.split() for line in out.splitlines()]
+    for item, value in expected.items():
+        assert [item, repr(value), "tariff_type", "Setzung"] in [line[:4] for line in split], item
+    for item in SHIPPED_ITEMS["dav2004r_proxy"]:
+        text, basis = SHIPPED_ROWS[item]
+        value = int(text) if text.isdigit() else float(text)
+        assert [item, repr(value), "tables", basis] in [line[:4] for line in split], item
+    # the choice and the fourteen items of its table, and no other table's
+    assert len([line for line in out.splitlines() if "dav2004r_proxy" in line]) == 15
+    assert "dav2008t_proxy" not in out and "dav1997ti_proxy" not in out
+    assert not [line for line in split if line[:1] in (["mort_base_year"], ["omega_age"])]
 
 
 def test_klv_lists_its_choice_its_derivation_items_and_the_items_of_its_table(capsys):

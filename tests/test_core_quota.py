@@ -14,9 +14,9 @@ each writing its figures with ``--json``; the tests read those figures and call 
 - The static usage scan ``core/param_usage.py`` reaches every executed ``Projection`` cell of
   every product (``Data`` cells are not compared, the quota does not count them).
 - Only a switched product executes cells of the table factory: Index, BU, RV, KLV, FRV, RLV,
-  Basis and Riester do,
+  Basis, Riester and Sofort do,
   the cells behind ``q`` with the law ``makeham``, listed as ``tables.<cell>`` and counted as
-  core beside the hooks of their ``Projection``; the other two execute none. RLV, whose
+  core beside the hooks of their ``Projection``; Pflege executes none. RLV, whose
   table depends on the life, executes no hook of the core: its hook and the cell that maps
   the smoker status to a role are product cells. BU's hook for
   its second role, ``mort_rate_dis_at_age``, is a product cell, and its tariff rates execute
@@ -34,6 +34,11 @@ each writing its figures with ``--json``; the tests read those figures and call 
   the unisex blend of its annuity factor; its ``birth_year``, ``omega_age``, its override of
   ``mort_rate_table``, the payout hook ``annuity_mort_rate``, ``mort_rate`` and
   ``mort_be_factor`` are product cells, and ``omega_age_table`` does not run.
+  Sofort, with two lives on the generational table, executes its trend cells, the core's
+  ``mort_table_name``, ``omega_age_table`` and unisex blend; its hook ``mort_rate_gen``, the
+  trend term ``mort_be_trend``, ``mort_be_factor``, ``omega_age``, ``birth_year`` and the
+  per-life rates are product cells, and the core's ``mort_rate_table`` and
+  ``mort_rate_at_age`` do not run.
 - A scratch copy of Index on a fixture table executes the same cells with the fixture law in
   place of ``makeham``; one with a ``mort_rate_at_age`` of its own and no choice executes
   neither the factory's cells nor the hooks, and its override counts as a product cell.
@@ -176,8 +181,29 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
     assert product in ("basisrente", "berufsunfaehigkeit", "fondsgebundene_rentenversicherung",
                        "indexpolice", "kapitallebensversicherung",
                        "klassische_rentenversicherung", "riester_rente",
-                       "risikolebensversicherung")
+                       "risikolebensversicherung", "sofortrente")
     trend = {"tables.base_year", "tables.trend", "tables.trend_linear"}
+    if product == "sofortrente":
+        # two lives on the generational table through a hook of its own, the main role named
+        # by the core's ``mort_table_name``, the end age the core's ``omega_age_table``, the
+        # tariff rate the core's unisex blend; the trend term reads the factory's trend
+        assert executed == FACTORY_CELLS | {"tables.makeham"} | trend
+        assert executed <= set(figures["core_cells"])
+        assert {"mort_table_name", "omega_age_table", "unisex_blend",
+                "unisex_mix_male"} <= set(figures["core_cells"])
+        own = {"birth_year", "omega_age", "horizon_mths", "mort_rate_gen", "mort_be_trend",
+               "mort_be_factor", "mort_rate", "mort_rate_mth", "mort_rate_tariff",
+               "mort_rate_tariff_mth"}
+        assert own <= set(figures["executed_cells"])
+        assert not own & set(figures["core_cells"])
+        assert not {"mort_rate_table", "mort_rate_at_age", "mort_rate_base",
+                    "mort_rate_tariff_at_age"} & set(figures["executed_cells"])
+        assert sorted(name for name in set(figures["executed_cells"]) - set(figures["core_cells"])
+                      if "mort" in name) == [
+            "mort_be_factor", "mort_be_trend", "mort_rate", "mort_rate_gen", "mort_rate_mth",
+            "mort_rate_tariff", "mort_rate_tariff_mth"]
+        assert (figures["executed"], figures["core"]) == (108, 35)
+        return
     if product == "riester_rente":
         # two roles on two kinds of table: the period table of the accumulation through the
         # core's hooks but its own read without a birth year, the generational table of the

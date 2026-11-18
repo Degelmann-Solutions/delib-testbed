@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The seven input CSVs are read here, **once per model**, and referenced from
+The five input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Sofort_DE_S.Projection` as ``data``. :mod:`~.Sofort_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its
 own cells cache; if the readers lived there, every model point would re-read every file.
@@ -31,8 +31,6 @@ and a reader Cells:
 Reference                     Cells                           File
 ============================  ==============================  ================================
 model_point_file              model_point_table()             model_point_table.csv
-mort_file                     mort_table()                    mort_table.csv
-improvement_file              improvement_table()             improvement_table.csv
 surplus_scale_file            surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
 ann_freq_file                 ann_freq_table()                ann_freq_table.csv
@@ -41,61 +39,50 @@ param_file                    param()                         param_tariff_type.
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table`` and
-``hoechstrechnungszins_table``, this space's ``improvement_table_dict`` and
-``surplus_scale_table_dict``, with ``mort_table_ages`` and ``improvement_table_ages``, the
-age range the lookups clamp to, and ``ann_freq_table_keys``, the payment frequencies
-the table allows.
+``DataFrame.loc``: the core's for ``model_point_table`` and ``hoechstrechnungszins_table``,
+this space's ``surplus_scale_table_dict``, and ``ann_freq_table_keys``, the payment
+frequencies the table allows.
 
 Every file but ``model_point_table.csv`` carries a final ``provenance`` column, one tag
 per row, per the library's second ruling. A model point is a *configuration* rather than
 an assumption, and that is the only exemption.
 
-.. rubric:: The decrement tables are a [std] proxy, and here is its anchor
+.. rubric:: No mortality table is read here, and what a replacement must preserve
 
 **DAV 2004 R and DAV 2004 R-Bestand are the property of the Deutsche Aktuarvereinigung,
 are not public, and are not redistributed here.** They are cited by name in
-``sources.md`` and ``mort_table.csv`` ships a constructed proxy in their place, in four
-series — ``{FIRST, SECOND} x {M, F}`` — over attained ages 50 to 120:
+``sources.md``. The death rates come from the core's table factory: the tariff chooses
+``mort_table`` = ``dav2004r_proxy`` in ``param_tariff_type.csv``, a **[std]** proxy with
+the structure the real table has and none of its values, whose parameters are rows of
+``core/Core/Data/param_tables.csv``, each with its provenance. Both lives read it, each
+at its own birth year.
 
-    q_base(x) = 1 - exp( -( A + B c^x (c - 1) / ln c ) ),   A = 0.0002, B = 1.5e-5, c = 1.10
-    FIRST/M   = 1.250000 x q_base(x)          SECOND/M = 1.20 x FIRST/M
-    FIRST/F   = 0.795455 x q_base(x)          SECOND/F = 1.20 x FIRST/F
+The table is **generational**: the first-order rate at attained age ``x`` of the birth
+year ``g`` is ``q_base x (1 - trend(x))^(g + x - 2005)``, the rate of the calendar year
+``g + x``, with the base year 2005 the table's own. The base rate is Gompertz,
+``0.008 x 1.11^(x - 65)`` for men and 0.6 of it for women, over ages 0 to 120 and closed
+with ``q = 1`` at 120, so the end age 121 is :func:`~.Sofort_DE_S.Projection.omega_age`;
+the trend is 2,5 % a year up to age 75, grading linearly to 1,25 % at 90 and to zero at
+120, the same for both sexes. The anchor, born 1962, reads exponent
+``1962 + 65 - 2005 = 22`` at 65.
 
-``q_base`` is the Gompertz-Makeham law the research file constructs and prints, with life
-expectancy 24,29 years at 65 and ``q(65) = 0.00789``, ``q(75) = 0.02001``,
-``q(85) = 0.05078`` — a **prudent annuitant** shape of the right order for a German
-first-order basis, and **not** DAV 2004 R.
-
-**The anchor is the unisex blend.** The two sex factors are chosen so that the
-``unisex_mix_male = 0.45`` blend of the FIRST series reproduces ``q_base(x)`` itself:
-``0.45 x 1.250000 + 0.55 x 0.795455 = 1.00000025``, the exact factor for the female
-series being ``0.4375 / 0.55 = 0.79545454...`` and 0.795455 its six-decimal rounding. The
-blend therefore reproduces the research file's own law to 2.5e-7 relative at every age,
-which is four orders of magnitude inside the tolerance any published figure is quoted to,
-and every annuity factor printed in ``_research/sofortrente.md`` can be traced into this
-model. Age 120 is the closing row: all four series are set to 1.0 there, so the survival
-path reaches zero inside the ``omega_age = 121`` horizon.
-
-``improvement_table.csv`` carries the second half of the surface — a *Trendfunktion*
-proxy ``lambda_SECOND(x) = 0.0150`` to age 70, tapering linearly to zero at 105, with
-``lambda_FIRST = 1.25 x lambda_SECOND`` — and the model builds
-``q(x, sex, cohort, basis) = q_table x (1 - lambda)^(cohort + x - mort_base_year)`` with
-``mort_base_year = 2025``, so the shipped tables are the period tables of calendar year
-2025 and the exponent is the calendar year the life attains age ``x``, less 2025. The
-exponent is **negative** for a cohort attaining an age before 2025, and is not floored;
-no shipped point reads one, every frame opening at the valuation date 1 January 2027 —
-the in-force point issued in 2012, born 1947, at age 80 with exponent 2.
+The projection derives two rates from it. The **tariff rate** is the unisex blend
+``0.45 q_M + 0.55 q_F`` at ``unisex_mix_male``, the same for a man and a woman of equal
+age and birth year. The **best estimate** is the own sex's rate times
+``mort_be_factor = 1.2`` and a trend term ``T = ((1 - 0.8 trend(x)) / (1 - trend(x)))^(g
++ x - 2005)`` at ``mort_be_trend_factor = 0.8``: below the cap that is
+``1.2 x q_base x (1 - 0.8 trend(x))^(g + x - 2005)``, a best estimate that improves at
+0.8 of the table's trend. A table rate of 1 stays 1.
 
 **What a replacement must preserve.** Three things, and a substitution that keeps only
 the first is not a substitution for this table. (i) The **generational structure**: a
 ``q(x, cohort)`` surface, not a period table, because a period proxy applied to a
 forty-year annuity understates the liability by a margin that dwarfs every other
-assumption. (ii) The **first-order margin in both dimensions**: lighter mortality
-(``SECOND = 1.20 x FIRST``) *and* a stronger improvement trend
-(``lambda_FIRST = 1.25 x lambda_SECOND``), because prudence in an annuity table must reach
-the rate of improvement as well as its level. (iii) The **age-adjustment convention** —
-here, integer attained age last birthday with the closing row at 120 — since a table
+assumption. (ii) The **first-order margin in both dimensions**: the best estimate above
+the table in level (``mort_be_factor = 1.2``) *and* improving more slowly
+(``mort_be_trend_factor = 0.8``), because prudence in an annuity table must reach the
+rate of improvement as well as its level. (iii) The **age-adjustment convention** —
+here, integer attained age last birthday with the closing age 120 — since a table
 supplied with an *Altersverschiebung* must have it applied before it is read here.
 Replacing the level alone leaves the wedge between the two bases wrong, and that wedge is
 the systematic *Risikoüberschuss* this product's *Überschussrente* is largely financed
@@ -124,36 +111,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table_index():
-    """The index columns of *mort_table.csv*: ``basis``, ``sex`` and attained ``age``.
-
-    Indexed by ``(basis, sex, age)`` with ``basis`` in ``{FIRST, SECOND}`` and ``sex`` in
-    ``{M, F}``.  The unisex series the tariff is struck on is **computed** from these two
-    at ``unisex_mix_male``; it is deliberately not a row, because no real sex-distinct table
-    carries one.
-
-    A **[std]** proxy, not DAV 2004 R; see the Space docstring for what it is, what its
-    anchor is and what a replacement must preserve.
-
-    Override reason: the table carries a first- and a second-order basis, keyed by
-    ``basis``, ``sex`` and ``age``, products/sofortrente/technical-notes.md:383
-    """
-    return ["basis", "sex", "age"]
-
-
-def improvement_table():
-    """The annual mortality improvement rates, from *improvement_table.csv*.
-
-    Indexed by ``(basis, age)``.  This is the *Trendfunktion* of a generational table:
-    the improvement lives **inside** the mortality surface, keyed by birth cohort, rather
-    than being applied on top of a period rate keyed to the projection year.  A **[std]**
-    proxy; DAV 2004 R's own trend is not public.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / improvement_file,                              # noqa: F821
-        index_col=["basis", "age"])
-
-
 def surplus_scale_table():
     """The *Überschussverwendung* scale by form, from *surplus_scale_table.csv*.
 
@@ -181,15 +138,6 @@ def ann_freq_table():
         input_dir() / ann_freq_file, index_col="ann_freq")           # noqa: F821
 
 
-def improvement_table_dict():
-    """The improvement rates as a dict by column: ``{column: {(basis, age): rate}}``.
-
-    Built once per model from ``improvement_table()``, keyed by the tuple of its two index
-    columns; ``Projection.improve_rate_at_age`` reads its ``improve_rate`` column.
-    """
-    return improvement_table().to_dict()
-
-
 def surplus_scale_table_dict():
     """The *Überschussverwendung* scale as a dict by column: ``{column: {surplus_form: value}}``.
 
@@ -208,34 +156,10 @@ def ann_freq_table_keys():
     return frozenset(int(m) for m in ann_freq_table().index)
 
 
-def mort_table_ages():
-    """The age range of the core's ``mort_table()``: ``(first_age, last_age)``.
-
-    Over the whole index, every basis and sex together, built once per model; the bounds
-    ``Projection.mort_rate_at_age`` clamps the attained age to.
-    """
-    ages = mort_table().index.get_level_values("age")
-    return (int(ages.min()), int(ages.max()))
-
-
-def improvement_table_ages():
-    """The age range of ``improvement_table()``: ``(first_age, last_age)``.
-
-    Over the whole index, both bases together, built once per model; the bounds
-    ``Projection.improve_rate_at_age`` clamps the attained age to.
-    """
-    ages = improvement_table().index.get_level_values("age")
-    return (int(ages.min()), int(ages.max()))
-
-
 # ---------------------------------------------------------------------------
 # References
 
 model_point_file = "model_point_table.csv"
-
-mort_file = "mort_table.csv"
-
-improvement_file = "improvement_table.csv"
 
 surplus_scale_file = "surplus_scale_table.csv"
 

@@ -37,13 +37,15 @@ gate for the same reason. :func:`~.Sofort_DE_S.Projection.check_guarantee_certai
 two annuitants of the same age and different cohorts are priced on different mortality;
 and the tariff annuity factor is struck on a blended unisex basis while the projection
 decrements on the model point's own sex, because German new business has been unisex
-since 21 December 2012. The first-order margin reaches the improvement **trend** as well
-as the level, which is what prudence means for an annuity.
+since 21 December 2012. Both read the core's table factory, the first-order annuitant
+table ``dav2004r_proxy`` at each life's birth year; the best estimate lies above it in
+level and improves at 0.8 of its trend, so the first-order margin reaches the improvement
+**trend** as well as the level, which is what prudence means for an annuity.
 
 **Spaces.** The model contains two:
 
 :mod:`~.Sofort_DE_S.Data`
-    Reads the seven input CSVs and holds their filename References. It takes no
+    Reads the five input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.Sofort_DE_S.Projection`
@@ -80,8 +82,8 @@ continuing through the payout phase; and the absence of any surrender or paid-up
 search budget was exhausted before it began — so no annuity rate, no charge, no surplus
 declaration and no portfolio mix was established at any carrier for any year. DAV 2004 R
 and DAV 2004 R-Bestand are the property of the Deutsche Aktuarvereinigung, are not public
-and are **not redistributed here**: they are cited by name and a documented [std] proxy
-ships in their place. **This model is a mechanics demonstration, not a pricing or
+and are **not redistributed here**: they are cited by name and a documented [std] proxy,
+the table factory's ``dav2004r_proxy``, stands in their place. **This model is a mechanics demonstration, not a pricing or
 reserving result.** Replace the decrement, charge and surplus tables with company data
 before drawing any conclusion from the output.
 

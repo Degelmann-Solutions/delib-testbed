@@ -65,12 +65,16 @@ The derivation hooks of the core's ``Projection``:
   the usage scan of Index, BU, KLV, FRV and Riester, which choose ``dav2008t_proxy`` as
   ``mort_table``, and of RV and Basis, which choose ``dav2004r_proxy``, and unreachable in
   RLV, whose two roles ``mort_nr_table`` and ``mort_r_table`` its own cell
-  ``mort_table_smoker`` reads, and in the other two, which hold no choice. BU's second
+  ``mort_table_smoker`` reads, and in Pflege, which holds no choice. Sofort chooses
+  ``dav2004r_proxy`` as ``mort_table`` and reaches ``mort_table_name`` from its own hook
+  ``mort_rate_gen``, read for each of two lives, and not ``mort_rate_table`` or
+  ``mort_rate_at_age``. BU's second
   role, ``mort_dis_table``, is read by a hook of its own, ``mort_rate_dis_at_age``, which
   no other product has, and Riester's, ``annuity_mort_table``, by its payout hook
-  ``annuity_mort_rate`` and its ``omega_age``; ``omega_age_table`` is reachable in RV and
-  Basis alone, whose ``omega_age`` reads it. Riester alone overrides ``mort_rate_table``, to
-  read its main role, a period table, without the birth year of its second.
+  ``annuity_mort_rate`` and its ``omega_age``; ``omega_age_table`` is reachable in RV,
+  Basis and Sofort alone, whose ``omega_age`` reads it. Riester alone overrides
+  ``mort_rate_table``, to read its main role, a period table, without the birth year of its
+  second.
 - Index reads its death rates through the factory alone: on every shipped point
   ``mort_rate(t)`` is ``q(dav2008t_proxy, sex, age(t))`` times its ``mort_be_factor`` 0.75,
   through the core's cells, none overridden but the factor; its folder holds no mortality
@@ -179,6 +183,26 @@ The derivation hooks of the core's ``Projection``:
   ``mort_base_year``, its ``Data`` no mortality Reference or cell of its own, its
   ``Projection`` no mortality cell of its own but the factor, the phase switch, the payout
   hook and the read of the main role, and no read of the factory but those and the end age.
+- Sofort reads its death rates through the factory alone, the ninth switched product and the
+  fourth reader of ``dav2004r_proxy``, with two lives on one table: its hook
+  ``mort_rate_gen`` is ``q(dav2004r_proxy, sex, x, birth_year)`` for each life, the unisex
+  ``U`` the core's blend. The package's ten rate rows to six digits, the best estimate also
+  in the package's form ``1.2 * q_base * (1 - 0.8 trend) ** (g + x - 2005)``. The best
+  estimate: on every shipped point and both lives ``mort_rate(t, life)`` is ``min(1, 1.2 * T
+  * q)``, 1 where the table rate is 1, with the trend term ``T = ((1 - 0.8 tr) / (1 - tr))
+  ** (g + x - 2005)``, which at 65, 80 and 95 on the anchor is above 1, the best estimate
+  improving more slowly than the table, and 1 from 120. The tariff rate is the blend of 45 %
+  men and 55 % women at the life's age and birth year; a scratch copy whose anchor is a
+  woman has the man's tariff rate, annuity factor and guaranteed annuity and her own
+  decrements. On the joint-life points 4 and 5 the older life passes 120: from the end age
+  its best-estimate and tariff rates are 1, its survival 0, and no age above 120 reaches
+  the factory, where age 121 raises. A second life without a survivor's annuity reads 0.
+  ``omega_age()`` is the table's end age 121 and every frame is as long as before the
+  switch. Its folder holds no mortality file or column, its tariff-type file no
+  ``mort_base_year`` and no ``omega_age``, its ``Data`` no mortality Reference or cell of its
+  own, its ``Projection`` no mortality cell of its own but the factor, the trend term, the
+  hook and the per-life rates, and no read of the factory but ``q`` in the hook and the
+  trend and base year in the trend term.
 - On a scratch copy of Index that chooses a fixture table in its tariff-type file
   (``switched_copy``), the hooks deliver the table's rate on the point's own sex,
   its unisex blend and its end age, ``mort_rate`` stands on them, and the copy runs through
@@ -196,8 +220,9 @@ The usage scan ``core/param_usage.py`` (``docs/core.md``, "The usage check and t
   reads the table's items through ``mort_table_name``, as KLV, RV, FRV and Basis do, BU its two
   choices, the items of the second read through ``mort_rate_dis_at_age``, RLV its two, the
   items of both read through ``mort_table_smoker``, Riester its two, the items of the second
-  read through ``annuity_mort_rate`` and ``omega_age``; the other two hold no choice and read
-  no tables item, and no table is unchosen across the ten.
+  read through ``annuity_mort_rate`` and ``omega_age``, Sofort its one, its items read
+  through ``mort_table_name`` as RV's; Pflege holds no choice and reads no tables item, and no
+  table is unchosen across the ten.
 - On a scratch copy of Index that chooses a fixture table (``choosing_copy``) the scan holds
   the factory's ``items()`` and the choice, counts the chosen table's items as read by the
   cells reading the choice item and no other table's item, and reports nothing; a copy with
@@ -233,6 +258,7 @@ from test_core import (CORE_MODEL, MODELS, PRODUCTS_DIR, ROOT, _add_params, _for
                        _loader_error, param_usage, product_copy)
 
 RLV = "risikolebensversicherung"
+SOFORT = "sofortrente"
 TABLES_FILE = "param_tables.csv"
 
 
@@ -336,6 +362,7 @@ SWITCHED = {
     "riester_rente": {"mort_table": "dav2008t_proxy", "annuity_mort_table": "dav2004r_proxy"},
     "risikolebensversicherung": {"mort_nr_table": "dav2008t_nr_proxy",
                                  "mort_r_table": "dav2008t_r_proxy"},
+    "sofortrente": {"mort_table": "dav2004r_proxy"},
 }
 # Riester's second role is read by its payout hook and by its ``omega_age``, which names the
 # role whose end age is its horizon.
@@ -1392,9 +1419,9 @@ def test_only_a_switched_product_reaches_a_hook_that_reads_the_factory(product, 
         # Riester reads its main role, a period table, without the birth year of its second
         assert model.Projection.cells[hook]._is_derived() or (
             product, hook) == ("riester_rente", "mort_rate_table"), hook
-    # the end age is read off the table by a switched product that runs to it: RV and Basis;
-    # Riester, with two roles, names the role in its own ``omega_age``
-    assert ("omega_age_table" in reachable) == (product in (RV, "basisrente"))
+    # the end age is read off the table by a switched product that runs to it: RV, Basis and
+    # Sofort; Riester, with two roles, names the role in its own ``omega_age``
+    assert ("omega_age_table" in reachable) == (product in (RV, "basisrente", SOFORT))
     choices = {item: value for item, value in model.Data.param_dict().items()
                if item.endswith("_table")}
     if product == RLV:
@@ -1404,6 +1431,15 @@ def test_only_a_switched_product_reaches_a_hook_that_reads_the_factory(product, 
             assert hook not in reachable, hook
         assert model.Projection.cells["mort_rate_at_age"]._is_defined()
         assert "mort_rate_at_age" in reachable
+        assert choices == SWITCHED[product]
+        assert set().union(*(CHOICE_READERS[item] for item in choices)) <= reachable
+    elif product == SOFORT:
+        # two lives on one table: its hook ``mort_rate_gen`` reads the main role through the
+        # core's ``mort_table_name`` for each life, and the core's own reads stay unreached
+        assert "mort_table_name" in reachable
+        assert not {"mort_rate_table", "mort_rate_at_age"} & reachable
+        assert model.Projection.cells["mort_rate_gen"]._is_defined()
+        assert {"mort_rate_gen", "mort_be_trend"} <= reachable
         assert choices == SWITCHED[product]
         assert set().union(*(CHOICE_READERS[item] for item in choices)) <= reachable
     elif product in SWITCHED:
@@ -3261,6 +3297,284 @@ def test_riester_holds_no_mortality_file_item_reference_or_formula(product_model
     assert len(model.Data.cells["mort_table_dict"]) == 0
 
 
+# --------------------------------------------------------------------------- Sofort
+
+# The values package's rate rows of Sofort on ``dav2004r_proxy`` by (sex, age, birth year),
+# six significant digits: "New table", "BE new", ``thru(1.2 * T, q)`` with the trend term at
+# 0.8 of the table's trend, and "Tariff new", the blend of 45 % men and 55 % women.
+SOFORT_PACKAGE_RATES = {
+    ("M", 80, 1947): (0.0240869, 0.0317346, 0.0187878),
+    ("M", 95, 1947): (0.124313, 0.161247, 0.0969643),
+    ("F", 80, 1947): (0.0144521, 0.0190407, 0.0187878),
+    ("F", 95, 1947): (0.0745879, 0.0967483, 0.0969643),
+    ("M", 65, 1962): (0.00458344, 0.00615524, 0.00357508),
+    ("M", 80, 1962): (0.0175643, 0.0246629, 0.0137001),
+    ("M", 95, 1962): (0.106244, 0.142226, 0.08287),
+    ("F", 65, 1962): (0.00275006, 0.00369314, 0.00357508),
+    ("F", 80, 1962): (0.0105386, 0.0147977, 0.0137001),
+    ("F", 95, 1962): (0.0637461, 0.0853354, 0.08287),
+}
+# The frame lengths of the fourteen points before the switch, which the switch keeps: the end
+# age 121 of the table is the limiting age the item ``omega_age`` gave.
+SOFORT_PROJ_LEN = {1: 672, 2: 672, 3: 672, 4: 708, 5: 636, 6: 708, 7: 672, 8: 588, 9: 672,
+                   10: 672, 11: 432, 12: 732, 13: 612, 14: 672}
+
+
+def sofort_trend_term(sex: str, x: int, birth_year: int) -> float:
+    """The best-estimate trend term from the table's rows, in the float operations of
+    Sofort's ``mort_be_trend``: ``((1 - 0.8 tr) / (1 - tr)) ** (g + x - 2005)``."""
+    tr = linear_trend(x)
+    years = birth_year + x - SHIPPED_LAYER[f"{DAV2004R}_base_year"]
+    return ((1.0 - 0.8 * tr) / (1.0 - tr)) ** years
+
+
+def sofort_best_estimate(sex: str, x: int, birth_year: int) -> float:
+    """``thru(1.2 * T, q)``: 1 where the table rate is 1, else ``min(1, 1.2 * T * q)``."""
+    rate = r_rate(sex, x, birth_year)
+    if rate >= 1.0:
+        return 1.0
+    return min(1.0, 1.2 * sofort_trend_term(sex, x, birth_year) * rate)
+
+
+@pytest.mark.parametrize(("sex", "x", "birth_year"), sorted(SOFORT_PACKAGE_RATES))
+def test_sofort_rates_are_the_values_packages(shipped_tables, sex, x, birth_year):
+    rate = shipped_tables.q(DAV2004R, sex, x, birth_year)
+    table, best, tariff = SOFORT_PACKAGE_RATES[(sex, x, birth_year)]
+    assert six(rate) == table
+    assert six(sofort_best_estimate(sex, x, birth_year)) == best
+    # the package's form below the cap: 1.2 times the base rate at 0.8 of the trend
+    base = makeham_rate(sex, x, DAV2004R)
+    years = birth_year + x - 2005
+    assert six(1.2 * base * (1.0 - 0.8 * linear_trend(x)) ** years) == best
+    blend = (0.45 * shipped_tables.q(DAV2004R, "M", x, birth_year)
+             + 0.55 * shipped_tables.q(DAV2004R, "F", x, birth_year))
+    assert six(blend) == tariff
+
+
+def sofort_lives(item) -> tuple[int, ...]:
+    """The lives of a point: the annuitant, and the second life where a survivor's annuity
+    is in force."""
+    return (1, 2) if item.surv_pct() > 0.0 else (1,)
+
+
+def test_sofort_best_estimate_is_the_tables_rate_times_its_factor_and_trend_term(
+        product_models):
+    model = product_models(SOFORT)
+    projection = model.Projection
+    cells = projection.cells
+    for name in ("omega_age", "mort_be_factor", "mort_be_trend", "mort_rate", "mort_rate_mth",
+                 "birth_year"):
+        assert cells[name]._is_defined(), name
+        assert "Override reason:" in cells[name].formula.source, name
+    for name in ("mort_table_name", "omega_age_table", "unisex_blend", "unisex_mix_male"):
+        assert cells[name]._is_derived(), name
+    assert model.Data.param("mort_table") == DAV2004R
+    assert model.Data.param("mort_be_factor") == 1.2
+    assert model.Data.param("mort_be_trend_factor") == 0.8
+    certain, months, sexes = set(), 0, set()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        assert item.mort_table_name() == DAV2004R and item.mort_be_factor() == 1.2
+        for life in sofort_lives(item):
+            sex, cohort = item.sex(life), item.birth_year(life)
+            sexes.add(sex)
+            for t in range(item.t_start(), item.proj_len()):
+                x = item.age(t, life)
+                if x >= 121:
+                    continue
+                rate = r_rate(sex, x, cohort)
+                assert item.mort_rate_gen(x, sex, cohort) == rate, (point_id, life, t)
+                expected = (1.0 if rate >= 1.0
+                            else min(1.0, 1.2 * sofort_trend_term(sex, x, cohort) * rate))
+                assert item.mort_rate(t, life) == expected, (point_id, life, t)
+                if rate == 1.0:
+                    # 1 and not 1.2 capped: the table rate of 1 passes through the factors
+                    certain.add((sex, x))
+                if x >= 120:
+                    assert item.mort_be_trend(t, life) == 1.0
+                months += 1
+    assert sexes == {"M", "F"} and months > 0
+    assert ("M", 120) in certain and ("F", 120) in certain
+    # a woman's table rate is 0.6 of a man's at equal age and birth year
+    item = projection[1]
+    assert item.mort_rate_gen(65, "F", 1962) == pytest.approx(
+        0.6 * item.mort_rate_gen(65, "M", 1962), rel=1e-8)
+
+
+@pytest.mark.parametrize("x", [65, 80, 95])
+def test_sofort_trend_term_is_0_8_of_the_tables_trend(product_models, x):
+    model = product_models(SOFORT)
+    tables = model.CoreTables
+    item = model.Projection[1]
+    assert (item.sex(), item.birth_year(), item.age(0)) == ("M", 1962, 65)
+    t = 12 * (x - 65)
+    assert item.age(t) == x
+    tr = tables.trend(DAV2004R, "M", x)
+    assert tr == linear_trend(x) > 0.0
+    expected = ((1.0 - 0.8 * tr) / (1.0 - tr)) ** (1962 + x - 2005)
+    assert item.mort_be_trend(t) == expected == sofort_trend_term("M", x, 1962)
+    # the best estimate improves more slowly than the table, so after the base year the
+    # term lifts the table rate: above 1, and the more the further the calendar year
+    assert expected > 1.0
+    assert item.mort_be_trend(t) * item.mort_rate_gen(x, "M", 1962) == pytest.approx(
+        SHIPPED_LAYER[f"{DAV2004R}_m_b"] * 1.11 ** x * (1.0 - 0.8 * tr) ** (1962 + x - 2005),
+        rel=1e-12)
+
+
+def test_sofort_tariff_rate_is_the_unisex_blend_at_the_cohort(tmp_path, product_models):
+    model = product_models(SOFORT)
+    projection = model.Projection
+    assert model.Data.param("unisex_mix_male") == 0.45
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        for life in sofort_lives(item):
+            cohort = item.birth_year(life)
+            for t in range(0, item.proj_len(), 12):
+                x = item.age(t, life)
+                if x >= 121:
+                    continue
+                blend = 0.45 * r_rate("M", x, cohort) + (1.0 - 0.45) * r_rate("F", x, cohort)
+                assert item.mort_rate_tariff(t, life) == blend, (point_id, life, t)
+    # a scratch copy whose anchor is a woman: the tariff rate, the annuity factor and the
+    # guaranteed annuity are the man's, the best estimate and the decrements her own
+    folder = product_copy(tmp_path, SOFORT)
+    path = folder / "model_point_table.csv"
+    rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    assert rows[1].startswith("1,SOF-000001,single,100000.00,65,2027,1962,M,")
+    rows[1] = rows[1].replace(",1962,M,", ",1962,F,", 1)
+    path.write_text("".join(rows), encoding="utf-8")
+    woman = mx.read_model(folder / MODELS[SOFORT], name="SofortWomanProbe")
+    try:
+        her, him = woman.Projection[1], projection[1]
+        assert (her.sex(), him.sex()) == ("F", "M")
+        for t in range(0, him.proj_len(), 12):
+            assert her.mort_rate_tariff(t) == him.mort_rate_tariff(t), t
+        assert her.annuity_factor() == him.annuity_factor()
+        assert her.annuity_pp_derived() == him.annuity_pp_derived()
+        for t in range(0, him.proj_len() - 12 * 8, 12):
+            assert her.mort_rate(t) < him.mort_rate(t), t
+        assert her.lives_if(240) > him.lives_if(240)
+    finally:
+        woman.close()
+
+
+def test_sofort_reads_no_rate_past_the_end_age_of_a_joint_life_frame(product_models):
+    model = product_models(SOFORT)
+    projection, tables = model.Projection, model.CoreTables
+    past = 0
+    for point_id, older in ((4, 1), (5, 2)):
+        item = projection[point_id]
+        assert item.surv_pct() > 0.0
+        assert item.proj_len() == SOFORT_PROJ_LEN[point_id]
+        last = item.proj_len() - 1
+        assert item.age(last, older) > 120
+        for t in range(item.t_start(), item.proj_len()):
+            if item.age(t, older) >= 121:
+                assert item.mort_rate(t, older) == 1.0
+                assert item.mort_rate_tariff(t, older) == 1.0
+                assert item.mort_rate_mth(t, older) == 1.0
+                assert item.lives_if(t, older) == 0.0
+                past += 1
+        item.result_cf()
+    assert past == 12 * 3 + 12 * 2
+    # the guard returns 1 without calling ``q``: no age above 120 reached the factory
+    held = [key for key in tables.q if key[0] == DAV2004R]
+    assert held and max(key[2] for key in held) == 120
+    # the table itself raises there, and nothing clamps it
+    line = raised_line(lambda: tables.q(DAV2004R, "M", 121, 1962))
+    assert line == "ValueError: table 'dav2004r_proxy': x 121 is outside its ages 0 to 120"
+    assert projection[4].mort_rate_gen(121, "M", 1962) == 1.0
+    assert projection[4].mort_rate_gen(121, "U", 1962) == 1.0
+
+
+def test_sofort_second_life_without_a_survivors_annuity_reads_nothing(product_models):
+    model = product_models(SOFORT)
+    projection = model.Projection
+    without = 0
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        if item.surv_pct() > 0.0:
+            continue
+        without += 1
+        for t in (item.t_start(), item.t_start() + 12, item.proj_len() - 1):
+            assert item.mort_rate(t, 2) == 0.0
+            assert item.mort_rate_tariff(t, 2) == 0.0
+            assert item.lives_if(t, 2) == 0.0
+    assert without == 12
+
+
+def test_sofort_runs_to_the_tables_end_age_with_its_frames_unchanged(product_models):
+    model = product_models(SOFORT)
+    projection, tables = model.Projection, model.CoreTables
+    assert tables.end_age(DAV2004R) == 121
+    rows = 0
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        assert item.omega_age() == 121 == item.omega_age_table()
+        assert type(item.omega_age()) is int
+        for life in sofort_lives(item):
+            assert item.horizon_mths(life) == 12 * (121 - item.issue_age(life))
+        assert item.proj_len() == SOFORT_PROJ_LEN[point_id]
+        rows += item.proj_len() - item.t_start()
+    with (ROOT / "baseline" / SOFORT / "result_cf.csv").open(encoding="utf-8") as handle:
+        assert rows == sum(1 for _line in handle) - 1 == 8940
+
+
+def test_sofort_holds_no_mortality_file_item_reference_or_formula(product_models):
+    folder = PRODUCTS_DIR / SOFORT
+    assert not (folder / "mort_table.csv").exists()
+    assert not (folder / "improvement_table.csv").exists()
+    for path in sorted(folder.glob("*.csv")):
+        with path.open(encoding="utf-8", newline="") as handle:
+            header = next(csv.reader(handle))
+        assert not [column for column in header if column.startswith("mort")
+                    or column == "improve_rate"], path
+    model = product_models(SOFORT)
+    layer = model.Data.param_layers()["tariff_type"]
+    assert "mort_base_year" not in layer and "omega_age" not in layer
+    assert {item: layer[item] for item in layer if "mort" in item or "unisex" in item} == {
+        "mort_table": DAV2004R, "mort_be_factor": 1.2, "mort_be_trend_factor": 0.8,
+        "unisex_mix_male": 0.45}
+    assert not [name for name in model.Data.refs if "mort" in name or "improve" in name]
+    own = sorted(name for name, cell in model.Projection.cells.items()
+                 if ("mort" in name or "improve" in name) and cell._is_defined())
+    assert own == ["mort_be_factor", "mort_be_trend", "mort_rate", "mort_rate_gen",
+                   "mort_rate_mth", "mort_rate_tariff", "mort_rate_tariff_mth"]
+    assert not [name for name, cell in model.Data.cells.items()
+                if ("mort" in name or "improve" in name) and cell._is_defined()]
+    assert model.Data.cells["mort_table_index"]._is_derived()
+    assert model.Projection.cells["mort_rate_at_age"]._is_derived()
+    for name in ("improvement_table", "improvement_table_dict", "mort_table_ages",
+                 "improvement_table_ages"):
+        assert name not in model.Data.cells, name
+    assert "improve_rate_at_age" not in model.Projection.cells
+    usage = param_usage.scan(model)
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & usage.reachable
+    assert "mort_base_year" not in usage.reads and "omega_age" not in usage.reads
+    assert usage.reads["mort_be_trend_factor"] == {"mort_be_trend"}
+    for space in ("Data", "Projection"):
+        source = (folder / MODELS[SOFORT] / space / "__init__.py").read_text(encoding="utf-8")
+        for name in ("mort_table.csv", "improvement_table.csv", "mort_file", "improvement_file",
+                     "mort_table_dict", "mort_table()", "improvement_table", "mort_base_year",
+                     "mort_table_index", "mort_table_ages", "improve_rate", "\"FIRST\"",
+                     "\"SECOND\""):
+            assert name not in source, (space, name)
+    # its reads of the factory: the rate in its hook, the trend and the base year in its
+    # trend term; the end age through the core's ``omega_age_table``
+    cells = dict(_formula_cells(folder / MODELS[SOFORT] / "Projection" / "__init__.py"))
+    reads = {name: sorted(ast.unparse(node) for node in ast.walk(cell)
+                          if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
+                          and node.value.id == "tables")
+             for name, cell in cells.items()}
+    assert {name: found for name, found in reads.items() if found} == {
+        "mort_rate_gen": ["tables.q"], "mort_be_trend": ["tables.base_year", "tables.trend"]}
+    item = model.Projection[1]
+    item.result_cf()
+    assert len(model.CoreTables.q) > 0
+    assert len(model.Data.cells["mort_table"]) == 0
+    assert len(model.Data.cells["mort_table_dict"]) == 0
+
+
 def unswitched_copy(tmp_path: Path) -> Path:
     """A scratch copy of Index with the fixture tables that chooses no table: without its
     row ``mort_table`` and with a ``mort_rate_at_age`` of its own that reads no table, as a
@@ -3524,18 +3838,18 @@ def test_no_table_is_unchosen_in_the_ten_products(product_models):
               if product not in SWITCHED]
     assert param_usage.unchosen_tables(others) == sorted(SHIPPED_TABLES)
     # the select table and the two smoker tables have one reader each, the generational
-    # table three and the aggregate table five
+    # table four and the aggregate table five
     without_bu = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
                   if product != BU]
     assert param_usage.unchosen_tables(without_bu) == [DAV1997TI]
     without_its_readers = [param_usage.scan(product_models(product))
                            for product in sorted(MODELS)
-                           if product not in (RV, "basisrente", "riester_rente")]
+                           if product not in (RV, "basisrente", "riester_rente", SOFORT)]
     assert param_usage.unchosen_tables(without_its_readers) == [DAV2004R]
     without_rlv = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
                    if product != RLV]
     assert param_usage.unchosen_tables(without_rlv) == [NR, R]
-    for reader in (FRV, INDEX, KLV, RV, "basisrente", "riester_rente"):
+    for reader in (FRV, INDEX, KLV, RV, "basisrente", "riester_rente", SOFORT):
         without = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
                    if product != reader]
         assert param_usage.unchosen_tables(without) == []

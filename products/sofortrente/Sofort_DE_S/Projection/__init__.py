@@ -37,8 +37,6 @@ Each table has a filename Reference and a reader Cells, both on
 Reference                     Cells                                File
 ============================  ===================================  ================================
 model_point_file              data.model_point_table()             model_point_table.csv
-mort_file                     data.mort_table()                    mort_table.csv
-improvement_file              data.improvement_table()             improvement_table.csv
 surplus_scale_file            data.surplus_scale_table()           surplus_scale_table.csv
 hoechstrechnungszins_file     data.hoechstrechnungszins_table()    hoechstrechnungszins_table.csv
 ann_freq_file                 data.ann_freq_table()                ann_freq_table.csv
@@ -82,9 +80,10 @@ G                guar_years()                          Rentengarantiezeit in yea
 gamma(t)         certain_floor(t)                      1 inside the guarantee, else 0
 (none)           is_payment_mth(t)                     Whether an instalment falls at t
 delta            surv_pct()                            Hinterbliebenenrente percentage
-(table)          mort_rate_at_age(x, s, b)             Table rate; s = M, F or U
-lambda(x)        improve_rate_at_age(x, b)             Improvement rate at age x
-q(x, s, g, b)    mort_rate_gen(x, s, g, b)             The generational surface
+(none)           omega_age()                           End age of the table, 121
+q(x, s, g)       mort_rate_gen(x, s, g)                Table rate; s = M, F or U
+(none)           mort_be_factor()                      Best-estimate factor, 1.2
+T(t)             mort_be_trend(t, life)                Best-estimate trend term
 q2(t)            mort_rate(t, life)                    Annual second-order rate
 (none)           mort_rate_mth(t, life)                Its monthly equivalent
 q1(t)            mort_rate_tariff(t, life)             Annual first-order unisex rate
@@ -146,11 +145,15 @@ once bought as paid-up annuity, does not come back off. A projection of it is a 
 estimate of a stream the insurer may reduce, never a guaranteed cash flow.
 
 ``mort_rate(t, life)`` and ``mort_rate_tariff(t, life)`` are **different objects, not two
-readings of one table**. The first is second order and sex-specific and drives the
-projection; the second is first order and unisex and is used only inside the pricing
-sums. ``mort_rate_tariff`` is below ``mort_rate`` at every ``t``, and the ratio of the two
-*falls* with ``t`` because the first-order margin reaches the improvement trend as well as
-the level. Letting the model point's ``sex`` into the tariff would reproduce a tariff
+readings of one table**, though both stand on the table factory's ``dav2004r_proxy``. The
+first is second order and sex-specific and drives the projection: the own sex's table rate
+times ``mort_be_factor`` 1.2 and the trend term ``mort_be_trend``, which lets it improve at
+only 0.8 of the table's trend. The second is first order and unisex, the table rate itself
+blended at ``unisex_mix_male``, and is used only inside the pricing sums. So the
+first-order margin reaches the improvement trend as well as the level. Because the tariff
+blends the sexes, a man's best estimate lies 1.5 to 1.9 times above it below the cap, and a
+woman's, whose table rate is 0.6 of a man's, close to it, 0.9 to 1.1 of it on the shipped
+cohorts. Letting the model point's ``sex`` into the tariff would reproduce a tariff
 unlawful in Germany since 21 December 2012.
 
 ``annuity_factor()`` is the notes' ``ä`` and is **not** the market's ``a12``:
@@ -447,9 +450,9 @@ def t_start():
 def horizon_mths(life=1):
     """``12 (omega_age - issue_age(life))``: the month at which that life's survival ends.
 
-    With ``q = 1`` at attained age 120 in every series and ``omega_age() = 121``, the
-    survival path reaches zero inside this horizon and stays there, so the tail months
-    carry no cash flow.
+    With ``q = 1`` at attained age 120 in the table and ``omega_age() = 121``, its end
+    age, the survival path reaches zero inside this horizon and stays there, so the tail
+    months carry no cash flow.
     """
     return 12 * (omega_age() - issue_age(life))
 
@@ -475,7 +478,7 @@ def proj_len():
     ``proj_len() = 672``: 672 monthly rows, ``t = 0 ... 671``.
 
     Override reason: the horizon is the longest of the annuitant's survival, the guarantee
-    period and the second life's survival, products/sofortrente/technical-notes.md:445
+    period and the second life's survival, products/sofortrente/technical-notes.md:448
     """
     n = max(horizon_mths(1), guar_end_mth())
     if surv_pct() > 0.0:
@@ -492,90 +495,102 @@ def age(t, life=1):
     internal-consistency convention rather than a contract fact.
 
     Override reason: a joint-life contract has two lives; ``life=2`` is the second life's
-    attained age, products/sofortrente/technical-notes.md:414
+    attained age, products/sofortrente/technical-notes.md:417
     """
     return issue_age(life) + t // 12
 
 
-def mort_rate_at_age(x, table_sex, basis):
-    """The table's annual death rate at attained age ``x``.
+def omega_age():
+    """omega: the limiting age, the end age of the table of the role ``mort_table``, 121.
 
-    ``table_sex`` is ``M``, ``F`` or ``U``; ``basis`` is ``FIRST`` or ``SECOND``.  ``U`` is
-    **computed** as ``unisex_mix_male q_M + (1 - unisex_mix_male) q_F``, the core's
-    :func:`unisex_mix_male`, and is never a row of the CSV, because no real sex-distinct table
-    carries one — the unisex tariff is a blend an insurer strikes on an assumed portfolio mix,
-    not a published table.
+    The first age nobody reaches: ``dav2004r_proxy`` closes with ``q = 1`` at attained age
+    120, so a life's survival reaches zero inside :func:`horizon_mths`.
 
-    Ages outside the table are clamped to its ends.  The upper clamp is the one that
-    matters: on a joint-life point the frame runs to the *second* life's horizon, so the
-    annuitant's attained age passes the closing row while their survival is already zero.
-
-    Override reason: the product reads its own mortality file until its switch to the
-    table factory, docs/core.md, section "The table factory"
+    Override reason: reads the end age off its table, docs/core.md, section "The time axis"
     """
+    return omega_age_table()
+
+
+def mort_be_factor():
+    """The step from the first-order annuitant table to the best estimate, 1.2.
+
+    Above 1, because a first-order annuity table assumes mortality *lower* than expected:
+    the best estimate is the table rate on the life's own sex times this factor and the
+    trend term :func:`mort_be_trend`.
+
+    Override reason: the tariff's best-estimate factor, the item ``mort_be_factor`` of its
+    param_tariff_type.csv, docs/core.md, section "The decrement rates"
+    """
+    return data.param("mort_be_factor")                              # noqa: F821
+
+
+def mort_be_trend(t, life=1):
+    """T: the best-estimate trend term on the table rate of a life in month ``t``.
+
+    ``((1 - k tr) / (1 - tr)) ** (g + x - base_year)``, with ``tr`` the table's trend at
+    the life's sex and attained age ``x``, ``g`` its birth year, ``base_year`` the table's
+    2005 and ``k = mort_be_trend_factor`` 0.8.  On the table rate
+    ``q_base (1 - tr)^(g + x - base_year)`` it leaves ``q_base (1 - k tr)^(g + x -
+    base_year)``: the best estimate improves at 0.8 of the table's trend, the margin of an
+    annuity table reaching the trend as well as the level.  Above 1 wherever the calendar
+    year ``g + x`` lies after the base year and the trend is positive, and exactly 1 from
+    age 120, where the trend is 0.
+
+    Override reason: the best estimate improves at 0.8 of its table's trend, read for each
+    life, the argument ``life``, docs/core.md, section "The decrement rates"
+    """
+    table = mort_table_name()
+    x = age(t, life)
+    tr = tables.trend(table, sex(life), x)                           # noqa: F821
+    k = data.param("mort_be_trend_factor")                           # noqa: F821
+    return ((1.0 - k * tr) / (1.0 - tr)) ** (
+        birth_year(life) + x - tables.base_year(table))              # noqa: F821
+
+
+def mort_rate_gen(x, table_sex, cohort):
+    """The generational surface: the table's rate at age ``x`` and birth year ``cohort``.
+
+    ``tables.q(mort_table_name(), table_sex, x, cohort)``, the factory's rate of the
+    calendar year ``cohort + x``.  ``table_sex`` is ``M``, ``F`` or ``U``; ``U`` is the
+    core's :func:`unisex_blend` of the two sexes at ``unisex_mix_male``, never a table of
+    its own, because the unisex tariff is a blend an insurer strikes on an assumed
+    portfolio mix, not a published table.
+
+    From the end age on the rate is 1 without reading the table: the life is dead, and on a
+    joint-life point the frame runs to the younger life's horizon, so the older life's
+    attained age passes 120 while its survival is already zero, where ``q`` would raise.
+    No age is clamped below; the table holds every age from 0.
+    """
+    if x >= omega_age():
+        return 1.0
     if table_sex == "U":
-        return (unisex_mix_male() * mort_rate_at_age(x, "M", basis)
-                + (1.0 - unisex_mix_male()) * mort_rate_at_age(x, "F", basis))
-    lo, hi = data.mort_table_ages()                                  # noqa: F821
-    xx = min(max(int(x), lo), hi)
-    return float(data.mort_table_dict()["mort_rate"][(basis, table_sex, xx)])   # noqa: F821
-
-
-def improve_rate_at_age(x, basis):
-    """lambda(x): the annual mortality improvement rate at attained age ``x``.
-
-    The *Trendfunktion* of the generational surface, in a **[std]** proxy: 1,5 % a year to
-    age 70 on the second-order basis, tapering linearly to zero at 105, with the
-    first-order basis improving 25 % faster.  Prudence in an annuity table must reach the
-    **rate** of improvement as well as its level, because the improvement compounds over a
-    forty-year stream, and a proxy reproducing only the level is not a proxy for the table.
-    """
-    lo, hi = data.improvement_table_ages()                           # noqa: F821
-    xx = min(max(int(x), lo), hi)
-    return float(data.improvement_table_dict()["improve_rate"][(basis, xx)])   # noqa: F821
-
-
-def mort_rate_gen(x, table_sex, cohort, basis):
-    """The generational surface: ``q_table(x) (1 - lambda(x))^(cohort + x - mort_base_year)``.
-
-    The improvement lives **inside** the surface, keyed by birth cohort, rather than being
-    applied on top of a period rate keyed to the projection year.  ``cohort + x`` is the
-    calendar year in which the life attains age ``x``, so the exponent is simply that year
-    less ``mort_base_year`` and the shipped tables are the period tables of 2025.
-
-    The exponent may be **negative** — a cohort attaining an age before 2025 reads
-    correspondingly heavier mortality there — and it is not floored.  No shipped point
-    reads one: every frame opens at the valuation date 1 January 2027, the in-force point
-    issued in 2012, born 1947, at age 80 with exponent 2.
-
-    The result is capped at 1.  A negative exponent scales the rate **up**, and at the top
-    of the proxy's age range the second-order series is already close to 1, so the cap is
-    what keeps ``q`` a probability; it binds only in the last two or three years of the
-    table, where survival is zero to eleven decimal places and no cash flow depends on it.
-    """
-    return min(1.0,
-               mort_rate_at_age(x, table_sex, basis)
-               * (1.0 - improve_rate_at_age(x, basis))
-               ** (cohort + x - data.param("mort_base_year")))       # noqa: F821
+        return unisex_blend(mort_rate_gen(x, "M", cohort), mort_rate_gen(x, "F", cohort))
+    return tables.q(mort_table_name(), table_sex, x, cohort)         # noqa: F821
 
 
 def mort_rate(t, life=1):
-    """The **annual** second-order death rate for a life in month ``t``.
+    """The **annual** best-estimate death rate for a life in month ``t``.
 
-    Read from the generational surface at that life's own attained age, birth cohort and
-    sex.  This is the best-estimate basis and drives the projected decrement; it is
-    **heavier** than :func:`mort_rate_tariff` at every ``t``, and the wedge between the two
-    is the systematic *Risikoüberschuss* the *Überschussrente* is largely financed from.
+    The table rate at that life's own attained age, birth year and sex, times
+    :func:`mort_be_factor` and the trend term :func:`mort_be_trend`, capped at 1; a table
+    rate of 1 is a certainty and stays 1.  This drives the projected decrement.  It is not
+    the tariff rate :func:`mort_rate_tariff`: the tariff blends the sexes, so a man's best
+    estimate lies 1.5 to 1.9 times above it below the cap and a woman's, at 0.6 of a man's
+    table rate, close to it, 0.9 to 1.1 of it on the shipped cohorts; the wedge is the
+    *Risikoüberschuss* the *Überschussrente* is largely financed from.
 
     Returns 0 for the second life where no *Hinterbliebenenrente* is in force: the life
     does not exist, its model point columns are zeros, and nothing may read them.
 
     Override reason: the rate is read for each life, the argument ``life``, on the
-    generational surface at its birth cohort, products/sofortrente/technical-notes.md:463
+    generational surface at its birth cohort, products/sofortrente/technical-notes.md:465
     """
     if life == 2 and surv_pct() == 0.0:
         return 0.0
-    return mort_rate_gen(age(t, life), sex(life), birth_year(life), "SECOND")
+    q = mort_rate_gen(age(t, life), sex(life), birth_year(life))
+    if q >= 1.0:
+        return 1.0
+    return min(1.0, mort_be_factor() * mort_be_trend(t, life) * q)
 
 
 def mort_rate_mth(t, life=1):
@@ -587,7 +602,7 @@ def mort_rate_mth(t, life=1):
 
     Override reason: the rate is read for each life, the argument ``life``, and at the
     closing age the survival path steps to zero in that month,
-    products/sofortrente/technical-notes.md:465
+    products/sofortrente/technical-notes.md:467
     """
     return 1.0 - (1.0 - mort_rate(t, life)) ** (1.0 / 12.0)
 
@@ -596,19 +611,19 @@ def mort_rate_tariff(t, life=1):
     """The **annual** first-order rate on the **unisex** blend, used only for pricing.
 
     Two things separate it from :func:`mort_rate` and both are deliberate.  It is
-    **first order** — lighter, because prudence for an annuity means assuming annuitants
-    live longer, which raises the annuity value and lowers the annuity a given
-    *Einmalbeitrag* buys.  And it is **unisex**, read at ``table_sex = "U"`` rather than at
-    the model point's own sex, because a German tariff written since 21 December 2012 may
-    not differentiate.  Letting ``sex()`` in here reproduces an unlawful tariff and is a
-    listed pitfall.
+    **first order** — the table rate itself, with no best-estimate factor or trend term,
+    because prudence for an annuity means assuming annuitants live longer, which raises the
+    annuity value and lowers the annuity a given *Einmalbeitrag* buys.  And it is
+    **unisex**, read at ``table_sex = "U"`` rather than at the model point's own sex,
+    because a German tariff written since 21 December 2012 may not differentiate.  Letting
+    ``sex()`` in here reproduces an unlawful tariff and is a listed pitfall.
 
     Override reason: the tariff rate is generational and unisex, read at each life's birth
     cohort with the argument ``life`` for the second life, products/sofortrente/model.md:213
     """
     if life == 2 and surv_pct() == 0.0:
         return 0.0
-    return mort_rate_gen(age(t, life), "U", birth_year(life), "FIRST")
+    return mort_rate_gen(age(t, life), "U", birth_year(life))
 
 
 def mort_rate_tariff_mth(t, life=1):
@@ -982,7 +997,7 @@ def pols_if(t):
 
     Override reason: the weight is the probability that any payment obligation remains over
     two lives and the guarantee period, not a policy count,
-    products/sofortrente/technical-notes.md:192
+    products/sofortrente/technical-notes.md:194
     """
     g = certain_floor(t)
     la = lives_if(t, 1)
@@ -1014,7 +1029,7 @@ def prem_inst_pp(t):
     product — the whole consideration is paid once.
 
     Override reason: the *Einmalbeitrag* is paid once, at ``t = 0``,
-    products/sofortrente/technical-notes.md:599
+    products/sofortrente/technical-notes.md:613
     """
     if not prem_due(t):
         return 0.0
@@ -1026,7 +1041,7 @@ def pols_prem(t):
 
     Override reason: ``pols_if`` is the probability that a payment obligation remains, not
     a count, so the premium is weighted by the count the point stands for,
-    products/sofortrente/technical-notes.md:199
+    products/sofortrente/technical-notes.md:201
     """
     return pols_if_init()
 
@@ -1071,7 +1086,7 @@ def claim_kinds():
     contract cannot be terminated, so § 169 VVG is displaced and there is nothing to pay.
 
     Override reason: the claim columns are the guarantee and the refund,
-    products/sofortrente/technical-notes.md:643
+    products/sofortrente/technical-notes.md:657
     """
     return ("GUARANTEE", "REFUND")
 
@@ -1092,8 +1107,8 @@ def claims_other(t, kind):
 
     Raises ``ValueError`` for any other kind.
 
-    Override reason: the guarantee instalment, products/sofortrente/technical-notes.md:606,
-    and the refund, products/sofortrente/technical-notes.md:620, are paid on the survival
+    Override reason: the guarantee instalment, products/sofortrente/technical-notes.md:620,
+    and the refund, products/sofortrente/technical-notes.md:634, are paid on the survival
     probabilities of the annuitant, not on a count of deaths
     """
     if kind == "GUARANTEE":
@@ -1118,7 +1133,7 @@ def expenses_acq(t):
     other with it or the modelled profit moves silently.
 
     Override reason: the acquisition expense is a rate on the single premium plus a fixed
-    amount at ``t = 0``, products/sofortrente/technical-notes.md:624
+    amount at ``t = 0``, products/sofortrente/technical-notes.md:638
     """
     if t == 0:
         return pols_if_init() * (data.param("expense_acq_sp_once")   # noqa: F821
@@ -1131,7 +1146,7 @@ def expenses_maint(t):
     """The maintenance expense, ``(expense_admin_pp_ann / 12) inflation_factor(t) pols_if(t)``.
 
     Override reason: maintenance is a twelfth of the annual amount, inflated, on the
-    obligation weight, products/sofortrente/technical-notes.md:625
+    obligation weight, products/sofortrente/technical-notes.md:639
     """
     return ((data.param("expense_admin_pp_ann") / 12.0)                # noqa: F821
             * inflation_factor(t) * pols_if(t))
@@ -1146,7 +1161,7 @@ def expenses_claim(t):
     beneficiary's instalment costs the same to pay as the annuitant's.
 
     Override reason: the payment expense falls per instalment paid, weighted by the
-    payment factor, products/sofortrente/technical-notes.md:626
+    payment factor, products/sofortrente/technical-notes.md:640
     """
     if is_payment_mth(t):
         return (data.param("expense_pay_pp_inst") * inflation_factor(t)  # noqa: F821
@@ -1164,7 +1179,7 @@ def liability_cf(t):
     only in prose.
 
     Override reason: the liability cash flow is the notes' outgo-positive stream, annuity
-    payments, claims and expenses less the premium, products/sofortrente/technical-notes.md:636
+    payments, claims and expenses less the premium, products/sofortrente/technical-notes.md:650
     """
     return annuity_payments(t) + claims(t) + expenses(t) - premiums(t)
 
@@ -1179,7 +1194,7 @@ def net_cf(t):
     *Deckungsrückstellung* is held against; this model does not compute one.
 
     Override reason: the net cash flow is the negative of the outgo-positive liability cash
-    flow, products/sofortrente/technical-notes.md:637
+    flow, products/sofortrente/technical-notes.md:651
     """
     return -liability_cf(t)
 
@@ -1199,7 +1214,7 @@ def check_net_cf_resid(t):
     instalment, or a guarantee counted additively, leaves a residual here.
 
     Override reason: the instalment outgo is rebuilt through the single payment factor, not
-    through the two published legs, products/sofortrente/model.md:327
+    through the two published legs, products/sofortrente/model.md:328
     """
     if is_payment_mth(t):
         paid = pols_if_init() * annuity_pp(t) * payment_factor(t)
@@ -1219,7 +1234,7 @@ def check_net_cf_scale(t):
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
 
     Override reason: the statement is checked relative to the single premium of the book,
-    products/sofortrente/technical-notes.md:655
+    products/sofortrente/technical-notes.md:669
     """
     return max(prem_gross_level_pp() * pols_if_init(), 1.0)                  # noqa: F821
 
@@ -1485,7 +1500,7 @@ def result_cf_columns():
     expired, so nothing remains to be paid.
 
     Override reason: the statement carries the annuity payments and its two claim kinds, no
-    commission, and liability_cf before net_cf, products/sofortrente/technical-notes.md:642-643
+    commission, and liability_cf before net_cf, products/sofortrente/technical-notes.md:656-657
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821
@@ -1510,7 +1525,7 @@ def result_pols_columns():
     instalments.
 
     Override reason: the frame publishes the two survival paths, the payment factor, the
-    instalment split and the refund run-off, products/sofortrente/technical-notes.md:644
+    instalment split and the refund run-off, products/sofortrente/technical-notes.md:658
     """
     return (
         ("lives_if_1", lambda t: lives_if(t, 1)),                    # noqa: F821

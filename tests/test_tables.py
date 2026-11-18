@@ -47,8 +47,8 @@ The derivation hooks of the core's ``Projection``:
   year; with a ``birth_year`` cell and the generational fixture table the hooks pass the
   birth year on, and without the cell the generational table raises.
 - A table rate of 1 passes through the core's derivation as 1 (AD-12): on a copy whose
-  fixture table closes at the last age a point attains, with a best-estimate factor below 1
-  and a loading above 1, ``mort_rate`` and ``mort_rate_tariff`` are 1 at the end age minus
+  fixture table closes at the last age a point attains, with a best-estimate factor and a trend
+  term below 1 and a loading above 1, ``mort_rate`` and ``mort_rate_tariff`` are 1 at the end age minus
   one and the factor and the loading times the table rate the year before.
 
 The usage scan ``core/param_usage.py`` (``docs/core.md``, "The usage check and the view"):
@@ -828,6 +828,14 @@ def mort_be_factor():
     return 0.75
 
 
+def mort_be_trend(t):
+    """A fixture best-estimate trend term below 1.
+
+    Override reason: test fixture, tests/test_tables.py
+    """
+    return 0.5
+
+
 def mort_load_tariff(t):
     """A fixture loading above 1.
 
@@ -856,6 +864,7 @@ def test_a_table_rate_of_1_passes_through_the_factor_and_the_load(tmp_path):
     try:
         cells = model.Projection.cells
         assert not cells["mort_be_factor"]._is_derived()
+        assert not cells["mort_be_trend"]._is_derived()
         assert not cells["mort_load_tariff"]._is_derived()
         for name in ("mort_rate_base", "mort_rate", "mort_rate_tariff_base", "mort_rate_tariff"):
             assert cells[name]._is_derived(), name
@@ -867,9 +876,10 @@ def test_a_table_rate_of_1_passes_through_the_factor_and_the_load(tmp_path):
             assert item.omega_age_table() == 67 == item.ret_age()
             last = item.proj_len() - 1
             assert item.age(last) == 66
-            # at the closing age, end age minus one: 1, not the factor and not the load
+            # at the closing age, end age minus one: 1, not the factor, the trend or the load
             assert item.mort_rate_base(last) == 1.0 == item.mort_rate_tariff_base(last)
             assert item.mort_be_factor() == 0.75 and item.mort_load_tariff(last) == 1.25
+            assert item.mort_be_trend(last) == 0.5 == item.mort_be_trend(last - 12)
             assert item.mort_rate(last) == 1.0
             assert item.mort_rate_tariff(last) == 1.0
             # the year before, the factor and the load act on the table rate
@@ -878,7 +888,7 @@ def test_a_table_rate_of_1_passes_through_the_factor_and_the_load(tmp_path):
             rate = law(item.sex(), 65)
             blend = 0.45 * law("M", 65) + (1.0 - 0.45) * law("F", 65)
             assert item.mort_rate_base(before) == rate < 1.0
-            assert item.mort_rate(before) == rate * 0.75 * 1.0
+            assert item.mort_rate(before) == rate * 0.75 * 0.5
             assert item.mort_rate_tariff_base(before) == blend < 1.0
             assert item.mort_rate_tariff(before) == 1.25 * blend
         assert sexes == {"M", "F"}

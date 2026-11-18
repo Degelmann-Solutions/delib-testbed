@@ -80,7 +80,6 @@ reached here through the ``data`` Reference:
 Reference                 Cells                              File
 ========================  =================================  ==========================
 model_point_file          data.model_point_table()           model_point_table.csv
-mort_file                 data.mort_table()                  mort_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 surplus_rate_file         data.surplus_rate_table()          surplus_rate_table.csv
 charge_file               data.charge_table()                cost_table.csv
@@ -117,9 +116,12 @@ i1                  rechnungszins()                        First-order interest 
 v1^k                disc_factor(k)                         First-order discount factor
 kpx                 pols_tariff(k)                         First-order survival from issue
 q1(x)               mort_rate_tariff_at_age(x)             First-order tariff rate at age
-                                                           x - the unisex blend, which
-                                                           prices and reserves
-(table)             mort_rate_at_age(x)                    Sex-specific table rate at age x
+                                                           x - the unisex blend of the
+                                                           tariff's table, which prices
+                                                           and reserves; the core's cell
+(table)             mort_rate_at_age(x)                    Sex-specific rate of the
+                                                           tariff's table at age x,
+                                                           tables.q; the core's cell
 (table)             mort_rate_base(t)                      Sex-specific annual table rate
 q(t)                mort_rate(t)                           Best-estimate annual mortality
 qm(t)               mort_rate_mth(t)                       The same, applied in month t
@@ -300,9 +302,9 @@ band: it steps on the anniversary, not monthly.
 .. rubric:: The two mortality bases must not be crossed
 
 :func:`mort_rate_tariff_at_age` is the first-order **tariff** rate: it prices and it reserves, and
-it is a fixed unisex blend of the two table rows, because German new business has been unisex
-since 21 December 2012. :func:`mort_rate_base` is this policy's own **sex-specific** table
-rate, and :func:`mort_rate` is ``mort_rate_base(t) * mort_be_factor`` with
+it is a fixed unisex blend of the table's rates for a man and a woman, because German new
+business has been unisex since 21 December 2012. :func:`mort_rate_base` is this policy's own
+**sex-specific** table rate, and :func:`mort_rate` is ``mort_rate_base(t) * mort_be_factor`` with
 ``mort_be_factor = 0.75``: it projects. The 33 % wedge is the *Sicherheitszuschlag*, whose systematic release **is** the
 *Risikoüberschuss* — which this model does not compute, and which a model that reserves on
 the best estimate has thrown away. ``rating_factor`` is a third thing again: it is the
@@ -312,7 +314,10 @@ a best-estimate rate. ``sex`` reaches :func:`mort_rate_base`, and therefore the
 **decrement**, and it reaches nothing else: ``prem_gross_level_pp()`` is identical for two model
 points differing only in it, which is what model points 1 and 7 exist to make visible. The
 unisex blend behind the tariff is **[std]** - no German insurer publishes the portfolio mix
-behind its own.
+behind its own. Both rates are the core's cells on the core's table factory: the tariff
+chooses the table ``dav2008t_proxy`` in the row ``mort_table`` of *param_tariff_type.csv*, a
+**[std]** Makeham-form proxy of DAV 2008 T anchored at ``q(M, 37) = 0.0012``, and this space
+holds no mortality formula but the factor :func:`mort_be_factor`; see the ``Data`` docstring.
 
 .. rubric:: The three Überschussverwendung systems
 
@@ -534,60 +539,15 @@ def bfz_year():
 
 # --- the bases -------------------------------------------------------------
 
-def mort_rate_tariff_at_age(x):
-    """q1(x): the **first-order tariff** death rate at attained age x - the unisex blend.
-
-    ``unisex_blend`` of the male and the female table row, at ``unisex_mix_male`` 0.5 / 0.5
-    **[std]**.  This is the *Rechnungsgrundlage erster Ordnung* of the tariff, and **every
-    pricing and reserving formula in the model reads it**: :func:`pols_tariff`,
-    :func:`tariff_death_pv`, :func:`pv_benefit_fut`, :func:`ann_due_prem_fut` and the Fackler
-    roll-forward in :func:`res_pp_at`.
-
-    It is blended rather than read off the policy's own ``sex`` row because **German new
-    business has been unisex since 21 December 2012**: § 20 Abs. 2 Satz 1 AGG was repealed,
-    and a tariff that charged a woman less than a man for the same endowment would be
-    unlawful.  The first-order *table* is nevertheless sex-specific, because that is the raw
-    material a unisex tariff blends - which is exactly why this cells and
-    :func:`mort_rate_base` are two different quantities and **not two indexings of one**.
-    The blend itself is a fixed portfolio mix and is **[std]**: no German insurer publishes
-    the mix behind its unisex tariff.
-
-    The table is a **[std]** Makeham-form proxy anchored at
-    ``mort_rate_1st(M, 37) = 0.001200`` exactly, standing in for DAV 2008 T, which is the
-    property of the Deutsche Aktuarvereinigung, is not public and is not redistributed here;
-    see the ``Data`` docstring for what a replacement must preserve.
-
-    Override reason: the product reads its own mortality file until its switch to the
-    table factory, docs/core.md, section "The table factory"
-    """
-    rates = data.mort_table_dict()["mort_rate_1st"]                  # noqa: F821
-    return unisex_blend(float(rates[("M", int(x))]),
-                        float(rates[("F", int(x))]))
-
-
-def mort_rate_at_age(x):
-    """The **sex-specific annual** first-order table rate at attained age x.
-
-    A lookup into *mort_table.csv* on this policy's own ``sex`` row, and through the core's
-    ``mort_rate_base(t) = mort_rate_at_age(age(t))`` the parent of the best-estimate
-    decrement: ``mort_rate(t) = mort_rate_base(t) * mort_be_factor``.  Flat across a policy
-    year's twelve months, the attained age stepping on the anniversary.
-
-    It is **not** the rate the contract is priced or reserved on - that is
-    :func:`mort_rate_tariff_at_age`, the unisex blend - and the two are deliberately different
-    quantities.  A German tariff may not price on sex; a best-estimate projection of a
-    particular life must.  ``sex`` therefore reaches the **decrement** and nothing else, and
-    ``prem_gross_level_pp()`` is identical for two model points differing only in it.
-
-    Override reason: the product reads its own mortality file until its switch to the
-    table factory, docs/core.md, section "The table factory"
-    """
-    return float(data.mort_table_dict()["mort_rate_1st"][            # noqa: F821
-        (sex(), int(x))])
-
-
 def mort_be_factor():
     """The step from the first-order table to the best estimate, 0.75, from *param_tariff_type.csv*.
+
+    The table rates are those of the tariff's table, ``mort_table`` in
+    *param_tariff_type.csv*, read from the core's table factory: the core's
+    ``mort_rate_at_age(x)`` on this policy's own ``sex``, the base of the best estimate
+    ``mort_rate(t)`` this factor stands on, and the core's ``mort_rate_tariff_at_age(x)``, the
+    unisex blend at ``unisex_mix_male``, which every pricing and reserving formula reads and
+    which no factor touches.
 
     Override reason: the best estimate is 0.75 of the first-order table, a 33 % safety
     loading and a tariff parameter in *param_tariff_type.csv*,
@@ -696,7 +656,7 @@ def tariff_death_sum():
     The core's :func:`tariff_death_pv` multiplies its sum over the policy years by it.
 
     Override reason: the death leg pays the guaranteed Todesfallleistung SD,
-    products/kapitallebensversicherung/technical-notes.md:442
+    products/kapitallebensversicherung/technical-notes.md:448
     """
     return sum_death()
 
@@ -705,7 +665,7 @@ def tariff_death_load(y):
     """f: the *Risikozuschlag* :func:`rating_factor`, on the **claim rate in the death leg only**.
 
     Override reason: the Risikozuschlag loads the death leg only, never the survival leg,
-    products/kapitallebensversicherung/technical-notes.md:462
+    products/kapitallebensversicherung/technical-notes.md:468
     """
     return rating_factor()
 
@@ -717,7 +677,7 @@ def tariff_maturity_sum():
     of the term by it.
 
     Override reason: the endowment pays the Erlebensfallleistung SE at maturity,
-    products/kapitallebensversicherung/technical-notes.md:443
+    products/kapitallebensversicherung/technical-notes.md:449
     """
     return sum_assured()
 
@@ -1313,7 +1273,7 @@ def prem_inst_pp(t):
 
     Override reason: the instalment is the year's *Zahlbeitrag*, net of the
     *Beitragsverrechnung*, over the elected instalments where one falls due,
-    products/kapitallebensversicherung/technical-notes.md:611
+    products/kapitallebensversicherung/technical-notes.md:617
     """
     return (prem_paid_pp(duration(t)) / instalments()
             if prem_due(t) else 0.0)
@@ -1350,7 +1310,7 @@ def lapse_rate(t):
 
     Override reason: § 165 VVG turns a *Beitragsfreistellung* election that fails the
     minimum-sum test into a surrender, a rate of 1 in that year, and the final year's end is
-    the *Ablauf*, products/kapitallebensversicherung/technical-notes.md:538
+    the *Ablauf*, products/kapitallebensversicherung/technical-notes.md:544
     """
     if duration(t) >= proj_len_y() - 1:
         return 0.0
@@ -1412,7 +1372,7 @@ def pols_if(t):
 
     Override reason: the roll-forward subtracts no maturity, so ``pols_if(proj_len())`` is
     the maturing cohort its checks read, and it multiplies the survival factors, another
-    float order, products/kapitallebensversicherung/technical-notes.md:617
+    float order, products/kapitallebensversicherung/technical-notes.md:623
     """
     if t < t_start() or t > proj_len():
         return 0.0
@@ -1533,7 +1493,7 @@ def benefit_death_pp(t):
     to zero is a defensible variant.  Paying **nil** on the excluded share is not.
 
     Override reason: a death pays the full benefit, with the *Rückkaufswert* on the suicide
-    share in the first three years, products/kapitallebensversicherung/technical-notes.md:621
+    share in the first three years, products/kapitallebensversicherung/technical-notes.md:627
     """
     if duration(t) < data.param("suicide_years"):                    # noqa: F821
         return ((1.0 - data.param("suicide_share")) * benefit_full_pp(t)  # noqa: F821
@@ -1559,7 +1519,7 @@ def benefit_maturity_pp(t):
     A *beitragsfrei* contract matures on ``bfz_si_pp()`` in place of :func:`sum_assured`.
 
     Override reason: the *Ablauf* pays the sum assured plus the surplus balances,
-    products/kapitallebensversicherung/technical-notes.md:624
+    products/kapitallebensversicherung/technical-notes.md:630
     """
     if t != proj_len() - 1:
         return 0.0
@@ -1597,7 +1557,7 @@ def claim_kinds():
     """The benefit kinds of :func:`claims` in the order of its total: death, maturity, lapse.
 
     Override reason: the claim columns are death, maturity and lapse in that order,
-    products/kapitallebensversicherung/technical-notes.md:657
+    products/kapitallebensversicherung/technical-notes.md:663
     """
     return ("DEATH", "MATURITY", "LAPSE")
 
@@ -1610,7 +1570,7 @@ def benefit_lapse_pp(t):
     decides a payment rather than only a label.
 
     Override reason: a lapse pays the *Rückkaufswert*,
-    products/kapitallebensversicherung/technical-notes.md:631
+    products/kapitallebensversicherung/technical-notes.md:637
     """
     return surr_value_pp(t)
 
@@ -1663,8 +1623,8 @@ def expenses_maint(t):
     ``FRV_DE_S`` — so ``expenses`` means the same quantity across the library.
 
     Override reason: the in-force carries the acquisition expense at issue,
-    products/kapitallebensversicherung/technical-notes.md:633, and the monthly maintenance,
-    products/kapitallebensversicherung/technical-notes.md:634, in one per-policy rate
+    products/kapitallebensversicherung/technical-notes.md:639, and the monthly maintenance,
+    products/kapitallebensversicherung/technical-notes.md:640, in one per-policy rate
     """
     return expenses_pp(t) * pols_if(t)
 
@@ -1673,7 +1633,7 @@ def expenses_claim(t):
     """The claim handling expense, :func:`claim_expenses`.
 
     Override reason: the claim expense falls per death, lapse and maturity,
-    products/kapitallebensversicherung/technical-notes.md:635
+    products/kapitallebensversicherung/technical-notes.md:641
     """
     return claim_expenses(t)
 
@@ -1687,7 +1647,7 @@ def comm_init_rate():
     frame opens.  Commission is excluded from :func:`expenses`.
 
     Override reason: the initial commission is the cost table's ``comm_acq_bsum_once`` of the
-    *Beitragssumme*, products/kapitallebensversicherung/technical-notes.md:375
+    *Beitragssumme*, products/kapitallebensversicherung/technical-notes.md:381
     """
     return float(data.charge_table_dict()["comm_acq_bsum_once"][cost_id()])  # noqa: F821
 
@@ -1705,7 +1665,7 @@ def comm_renew(t):
     being a policyholder rebate rather than a price reduction.
 
     Override reason: the renewal commission is a rate on the charged instalment from the
-    second policy year, products/kapitallebensversicherung/technical-notes.md:637
+    second policy year, products/kapitallebensversicherung/technical-notes.md:643
     """
     cost = data.charge_table_dict()                                  # noqa: F821
     return (float(cost["comm_renew_prem_inst"][cost_id()]) * prem_charged_inst_pp(t) * pols_if(t)
@@ -1727,7 +1687,7 @@ def check_net_cf_scale(t):
     failed.
 
     Override reason: the statement is checked relative to the sum insured,
-    products/kapitallebensversicherung/technical-notes.md:694
+    products/kapitallebensversicherung/technical-notes.md:700
     """
     return max(sum_assured(), 1.0)                                   # noqa: F821
 

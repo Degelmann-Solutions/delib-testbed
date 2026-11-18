@@ -107,7 +107,7 @@ move to a 0-based frame. Every time-like key column keeps its own scale:
 | `model_point_table.csv` | `bfz_year` | **unchanged**, still the 1-based policy year | 0 means "never" and has to stay free. The model maps it instead: the election falls at the end of the 0-based policy year `bfz_year - 1` — month `12(bfz_year - 1) + 11` — and `is_paid_up(k)` is `k >= bfz_year()` |
 | `model_point_table.csv` | `issue_year` | **unchanged** | A calendar year and a cohort key, not a point on the frame |
 | `deckrv_table.csv` | `issue_year` | **unchanged** | The same cohort key |
-| `mort_table.csv` | `age` | **unchanged** | An attained age, reached through `age(t)`, and its rates stay **annual** |
+| (no file) the death rates of the table factory | attained age | **unchanged** | An attained age, reached through `age(t)`, and the rates stay **annual** |
 
 `cost_table.csv` and `prem_freq_table.csv` carry no time-like column at all — but
 `prem_freq_table.csv`'s `instalments` column, which the annual grid could not use for anything,
@@ -292,11 +292,11 @@ VVG at all [REG-R27].
 Three quantities, deliberately not two indexings of one:
 
 - **`mort_rate_tariff_at_age(x)`** is the first-order **tariff** rate: it prices and it reserves,
-  and it is a fixed unisex blend, `½ q₁(M, x) + ½ q₁(F, x)` **[std]**, because German new
+  and it is a fixed unisex blend of the table, `½ q₁(M, x) + ½ q₁(F, x)` **[std]**, because German new
   business has been unisex since 21 December 2012 [REG-R34]. Points 1 and 7 differ only in
   `sex` and price identically at 2 004,0420 €; pricing off the policy's own row moved that
   premium by 9,15 € when the model was first written that way.
-- **`mort_rate_base(t)`** is the policy's own sex-specific table row, and
+- **`mort_rate_base(t)`** is the table's rate on the policy's own sex, and
   **`mort_rate(t) = mort_rate_base(t) × mort_be_factor`** with `mort_be_factor = 0.75`
   **[std]** is the best estimate that **projects**. The 33 % wedge is the
   *Sicherheitszuschlag*, whose systematic release **is** the *Risikoüberschuss* [REG-R47] —
@@ -309,8 +309,9 @@ Three quantities, deliberately not two indexings of one:
   it raises the *Bruttobeitrag* from 2 530,90 € to 2 611,45 € and leaves `mort_rate` and
   the death benefit untouched.
 
-The table itself is a **[std]** Makeham-form proxy anchored at
-`mort_rate_1st(M, 37) = 0.001200` exactly, and **one table serves both legs**. The
+The table itself is `dav2008t_proxy` of the core's table factory, the tariff's choice in the
+row `mort_table` of `param_tariff_type.csv`: a **[std]** Makeham-form proxy anchored at
+`q(M, 37) = 0.0012`, read through the core's cells, and **one table serves both legs**. The
 direction of prudence forks — a death benefit wants mortality assumed higher than
 expected, a survival benefit lower [REG-R47] [REG-R48] — so no single first-order table is
 prudent for both. German practice resolves that in the tariff rather than in the table and
@@ -337,13 +338,12 @@ collect the whole year's premium from a cohort measured at the year's start.
 
 ## Inputs are external files
 
-The eight input CSVs live **in this directory**, beside `run.py` — not inside the model
+The seven input CSVs live **in this directory**, beside `run.py` — not inside the model
 folder. `KLV_DE_S/` holds nothing but formulas:
 
 ```
 products/kapitallebensversicherung/
   model_point_table.csv        <- inputs live here
-  mort_table.csv
   lapse_table.csv
   surplus_rate_table.csv
   cost_table.csv
@@ -385,13 +385,13 @@ model shows logic changes only, and an input can be swapped in place with no for
 | Reference | Cells | File | Contents and provenance |
 |---|---|---|---|
 | `model_point_file` | `model_point_table()` | `model_point_table.csv` | Fourteen configurations. **Point 1 is the worked-example anchor** (M 37, term 25, 50 000 €, ratio 1,00, annual, 1,00 %, zillmered, `ansammlung`, `base`). The **only file without a `provenance` column**: a model point is a configuration, not an assumption |
-| `mort_file` | `mort_table()` | `mort_table.csv` | First-order death rates by sex and age 0–120. **[std]** Makeham proxy `0.00022 + B·1.10^x` for males and a three-year setback for females, `B` fixed by the anchor `mort_rate_1st(M, 37) = 0.001200`. Stands in for **DAV 2008 T**, which is cited and never shipped [R14] |
+| (no file) | (the core's `mort_rate_at_age`, `mort_rate_tariff_at_age`) | `mort_table` in `param_tariff_type.csv` | First-order death rates by sex and age 0–120: the table `dav2008t_proxy` of the core's table factory (`docs/core.md`, "The table factory"), its parameters rows of `core/Core/Data/param_tables.csv`. **[std]** Makeham proxy `q(M, x) = 0.00022 + 2.8820182383e-05 × 1.10^x` for males and a three-year setback for females, `0.00016 + 2.1653029589e-05 × 1.10^x`, the male factor fixed by the anchor `q(M, 37) = 0.0012`. Stands in for **DAV 2008 T**, which is cited and never shipped [R14]. The table is shared with the other tariffs that choose it, so a tariff changes its mortality by its choice or its factor, not by the table's rows |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` | Two different things by policy year: `lapse_rate`, the surrender **decrement**, and `stornoabzug_rate`, the **deduction**. Both **[std]** — the only German data are market aggregates that count conversions to *beitragsfrei* alongside surrenders [R20] |
 | `surplus_rate_file` | `surplus_rate_table()` | `surplus_rate_table.csv` | `decl_rate`, `term_rate`, `ans_rate` by scenario and policy year; `base`, `low`, `nil`. The 2,70 % declared rate is [S11]; held level, and the other two paths, **[std]** |
 | `cost_file` | `cost_table()` | `cost_table.csv` | The first-order tariff loadings and the second-order expense basis **on the same row**, because the difference between them *is* the *Kostenüberschuss*. Ceilings cited [R7] [REG-R16] [R29]; every level **[std]** |
 | `prem_freq_file` | `prem_freq_table()` | `prem_freq_table.csv` | `instalments` and the *Ratenzahlungszuschlag* by frequency. The 2 / 3 / 5 % market convention [R28]; the single values **[std]** |
 | `deckrv_file` | `deckrv_table()` | `deckrv_table.csv` | Both DeckRV ceilings by `issue_year` — § 2's *Höchstrechnungszins* and § 4's *Höchstzillmersatz* — because both are **cohort facts** that travel with the contract [REG-R14] [REG-R15] [REG-R16] |
-| `param_file` | `param()` | `param_tariff_type.csv` | The tariff-type parameters by `item`, each with its `value`, `basis` and `provenance`: `mort_be_factor` 0.75, the step from the first-order table to the best estimate, and `unisex_mix_male` 0.5, the male share of the unisex tariff blend, are **[std]**; the house-wide, technical and statutory items, the check tolerance `check_tol` (a float comparison tolerance, not an actuarial assumption), the § 169 Abs. 3 spread `surr_spread_years` and the § 161 window `suicide_years` among them, are in the core file `core/Core/Data/param_core.csv`, read by the same `param()`; `uv run python tools/params.py kapitallebensversicherung` lists every item the tariff reads with its value, layer, basis and provenance |
+| `param_file` | `param()` | `param_tariff_type.csv` | The tariff-type parameters by `item`, each with its `value`, `basis` and `provenance`: `mort_table`, the tariff's choice of its death table, `dav2008t_proxy`; `mort_be_factor` 0.75, the step from the first-order table to the best estimate, and `unisex_mix_male` 0.5, the male share of the unisex tariff blend, are **[std]**; the house-wide, technical and statutory items, the check tolerance `check_tol` (a float comparison tolerance, not an actuarial assumption), the § 169 Abs. 3 spread `surr_spread_years` and the § 161 window `suicide_years` among them, are in the core file `core/Core/Data/param_core.csv`, read by the same `param()`; `uv run python tools/params.py kapitallebensversicherung` lists every item the tariff reads with its value, layer, basis and provenance |
 
 Every file but the model point table carries a per-row `provenance` column, which is this
 library's second ruling and is machine-checked.
@@ -482,7 +482,7 @@ symbols; the full mapping lives in the `Projection` Space docstring. Six cases n
 
 | Notes | Cells | Why |
 |---|---|---|
-| `q₁(x)`, `q(t)` | `mort_rate_tariff_at_age` / `mort_rate_base` / `mort_rate` | Three quantities: the unisex **tariff** rate that prices and reserves, the policy's own sex-specific table row, and the best estimate that projects. `mort_rate_table` and `mort_ae_factor` are both retired names |
+| `q₁(x)`, `q(t)` | `mort_rate_tariff_at_age` / `mort_rate_base` / `mort_rate` | Three quantities: the unisex **tariff** rate that prices and reserves, the table's rate on the policy's own sex, and the best estimate that projects. `mort_ae_factor` is a retired name; `mort_rate_table` is the core's read of the table factory |
 | `V(t)` | `res_pp` / `res_net_pp` / `res_zill_pp` / `res_min_pp` / `res_guar_pp` | One symbol, five amounts. `res_pp` is what the contract holds; the middle three are constructions; `res_guar_pp` is the § 169 value at the **end** of the year |
 | `B`, `P^n`, `P^Z` | `prem_gross_level_pp` / `prem_net_level_pp` / `prem_zill_pp` | The *Bruttobeitrag* and two **pricing quantities that never become cash flows**. `premium_net_pp` is a retired name; `prem_net_level_pp` is the one that won |
 | (charged / paid) | `prem_pp(k)` / `prem_paid_pp(k)` | The **year's** *Zahlbeitrag* before and after the *Beitragsverrechnung* offset, with `prem_charged_inst_pp(t)` and `prem_inst_pp(t)` the instalments the *Zahlweise* makes due. The renewal commission reads the charged instalment |
@@ -508,7 +508,7 @@ quantitative parameter is either source-tagged or marked here.
 
 | Standardization | Value | Rationale |
 |---|---|---|
-| Mortality proxy and its anchor | `0.00022 + B·1.10^x`, `mort_rate_1st(M, 37) = 0.001200` | DAV 2008 T is not public and is not redistributed [R14]. The anchor is what makes the worked example reproduce, and is the one number a replacement must preserve |
+| Mortality proxy and its anchor | the table factory's `dav2008t_proxy`, `0.00022 + b·1.10^x`, `q(M, 37) = 0.0012` | DAV 2008 T is not public and is not redistributed [R14]. The anchor is what makes the worked example reproduce; the table is shared, so a tariff that wants another mortality chooses another table |
 | Unisex blend `unisex_mix_male`, a row of `param_tariff_type.csv` | 0.5 | New business is unisex [REG-R34]; **no insurer publishes the portfolio mix behind its own tariff** |
 | `mort_be_factor` | 0.75 | A 33 % first-order safety loading. The *Sicherheitszuschlag* level is not established for any German carrier |
 | Age basis | Age last birthday at issue, stepping at the anniversary | **No located German endowment wording states one** |

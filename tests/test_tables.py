@@ -55,9 +55,9 @@ The space ``core/Core/Tables``:
 The derivation hooks of the core's ``Projection``:
 
 - Only a switched product reaches a hook that reads the factory: ``mort_table_name`` and
-  ``mort_rate_table`` are derived everywhere, reachable in the usage scan of Index and BU,
-  which choose ``dav2008t_proxy`` as ``mort_table``, and of RV, which chooses
-  ``dav2004r_proxy``, and unreachable in the other seven, which hold no choice. BU's second
+  ``mort_rate_table`` are derived everywhere, reachable in the usage scan of Index, BU and
+  KLV, which choose ``dav2008t_proxy`` as ``mort_table``, and of RV, which chooses
+  ``dav2004r_proxy``, and unreachable in the other six, which hold no choice. BU's second
   role, ``mort_dis_table``, is read by a hook of its own, ``mort_rate_dis_at_age``, which
   no other product has; ``omega_age_table`` is reachable in RV alone, whose ``omega_age``
   reads it.
@@ -91,6 +91,20 @@ The derivation hooks of the core's ``Projection``:
   no ``omega_age``, its ``Data`` no Reference ``mort_file``, its ``Projection`` no
   ``mort_rate_at_age``, ``improve_rate``, ``mort_rate_base`` or ``mort_rate_tariff`` of its
   own and no read of the factory besides the core's hooks.
+- KLV reads its death rates through the factory alone, the fourth switched product and the
+  third reader of ``dav2008t_proxy``, which is its former file's law in full precision. The
+  tariff rate: on every shipped point ``mort_rate_tariff_at_age(x)`` is the core's cell,
+  ``0.5 q_M + 0.5 q_F`` of the table, the same whatever the point's sex, and the premium of
+  points 1 and 7, which differ in sex, is one. The best estimate: ``mort_rate(t)`` is
+  ``q(dav2008t_proxy, own sex, age(t)) * 0.75``, and on a scratch copy whose table closes at
+  the last age a point attains it is 1 there, as the tariff rate is. Against the file: at
+  ages 0 to 119 for both sexes the table rate differs from ``mort_rate_1st`` of the file the
+  switch deleted, read from git at the commit before, by at most 6.1e-12 below the cap, and
+  the two are 1 at the same ages. The results: the baseline after the switch has the shape
+  and keys of the one before and every value within the tolerance of a within-rounding
+  change. Its folder holds no mortality file or column, its ``Data`` no Reference
+  ``mort_file``, its ``Projection`` no ``mort_rate_tariff_at_age`` or ``mort_rate_at_age`` of
+  its own and no read of the factory besides the core's hooks.
 - On a scratch copy of Index that chooses a fixture table in its tariff-type file
   (``switched_copy``), the hooks deliver the table's rate on the point's own sex,
   its unisex blend and its end age, ``mort_rate`` stands on them, and the copy runs through
@@ -105,8 +119,8 @@ The derivation hooks of the core's ``Projection``:
 The usage scan ``core/param_usage.py`` (``docs/core.md``, "The usage check and the view"):
 
 - Every shipped product is clean and holds the factory's tables; Index holds its choice and
-  reads the table's items through ``mort_table_name``, as RV does, BU its two choices, the
-  items of the second read through ``mort_rate_dis_at_age``; the other seven hold no choice
+  reads the table's items through ``mort_table_name``, as KLV and RV do, BU its two choices,
+  the items of the second read through ``mort_rate_dis_at_age``; the other six hold no choice
   and read no tables item, and no table is unchosen across the ten.
 - On a scratch copy of Index that chooses a fixture table (``choosing_copy``) the scan holds
   the factory's ``items()`` and the choice, counts the chosen table's items as read by the
@@ -129,8 +143,11 @@ from __future__ import annotations
 import ast
 import builtins
 import csv
+import hashlib
 import importlib
 import importlib.util
+import io
+import subprocess
 from pathlib import Path
 
 import modelx as mx
@@ -212,6 +229,7 @@ SHIPPED_PROVENANCE = {
 SWITCHED = {
     "berufsunfaehigkeit": {"mort_table": "dav2008t_proxy", "mort_dis_table": "dav1997ti_proxy"},
     "indexpolice": {"mort_table": "dav2008t_proxy"},
+    "kapitallebensversicherung": {"mort_table": "dav2008t_proxy"},
     "klassische_rentenversicherung": {"mort_table": "dav2004r_proxy"},
 }
 CHOICE_READERS = {"mort_table": "mort_table_name", "mort_dis_table": "mort_rate_dis_at_age"}
@@ -936,6 +954,7 @@ MARKER = "# " + "-" * 75 + "\n# References"
 INDEX = "indexpolice"
 BU = "berufsunfaehigkeit"
 RV = "klassische_rentenversicherung"
+KLV = "kapitallebensversicherung"
 
 
 ALL_TABLES = list(SHIPPED_TABLES) + list(FIXTURE_DEFINITIONS)
@@ -1831,6 +1850,236 @@ def test_rv_holds_no_mortality_file_item_reference_or_formula(product_models):
     assert line == "ValueError: table 'dav2004r_proxy': x 121 is outside its ages 0 to 120"
 
 
+# The tariff rates of the values package for KLV by age, six significant digits: the 50/50
+# blend of ``dav2008t_proxy``. Its best estimate is ``BE_PACKAGE_RATES``, as Index'.
+KLV_TARIFF_PACKAGE_RATES = {40: 0.00133219, 50: 0.00315255, 65: 0.0125653}
+KLV_CORE_MORT_CELLS = TABLE_HOOKS + (
+    "birth_year", "mort_rate_at_age", "mort_rate_base", "mort_be_trend", "mort_rate",
+    "mort_rate_mth", "mort_load_tariff", "mort_rate_tariff_at_age", "mort_rate_tariff_base",
+    "mort_rate_tariff", "unisex_blend", "unisex_mix_male", "pols_tariff", "pols_death")
+KLV_MORT_FILE = f"products/{KLV}/mort_table.csv"
+KLV_BASELINE = f"baseline/{KLV}/result_cf.csv"
+
+
+def git_bytes(*args: str) -> bytes:
+    return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True,
+                          check=True).stdout
+
+
+def klv_switch() -> tuple[str, str | None]:
+    """The revisions around KLV's switch: the commit before it and the switch commit, the
+    one that deleted its mortality file. While the switch is not committed the commit before
+    is ``HEAD`` and the switch is the working tree, ``None``. Skips the test where the
+    history does not hold the file: a source archive or a shallow clone."""
+    try:
+        deleting = git_bytes("log", "-1", "--format=%H", "--diff-filter=D", "--",
+                             KLV_MORT_FILE).decode().strip()
+        before = f"{deleting}^" if deleting else "HEAD"
+        git_bytes("cat-file", "-e", f"{before}:{KLV_MORT_FILE}")
+    except (OSError, subprocess.CalledProcessError):
+        pytest.skip("the git history does not hold KLV's former mortality file")
+    return before, deleting or None
+
+
+def test_klv_tariff_rate_is_the_unisex_blend_of_the_factorys_table(product_models):
+    model = product_models(KLV)
+    projection, tables = model.Projection, model.CoreTables
+    cells = projection.cells
+    for name in KLV_CORE_MORT_CELLS:
+        assert cells[name]._is_derived(), name
+    assert model.Data.param("mort_table") == DAV2008T
+    assert model.Data.param("unisex_mix_male") == 0.5
+    by_age, seen = {}, set()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        assert item.mort_table_name() == DAV2008T and item.birth_year() == 0
+        assert item.unisex_mix_male() == 0.5
+        for t in range(item.t_start(), item.proj_len()):
+            x = item.age(t)
+            male, female = tables.q(DAV2008T, "M", x), tables.q(DAV2008T, "F", x)
+            mixed = 0.5 * male + (1.0 - 0.5) * female
+            assert mixed == blend(makeham_rate("M", x), makeham_rate("F", x)) < 1.0
+            assert item.mort_rate_tariff_at_age(x) == mixed == item.mort_rate_tariff_base(t)
+            # the neutral load: the rating factor loads the death leg, not the rate
+            assert item.mort_rate_tariff(t) == mixed, (point_id, t)
+            assert female < mixed < male and mixed != item.mort_rate_at_age(x)
+            by_age.setdefault(x, {})[item.sex()] = mixed
+            if x in KLV_TARIFF_PACKAGE_RATES:
+                assert float(f"{mixed:.6g}") == KLV_TARIFF_PACKAGE_RATES[x]
+                seen.add(x)
+        # the first-order survivorship of the premium and the reserves stands on it
+        x0 = item.issue_age()
+        assert item.pols_tariff(1) == 1.0 - item.mort_rate_tariff_at_age(x0)
+    assert seen == set(KLV_TARIFF_PACKAGE_RATES)
+    # the same whatever the point's sex: every age a man and a woman both attain
+    shared = [rates for rates in by_age.values() if len(rates) == 2]
+    assert len(shared) == 25 and all(rates["M"] == rates["F"] for rates in shared)
+    # points 1 and 7 differ in sex (and in the payment frequency): one tariff, one premium
+    # before the Ratenzahlungszuschlag, and decrements of their own
+    man, woman = projection[1], projection[7]
+    assert (man.sex(), woman.sex()) == ("M", "F")
+    assert man.prem_gross_level_pp() == woman.prem_gross_level_pp()
+    for t in range(0, man.proj_len(), 12):
+        assert man.mort_rate_tariff(t) == woman.mort_rate_tariff(t)
+        assert woman.mort_rate(t) < man.mort_rate(t)
+    # the anchor of the worked example: 0.0012 for a man of 37, the blend to twelve decimals
+    assert tables.q(DAV2008T, "M", 37) == pytest.approx(0.0012, abs=1e-14)
+    assert f"{man.mort_rate_tariff(0):.12f}" == "0.001048144252"
+
+
+def test_klv_best_estimate_is_the_factorys_rate_times_its_factor(product_models):
+    model = product_models(KLV)
+    projection, tables = model.Projection, model.CoreTables
+    cells = projection.cells
+    assert cells["mort_be_factor"]._is_defined()
+    assert "Override reason:" in cells["mort_be_factor"].formula.source
+    assert model.Data.param("mort_be_factor") == 0.75
+    seen, sexes, oldest = set(), set(), 0
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        sex = item.sex()
+        sexes.add(sex)
+        assert item.mort_be_factor() == 0.75
+        for t in range(item.t_start(), item.proj_len()):
+            x = item.age(t)
+            oldest = max(oldest, x)
+            rate = tables.q(DAV2008T, sex, x)
+            assert rate == makeham_rate(sex, x) < 1.0
+            assert item.mort_rate_at_age(x) == rate == item.mort_rate_base(t)
+            assert item.mort_rate(t) == rate * 0.75, (point_id, t)
+            assert item.mort_rate_mth(t) == 1.0 - (1.0 - rate * 0.75) ** (1.0 / 12.0)
+            if (sex, x) in BE_PACKAGE_RATES:
+                assert float(f"{item.mort_rate(t):.6g}") == BE_PACKAGE_RATES[(sex, x)]
+                seen.add((sex, x))
+    assert sexes == {"M", "F"}
+    assert {("M", 40), ("M", 50), ("M", 65), ("F", 40), ("F", 50)} <= seen
+    # no shipped point comes near the cap, which binds from 110
+    assert oldest == 69
+    assert f"{projection[1].mort_rate(0):.12f}" == "0.000900000000"
+
+
+def test_klv_passes_a_table_rate_of_1_through_its_factor(tmp_path):
+    """On a scratch copy whose table closes at 66, the last age point 14 attains: the best
+    estimate and the tariff rate are 1 there, not 0.75 of the table rate or its blend."""
+    folder = product_copy(tmp_path, KLV)
+    path = tables_file(folder, KLV)
+    text = path.read_text(encoding="utf-8")
+    assert text.count(f"{DAV2008T}_end_age,121,") == 1
+    path.write_text(text.replace(f"{DAV2008T}_end_age,121,", f"{DAV2008T}_end_age,67,"),
+                    encoding="utf-8")
+    model = mx.read_model(folder / MODELS[KLV], name="KlvThruProbe")
+    try:
+        item, tables = model.Projection[14], model.CoreTables
+        last = item.proj_len() - 1
+        assert (item.sex(), item.age(last)) == ("M", 66)
+        assert item.mort_be_factor() == 0.75
+        assert tables.q(DAV2008T, "M", 66) == 1.0 == tables.q(DAV2008T, "F", 66)
+        assert item.mort_rate_base(last) == 1.0 == item.mort_rate(last)
+        assert item.mort_rate_tariff_at_age(66) == 1.0 == item.mort_rate_tariff(last)
+        # the certainty falls in the anniversary month
+        assert item.mort_rate_mth(last) == 1.0 and item.mort_rate_mth(last - 1) == 0.0
+        # the year before, the factor acts on the table rate
+        before = last - 12
+        assert item.age(before) == 65
+        assert item.mort_rate(before) == makeham_rate("M", 65) * 0.75 < 1.0
+        assert item.mort_rate_tariff(before) == blend(makeham_rate("M", 65),
+                                                      makeham_rate("F", 65)) < 1.0
+    finally:
+        model.close()
+
+
+def test_dav2008t_proxy_is_the_law_of_klvs_former_file(shipped_tables):
+    """The table against the file KLV's switch deleted, read from git at the commit before:
+    the file held the same law written to twelve decimals, and the rates differ by at most
+    6.1e-12 below the cap."""
+    before, _switch = klv_switch()
+    data = git_bytes("show", f"{before}:{KLV_MORT_FILE}")
+    # the file as upstream shipped it: its hash stands in the product's UPSTREAM.md
+    upstream = (PRODUCTS_DIR / KLV / "UPSTREAM.md").read_text(encoding="utf-8")
+    assert f"| `mort_table.csv` | `{hashlib.sha256(data).hexdigest()}` |" in upstream
+    rows = list(csv.DictReader(io.StringIO(data.decode("utf-8"), newline="")))
+    held = {(row["sex"], int(row["age"])): float(row["mort_rate_1st"]) for row in rows}
+    assert sorted(held) == [(sex, x) for sex in "FM" for x in range(0, 121)]
+    worst, where = 0.0, None
+    for (sex, x), filed in held.items():
+        rate = shipped_tables.q(DAV2008T, sex, x)
+        if x == 120:
+            assert filed == 1.0 == rate
+            continue
+        # the cap binds at the same ages, from 110 for a man and 113 for a woman
+        assert (filed == 1.0) == (rate == 1.0) == (x >= {"M": 110, "F": 113}[sex]), (sex, x)
+        if abs(rate - filed) > worst:
+            worst, where = abs(rate - filed), (sex, x)
+    # at most 6.1e-12 below the cap, at a woman of 112 (the values package)
+    assert where == ("F", 112) and float(f"{worst:.2g}") == 6.1e-12
+    assert shipped_tables.q(DAV2008T, "M", 37) == pytest.approx(held[("M", 37)], abs=1e-14)
+
+
+def test_klv_results_moved_within_rounding_at_its_switch():
+    """The baseline of the switch against the one of the commit before: the same shape and
+    keys, every value within the tolerance of a within-rounding change (``docs/core.md``,
+    "Commit trailers"), and the frame is not the same bytes."""
+    before, switch = klv_switch()
+    old = git_bytes("show", f"{before}:{KLV_BASELINE}").decode("utf-8")
+    new = (git_bytes("show", f"{switch}:{KLV_BASELINE}").decode("utf-8") if switch
+           else (ROOT / KLV_BASELINE).read_text(encoding="utf-8"))
+    spec = importlib.util.spec_from_file_location(
+        "baseline_deviations_for_tables", ROOT / "tools" / "baseline_deviations.py")
+    deviations = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(deviations)
+    old_rows, new_rows = (list(csv.reader(io.StringIO(text))) for text in (old, new))
+    assert old_rows[0] == new_rows[0] and len(old_rows) == len(new_rows) == 3865
+    assert [row[:2] for row in old_rows] == [row[:2] for row in new_rows]
+    assert old != new
+    result = deviations.compare(old, new, deviations.EURO_COLUMNS[KLV])
+    assert result["within"], result["detail"]
+    # far inside the tolerance: a euro amount by less than a ten-millionth of a cent
+    assert result["euro_max_abs"] < 1e-7 and result["other_max_rel"] < 1e-12
+
+
+def test_klv_holds_no_mortality_file_reference_or_formula(product_models):
+    folder = PRODUCTS_DIR / KLV
+    assert not (folder / "mort_table.csv").exists()
+    for path in sorted(folder.glob("*.csv")):
+        with path.open(encoding="utf-8", newline="") as handle:
+            header = next(csv.reader(handle))
+        assert not [column for column in header if "mort" in column or column == "qx"], path
+    model = product_models(KLV)
+    layer = model.Data.param_layers()["tariff_type"]
+    assert {item: layer[item] for item in layer if "mort" in item or "unisex" in item} == {
+        "mort_be_factor": 0.75, "mort_table": DAV2008T, "unisex_mix_male": 0.5}
+    assert "mort_file" not in model.Data.refs
+    assert not [name for name in model.Data.refs if "mort" in name]
+    own = sorted(name for name, cell in model.Projection.cells.items()
+                 if "mort" in name and cell._is_defined())
+    assert own == ["mort_be_factor"]
+    for name in ("mort_rate_tariff_at_age", "mort_rate_at_age"):
+        assert model.Projection.cells[name]._is_derived(), name
+    assert not [name for name, cell in model.Data.cells.items()
+                if "mort" in name and cell._is_defined()]
+    reachable = param_usage.scan(model).reachable
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & reachable
+    for space in ("Data", "Projection"):
+        source = (folder / MODELS[KLV] / space / "__init__.py").read_text(encoding="utf-8")
+        for name in ("mort_table.csv", "mort_file", "mort_table_dict", "mort_table()",
+                     "mort_rate_1st"):
+            assert name not in source, (space, name)
+    # no read of the factory besides the core's hooks
+    cells = dict(_formula_cells(folder / MODELS[KLV] / "Projection" / "__init__.py"))
+    reads = {name: ast.unparse(node) for name, cell in cells.items() for node in ast.walk(cell)
+             if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
+             and node.value.id == "tables"}
+    assert reads == {}
+    # every death rate of a run comes through the factory's one lookup
+    item = model.Projection[1]
+    item.result_cf()
+    assert len(model.CoreTables.q) > 0
+    assert len(model.Data.cells["mort_table"]) == 0
+    assert len(model.Data.cells["mort_table_dict"]) == 0
+    line = raised_line(lambda: item.mort_rate_at_age(121))
+    assert line == "ValueError: table 'dav2008t_proxy': x 121 is outside its ages 0 to 120"
+
+
 def unswitched_copy(tmp_path: Path) -> Path:
     """A scratch copy of Index with the fixture tables that chooses no table: without its
     row ``mort_table`` and with a ``mort_rate_at_age`` of its own that reads no table, as a
@@ -2094,16 +2343,20 @@ def test_no_table_is_unchosen_in_the_ten_products(product_models):
               if product not in SWITCHED]
     assert param_usage.unchosen_tables(others) == sorted(SHIPPED_TABLES)
     # the select table and the generational table have one reader each, the aggregate
-    # table two
+    # table three
     without_bu = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
                   if product != BU]
     assert param_usage.unchosen_tables(without_bu) == [DAV1997TI]
     without_rv = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
                   if product != RV]
     assert param_usage.unchosen_tables(without_rv) == [DAV2004R]
-    without_index = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
-                     if product != INDEX]
-    assert param_usage.unchosen_tables(without_index) == []
+    for reader in (INDEX, KLV):
+        without = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
+                   if product != reader]
+        assert param_usage.unchosen_tables(without) == []
+    without_its_readers = [param_usage.scan(product_models(product))
+                           for product in sorted(MODELS) if product not in (BU, INDEX, KLV)]
+    assert param_usage.unchosen_tables(without_its_readers) == [DAV1997TI, DAV2008T]
 
 
 @pytest.mark.parametrize("file", ["param_tariff_type.csv", "param_tariff.csv"])

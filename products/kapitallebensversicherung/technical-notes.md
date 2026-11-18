@@ -209,7 +209,7 @@ per row: delib's second ruling, machine-checked.
 | File | Index columns | Value columns |
 |---|---|---|
 | `model_point_table.csv` | `point_id` | the 22 further attributes of the table above (exempt from `provenance`) |
-| `mort_table.csv` | `sex`, `age` | `mort_rate_1st`, `provenance` |
+| (no file) the table `dav2008t_proxy` of the core's table factory, chosen by `mort_table` in `param_tariff_type.csv` | `sex`, attained age | the first-order death rate, `tables.q`; its parameters and their `provenance` are rows of `core/Core/Data/param_tables.csv` |
 | `lapse_table.csv` | `policy_year` (**1-based label**, read as `policy_year(t) = t + 1`) | `lapse_rate`, `stornoabzug_rate`, `provenance` |
 | `surplus_rate_table.csv` | `scenario_id`, `policy_year` (**1-based label**, read as `t + 1`) | `decl_rate`, `term_rate`, `ans_rate`, `provenance` |
 | `cost_table.csv` | `cost_id` | `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_sum_ann`, `expense_acq_pp_once`, `expense_admin_pp_ann`, `expense_claim_pp_once`, `comm_acq_bsum_once`, `comm_renew_prem_inst`, `provenance` |
@@ -288,23 +288,29 @@ distributing the wedge between them.
 **Every input in this class is [std].** No German insurer publishes a mortality basis, an expense
 loading, a commission scale or a lapse rate for this product, and the DAV tables are not public.
 
-**Mortality — two bases, one table.** The first-order basis is `mort_table.csv`, a **[std] Makeham-form
-proxy**, sex-specific, ages 0 to 120:
+**Mortality — two bases, one table.** The first-order basis is `dav2008t_proxy`, a **[std] Makeham-form
+proxy** of the core's table factory, sex-specific, ages 0 to 120, which the tariff chooses in the row
+`mort_table` of `param_tariff_type.csv` (`docs/core.md`, "The table factory"); the product ships no
+mortality file, and the table's parameters are rows of `core/Core/Data/param_tables.csv`:
 
 ```
-mort_rate_1st(M, x) = 0.00022 + B · 1.10^x          with B fixed by the anchor below
-mort_rate_1st(F, x) = 0.00016 + B · 1.10^(x − 3)     a three-year setback on the same curve
+q(M, x) = 0.00022 + b_M · 1.10^x          b_M = 2.8820182383e-05, fixed by the anchor below
+q(F, x) = 0.00016 + b_F · 1.10^x          b_F = 2.1653029589e-05 = b_M · 1.10^(−3), a three-year setback
 ```
 
-**The anchor is `mort_rate_1st(M, 37) = 0.001200` exactly**, which fixes `B` and makes the worked
-example reproduce; the `Data` docstring states it.
+**The anchor is `q(M, 37) = 0.0012`**, which fixes `b_M` and makes the worked example reproduce; `b_M`
+stands to eleven significant digits, so the table's rate at 37 is 0,0012 to 5e-15. Until the tariff's
+switch to the table factory the rates were a file of this folder, the same law written to twelve
+decimals; the table's rates differ from the file's by at most 6.1e-12, and the results moved within
+rounding. The rate is capped at 1 from age 110 for a man and 113 for a woman and is 1 at the closing
+age 120; where the table rate is 1 the best estimate is 1 too, not 0,75. No shipped point reaches 110.
 
 **The table is read twice, for two different purposes, and they must not be confused.** The
 *tariff* rate `mort_rate_tariff_at_age(x)` — what prices and what reserves — is a **fixed unisex blend**
-of the two rows, `½ · q₁(M, x) + ½ · q₁(F, x)` **[std]**, because German new business has been
+of the two sexes' rates, `½ · q₁(M, x) + ½ · q₁(F, x)` **[std]**, because German new business has been
 unisex since 21 December 2012 [REG-R34] and a tariff that priced on `sex` would be unlawful; the
-blend itself is a portfolio mix no insurer publishes. The *decrement* is the policy's own
-sex-specific row, `mort_rate_base(t)`, and the best-estimate basis is that scaled:
+blend itself is a portfolio mix no insurer publishes. The *decrement* is the table's rate on the
+policy's own sex, `mort_rate_base(t)`, and the best-estimate basis is that scaled:
 `mort_rate(t) = mort_rate_base(t) × mort_be_factor` with **`mort_be_factor = 0.75` [std]**, so the
 first-order table carries a 33 % safety loading. That wedge is the ***Sicherheitszuschlag*** and its
 systematic release **is** the *Risikoüberschuss* [REG-R47] — the model does not compute the surplus
@@ -321,7 +327,7 @@ strip out selection, and there is **no separate endowment table**: about 91 % of
 behind it are endowment data, and endowment mortality from the sixth year is 101 % of the all-tariff
 level [R14]. **It is
 the property of the Deutsche Aktuarvereinigung, is not public and is not redistributed here** [R14]
-[REG-R47] [REG-R48]. A replacement must preserve four things: an **insured-lives**, not population,
+[REG-R47] [REG-R48]. A table in its place must have four things: an **insured-lives**, not population,
 level, materially lighter than Destatis at the working ages [REG-R52]; **sex-specific** base tables,
 the raw material even though a tariff may not price on sex [REG-R34]; **no projected improvement**,
 because for a death cover improvement favours the insurer [REG-R48]; and an explicit
@@ -874,7 +880,7 @@ a test in `tests/test_kapitallebensversicherung_de.py`.
     `prem_gross_level_pp` is identical for two otherwise-identical model points differing only in `sex`
     (points 1 and 7 both price at 2 004,0420 €), while `mort_rate` differs. This is why the pricing
     reads `mort_rate_tariff_at_age`, the fixed unisex portfolio blend — itself **[std]** — and not
-    `mort_rate_base`, which is the policy's own row; reading one where the other belongs is silent,
+    `mort_rate_base`, which is the table's rate on the policy's own sex; reading one where the other belongs is silent,
     and it moved the anchor's premium by 9,15 € when it was first written that way.
 18. **Running past the *Ablauf*, or letting a final-year surrender collide with the maturity.**
     `proj_len() = 12 · policy_term` is the frame's **exclusive** end, so the last row is
@@ -942,10 +948,10 @@ by the equivalence principle above and reported in the table, because **no Germa
 rate table is public, for any carrier** (gap 16).
 
 **Assumptions, each tagged.** *First order.* Interest `i₁ = 1.00%` [R7] [R15] [REG-R14] [REG-R15].
-Mortality `mort_rate_1st(M, x) = 0.00022 + B · 1.10^x`, `B` fixed by the anchor
-`mort_rate_1st(M, 37) = 0.001200` exactly **[std]**, standing in for **DAV 2008 T**, which is not
+Mortality `q(M, x) = 0.00022 + b_M · 1.10^x`, the table `dav2008t_proxy`, `b_M` fixed by the anchor
+`q(M, 37) = 0.0012` **[std]**, standing in for **DAV 2008 T**, which is not
 public and is not shipped [R14] [REG-R47] [REG-R48]; the tariff prices and reserves on the **unisex
-blend** `mort_rate_tariff_at_age(37) = ½ · 0.001200 + ½ · 0.000896288505 = 0.001048144253` **[std]**
+blend** `mort_rate_tariff_at_age(37) = ½ · 0.001200 + ½ · 0.000896288505 = 0.001048144252` (on the unrounded rates) **[std]**
 [REG-R34], and the anchor cell's own decrement is `mort_rate(0) = 0.001200 × 0.75 = 0.000900`. *Zillmersatz* `load_acq_bsum_once = 25 ‰` of the
 *Beitragssumme* — the § 4 DeckRV ceiling [R7] [REG-R16], the level **[std]**. Premium loading
 `load_admin_prem_inst = 3.0%` of the *Bruttobeitrag* over the *Beitragszahlungsdauer* — the form is the one the
@@ -969,8 +975,8 @@ after a BGH remittal [S3] [R22] [R30]; 50 € + 0,15 % of premiums paid times th
 Bayerische [S9]; and 100 € + 0,2 % of the gap between sum insured and *Rückkaufswert* at VPV [S18]. *Bewertungsreserven* `bwr_rate = 0.00%` —
 **[std]** [R1] [R8] [REG-R9].
 
-*Second order.* Mortality `mort_rate(t) = mort_rate_base(t) × 0.75` on this policy's own
-sex-specific row, `mort_be_factor = 0.75` **[std]**
+*Second order.* Mortality `mort_rate(t) = mort_rate_base(t) × 0.75` on the table's rate for this
+policy's own sex, `mort_be_factor = 0.75` **[std]**
 — a 33 % first-order safety loading, whose systematic release is the *Risikoüberschuss* [REG-R47].
 Surrender `lapse_rate` 5.0% in policy years 1–2, 3.5% in 3–8, 2.0% in 9–11, **6.0% in policy year 12**
 — the twelve-year tax threshold [R10] [REG-R45] — 2.5% from policy year 13, and **0 through the whole
@@ -1121,10 +1127,10 @@ reserving premiums follow without touching the projection: `prem_net_level_pp` =
 **2. The reserve at the first anniversary, by Fackler.** The state table gives
 `res_pp(1)` = 570,75 € *prospectively*, as a present value of what remains. Rebuild it
 *retrospectively*, forwards from the opening reserve. The unisex first-order rate at age 37 is
-½ × 0,001200000000 + ½ × 0,000896288505 = **0,001048144253**. Then
+½ × 0,001200000000 + ½ × 0,000896288505 = **0,001048144252** on the unrounded rates. Then
 (−1 252,5263 + 1 868,9208) × 1,01 = 616,3945 × 1,01 = **622,5584**; deduct the year's death
-outgo 0,001048144253 × 50 000 = **52,4072**; divide the remaining 570,1512 by the survivors
-1 − 0,001048144253 = 0,998951856, and the answer is **570,7495 €**. The two agree to eight
+outgo 0,001048144252 × 50 000 = **52,4072**; divide the remaining 570,1512 by the survivors
+1 − 0,001048144252 = 0,998951856, and the answer is **570,7495 €**. The two agree to eight
 figures, which is what `check_res_roll_fwd()` asserts in every policy year — and it is the strongest
 statement in the model, because it holds only if the premium, the first-order mortality, the
 *Rechnungszins* and the prospective formula are mutually consistent.
@@ -1260,7 +1266,7 @@ notes and the implementation disagreed. In each the model was right and the note
 corrected, rather than the table being fitted to the prose.
 
 1. **`q₁` named two different quantities and the notation table conflated them.** The tariff must be
-   unisex, so what *prices and reserves* is a fixed portfolio blend of the two table rows —
+   unisex, so what *prices and reserves* is a fixed portfolio blend of the two sexes' rates —
    `mort_rate_tariff_at_age(x)`, ½ / ½ **[std]** — while the *decrement* is the policy's own sex-specific
    rate `mort_rate_base(t)`, scaled by `mort_be_factor`. Pricing off the policy's own row made
    `prem_gross_level_pp` differ between model points 1 and 7, which is pitfall 17 exactly.

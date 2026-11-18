@@ -57,8 +57,8 @@ BASELINE = {
         ("check_decrement_closure", "check_equivalence", "check_net_cf", "check_pols_roll_fwd",
          "check_rechnungszins_cap", "check_res_roll_fwd", "check_surplus_roll_fwd",
          "check_surr_floor", "check_surr_nonneg", "check_zillmer_cap"),
-        "3dd986da71ab29796d3499883732247475906135aaefdfef569d125ab491edb7",
-        "793a26a2fe4fbe9835bb05d6abc61776b635e033c7daefe2db74ec35c06d3c31",
+        "9adf0eebdedfe2c7cdea0ace568dc36cc6207bb3f2db7c2bb91fef536ccaea09",
+        "56885e9c624422ef490107ec01258d7f9ec61a1de445837c3b88aab52b8d7687",
     ),
     "klassische_rentenversicherung": (
         14,

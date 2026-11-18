@@ -74,19 +74,19 @@ Three things did change, and they are the point of the conversion.
   annual-step model paid ``12 (G + U)`` at the start of each payout year — a compression
   carried as a **[std]** that was generous to the payout phase by roughly half a year's
   interest on a year's annuity and by a full year of survivorship on instalments a decedent
-  did not live to collect. On the anchor cell the annuity outgo falls from 23 566,22 € to
-  23 196,34 €, and it falls on every one of the twelve model points that pay an annuity.
+  did not live to collect. On the anchor cell the annuity outgo falls from 23 417,74 € to
+  23 029,38 €, and it falls on every one of the twelve model points that pay an annuity.
   The *Rentengarantiezeit* is now ``12m`` guaranteed **instalments** rather than ``m``
   annual lumps.
 - **The decrements compete monthly.** Deaths and surrenders are taken in the same order as
   before — deaths first, surrenders on the survivors of them — but twelve times a year rather
   than once, so a life that the annual ordering would have counted as a death may surrender
-  first. The **total** exits are unchanged at every anniversary; the split moves, by 16,64 €
+  first. The **total** exits are unchanged at every anniversary; the split moves, by 11,98 €
   of claims from death to lapse on the anchor cell.
 - **Expenses are borne for the months a policy was there.** ``expenses_pp(t)`` is a twelfth
   of the year's amount, inflated by ``(1 + expense_infl())^duration(t)``, so a policy leaving
   mid-year no longer bears a full year of administration. The anchor cell's expenses fall
-  from 1 672,08 € to 1 649,05 €.
+  from 1 660,96 € to 1 637,92 €.
 
 The *Rentenbeginn* falls at the **end of the deferment period** of ``n = aufschub_y`` years,
 which is the end of month ``12n - 1`` and the same instant as the start of month ``12n``.
@@ -127,7 +127,6 @@ reached here through the ``data`` Reference:
 Reference                 Cells                              File
 ========================  =================================  ==========================
 model_point_file          data.model_point_table()           model_point_table.csv
-mort_file                 data.mort_table()                  mort_table.csv
 decl_rate_file            data.decl_rate_table()             decl_rate_table.csv
 rentenfaktor_file         data.rentenfaktor_table()          rentenfaktor_table.csv
 charge_file               data.charge_table()                charge_table.csv
@@ -161,7 +160,7 @@ x(k)                        age_y(k)                        Attained age in poli
 x(t)                        age(t)                          The same, read at a month
 tau(k)                      calendar_year_y(k)              Calendar year of policy year k
 tau(t)                      calendar_year(t)                The same, read at a month
-omega                       omega_age()                     Terminal age of the proxy
+omega                       omega_age()                     End age of the table
 n                           (model point aufschub_y)        Deferment years
 m                           (model point rgz_years)         Rentengarantiezeit years
 kappa                       (model point kapitalwahl_rate)  Commutation take-up
@@ -191,12 +190,12 @@ Delta(k)                    spread_diff_pp(k)               Vtilde(k) - V(k)
 i                           rechnungszins()                 Rechnungszins
 d(k)                        decl_rate(k)                    Declared laufende Verzinsung
 b(k)                        bonus_rate(k)                   max(0, d(k) - i)
-q*(t)                       mort_rate_tariff(t)             First-order mortality, annual
-(base)                      mort_rate_base(t)               mort_rate_tariff(t), the base of q
+q*(t)                       mort_rate_tariff(t)             First-order mortality, unisex
+(base)                      mort_rate_base(t)               Table rate, own sex, the base of q
 q(t)                        mort_rate(t)                    Best-estimate mortality, annual
 q^m(t)                      mort_rate_mth(t)                The monthly rate applied
-(table)                     mort_rate_at_age(x)             Base-year table rate at age x
-(trend)                     improve_rate(x)                 Annual improvement at age x
+(table)                     mort_rate_at_age(x)             Table rate at age x, own sex
+g                           birth_year()                    Cohort the table is read at
 w(t)                        lapse_rate(t)                   Surrender rate, annual
 w^m(t)                      lapse_rate_mth(t)               The monthly rate applied
 Dcheck(k)                   db_base_pp(k)                   Start-of-year death measure
@@ -269,8 +268,8 @@ and never more. On the anchor cell that is 1,00 % into ``int_credited_pp`` and 1
 ``bonus_credited_pp`` against a 2,55 % declaration. On model point 6 — a 2,75 % legacy
 vintage against the same declaration — ``bonus_rate(k)`` is **zero in every policy year**
 while ``int_credited_pp(k)`` is the largest in the table. A model that credits 1,00 % *and* a further
-2,55 % puts 56,82 € into the anchor cell's first year against 40,82 €, and reaches 63 772,39 €
-of accumulated value at the *Rentenbeginn* against 58 792,42 € — 8,5 % too much, the whole of it
+2,55 % puts 56,90 € into the anchor cell's first year against 40,87 €, and reaches 63 882,72 €
+of accumulated value at the *Rentenbeginn* against 58 895,06 € — 8,5 % too much, the whole of it
 sitting in the *Ansammlungsguthaben*.
 
 .. rubric:: The guarantee vintage is a model-point attribute
@@ -478,12 +477,42 @@ def horizon_age():
     return omega_age()
 
 
+def omega_age():
+    """omega: the limiting age, the end age of the tariff's mortality table.
+
+    The first age nobody reaches, **121** on ``dav2004r_proxy``: the table's rate is 1 at
+    120, so a projection run to it ends with no survivors.
+
+    Override reason: reads the end age off its table, the table factory's, docs/core.md,
+    section "The decrement rates"
+    """
+    return omega_age_table()
+
+
+def birth_year():
+    """g: the year of birth the generational table is read at, issue year less issue age.
+
+    DAV 2004 R is a *Generationentafel*: mortality is indexed by birth cohort and the
+    expected future improvement is built into the table rather than applied on top of it.
+    The table's rate at attained age ``x`` is that of the calendar year ``g + x``, which is
+    ``calendar_year(t)`` at ``x = age(t)``.  A period-table proxy, priced at an
+    annuitisation decades ahead, understates the liability by a margin that dwarfs every
+    other assumption — on the anchor cell, born 1977, the annuitant reaches 67 in 2044,
+    thirty-nine improvement years after the table's 2005 base.
+
+    Override reason: the first-order table is generational, read at the attained age and
+    the birth year, products/klassische_rentenversicherung/technical-notes.md:328
+    """
+    return issue_year() - issue_age()
+
+
 def mort_be_factor():
     """The loading from the first-order table to the best estimate, from *param_tariff_type.csv*.
 
     1.15 **[std]**, and **above one on purpose**.  For an annuity, prudence means assuming
-    mortality *lower* than expected, so the first-order (tariff) table sits below best
-    estimate and the second-order rate is the tariff rate loaded upward.  The safety margin
+    mortality *lower* than expected, so the first-order table sits below best estimate and
+    the second-order rate is the table's rate on the insured's own sex loaded upward (the
+    tariff rate of the risk charge is the table's unisex blend).  The safety margin
     of the real construction runs in two dimensions, level and trend; only the level is
     reproduced here.
 
@@ -697,10 +726,13 @@ def charge_risk_pp(k):
     projection's decrements.  Using one basis for both is a listed pitfall.  Zero after the
     *Rentenbeginn*, where no death benefit is payable.
 
-    The rate is read at ``mort_rate_tariff(12 * k)`` — the first month of policy year ``k``,
-    which is where the monthly clock and the annual one meet.  ``mort_rate_tariff`` returns the
-    **year's** rate at every month of that year, so the argument selects the year and not a
-    month, and the charge is the annual one the tariff strikes.
+    The rate is the core's ``mort_rate_tariff``, the **unisex blend** of the table's rates
+    for a man and a woman of the attained age and the birth year, 45 % men (the row
+    ``unisex_mix_male``): sex does not enter the charge scale.  It is read at
+    ``mort_rate_tariff(12 * k)`` — the first month of policy year ``k``, which is where the
+    monthly clock and the annual one meet.  ``mort_rate_tariff`` returns the **year's** rate
+    at every month of that year, so the argument selects the year and not a month, and the
+    charge is the annual one the tariff strikes.
     """
     if k >= int(model_point()["aufschub_y"]):
         return 0.0
@@ -737,7 +769,7 @@ def prem_to_av_pp(k):
 
     ``P(k) - charge_from_prem_pp(k)``.  This is the amount credited to the
     *Deckungskapital* — the premium "insofar as it is not required for risk and expense
-    cover".  1 600,70 € of the anchor cell's 3 000,00 € first premium, the rest being the
+    cover".  1 602,76 € of the anchor cell's 3 000,00 € first premium, the rest being the
     whole zillmered acquisition charge.
     """
     return prem_pp(k) - charge_from_prem_pp(k)
@@ -1004,70 +1036,6 @@ def av_spread_pp_at(k, timing):
 
 # ----------------------------------------
 # Rates
-
-
-def mort_rate_at_age(x):
-    """The first-order base-year death rate at attained age x, for the model point's sex.
-
-    ``q_base`` from *mort_table.csv*, a **[std]** Gompertz proxy anchored at
-    ``q_base(M, 50) = 0.002000``.  The real basis is DAV 2004 R, which is the property of the
-    Deutsche Aktuarvereinigung, is not public and is not redistributed here.
-
-    Override reason: the product reads its own mortality file until its switch to the
-    table factory, docs/core.md, section "The table factory"
-    """
-    return float(data.mort_table_dict()["q_base"][                   # noqa: F821
-        (sex(), int(x))])
-
-
-def improve_rate(x):
-    """The annual mortality improvement rate at attained age x, from *mort_table.csv*.
-
-    1,5 % below age 60, grading linearly to 0,5 % at 100 and to zero at 110 **[std]** — a
-    deliberate simplification of the *Starttrend* / *Zieltrend* structure the German
-    construction uses, documented as one rather than presented as a replication.
-    """
-    return float(data.mort_table_dict()["improve"][                  # noqa: F821
-        (sex(), int(x))])
-
-
-def mort_rate_tariff(t):
-    """q*(t): the **first-order** annual death rate, on the generational surface.
-
-    ``q_base(sex, x(t)) x (1 - improve(x(t)))^(tau(t) - mort_base_year)``.
-
-    DAV 2004 R is a *Generationentafel*: mortality is indexed by birth cohort and the
-    expected future improvement is built into the table rather than applied on top of it.
-    That is why this cell depends on :func:`calendar_year` as well as :func:`age`.  A
-    period-table proxy, priced at an annuitisation decades ahead, understates the liability
-    by a margin that dwarfs every other assumption — on the anchor cell the annuitant reaches
-    67 in 2044, thirty-nine improvement years after the proxy's 2005 base.
-
-    This is the basis the *Risikobeitrag* and the guaranteed benefits are struck on, and
-    **not** the basis the projection's decrements run on.
-
-    It takes a **month** and returns that month's **policy year's annual** rate, which is the
-    library convention wherever a grid is monthly: the rate the notes tabulate keeps its own
-    name, and the rate the recursion applies is spelled ``_mth``.  Flat across the twelve
-    months of a policy year, because both the attained age and the calendar year step on the
-    anniversary.
-
-    Override reason: the first-order table is generational, read at the attained age and the
-    calendar year, products/klassische_rentenversicherung/technical-notes.md:328
-    """
-    x = age(t)
-    base_year = data.param("mort_base_year")                         # noqa: F821
-    return min(1.0, mort_rate_at_age(x)
-               * (1.0 - improve_rate(x)) ** (calendar_year(t) - base_year))
-
-
-def mort_rate_base(t):
-    """The first-order rate the best estimate is loaded on, :func:`mort_rate_tariff`.
-
-    Override reason: the best estimate is the trend-projected first-order (guaranteed)
-    table loaded by the factor, products/klassische_rentenversicherung/technical-notes.md:341
-    """
-    return mort_rate_tariff(t)
 
 
 def decl_rate(k):

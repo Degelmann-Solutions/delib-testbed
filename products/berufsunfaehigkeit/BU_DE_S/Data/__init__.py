@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The eight input CSVs are read here, **once per model**, and referenced from
+The seven input CSVs are read here, **once per model**, and referenced from
 :mod:`~.BU_DE_S.Projection` as ``data``. :mod:`~.BU_DE_S.Projection` is parameterized by
 ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells cache;
 if the readers lived there, every model point would re-read every file. Holding them in
@@ -32,7 +32,6 @@ Reference                 Cells                         File
 model_point_file          model_point_table()           model_point_table.csv
 inception_file            inception_table()             inception_table.csv
 claim_duration_file       claim_duration_table()        claim_duration_table.csv
-mort_file                 mort_table()                  mortality_table.csv
 occupation_file           occupation_table()            occupation_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
 prem_freq_file            prem_freq_table()             prem_freq_table.csv
@@ -41,11 +40,11 @@ param_file                param()                       param_tariff_type.csv
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table``,
-``lapse_table`` and ``prem_freq_table``, this space's ``inception_table_dict``,
-``claim_duration_table_dict`` and ``occupation_table_dict``, with ``inception_table_ages``
-and ``mort_table_ages``, the age range the lookups clamp to, and
-``claim_duration_last_year``, the claim year the claim-duration lookups cap at.
+``DataFrame.loc``: the core's for ``model_point_table``, ``lapse_table`` and
+``prem_freq_table``, this space's ``inception_table_dict``,
+``claim_duration_table_dict`` and ``occupation_table_dict``, with ``inception_table_ages``,
+the age range the inception lookup clamps to, and ``claim_duration_last_year``, the claim
+year the claim-duration lookups cap at.
 
 Every file but ``model_point_table.csv`` carries a per-row ``provenance`` column, which
 is delib's second ruling: the citation discipline reaches the data files and is
@@ -61,8 +60,20 @@ Deutsche Aktuarvereinigung, are not published and are **not redistributed by del
 They are cited by name in the product's ``sources.md`` and the tables shipped beside this
 model are anchored ``[std]`` constructions that reproduce their *shape* and nothing more.
 
-Each proxy is anchored so that the technical notes' worked example reproduces exactly.
-The three anchors, and what a replacement built from company or DAV data must preserve:
+**No mortality table is read here.** The death rates come from the core's table factory:
+the tariff chooses ``dav2008t_proxy`` in the row ``mort_table`` of
+``param_tariff_type.csv`` for the active lives and the run-off, a first-order proxy of
+DAV 2008 T of which the projection takes 0.75, the row ``mort_be_factor``, as the best
+estimate, and ``dav1997ti_proxy`` in the row ``mort_dis_table`` for the lives in claim, a
+proxy of DAV 1997 TI at the best-estimate level, select on the claim year with the
+factors 3.0 / 2.0 / 1.6 / 1.4 / 1.3 and 1.2 from claim year 6.  Both are distinct by sex
+and ``[std]`` proxies on the law of Makeham.  What a replacement must preserve is the
+**excess of disabled over active mortality** — never one table for both states — and
+that disabled-lives mortality is itself select on claim duration.
+
+Each proxy shipped here is anchored so that the technical notes' worked example
+reproduces exactly.  The two anchors, and what a replacement built from company or DAV
+data must preserve:
 
 ``inception_table.csv``
     ``inc_rate(30) = 0.001100`` exactly, on a two-slope Gompertz form
@@ -74,19 +85,12 @@ The three anchors, and what a replacement built from company or DAV data must pr
     top of it; a table already net of declinature must be used with that factor at 1.00
     or the *Anerkennungsquote* is counted twice.
 
-``mortality_table.csv``
-    ``mort_rate_actv(30) = 0.000350`` exactly, with the disabled-lives rate at 4.00x it,
-    both on ``1.095^(age - 30)``. What must be preserved is the **excess of disabled over
-    active mortality** — never one rate for both states — and the fact that the active
-    table is an insured-lives *Todesfall*-character shape rather than a population table.
-
 ``claim_duration_table.csv``
-    ``recov_rate(1) = 0.250`` falling to ``0.006`` ultimate, with disabled-mortality
-    select factors 3.0 / 2.0 / 1.6 / 1.4 / 1.3 and 1.2 from claim year 6. What must be
-    preserved is the **duration shape**: reactivation is concentrated in the first one to
-    two claim years and is close to zero after about five, and disabled-lives mortality
-    is itself select on claim duration. A flat reactivation rate is a modelling error,
-    not a simplification, and it is worth roughly a factor of two on projected benefit.
+    ``recov_rate(1) = 0.250`` falling to ``0.006`` ultimate. What must be preserved is
+    the **duration shape**: reactivation is concentrated in the first one to two claim
+    years and is close to zero after about five. A flat reactivation rate is a modelling
+    error, not a simplification, and it is worth roughly a factor of two on projected
+    benefit.
 
 The remaining three files are market conventions rather than biometric bases:
 ``occupation_table.csv`` carries the five-class *Berufsgruppen* cut with BG1 at 1.00 and
@@ -126,31 +130,14 @@ def inception_table():
 def claim_duration_table():
     """The claim-duration table by claim year, from *claim_duration_table.csv*.
 
-    Two columns on one index, because both quantities are select on the same duration:
-    ``recov_rate``, the annual *Reaktivierungswahrscheinlichkeit*, and
-    ``mort_dis_sel_factor``, the multiplier on disabled-lives mortality.  Rows 1-10 are
-    claim years 1-10 and **row 11 is the ultimate**, applied to claim year 11 and beyond.
-    Both columns are **[std]**; DAV 1997 RI and DAV 1997 TI are not shipped.
+    One column, ``recov_rate``, the annual *Reaktivierungswahrscheinlichkeit*.  Rows 1-10
+    are claim years 1-10 and **row 11 is the ultimate**, applied to claim year 11 and
+    beyond.  **[std]**; DAV 1997 RI is not shipped.  The select factors of disabled-lives
+    mortality, on the same duration, are items of the table factory's table of the lives
+    in claim.
     """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / claim_duration_file, index_col="dur_year")     # noqa: F821
-
-
-def mort_table_index():
-    """The index columns of *mortality_table.csv*: ``age`` alone.
-
-    Read from *mortality_table.csv*: ``mort_rate_actv`` for lives in the *aktiv* and
-    run-off ledgers and ``mort_rate_dis`` for lives in claim, before the claim-duration
-    select factor.  Both are **[std]** Gompertz proxies anchored at
-    ``mort_rate_actv(30) = 0.000350``, with the disabled rate at 4.00x the active one;
-    DAV 2008 T and DAV 1997 TI are not shipped.  **Using one rate for both states is a
-    numbered pitfall**, which is why the file carries two columns rather than one.
-
-    Override reason: the table carries an active and a disabled rate (``mort_rate_actv``,
-    ``mort_rate_dis``) keyed by ``age`` alone,
-    products/berufsunfaehigkeit/technical-notes.md:352
-    """
-    return "age"
 
 
 def occupation_table():
@@ -180,8 +167,8 @@ def inception_table_dict():
 def claim_duration_table_dict():
     """The claim-duration table as a dict by column: ``{column: {dur_year: value}}``.
 
-    Built once per model from ``claim_duration_table()``; ``Projection.recov_rates`` and
-    ``mort_dis_sel_factors`` read its ``recov_rate`` and ``mort_dis_sel_factor`` columns.
+    Built once per model from ``claim_duration_table()``; ``Projection.recov_rates`` reads
+    its ``recov_rate`` column.
     """
     return claim_duration_table().to_dict()
 
@@ -205,22 +192,13 @@ def inception_table_ages():
     return (int(ages.min()), int(ages.max()))
 
 
-def mort_table_ages():
-    """The age range of the core's ``mort_table()``: ``(first_age, last_age)``, 18 and 70.
-
-    Built once per model from its index; the bounds ``Projection.mort_rate_at_age`` and
-    ``mort_rate_dis_at_age`` clamp the attained age to.
-    """
-    ages = mort_table().index
-    return (int(ages.min()), int(ages.max()))
-
-
 def claim_duration_last_year():
     """The last claim year of ``claim_duration_table()``, its largest ``dur_year``: 11.
 
     Built once per model from its index, which runs from 1 without a gap, the last row the
     ultimate; ``Projection.claim_year`` caps the claim year at it, ``cohort_year_idx`` the
-    index at one below, and ``recov_rates`` and ``mort_dis_sel_factors`` read claim years 1
+    index at one below, and ``recov_rates`` and the per-claim-year mortality tuples
+    ``mort_rate_dis_mth_year`` and ``mort_rate_dis_first_mth_year`` run over claim years 1
     to it.
     """
     return int(claim_duration_table().index.max())
@@ -234,8 +212,6 @@ model_point_file = "model_point_table.csv"
 inception_file = "inception_table.csv"
 
 claim_duration_file = "claim_duration_table.csv"
-
-mort_file = "mortality_table.csv"
 
 occupation_file = "occupation_table.csv"
 

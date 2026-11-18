@@ -34,9 +34,23 @@ def definitions():
     improvement rate, or ``None`` for a period table, each with the signature
     ``(table, sex, x)``; ``parameters`` names the table's parameters, and the item of a
     parameter is ``<table>_<parameter>``.  A table is generational where its trend is not
-    ``None`` and select where it names a parameter ``sel_<n>``.  No table is defined yet.
+    ``None`` and select where it names a parameter ``sel_<n>``.
     """
-    return {}
+    return {
+        "dav2008t_proxy": (makeham, None, (
+            "m_a", "m_b", "m_c", "f_a", "f_b", "f_c", "first_age", "end_age")),
+        "dav1997ti_proxy": (makeham, None, (
+            "m_a", "m_b", "m_c", "f_a", "f_b", "f_c",
+            "sel_1", "sel_2", "sel_3", "sel_4", "sel_5", "sel_6", "first_age", "end_age")),
+        "dav2004r_proxy": (makeham, trend_linear, (
+            "m_a", "m_b", "m_c", "f_a", "f_b", "f_c",
+            "trend_start", "trend_start_age", "trend_mid", "trend_mid_age", "trend_end_age",
+            "base_year", "first_age", "end_age")),
+        "dav2008t_nr_proxy": (makeham, None, (
+            "m_a", "m_b", "m_c", "f_a", "f_b", "f_c", "first_age", "end_age")),
+        "dav2008t_r_proxy": (makeham, None, (
+            "m_a", "m_b", "m_c", "f_a", "f_b", "f_c", "first_age", "end_age")),
+    }
 
 
 def definition(table):
@@ -118,6 +132,37 @@ def trend(table, sex, x):
     if law is None:
         raise ValueError(f"table {table!r}: a period table has no trend")
     return law(table, sex, x)
+
+
+def makeham(table, sex, x):
+    """The law of Makeham on the rate: ``a + b * c ** x``, with the parameters of ``sex``.
+
+    Reads ``<m or f>_a``, ``<m or f>_b`` and ``<m or f>_c`` of ``table``; the law of
+    Gompertz is the case ``a = 0``.
+    """
+    key = sex.lower()
+    return (parameter(table, key + "_a")
+            + parameter(table, key + "_b") * parameter(table, key + "_c") ** x)
+
+
+def trend_linear(table, sex, x):
+    """The piecewise linear trend law: the annual improvement rate at age ``x``, for both sexes.
+
+    ``trend_start`` up to ``trend_start_age``, linear to ``trend_mid`` at ``trend_mid_age``,
+    linear to 0 at ``trend_end_age`` and 0 beyond; the five are parameters of ``table``.
+    """
+    start = parameter(table, "trend_start")
+    start_age = parameter(table, "trend_start_age")
+    mid = parameter(table, "trend_mid")
+    mid_age = parameter(table, "trend_mid_age")
+    stop_age = parameter(table, "trend_end_age")
+    if x <= start_age:
+        return start
+    if x <= mid_age:
+        return start + (mid - start) * (x - start_age) / (mid_age - start_age)
+    if x < stop_age:
+        return mid * (stop_age - x) / (stop_age - mid_age)
+    return 0.0
 
 
 def q(table, sex, x, birth_year=None, duration=None):

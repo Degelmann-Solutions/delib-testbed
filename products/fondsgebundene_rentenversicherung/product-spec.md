@@ -242,7 +242,7 @@ Footnotes to **[std]** rows:
    contract**, which is why the minimum deferment is set at twelve years; a real tariff's own
    minimum is ten [S2], so the composite is the stricter of the two and for a stated reason.
 5. **No age basis was established for any carrier.** Age last birthday is the convention the
-   shipped mortality proxy is indexed on; on a monthly grid the difference from age next birthday
+   mortality proxy is indexed on; on a monthly grid the difference from age next birthday
    is a twelve-month shift of one lookup, quantified in the technical notes.
 6. Real *Fondsauswahl* menus vary far more widely than this document once claimed. A large carrier
    offers a *"TopFonds-Universum"* of managed strategies, single funds and ETFs [S3]; the one
@@ -405,7 +405,8 @@ Footnotes to **[std]** rows:
     savings contract's own risk charge. Two lessons the specification should carry: on a
     *Beitragsrückgewähr* cover with no underwriting, "first order" can mean **an old heavy table
     scaled down** rather than a modern table loaded up; and the tariff basis is **unisex**, which
-    is [REG-R34] showing in a real *Rechnungsgrundlage*. `mort_table.csv` is unaffected — it is a
+    is [REG-R34] showing in a real *Rechnungsgrundlage*. The model's death table, `dav2008t_proxy`
+    of the core's table factory, is unaffected — it is a
     proxy for a first-order death basis, whichever table a given carrier starts from.
 18. **DAV tables are the property of the Deutsche Aktuarvereinigung, are not public and are not
     redistributed by this library.** They are cited by name; the reference implementation ships

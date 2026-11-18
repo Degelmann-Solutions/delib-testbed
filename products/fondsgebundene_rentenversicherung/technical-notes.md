@@ -114,7 +114,7 @@ that exercise the attribute non-trivially, so a reader can find the row that tes
 |---|---|---|---|
 | `point_id` | int | index; **model point 1 is the worked example's anchor cell** | all |
 | `policy_id` | str | label, e.g. `DE-FRV-0001` | all |
-| `sex` | enum {M, F} | **reporting only.** German tariffs are unisex for contracts from 21 December 2012 [REG-R34], so this must not enter pricing | 1, 4, 9 |
+| `sex` | enum {M, F} | **the best-estimate death rate only.** German tariffs are unisex for contracts from 21 December 2012 [REG-R34], so this must not enter pricing: the *Risikobeitrag* is priced on the unisex blend of the death table, and only the projection's own decrement reads the table on the policy's sex | 1, 4, 9 |
 | `issue_age` | int (ALB) | age at inception | all |
 | `duration_mth_init` | int | policy months already elapsed at the valuation date; 0 for new business. An **elapsed count**, already 0-based, so it is `t_start()` itself | 6 |
 | `pols_if_init` | float | policies the model point represents | all |
@@ -283,26 +283,36 @@ that tariff uses.** DEVK prices the monthly *Risikobeiträge* on *"einer mit 65 
 geschlechtsunabhängigen Ausscheideordnung auf Basis der Sterbetafel DAV 1994 T"*, and keeps
 DAV 2008 T [R17] [REG-R48] for its underwritten *Risiko-Zusatzversicherung*. On an unwritten
 *Beitragsrückgewähr* cover, a first-order basis can be an old heavy table scaled **down** as
-easily as a modern table loaded **up**; the shipped proxy stands for either. Both orders are
+easily as a modern table loaded **up**; the proxy stands for either. Both orders are
 **unisex**, which is [REG-R34] showing in a real *Rechnungsgrundlage*. DAV tables are the property
 of the Deutsche Aktuarvereinigung, are not public and are **not redistributed by this library**.
-The shipped `mort_table.csv` is a **[std] Gompertz-form proxy** of the first-order table:
+The product ships no mortality file: the first-order table is `dav2008t_proxy` of the core's
+table factory (`docs/core.md`, "The table factory"), which the tariff chooses in the row
+`mort_table` of `param_tariff_type.csv`, a **[std] Makeham-form proxy** by sex for ages 0 to 120:
 
-    mort_rate_tariff_at_age(x) = 0.00080 × 1.10^(x − 37),   ages 18–100
+    q(M, x) = 0.00022 + b_M × 1.10^x,   b_M from the anchor q(M, 37) = 0.0012
+    q(F, x) = 0.00016 + b_M × 1.10^(x − 3)
 
-**anchored at `q(37) = 0.00080` exactly**, which is the number the worked example rests on and
-which a substitute table must preserve if the example is to reproduce. The 10 % per year of age
-is an insured-lives death gradient, not a population one — a German term insurer's book is
-**selected**, and a proxy built on population mortality overstates claims at the working ages this
-product lives at [REG-R48] [REG-R52]. The best estimate is a flat ratio:
+    mort_rate_tariff_at_age(x) = 0.5 × q(M, x) + 0.5 × q(F, x)
 
-    mort_be_factor = 0.75     mort_rate(t) = 0.75 × mort_rate_tariff(t)
+The tariff rate is the **unisex blend** of the two at `unisex_mix_male = 0.5` **[std]**, the same
+whatever the policy's sex: `0.5 × 0.001200000 + 0.5 × 0.000896289 = 0.001048144` at 37, the number
+the worked example rests on. The 10 % per year of age is an insured-lives death gradient, not a
+population one — a German term insurer's book is **selected**, and a proxy built on population
+mortality overstates claims at the working ages this product lives at [REG-R48] [REG-R52]. The
+best estimate is a flat factor on the table rate of the policy's **own sex**:
 
-A flat ratio is crude and is stated as such; what it buys is that the *Risikoergebnis* is exactly
-`(1 − 0.75) = 25 %` of the *Risikobeitrag* collected, which is a closed-form check a reader can
-verify with a calculator. What a replacement must preserve: a first-order margin **above** the
-best estimate for a death cover, which is the opposite direction from the annuity table
-[REG-R47].
+    mort_be_factor = 0.75     mort_rate(t) = 0.75 × q(sex, age(t))
+
+A flat factor is crude and is stated as such. It makes the best estimate 0.75 of the first-order
+rate of the same sex, and **no fixed share of the tariff rate**, which is the blend: at 40 the
+best estimate is 0.858 of the tariff rate for a man and 0.642 for a woman, so the *Risikoergebnis*
+is about 14 % of the *Risikobeitrag* collected on a man and about 36 % on a woman, and two
+policies that differ in sex alone pay the same *Risikobeitrag* rate and die at different rates.
+Until the switch to the table factory the tariff's own unisex file was the base of both rates and
+the *Risikoergebnis* was exactly 25 % of the *Risikobeitrag*; that identity is gone. What a
+replacement must preserve: a first-order margin **above** the best estimate for a death cover,
+which is the opposite direction from the annuity table [REG-R47].
 
 **Monthly conversion, and the asymmetry between mortality and lapse [std].** Mortality is split
 **linearly**, `mort_rate_mth(t) = mort_rate(t)/12`, because the tariff's own *Risikobeitrag* is
@@ -427,7 +437,7 @@ with a PRIIPs performance scenario**.
 | `C(t)` | `prem_cum_end_pp(t)` | cumulative **gross** premiums paid to and including month `t` |
 | `D(t)`, `K(t)` | `db_floor_pp(t)`, `nar_pp(t)` | guaranteed minimum death benefit; *riskiertes Kapital* |
 | `qᴵ(t)`, `q(t)` | `mort_rate_tariff_mth(t)`, `mort_rate_mth(t)` | first-order (the price) and second-order (the decrement) monthly death rates |
-| `f` | `mort_be_factor` | 0.75; `q(t) = f · qᴵ(t)` |
+| `f` | `mort_be_factor` | 0.75; `q(t)` is a twelfth of `f` times the table rate of the policy's own sex, `qᴵ(t)` a twelfth of the unisex blend of the table |
 | `w(t)` | `lapse_rate_mth(t)` | monthly lapse rate; `w(n − 1) = 0` |
 | `l(t)` | `pols_if(t)` | policies in force at the **start** of month `t` |
 | `W(t)` | `withdrawals_pp(t)` | *Teilentnahme* |
@@ -711,15 +721,18 @@ one becomes a test.
    `charge_*` column contains a TER term.
 3. **Pricing the *Risikobeitrag* on the annuity table.** The death charge is priced on a **death**
    table, DAV 2008 T [R17] [REG-R48]; the conversion guarantee rests on DAV 2004 R [R16]
-   [REG-R49]. Assert that `mort_rate_tariff_at_age` reads `mort_table.csv` and
-   `rentenfaktor_guar` reads `rentenfaktor_table.csv`, and that no cells reads both.
+   [REG-R49]. Assert that `mort_rate_tariff_at_age` reads the death table `dav2008t_proxy` of
+   the table factory and `rentenfaktor_guar` reads `rentenfaktor_table.csv`, and that no cells
+   reads both.
 4. **Using one mortality basis for the charge and for the decrement.** That makes the
-   *Risikoergebnis* identically zero and deletes the mechanic. Assert
-   `Σ charge_risk − Σ death_strain = (1 − mort_be_factor) · Σ charge_risk` **exactly**, and that
-   it is strictly positive on the anchor.
+   *Risikoergebnis* identically zero and deletes the mechanic. Assert that `mort_rate(t)` lies
+   below `mort_rate_tariff(t)` in every month and that `Σ charge_risk − Σ death_strain` is
+   strictly positive on the anchor. It is no fixed share of the charge: the tariff rate is the
+   unisex blend and the best estimate 0.75 of the own sex's rate, so the anchor, a man, keeps
+   14.19 % of its *Risikobeitrag* and a woman about 36 %.
 5. **Mixing the monthly conversions.** `qᴵ` and `q` must use the same split, or the model
-   manufactures a risk result out of a rounding convention: at `q = 0.00080`, `q/12 = 0.00006667`
-   against `1 − (1−q)^(1/12) = 0.00006669`, a 0.04 % difference that lands entirely in the risk
+   manufactures a risk result out of a rounding convention: at `q = 0.001048`, `q/12 = 0.00008735`
+   against `1 − (1−q)^(1/12) = 0.00008739`, a 0.05 % difference that lands entirely in the risk
    result and grows with `q`. Assert `mort_rate_mth(t) = mort_rate(t)/12` and
    `lapse_rate_mth(t) = 1 − (1 − lapse_rate(t))^(1/12)`, and that `lapse_rate_mth < lapse_rate`
    wherever the annual rate is positive.
@@ -828,7 +841,8 @@ any of them, and the research file's gaps register records that as gaps 18 and 1
 ## Worked example
 
 **Configuration.** Model point 1, the anchor cell of `model_point_table.csv`:
-`policy_id = DE-FRV-0001`; `sex = M` (reporting only — the tariff is unisex [REG-R34]);
+`policy_id = DE-FRV-0001`; `sex = M` (the best-estimate death rate is a man's; the tariff is
+unisex [REG-R34], so the *Risikobeitrag* does not read it);
 `issue_age = 37`; `duration_mth_init = 0`, so `t_start() = 0`; `pols_if_init = 1.0`;
 `ret_age = 67`, so `proj_len() = 12 × (67 − 37) = 360` months and the frame is
 `t = 0 … 359`;
@@ -856,13 +870,15 @@ rest as a percentage of every premium for the whole term [S2]; premium-based adm
 `fund_scenario_table.csv`: gross return `5.00 % p.a.` **[std]**, fund `TER = 0.45 % p.a.`
 **[std]**, so `fund_return_net_ann = 4.55 % p.a.` and `fund_return_net_mth = (1.0455)^(1/12) − 1
 = 0.371482 % per month`; *Kickback* credited back `0.00 %` **[std]**; no *Ablaufmanagement* glide.
-*Mortality*: the tariff basis is a **[std]** first-order death proxy `mort_rate_tariff_at_age(x) =
-0.00080 × 1.10^(x − 37)`, anchored at `q(37) = 0.00080`. It stands for whichever first-order death
+*Mortality*: the tariff basis is the **[std]** first-order death proxy `dav2008t_proxy` of the
+table factory, the row `mort_table`, blended 50/50 over the sexes (`unisex_mix_male = 0.5`):
+`mort_rate_tariff_at_age(x) = 0.5 × q(M, x) + 0.5 × q(F, x)`, with `q(M, 37) = 0.001200000` and
+`q(F, 37) = 0.000896289`. It stands for whichever first-order death
 table a carrier uses — DAV 2008 T is the modern one [R17] [REG-R48]; the one fondsgebundene tariff
 whose bases could be read prices its *Risikobeiträge* on 65 % of DAV 1994 T [S2] — so
-`mort_rate_tariff(0) = 0.00080` and `mort_rate_tariff_mth(0) = 0.00080/12 = 0.00006667`; the
-best-estimate decrement is `mort_be_factor = 0.75` **[std]** times it, so `mort_rate(0) = 0.00060`
-and `mort_rate_mth(0) = 0.00005`. *Lapse*, all **[std]**: `lapse_rate_base` 6.0 % p.a. in policy
+`mort_rate_tariff(0) = 0.001048144` and `mort_rate_tariff_mth(0) = 0.001048144/12 = 0.00008735`; the
+best-estimate decrement is `mort_be_factor = 0.75` **[std]** times the man's table rate, so
+`mort_rate(0) = 0.75 × 0.0012 = 0.00090` and `mort_rate_mth(0) = 0.000075`. *Lapse*, all **[std]**: `lapse_rate_base` 6.0 % p.a. in policy
 years 1–5, 3.0 % in 6–10, 2.0 % in 11–12 and 3.0 % from 13, converted as
 `lapse_rate_mth = 1 − (1 − lapse_rate)^(1/12)` — 0.514301 % monthly at 6 % and 0.253505 % at 3 %;
 the tax step `lapse_tax_step = 2.5` applies in policy year 26 (`t = 300 … 311`), the year in which
@@ -900,24 +916,24 @@ column states a product fact where a missing one would hide it.
 
 | t | pols_if | premiums | prem_to_av | charge_acq | charge_admin_prem | charge_admin_fund | charge_policy_fee | charge_risk | expenses | commissions | net_cf |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 0 | 1.000000 | 200.00 | 162.00 | 30.00 | 8.00 | 0.04 | 3.00 | 0.00 | 204.26 | 1,803.00 | -1,966.22 |
-| 1 | 0.994807 | 198.96 | 161.16 | 29.84 | 7.96 | 0.08 | 2.98 | 0.01 | 4.25 | 2.98 | 33.64 |
-| 2 | 0.989641 | 197.93 | 160.32 | 29.69 | 7.92 | 0.12 | 2.97 | 0.01 | 4.23 | 2.97 | 33.49 |
-| 3 | 0.984502 | 196.90 | 159.49 | 29.54 | 7.88 | 0.16 | 2.95 | 0.01 | 4.22 | 2.95 | 33.35 |
-| 4 | 0.979390 | 195.88 | 158.66 | 29.38 | 7.84 | 0.20 | 2.94 | 0.01 | 4.20 | 2.94 | 33.21 |
-| 5 | 0.974304 | 194.86 | 157.84 | 29.23 | 7.79 | 0.24 | 2.92 | 0.02 | 4.19 | 2.92 | 33.08 |
-| 11 | 0.944340 | 188.87 | 152.98 | 28.33 | 7.55 | 0.46 | 2.83 | 0.03 | 4.10 | 2.83 | 32.26 |
-| 23 | 0.887098 | 177.42 | 143.71 | 26.61 | 7.10 | 0.88 | 2.66 | 0.05 | 3.92 | 2.66 | 30.69 |
-| 58 | 0.738908 | 147.78 | 119.70 | 22.17 | 5.91 | 1.93 | 2.22 | 0.10 | 3.45 | 2.22 | 26.58 |
-| 59 | 0.735054 | 147.01 | 119.08 | 22.05 | 5.88 | 1.95 | 2.21 | 0.10 | 3.44 | 2.21 | 26.47 |
-| 60 | 0.731221 | 146.24 | 140.39 | 0.00 | 5.85 | 1.98 | 2.19 | 0.11 | 3.33 | 2.19 | 4.53 |
-| 119 | 0.625891 | 125.18 | 120.17 | 0.00 | 5.01 | 4.02 | 1.88 | 0.00 | 3.14 | 1.88 | 5.89 |
-| 239 | 0.459656 | 91.93 | 88.25 | 0.00 | 3.68 | 7.71 | 1.38 | 0.00 | 2.81 | 1.38 | 8.58 |
-| 299 | 0.385184 | 77.04 | 73.96 | 0.00 | 3.08 | 9.16 | 1.16 | 0.00 | 2.60 | 1.16 | 9.64 |
-| 300 | 0.384018 | 76.80 | 73.73 | 0.00 | 3.07 | 9.19 | 1.15 | 0.00 | 2.68 | 1.15 | 9.58 |
-| 358 | 0.304251 | 60.85 | 58.42 | 0.00 | 2.43 | 9.82 | 0.91 | 0.00 | 2.27 | 0.91 | 9.98 |
-| 359 | 0.303239 | 60.65 | 58.22 | 0.00 | 2.43 | 9.84 | 0.91 | 0.00 | 32.53 | 0.91 | -20.27 |
-| **Total** | **202.931416** | **40,586.28** | **37,413.08** | **1,549.75** | **1,623.45** | **2,033.18** | **608.79** | **5.85** | **1,319.97** | **2,408.79** | **2,087.87** |
+| 0 | 1.000000 | 200.00 | 162.00 | 30.00 | 8.00 | 0.04 | 3.00 | 0.00 | 204.27 | 1,803.00 | -1,966.23 |
+| 1 | 0.994782 | 198.96 | 161.15 | 29.84 | 7.96 | 0.08 | 2.98 | 0.01 | 4.25 | 2.98 | 33.63 |
+| 2 | 0.989592 | 197.92 | 160.31 | 29.69 | 7.92 | 0.12 | 2.97 | 0.01 | 4.24 | 2.97 | 33.49 |
+| 3 | 0.984429 | 196.89 | 159.48 | 29.53 | 7.88 | 0.16 | 2.95 | 0.01 | 4.22 | 2.95 | 33.35 |
+| 4 | 0.979292 | 195.86 | 158.65 | 29.38 | 7.83 | 0.20 | 2.94 | 0.02 | 4.21 | 2.94 | 33.21 |
+| 5 | 0.974183 | 194.84 | 157.82 | 29.23 | 7.79 | 0.24 | 2.92 | 0.02 | 4.19 | 2.92 | 33.07 |
+| 11 | 0.944080 | 188.82 | 152.94 | 28.32 | 7.55 | 0.46 | 2.83 | 0.04 | 4.10 | 2.83 | 32.24 |
+| 23 | 0.886577 | 177.32 | 143.63 | 26.60 | 7.09 | 0.88 | 2.66 | 0.07 | 3.92 | 2.66 | 30.66 |
+| 58 | 0.737735 | 147.55 | 119.51 | 22.13 | 5.90 | 1.92 | 2.21 | 0.12 | 3.45 | 2.21 | 26.53 |
+| 59 | 0.733865 | 146.77 | 118.89 | 22.02 | 5.87 | 1.95 | 2.20 | 0.12 | 3.44 | 2.20 | 26.42 |
+| 60 | 0.730016 | 146.00 | 140.16 | 0.00 | 5.84 | 1.98 | 2.19 | 0.13 | 3.33 | 2.19 | 4.51 |
+| 119 | 0.623541 | 124.71 | 119.72 | 0.00 | 4.99 | 4.00 | 1.87 | 0.00 | 3.13 | 1.87 | 5.86 |
+| 239 | 0.454650 | 90.93 | 87.29 | 0.00 | 3.64 | 7.62 | 1.36 | 0.00 | 2.78 | 1.36 | 8.48 |
+| 299 | 0.378584 | 75.72 | 72.69 | 0.00 | 3.03 | 9.01 | 1.14 | 0.00 | 2.56 | 1.14 | 9.47 |
+| 300 | 0.377392 | 75.48 | 72.46 | 0.00 | 3.02 | 9.03 | 1.13 | 0.00 | 2.64 | 1.13 | 9.41 |
+| 358 | 0.296210 | 59.24 | 56.87 | 0.00 | 2.37 | 9.56 | 0.89 | 0.00 | 2.22 | 0.89 | 9.71 |
+| 359 | 0.295168 | 59.03 | 56.67 | 0.00 | 2.36 | 9.57 | 0.89 | 0.00 | 31.67 | 0.89 | -19.73 |
+| **Total** | **201.566577** | **40,313.32** | **37,152.18** | **1,548.61** | **1,612.53** | **2,007.97** | **604.70** | **7.26** | **1,312.54** | **2,404.70** | **2,057.60** |
 
 **Panel B — the benefits, and what funds them.** All of these are paid by cancelling the
 policyholder's own units, so none enters `net_cf`; only `death_strain` — the *riskiertes
@@ -926,19 +942,19 @@ Kapital* the insurer funds — crosses the unit / non-unit boundary. `liability_
 
 | t | claims_death | claims_lapse | claims_maturity | av_releases | death_strain | liability_cf |
 |---|---|---|---|---|---|---|
-| 0 | 0.01 | 0.82 | 0.00 | 0.83 | 0.00 | 1,966.22 |
-| 1 | 0.02 | 1.64 | 0.00 | 1.65 | 0.00 | -33.64 |
-| 5 | 0.06 | 4.84 | 0.00 | 4.89 | 0.01 | -33.08 |
-| 11 | 0.11 | 9.48 | 0.00 | 9.57 | 0.02 | -32.26 |
-| 23 | 0.23 | 18.18 | 0.00 | 18.38 | 0.04 | -30.69 |
-| 59 | 0.65 | 40.13 | 0.00 | 40.70 | 0.07 | -26.47 |
-| 60 | 0.72 | 20.10 | 0.00 | 20.73 | 0.08 | -4.53 |
-| 119 | 1.90 | 40.75 | 0.00 | 42.64 | 0.00 | -5.89 |
-| 239 | 9.43 | 78.11 | 0.00 | 87.54 | 0.00 | -8.58 |
-| 300 | 19.90 | 237.76 | 0.00 | 257.66 | 0.00 | -9.58 |
-| 358 | 31.15 | 99.47 | 0.00 | 130.61 | 0.00 | -9.98 |
-| 359 | 31.19 | 0.00 | 39,298.91 | 39,330.11 | 0.00 | 20.27 |
-| **Total** | **3,047.80** | **22,522.64** | **39,298.91** | **64,864.97** | **4.39** | **-2,087.87** |
+| 0 | 0.01 | 0.82 | 0.00 | 0.83 | 0.00 | 1,966.23 |
+| 1 | 0.03 | 1.64 | 0.00 | 1.66 | 0.01 | -33.63 |
+| 5 | 0.09 | 4.84 | 0.00 | 4.91 | 0.02 | -33.07 |
+| 11 | 0.17 | 9.47 | 0.00 | 9.61 | 0.03 | -32.24 |
+| 23 | 0.35 | 18.17 | 0.00 | 18.46 | 0.06 | -30.66 |
+| 59 | 0.91 | 40.06 | 0.00 | 40.86 | 0.11 | -26.42 |
+| 60 | 1.00 | 20.06 | 0.00 | 20.95 | 0.11 | -4.51 |
+| 119 | 2.53 | 40.59 | 0.00 | 43.12 | 0.00 | -5.86 |
+| 239 | 11.84 | 77.25 | 0.00 | 89.09 | 0.00 | -8.48 |
+| 300 | 24.45 | 233.61 | 0.00 | 258.06 | 0.00 | -9.41 |
+| 358 | 37.67 | 96.82 | 0.00 | 134.48 | 0.00 | -9.71 |
+| 359 | 37.72 | 0.00 | 38,244.00 | 38,281.72 | 0.00 | 19.73 |
+| **Total** | **3,783.48** | **22,237.54** | **38,244.00** | **64,258.79** | **6.23** | **-2,057.60** |
 
 **Panel C — the *Fondsguthaben*, per policy.** The unit side, which Panel A weights by
 `pols_if`. `av_pp_at(t, "AFT_WD")` equals `av_pp_at(t, "AFT_CHARGE")` throughout, there
@@ -948,24 +964,25 @@ to zero for the rest of the contract. Balances have no total, being balances.
 
 | t | unit_price | units_pp | av_pp | av BEF_CHARGE | av AFT_CHARGE | av BEF_DECR | prem_cum_end_pp | nar_pp | lapse_rate_mth | mort_rate_mth |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 0 | 100.371482 | 0.000000 | 0.00 | 162.60 | 159.56 | 159.56 | 200.00 | 40.44 | 0.00514301 | 0.00005000 |
-| 1 | 100.744344 | 1.589679 | 159.56 | 322.75 | 319.67 | 319.67 | 400.00 | 80.33 | 0.00514301 | 0.00005000 |
-| 5 | 102.249694 | 7.885561 | 803.31 | 968.90 | 965.66 | 965.64 | 1,200.00 | 234.34 | 0.00514301 | 0.00005000 |
-| 59 | 124.916609 | 83.728674 | 10,420.39 | 10,621.70 | 10,616.05 | 10,615.91 | 12,000.00 | 1,383.95 | 0.00514301 | 0.00007321 |
-| 60 | 125.380652 | 84.984001 | 10,615.91 | 10,848.06 | 10,842.35 | 10,842.20 | 12,200.00 | 1,357.65 | 0.00253505 | 0.00008053 |
-| 93 | 141.700579 | 131.144920 | 18,514.53 | 18,776.02 | 18,768.33 | 18,768.33 | 18,800.00 | 31.67 | 0.00253505 | 0.00009744 |
-| 94 | 142.226971 | 132.450597 | 18,768.33 | 19,030.76 | 19,023.00 | 19,023.00 | 19,000.00 | 0.00 | 0.00253505 | 0.00009744 |
-| 239 | 243.489783 | 274.678167 | 66,633.79 | 67,074.04 | 67,054.27 | 67,054.27 | 48,000.00 | 0.00 | 0.00253505 | 0.00030580 |
-| 358 | 378.539129 | 340.534729 | 128,428.63 | 129,098.43 | 129,063.16 | 129,063.16 | 71,800.00 | 0.00 | 0.00253505 | 0.00079315 |
-| 359 | 379.945333 | 340.950641 | 129,063.16 | 129,735.32 | 129,699.88 | 129,699.88 | 72,000.00 | 0.00 | 0.00000000 | 0.00079315 |
+| 0 | 100.371482 | 0.000000 | 0.00 | 162.60 | 159.56 | 159.56 | 200.00 | 40.44 | 0.00514301 | 0.00007500 |
+| 1 | 100.744344 | 1.589671 | 159.56 | 322.75 | 319.67 | 319.66 | 400.00 | 80.33 | 0.00514301 | 0.00007500 |
+| 5 | 102.249694 | 7.885440 | 803.30 | 968.89 | 965.64 | 965.62 | 1,200.00 | 234.36 | 0.00514301 | 0.00007500 |
+| 59 | 124.916609 | 83.718765 | 10,419.16 | 10,620.47 | 10,614.81 | 10,614.64 | 12,000.00 | 1,385.19 | 0.00514301 | 0.00010343 |
+| 60 | 125.380652 | 84.973840 | 10,614.64 | 10,846.79 | 10,841.08 | 10,840.90 | 12,200.00 | 1,358.92 | 0.00253505 | 0.00011239 |
+| 93 | 141.700579 | 131.130007 | 18,512.43 | 18,773.91 | 18,766.22 | 18,766.21 | 18,800.00 | 33.78 | 0.00253505 | 0.00013311 |
+| 94 | 142.226971 | 132.435679 | 18,766.21 | 19,028.64 | 19,020.88 | 19,020.88 | 19,000.00 | 0.00 | 0.00253505 | 0.00013311 |
+| 239 | 243.489783 | 274.663780 | 66,630.30 | 67,070.54 | 67,050.77 | 67,050.77 | 48,000.00 | 0.00 | 0.00253505 | 0.00038835 |
+| 358 | 378.539129 | 340.520764 | 128,423.36 | 129,093.15 | 129,057.87 | 129,057.87 | 71,800.00 | 0.00 | 0.00253505 | 0.00098536 |
+| 359 | 379.945333 | 340.936679 | 129,057.87 | 129,730.01 | 129,694.58 | 129,694.58 | 72,000.00 | 0.00 | 0.00000000 | 0.00098536 |
 
 **Where the totals differ from summing the rounded cells.** Rounding each of the 360 cells
-to the cent and then adding changes fourteen of the nineteen column totals, by one to twelve
-cents: `av_releases` 64,864.85 against 64,864.97, `charge_admin_prem` 1,623.35 against
-1,623.45, `death_strain` 4.33 against 4.39, `net_cf` 2,087.84 against 2,087.87, `pols_if`
-202.931410 against 202.931416. The gap is worst where the cells are smallest — `death_strain`
-is a hundredth of a cent a month for most of the projection and rounds to zero 360 times —
-which is why the rule is to sum first and round afterwards.
+to the cent and then adding changes sixteen of the nineteen column totals, by one to eleven
+cents: `charge_admin_fund` 2,007.86 against 2,007.97, `premiums` 40,313.27 against
+40,313.32, `charge_risk` 7.21 against 7.26, `net_cf` 2,057.64 against 2,057.60, `pols_if`
+201.566572 against 201.566577. Against the size of the total the gap is worst where the cells
+are smallest — `charge_risk` and `death_strain` are a few cents a month while there is a
+*riskiertes Kapital* and nothing afterwards — which is why the rule is to sum first and round
+afterwards.
 
 ### Independent checks
 
@@ -980,61 +997,67 @@ is 15 % of each premium. Premium admin 4.00 % x 200.00 = **8.00**. The *Anlagebe
 price closes at 100.371481956 and the fund at 1.62 x 100.371481956 = **162.601800769**.
 *Gammakosten* 0.0030/12 x 162.601800769 = **0.040650450**; *Stückkosten* **3.000000000**;
 fund **159.561150318**. The *Beitragsrückgewähr* floor is the premium paid, 200.00, so the
-*riskiertes Kapital* is **40.438849682** and the *Risikobeitrag* 0.00080/12 x 40.438849682 =
-**0.002695923**. The month closes at **159.558454395** — Panel C's `av BEF_DECR` at t = 0,
-159.56 — and 159.558454395 / 100.371481956 = **1.589679 units**, Panel C's `units_pp` at
+*riskiertes Kapital* is **40.438849682**. The tariff rate at 37 is the blend
+0.5 x 0.001200000000 + 0.5 x 0.000896288505 = 0.001048144252, so the *Risikobeitrag* is
+0.001048144252/12 x 40.438849682 =
+**0.003532146**. The month closes at **159.557618173** — Panel C's `av BEF_DECR` at t = 0,
+159.56 — and 159.557618173 / 100.371481956 = **1.589671 units**, Panel C's `units_pp` at
 t = 1. Nine decimals are carried here because six do not close the chain: the *Gammakosten*
 at 0.040650 would leave 159.561151.
 
 **2. `t = 60` — the cliff, and the risk charge at a second age.** The acquisition instalment
 has stopped, so the *Anlagebeitrag* is 200.00 - 8.00 = **192.00**, up from 162.00, and
-`charge_acq` is 0.00. Opening fund 10,615.913263 plus 192.00, times 1.0037148195588312, is
-**10,848.062710117**; less 0.00025 x that = 2.712015678 and 3.00 gives **10,842.350694440**.
-The attained age is 37 + 5 = **42**, so the tariff rate is 0.00080 x 1.10^5 =
-**0.001288408** and its twelfth 0.000107367333. Premiums paid are 61 x 200.00 = 12,200.00,
-so the *riskiertes Kapital* is **1,357.649305560** and the *Risikobeitrag* **0.145767186**;
-weighted by `pols_if(60) = 0.73122052` that is **0.10658796**, Panel A's 0.11. The same row
-carries a second step: `claims_lapse` halves from 40.13 to 20.10, because `t = 60` opens
+`charge_acq` is 0.00. Opening fund 10,614.643990 plus 192.00, times 1.0037148195588312, is
+**10,846.788722828**; less 0.00025 x that = 2.711697181 and 3.00 gives **10,841.077025647**.
+The attained age is 37 + 5 = **42**, so the tariff rate is the blend
+0.5 x 0.001798299800 + 0.5 x 0.001345800000 =
+**0.001572050** and its twelfth 0.000131004158. Premiums paid are 61 x 200.00 = 12,200.00,
+so the *riskiertes Kapital* is **1,358.922974353** and the *Risikobeitrag* **0.178024560**;
+weighted by `pols_if(60) = 0.73001551` that is **0.12996069**, Panel A's 0.13. The same row
+carries a second step: `claims_lapse` halves from 40.06 to 20.06, because `t = 60` opens
 policy year 6 and the lapse rate drops from 6.0 % to 3.0 %, the monthly rate from
 0.514301 % to 0.253505 %.
 
 **3. The reduction in yield, as a savings account.** Accumulate 200.00 a month for 360
-months at the model's own IRR of **3.6592629 % p.a.**, monthly factor
-(1.036592629)^(1/12) - 1, and the balance at the end of `t = 359` is **129,699.8842** — `av_maturity_pp()`
+months at the model's own IRR of **3.6590232 % p.a.**, monthly factor
+(1.036590232)^(1/12) - 1, and the balance at the end of `t = 359` is **129,694.5809** — `av_maturity_pp()`
 to the cent. Do it at the scenario's **gross** 5.00 % and the balance is **163,739.57**. The
-**34,039.69** between them is what the charge stack and the fund's own TER cost this
-policyholder over thirty years, and 5.0000 % - 3.6593 % = **1.3407 % per annum** is that cost
+**34,044.99** between them is what the charge stack and the fund's own TER cost this
+policyholder over thirty years, and 5.0000 % - 3.6590 % = **1.3410 % per annum** is that cost
 as a yield. It is a delib measure on delib's own **[std]** stack and **is not** the statutory
 *Effektivkostenquote*.
 
-**The identities that close.** Four, each exact:
+**The identities that close.** Four, each exact, and the risk result beside them:
 
-    decrements     deaths 0.04377181 + lapses 0.65322937 + maturity 0.30299882 = 1.00000000
-    risk result    charge_risk 5.849973 - death_strain 4.387480 = 1.462493 = 0.25 x 5.849973
+    decrements     deaths 0.05572788 + lapses 0.64939473 + maturity 0.29487739 = 1.00000000
     acquisition    60 x 30.00 = 1,800.00 = 2.50 % x 72,000.00 = cum_charge_acq_pp(359)
-    net_cf         charges 5,821.018511 - expenses 1,319.970596
-                   - commissions 2,408.794247 - strain 4.387480    = 2,087.866187
-    benefit funding  3,047.802205 + 22,522.641344 + 39,298.911744 = 64,869.355293
-                     av_releases 64,864.967813 + strain 4.387480 = 64,869.355293
+    net_cf         charges 5,781.069961 - expenses 1,312.539632
+                   - commissions 2,404.699731 - strain 6.232046    = 2,057.598552
+    benefit funding  3,783.479733 + 22,237.538022 + 38,244.000113 = 64,265.017869
+                     av_releases 64,258.785823 + strain 6.232046 = 64,265.017869
+    risk result    charge_risk 7.262424 - death_strain 6.232046 = 1.030378 = 14.19 % of 7.262424
 
 The decrement line is the closure the `lapse_rate_mth(359) = 0` convention produces: the last
 month's survivors are `pols_maturity`, not lapses, and no cash flow depends on which. The
-risk-result line is a quarter of the charge exactly, and only because `mort_be_factor` is
-flat; a model decrementing on the tariff basis would print zero there and look healthy doing
-it. The acquisition line closes on the *Höchstzillmersatz*, and the `charge_acq` **column**
-totals 1,549.75 rather than 1,800.00 because it is weighted by `pols_if` — the sixty
-instalments are collected on an average of 0.860971 of a policy, so roughly one in seven of
+acquisition line closes on the *Höchstzillmersatz*, and the `charge_acq` **column**
+totals 1,548.61 rather than 1,800.00 because it is weighted by `pols_if` — the sixty
+instalments are collected on an average of 0.860337 of a policy, so roughly one in seven of
 them is never collected at all, which is the insurer's acquisition-cost problem in one number:
-it pays 1,800.00 at inception and collects 1,549.75. The shortfall is an average over the
-sixty months and not the attrition at the end of them: by `t = 59` `pols_if` is 0.735054, so
-about one policy in four has already gone. The last line is the one that matters most:
-**64,869.36 of benefits against 40,586.28 of premiums, and only 4.39 of it an insurer cost** —
-the rest is the policyholder's own units coming back.
+it pays 1,800.00 at inception and collects 1,548.61. The shortfall is an average over the
+sixty months and not the attrition at the end of them: by `t = 59` `pols_if` is 0.733865, so
+about one policy in four has already gone. The benefit-funding line is the one that matters most:
+**64,265.02 of benefits against 40,313.32 of premiums, and only 6.23 of it an insurer cost** —
+the rest is the policyholder's own units coming back. The risk-result line is a difference and
+no identity: the charge is struck on the unisex blend of the death table and the deaths occur
+at 0.75 of a man's rate, 0.858 to 0.859 of the blend at the anchor's ages 37 to 44, so the
+anchor keeps 14.19 % of its *Risikobeitrag*, where a woman keeps about 36 %; the quarter of the
+charge it was exactly while both rates stood on one unisex file is gone. A model decrementing
+on the tariff basis would print zero there and look healthy doing it.
 
 **The annuity the contract exists for.** The *Fondsguthaben* at *Rentenbeginn* is
-**129,699.88 EUR**. The *Rentenfaktor* is read at `ret_age = 67`, not at `age(359) = 66`;
+**129,694.58 EUR**. The *Rentenfaktor* is read at `ret_age = 67`, not at `age(359) = 66`;
 guaranteed and current are both 25.00, so `rentenfaktor_applied() = 25.00` and the monthly
-annuity is 129,699.88 / 10,000 x 25.00 = **324.25 EUR**. The off-by-one would fetch 24.45 and
+annuity is 129,694.58 / 10,000 x 25.00 = **324.24 EUR**. The off-by-one would fetch 24.45 and
 understate the pension by 2.2 %.
 
 ### The variant: the single-premium form
@@ -1051,22 +1074,22 @@ charge is the *Zuzahlungskosten* levied **once on receipt**, 2.50 % x 50,000.00 
 | t | pols_if | premiums | prem_to_av | charge_acq | charge_admin_prem | charge_admin_fund | charge_policy_fee | expenses | commissions | net_cf | av BEF_DECR |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | 0 | 1.000000 | 50,000.00 | 46,750.00 | 1,250.00 | 2,000.00 | 11.73 | 3.00 | 204.28 | 2,000.00 | 1,060.45 | 46,908.94 |
-| 1 | 0.994685 | 0.00 | 0.00 | 0.00 | 0.00 | 11.71 | 2.98 | 4.27 | 0.00 | 10.43 | 47,068.42 |
-| 2 | 0.989399 | 0.00 | 0.00 | 0.00 | 0.00 | 11.69 | 2.97 | 4.25 | 0.00 | 10.40 | 47,228.46 |
-| 11 | 0.943067 | 0.00 | 0.00 | 0.00 | 0.00 | 11.48 | 2.83 | 4.11 | 0.00 | 10.20 | 48,694.00 |
-| 59 | 0.728611 | 0.00 | 0.00 | 0.00 | 0.00 | 10.45 | 2.19 | 3.43 | 0.00 | 9.20 | 57,329.28 |
-| 119 | 0.611558 | 0.00 | 0.00 | 0.00 | 0.00 | 10.76 | 1.83 | 3.09 | 0.00 | 9.50 | 70,347.78 |
-| 203 | 0.457239 | 0.00 | 0.00 | 0.00 | 0.00 | 10.72 | 1.37 | 48.30 | 0.00 | -36.21 | 93,766.43 |
-| **Total** | **136.171795** | **50,000.00** | **46,750.00** | **1,250.00** | **2,000.00** | **2,206.15** | **408.52** | **911.63** | **2,000.00** | **2,953.04** | — |
+| 1 | 0.994689 | 0.00 | 0.00 | 0.00 | 0.00 | 11.71 | 2.98 | 4.27 | 0.00 | 10.43 | 47,068.42 |
+| 2 | 0.989406 | 0.00 | 0.00 | 0.00 | 0.00 | 11.69 | 2.97 | 4.25 | 0.00 | 10.40 | 47,228.46 |
+| 11 | 0.943106 | 0.00 | 0.00 | 0.00 | 0.00 | 11.48 | 2.83 | 4.11 | 0.00 | 10.21 | 48,694.00 |
+| 59 | 0.728900 | 0.00 | 0.00 | 0.00 | 0.00 | 10.45 | 2.19 | 3.43 | 0.00 | 9.21 | 57,329.28 |
+| 119 | 0.612420 | 0.00 | 0.00 | 0.00 | 0.00 | 10.77 | 1.84 | 3.09 | 0.00 | 9.52 | 70,347.78 |
+| 203 | 0.459346 | 0.00 | 0.00 | 0.00 | 0.00 | 10.77 | 1.38 | 48.52 | 0.00 | -36.37 | 93,766.43 |
+| **Total** | **136.334639** | **50,000.00** | **46,750.00** | **1,250.00** | **2,000.00** | **2,209.33** | **409.00** | **912.30** | **2,000.00** | **2,956.03** | — |
 
 Read against the anchor, that is the whole of what the *Beitragsverrechnung* does. The
 charges are taken **once, at the front**, so `t = 0` carries a `net_cf` of **+1,060.45**
-where the anchor's is -1,966.22: the 3,250.00 withheld at inception more than covers the
+where the anchor's is -1,966.23: the 3,250.00 withheld at inception more than covers the
 2,204.28 of acquisition cost — 2,000.00 of `commissions` and 204.28 of `expenses`, and there is no sixty-month recovery to wait for. From `t = 1`
 the ledger is nothing but the two fund-based charges running down a fund growing faster than
 they take. The *Fondsguthaben* reaches **93,766.43 EUR** and buys **234.42 EUR** a month at
 the same 25.00 *Rentenfaktor*; the reduction in yield is **1.2320 % p.a.**, a little below
-the anchor's 1.3407 %, a single premium paying the acquisition charge once and on a smaller
+the anchor's 1.3410 %, a single premium paying the acquisition charge once and on a smaller
 base relative to the money invested.
 
 **And the second variant the notes promise, the charge scale.** The reduction in yield is the
@@ -1076,8 +1099,8 @@ one number that puts four tariffs on one scale. All four levels are **[std]**:
 |---|---|---|---|---|---|
 | 11 | `std_netto` | `etf` | 5.0000 % | **0.4484 % p.a.** | 255,658.29 EUR |
 | 13 | `std_low` | `base` | 5.0000 % | **0.7799 % p.a.** | 158,606.04 EUR |
-| 1 | `std_gross` (anchor) | `base` | 5.0000 % | **1.3407 % p.a.** | 129,699.88 EUR |
-| 5 | `std_high` | `base` | 5.0000 % | **2.4073 % p.a.** | 229,128.42 EUR |
+| 1 | `std_gross` (anchor) | `base` | 5.0000 % | **1.3410 % p.a.** | 129,694.58 EUR |
+| 5 | `std_high` | `base` | 5.0000 % | **2.4077 % p.a.** | 229,103.60 EUR |
 
 The four cells differ in premium and term as well as in tariff, so this is not a controlled
 experiment and must not be read as one. What it shows is that the charge scale moves the
@@ -1208,9 +1231,11 @@ In rough order of leverage for a German unit-linked block:
    so early lapse destroys value while late lapse merely shortens a profitable tail. The
    tax-threshold step is the least arbitrary part of the table, because the threshold itself is
    statutory [R20] [REG-R45]; its magnitude is not.
-5. **`mort_be_factor`, and the two mortality bases.** A flat 0.75 ratio makes the *Risikoergebnis*
-   exactly 25 % of the *Risikobeitrag*, which is analytically convenient and biologically crude;
-   the real wedge varies by age. Because the *Beitragsrückgewähr* net amount at risk vanishes once
+5. **`mort_be_factor`, and the two mortality bases.** A flat 0.75 on the first-order rate of the
+   own sex is biologically crude; the real wedge varies by age. Against the unisex tariff rate it
+   leaves a *Risikoergebnis* of about 14 % of the *Risikobeitrag* on a man and about 36 % on a
+   woman, no longer the flat 25 % of the time both rates stood on one unisex file. Because the
+   *Beitragsrückgewähr* net amount at risk vanishes once
    the fund overtakes the premiums paid, the whole of this exposure sits in the first decade of
    the anchor cell, and it is far larger on model point 7, where a fixed *Mindesttodesfallleistung*
    on a decaying fund makes the risk charge grow without limit.

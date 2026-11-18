@@ -91,7 +91,6 @@ index_return_file      data.index_return_table()          index_return_table.csv
 index_param_file       data.index_param_table()           index_param_table.csv
 surplus_rate_file      data.surplus_rate_table()          surplus_rate_table.csv
 election_file          data.election_table()              election_table.csv
-mort_file              data.mort_table()                  mort_table.csv
 lapse_file             data.lapse_table()                 lapse_table.csv
 prem_freq_file         data.prem_freq_table()             prem_freq_table.csv
 param_file             data.param()                       param_tariff_type.csv
@@ -127,9 +126,11 @@ l(t)(1-q), l(t+1)          pols_if_at(t, timing)           BEF_DECR / AFT_DEATH 
                                                            AFT_LAPSE
 (year end)                 pols_surv_year_end(k)           Survivors the Indexjahr credit
                                                            is given to
-(table)                    mort_rate_at_age(x)             Table death rate at age x
+(table)                    mort_rate_at_age(x)             Death rate of the tariff's
+                                                           table at age x, tables.q
 (table)                    mort_rate_base(t)               Its value at age(t)
-q_d(t)                     mort_rate(t)                    Annual death rate
+f                          mort_be_factor()                0.75, table to best estimate
+q_d(t)                     mort_rate(t)                    Annual death rate, f x table
 q^m_d(t)                   mort_rate_mth(t)                The monthly rate applied
 w_l(t)                     lapse_rate(t)                   Annual surrender rate applied
 w^m_l(t)                   lapse_rate_mth(t)               The monthly rate applied
@@ -408,7 +409,7 @@ def beitragssumme_years():
     """The premium years of the *Beitragssumme*: ``prem_term_y()``, 1 for an *Einmalbeitrag*.
 
     Override reason: the premium term is the model point's ``prem_term_y``, and a single
-    premium is counted once, products/indexpolice/technical-notes.md:422
+    premium is counted once, products/indexpolice/technical-notes.md:431
     """
     if prem_form() == "single":
         return 1
@@ -570,7 +571,7 @@ def prem_inst_pp(t):
     has paid that year's premium.
 
     Override reason: the year's premium falls due whole in the month ``prem_due`` makes it
-    payable, products/indexpolice/technical-notes.md:463
+    payable, products/indexpolice/technical-notes.md:472
     """
     return prem_pp(duration(t)) if prem_due(t) else 0.0
 
@@ -1096,16 +1097,19 @@ def guar_cap_pp(k):
 
 # --- decrements --------------------------------------------------------------
 
-def mort_rate_at_age(x):
-    """``q_d(x)``: the table's **annual** death rate at attained age x, for the model point's sex.
+def mort_be_factor():
+    """The step from the first-order death table to the best estimate, 0.75.
 
-    A lookup into *mort_table.csv* at ``(sex(), x)``; the core's ``mort_rate_base(t)`` reads
-    it at ``age(t)``.
+    The death rates are those of the tariff's table, ``mort_table`` in
+    *param_tariff_type.csv*, read through the core's ``mort_rate_at_age(x)`` from the table
+    factory on the model point's sex; the factor stands on them in the core's
+    ``mort_rate(t)``.
 
-    Override reason: the product reads its own mortality file until its switch to the
-    table factory, docs/core.md, section "The table factory"
+    Override reason: the best estimate is 0.75 of the first-order death table, a tariff
+    parameter in *param_tariff_type.csv*, products/indexpolice/technical-notes.md, section
+    "(c) Behavioural / experience assumptions"
     """
-    return float(data.mort_table_dict()["qx"][(sex(), x)])           # noqa: F821
+    return data.param("mort_be_factor")                              # noqa: F821
 
 
 def lapse_rate_base(t):
@@ -1121,7 +1125,7 @@ def lapse_rate_base(t):
     about 2.6 %, inside the market-wide GDV band; no index-specific rate exists at all.
 
     Override reason: the table is keyed on the 0-based policy year, read through
-    ``duration(t)`` without a cap, products/indexpolice/technical-notes.md:348
+    ``duration(t)`` without a cap, products/indexpolice/technical-notes.md:357
     """
     return float(data.lapse_table_dict()["lapse_rate"][duration(t)])   # noqa: F821
 
@@ -1142,7 +1146,7 @@ def lapse_factor(t):
     single benefit.
 
     Override reason: the surrender rate is zero through the whole final policy year, which
-    ends at *Rentenbeginn*, products/indexpolice/technical-notes.md:566
+    ends at *Rentenbeginn*, products/indexpolice/technical-notes.md:576
     """
     if duration(t) == proj_len_y() - 1:
         return 0.0
@@ -1170,7 +1174,7 @@ def pols_if_at(t, timing):
 
     Override reason: ``"AFT_DEATH"`` subtracts the deaths, and ``"AFT_LAPSE"`` is the cohort
     before the maturity that :func:`pols_surv_year_end` reads,
-    products/indexpolice/technical-notes.md:220
+    products/indexpolice/technical-notes.md:219
     """
     if timing == "BEF_DECR":
         return pols_if(t)
@@ -1275,7 +1279,7 @@ def benefit_death_pp(t):
     product's own rule.
 
     Override reason: the death benefit is the policy year's account with the death floor,
-    products/indexpolice/technical-notes.md:577
+    products/indexpolice/technical-notes.md:587
     """
     return db_pp(duration(t))
 
@@ -1287,7 +1291,7 @@ def benefit_lapse_pp(t):
     final policy year by construction.
 
     Override reason: the surrender value is the policy year's floored reserve less the
-    *Stornoabzug*, products/indexpolice/technical-notes.md:578
+    *Stornoabzug*, products/indexpolice/technical-notes.md:588
     """
     return cv_pp(duration(t))
 
@@ -1299,7 +1303,7 @@ def benefit_maturity_pp(t):
     ``t = 12n - 1``.
 
     Override reason: the maturity benefit is the capital at *Rentenbeginn*, the account or
-    the guarantee, products/indexpolice/technical-notes.md:579
+    the guarantee, products/indexpolice/technical-notes.md:589
     """
     return mat_pp(duration(t))
 
@@ -1378,7 +1382,7 @@ def expenses_maint(t):
     ``av_charge_pp`` — are charges and appear nowhere here.
 
     Override reason: the acquisition expense and a twelfth of the year's maintenance are one
-    per-policy rate on the in-force, products/indexpolice/technical-notes.md:608
+    per-policy rate on the in-force, products/indexpolice/technical-notes.md:618
     """
     return (exp_acq_pp(t) + exp_maint_pp(duration(t)) / 12.0) * pols_if(t)
 
@@ -1404,7 +1408,7 @@ def check_net_cf_resid(t):
     be reconciled only in prose.
 
     Override reason: the claims enter as the kind-less total of the cells, not kind by kind
-    from the frame, products/indexpolice/model.md:407
+    from the frame, products/indexpolice/model.md:405
     """
     return net_cf(t) - (premiums(t) - claims(t) - expenses(t))
 
@@ -1419,7 +1423,7 @@ def check_net_cf_scale(t):
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
 
     Override reason: the statement is checked relative to the month's largest premium, claim
-    or expense, products/indexpolice/technical-notes.md:651
+    or expense, products/indexpolice/technical-notes.md:661
     """
     return max(abs(premiums(t)), abs(claims(t)), abs(expenses(t)), 1.0)  # noqa: F821
 
@@ -1602,7 +1606,7 @@ def result_cf_columns():
     into policy years.
 
     Override reason: no commission column, and liability_cf before net_cf,
-    products/indexpolice/technical-notes.md:622-623
+    products/indexpolice/technical-notes.md:632-633
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821

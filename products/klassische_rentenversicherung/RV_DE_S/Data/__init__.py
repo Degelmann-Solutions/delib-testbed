@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The eight input CSVs are read here, **once per model**, and referenced from
+The seven input CSVs are read here, **once per model**, and referenced from
 :mod:`~.RV_DE_S.Projection` as ``data``. :mod:`~.RV_DE_S.Projection` is parameterized by
 ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells cache;
 if the readers lived there, every model point would re-read every file. Holding them in an
@@ -30,7 +30,6 @@ and a reader Cells:
 Reference                 Cells                         File
 ========================  ============================  ==========================
 model_point_file          model_point_table()           model_point_table.csv
-mort_file                 mort_table()                  mort_table.csv
 decl_rate_file            decl_rate_table()             decl_rate_table.csv
 rentenfaktor_file         rentenfaktor_table()          rentenfaktor_table.csv
 charge_file               charge_table()                charge_table.csv
@@ -41,10 +40,10 @@ param_file                param()                       param_tariff_type.csv
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.at``: the core's for ``model_point_table``, ``mort_table``,
-``rentenfaktor_table``, ``charge_table``, ``lapse_table`` and ``prem_freq_table``, this
-space's ``decl_rate_table_dict`` with ``decl_rate_years``, the calendar range of each
-scenario the declared rate is clamped to.
+``DataFrame.at``: the core's for ``model_point_table``, ``rentenfaktor_table``,
+``charge_table``, ``lapse_table`` and ``prem_freq_table``, this space's
+``decl_rate_table_dict`` with ``decl_rate_years``, the calendar range of each scenario the
+declared rate is clamped to.
 
 Every file but ``model_point_table.csv`` carries a per-row ``provenance`` column, this
 library's second ruling: an assumption says on its own row where it came from. The model
@@ -53,30 +52,35 @@ point table is exempt because a model point is a *configuration* — one policy'
 
 .. rubric:: What is a proxy here, what it is anchored on, and what a replacement must preserve
 
-Three of the seven assumption files are **[std] proxies for tables that exist and are not
-redistributable**, and one is a scenario path standing in for declarations that were never
-established. Each is anchored so that the technical notes' worked example reproduces
-exactly, and the anchor is the thing a substitute must preserve.
+The mortality basis and one of the six assumption files are **[std] proxies for tables that
+exist and are not redistributable**, and one file is a scenario path standing in for
+declarations that were never established. Each file is anchored so that the technical
+notes' worked example reproduces exactly, and the anchor is the thing a substitute must
+preserve; of the mortality table a substitute must keep the generational form and the
+closing ``q = 1``.
 
-``mort_table.csv`` — the first-order basis of this product is **DAV 2004 R**, a
-*Generationentafel* which is the property of the Deutsche Aktuarvereinigung, is not public
-and is **not shipped here**. What ships is a proxy with the structure the real table has
-and none of its values: a sex-distinct base table ``q_base(sex, age)`` for base year
-**2005** — the year DAV 2004 R was intended for new business — and an age-dependent annual
-improvement rate ``improve(age)``, combined generationally as ``q_base x (1 -
-improve)^(calendar_year - 2005)``. The base table is Gompertz, ``0.002000 x 1.09^(age -
-50)`` for males and ``0.001300 x 1.09^(age - 50)`` for females, closed with ``q = 1`` at
-age 120 so the projection ends with no survivors. The improvement is 1,5 % a year below
-age 60, grading linearly to 0,5 % at age 100 and to zero at 110 — a deliberate
-simplification of the *Starttrend* / *Zieltrend* structure the German construction
-actually uses, documented as one rather than presented as a replication. **The anchor a
-substitute table must preserve is ``q_base(M, 50) = 0.002000`` exactly**, together with
-the 2005 base year and the terminal ``q = 1`` at age 120; with those three the worked
-example still closes. Dropping a licensed or company generational table in place of this
-one changes the basis with no formula change — but note that the table and the
-*Rentenfaktor* below are **not calibrated to each other**, and the *Rentenfaktor* is
-authoritative, so a substitution must either re-strike the factors or accept the
-inconsistency.
+**No mortality table is read here.** The first-order basis of this product is **DAV 2004
+R**, a *Generationentafel* which is the property of the Deutsche Aktuarvereinigung, is not
+public and is **not shipped here**. The death rates come from the core's table factory: the
+tariff chooses the table ``dav2004r_proxy`` in the row ``mort_table`` of
+``param_tariff_type.csv``, a **[std]** proxy with the structure the real table has and none
+of its values. Its base rate, for the base year **2005** — the year DAV 2004 R was intended
+for new business — is Gompertz, ``0.008 x 1.11^(age - 65)`` for males and 0.6 of it for
+females, over ages 0 to 120 and closed with ``q = 1`` at age 120 so the projection ends with
+no survivors. Its annual improvement rate is 2,5 % up to age 75, grading linearly to 1,25 %
+at age 90 and to zero at 120, the same for both sexes — a deliberate simplification of the
+*Starttrend* / *Zieltrend* structure the German construction actually uses, documented as
+one rather than presented as a replication. The two combine generationally: the rate at
+attained age ``x`` of the birth year ``g``, issue year less issue age, is ``q_base x (1 -
+improve)^(g + x - 2005)``, the rate of the calendar year ``g + x``. The table's parameters
+are rows of ``core/Core/Data/param_tables.csv``, each with its provenance; the projection
+takes 1.15 of the rate on the insured's own sex, the row ``mort_be_factor``, as the best
+estimate, and the blend of 45 % men and 55 % women, the row ``unisex_mix_male``, as the
+tariff rate. Dropping a licensed or company generational table in place of this one is a
+change of the table's rows and changes the basis with no formula change — but note that the
+table and the *Rentenfaktor* below are **not calibrated to each other**, and the
+*Rentenfaktor* is authoritative, so a substitution must either re-strike the factors or
+accept the inconsistency.
 
 ``rentenfaktor_table.csv`` — the *aktueller Rentenfaktor* is the carrier's then-current
 immediate-annuity tariff, and **no German market level was established for any carrier in
@@ -182,8 +186,6 @@ def charge_table_index():
 # References
 
 model_point_file = "model_point_table.csv"
-
-mort_file = "mort_table.csv"
 
 decl_rate_file = "decl_rate_table.csv"
 

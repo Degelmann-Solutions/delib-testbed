@@ -46,7 +46,7 @@ first-order basis rather than read from a table.
 **Spaces.** The model contains two:
 
 :mod:`~.BU_DE_S.Data`
-    Reads the eight input CSVs and holds their filename References. It takes no
+    Reads the seven input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.BU_DE_S.Projection`
@@ -95,7 +95,7 @@ an in-force active policy, an in-force policy already in claim, a *Karenzzeit*, 
 *Endalter* of 60, a *Leistungsendalter* below the *Versicherungsdauer*, the *AU-Klausel*
 switched on, a *Risikozuschlag*, a point with both escalation options off, and a premium
 override. Model point 1 is the anchor cell of the worked example in the technical notes,
-and model points 2 and 3 are one-attribute neighbours of it so that the unisex invariance
+and model points 2 and 3 are one-attribute neighbours of it so that the unisex premium
 and the occupational loading can be measured against it rather than inferred.
 
 **Verification.** ``tests/test_berufsunfaehigkeit_de.py`` asserts the notes' worked

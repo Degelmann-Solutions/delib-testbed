@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The eight input CSVs are read here, **once per model**, and referenced from
+The seven input CSVs are read here, **once per model**, and referenced from
 :mod:`~.FRV_DE_S.Projection` as ``data``. :mod:`~.FRV_DE_S.Projection` is parameterized
 by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells
 cache; if the readers lived there, every model point would re-read every file. Holding
@@ -31,7 +31,6 @@ and a reader Cells:
 Reference                 Cells                         File
 ========================  ============================  ==========================
 model_point_file          model_point_table()           model_point_table.csv
-mort_file                 mort_table()                  mort_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
 charge_file               charge_table()                charge_table.csv
 fund_scenario_file        fund_scenario_table()         fund_scenario_table.csv
@@ -42,7 +41,7 @@ param_file                param()                       param_tariff_type.csv
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table``,
+``DataFrame.loc``: the core's for ``model_point_table``,
 ``lapse_table``, ``rentenfaktor_table`` and ``prem_freq_table``, this space's
 ``fund_scenario_table_dict`` and ``charge_table_rows``, the charge table by row.
 
@@ -52,22 +51,26 @@ ruling: the citation discipline reaches the data files rather than stopping at t
 The model point table is the single exemption, because a model point is a *configuration*
 — one policy's own terms — and not an assumption.
 
-.. rubric:: The two shipped decrement proxies, and what a replacement must preserve
+.. rubric:: The two decrement proxies, and what a replacement must preserve
 
 Nothing in this product's source corpus was retrieved, and **no charge level, lapse rate
-or *Rentenfaktor* was established at any carrier**. Three of the five assumption files
-are therefore standardizations end to end, and two of them stand in for tables this
-library may not ship.
+or *Rentenfaktor* was established at any carrier**. Three of the four assumption files
+are therefore standardizations end to end, and the fourth and the death table stand in
+for tables this library may not ship.
 
-``mort_table.csv`` is a **[std] Gompertz-form proxy** of the *first-order* DAV 2008 T
-death table::
+The product ships no mortality file. Its death table is ``dav2008t_proxy`` of the core's
+table factory (``docs/core.md``, "The table factory"), which the tariff chooses in the
+row ``mort_table`` of ``param_tariff_type.csv``: a **[std] Makeham-form proxy** of the
+*first-order* DAV 2008 T death table by sex, for ages 0 to 120::
 
-    qx_tariff(x) = 0.00080 x 1.10^(x - 37),        ages 18 to 100
+    q(M, x) = 0.00022 + b x 1.10^x,   b from the anchor q(M, 37) = 0.0012
+    q(F, x) = 0.00016 + b x 1.10^(x - 3)
 
-**anchored so that ``qx_tariff(37) = 0.00080`` exactly.** That single value is what the
-notes' worked example rests on — it produces ``mort_rate_tariff_mth(0) = 0.00080/12`` and,
-through ``mort_be_factor = 0.75``, ``mort_rate(0) = 0.00060`` — so a substitute table must
-reproduce it at the anchor cell's entry age if the example is to close. What else a
+The tariff rate is the 50/50 blend of the two (``unisex_mix_male = 0.5``), 0.001048144 at
+37, the value the notes' worked example rests on — it produces
+``mort_rate_tariff_mth(0) = 0.001048144/12`` — and the best estimate is
+``mort_be_factor = 0.75`` times the rate of the policy's own sex, ``mort_rate(0) =
+0.00090`` on the anchor, a man. What a
 replacement must preserve is the *direction* of the two bases: DAV 2008 T is a **death**
 table with a first-order margin **above** best estimate, which is the opposite direction
 from an annuity table, and the 10 % per year of age is an **insured-lives** gradient — a
@@ -115,21 +118,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table_index():
-    """The index columns of *mort_table.csv*: ``age`` alone.
-
-    A **[std]** proxy of DAV 2008 T, not the table itself; see the Space docstring for
-    what it is, what it is anchored on and what a replacement must preserve.  It is the
-    basis of the *Risikobeitrag* the tariff charges — **not** of the projection's own
-    decrement, which is this table scaled by ``mort_be_factor``, and **not** of the
-    *Rentenfaktor*, which rests on an annuity table.
-
-    Override reason: the table is the unisex first-order basis of the *Risikobeitrag*, keyed
-    by ``age`` alone, products/fondsgebundene_rentenversicherung/model.md:92
-    """
-    return "age"
-
-
 def fund_scenario_table():
     """The gross fund return and TER by scenario and policy year, from *fund_scenario_table.csv*.
 
@@ -157,7 +145,7 @@ def rentenfaktor_table_index():
     attained age in the last projected month, which is one lower.
 
     Override reason: the table carries a guaranteed and a current factor per ``factor_id``
-    and ``annuity_age``, products/fondsgebundene_rentenversicherung/model.md:364
+    and ``annuity_age``, products/fondsgebundene_rentenversicherung/model.md:369
     """
     return ["factor_id", "annuity_age"]
 
@@ -186,8 +174,6 @@ def charge_table_rows():
 # References
 
 model_point_file = "model_point_table.csv"
-
-mort_file = "mort_table.csv"
 
 lapse_file = "lapse_table.csv"
 

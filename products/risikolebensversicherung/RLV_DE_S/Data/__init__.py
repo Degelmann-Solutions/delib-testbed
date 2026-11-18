@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The seven input CSVs are read here, **once per model**, and referenced from
+The six input CSVs are read here, **once per model**, and referenced from
 :mod:`~.RLV_DE_S.Projection` as ``data``. :mod:`~.RLV_DE_S.Projection` is parameterized
 by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells
 cache; if the readers lived there, every model point would re-read every file. Holding
@@ -31,7 +31,6 @@ and a reader Cells:
 Reference                 Cells                         File
 ========================  ============================  ==========================
 model_point_file          model_point_table()           model_point_table.csv
-mort_file                 mort_table()                  mort_table.csv
 benefit_schedule_file     benefit_schedule()            benefit_schedule.csv
 nvg_schedule_file         nvg_schedule()                nvg_schedule.csv
 lapse_file                lapse_table()                 lapse_table.csv
@@ -41,8 +40,7 @@ param_file                param()                       param_tariff_type.csv
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.at``: the core's for ``mort_table``, this space's ``benefit_schedule_dict``
-and ``nvg_schedule_dict``.
+``DataFrame.at``: this space's ``benefit_schedule_dict`` and ``nvg_schedule_dict``.
 
 **Every file but the model point table carries a per-row ``provenance`` column.** That is
 this library's second ruling and it is machine-checked in
@@ -51,14 +49,21 @@ came from, in the same ``[S#]`` / ``[R#]`` / ``[REG-R#]`` / ``[std]`` vocabulary
 documents use. ``model_point_table.csv`` is the single exemption, because a model point is
 a *configuration* — one policy's own terms — rather than an assumption.
 
-.. rubric:: The mortality table is a proxy, and here is its anchor
+.. rubric:: The death rates are no file of the product
 
-``mort_table.csv`` is a **[std] Gompertz-form proxy**, not a fitted or supervised table::
+The death rates come from the model-wide table factory, the space ``CoreTables``, which
+``Projection`` reads through its Reference ``tables``. *param_tariff_type.csv* names the
+tariff's two tables: ``mort_nr_table`` = ``dav2008t_nr_proxy`` for non-smokers and
+``mort_r_table`` = ``dav2008t_r_proxy`` for smokers, and the smoker status of a life
+selects its table.  Both are **[std]** first-order proxies on the law of Makeham::
 
-    mort_rate(sex, smoker, x) = base(sex) x smoker_mult(smoker) x 1.095^(x - 30)
+    q(sex, x) = a(sex) + b(sex) x 1.1^x        capped at 1, ages 0 to 120, q = 1 at 120
 
-    base(M) = 0.00040      base(F) = 0.00020
-    smoker_mult(N) = 1.00  smoker_mult(R) = 2.20        ages 18 to 80
+whose numbers are rows of the table parameter file *param_tables.csv* beside the core's
+loaders: the non-smoker table is 0.8 of the aggregate proxy ``dav2008t_proxy``, the smoker
+table 2.2 times the non-smoker table at every age, and women stand at a setback of three
+years of age against men.  The best estimate is ``mort_be_factor`` = 0.75 of the table on
+the own sex, a row of *param_tariff_type.csv*.
 
 The German first-order basis for a term product is **DAV 2008 T**, with its
 **DAV 2008 T NR** and **DAV 2008 T R** smoker variants — derived by the DAV
@@ -67,30 +72,8 @@ over 2006 to 2008, adopted 4 December 2008 and restated as a *Fachgrundsatz* dat
 29 November 2022, and expressly suitable for premium calculation but **not** for policies
 written without a *Gesundheitsprüfung*. **Those tables are the property of the Deutsche
 Aktuarvereinigung, are not public, and are not redistributed here.** They are cited by
-name; the shipped proxy stands in for them.
-
-**What a replacement must preserve, so that the notes' worked example still closes:**
-
-1. **The 50/50 unisex non-smoker blend is** ``0.00030 x 1.095^(x - 30)``. That is the
-   [std] best-estimate scale the research file constructed and froze, and it is what the
-   tariff — which may not rate on sex — is actually built on. A replacement table whose
-   male and female non-smoker rates average to this at every age reproduces every premium
-   in the model unchanged.
-2. **The female-to-male ratio is 0.50 at every age**, the order of magnitude reported for
-   insured lives at the ages this product is sold [unverified]. It is what decides the
-   size of the unisex cross-subsidy between model points 1 and 2, and it moves no premium.
-3. **The smoker multiplier is 2.20**, the mid-point of the two-to-three range reported for
-   insured-lives smoker mortality at working ages [unverified]. It reproduces a *premium*
-   ratio near 2.0 between model points 1 and 3 once the sum-related and per-policy expense
-   elements, which do not scale with mortality, are added back.
-
-The 9,5 % per year of age is the slope of the research file's own construction; it is a
-fitted-in-spirit gradient with **no German source**, and on model point 14's forty-year
-run it is the single most exposed number in the model. **A population table is the wrong
-starting point for a replacement**: a Destatis series without a selection adjustment
-overstates claims by a wide margin at the issue ages 25–45 this product is sold at.
-Dropping a licensed or company table in place of this one changes the basis with no
-formula change.
+name; the proxies stand in for them, and every tariff that reads a table shares it, so a
+replacement is a change of the table parameter file and not of this product.
 
 .. rubric:: The other four assumption files
 
@@ -151,24 +134,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table_index():
-    """The index columns of *mort_table.csv*, the second-order annual death rates.
-
-    Indexed by ``table_id``, ``sex``, ``smoker`` and attained ``age``.  A **[std]**
-    Gompertz proxy standing in for DAV 2008 T, which is proprietary and is cited by name
-    rather than shipped; see the Space docstring for the three anchors a replacement must
-    preserve.  The table is *second order* — a best estimate for medically selected lives.
-    The first-order tariff rate is built from it in ``Projection.mort_rate_tariff`` by taking
-    the unisex blend and applying the *Sicherheitszuschlag*, so there is exactly one
-    unsourced mortality level in the model rather than two stacked on each other.
-
-    Override reason: the table carries a table id and the smoker split, keyed by
-    ``table_id``, ``sex``, ``smoker`` and ``age``,
-    products/risikolebensversicherung/technical-notes.md:140
-    """
-    return ["table_id", "sex", "smoker", "age"]
-
-
 def benefit_schedule():
     """The *Versicherungssumme* factors by schedule id and **1-based** policy year.
 
@@ -219,8 +184,6 @@ def nvg_schedule_dict():
 # References
 
 model_point_file = "model_point_table.csv"
-
-mort_file = "mort_table.csv"
 
 benefit_schedule_file = "benefit_schedule.csv"
 

@@ -136,8 +136,8 @@ carries a per-row `provenance` column**, which is delib's second ruling and is m
 
 | File | Index columns | Value columns | Provenance |
 |---|---|---|---|
-| `model_point_table.csv` | `point_id` | the 20 model-point attributes below | **exempt** — a model point is a configuration, not an assumption |
-| `mort_table.csv` | `table_id`, `sex`, `smoker`, `age` | `mort_rate` (second-order annual death rate) | per row |
+| `model_point_table.csv` | `point_id` | the 20 other model-point attributes below | **exempt** — a model point is a configuration, not an assumption |
+| `param_tariff_type.csv` | `item` | `value`, `basis` (the scalar assumptions, among them the names of the two death tables) | per row |
 | `benefit_schedule.csv` | `schedule_id`, `policy_year` | `benefit_factor` | per row |
 | `nvg_schedule.csv` | `nvg_id`, `policy_year` | `sum_uplift` (cumulative multiplier on the sum insured) | per row |
 | `lapse_table.csv` | `policy_year` | `lapse_rate` | per row |
@@ -146,8 +146,8 @@ carries a per-row `provenance` column**, which is delib's second ruling and is m
 Six files, no orphans: the conventions suite asserts that every CSV beside the model backs a
 filename Reference in `Data` and that the set read by a full sweep is exactly the set registered in
 `tests/de_registry.py`. Scalar assumptions are **rows of `param_tariff_type.csv`**, read by `data.param`,
-not References on `Projection` as in `TradLife_A`; their values and tags are the assumption tables below. The exceptions are
-`rechnungszins`, a model-point column since phase 3, and `mort_be_factor`, the core's neutral 1.00.
+not References on `Projection` as in `TradLife_A`; their values and tags are the assumption tables below. The exception is
+`rechnungszins`, a model-point column since phase 3. **No file of the product holds a death rate**: see *Mortality*.
 
 ---
 
@@ -159,7 +159,7 @@ not References on `Projection` as in `TradLife_A`; their values and tags are the
 | `policy_id` | str | Human-readable policy reference | all |
 | `issue_age` | int | *Eintrittsalter* of the first *versicherte Person* | all |
 | `sex` | enum {M, F} | Sex of the first life. **Decrement only — must never enter pricing** [R13] [REG-R34] | 1 vs 2 |
-| `smoker` | enum {N, R} | *Nichtraucher* / *Raucher* of the first life; the largest rating split after age | 1 vs 3 |
+| `smoker` | enum {N, R} | *Nichtraucher* / *Raucher* of the first life; selects its death table; the largest rating split after age | 1 vs 3 |
 | `sum_assured` | float EUR | Initial *Versicherungssumme*, `S0` | all |
 | `policy_term` | int | *Versicherungsdauer* in whole years; equals `proj_len_y()`, and `proj_len() = 12 × it` | all |
 | `prem_term` | int | *Beitragszahlungsdauer* in whole years, `≤ policy_term` | 6 (12 < 20) |
@@ -172,13 +172,12 @@ not References on `Projection` as in `TradLife_A`; their values and tags are the
 | `issue_age2` | int | *Eintrittsalter* of the second life; `0` where `lives = 1` | 10 |
 | `smoker2` | enum {N, R, -} | Smoker status of the second life; `-` where `lives = 1` | 10 |
 | `rating_factor` | float | *Risikozuschlag*: a multiplier on the **mortality basis**, both orders. 1.00 standard | 11 |
-| `mort_table_id` | str | Key into `mort_table.csv`; one table shipped, `dav2008t_proxy` | all |
 | `duration_init` | int | Completed policy years at the valuation date; `0` for new business | 8 |
 | `rechnungszins` | float | *Rechnungszins* of the contract, fixed at conclusion for the whole term (DeckRV § 2 Abs. 2); 1,00 % on every shipped point, the DeckRV *Höchstzinssatz* adopted as the rate; a retrieved carrier prices its term tariff at 0,25 % instead [R10] [REG-R14] [REG-R15] [S3]; used only in the premium equivalence and the first-order reserve | all |
 | `pols_if_init` | float | Policy count the model point stands for, the opening value of `pols_if`; 1.0 on every shipped point, a per-policy projection. A model-point column since phase 3, where the count was the literal 1.0 | all |
 | `issue_date` | date | Reporting only; the model runs on integer durations | none |
 
-Three of these are worth a sentence each. **`sex` is carried and must not be priced on**: art. 5(2)
+Four of these are worth a sentence each. **`sex` is carried and must not be priced on**: art. 5(2)
 of the Gender Directive was struck down with effect from 21 December 2012 [R13] [REG-R34], while the
 underlying DAV 2008 T tables remain sex-distinct [R12] [REG-R48]. The model resolves the tension the
 only way § 138 VAG allows — **the tariff blends the two tables 50/50 and the projection uses the
@@ -188,6 +187,7 @@ pays more *and* is expected to claim more, so the *Zahl/Brutto* ratio is nearly 
 alternative reading, in which the loading is pure price and falls through to surplus, is pitfall 17.
 **`duration_init` is the only thing that moves where the frame starts**, and it is what makes the § 161
 window, the lapse table and the acquisition-cost switch all read off one clock.
+**`smoker` and `smoker2` select a death table**, each life its own, and are no factor on one.
 
 ### Model points shipped
 
@@ -226,9 +226,9 @@ anchor cell.**
 | `pols_if(t)` | In-force count at the **start** of month `t`; `pols_if(12·duration_init) = pols_if_init() = 1` | monthly recursion |
 | `benefit_pp(t)` | *Versicherungssumme* in force = `sum_assured × benefit_factor(t) × sum_uplift(t)`; flat across a policy year | schedule lookup |
 | `benefit_paid_pp(t)` | The benefit actually payable on a death in month `t`, after the § 161 switch | anniversary |
-| `mort_rate(t)` | **Second-order annual** death rate of the policy year: own sex, smoker, rated, first-death where `lives = 2` | lookup |
+| `mort_rate(t)` | **Second-order (best-estimate) annual** death rate of the policy year: `mort_be_factor` × the own-sex rate of the life's smoker table, rated, first-death where `lives = 2` | lookup |
 | `mort_rate_mth(t)` | The monthly rate applied, `1 − (1 − mort_rate(t))^(1/12)` **[std]** | monthly |
-| `mort_rate_tariff(t)` | **First-order annual** tariff rate: unisex 50/50 blend, `× (1 + m) × rating_factor`; for `lives = 2` the two lives' blends combined by the first-death rule `q_a + q_b − q_a·q_b` before the loading | lookup |
+| `mort_rate_tariff(t)` | **First-order annual** tariff rate: the unisex 50/50 blend of the first-order table of the life's smoker status, `× rating_factor` and no further loading; for `lives = 2` the two lives' blends combined by the first-death rule `q_a + q_b − q_a·q_b` before the rating factor | lookup |
 | `lapse_rate(t)` | **Annual** lapse rate of the policy year; **0** through the whole final policy year | lookup |
 | `lapse_rate_mth(t)` | The monthly rate applied after the death decrement, `1 − (1 − lapse_rate(t))^(1/12)` **[std]** | monthly |
 | `suicide_factor(t)` | § 161 benefit switch, `< 1` inside three years of issue and of each increment | anniversary |
@@ -284,7 +284,7 @@ Thin, but decisive — on this product the discretion **is** the customer's bill
 |---|---|---|
 | Declaration scaling `decl_scale` | **1.00**, a row of `param_tariff_type.csv`, i.e. the insurer declares exactly the MindZV minimum | **[std]** (1) |
 | Surplus share `surplus_share` | **0.90** of the tariff mortality margin, a row of `param_tariff_type.csv` | [R9] [REG-R18]; choice of the minimum **[std]** (1) |
-| Resulting `v_decl` (*Beitragsverrechnungssatz*) | **Derived, not assumed** — see the recursion section. Lands at about 0.43 on the anchor, so `Zahl / Brutto ≈ 0.57` | derived; inputs **[std]** |
+| Resulting `v_decl` (*Beitragsverrechnungssatz*) | **Derived, not assumed** — see the recursion section. Lands at about 0.18 on the anchor, so `Zahl / Brutto ≈ 0.82` | derived; inputs **[std]** |
 | Cap on the declared rate `v_max` | **0.95**, a row of `param_tariff_type.csv` — a rebate may not exceed the premium | **[std]** (2) |
 | *Kostenüberschuss* | **Not returned.** The tariff's β is 5,0 % and the modelled collection cost 3,0 %, so a cost result emerges in `net_cf` and stays there | **[std]** (3) |
 | *Summenzuwachs*, *verzinsliche Ansammlung*, *Todesfallbonus* | **Off.** Only *Beitragsverrechnung* is implemented | mechanic 6; **[std]** |
@@ -296,7 +296,7 @@ Thin, but decisive — on this product the discretion **is** the customer's bill
    raises the billed premium to the guaranteed one with no change to any claim, which is precisely
    the move § 163 does not govern [R6], and it is the model's representation of the product's single
    largest policyholder risk.
-2. `v_max` binds nowhere in the shipped model points; it exists so that an extreme `m` cannot drive
+2. `v_max` binds nowhere in the shipped model points; it exists so that an extreme margin share cannot drive
    the billed premium negative, and so that `check_prem_split()` has a stated domain.
 3. **The tariff loading and the modelled cost are deliberately different numbers, and the gap is the
    *Kostenüberschuss*.** Returning it would require splitting the *übriges Ergebnis* limb of the
@@ -314,39 +314,39 @@ rate card, and not adopted here.
 
 **Mortality.** The regulatory basis is **DAV 2008 T** with its *R* and *NR* variants [R12]
 [REG-R48], which is **cited by name and never shipped** — the tables are the property of the
-Deutsche Aktuarvereinigung, are not public, and are not redistributed here. `mort_table.csv` is a
-**[std] Gompertz-form proxy** for a medically selected insured-lives population:
+Deutsche Aktuarvereinigung, are not public, and are not redistributed here. The death rates come
+from the model-wide **table factory** (`core/Core/Tables`, here the space `CoreTables`, read through
+the Reference `tables`; `docs/core.md`, section "The table factory"), not from a file of the product:
+two **[std] first-order** proxies, period tables on the law `makeham`, items of `param_tables.csv`:
 
-    mort_rate(sex, smoker, x) = base(sex) × smoker_mult(smoker) × 1.095^(x − 30),   ages 18–80
+    q(sex, x) = min(1, a(sex) + b(sex) × 1.1^x),   ages 0–120,   q = 1 at age 120 (end age 121)
 
-    base(M) = 0.00040      base(F) = 0.00020
-    smoker_mult(N) = 1.00  smoker_mult(R) = 2.20
+    dav2008t_nr_proxy  a(M) = 0.000176   b(M) = 2.30561459064e-05  a(F) = 0.000128   b(F) = 1.73224236712e-05
+    dav2008t_r_proxy   a(M) = 0.0003872  b(M) = 5.07235209941e-05  a(F) = 0.0002816  b(F) = 3.81093320766e-05
 
-Three anchors a replacement table must preserve, so that the worked example still closes. **The
-50/50 unisex non-smoker blend is `0.00030 × 1.095^(x − 30)`**, which is the [std] best-estimate
-scale the research file constructed and froze; **the female-to-male ratio is 0.50** at every age,
-the order of magnitude reported for insured lives at the ages this product is sold [unverified]; and
-**the smoker multiplier is 2.20**, the mid-point of the two-to-three range reported for insured-lives
-smoker mortality at working ages [unverified], which reproduces a *premium* ratio near 2 once
-sum-related and per-policy expenses are added back — **2.007** between model points 3 and 1 on the
-built model, against the research file's zero-interest construction of 2.04. The 9,5 % per year of age is the slope of the
-research's construction; it is a fitted-in-spirit gradient with **no German source**, and on a
-40-year run (model point 14) it is the single most exposed number in the file. **Population tables
-are the wrong starting point for a replacement**: an RLV model built on a Destatis table without a
-selection adjustment overstates claims by a wide margin at issue ages 25–45 [REG-R48] [REG-R52].
+**The smoker status of a life selects its table and is no factor on one** (`mort_table_smoker`):
+`N` reads the table of the row `mort_nr_table`, the proxy of DAV 2008 T NR, `R` that of
+`mort_r_table`, the proxy of DAV 2008 T R, and the two lives of a `lives = 2` contract each read
+their own. Every value is a Setzung. The non-smoker table is **0.8 times** the aggregate proxy
+`dav2008t_proxy` in every `a` and `b` and the smoker table **1.76 times** it, so the smoker rate is
+**2.2 times** the non-smoker rate at every age below the cap — the mid-point of the two-to-three
+range reported for insured-lives smoker mortality at working ages [unverified] — and the
+*Zahlbeitrag* of model point 3 is **2.006** times that of model point 1. Women stand at a
+**three-year setback** of men, `b(F) = b(M) × 1.1^−3`. The 10 % per year of age in the age term has
+**no German source**, and on a 40-year run (model point 14) it is the single most exposed number in
+the file. **Population tables are the wrong starting point for a replacement**: an RLV model built
+on a Destatis table without a selection adjustment overstates claims by a wide margin at issue ages 25–45 [REG-R48] [REG-R52].
 
-**The two-order split.** The first-order (tariff) rate is
+**The two-order split.** The tables are first order themselves, so the tariff rate carries no
+*Sicherheitszuschlag* of its own, and the best estimate is a step down from the table:
 
-    mort_rate_tariff(t) = (1 + m) × [ ω·q_tab(M, smoker, x(t)) + (1 − ω)·q_tab(F, smoker, x(t)) ]
-                       × rating_factor
+    mort_rate_tariff(t) = rating_factor × [ ω·q_tab(M, x(t)) + (1 − ω)·q_tab(F, x(t)) ]
+    mort_rate(t)        = min( 1, mort_be_factor × rating_factor × q_tab(own sex, x(t)) )
 
-with the *Sicherheitszuschlag* `m = 1.25` **[std]** and the unisex mix `ω = unisex_mix_male = 0.50`
-**[std]**, both rows of `param_tariff_type.csv`. So `q1 = 2.25 × q2` **for the tariff's own unisex life**, and for a real policy the ratio
-is `2.25 × (unisex blend / own-sex rate)`. On the shipped proxy the blend is `0.75 × q̃(M)`, so the
-ratio is **1.6875 for a male and 3.375 for a female**. That asymmetry is the unisex cross-subsidy, and it is a product fact, not a modelling
-artefact. `m` is the single parameter that sets the *Brutto*/*Zahlbeitrag* spread; **its level is not
-public** — the DAV *Richtlinie* regulates the **procedure** for setting the *Sicherheitszuschläge*,
-not the level [R12] — and the argued range is **1.0 to 1.5** (research gap 6).
+with `q_tab` the table of the life's smoker status, the unisex mix `ω = unisex_mix_male = 0.50` **[std]** and `mort_be_factor = 0.75` **[std]**, both rows of `param_tariff_type.csv`. So `q₂ = 0.75 × q₁` **for the tariff's own unisex life**, and for a real policy the ratio `q₁/q₂` is `unisex blend / (0.75 × own-sex rate)`, which moves with age: on the non-smoker table **1.164 at age 35 and 1.167 at 59 for a male, 1.560 and 1.555 for a female**.
+That asymmetry is the unisex cross-subsidy, and it is a product fact, not a modelling artefact. The margin share `1 − mort_be_factor` = 0.25 is what sets the *Brutto*/*Zahlbeitrag* spread. **The level of a carrier's *Sicherheitszuschläge* is not
+public** — the DAV *Richtlinie* regulates the **procedure** for setting them, not the level [R12] — and the research file's argued range of **1.0 to 1.5** for a loading `m` on a second-order base
+(research gap 6) belongs to a parameter this model does not carry.
 
 **Lapse.** No *Risikoversicherung*-specific rate exists anywhere in the research file (gap 13). The
 inherited whole-market *Stornoquote* — 2,72 % (2024) and 2,56 % (2023) on the main GDV measure, with
@@ -398,7 +398,9 @@ rather than buried.
 | Sum-related admin `load_admin_sum_ann` | **0,30 ‰** of `benefit_pp(t)` a year, a row of `param_tariff_type.csv` | **[std]** (4) |
 | Expense inflation `expense_infl` | **2,0 %** a year, the house-wide rate, an item of the core file `param_core.csv`, on the sum-related admin only; the tariff's γ is level | **[std]** (5) |
 | Claim expense `expense_claim_pp_once` | **250 €** per death claim, a row of `param_tariff_type.csv` | **[std]** (4) |
-| Best-estimate mortality factor `mort_be_factor` | **1.00** | **[std]** (6) |
+| Non-smoker death table `mort_nr_table` | `dav2008t_nr_proxy`, a table of the table factory, a row of `param_tariff_type.csv` | **[std]** |
+| Smoker death table `mort_r_table` | `dav2008t_r_proxy`, a table of the table factory, a row of `param_tariff_type.csv` | **[std]** |
+| Best-estimate mortality factor `mort_be_factor` | **0.75** of the first-order table rate, a row of `param_tariff_type.csv` | **[std]** (6) |
 | *Ratenzahlungszuschlag* `prem_freq_load` | 1.000 annual · **1.02** half-yearly · **1.03** quarterly · **1.05** monthly | convention **[std]** (7) |
 
 4. **German term-life charge levels are not published as a rate card — but they are disclosed**
@@ -418,9 +420,9 @@ rather than buried.
 5. Inflating the modelled γ while the tariff's γ is level means the cost result narrows over a long
    term and eventually reverses — a real feature of a 25-year contract, and the reason model point 14
    (40 years) is worth its place.
-6. Set to 1.00 so that the shipped proxy *is* the best estimate and there is exactly one unsourced
-   mortality level rather than two stacked on each other. A user with experience data should move
-   this rather than editing the table.
+6. Set to 0.75 = 1/1.34: the 34 % first-order margin stated for DAV 2008 T, carried over to its *NR*
+   and *R* tables (the row's provenance names the place). A user with experience data should move this
+   rather than editing the tables; its complement, 0.25, is the margin share of the declaration.
 7. **2 % / 3 % / 5 % is a market convention with no carrier attribution**, inherited from the sibling
    delib research (gap 21). Whether German carriers strike it on the *Bruttobeitrag* or the
    *Zahlbeitrag* was not established; the model loads the **billed** amount, so the split identity
@@ -442,9 +444,9 @@ rather than buried.
 | `f(t)` | `benefit_factor(t)` from `benefit_schedule.csv`, read at `policy_year(t)` |
 | `u(y)` | `sum_uplift_y(y)` from `nvg_schedule.csv`, read at `policy_year = y + 1`; `u ≡ 1` for `nvg_schedule_id = keine`; defined on `y ≥ 0` only. `sum_uplift(t) = u(duration(t))` |
 | `B(t)` | `benefit_pp(t) = S0 · f(t) · u(t)` |
-| `q̃(x)` | `mort_rate_at_age(table_id, sex, smoker, x)`, the shipped second-order table rate |
+| `q̃(x)` | `mort_rate_at_age(sex, smoker, x)` = `tables.q(mort_table_smoker(smoker), sex, x)`, the **first-order** rate of the life's smoker table |
 | `ω` | `unisex_mix_male` = 0.50, the tariff's unisex mix **[std]** |
-| `m` | `mort_load_first` − 1 = 1.25 **[std]**; the row is the factor `1 + m` = 2.25 |
+| `κ` | `mort_be_factor` = 0.75 **[std]**, the step from the first-order tables to the best estimate; `1 − κ` = 0.25 is the tables' margin share |
 | `rf` | `rating_factor` |
 | `q₂(t)` | `mort_rate(t)`, the projected second-order **annual** rate of month `t`'s policy year |
 | `q₂ᵐ(t)` | `mort_rate_mth(t) = 1 − (1 − q₂(t))^(1/12)` **[std]**, the rate actually applied |
@@ -470,20 +472,20 @@ derived from them; `S0`, `B`, `G`, `P` and every cash-flow component are EUR. `G
 
 ### The two mortality bases
 
-    q₂(t) = mort_be_factor · rf · Q̃(t),        Q̃(t) = q̃(sex, smoker, x(t))                 lives = 1
-    q₁(t) = (1 + m) · rf · [ ω·q̃(M, smoker, x(t)) + (1 − ω)·q̃(F, smoker, x(t)) ]
+    q₂(t) = min( 1, κ · rf · Q̃(t) ),           Q̃(t) = q̃(sex, smoker, x(t))                 lives = 1
+    q₁(t) = rf · [ ω·q̃(M, smoker, x(t)) + (1 − ω)·q̃(F, smoker, x(t)) ]
 
 Both are **annual** rates, read at an attained age that steps on the anniversary, and both are
 therefore flat across a policy year's twelve months. Only `q₂` is converted to the month, at
 `q₂ᵐ(t) = 1 − (1 − q₂(t))^(1/12)` **[std]**; `q₁` is a pricing rate and the equivalence it enters is
 annual, so it is never converted.
 
-For `lives = 2` the two lives are combined **at table level, before any loading**, on an
-independence assumption **[std]**:
+For `lives = 2` the two lives, each on the table of its own smoker status, are combined **at table
+level, before any loading**, on an independence assumption **[std]**:
 
     Q̃(t) = q̃_A(t) + q̃_B(t) − q̃_A(t)·q̃_B(t)
 
-and the same combination is applied to the two unisex blends before `(1 + m)·rf`. Combining after
+and the same combination is applied to the two unisex blends before `rf`. Combining after
 loading instead inflates the cross term and is pitfall 14. The independence assumption **understates**
 the true first-death rate for a couple sharing a household, a vehicle and a lifestyle, and no German
 figure bounds the understatement (research gap 15).
@@ -522,14 +524,14 @@ actuarial *Nettoprämie* is `Gn = A / ä`, and it is what the reserve recursion 
 ### The *Zahlbeitrag*, by the MindZV allocation
 
 The tariff's own mortality margin in period `t`, per in-force policy, is the difference between
-the first-order rate and the tariff's best estimate:
+the first-order rate and the tariff's best estimate, which is `κ` times it:
 
-    margin_pp(t) = ( q₁(t) − q₁(t)/(1 + m) ) · B(t) = (m/(1+m)) · q₁(t) · B(t)
+    margin_pp(t) = ( q₁(t) − κ·q₁(t) ) · B(t) = (1 − κ) · q₁(t) · B(t)
 
-so its actuarial value at issue is exactly `(m/(1+m))·A`. The declared *Beitragsverrechnungssatz* is
+so its actuarial value at issue is exactly `(1 − κ)·A`. The declared *Beitragsverrechnungssatz* is
 struck once, at issue, to return `surplus_share` of it over the premium-paying term:
 
-    v_d = min( v_max,  decl_scale · surplus_share · (m/(1+m)) · A / (G · ä) )
+    v_d = min( v_max,  decl_scale · surplus_share · (1 − κ) · A / (G · ä) )
 
 and is **0** where `surplus_form = keine`. Then, at every `t < k`,
 
@@ -540,14 +542,12 @@ and is **0** where `surplus_form = keine`. Then, at every `t < k`,
 and all three are **0** for `t ≥ k`. Substituting the equivalence into `v_d` gives the identity that
 explains the whole German term-life spread in one line:
 
-    v_d = decl_scale · surplus_share · (m/(1+m)) · [ 1 − β − ( γ·Γ + z·k·G ) / ( G·ä ) ]
+    v_d = decl_scale · surplus_share · (1 − κ) · [ 1 − β − ( γ·Γ + z·k·G ) / ( G·ä ) ]
 
-— **the surplus share, times the margin fraction of the risk element, times the risk share of the
-gross premium.** On the anchor's calibration the bracket is about 0.85, so
-`v_d ≈ 1 × 0.90 × 0.5556 × 0.85 ≈ 0.43` and `Zahl / Brutto ≈ 0.57`, reproducing the research file's
-frozen [std] ratio from the mechanic rather than assuming it. **Raising `m` raises `G` and `v_d`
-together, which is why the *Bruttobeitrag* moves far more than the *Zahlbeitrag*** (product spec,
-contractual mechanics).
+— **the surplus share, times the margin share of the risk element, times the risk share of the
+gross premium.** On the anchor the bracket is 0.8126, so `v_d = 1 × 0.90 × 0.25 × 0.8126 = 0.1828` and
+`Zahl / Brutto = 0.8172`: derived from the margin share 0.25 and the MindZV's 90 %, not assumed. **`κ` moves
+`v_d` and the projected claims and leaves `G` where it is; the level of the tables moves both premiums.**
 
 ### The § 161 benefit switch, and increments
 
@@ -726,7 +726,7 @@ Five, each with a per-`t` residual companion `check_*_resid(t)`, each returning 
 Two further identities are **scalar rather than per-period** and are therefore asserted in
 `tests/test_risikolebensversicherung_de.py` instead of published as `check_*` cells: the first-order
 premium equivalence `G·ä = A + z·k·G + β·G·ä + γ·Γ`, and the surplus equivalence
-`v_d·G·ä = decl_scale·surplus_share·(m/(1+m))·A`. Forcing a scalar identity into a per-`t` residual
+`v_d·G·ä = decl_scale·surplus_share·(1 − κ)·A`. Forcing a scalar identity into a per-`t` residual
 would mean inventing a per-period decomposition the product does not have, which is worse than
 putting it in the test module and saying so.
 
@@ -774,14 +774,14 @@ These are the specific ways an implementation of **this** product looks right an
 one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
 
 1. **Confusing the three "netto"s.** *Nettoprämie* (actuarial), *Nettobeitrag*/*Zahlbeitrag*
-   (consumer) and *Nettotarif* (distribution) are unrelated [mechanic 4]. Assert the order the
+   (consumer) and *Nettotarif* (distribution) are unrelated [mechanic 4]. Assert what the
    built model actually produces on the anchor —
-   `prem_paid_pp(0)/φ < prem_net_level_pp() < prem_pp(0)/φ`, i.e. 733,01 € < 1 084,80 € <
-   1 275,41 € — and that no cells is named `prem_net_pp` or `nettobeitrag`. **The billed
-   *Zahlbeitrag* sits *below* the actuarial *Nettoprämie***, because `Gn = A/ä` is struck on the
-   loaded first-order rate and 90 % of that loading is handed straight back as
-   *Beitragsverrechnung*. Asserting `Gn < P` instead would be asserting the absence of the
-   product's central mechanic.
+   `prem_net_level_pp() < prem_pp(0)/φ` and `prem_paid_pp(0)/φ < prem_pp(0)/φ`, i.e. 671,89 € and
+   675,70 € both below 826,88 € — and that no cells is named `prem_net_pp` or `nettobeitrag`. **Between
+   the billed *Zahlbeitrag* and the actuarial *Nettoprämie* no order holds.** `Gn = A/ä` is struck on
+   the first-order rate and the *Beitragsverrechnung* hands back 90 % of a quarter of the risk element:
+   the *Zahlbeitrag* sits 3,81 € above `Gn` on the anchor and 105,36 € below it on the smoker point 3
+   (1 355,68 € against 1 461,04 €). Asserting either order would be asserting an accident of the loadings.
 2. **Carrying only one premium stream.** A model with a single premium cannot represent this product
    [R6]. Assert `prem_pp(t) > prem_paid_pp(t)` at every `t` on model point 1 and
    `prem_charged_inst_pp(t) > prem_inst_pp(t)` in every month an instalment is collected, and
@@ -812,12 +812,12 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
    sex at all [R13] [REG-R34].
    Model points 1 and 2 differ **only** in `sex`: assert their `prem_pp(t)`,
    `prem_paid_pp(t)` and `beitragsverrechnung_rate()` are identical to 1e-12, while their
-   `claims_death` totals differ by a factor near two.
-7. **Applying the *Sicherheitszuschlag* to the projection.** `q₁` prices, `q₂` projects. Assert that
-   `claims_death` is invariant to `mort_load_first` while `prem_charged_inst_pp` is not, and that
-   `mort_rate_tariff(t) / mort_rate(t)` equals `2.25 × (unisex blend / own-sex rate)` — 1.6875 for a
-   male, 3.375 for a female on the shipped proxy, the blend being `0.75 × q̃(M)` — rather than 2.25
-   for both.
+   `claims_death` totals differ by about a third (8 742,22 € against 6 587,59 €).
+7. **Projecting on the first-order table, or pricing on the best estimate.** `q₁` prices, `q₂`
+   projects. Assert that `prem_charged_inst_pp` is invariant to `mort_be_factor` while `claims_death`
+   is not, and that `mort_rate_tariff(t) / mort_rate(t)` equals `unisex blend / (0.75 × own-sex rate)`
+   — 1.164 for a male and 1.560 for a female non-smoker at age 35 on the shipped tables, and moving
+   with age — rather than `1/0.75` for both.
 8. **Applying the § 161 switch beyond three years, or to the wrong things.** Assert
    `suicide_factor(t) == 1 − suicide_share` exactly for the **first thirty-six months** and `== 1`
    from month 36 on model point 1; that it is `1` at every projected `t` on the in-force point 8
@@ -840,7 +840,7 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
 11. **Double-counting premium cessation at death.** Instalments are collected at the beginning of
     the month and claims fall at its end, so a claimant has already paid. Assert
     `premiums(t) == prem_inst_pp(t) * pols_if(t)` exactly, with no `(1 − q₂ᵐ)` factor anywhere. The
-    finer grid narrows the error — 0,038 € in the first month against 0,46 € in the first year —
+    finer grid narrows the error — 0,035 € in the first month against 0,42 € in the first year —
     without removing the trap: there are now twelve times as many chances to apply it.
 12. **Running the premium past the *Beitragszahlungsdauer*.** On model point 6 (`k = 12` years,
     `n = 20`) assert `prem_pp(t) == premiums(t) == prem_rebate_pp(t) == 0` for
@@ -855,7 +855,7 @@ one becomes a test** in `tests/test_risikolebensversicherung_de.py`.
     does not decline monthly because the grid does.
 14. **Combining two lives after loading instead of before.** On model point 10 assert
     `Q̃ == q̃_A + q̃_B − q̃_A·q̃_B` exactly and `Q̃ < q̃_A + q̃_B` strictly, and that `q₁` is
-    `(1+m)·rf` times the combined **blend**, not the combination of two separately loaded rates.
+    `rf` times the combined **blend**, not the combination of two separately loaded rates.
 15. **Returning the *Kostenüberschuss* as well as the *Risikoüberschuss*.** The model returns only
     the mortality margin; the cost result emerges in `net_cf` and stays there. Assert that
     `prem_rebate_inst_pp` is invariant to `expense_collect_prem_inst` and `comm_renew_prem_inst`, while `net_cf` is not.
@@ -925,16 +925,16 @@ evidence for any of them** (research gap 13).
 `instalments = 1`), `benefit_schedule_id = konstant` (`benefit_factor = 1.0` at every `t`),
 `nvg_schedule_id = keine` (`sum_uplift = 1.0` at every `t`),
 `surplus_form = beitragsverrechnung`, `lives = 1`, `issue_age2 = 0`, `smoker2 = -`,
-`rating_factor = 1.00`, `mort_table_id = dav2008t_proxy`, `duration_init = 0`,
+`rating_factor = 1.00`, `duration_init = 0`,
 `issue_date = 2026-01-01`. Hence `t0 = 0`, `proj_len_y() = 25` and `proj_len() = 300` so the frame
 is `t = 0 … 299` **months**, cover to attained age 60, and the annual table below — the monthly
 frame summed into policy years by `result_cf_annual()` — is the **entire** projection.
 
-**Assumptions, each tagged.** *Mortality*: the shipped [std] proxy
-`mort_rate(M, N, x) = 0.00040 × 1.095^(x − 30)` at attained ages 35 to 59, so
-`mort_rate(0) = 0.00040 × 1.095^5` and `mort_rate(24) = 0.00040 × 1.095^29` **[std]**;
-`mort_be_factor = 1.00` **[std]**. *Tariff mortality*: the unisex 50/50 blend
-`0.00030 × 1.095^(x − 30)` **[std]** loaded by `1 + m` = `mort_load_first` = 2.25, `m = 1.25`
+**Assumptions, each tagged.** *Mortality*: the [std] first-order proxy `dav2008t_nr_proxy` of the
+table factory, the row `mort_nr_table` **[std]**, at attained ages 35 to 59, and
+`mort_be_factor = 0.75` **[std]** of its male rate as the best estimate, so
+`mort_rate(0) = 0.75 × 0,000823934 = 0,000617950` and `mort_rate(288) = 0.75 × 0,006557976 = 0,004918482`. *Tariff mortality*: the unisex 50/50 blend
+of the same table's male and female rates with no further loading, `mort_rate_tariff(0) = 0,000719368`
 **[std]**, and `unisex_mix_male = 0.50` **[std]** [R13] [REG-R34]. *Interest*:
 `rechnungszins = 1,00 %`, a model-point column fixed at conclusion for the whole term (DeckRV § 2 Abs. 2), 1,00 % on every shipped point — the DeckRV ***Höchstzinssatz***, a **ceiling the model adopts as the
 rate**; a retrieved carrier prices its term tariff at 0,25 % instead **[R10] [REG-R14] [REG-R15]
@@ -967,32 +967,32 @@ precision and then rounded, which can differ in the last cent from adding the di
 
 | policy year | age | pols_if | premiums | claims_death | expenses | commissions | net_cf |
 |---|---|---|---|---|---|---|---|
-| 1 | 35 | 1.000000 | 733.01 | 178.15 | 269.04 | 637.71 | −351.88 |
-| 2 | 36 | 0.939408 | 688.60 | 185.01 | 105.44 | 6.89 | 391.26 |
-| 3 | 37 | 0.901210 | 660.60 | 194.35 | 102.78 | 6.61 | 356.86 |
-| 4 | 38 | 0.864508 | 633.69 | 211.46 | 100.58 | 6.34 | 315.32 |
-| 5 | 39 | 0.837880 | 614.18 | 224.41 | 99.08 | 6.14 | 284.55 |
-| 6 | 40 | 0.812008 | 595.21 | 238.14 | 97.59 | 5.95 | 253.53 |
-| 7 | 41 | 0.786867 | 576.78 | 252.69 | 96.13 | 5.77 | 222.20 |
-| 8 | 42 | 0.762432 | 558.87 | 268.11 | 94.68 | 5.59 | 190.50 |
-| 9 | 43 | 0.738680 | 541.46 | 284.43 | 93.25 | 5.41 | 158.36 |
-| 10 | 44 | 0.715587 | 524.53 | 301.71 | 91.84 | 5.25 | 125.73 |
-| 11 | 45 | 0.693130 | 508.07 | 320.01 | 90.45 | 5.08 | 92.53 |
-| 12 | 46 | 0.671287 | 492.06 | 339.37 | 89.07 | 4.92 | 58.70 |
-| 13 | 47 | 0.650036 | 476.48 | 359.84 | 87.70 | 4.76 | 24.17 |
-| 14 | 48 | 0.629355 | 461.32 | 381.49 | 86.35 | 4.61 | −11.13 |
-| 15 | 49 | 0.609224 | 446.57 | 404.37 | 85.01 | 4.47 | −47.28 |
-| 16 | 50 | 0.589621 | 432.20 | 428.54 | 83.68 | 4.32 | −84.34 |
-| 17 | 51 | 0.570527 | 418.20 | 454.06 | 82.35 | 4.18 | −122.39 |
-| 18 | 52 | 0.551923 | 404.57 | 480.98 | 81.04 | 4.05 | −161.50 |
-| 19 | 53 | 0.533788 | 391.27 | 509.37 | 79.73 | 3.91 | −201.74 |
-| 20 | 54 | 0.516105 | 378.31 | 539.28 | 78.42 | 3.78 | −243.18 |
-| 21 | 55 | 0.498853 | 365.67 | 570.78 | 77.12 | 3.66 | −285.89 |
-| 22 | 56 | 0.482016 | 353.32 | 603.90 | 75.82 | 3.53 | −329.94 |
-| 23 | 57 | 0.465576 | 341.27 | 638.72 | 74.52 | 3.41 | −375.38 |
-| 24 | 58 | 0.449515 | 329.50 | 675.27 | 73.22 | 3.29 | −422.28 |
-| 25 | 59 | 0.433815 | 317.99 | 723.59 | 72.78 | 3.18 | −481.56 |
-| **Total** | | | **12,243.75** | **9,768.05** | **2,367.66** | **752.81** | **−644.78** |
+| 1 | 35 | 1.000000 | 675.70 | 174.82 | 211.25 | 413.44 | −123.82 |
+| 2 | 36 | 0.939419 | 634.77 | 178.85 | 103.82 | 6.35 | 345.75 |
+| 3 | 37 | 0.901241 | 608.97 | 185.34 | 101.23 | 6.09 | 316.31 |
+| 4 | 38 | 0.864569 | 584.19 | 199.21 | 99.09 | 5.84 | 280.05 |
+| 5 | 39 | 0.837978 | 566.22 | 209.11 | 97.64 | 5.66 | 253.81 |
+| 6 | 40 | 0.812154 | 548.77 | 219.77 | 96.20 | 5.49 | 227.32 |
+| 7 | 41 | 0.787068 | 531.82 | 231.20 | 94.78 | 5.32 | 200.52 |
+| 8 | 42 | 0.762698 | 515.36 | 243.47 | 93.38 | 5.15 | 173.35 |
+| 9 | 43 | 0.739019 | 499.36 | 256.61 | 92.01 | 4.99 | 145.74 |
+| 10 | 44 | 0.716007 | 483.81 | 270.69 | 90.64 | 4.84 | 117.63 |
+| 11 | 45 | 0.693639 | 468.69 | 285.75 | 89.30 | 4.69 | 88.96 |
+| 12 | 46 | 0.671893 | 454.00 | 301.85 | 87.97 | 4.54 | 59.65 |
+| 13 | 47 | 0.650747 | 439.71 | 319.04 | 86.65 | 4.40 | 29.62 |
+| 14 | 48 | 0.630179 | 425.81 | 337.39 | 85.35 | 4.26 | −1.19 |
+| 15 | 49 | 0.610167 | 412.29 | 356.96 | 84.06 | 4.12 | −32.85 |
+| 16 | 50 | 0.590692 | 399.13 | 377.82 | 82.78 | 3.99 | −65.46 |
+| 17 | 51 | 0.571732 | 386.32 | 400.03 | 81.51 | 3.86 | −99.08 |
+| 18 | 52 | 0.553269 | 373.84 | 423.66 | 80.25 | 3.74 | −133.80 |
+| 19 | 53 | 0.535282 | 361.69 | 448.78 | 78.99 | 3.62 | −169.70 |
+| 20 | 54 | 0.517752 | 349.84 | 475.47 | 77.74 | 3.50 | −206.87 |
+| 21 | 55 | 0.500660 | 338.30 | 503.80 | 76.50 | 3.38 | −245.38 |
+| 22 | 56 | 0.483989 | 327.03 | 533.84 | 75.25 | 3.27 | −285.33 |
+| 23 | 57 | 0.467719 | 316.04 | 565.65 | 74.01 | 3.16 | −326.79 |
+| 24 | 58 | 0.451833 | 305.30 | 599.32 | 72.77 | 3.05 | −369.84 |
+| 25 | 59 | 0.436313 | 294.82 | 643.80 | 72.40 | 2.95 | −424.33 |
+| **Total** | | | **11,301.77** | **8,742.22** | **2,285.57** | **519.70** | **−245.72** |
 
 `claims_lapse(t)` and `claims_maturity(t)` are 0.00 at every `t` and are omitted for width; both are
 required columns of `result_cf()` and `check_no_cash_value()` asserts them. `liability_cf(t) =
@@ -1005,55 +1005,55 @@ and carry a death claim and a twelfth of the sum-related admin charge:
 
 | t | pols_if | premiums | claims_death | expenses | commissions | net_cf |
 |---|---|---|---|---|---|---|
-| 0 | 1.000000 | 733.01 | 15.27 | 188.93 | 637.71 | −108.90 |
-| 1 | 0.994805 | 0.00 | 15.20 | 7.47 | 0.00 | −22.67 |
-| 2 | 0.989637 | 0.00 | 15.12 | 7.44 | 0.00 | −22.55 |
-| 3 | 0.984495 | 0.00 | 15.04 | 7.40 | 0.00 | −22.43 |
-| 4 | 0.979380 | 0.00 | 14.96 | 7.36 | 0.00 | −22.32 |
-| 5 | 0.974292 | 0.00 | 14.88 | 7.32 | 0.00 | −22.20 |
-| 6 | 0.969231 | 0.00 | 14.80 | 7.28 | 0.00 | −22.09 |
-| 7 | 0.964195 | 0.00 | 14.73 | 7.24 | 0.00 | −21.97 |
-| 8 | 0.959186 | 0.00 | 14.65 | 7.21 | 0.00 | −21.86 |
-| 9 | 0.954203 | 0.00 | 14.57 | 7.17 | 0.00 | −21.74 |
-| 10 | 0.949246 | 0.00 | 14.50 | 7.13 | 0.00 | −21.63 |
-| 11 | 0.944314 | 0.00 | 14.42 | 7.09 | 0.00 | −21.52 |
-| **Year 1** | 1.000000 | **733.01** | **178.15** | **269.04** | **637.71** | **−351.88** |
+| 0 | 1.000000 | 675.70 | 14.99 | 131.14 | 413.44 | 116.13 |
+| 1 | 0.994806 | 0.00 | 14.91 | 7.47 | 0.00 | −22.39 |
+| 2 | 0.989638 | 0.00 | 14.83 | 7.44 | 0.00 | −22.27 |
+| 3 | 0.984498 | 0.00 | 14.76 | 7.40 | 0.00 | −22.15 |
+| 4 | 0.979384 | 0.00 | 14.68 | 7.36 | 0.00 | −22.04 |
+| 5 | 0.974297 | 0.00 | 14.60 | 7.32 | 0.00 | −21.92 |
+| 6 | 0.969236 | 0.00 | 14.53 | 7.28 | 0.00 | −21.81 |
+| 7 | 0.964202 | 0.00 | 14.45 | 7.24 | 0.00 | −21.70 |
+| 8 | 0.959194 | 0.00 | 14.38 | 7.21 | 0.00 | −21.58 |
+| 9 | 0.954211 | 0.00 | 14.30 | 7.17 | 0.00 | −21.47 |
+| 10 | 0.949255 | 0.00 | 14.23 | 7.13 | 0.00 | −21.36 |
+| 11 | 0.944324 | 0.00 | 14.15 | 7.09 | 0.00 | −21.25 |
+| **Year 1** | 1.000000 | **675.70** | **174.82** | **211.25** | **413.44** | **−123.82** |
 
 The **Total** row is summed **at full precision, then rounded**, which is not the same as adding the
 twenty-five displayed annual cells: `premiums`
-12 243,75 € against 12 243,73 €, `claims_death` 9 768,05 € against 9 768,03 €, `expenses`
-2 367,66 € against 2 367,67 €. Only `commissions` and `net_cf` agree.
+11 301,77 € against 11 301,78 €, `claims_death` 8 742,22 € against 8 742,23 €, `net_cf`
+−245,72 € against −245,73 €. Only `expenses` and `commissions` agree.
 **Assert the full-precision totals**; a test that adds the rounded rows tests the rounding.
 
 ### What the monthly grid moved, and what it did not
 
-The annual-step model's own figures are kept here as the cross-check rather than deleted.
-**Unmoved**, because they are annual constructions the conversion never touched: `ä = 21,6374941`,
-`A = 23 472,374330 €`, `Γ = 6 491 248,23 €`, `G = 1 275,411882 €`, `Gn = 1 084,800958 €`,
-`v_d = 0,42527476`, the *Zahlbeitrag* 733,011403 €, the whole *Deckungskapital* including its
-7 553,29 € peak, and `pols_if` at **every policy anniversary** — the column above is the annual
-model's to the last displayed digit, and to 4e-15 across all fourteen model points.
+The annual-step figures, the annual recursion run on the model's own annual rates, are kept here as the cross-check.
+**Unmoved**, because they are annual constructions the conversion never touched: `ä = 21,8620690`,
+`A = 14 688,968504 €`, `Γ = 6 558 620,69 €`, `G = 826,875656 €`, `Gn = 671,892881 €`,
+`v_d = 0,18282785`, the *Zahlbeitrag* 675,699758 €, the whole *Deckungskapital* including its
+4 557,39 € peak, and `pols_if` at **every policy anniversary** — the column above is the annual
+recursion's to the last displayed digit, and to 4e-15 across all fourteen model points.
 
 **Moved**, and that is the reason for the finer grid:
 
 | | annual grid | monthly grid |
 |---|---|---|
-| `claims_death` total | 9 899,20 € | **9 768,05 €** |
-| `expenses` total | 2 396,51 € | **2 367,66 €** |
-| `net_cf` total | −804,77 € | **−644,78 €** |
-| policy year 1 `net_cf` | −359,51 € | **−351,88 €** |
+| `claims_death` total | 8 860,00 € | **8 742,22 €** |
+| `expenses` total | 2 314,24 € | **2 285,57 €** |
+| `net_cf` total | −392,18 € | **−245,72 €** |
+| policy year 1 `net_cf` | −131,35 € | **−123,82 €** |
 | crossover to negative | policy year 14 | policy year 14 |
-| deaths / lapses over the run | 0,03305608 / 0,53554078 | **0,03261764 / 0,53597922** |
-| expiries | 0,43140314 | 0,43140314 |
-| model point 4 (`monthly`) `premiums` | 4 471,82 € | **4 400,26 €** |
+| deaths / lapses over the run | 0,02959013 / 0,53624315 | **0,02919630 / 0,53663698** |
+| expiries | 0,43416672 | 0,43416672 |
+| model point 4 (`monthly`) `premiums` | 4 103,62 € | **4 038,47 €** |
 
 Death claims fall because a claim now falls in the month of death rather than at the year end, so
 it is borne by a block that has decremented for part of the year — except in the final policy year,
 where lapse is zero under both grids and the year's deaths are therefore identical. Expense falls
 because a twelfth of the admin charge accrues each month on that month's in-force. The premium
 columns are unchanged on the ten annual-*Zahlweise* points and lower on the four fractionated ones,
-where instalments after the first are collected on a block that has already lost lives: 0,95 % less
-on the `half_yearly` point 6, 1,67 % less on the `monthly` point 10. And the closure identity's
+where instalments after the first are collected on a block that has already lost lives: 0,94 % less
+on the `half_yearly` point 6, 1,65 % less on the `monthly` point 10. And the closure identity's
 **total** is unchanged at 1,00000000 while its **split** moves, deaths and lapses now interleaving
 month by month instead of the whole year's lapses being taken after the whole year's mortality.
 
@@ -1064,77 +1064,77 @@ reader can follow with a calculator from the tagged assumptions above; none of i
 model.
 
 ***1. The premium engine, from the equivalence rather than the closed form.*** The equivalence is
-`G·ä = A + z·k·G + β·G·ä + γ·Γ`, and at `G = 1 275,411882 €` its two sides are
+`G·ä = A + z·k·G + β·G·ä + γ·Γ`, and at `G = 826,875656 €` its two sides are
 
-    G·ä    = 1 275,411882 × 21,6374941 = 27 596,717080
-    A                                  = 23 472,374330
-    z·k·G  = 0,025 × 25 × 1 275,411882 =    797,132426
-    β·G·ä  = 0,05 × 27 596,717080      =  1 379,835854
-    γ·Γ    = 0,00030 × 6 491 248,23    =  1 947,374470   sum = 27 596,717080
+    G·ä    = 826,875656 × 21,8620690   = 18 077,212628
+    A                                  = 14 688,968504
+    z·k·G  = 0,025 × 25 × 826,875656   =    516,797285
+    β·G·ä  = 0,05 × 18 077,212628      =    903,860631
+    γ·Γ    = 0,00030 × 6 558 620,69    =  1 967,586208   sum = 18 077,212628
 
 The *Beitragsverrechnungssatz* then follows from the *Zahlbeitrag* section's one-line identity
 **without forming `G` at all**: the risk share of the gross premium is
-`1 − 0,05 − 2 744,506896/27 596,717080 = 0,85054952`, so
-`v_d = 0,90 × (1,25/2,25) × 0,85054952 = 0,50 × 0,85054952 = 0,42527476`, the model's
+`1 − 0,05 − 2 484,383493/18 077,212628 = 0,81256822`, so
+`v_d = 0,90 × (1 − 0,75) × 0,81256822 = 0,225 × 0,81256822 = 0,18282785`, the model's
 `beitragsverrechnung_rate()` to eight decimals, and
-`prem_paid_pp(0) = 0,57472524 × 1 275,411882 = 733,011403 €`. Two things follow. The surplus share
-and the margin fraction multiply to exactly one half, so on this calibration the *Zahlbeitrag* is
-"the *Bruttobeitrag* less half its risk element". And the derivation runs on `m`, `β`, `γ`, `z` and
+`prem_paid_pp(0) = 0,81717215 × 826,875656 = 675,699758 €`. Two things follow. The surplus share
+and the margin share multiply to 0,225, so the *Zahlbeitrag* is
+"the *Bruttobeitrag* less 22,5 % of its risk element". And the derivation runs on `κ`, `β`, `γ`, `z` and
 `k` and never touches the mortality **level** — which is why moving the level moves both premiums
 together and leaves the ratio nearly still.
 
-***2. The first month `t = 0`, rebuilt from the table rate up.*** At attained age 35 the **annual**
-rate is `q₂(0) = 0,00040 × 1,095⁵ = 0,00040 × 1,57423874 = 0,00062969550`, and the **monthly** rate
-applied is `q₂ᵐ(0) = 1 − (1 − 0,00062969550)^(1/12) = 0,000052489776` — twelve of which compound
+***2. The first month `t = 0`, rebuilt from the table rate up.*** At attained age 35 the male
+non-smoker table rate is `0,000176 + 2,30561459064e-05 × 1,1³⁵ = 0,000176 + 0,000647933884 = 0,000823933884`, the **annual**
+rate is `q₂(0) = 0,75 × 0,000823933884 = 0,000617950413`, and the **monthly** rate
+applied is `q₂ᵐ(0) = 1 − (1 − 0,000617950413)^(1/12) = 0,000051510459` — twelve of which compound
 back to exactly `q₂(0)`, which is the whole reason the conversion leaves the in-force at every
-anniversary alone. Policy year 1 is inside the § 161 window, so a claim pays
-`0,97 × 300 000 = 291 000 €`, giving
-`claims_death(0) = 291 000 × 1,000000 × 0,000052489776 = 15,274525` (table: 15.27). The expense
+anniversary alone. Policy year 1 is inside the § 161 window, so a claim pays `0,97 × 300 000 = 291 000 €`, giving
+`claims_death(0) = 291 000 × 1,000000 × 0,000051510459 = 14,989543` (table: 14.99). The expense
 line is four numbers and only one of them is large:
 
-    acquisition net of commission  (0,025 − 0,020) × 25 × 1 275,411882 = 159,426485
+    acquisition net of commission  (0,025 − 0,020) × 25 × 826,875656   = 103,359457
     sum-related admin, one twelfth 0,00030 × 300 000 × 1,02⁰ / 12      =   7,500000
-    collection, on the instalment  0,03 × 733,011403                   =  21,990342
-    claim expense                  250 × 0,000052489776                =   0,013122   = 188,929950
+    collection, on the instalment  0,03 × 675,699758                   =  20,270993
+    claim expense                  250 × 0,000051510459                =   0,012878   = 131,143327
 
-with `commissions(0) = 0,020 × 25 × 1 275,411882 = 637,705941 €` on its own line, and
-`733,011403 − 15,274525 − 188,929950 − 637,705941 = −108,899012 €`. **The first month's strain is
-the initial commission**: alone it is 87 % of the premium collected that month, which is why an
+with `commissions(0) = 0,020 × 25 × 826,875656 = 413,437828 €` on its own line, and
+`675,699758 − 14,989543 − 131,143327 − 413,437828 = +116,129059 €`. **The first month's largest
+outgo is the initial commission**: alone it is 61 % of the premium collected that month, and the eleven months that follow collect nothing, which is why an
 early lapse hurts on a contract that pays nothing on lapse. Summed over policy year 1 the twelve
-months give `−351,883322 €`, the annual table's first row.
+months give `−123,815288 €`, the annual table's first row.
 
 ***3. The third policy year, rebuilt through two decrement steps***, reading nothing from the
 recursion. Twelve months of `(1 − q₂ᵐ)(1 − wᵐ)` collapse to the annual `(1 − q₂)(1 − w)`, so
-`l(12) = [(1 − 0,000052489776)(1 − 0,005143)]¹² = 1 × (1 − 0,00062969550) × (1 − 0,06) =
-0,93940809`; with `q₂(12) = 0,00040 × 1,095⁶ = 0,00068951657` and `w = 0,04`,
-`l(24) = 0,93940809 × (1 − 0,00068951657) × (1 − 0,04) = 0,90120993` — both the figures the
-annual-step model printed. With `q₂(24) = 0,00040 × 1,095⁷ = 0,00075502064` spread over policy year
-3's twelve months, the deaths of that year total `0,000667867276` and
-`claims_death = 291 000 × 0,000667867276 = 194,349377` (table: 194.35). Using the contractual
-300 000 € here gives 200,36 € — a 3 % overstatement that runs for three years and then disappears,
+`l(12) = [(1 − 0,000051510459)(1 − 0,005143)]¹² = 1 × (1 − 0,000617950413) × (1 − 0,06) =
+0,93941913`; with `q₂(12) = 0,75 × 0,000888727273 = 0,000666545455` and `w = 0,04`,
+`l(24) = 0,93941913 × (1 − 0,000666545455) × (1 − 0,04) = 0,90124124` — both the figures the
+annual-step recursion gives. With `q₂(24) = 0,75 × 0,000960000000 = 0,000720000000` spread over policy year
+3's twelve months, the deaths of that year total `0,000636911178` and
+`claims_death = 291 000 × 0,000636911178 = 185,341153` (table: 185.34). Using the contractual
+300 000 € here gives 191,07 € — a 3 % overstatement that runs for three years and then disappears,
 the kind of error a totals-only test misses.
 
 ***Closure 1 — the decrements account for the whole policy.*** Over the three hundred months:
-deaths **0,03261764**, lapses **0,53597922**, expiries **0,43140314**, total **1,00000000** =
+deaths **0,02919630**, lapses **0,53663698**, expiries **0,43416672**, total **1,00000000** =
 `pols_if_init()`, and `pols_if(300) = 0` exactly, which is what lets `result_cf()` stop at
-`proj_len() − 1 = 299`. The expiring cohort is the annual-step model's own figure to the last digit,
+`proj_len() − 1 = 299`. The expiring cohort is the annual-step recursion's own figure to the last digit,
 lapse being zero through the final policy year under either grid. The split between deaths and
-lapses is **not** — 0,03305608 and 0,53554078 on the annual grid — because the two decrements now
+lapses is **not** — 0,02959013 and 0,53624315 on the annual grid — because the two decrements now
 interleave month by month, each eroding the exposure the other works on. Keeping the table's own 3 %
-in the final policy year instead would give 0,54895 and 0,41846, and **no cash flow moves either
+in the final policy year instead would give 0,54969 and 0,42114, and **no cash flow moves either
 way**.
 
 ***Closure 2 — the § 161 wedge is the only thing between claim events and claim amounts.*** Expected
-claim events at the contractual sum are `300 000 × 0,03261764 = 9 785,291238 €` against claims paid
-of `9 768,048760 €`. The difference is **17,242478 €**, which is exactly
-`0,03 × 300 000 × 0,00191583088 = 9 000 × 0,00191583088 = 17,242478 €`, the deaths of the **first
+claim events at the contractual sum are `300 000 × 0,02919630 = 8 758,890523 €` against claims paid
+of `8 742,219979 €`. The difference is **16,670544 €**, which is exactly
+`0,03 × 300 000 × 0,00185228264 = 9 000 × 0,00185228264 = 16,670544 €`, the deaths of the **first
 thirty-six months** — policy years 1 to 3. So the *Selbsttötung* switch is the **only** thing
 standing between events and amounts on this cell — no lapse pays, no expiry pays, the schedule is
 flat. An implementation applying the switch to every month, or to a lapse, or over the wrong window
 breaks this while leaving every total plausible.
 
 ***Closure 3 — the cash flow statement, which is `check_net_cf()`.*** At full precision,
-`12 243,747304 − 9 768,048760 − 2 367,661171 − 752,813300 = −644,775928 €`. Note which columns are
+`11 301,766358 − 8 742,219979 − 2 285,569201 − 519,698494 = −245,721316 €`. Note which columns are
 **not** in it: the guaranteed stream, `prem_charged_inst_pp` on the in-force, does not enter, and the
 rebate `prem_rebate_inst_pp` is already netted off `premiums` and must not be subtracted again. That
 ambiguity is why delib requires `check_net_cf()` of every model.
@@ -1142,17 +1142,17 @@ ambiguity is why delib requires `check_net_cf()` of every model.
 ***And the reserve mechanic 11 says a naive implementation gets wrong.*** On **policy-year**
 arguments, the *Deckungskapital* being an annual construction:
 `res_pp_at(0,"BEF_PREM") = 0` exactly, `res_pp_at(25,"BEF_PREM") = 0` exactly, and the interior peaks
-at **7 553,29 €** in policy year 15 — **2,52 % of the sum insured**. The Thiele step at the peak:
-`(7 553,290695 + 1 084,800958) × 1,01 = 8 724,472569` against
-`0,00414558817 × 300 000 + (1 − 0,00414558817) × 7 511,937517 = 8 724,472569`. The *gezillmerte*
-companion opens at `−797,132426 € = −z·k·G`: negative from the first day.
+at **4 557,39 €** in policy year 15 — **1,52 % of the sum insured**. The Thiele step at the peak:
+`(4 557,392907 + 671,892881) × 1,01 = 5 281,578646` against
+`0,00252203736 × 300 000 + (1 − 0,00252203736) × 4 536,408429 = 5 281,578646`. The *gezillmerte*
+companion opens at `−516,797285 € = −z·k·G`: negative from the first day.
 
-***What the sign of the total means, and what it does not.*** `net_cf` sums to **−644,78 €** here
-and to **+4 252,82 €** on model point 2, the same cell with `sex = F`. Neither is a profit measure —
+***What the sign of the total means, and what it does not.*** `net_cf` sums to **−245,72 €** here
+and to **+1 938,76 €** on model point 2, the same cell with `sex = F`. Neither is a profit measure —
 the stream is undiscounted, the tariff was struck at 1,00 % on no-lapse survivorship, and no reserve
 is held against the later years — but the *difference* is the unisex cross-subsidy the law requires:
 the tariff prices a 50/50 blend, the declaration returns 90 % of the margin measured against that
-blend, and a male life then claims about a third more than the tariff's own best estimate while
+blend, and a male life then claims about 14 % more than the tariff's own best estimate while
 paying, to the cent, the same premium as a female one. The book average is positive; the anchor
 alone is not, and the model is meant to show that rather than hide it.
 
@@ -1163,19 +1163,19 @@ model point 1 on the annual view, with the **Total** row covering all twenty-fiv
 
 | policy year | age | pols_if | premiums | claims_death | expenses | commissions | net_cf |
 |---|---|---|---|---|---|---|---|
-| 1 | 35 | 1.000000 | 1,275.41 | 178.15 | 285.31 | 637.71 | 174.25 |
-| 2 | 36 | 0.939408 | 1,198.13 | 185.01 | 120.72 | 11.98 | 880.42 |
-| 3 | 37 | 0.901210 | 1,149.41 | 194.35 | 117.45 | 11.49 | 826.12 |
-| 13 | 47 | 0.650036 | 829.06 | 359.84 | 98.28 | 8.29 | 362.65 |
-| 24 | 58 | 0.449515 | 573.32 | 675.27 | 80.53 | 5.73 | −188.22 |
-| 25 | 59 | 0.433815 | 553.29 | 723.59 | 79.84 | 5.53 | −255.68 |
-| **Total** | | | **21,303.65** | **9,768.05** | **2,639.46** | **837.99** | **8,058.16** |
+| 1 | 35 | 1.000000 | 826.88 | 174.82 | 215.79 | 413.44 | 22.83 |
+| 2 | 36 | 0.939419 | 776.78 | 178.85 | 108.08 | 7.77 | 482.09 |
+| 3 | 37 | 0.901241 | 745.21 | 185.34 | 105.32 | 7.45 | 447.10 |
+| 13 | 47 | 0.650747 | 538.09 | 319.04 | 89.60 | 5.38 | 124.06 |
+| 24 | 58 | 0.451833 | 373.61 | 599.32 | 74.82 | 3.74 | −304.26 |
+| 25 | 59 | 0.436313 | 360.78 | 643.80 | 74.38 | 3.61 | −361.01 |
+| **Total** | | | **13,830.34** | **8,742.22** | **2,361.43** | **543.47** | **2,183.22** |
 
 `pols_if`, `claims_death` and the guaranteed stream are **identical to the last bit** at every `t`. What moves
-is `premiums`, 12 243,75 € → 21 303,65 €, a **74,0 % increase in the customer's bill for no change
+is `premiums`, 11 301,77 € → 13 830,34 €, a **22,4 % increase in the customer's bill for no change
 whatever in cover**, and with it the two flows that scale with the billed premium: `expenses`
-+271,80 € (collection at 3 %) and `commissions` +85,18 € (renewal at 1 %). `net_cf` goes from
-−644,78 € to +8 058,16 €. **No § 163 procedure, no *Treuhänder*, no right of objection**, because no
++75,86 € (collection at 3 %) and `commissions` +23,77 € (renewal at 1 %). `net_cf` goes from
+−245,72 € to +2 183,22 €. **No § 163 procedure, no *Treuhänder*, no right of objection**, because no
 guaranteed term has moved — and it is a one-row change in `param_tariff_type.csv`. The stress runs with the
 premium-shock lapse module **off**, so the table shows the mechanical effect alone; switching
 `shock_lapse_lambda` on is what a stress of this shape should carry, and its omission is why the
@@ -1185,32 +1185,32 @@ base run's `λ_s = 0` is stated rather than assumed.
 
 The same engine at `k = 1`: 50 M N, 100 000 € `konstant`, ten years' cover, a single
 *Einmalbeitrag*, annual mode, participating. With `ä = 1` exactly the equivalence collapses to
-`G = (A + γ·Γ)/(1 − β − z) = (5 895,894609 + 280,265049)/0,925 = 6 676,929360 €`, and
-`Gn = A/ä = A = 5 895,894609 €`; `v_d = 0,44151243`, so the customer pays 3 728,98 € once, in month
+`G = (A + γ·Γ)/(1 − β − z) = (3 630,903608 + 282,871783)/0,925 = 4 231,108531 €`, and
+`Gn = A/ä = A = 3 630,903608 €`; `v_d = 0,19308257`, so the customer pays 3 414,16 € once, in month
 0 and nowhere else:
 
 | policy year | age | pols_if | premiums | claims_death | expenses | commissions | net_cf |
 |---|---|---|---|---|---|---|---|
-| 1 | 50 | 1.000000 | 3,728.98 | 231.67 | 174.98 | 133.54 | 3,188.79 |
-| 2 | 51 | 0.937691 | 0.00 | 240.16 | 28.75 | 0.00 | −268.91 |
-| 3 | 52 | 0.897762 | 0.00 | 251.77 | 28.12 | 0.00 | −279.89 |
-| 4 | 53 | 0.859312 | 0.00 | 273.33 | 27.62 | 0.00 | −300.96 |
-| 5 | 54 | 0.830845 | 0.00 | 289.39 | 27.29 | 0.00 | −316.67 |
-| 6 | 55 | 0.803073 | 0.00 | 306.29 | 26.95 | 0.00 | −333.24 |
-| 7 | 56 | 0.775968 | 0.00 | 324.06 | 26.61 | 0.00 | −350.68 |
-| 8 | 57 | 0.749502 | 0.00 | 342.75 | 26.27 | 0.00 | −369.02 |
-| 9 | 58 | 0.723645 | 0.00 | 362.36 | 25.93 | 0.00 | −388.29 |
-| 10 | 59 | 0.698372 | 0.00 | 388.29 | 25.95 | 0.00 | −414.24 |
-| **Total** | | | **3,728.98** | **3,010.07** | **418.47** | **133.54** | **166.90** |
+| 1 | 50 | 1.000000 | 3,414.16 | 203.88 | 153.24 | 84.62 | 2,972.41 |
+| 2 | 51 | 0.937968 | 0.00 | 211.20 | 28.69 | 0.00 | −239.88 |
+| 3 | 52 | 0.898320 | 0.00 | 221.37 | 28.06 | 0.00 | −249.43 |
+| 4 | 53 | 0.860155 | 0.00 | 240.39 | 27.57 | 0.00 | −267.96 |
+| 5 | 54 | 0.831986 | 0.00 | 254.68 | 27.24 | 0.00 | −281.92 |
+| 6 | 55 | 0.804521 | 0.00 | 269.86 | 26.91 | 0.00 | −296.77 |
+| 7 | 56 | 0.777731 | 0.00 | 285.94 | 26.58 | 0.00 | −312.53 |
+| 8 | 57 | 0.751587 | 0.00 | 302.99 | 26.25 | 0.00 | −329.24 |
+| 9 | 58 | 0.726059 | 0.00 | 321.02 | 25.92 | 0.00 | −346.94 |
+| 10 | 59 | 0.701120 | 0.00 | 344.84 | 25.94 | 0.00 | −370.79 |
+| **Total** | | | **3,414.16** | **2,656.16** | **396.41** | **84.62** | **276.96** |
 
-Only `net_cf` drifts against its rounded cells, by one cent (166,90 € against 166,89 €). Three things
+`claims_death`, `expenses` and `net_cf` each drift against their rounded cells by one cent (2 656,16 € against 2 656,17 €, 396,41 € against 396,40 €, 276,96 € against 276,95 €). Three things
 this form shows that the level form does not. **The shape inverts** — one large inflow then nine
 years of pure outgo, against a level-premium cell that is thin and positive early and thin and
 negative late. **The renewal commission and the collection cost stop with the premium**, so
 `commissions(t) = 0` from month 12 while `claims_death(t)` runs to expiry — the arrangement
 `check_prem_split()` also guards on model point 6, where an *abgekürzte Beitragszahlungsdauer* pays
-its last instalment in month 138 against twenty years of cover. **And `v_d` is higher, 0,44151243 against
-0,42527476**, because with one premium instead of twenty-five the Zillmer charge is 25 ‰ of a much
+its last instalment in month 138 against twenty years of cover. **And `v_d` is higher, 0,19308257 against
+0,18282785**, because with one premium instead of twenty-five the Zillmer charge is 25 ‰ of a much
 smaller *Beitragssumme*, so the risk share of the gross premium is larger.
 
 The form is a **[std]** construction and no German standalone RLV in the corpus is written on it (the
@@ -1236,15 +1236,15 @@ sentences that stopped being true were restated rather than left standing. What 
    which step on the anniversary.
 4. **The *Zahlweise* became real.** A modal *Zahlbeitrag* is collected in instalments on its own
    cycle instead of whole at the anniversary, so the four fractionated model points collect
-   0,95 %–1,67 % less over the run. That is the premium-cessation rule biting where an annual grid
+   0,94 %–1,65 % less over the run. That is the premium-cessation rule biting where an annual grid
    could not express it, and § 168 VVG's *Versicherungsperiode* being modelled rather than
    approximated — the one approximation the annual grid had to declare, now gone.
-5. **The totals the timing moved.** Death claims 9 899,20 € → 9 768,05 €, expenses 2 396,51 € →
-   2 367,66 €, `net_cf` −804,77 € → −644,78 € on the anchor, and +4 158,46 € → +4 252,82 € on model
+5. **The totals the timing moved.** Death claims 8 860,00 € → 8 742,22 €, expenses 2 314,24 € →
+   2 285,57 €, `net_cf` −392,18 € → −245,72 € on the anchor, and +1 821,75 € → +1 938,76 € on model
    point 2. The crossover to a negative policy year stays at policy year 14.
 6. **The closure identity's split.** Deaths and lapses now interleave month by month, so the anchor
-   reads 0,03261764 deaths and 0,53597922 lapses against 0,03305608 and 0,53554078; the expiring
-   cohort 0,43140314 and the total 1,00000000 are unchanged.
+   reads 0,02919630 deaths and 0,53663698 lapses against 0,02959013 and 0,53624315; the expiring
+   cohort 0,43416672 and the total 1,00000000 are unchanged.
 7. **The premium-shock module reads twelve months back**, `prem_paid_pp(t)/prem_paid_pp(t−12)`,
    because the comparison is between consecutive renewals and not between consecutive instalments.
 
@@ -1252,6 +1252,9 @@ sentences that stopped being true were restated rather than left standing. What 
 
 Six corrections, each made because the built model disagreed with a sentence written before it
 existed, and in each case the model was right. Nothing in the model was changed to fit a sentence.
+**The figures of this list are those of the model stage**, whose mortality basis was a second-order
+proxy file of the product, loaded by a *Sicherheitszuschlag* `m = 1,25` for the tariff; the list
+after it says what the table factory put in their place.
 
 1. **Pitfall 1's ordering was inverted.** It asked for `prem_net_level_pp() < prem_paid_pp(0)/φ`; the
    model gives 1 084,80 € against 733,01 €, the other way round, because `Gn` is struck on the
@@ -1273,6 +1276,34 @@ The sensitivity the notes predicted before the model existed came out of it unal
 from 1,0 to 1,5 moves the *Bruttobeitrag* 1 146,33 € → 1 404,05 €, **+22,5 %**, and the
 *Zahlbeitrag* 711,63 € → 754,34 €, **+6,0 %** — mechanic 5's 23 % and 6 %, reproduced from the
 mechanic rather than assumed.
+
+### What the switch to the table factory changed in these notes
+
+The death rates were moved from a file of the product to the model-wide table factory, with the
+values decided in the values package of epic-table-factory on 2026-11-18. What changed here:
+
+1. **The mortality basis.** Two **first-order** proxy tables by smoker status, `dav2008t_nr_proxy`
+   and `dav2008t_r_proxy`, named by the rows `mort_nr_table` and `mort_r_table`, stand where the
+   second-order file, the model-point column `mort_table_id` and the row `mort_load_first` stood.
+   Six input CSVs are left and none holds a death rate.
+2. **No *Sicherheitszuschlag* parameter.** The tariff rate is the unisex blend times the rating
+   factor; the best estimate is `mort_be_factor = 0,75` of the own-sex table rate. So
+   `mort_rate_tariff / mort_rate` is 1,164 for a male and 1,560 for a female at age 35 and moves with
+   age, where the model stage had 1,6875 and 3,375 at every age.
+3. **The margin share of the declaration is `1 − mort_be_factor` = 0,25**, where the model stage had
+   `m/(1+m)` = 0,5556. On the anchor `v_d` is 0,18282785 and `Zahl / Brutto` 0,817172, against
+   0,42527476 and 0,574725: the ratio follows from the margin share and the MindZV's 90 % and is not
+   calibrated to a target. That it stands above 0,57 is decided, not a defect.
+4. **Pitfall 1 asserts no order between the *Zahlbeitrag* and the *Nettoprämie*.** On the anchor
+   `Gn` 671,89 € < *Zahlbeitrag* 675,70 € < `G` 826,88 €, on the smoker point 3 the *Zahlbeitrag* is
+   the lower of the two; correction 1 of the model stage, which had 733,01 € < 1 084,80 € <
+   1 275,41 €, describes that stage.
+5. **Every figure of the worked example and its variants was recomputed from the model**: the anchor's
+   `net_cf` −245,72 € against −644,78 €, model point 2's +1 938,76 € against +4 252,82 €, the
+   `decl_scale = 0` uplift 22,4 % against 74,0 %, the first month's `net_cf` +116,13 € against
+   −108,90 €, the *Deckungskapital* peak 4 557,39 € against 7 553,29 €.
+6. **Sensitivity 1 is stated on `mort_be_factor`**, the model's own margin parameter; the range of
+   `m` the research file argues stays what it was, a statement about the market.
 
 ---
 
@@ -1337,25 +1368,25 @@ grid. The valuation layers consume them and are **cited, never reproduced**.
 
 In rough order of leverage for a German term-life block.
 
-1. **The *Sicherheitszuschlag* `m`, and the reason it is not the lever it looks like.** `m` sets the
-   *Bruttobeitrag* almost by itself, and its level is **not public** — the DAV *Richtlinie* regulates
-   the procedure, not the level [R12] (research gap 6). But because 90 % of the extra margin is
-   returned as *Beitragsverrechnung*, moving `m` across its argued range of 1.0 to 1.5 moves the
-   *Bruttobeitrag* by about **23 %** and the *Zahlbeitrag* by about **6 %** (product spec,
-   contractual mechanics). **So the parameter with the widest uncertainty has the narrowest effect on
-   the cash flow that matters**, which is the most useful single result in this product and the
+1. **The first-order margin, and the reason it is not a lever on the *Bruttobeitrag*.** The level of
+   a carrier's *Sicherheitszuschläge* is **not public** — the DAV *Richtlinie* regulates
+   the procedure, not the level [R12] (research gap 6), and the research file argues a range of 1.0 to
+   1.5 for a loading `m` on a second-order base. This model carries no such loading: its first-order tables set the
+   *Bruttobeitrag*, and the margin enters once, as the share `1 − mort_be_factor` = 0.25 the declaration is struck on. Moving `mort_be_factor` from 0.70 to 0.80 leaves the anchor's
+   *Bruttobeitrag* at 826,88 € and moves its *Zahlbeitrag* from 645,46 € to 705,93 € (`v_d` 0,2194 → 0,1463) and its death claims from 8 170,96 € to 9 311,86 €:
+   the billed premium follows the claims it has to cover, which is the
    reason the *Zahlbeitrag* is derived rather than assumed.
 2. **`decl_scale` — the declaration, and the product's largest policyholder risk.** Setting it to 0
    raises `premiums` to the guaranteed stream at every `t`, with **no § 163 procedure, no *Treuhänder* and no
-   policyholder remedy** [R6] [REG-R27]. On the anchor that is a **74,0 % increase in the billed
-   premium** — 21 303,65 € collected over the term against 12 243,75 € — with no change to any
+   policyholder remedy** [R6] [REG-R27]. On the anchor that is a **22,4 % increase in the billed
+   premium** — 13 830,34 € collected over the term against 11 301,77 € — with no change to any
    benefit and no change to any decrement. Nothing in the corpus bounds how far or how often
    a German carrier has actually moved a declaration on this product (research gap 1), and the
    premium-shock lapse module exists precisely because a stress that ignores the behavioural response
    understates itself.
-3. **Mortality level and slope.** Both are **[std]** and unsourced. The level anchors on the research
-   file's constructed unisex scale; the slope, 9,5 % per year of age, compounds — over model point
-   14's 40 years it is worth a factor of about 36 between the first and last year's death rate, so a
+3. **Mortality level and slope.** Both are **[std]** and unsourced. The level rests on the Setzungen
+   of the two proxy tables and on `mort_be_factor`; the slope, 10 % per year of age in the tables' age term, compounds — over model point
+   14's 40 years it is worth a factor of about 18 between the first and last year's death rate, so a
    one-point error in the slope is worth far more than a one-point error in the level. The **DAV 2008
    T tables are the intended replacement and are not redistributable** [R12] [REG-R48]; a Destatis
    population table is **not** a substitute without a selection adjustment [REG-R52].

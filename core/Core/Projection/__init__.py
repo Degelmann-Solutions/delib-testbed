@@ -397,10 +397,15 @@ def mort_rate(t):
     """q(t): the best-estimate **annual** death rate of the policy year containing month t.
 
     ``min(1, mort_rate_base(t) x mort_be_factor() x mort_be_trend(t))``: the table rate
-    stepped to the best estimate, capped at 1.  The annual rate, flat across a policy year;
-    ``mort_rate_mth`` is the monthly rate the recursion applies.
+    stepped to the best estimate, capped at 1.  A table rate of 1 is a certainty and passes
+    through as 1, whatever the factor and the trend term: nobody survives the table's
+    closing age.  The annual rate, flat across a policy year; ``mort_rate_mth`` is the
+    monthly rate the recursion applies.
     """
-    return min(1.0, mort_rate_base(t) * mort_be_factor() * mort_be_trend(t))   # noqa: F821
+    q = mort_rate_base(t)                                            # noqa: F821
+    if q >= 1.0:
+        return 1.0
+    return min(1.0, q * mort_be_factor() * mort_be_trend(t))         # noqa: F821
 
 
 def mort_rate_mth(t):
@@ -648,9 +653,13 @@ def mort_rate_tariff(t):
     """The first-order (tariff) annual death rate in month t.
 
     ``mort_load_tariff(t) x mort_rate_tariff_base(t)``: the base rate at ``age(t)`` times
-    its loading, 1 unless the product loads it.
+    its loading, 1 unless the product loads it.  A base rate of 1 is a certainty and passes
+    through as 1, whatever the loading.
     """
-    return mort_load_tariff(t) * mort_rate_tariff_base(t)            # noqa: F821
+    q = mort_rate_tariff_base(t)                                     # noqa: F821
+    if q >= 1.0:
+        return 1.0
+    return mort_load_tariff(t) * q                                   # noqa: F821
 
 
 def pols_tariff(y):

@@ -43,13 +43,13 @@ Each table has a filename Reference and a reader Cells, both on
 Reference                 Cells                              File
 ========================  =================================  ==========================
 model_point_file          data.model_point_table()           model_point_table.csv
-mort_file                 data.mort_table()                  mort_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 charge_file               data.charge_table()                charge_table.csv
 fund_scenario_file        data.fund_scenario_table()         fund_scenario_table.csv
 rentenfaktor_file         data.rentenfaktor_table()          rentenfaktor_table.csv
 prem_freq_file            data.prem_freq_table()             prem_freq_table.csv
 param_file                data.param()                       param_tariff_type.csv
+(no file)                 tables.q(), through the core       mort_table in param_tariff_type.csv
 ========================  =================================  ==========================
 
 .. rubric:: Naming
@@ -107,8 +107,8 @@ K(t)                       nar_pp(t)                        Riskiertes Kapital
 (none)                     db_pp(t)                         What a death claim actually pays
 q_I(t)                     mort_rate_tariff_mth(t)          First-order monthly death rate
 q(t)                       mort_rate_mth(t)                 Second-order monthly death rate
-(base)                     mort_rate_base(t)                mort_rate_tariff(t), base of q
-f                          mort_be_factor                   0.75; q(t) = f q_I(t)
+(base)                     mort_rate_base(t)                Table rate on the own sex, base of q
+f                          mort_be_factor                   0.75; q(t) = f x base / 12
 (table)                    lapse_rate_base(t)               Table lapse rate
 (tax)                      lapse_tax_step(t)                x 2.5 in the threshold year
 w(t)                       lapse_rate_mth(t)                Monthly lapse rate; w(n-1) = 0
@@ -184,18 +184,22 @@ in the month. An implementation can pass either one alone.
 
 .. rubric:: Two mortality bases, and the wedge between them
 
-The *Risikobeitrag* is priced on a **death** table, the first-order DAV 2008 T proxy in
-``mort_table.csv``, read through :func:`mort_rate_tariff_at_age`. The projection
-decrements on the **second-order** best estimate, ``mort_be_factor = 0.75`` times it. The
-difference is the *Risikoergebnis*, and because the factor is flat it is exactly
-``(1 - 0.75) = 25 %`` of the *Risikobeitrag* collected — a closed-form check a reader can
-do with a calculator, and the reason the ratio is flat rather than age-varying. A model
-that uses one basis for both makes the risk result identically zero and deletes the
-mechanic.
+The *Risikobeitrag* is priced on a **death** table, the first-order DAV 2008 T proxy
+``dav2008t_proxy`` of the core's table factory, which the tariff chooses in the row
+``mort_table`` of ``param_tariff_type.csv``. The tariff rate is the core's
+``mort_rate_tariff_at_age``, the unisex blend of the table's two sexes at
+``unisex_mix_male = 0.5``, the same whatever the policy's sex. The projection decrements
+on the **second-order** best estimate, ``mort_be_factor = 0.75`` times the table's rate on
+the policy's **own sex**, the core's ``mort_rate_at_age``. The difference is the
+*Risikoergebnis*. It is no fixed share of the *Risikobeitrag*: at 40 the best estimate is
+0.858 of the tariff rate for a man and 0.642 for a woman, so a man's contract keeps about
+14 % of its *Risikobeitrag* and a woman's about 36 %. (Until the switch to the table
+factory both rates stood on one unisex file and the share was exactly 25 %.) A model that
+uses one basis for both makes the risk result identically zero and deletes the mechanic.
 
 The conversion guarantee rests on a **third** basis, an annuity table (DAV 2004 R),
 reached through :func:`rentenfaktor_guar` and ``rentenfaktor_table.csv``. **No cells
-reads both files**, which is the arithmetic form of the statement that a German
+reads both tables**, which is the arithmetic form of the statement that a German
 fondsgebundene contract carries two mortality bases at once.
 
 The two monthly conversions are deliberately different, and mixing them is a listed
@@ -341,7 +345,7 @@ with the unit liability added at market value. Both are columns of :func:`result
 the identity is verifiable in the frame rather than only in prose.
 
 The shape to expect is a large negative ``net_cf`` in the inception month ``t = 0`` — on
-the anchor cell -1 966,22 €, because the 2.50 % acquisition commission and the issue
+the anchor cell -1 966,23 €, because the 2.50 % acquisition commission and the issue
 expense both fall
 there while the acquisition charge that funds them arrives over sixty months — then a
 thin positive margin that grows with the fund as the *kapitalbezogene* charge compounds
@@ -744,7 +748,7 @@ def beitragssumme_prem():
 
     Override reason: the premium is paid in instalments of ``prem_charged_inst_level_pp()``
     every ``prem_cycle()`` months, or once as an *Einmalbeitrag*,
-    products/fondsgebundene_rentenversicherung/technical-notes.md:443
+    products/fondsgebundene_rentenversicherung/technical-notes.md:453
     """
     if prem_form() == "single":
         return prem_charged_inst_level_pp()
@@ -755,7 +759,7 @@ def beitragssumme_years():
     """The premium years of the *Beitragssumme*: ``prem_term_y()``, 1 for an *Einmalbeitrag*.
 
     Override reason: the premium term is ``prem_term_y()`` years, and an *Einmalbeitrag* is
-    counted once, products/fondsgebundene_rentenversicherung/technical-notes.md:443
+    counted once, products/fondsgebundene_rentenversicherung/technical-notes.md:453
     """
     if prem_form() == "single":
         return 1
@@ -1165,53 +1169,35 @@ def db_pp(t):
 
 # ----------------------------------------  decrements
 
-def mort_rate_tariff_at_age(x):
-    """The **first-order** annual death rate at attained age x, from ``mort_table.csv``.
-
-    The tariff's own basis — a DAV 2008 T proxy, ``0.00080 x 1.10^(x - 37)`` — and the
-    price of the death cover.  This cells and :func:`rentenfaktor_guar` are the model's
-    two mortality reads, and **no cells reads both**: a German fondsgebundene contract
-    prices its death charge on a death table and its conversion guarantee on an annuity
-    table, and using one for both misprices one of them.
-
-    Override reason: the product reads its own mortality file until its switch to the
-    table factory, docs/core.md, section "The table factory"
-    """
-    return float(data.mort_table_dict()["qx_tariff"][x])             # noqa: F821
-
-
 def mort_be_factor():
     """The step from the first-order death table to the best estimate, 0.75.
 
-    Override reason: the best estimate is a flat 0.75 of the first-order death table, a
-    tariff parameter in *param_tariff_type.csv* that makes the *Risikoergebnis* a quarter of the
-    *Risikobeitrag*, products/fondsgebundene_rentenversicherung/model.md:467
+    The core's :func:`mort_rate` applies it to ``mort_rate_base(t)``, the rate of the
+    tariff's table on the policy's own sex, and passes a table rate of 1 through as 1.
+    The tariff rate is the unisex blend of the same table, so the best estimate is no
+    fixed share of it: 0.858 of the tariff rate for a man of 40, 0.642 for a woman.
+
+    Override reason: the best estimate is a flat 0.75 of the first-order death table on
+    the policy's own sex, a tariff parameter in *param_tariff_type.csv*,
+    products/fondsgebundene_rentenversicherung/model.md:473
     """
     return data.param("mort_be_factor")                              # noqa: F821
-
-
-def mort_rate_base(t):
-    """The first-order tariff rate in month t, the table the best estimate is loaded on.
-
-    ``mort_rate_tariff(t)``, the core's ``mort_rate_tariff_at_age(age(t))`` at the neutral
-    load.  The best estimate is a flat ``mort_be_factor = 0.75`` on it.  Flat is crude and is
-    stated as such; what it buys is that the *Risikoergebnis* is exactly 25 % of the
-    *Risikobeitrag* collected, which a reader can verify with a calculator.  What a
-    replacement basis must preserve is the **direction**: a first-order death table carries
-    its margin **above** best estimate.
-
-    Override reason: the best estimate is a flat factor on the tariff's own first-order
-    death table, products/fondsgebundene_rentenversicherung/technical-notes.md:299
-    """
-    return mort_rate_tariff(t)
 
 
 def mort_rate_tariff_mth(t):
     """The first-order **monthly** death rate, ``mort_rate_tariff(t) / 12``.
 
+    ``mort_rate_tariff(t)`` is the core's cell: the unisex blend of the tariff's death
+    table at the attained age, ``0.5 q_M + 0.5 q_F`` of ``dav2008t_proxy``, at the neutral
+    load, the same whatever the policy's sex, and 1 where the blend is 1.  This cells and
+    :func:`rentenfaktor_guar` stand on the model's two mortality bases, and **no cells
+    reads both**: a German fondsgebundene contract prices its death charge on a death
+    table and its conversion guarantee on an annuity table, and using one for both
+    misprices one of them.
+
     Split **linearly**, not geometrically, because the tariff's *Risikobeitrag* is
     ``q(x)/12`` times the *riskiertes Kapital* and the charge and the decrement must rest
-    on the same split.  At q = 0.00080 the two splits differ by 0.04 % — a difference that
+    on the same split.  At q = 0.001048 the two splits differ by 0.05 % — a difference that
     would land entirely in the risk result, which is exactly the quantity the model is
     trying to measure.
     """
@@ -1221,13 +1207,13 @@ def mort_rate_tariff_mth(t):
 def mort_rate_mth(t):
     """The best-estimate **monthly** death rate, ``mort_rate(t) / 12``.
 
-    The projection's decrement, and 0.00005 in policy year 1 of the anchor cell.  Split
+    The projection's decrement, and 0.000075 in policy year 1 of the anchor cell.  Split
     the same way as the tariff rate, for the reason given in
     :func:`mort_rate_tariff_mth`.
 
     Override reason: the split is linear, as the tariff's *Risikobeitrag* is ``q/12`` times
     the *riskiertes Kapital* and charge and decrement rest on the same split,
-    products/fondsgebundene_rentenversicherung/technical-notes.md:308
+    products/fondsgebundene_rentenversicherung/technical-notes.md:318
     """
     return mort_rate(t) / 12.0
 
@@ -1280,7 +1266,7 @@ def lapse_rate(t):
     projection actually uses is :func:`lapse_rate_mth`.
 
     Override reason: the table rate is stepped at the tax threshold, raised by the dynamic
-    lapse and capped at 40 %, products/fondsgebundene_rentenversicherung/technical-notes.md:336
+    lapse and capped at 40 %, products/fondsgebundene_rentenversicherung/technical-notes.md:346
     """
     return min(data.param("lapse_cap"),                              # noqa: F821
                lapse_rate_base(t) * lapse_tax_step(t) + lapse_dyn_add(t))
@@ -1301,7 +1287,7 @@ def lapse_rate_mth(t):
 
     Override reason: the rate is zero in the last projected month, whose end is
     *Rentenbeginn*, so the surviving cohort is booked as a maturity,
-    products/fondsgebundene_rentenversicherung/technical-notes.md:338
+    products/fondsgebundene_rentenversicherung/technical-notes.md:348
     """
     if t >= proj_len() - 1:
         return 0.0
@@ -1322,7 +1308,7 @@ def pols_if(t):
 
     Override reason: the recursion multiplies the survival factors, ``l(t) (1 - q^m(t)) (1 -
     w^m(t))``, another float order than the subtraction of the exits,
-    products/fondsgebundene_rentenversicherung/technical-notes.md:507
+    products/fondsgebundene_rentenversicherung/technical-notes.md:517
     """
     if t <= t_start():
         return pols_if_init()
@@ -1347,7 +1333,7 @@ def pols_if_at(t, timing):
 
     Override reason: ``"AFT_DECR"`` is the cohort after both decrements and before the
     maturity sweep, not ``pols_if(t + 1)``, which is zero after the last month,
-    products/fondsgebundene_rentenversicherung/technical-notes.md:510
+    products/fondsgebundene_rentenversicherung/technical-notes.md:520
     """
     if timing == "BEF_DECR":
         return pols_if(t)
@@ -1372,7 +1358,7 @@ def prem_inst_pp(t):
     that the three account for the whole premium.
 
     Override reason: the premium is the regular *Beitrag* plus the *Zuzahlung*,
-    products/fondsgebundene_rentenversicherung/technical-notes.md:532
+    products/fondsgebundene_rentenversicherung/technical-notes.md:542
     """
     return prem_charged_inst_pp(t) + topup_pp(t)
 
@@ -1386,7 +1372,7 @@ def charge_acq(t):
     """*Abschluss- und Vertriebskosten* collected in month t, in force.
 
     Zero for ``t >= 60`` on every model point but 9, where a *Zuzahlung* books its
-    *Zuzahlungskosten* here — ``charge_acq(120) = 312.63``.  Zero at every projected month
+    *Zuzahlungskosten* here — ``charge_acq(120) = 312.46``.  Zero at every projected month
     of an in-force cell that opens past the window.
     """
     return charge_acq_pp(t) * pols_if(t)
@@ -1414,8 +1400,10 @@ def charge_policy_fee(t):
 def charge_risk(t):
     """*Risikobeitrag* collected in month t, in force.
 
-    Priced on the first-order table.  ``sum(charge_risk) - sum(death_strain)`` is the
-    *Risikoergebnis* and equals ``(1 - mort_be_factor) x sum(charge_risk)`` exactly.
+    Priced on the first-order table, on its unisex blend.  ``sum(charge_risk) -
+    sum(death_strain)`` is the *Risikoergebnis*.  It is no fixed share of the charge, the
+    deaths occurring at ``mort_be_factor`` times the rate of the policy's own sex: 14.19 %
+    of it on the anchor, a man, and about 36 % on a woman.
     """
     return charge_risk_pp(t) * pols_if(t)
 
@@ -1461,7 +1449,7 @@ def claims(t, kind):
     Override reason: the surrender value is the *Fondsguthaben* less the *Stornoabzug*,
     formed as count times fund times ``(1 - sigma)``, another float order than an amount
     times a count, and there is no total over the kinds,
-    products/fondsgebundene_rentenversicherung/technical-notes.md:519
+    products/fondsgebundene_rentenversicherung/technical-notes.md:529
     """
     if kind == "DEATH":
         return pols_death(t) * db_pp(t)
@@ -1549,7 +1537,7 @@ def inflation_years(t):
     in the inception month ``t = 0``, rather than a factor stepping on the anniversary.
 
     Override reason: the expense inflation is applied as ``1.02^(t/12)``,
-    products/fondsgebundene_rentenversicherung/technical-notes.md:391
+    products/fondsgebundene_rentenversicherung/technical-notes.md:401
     """
     return t / 12.0
 
@@ -1579,7 +1567,7 @@ def expenses(t):
 
     Override reason: five expenses are added left to right, the issue and maintenance
     expense and the per-event expenses of a death, a surrender and an annuitisation,
-    products/fondsgebundene_rentenversicherung/model.md:400, a sum the core's three terms
+    products/fondsgebundene_rentenversicherung/model.md:405, a sum the core's three terms
     would reassociate
     """
     return (expense_acq_pp(t) * pols_if(t)
@@ -1598,7 +1586,7 @@ def comm_init(t):
 
     Override reason: the initial commission is ``comm_acq_bsum_once`` of the *Beitragssumme* on
     the count in force at ``t = 0``,
-    products/fondsgebundene_rentenversicherung/technical-notes.md:540
+    products/fondsgebundene_rentenversicherung/technical-notes.md:550
     """
     return comm_acq_pp(t) * pols_if(t)
 
@@ -1608,7 +1596,7 @@ def comm_renew(t):
     gross *Beitrag* **[std]**.
 
     Override reason: the renewal commission is a rate on each gross premium,
-    products/fondsgebundene_rentenversicherung/technical-notes.md:541
+    products/fondsgebundene_rentenversicherung/technical-notes.md:551
     """
     return (data.param("comm_renew_prem_inst")                       # noqa: F821
             * prem_charged_inst_pp(t) * pols_if(t))
@@ -1622,14 +1610,14 @@ def net_cf(t):
     and is therefore absent from this line; what the insurer earns is the charge stack and
     what it bears is its own expenses, its commission and the net amount at risk.
 
-    On the anchor cell the inception month ``t = 0`` is **-1 966,22 EUR** — the acquisition
+    On the anchor cell the inception month ``t = 0`` is **-1 966,23 EUR** — the acquisition
     commission and the issue expense both fall there while the acquisition charge that
     funds them arrives over sixty months — after which the margin turns positive and grows
     with the fund.
 
     Override reason: the non-unit cash flow is the charges and the *Stornoabzug* less
     expenses, commissions and the death strain; the premium and the benefits pass through the
-    unit fund, products/fondsgebundene_rentenversicherung/technical-notes.md:543
+    unit fund, products/fondsgebundene_rentenversicherung/technical-notes.md:553
     """
     return (charge_acq(t) + charge_admin_prem(t) + charge_admin_fund(t)
             + charge_policy_fee(t) + charge_risk(t) + stornoabzug(t)
@@ -1806,7 +1794,7 @@ def check_net_cf_tol(t):
     :func:`check_net_cf_resid` gives the signed residual of the month that failed.
 
     Override reason: the statement is checked to check_tol relative to the month's net cash
-    flow, products/fondsgebundene_rentenversicherung/technical-notes.md:655
+    flow, products/fondsgebundene_rentenversicherung/technical-notes.md:665
     """
     return data.param("check_tol") * max(1.0, abs(net_cf(t)))        # noqa: F821
 
@@ -1984,7 +1972,7 @@ def result_cf_columns():
 
     Override reason: the statement carries the premium split into the unit fund, the
     charges, the *Stornoabzug*, the unit-fund outgo and the death strain,
-    products/fondsgebundene_rentenversicherung/technical-notes.md:641-643
+    products/fondsgebundene_rentenversicherung/technical-notes.md:651-653
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821

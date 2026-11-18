@@ -66,13 +66,16 @@ Each table has a filename Reference and a reader Cells, both on
 Reference                 Cells                              File
 ========================  =================================  ==========================
 model_point_file          data.model_point_table()           model_point_table.csv
-mort_file                 data.mort_table()                  mort_table.csv
 benefit_schedule_file     data.benefit_schedule()            benefit_schedule.csv
 nvg_schedule_file         data.nvg_schedule()                nvg_schedule.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 prem_freq_file            data.prem_freq_table()             prem_freq_table.csv
 param_file                data.param()                       param_tariff_type.csv
 ========================  =================================  ==========================
+
+The death rates are no file of the product: :func:`mort_rate_at_age` reads them from the
+model-wide table factory through the ``tables`` Reference, at the table the smoker status
+of a life selects (:func:`mort_table_smoker`).
 
 .. rubric:: Naming
 
@@ -101,15 +104,17 @@ u(t)                       sum_uplift(t)                   Cumulative NVG multip
 B(t)                       benefit_pp(t)                   Versicherungssumme in year t
 (none)                     benefit_paid_pp(t)              What a death claim pays
 sigma(t)                   suicide_factor(t)               Para 161 benefit switch
-q(x) tilde                 mort_rate_at_age(s, r, x)       Shipped table rate
+q(x) tilde                 mort_rate_at_age(s, r, x)       First-order table rate
 Q(t) tilde                 mort_rate_base(t)               Own-sex rate, first death
 (unisex blend)             mort_rate_blend(t)              50/50 blend, first death
 q2(t)                      mort_rate(t)                    Second-order annual rate
 q2m(t)                     mort_rate_mth(t)                The same, applied in month t
 q1(t)                      mort_rate_tariff(t)             First-order tariff rate
-(1 + m) rf                 mort_load_tariff(t)             Loading of the tariff rate
+rf                         mort_load_tariff(t)             Loading of the tariff rate
 (unisex blend)             mort_rate_tariff_base(t)        Base of the tariff rate
 rf                         rating_factor()                 Risikozuschlag multiplier
+(none)                     mort_table_smoker(r)            Death table of a smoker status
+kappa                      mort_be_factor()                Best estimate / first order
 w(t)                       lapse_rate(t)                   Annual lapse rate of the year
 wm(t)                      lapse_rate_mth(t)               The same, applied in month t
 (table)                    lapse_rate_base(t)              Table lapse rate
@@ -173,23 +178,23 @@ actually billed. The *Nettotarif* — a commission-free tariff sold through fee-
 advice — is a third, unrelated sense and is not modelled. The bare word *Nettobeitrag* is
 never a name here, and ``prem_net_pp`` is on the library's retired-names register.
 
-The order between the first two is worth stating, because the intuition gets it backwards:
-on the shipped calibration ``prem_paid_pp(0)/phi = 733.01 < prem_net_level_pp() =
-1 084.80 < prem_pp(0)/phi = 1 275.41``. The billed premium sits **below** the
-actuarial net premium, because ``Gn`` is struck on the loaded first-order rate and 90 % of
-that loading is handed straight back as *Beitragsverrechnung*. A test asserting
-``Gn < P`` is asserting the absence of the product's central mechanic.
+The order between the first two is not fixed, and a test must not assert one: on the
+anchor cell ``prem_net_level_pp() = 671.89 < prem_paid_pp(0)/phi = 675.70 < prem_pp(0)/phi
+= 826.88``, while on model points 3, 6, 7, 10, 11 and 13 the billed premium sits **below**
+the actuarial net premium.  ``Gn`` is struck on the first-order rate, and 90 % of that
+rate's margin over the best estimate is handed straight back as *Beitragsverrechnung*,
+against which the billed premium carries the expense loadings ``Gn`` does not.
 
 **``q1`` prices and ``q2`` projects.** :func:`mort_rate_tariff` is the first-order tariff
-rate — the unisex 50/50 blend, loaded by ``mort_load_first``, the factor ``1 + m`` of the
-*Sicherheitszuschlag* ``m``, and by the *Risikozuschlag* — and it enters the premium and the reserve and **nothing else**.
-:func:`mort_rate` is the second-order rate on the policy's own sex and smoker status and
-it drives every decrement and every claim. The ratio between them is *not* ``1 + m``: it
-is ``2.25 x (unisex blend / own-sex rate)``, which on the shipped proxy is **1.6875 for a
-male and 3.375 for a female**. That asymmetry is the unisex cross-subsidy and it is a
-product fact, not a modelling artefact. Applying the *Sicherheitszuschlag* to the
-projection is the pitfall; ``claims_death`` must be invariant to ``mort_load_first``
-while ``prem_charged_inst_pp`` is not.
+rate — the unisex 50/50 blend of the first-order table of the life's smoker status, loaded
+by the *Risikozuschlag* and by nothing else — and it enters the premium and the reserve and **nothing else**.
+:func:`mort_rate` is the second-order rate, ``mort_be_factor`` = 0.75 of the table on the
+policy's own sex, and it drives every decrement and every claim. The ratio between them is
+*not* ``1 / 0.75``: it is ``(unisex blend / own-sex rate) / 0.75``, which on the anchor's
+ages is **about 1.16 for a male and 1.56 for a female**. That asymmetry is the unisex
+cross-subsidy and it is a product fact, not a modelling artefact. Projecting on the
+first-order rate is the pitfall; ``prem_charged_inst_pp`` must be invariant to
+``mort_be_factor`` while ``claims_death`` is not.
 
 **``B(t)`` is the contractual sum; what a claim pays is not always ``B(t)``.**
 :func:`benefit_pp` is ``S0 f(t) u(t)``, and :func:`benefit_paid_pp` applies the § 161
@@ -221,19 +226,19 @@ expression returns the *Einmalbeitrag*: the second premium form is this engine a
 boundary, not a second engine.
 
 The **Zahlbeitrag** follows from the surplus mechanic rather than from an assumption. The
-tariff's own mortality margin has actuarial value ``(m/(1+m)) A`` at issue, and the
+tariff's own mortality margin has actuarial value ``(1 - kappa) A`` at issue, and the
 declared *Beitragsverrechnungssatz* returns ``surplus_share`` of it over the paying term::
 
-    v_d = min( v_max, decl_scale surplus_share (m/(1+m)) A / (G ae) )
-        = decl_scale surplus_share (m/(1+m)) [ 1 - beta - (gamma Gamma + z k G)/(G ae) ]
+    v_d = min( v_max, decl_scale surplus_share (1 - kappa) A / (G ae) )
+        = decl_scale surplus_share (1 - kappa) [ 1 - beta - (gamma Gamma + z k G)/(G ae) ]
 
 — the surplus share, times the margin fraction of the risk element, times the risk share
-of the gross premium. On the anchor cell the bracket is 0.8506, so ``v_d = 0.42527476``
-and ``Zahlbeitrag / Bruttobeitrag = 0.574725``, reproducing the research file's frozen
-[std] ratio **from the mechanic rather than by assumption**. Raising the
-*Sicherheitszuschlag* raises ``G`` and ``v_d`` together, which is why the *Bruttobeitrag*
-moves far more than the *Zahlbeitrag* — the most useful single result in this product, and
-the reason the billed premium is derived.
+of the gross premium, with ``kappa`` the row ``mort_be_factor`` = 0.75, so that the margin
+fraction is 0.25. On the anchor cell the bracket is 0.8126, so ``v_d = 0.18282785`` and
+``Zahlbeitrag / Bruttobeitrag = 0.817172``, a ratio that follows **from the mechanic
+rather than by assumption**. ``mort_be_factor`` moves ``v_d`` and the claims and leaves
+``G`` where it is: the *Bruttobeitrag* stands on the first-order tables alone — the reason
+the billed premium is derived.
 
 ``surplus_form = keine`` is the § 153-excluded non-participating tariff: ``v_d`` is zero
 and the billed premium *is* the guaranteed one, which is model point 12.
@@ -276,7 +281,7 @@ every model point. The 30-day § 152 *Widerrufsfrist* sits inside the year-one l
 What is **not** true is that nothing accumulates. A level premium charged against a rising
 death rate necessarily overcharges early and undercharges late, and the difference is a
 *Deckungskapital* that builds, peaks near the middle of the term and runs off to exactly
-zero at expiry — on the anchor cell it peaks at 7 553,29 €, 2,5 % of the sum insured, at
+zero at expiry — on the anchor cell it peaks at 4 557,39 €, 1,5 % of the sum insured, at
 ``t = 15``. :func:`res_pp_at` publishes it and :func:`check_res_roll_fwd` asserts the
 Thiele recursion, ``res_pp_at(0) = 0`` by the equivalence and ``res_pp_at(n) = 0`` by
 exhaustion. **It is a pricing diagnostic and not a balance-sheet provision**: it is net,
@@ -301,10 +306,10 @@ it in the formula is what keeps the two readable apart.
 No cash flow moves either way — the split only decides how the closure identity divides
 between the three exits — but the identity itself is load-bearing, and
 :func:`check_pols_roll_fwd` asserts that they account for the whole cohort:
-``0.03261764`` deaths, ``0.53597922`` lapses and ``0.43140314`` expiries on the anchor
+``0.02919630`` deaths, ``0.53663698`` lapses and ``0.43416672`` expiries on the anchor
 cell, summing to ``pols_if_init() = 1`` exactly. The expiring cohort is the annual-step
 model's own figure to the last digit, because it is a survivorship the two grids share;
-the **split between deaths and lapses** moved by 0.00044, which is the one thing
+the **split between deaths and lapses** moved by 0.00039, which is the one thing
 interleaving the two decrements monthly genuinely changes — on an annual grid a year's
 lapses are taken from a block that has already borne the whole year's mortality, and on a
 monthly one each decrement erodes the exposure the other works on.
@@ -320,16 +325,16 @@ Both are columns of :func:`result_cf`, so the identity is verifiable in the fram
 than only in prose.
 
 The shape to expect on the anchor, read on :func:`result_cf_annual`, is a year-one strain
-of -351,88 €, the acquisition cost and the initial commission together exceeding the first
-year's billed premium; thin positive years while the level premium runs ahead of the
+of -123,82 €, the year's claims and maintenance taking more than the first year's billed
+premium leaves after the acquisition cost and the initial commission; thin positive years while the level premium runs ahead of the
 natural risk premium; and a crossover in **policy year 14** after which the rising death
 rate takes the year negative. Within policy year 1 the monthly frame shows the shape the
-annual grid could not: +733,01 € of premium against 826,64 € of acquisition cost and
-commission in month 0, a net -108,90 €, then eleven months of about -22 € each as claims
-and maintenance accrue against no further premium. The **total** is -644,78 € on model
+annual grid could not: +675,70 € of premium against 544,58 € of acquisition cost and
+commission in month 0, a net +116,13 €, then eleven months of about -22 € each as claims
+and maintenance accrue against no further premium. The **total** is -245,72 € on model
 point 1 and strongly positive on model point 2, and the difference is the unisex
 cross-subsidy: the tariff prices a 50/50 blend, the declaration returns 90 % of the margin
-measured against that blend, and a male life then claims a third more than the tariff's
+measured against that blend, and a male life then claims about 14 % more than the tariff's
 own best estimate while paying the same premium as a female one. That is the product
 working as the law requires it to, not a defect.
 
@@ -363,13 +368,13 @@ rather than inherited from the frame:
 What the finer grid does resolve is everything that is **not** a contract term. The
 *Zahlweise* is now real: a modal *Zahlbeitrag* is collected in instalments on its own
 cycle (:func:`prem_inst_pp`) instead of whole at the anniversary, so the four
-fractionated model points collect 0,95 %-1,67 % less over the run — model point 4's
-`monthly` premium income falls from 4 471,82 € to 4 400,26 € — which is the
+fractionated model points collect 0,94 %-1,65 % less over the run — model point 4's
+`monthly` premium income falls from 4 103,62 € to 4 038,47 € — which is the
 premium-cessation rule biting where an annual grid could not express it, and the
 *Ratenzahlungszuschlag* at last charging for a service the model renders. Claims fall in
 the month of claim rather than at the year end, so the anchor's death claims fall from
-9 899,20 € to 9 768,05 €. Maintenance accrues a twelfth a month on the in-force of that
-month rather than of the anniversary, so expense falls from 2 396,51 € to 2 367,66 €. And
+8 860,00 € to 8 742,22 €. Maintenance accrues a twelfth a month on the in-force of that
+month rather than of the anniversary, so expense falls from 2 314,24 € to 2 285,57 €. And
 § 168 VVG's *Versicherungsperiode*, which follows the *Zahlweise* and which the annual
 grid could only book at anniversaries and call an approximation, is simply expressed.
 
@@ -408,8 +413,8 @@ def smoker_codes():
     are aggregate-rated.  It enters both mortality bases, so a smoker pays more *and* is
     expected to claim more.
 
-    Override reason: the product codes a smoker as ``R`` (*Raucher*), as its
-    ``mort_table.csv`` does, products/risikolebensversicherung/technical-notes.md:162
+    Override reason: the product codes a smoker as ``R`` (*Raucher*), the status that
+    selects its death table, products/risikolebensversicherung/technical-notes.md:162
     """
     return ("N", "R")
 
@@ -490,9 +495,21 @@ def smoker2():
     return v
 
 
-def mort_table_id():
-    """The key into *mort_table.csv*; one table ships, ``dav2008t_proxy``."""
-    return model_point()["mort_table_id"]
+def mort_table_smoker(smoker_code):
+    """The death table of a life by its smoker status, a table of the table factory.
+
+    The smoker status of a life selects its table, it is no factor on one: ``N`` reads the
+    table the row ``mort_nr_table`` of *param_tariff_type.csv* names, the proxy of
+    DAV 2008 T NR, and ``R`` the table of ``mort_r_table``, the proxy of DAV 2008 T R, at
+    2.2 times the non-smoker rate at every age below the cap.  The two lives of a
+    *verbundene Leben* contract each read the table of their own status.  Any other code
+    raises ``ValueError``; :func:`smoker` and :func:`smoker2` admit none.
+    """
+    if smoker_code == "N":
+        return data.param("mort_nr_table")                           # noqa: F821
+    if smoker_code == "R":
+        return data.param("mort_r_table")                            # noqa: F821
+    raise ValueError(f"smoker status {smoker_code!r} is neither 'N' nor 'R'")
 
 
 def issue_date():
@@ -523,19 +540,35 @@ def age2(t):
 
 
 def mort_rate_at_age(sex_code, smoker_code, x):
-    """q(x) tilde: the shipped second-order table rate for one life at one attained age.
+    """q(x) tilde: the first-order table rate for one life at one attained age.
 
-    A lookup into *mort_table.csv* keyed by ``table_id``, sex, smoker status and attained
-    age, and nothing else — no loading, no rating, no combination across lives.  Both
-    orders and both lives are built from this one cells, which is what keeps the model's
-    unsourced mortality level to a single number.  A **[std]** proxy for DAV 2008 T; see
-    the ``Data`` docstring for the anchors a replacement must preserve.
+    ``tables.q`` at the table of the life's smoker status, :func:`mort_table_smoker`, for
+    ``sex_code`` at the attained age ``x``, and nothing else — no factor, no rating, no
+    combination across lives.  Both orders and both lives are built from this one cell,
+    the product's one read of the table factory.  The tables are **[std]** proxies of
+    DAV 2008 T NR and DAV 2008 T R, period tables without selection over the ages 0 to
+    120; the age is not clamped, and an age outside them raises in the factory.
 
-    Override reason: the product reads its own mortality file until its switch to the
-    table factory, docs/core.md, section "The table factory"
+    Override reason: the table depends on the life, the smoker status of each of up to two
+    lives selecting one of two tables, so the rate takes the sex and the status of a life
+    where the core reads one table on the model point's sex, docs/core.md, section "The
+    table factory"
     """
-    return float(data.mort_table_dict()["mort_rate"][                # noqa: F821
-        (mort_table_id(), sex_code, smoker_code, int(x))])
+    return tables.q(mort_table_smoker(smoker_code), sex_code, x)     # noqa: F821
+
+
+def mort_be_factor():
+    """The step from the first-order death tables to the best estimate, 0.75.
+
+    The row ``mort_be_factor`` of *param_tariff_type.csv*.  It stands on the table rate of
+    the own sex in :func:`mort_rate`, and its complement ``1 - mort_be_factor`` is the
+    margin of the first-order tables over the best estimate, the share of the death
+    benefits' tariff value :func:`beitragsverrechnung_rate` strikes the declaration on.
+
+    Override reason: the best estimate is 0.75 of the first-order death tables, a tariff
+    parameter in *param_tariff_type.csv*, products/risikolebensversicherung/model.md:479
+    """
+    return data.param("mort_be_factor")                              # noqa: F821
 
 
 def mort_rate_base(t):
@@ -549,7 +582,9 @@ def mort_rate_base(t):
     which is the first-death rate of two independent lives.  Combining *after* loading
     inflates the cross term and is a listed pitfall.  The independence assumption
     understates the true first-death rate for a couple sharing a household, a vehicle and
-    a lifestyle, and no German figure bounds the understatement.
+    a lifestyle, and no German figure bounds the understatement.  Where the table rate of
+    either life is 1 the combined rate is 1, set and not computed, so that the certainty
+    reaches :func:`mort_rate` exactly.
 
     Override reason: the table rate is read on sex and smoker status, and for two lives
     combined to the first-death rate before loading,
@@ -559,26 +594,30 @@ def mort_rate_base(t):
     if lives() == 1:
         return q_a
     q_b = mort_rate_at_age(sex(), smoker2(), age2(t))
+    if q_a >= 1.0 or q_b >= 1.0:
+        return 1.0
     return q_a + q_b - q_a * q_b
 
 
 def mort_rate_blend(t):
     """The unisex 50/50 blend of the sex-distinct table rates — the **tariff's** life.
 
-    ``unisex_mix_male()``, the core's, weights the male table and its complement the female
-    one, and for ``lives = 2`` the two blends are combined by the same first-death rule as
+    The core's ``unisex_blend`` weights the male table by ``unisex_mix_male()`` and the
+    female one by its complement, each life at the table of its own smoker status, and for
+    ``lives = 2`` the two blends are combined by the same first-death rule as
     :func:`mort_rate_base`, again **before** any loading.  This is what a German tariff is
     priced on, because sex may not enter the premium while the underlying tables remain
     sex-distinct.  The mixing ratio is proprietary at every carrier and the 50/50 here is
     **[std]**.
     """
-    w_m = unisex_mix_male()
-    q_a = (w_m * mort_rate_at_age("M", smoker(), age(t))
-           + (1.0 - w_m) * mort_rate_at_age("F", smoker(), age(t)))
+    q_a = unisex_blend(mort_rate_at_age("M", smoker(), age(t)),
+                       mort_rate_at_age("F", smoker(), age(t)))
     if lives() == 1:
         return q_a
-    q_b = (w_m * mort_rate_at_age("M", smoker2(), age2(t))
-           + (1.0 - w_m) * mort_rate_at_age("F", smoker2(), age2(t)))
+    q_b = unisex_blend(mort_rate_at_age("M", smoker2(), age2(t)),
+                       mort_rate_at_age("F", smoker2(), age2(t)))
+    if q_a >= 1.0 or q_b >= 1.0:
+        return 1.0
     return q_a + q_b - q_a * q_b
 
 
@@ -601,16 +640,18 @@ def sel_lapse_factor(t):
 def mort_rate(t):
     """q2(t): the **second-order** annual death rate actually projected.
 
-    ``mort_be_factor x rating_factor x mort_rate_base(t) x sel_lapse_factor(t)`` — the
-    policy's own sex and smoker status, rated, first-death where there are two lives, and
-    loaded for selective lapse where that module is on.  This drives every decrement and
-    every claim, and the *Sicherheitszuschlag* must not appear in it: ``claims_death`` is
-    invariant to ``mort_load_first`` while ``prem_charged_inst_pp`` is not, and an
-    implementation that projects on ``q1`` overstates claims by a factor of about two.
+    ``min(1, mort_be_factor x rating_factor x mort_rate_base(t) x sel_lapse_factor(t))`` —
+    the policy's own sex and smoker status, stepped from the first-order table to the best
+    estimate, rated, first-death where there are two lives, and loaded for selective lapse
+    where that module is on.  This drives every decrement and every claim; the premium
+    does not read it: ``prem_charged_inst_pp`` is invariant to ``mort_be_factor`` while
+    ``claims_death`` is not, and an implementation that projects on ``q1`` overstates the
+    anchor's claims by about a sixth.
 
-    ``mort_be_factor`` is 1.00, so the shipped proxy **is** the best estimate and there is
-    exactly one unsourced mortality level in the model rather than two stacked on each
-    other.  A user with experience data should move this rather than editing the table.
+    ``mort_be_factor`` is 0.75, the row of *param_tariff_type.csv*.  A table rate of 1 is a
+    certainty, the closing age of a table or its cap, and passes through as 1 whatever the
+    factors: nobody survives it.  A user with experience data should move the factor
+    rather than a table, which every tariff that reads it shares.
 
     It is the **annual** rate of the policy year containing month ``t`` — the vector the
     technical notes tabulate — and is flat across that year's twelve months, the attained
@@ -618,34 +659,33 @@ def mort_rate(t):
     :func:`mort_rate_mth`.
 
     Override reason: the second-order rate carries the *Risikozuschlag* and the
-    selective-lapse loading, products/risikolebensversicherung/model.md:496
+    selective-lapse loading beside the best-estimate factor,
+    products/risikolebensversicherung/model.md:496
     """
-    return (mort_be_factor() * rating_factor()
-            * mort_rate_base(t) * sel_lapse_factor(t))
+    q = mort_rate_base(t)
+    if q >= 1.0:
+        return 1.0
+    return min(1.0, mort_be_factor() * rating_factor() * q * sel_lapse_factor(t))
 
 
 def mort_load_tariff(t):
-    """The loading of the first-order tariff rate, ``mort_load_first x rf = (1 + m) x rf``.
+    """The loading of the first-order tariff rate: the *Risikozuschlag* ``rf`` alone.
 
     q1(t), :func:`mort_rate_tariff`, is this times the unisex blend, its base.  It prices
     the *Bruttobeitrag* and the first-order *Deckungskapital* and enters nothing else.  The
-    *Sicherheitszuschlag* ``m = 1.25``, the row ``mort_load_first = 1 + m = 2.25`` of
-    *param_tariff_type.csv*, is **[std]**: the DAV *Richtlinie* regulates the
-    **procedure** for setting the *Sicherheitszuschläge*, not the level, which is not
-    public, and the argued range is 1.0 to 1.5.  It is the single parameter that sets the
-    *Brutto* / *Zahlbeitrag* spread — and, because 90 % of the extra margin is returned as
-    *Beitragsverrechnung*, the parameter with the widest uncertainty has the narrowest
-    effect on the billed premium.
+    tables are first order as they stand, so no *Sicherheitszuschlag* is put on them: the
+    margin of the tariff is the step from the table to the best estimate,
+    ``1 - mort_be_factor``, of which 90 % is returned as *Beitragsverrechnung*.
 
-    ``mort_rate_tariff(t) / mort_rate(t)`` is **not** ``1 + m``.  It is
-    ``(1 + m) x (blend / own-sex rate)``, which on the shipped proxy is 1.6875 for a male
-    and 3.375 for a female.  That is the unisex cross-subsidy, and expecting 2.25 for both is a
-    listed pitfall.
+    ``mort_rate_tariff(t) / mort_rate(t)`` is **not** ``1 / mort_be_factor``.  It is
+    ``(blend / own-sex rate) / mort_be_factor``, which on the anchor's ages is about 1.16
+    for a male and 1.56 for a female.  That is the unisex cross-subsidy, and expecting
+    1.33 for both is the pitfall.
 
-    Override reason: the tariff rate is the unisex blend loaded by ``1 + m`` and the rating
-    factor, products/risikolebensversicherung/technical-notes.md:231
+    Override reason: the tariff rate is the unisex blend loaded by the rating factor,
+    products/risikolebensversicherung/technical-notes.md:231
     """
-    return data.param("mort_load_first") * rating_factor()           # noqa: F821
+    return rating_factor()
 
 
 def mort_rate_tariff_base(t):
@@ -878,7 +918,7 @@ def tariff_schedule(y):
     q1(y) B(y)`` over the whole cover period, ``y = 0 .. n - 1``, benefits paid at the end
     of the **policy year** of death.  It is the quantity the whole product turns on: the
     *Bruttobeitrag* is built from it and the *Beitragsverrechnungssatz* returns
-    ``surplus_share`` of ``m/(1+m)`` of it.  The end-of-year benefit timing is the
+    ``surplus_share`` of ``1 - mort_be_factor`` of it.  The end-of-year benefit timing is the
     **tariff's** convention and is not the projection's: the cash flow statement pays a
     death claim at the end of the month of death.  The same schedule weights the
     sum-exposure annuity :func:`tariff_term_annuity`, the base of the gamma loading.
@@ -926,12 +966,12 @@ def beitragsverrechnung_rate():
     """v_d: the declared *Beitragsverrechnungssatz*, struck once at issue.
 
     **Derived from the surplus mechanic, not assumed.**  The tariff's own mortality margin
-    in year ``t`` is ``(q1 - q1/(1+m)) B = (m/(1+m)) q1 B`` per in-force policy, so its
-    actuarial value at issue is exactly ``(m/(1+m)) A``, with ``1 + m`` the row
-    ``mort_load_first`` and so ``m/(1+m) = (mort_load_first - 1) / mort_load_first``.  The
+    in year ``t`` is ``(q1 - kappa q1) B = (1 - kappa) q1 B`` per in-force policy, so its
+    actuarial value at issue is exactly ``(1 - kappa) A``, with ``kappa`` the best-estimate
+    factor :func:`mort_be_factor`, 0.75, and so a margin share of 0.25.  The
     declaration returns ``surplus_share`` of it over the paying term::
 
-        v_d = min( v_max, decl_scale surplus_share (m/(1+m)) A / (G ae) )
+        v_d = min( v_max, decl_scale surplus_share (1 - kappa) A / (G ae) )
 
     ``surplus_share = 0.90`` is the **MindZV minimum allocation from the
     *Risikoergebnis***, and modelling the statutory minimum is the conservative choice for
@@ -939,18 +979,17 @@ def beitragsverrechnung_rate():
     publishes a declaration for this product.  ``decl_scale = 1.00`` is the stress lever:
     setting it to 0 raises the billed premium to the guaranteed one at every ``t``, with
     no change to any claim, no § 163 procedure, no *Treuhänder* and no policyholder
-    remedy.  On the anchor that is a 74 % increase in the bill for no change in cover, and
+    remedy.  On the anchor that is a 22 % increase in the bill for no change in cover, and
     it is the product's largest policyholder risk.  ``v_max = 0.95`` binds nowhere in the
-    shipped model points; it exists so that an extreme ``m`` cannot drive the billed
+    shipped model points; it exists so that an extreme margin cannot drive the billed
     premium negative and so that :func:`check_prem_split` has a stated domain.
 
     Zero where ``surplus_form = keine``, the § 153-excluded non-participating tariff.
     """
     if surplus_form() == "keine":
         return 0.0
-    load = data.param("mort_load_first")                             # noqa: F821
     raw = (data.param("decl_scale") * data.param("surplus_share")    # noqa: F821
-           * ((load - 1.0) / load)
+           * (1.0 - mort_be_factor())
            * tariff_benefit_pv()
            / (prem_gross_level_pp() * tariff_annuity()))
     return min(data.param("v_max"), raw)                             # noqa: F821
@@ -1058,7 +1097,7 @@ def prem_inst_pp(t):
 
     ``prem_charged_inst_pp(t) - prem_rebate_inst_pp(t)``, formed as the difference so that
     the split identity holds instalment by instalment as well as year by year.  An annual
-    payer therefore collects the whole 733,01 € of the anchor cell in the first month of
+    payer therefore collects the whole 675,70 € of the anchor cell in the first month of
     each policy year and nothing in the other eleven; model point 4 is the contrast,
     twelve instalments on a `monthly` *Zahlweise*.
 
@@ -1096,7 +1135,7 @@ def res_pp_at(y, timing):
     against the policy year of each month, so it is flat across that year's twelve rows.
 
     Zero at ``y = 0`` by the equivalence, zero at ``y = n`` by exhaustion, and strictly
-    positive in between — on the anchor cell it peaks at 7 553,29 €, 2,5 % of the sum
+    positive in between — on the anchor cell it peaks at 4 557,39 €, 1,5 % of the sum
     insured, at ``y = 15``.  **That it exists at all is the point.**  An RLV has no
     *Sparanteil* in the endowment's sense, but a level premium charged against a rising
     death rate necessarily overcharges early and undercharges late, and the difference has

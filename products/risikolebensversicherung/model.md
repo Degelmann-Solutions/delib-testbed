@@ -86,14 +86,14 @@ to the year's rate and `pols_if` at every anniversary is the annual model's own 
 values are unchanged by the monthly frame: the readers map through `policy_year(t)`. In
 `model_point_table.csv`, `duration_init` is an elapsed count of **years** and `policy_term` and
 `prem_term` are counts of years; no column there is a point on the frame's time axis, so no
-model-point value moves either. `mort_table.csv` is keyed on attained age, which is not a
-time index, and its rates stay **annual**. **No CSV value changed** in the move to the
+model-point value moves either. The death tables of the table factory are keyed on attained age, which is not a
+time index, and their rates stay **annual**. **No CSV value changed** in the move to the
 monthly grid, and none changed in the earlier move to the 0-based frame. Phase 3 appended the model-point column `pols_if_init`, the policy count a point stands for and the opening value of `pols_if`, 1.0 on every point.
 
 The model and both its Spaces carry
 docstrings: `model.Projection.doc` holds the full mapping between the notes' actuarial
-symbols and the cells names, and `model.Data.doc` says what each input file is and, for
-the mortality table, **what it is not** and what a replacement must preserve.
+symbols and the cells names, and `model.Data.doc` says what each input file is. The death
+rates are no input file: they are two tables of the core's table factory, named in `param_tariff_type.csv`.
 
 ## The customer is not billed the premium the contract guarantees
 
@@ -104,23 +104,23 @@ equivalence on tariff survivorship — mortality only, no lapse — so it is acy
 respect to everything behavioural, and it is what the contract guarantees: the maximum the
 policyholder can ever be required to pay, unchanged for the term [R6] [REG-R27]. The
 ***Zahlbeitrag*** then follows from the surplus mechanic rather than from an assumption —
-the tariff's own mortality margin has actuarial value `(m/(1+m))·A` at issue, and the
+the margin of the first-order tables over the best estimate has actuarial value `(1 − f)·A` at issue, `f` being `mort_be_factor` = 0.75, and the
 declared *Beitragsverrechnungssatz* returns `surplus_share` of it over the paying term:
 
 ```
 G   = ( A + γ·Γ ) / ( (1 − β)·ä − z·k )
-    = ( 23 472,374330 + 0,00030 × 6 491 248,23 ) / ( 0,95 × 21,6374941 − 0,025 × 25 )
-    = 1 275,411882 €
+    = ( 14 688,968504 + 0,00030 × 6 558 620,69 ) / ( 0,95 × 21,8620690 − 0,025 × 25 )
+    = 826,875656 €
 
-v_d = min( v_max, decl_scale · surplus_share · (m/(1+m)) · A / (G·ä) )
-    = decl_scale · surplus_share · (m/(1+m)) · [ 1 − β − (γ·Γ + z·k·G)/(G·ä) ]
-    = 1,00 × 0,90 × 0,5556 × 0,85054952 = 0,42527476
+v_d = min( v_max, decl_scale · surplus_share · (1 − f) · A / (G·ä) )
+    = decl_scale · surplus_share · (1 − f) · [ 1 − β − (γ·Γ + z·k·G)/(G·ä) ]
+    = 1,00 × 0,90 × 0,25 × 0,81256822 = 0,18282785
 ```
 
-— the surplus share, times the margin fraction of the risk element, times the risk share
-of the gross premium. So `Zahlbeitrag / Bruttobeitrag = 0,574725` on the anchor,
-reproducing the research file's frozen **[std]** 0.57 **from the mechanic rather than by
-assumption**. The model publishes `premiums`, the billed premium inside `net_cf`; the guaranteed
+— the surplus share, times the margin share `1 − f` of the risk element, times the risk share
+of the gross premium. So `Zahlbeitrag / Bruttobeitrag = 0,817172` on the anchor,
+derived **from the mechanic rather than set by assumption**: from the margin share 0.25 and
+the MindZV 90 %, not from the research file's **[std]** 0.57. The model publishes `premiums`, the billed premium inside `net_cf`; the guaranteed
 instalment `prem_charged_inst_pp` and the rebate `prem_rebate_inst_pp` between them are cells.
 
 **What the model deliberately does not do here.** It does not treat `v` as a free input,
@@ -130,8 +130,8 @@ carrying a different minimum share and no basis for splitting a German term tari
 expense result having been established [R9] — the cost result emerges in `net_cf` and
 stays there; and it does not implement § 163 VVG's *Treuhänder* adjustment, essentially
 never used on this product [R6] [unverified]. The lever that matters is `decl_scale`:
-setting it to **0** raises `premiums` to the guaranteed stream at every `t` — 21 303,65 € against
-12 243,75 €, a **74,0 %** increase in the bill with no change to any benefit, decrement or
+setting it to **0** raises `premiums` to the guaranteed stream at every `t` — 13 830,34 € against
+11 301,77 €, a **22,4 %** increase in the bill with no change to any benefit, decrement or
 guaranteed term, and so with no § 163 procedure, no *Treuhänder* and no remedy. That is
 the largest policyholder risk here, and it is a one-row change in `param_tariff_type.csv`. `surplus_form =
 keine` is the § 153-excluded non-participating tariff [R5]: `v_d` is zero and the billed
@@ -150,9 +150,9 @@ of the largest single sources of unexplained rate spread between German carriers
 own sex, so the cross-subsidy appears in the cash flows instead of in the price. Model
 points 1 and 2 differ **only** in `sex`: they pay the same premium to the last bit,
 `beitragsverrechnung_rate()` is identical, and their `claims_death` totals stand at
-9 899,20 € against 5 009,05 €. The ratio `mort_rate_tariff / mort_rate` is **not** `1 + m`:
-it is `2.25 × (unisex blend / own-sex rate)`, which on the shipped proxy is **1.6875 for a
-male and 3.375 for a female**, the blend being `0.75 × q̃(M)`. **What the model does not
+8 742,22 € against 6 587,59 €. The ratio `mort_rate_tariff / mort_rate` is **no constant**:
+it is `unisex blend / (0.75 × own-sex rate)`, which over the anchor's ages 35 to 59 rises **from 1.164 to 1.167 for a
+male and falls from 1.560 to 1.555 for a female**, the best estimate being 0.75 of the own-sex table rate. **What the model does not
 do** is price on `sex`, or carry a carrier-specific mixing ratio, none being public;
 `unisex_mix_male` is a row of `param_tariff_type.csv` so a user with a real new-business mix can move it in one
 place, and moving it changes every premium and no claim.
@@ -187,7 +187,7 @@ not a provenance one**.
 What is **not** true is that nothing accumulates, and this is the modelling error the
 product invites. A level premium charged against a rising death rate overcharges early and
 undercharges late, and the difference is a *Deckungskapital* that peaks near the middle of
-the term and runs off to exactly zero at expiry — **7 553,29 €**, 2,52 % of the sum
+the term and runs off to exactly zero at expiry — **4 557,39 €**, 1,52 % of the sum
 insured, in **policy year 15**. The reserve takes a policy-year argument and stays an annual
 construction on the monthly grid, so every figure here is unmoved by the conversion.
 `check_res_roll_fwd()` asserts the Thiele recursion with
@@ -200,7 +200,7 @@ requires the prospective method and says nothing about prudent margins, those be
 § 5 Abs. 1's "Die Ableitung von Rechnungsgrundlagen auf der Basis eines besten Schätzwertes
 genügt nicht" [R21] [R10]
 [REG-R54]. `res_zill_pp_at` subtracts the unamortised Zillmer balance and opens at
-`−z·k·G = −797,132426 €` — negative from the first day, which is what *Zillmerung* on a
+`−z·k·G = −516,797285 €` — negative from the first day, which is what *Zillmerung* on a
 contract with almost no reserve looks like [R10]. The *Nullstellung* question — whether a
 negative individual reserve must be floored for balance-sheet purposes — was not
 established, and no reserve of any kind enters `result_cf()`.
@@ -266,8 +266,8 @@ death — a `lives = 2` variant on the same chassis, not a second engine, and **
 base run** (model point 10 exercises it). The two lives are combined at **table level,
 before any loading**, on an independence assumption **[std]**:
 `Q̃ = q̃_A + q̃_B − q̃_A·q̃_B`, and the same combination is applied to the two unisex blends
-before `(1 + m)·rf`. Combining *after* loading inflates the cross term; on point 10 the
-combined rate is 0,0015156941 against a naive sum of 0,0015162642. The assumption
+before the rating factor `rf`. Combining *after* loading inflates the cross term; on point 10 the
+combined rate is 0,0019262044 against a naive sum of 0,0019271273. The assumption
 **understates** the true first-death rate for a couple sharing a household, a vehicle and
 a lifestyle, and no German figure bounds the understatement.
 
@@ -288,21 +288,21 @@ table's own row for policy year `n` still reads 3 %: the zero is a property of t
 policy year, not of the assumption.
 
 No cash flow moves either way, but the closure identity is load-bearing: on the anchor it
-divides **0,03261764** deaths, **0,53597922** lapses and **0,43140314** expiries, summing
+divides **0,02919630** deaths, **0,53663698** lapses and **0,43416672** expiries, summing
 to `pols_if_init() = 1` exactly with `pols_if(300) = 0` — which is what lets `result_cf()`
 stop at `proj_len() − 1 = 299` with nothing left over. The expiring cohort is the annual-step
-model's own figure to the last digit; the split between deaths and lapses moved by 0,00044,
+model's own figure to the last digit; the split between deaths and lapses moved by 0,00039,
 which is the one thing interleaving the two decrements monthly genuinely changes.
 
 ## Inputs are external files
 
-The seven input CSVs, the tariff-type file `param_tariff_type.csv` among them (the house-wide, technical and statutory items, `suicide_years`, the check tolerance `check_tol` and the expense inflation `expense_infl` among them, are in the core file `core/Core/Data/param_core.csv`; `uv run python tools/params.py risikolebensversicherung` lists every item the tariff reads with its value, layer, basis and provenance), live **in this directory**, beside `run.py` — not inside the model
+The six input CSVs, the tariff-type file `param_tariff_type.csv` among them (the house-wide, technical and statutory items, `suicide_years`, the check tolerance `check_tol` and the expense inflation `expense_infl` among them, are in the core file `core/Core/Data/param_core.csv`; `uv run python tools/params.py risikolebensversicherung` lists every item the tariff reads with its value, layer, basis and provenance), live **in this directory**, beside `run.py` — not inside the model
 folder. `RLV_DE_S/` holds nothing but formulas:
 
 ```
 products/risikolebensversicherung/
-  model_point_table.csv  mort_table.csv  benefit_schedule.csv     <- inputs live here
-  nvg_schedule.csv       lapse_table.csv prem_freq_table.csv     param_tariff_type.csv
+  model_point_table.csv  benefit_schedule.csv  nvg_schedule.csv   <- inputs live here
+  lapse_table.csv        prem_freq_table.csv   param_tariff_type.csv
   run.py  model.md  product-spec.md  technical-notes.md  sources.md
   RLV_DE_S/                    <- formulas only
     __init__.py  _system.json  Data/__init__.py  Projection/__init__.py
@@ -325,7 +325,7 @@ projected. The conventions suite counts the reads and asserts the *set* against
 | Reference | Cells | File |
 |---|---|---|
 | `model_point_file` | `model_point_table()` | `model_point_table.csv` |
-| `mort_file` | `mort_table()` | `mort_table.csv` |
+| (no file) | (`Projection.mort_table_smoker()`, reading the table factory through the Reference `tables`) | `mort_nr_table`, `mort_r_table` in `param_tariff_type.csv` |
 | `benefit_schedule_file` | `benefit_schedule()` | `benefit_schedule.csv` |
 | `nvg_schedule_file` | `nvg_schedule()` | `nvg_schedule.csv` |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` |
@@ -334,7 +334,7 @@ projected. The conventions suite counts the reads and asserts the *set* against
 
 **The trade-off:** the model is not portable on its own — copy `RLV_DE_S/` without the
 CSVs and it reads fine, then fails on first evaluation. What you gain is that a diff shows
-logic changes only, and an input can be swapped in place: point `Data.mort_file` at
+logic changes only, and an input can be swapped in place: point `Data.lapse_file` at
 another same-schema file and the projection follows, with no formula change. Tests cover
 both halves of that bargain. **Every file but the model point table carries a per-row
 `provenance` column** — this library's second ruling, machine-checked, in the same `[S#]` /
@@ -344,7 +344,7 @@ single exemption, a model point being a *configuration* rather than an assumptio
 | File | Contents | Provenance |
 |---|---|---|
 | `model_point_table.csv` | Fourteen model points. **Point 1 is the worked-example anchor cell.** The rest cover both premium forms, all four *Zahlweisen*, all three sum shapes, an in-force point opening at `t = 144`, a *Nachversicherungsgarantie* with two increments, *verbundene Leben*, a *Risikozuschlag* on an impaired smoker, the § 153-excluded tariff, an *abgekürzte Beitragszahlungsdauer*, and two boundary cells | **[std]**; exempt from the provenance rule |
-| `mort_table.csv` | Second-order annual death rates by `table_id`, `sex`, `smoker` and attained age 18–80 | **[std]** Gompertz proxy `base(sex) × smoker_mult × 1.095^(age−30)`, `base(M) = 0.00040`, `base(F) = 0.00020`, `smoker_mult(R) = 2.20`. **DAV 2008 T / T NR / T R are cited by name and never shipped** [R12] [REG-R48]. The three anchors a replacement must preserve: the 50/50 non-smoker blend `0.00030 × 1.095^(x−30)`, the female-to-male ratio 0.50, and the smoker multiplier 2.20 |
+| (no file) the death tables | **First-order** annual death rates by sex and attained age 0–120, one table by smoker status: `dav2008t_nr_proxy` (non-smokers) and `dav2008t_r_proxy` (smokers) of the core's table factory (`docs/core.md`, "The table factory"), the tariff's choice in the rows `mort_nr_table` and `mort_r_table` of `param_tariff_type.csv`, their parameters rows of `core/Core/Data/param_tables.csv` | **[std]** Makeham proxies `q(sex, x) = a + b × 1.1^x`, capped at 1, with `q = 1` at age 120. Non-smokers: `a = 0.000176`, `b = 2.30561459064e-05` (M) and `a = 0.000128`, `b = 1.73224236712e-05` (F), every `a` and `b` 0.8 times the aggregate `dav2008t_proxy`; the women's `b` is the men's at a three-year setback, `b(F) = b(M) × 1.1^−3`. Smokers: 1.76 times the aggregate, that is **2.2 times the non-smoker table** at every age below the cap. Every value is a Setzung. **DAV 2008 T / T NR / T R are cited by name and never shipped** [R12] [REG-R48]. The tables belong to the model-wide factory, so the tariff changes its mortality by its choice of table or by `mort_be_factor`, not by a table's rows |
 | `benefit_schedule.csv` | `benefit_factor` by schedule id and **1-based** `policy_year`, read at `t + 1`: `konstant`, `linear_fallend` (`(21 − policy_year)/20`, i.e. `(20 − t)/20`), `annuitaet_fallend_3pct` | **[std]** — the three German shapes are structural [S15]; **no schedule parameter was established** (gap 15) |
 | `nvg_schedule.csv` | Cumulative `sum_uplift`: `keine` ≡ 1.0, `nvg_zwei_erhoehungen` stepping to 1.2 at year 6 and 1.4 at year 12 | **[std]** — the schedule is a mechanics demonstration and take-up is exogenous. **Gap 7 is now closed**: [S3] § 13 gives a nine-item event list, a **twelve-month** exercise window, a per-event cap of **20 % of the original sum insured, at most 50 000 €**, at most **five** occasions in all, and an end above **age 50**. Two 20 % increments are inside those caps; that both are taken is a model assumption no document supports. **The CSV is unchanged** [S3] [S11] [S17] |
 | `lapse_table.csv` | **Annual** lapse by **1-based** `policy_year`, read at `policy_year(t)`, 6 / 4 / 4 / 3 %; spread to the month by `lapse_rate_mth` | **[std]**, argued from structure, not data: nothing is forfeited by lapsing, exit is frictionless because the *Versicherungsperiode* follows the *Zahlweise* [R8], and the need amortises. The GDV whole-market *Stornoquote* [R18] is **deliberately not used** (gap 13) |
@@ -380,7 +380,7 @@ thing; this identity settles the reading.
 
 Two further identities are **scalar rather than per-period** — the first-order equivalence
 `G·ä = A + z·k·G + β·G·ä + γ·Γ` and the surplus equivalence
-`v_d·G·ä = decl_scale·surplus_share·(m/(1+m))·A` — and are asserted in the product's test
+`v_d·G·ä = decl_scale·surplus_share·(1 − mort_be_factor)·A` — and are asserted in the product's test
 module instead. Forcing a scalar identity into a per-`t` residual would mean inventing a
 per-period decomposition the product does not have.
 
@@ -415,12 +415,12 @@ discounts a published cash flow** — the one place a discount rate appears is t
 equivalence and the first-order reserve, neither of which is a cash flow.
 
 The shape to expect on the anchor, read on `result_cf_annual()`, is a first-year strain of
-**−351,88 €** — the acquisition cost and initial commission together exceed the first year's
-billed premium — thin positive years while the level premium runs ahead of the natural risk
+**−123,82 €** — acquisition cost and initial commission take 544,58 € of the first year's billed premium
+of 675,70 €, and the year's claims and running expenses more than the rest — thin positive years while the level premium runs ahead of the natural risk
 premium, and a crossover in **policy year 14**. Within policy year 1 the monthly frame shows
-what the annual grid could not: **−108,90 €** in month 0, where the whole year's premium is
-collected against 826,64 € of acquisition cost and commission, then eleven months of about
-−22 € each. The total is **−644,78 €** on model point 1 and **+4 252,82 €** on
+what the annual grid could not: **+116,13 €** in month 0, where the whole year's premium is
+collected against 544,58 € of acquisition cost and commission, then eleven months of about
+−22 € each. The total is **−245,72 €** on model point 1 and **+1 938,76 €** on
 model point 2, the same cell with `sex = F`. Neither is a profit measure: the stream is
 undiscounted, the tariff was struck at 1,00 % on no-lapse survivorship, and no reserve is
 held against the later years. The *difference* is the unisex cross-subsidy the law
@@ -440,7 +440,7 @@ the `Projection` Space docstring. Four cases needed care:
 | Notes | Cells | Why |
 |---|---|---|
 | `Gn`, `P(t)` | `prem_net_level_pp` / `prem_paid_pp` | The three "netto"s. `prem_net_level_pp` is the **actuarial** *Nettoprämie* `A/ä`, a pricing quantity that never becomes a cash flow; `prem_paid_pp` is the **consumer** *Zahlbeitrag*. The *Nettotarif* is a third, unrelated sense and is not modelled. The bare word *Nettobeitrag* is never a name here, and `prem_net_pp` is on the library's retired-names register |
-| `q₁(t)`, `q₂(t)` | `mort_rate_tariff` / `mort_rate` | `q₁` **prices** and enters the premium and the reserve and nothing else; `q₂` **projects** and drives every decrement and claim. Their ratio is `2.25 × (blend / own-sex rate)`, not `1 + m` |
+| `q₁(t)`, `q₂(t)` | `mort_rate_tariff` / `mort_rate` | `q₁` **prices** and enters the premium and the reserve and nothing else; `q₂` **projects** and drives every decrement and claim. Their ratio at rating factor 1 is `blend / (0.75 × own-sex rate)`, no constant loading |
 | `B(t)` | `benefit_pp` / `benefit_paid_pp` | `benefit_pp` is the contractual *Versicherungssumme*; what a death claim actually pays differs inside a § 161 window, tranche by tranche, and `suicide_factor` is the ratio of the two |
 | `w(t)` vs `w_cum(t)` | `lapse_rate` / `lapse_cum` | `lapse_cum` is a proportion of the original cohort, not a running total of `lapse_rate`, and the loading it feeds moves *claims* |
 
@@ -471,12 +471,12 @@ checks, not inputs.
 
 | Parameter | Value | Rationale |
 |---|---|---|
-| `mort_table.csv` | `base(sex) × smoker_mult × 1.095^(age−30)` | DAV 2008 T is proprietary and is cited, never shipped [R12]. The 9,5 % slope is the research file's own construction with **no German source**, and on model point 14's forty-year run it is the single most exposed number in the model |
-| `base(M)`, `base(F)` | 0.00040, 0.00020 | Anchored so the 50/50 blend is the research file's frozen `0.00030 × 1.095^(x−30)`; the female-to-male ratio 0.50 is the order of magnitude reported for insured lives at these ages [unverified] |
-| Smoker multiplier | 2.20 | Mid-point of the two-to-three range reported for insured-lives smoker mortality at working ages [unverified]; reproduces a *premium* ratio of **2.007** between points 3 and 1 |
-| *Sicherheitszuschlag* `m`, read as the factor `mort_load_first = 1 + m` (a row of `param_tariff_type.csv`) | 1.25, the factor 2.25 | The DAV *Richtlinie* regulates the **procedure** for setting the *Sicherheitszuschläge*, not the level [R12] (gap 6); DeckRV § 5 Abs. 1 requires that a loading exist — "Die Ableitung von Rechnungsgrundlagen auf der Basis eines besten Schätzwertes genügt nicht" [R10]. Calibrated so the derived `Zahl/Brutto` lands at 0.57; argued range 1.0–1.5. **Observed check**: a published model case gives `Zahl/Brutto = 0.450` [S2], at the bottom of the argued range — i.e. a wider spread than this composite produces |
+| `mort_nr_table`, `mort_r_table` (rows of `param_tariff_type.csv`) | `dav2008t_nr_proxy`, `dav2008t_r_proxy` | DAV 2008 T NR and T R are proprietary and are cited, never shipped [R12]. The two proxies are first-order period tables of the core's table factory on the law `q(sex, x) = a + b × 1.1^x`, capped at 1, ages 0 to 120. The slope 1.1 is the aggregate `dav2008t_proxy`'s, a Setzung with **no German source**; model point 14's forty-year run is the one most exposed to it |
+| Level of the two tables | non-smokers 0.8 times, smokers 1.76 times the aggregate `dav2008t_proxy` in every `a` and `b`; the women's `b` the men's at a three-year setback | Setzungen in the rows of `core/Core/Data/param_tables.csv`; no source gives the factor 0.8. A woman's non-smoker rate stands at about 0.75 of a man's over the anchor's ages 35 to 59 |
+| Smoker ratio | 2.20 at every age below the cap | A Setzung: the mid-point of the two-to-three range reported for insured-lives smoker mortality at working ages [unverified]; reproduces a *premium* ratio of **2.006** between points 3 and 1 |
+| Tariff mortality load `mort_load_tariff` | `rating_factor` alone, 1.00 at standard rates | The tables are first order themselves, so the model carries no *Sicherheitszuschlag* on top of them. The DAV *Richtlinie* regulates the **procedure** for setting the *Sicherheitszuschläge*, not the level [R12] (gap 6); DeckRV § 5 Abs. 1 requires that a margin exist — "Die Ableitung von Rechnungsgrundlagen auf der Basis eines besten Schätzwertes genügt nicht" [R10]. The derived `Zahl/Brutto` is 0.82 on the anchor. **Observed check**: a published model case gives `Zahl/Brutto = 0.450` [S2] — i.e. a wider spread than this composite produces |
 | `unisex_mix_male` (a row of `param_tariff_type.csv`) | 0.50 | The mechanism is required by law [R13]; **no carrier discloses its own mix** |
-| `mort_be_factor` | 1.00 | So the shipped proxy *is* the best estimate, and there is one unsourced mortality level rather than two stacked |
+| `mort_be_factor` (a row of `param_tariff_type.csv`) | 0.75 | The step from the first-order tables to the best estimate, a Setzung: the 34 % first-order margin stated for DAV 2008 T, `1/1.34 = 0.75`, carried over to its NR and R tables (the row's provenance names the source). Its complement, the margin share **0.25**, is what `beitragsverrechnung_rate()` strikes the declaration on |
 | `surplus_share` (a row of `param_tariff_type.csv`) | 0.90 | The MindZV **minimum** allocation from the *Risikoergebnis* is 90 % [R9] [REG-R18]; modelling the minimum is the conservative choice for the *Zahlbeitrag*, and it is the only level any instrument fixes |
 | `decl_scale` (a row of `param_tariff_type.csv`) | 1.00 | The insurer declares exactly the minimum. No German declaration for this product was located (gap 1); this is the stress lever |
 | `v_max` (a row of `param_tariff_type.csv`) | 0.95 | A rebate may not exceed the premium. Binds nowhere in the shipped points; it exists so `check_prem_split()` has a stated domain |
@@ -485,7 +485,7 @@ checks, not inputs.
 | `load_admin_prem_inst`, `load_admin_sum_ann` (rows of `param_tariff_type.csv`) | 0.05 of each *Bruttobeitrag*; 0.00030 of `benefit_pp` a year | **Correction:** German term-life charge levels are *not* "structurally undisclosed". § 2 Abs. 1 Nr. 1 VVG-InfoV requires the *Abschlusskosten* as one total and the other costs as a share of the annual premium, § 2 Abs. 2 requires them **in Euro**, and § 4 Abs. 2 puts them on the *Informationsblatt*; both wordings point the customer there [S1] § 14 Abs. 1, [S3] § 16 Abs. 1 [R17]. What is missing is a **published rate card**. There is no *Effektivkostenquote* — § 2 Abs. 1 Nr. 9 confines that duty to a *gewiss* risk — and no *Basisinformationsblatt*, the product not being a PRIIP. **Observed check**: one specimen gives other annual costs of 48,52 € on a 218,52 € annual *Tarifbeitrag*, i.e. **22,2 %**, of which 35,20 € (**16,1 %**) administration [S2] — far above this composite's 5 % β, because the specimen's figure is a euro amount over a small premium, not a percentage loading. **Not recalibrated** (gap 8) |
 | `expense_collect_prem_inst`, `comm_renew_prem_inst` (rows of `param_tariff_type.csv`) | 0.03 and 0.010 of each *Zahlbeitrag* | Deliberately different from `load_admin_prem_inst`: the gap is the *Kostenüberschuss*, which is **not returned** and emerges in `net_cf` |
 | `expense_infl` (an item of the core file `param_core.csv`) | 0.02, on sum-related admin only | The tariff's γ is level while the modelled one inflates, so the cost result narrows over a long term and eventually reverses — a real feature of a 25-year contract |
-| `expense_claim_pp_once` (a row of `param_tariff_type.csv`) | 250 € per death claim | No German figure is public; worth 0,16 € in the anchor's first year |
+| `expense_claim_pp_once` (a row of `param_tariff_type.csv`) | 250 € per death claim | No German figure is public; worth 0,15 € in the anchor's first year |
 | `suicide_share` (a row of `param_tariff_type.csv`) | 0.03 | No German cause-of-death share was retrieved; stands for "about three per cent of deaths at these ages are suicides", argued range 0,01–0,05 [unverified]. The **three-year window itself is sourced** [R1] |
 | `suicide_years` (an item of the core file `param_core.csv`) | 3 | The statutory minimum, extendable by *Einzelvereinbarung* [R1] [REG-R26]. One value for every tariff; an extended window is not modelled. **All three retrieved wordings adopt the statutory three and none extends it** [S1] [S3] [S4] |
 | Lapse table | 6 % / 4 % / 4 % / 3 % **a year**, zero through the final policy year | Argued from three structural features (mechanic 17); **no German figure supports any of it**, argued range 2–8 % in the early durations (gap 13). The final-year zero is a property of the last policy year and lives in the formula, not the table. The annual rate is spread to the month at `1 − (1 − w)^(1/12)` **[std]**: no German instrument states a conversion convention for any decrement, and what is not optional is that twelve of the monthly rates compound back to the year's |
@@ -523,13 +523,13 @@ the cent and `pols_if` to six decimals, the twelve months of policy year 1 on th
 frame beside them, that the annual view **regroups** the monthly frame rather than
 reprojecting it, the frame's own shape (`list(result_cf().index) == list(range(300))` on
 the anchor and `range(144, 360)` on the in-force point 8), the totals at full precision, the
-*Bruttobeitrag* 1 275,411882 € and the *Beitragsverrechnungssatz* 0,42527476 reached two
+*Bruttobeitrag* 826,875656 € and the *Beitragsverrechnungssatz* 0,18282785 reached two
 independent ways, the notes' three rebuilds and three closure identities, the
 `decl_scale = 0` and *Einmalbeitrag* variant tables, the five `check_*` identities with
-their residuals, and **one test per listed modeling pitfall** — the three "netto"s in the
-order the model produces them, two premium streams rather than one, the *Zahlbeitrag* not
+their residuals, and **one test per listed modeling pitfall** — the three "netto"s told
+apart, with no order between two of them, two premium streams rather than one, the *Zahlbeitrag* not
 guaranteed, no *Rückkaufswert*, a *Deckungskapital* that exists, `sex` never reaching the
-price, the *Sicherheitszuschlag* never reaching the projection, the § 161 switch confined
+price, the first-order table never reaching the projection, the § 161 switch confined
 to three years and to death claims, the clock restarting per increment, the
 *Ratenzahlungszuschlag* applied once, premium cessation not double-counted, the premium
 stopping at the *Beitragszahlungsdauer*, the three sum shapes, two lives combined before

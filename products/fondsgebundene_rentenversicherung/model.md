@@ -89,7 +89,7 @@ t // 12`. Because a 0-based frame has no `t = −1`, the opening *Anteilspreis* 
 | `lapse_table.csv` | `policy_year` | **Unchanged.** The contractual 1-based label; `lapse_rate_base(t)` maps through `policy_year(t) = t // 12 + 1` |
 | `fund_scenario_table.csv` | `policy_year` | **Unchanged**, for the same reason |
 | `charge_table.csv` | `acq_spread_years` | **Unchanged** by the shift, not an index; renamed from `alpha_spread_months` and changed from 60 months to 5 years later in phase 3 |
-| `mort_table.csv` | `age` | **Unchanged.** An attained age |
+| (no file) the death rates of the table factory | attained age | **Unchanged.** An attained age |
 | `rentenfaktor_table.csv` | `annuity_age` | **Unchanged.** An age at *Rentenbeginn* |
 
 No `provenance` column was touched, and no row order changed.
@@ -152,8 +152,8 @@ claims_death + claims_lapse + claims_maturity + withdrawals + stornoabzug
 Booking the whole *Fondsguthaben* as an insurer outgo is this product's first-order failure
 mode — every column still looks reasonable and the liability is overstated by the entire fund
 — and publishing the excluded columns is what lets a reader see what was excluded. The scale
-of it on the anchor: 64 869,36 € of benefits against 40 586,28 € of premiums, of which
-**4,39 € is an insurer cost**. Seven `check_*()` cells travel with the model, each a `bool`
+of it on the anchor: 64 265,02 € of benefits against 40 313,32 € of premiums, of which
+**6,23 € is an insurer cost**. Seven `check_*()` cells travel with the model, each a `bool`
 over all `t` with a `check_*_resid(t)` companion — `check_net_cf`, `check_prem_split`,
 `check_units_roll_fwd`, `check_av_roll_fwd`, `check_benefit_funding`, `check_pols_roll_fwd`,
 `check_acq_charge` — and all seven are `True` on all thirteen model points.
@@ -232,16 +232,21 @@ a sum keeps the two sides apart, the first term being the policyholder's money a
 the insurer's.
 
 **The *Risikobeitrag* is priced on a death table and the conversion guarantee on an annuity
-table.** `mort_rate_tariff_at_age` reads `mort_table.csv`, a **[std]** first-order DAV 2008 T
-proxy [R17] [REG-R48]; `rentenfaktor_guar` reads `rentenfaktor_table.csv`, standing in for
-DAV 2004 R [R16] [REG-R49]. **No cells reads both files** — the arithmetic form of the
+table.** The core's `mort_rate_tariff_at_age` reads `dav2008t_proxy` of the core's table factory
+(`docs/core.md`, "The table factory"), the tariff's choice in the row `mort_table` of
+`param_tariff_type.csv`: a **[std]** first-order DAV 2008 T proxy [R17] [REG-R48], blended over
+the two sexes at `unisex_mix_male = 0.5`, so the *Risikobeitrag* rate is the same whatever the
+policy's sex [REG-R34]. `rentenfaktor_guar` reads `rentenfaktor_table.csv`, standing in for
+DAV 2004 R [R16] [REG-R49]. **No cells reads both** — the arithmetic form of the
 statement that a German fondsgebundene contract carries two mortality bases at once; a model
 pricing the death charge on an annuitant table understates it. The projection then decrements
-on a **third** rate, the second-order best estimate `mort_be_factor = 0.75` times the tariff
-rate [REG-R47]. The wedge is the *Risikoergebnis*, and because the factor is flat it is
-exactly 25 % of the *Risikobeitrag* collected — 5,849973 less 4,387480 = 1,462493 € on the
-anchor — a closed form a reader can check with a calculator. One basis for both makes the
-risk result identically zero.
+on a **third** rate, the second-order best estimate, `mort_be_factor = 0.75` times the table's
+rate on the policy's **own sex** [REG-R47]. The wedge is the *Risikoergebnis*, and it is **no
+fixed share** of the *Risikobeitrag*: at 40 the best estimate is 0.858 of the tariff rate for a
+man and 0.642 for a woman, so a man's contract keeps about 14 % of its *Risikobeitrag* and a
+woman's about 36 % — 7,262424 less 6,232046 = 1,030378 € on the anchor, 14,19 %. It was exactly
+25 % while both rates stood on the tariff's own unisex file, until the switch to the table
+factory. One basis for both makes the risk result identically zero.
 
 The two monthly conversions are deliberately different. Mortality is split **linearly**,
 `mort_rate_mth = mort_rate / 12`, because the tariff's *Risikobeitrag* is `q(x)/12` times the
@@ -282,8 +287,8 @@ rate is recorded and not implemented, and the omission biases charge income **up
 surrender and an annuitisation are the same event releasing the same *Fondsguthaben*, and the
 whole surviving cohort is booked as `pols_maturity`. No cash flow moves either way; the
 convention decides only the split between the lapse total and the maturity count, and it is
-what the closure identity reproduces — deaths 0,04377181 plus lapses 0,65322937 plus maturity
-0,30299882 = 1,00000000. It is frlib's convention on `TD_FR_S` and delib adopts it.
+what the closure identity reproduces — deaths 0,05572788 plus lapses 0,64939473 plus maturity
+0,29487739 = 1,00000000. It is frlib's convention on `TD_FR_S` and delib adopts it.
 
 `age(proj_len() − 1) = ret_age − 1`, because the annuity begins at the **end** of that month,
 and the *Rentenfaktor* is read at `ret_age`: **25,00 at 67 on the anchor, not the 24,45 an
@@ -298,21 +303,21 @@ guaranteed *Rentenfaktor* is not a guaranteed pension.
 `reduction_in_yield()` is the product's defining metric, because on a contract with no
 *Rechnungszins* the charge stack **is** the economics. It is `gross_return_ref() − irr_ann()`,
 computed on a **single persisting contract** — no survivorship, no lapse — because a reduction
-in yield is a statement about one policy. On the anchor 5,0000 % less 3,6593 % =
-**1,3407 % p.a.**, and across the four shipped charge scales it moves by a factor of five.
+in yield is a statement about one policy. On the anchor 5,0000 % less 3,6590 % =
+**1,3410 % p.a.**, and across the four shipped charge scales it moves by a factor of five.
 **It is a delib-defined measure and not the statutory *Effektivkostenquote***, which is aligned
 to the total-cost-indicator method of the PRIIPs RTS over a specified recommended holding
 period [R7] [R9] [REG-R31] [REG-R32]; this model implements neither.
 
 ## Inputs are external files
 
-The eight input CSVs live **in this directory**, beside `run.py` — not inside the model folder.
+The seven input CSVs live **in this directory**, beside `run.py` — not inside the model folder.
 `FRV_DE_S/` holds nothing but formulas:
 
 ```
 products/fondsgebundene_rentenversicherung/
-  model_point_table.csv  mort_table.csv  lapse_table.csv  prem_freq_table.csv  <- inputs live here
-  charge_table.csv  fund_scenario_table.csv  rentenfaktor_table.csv  param_tariff_type.csv
+  model_point_table.csv  lapse_table.csv  prem_freq_table.csv  charge_table.csv  <- inputs live here
+  fund_scenario_table.csv  rentenfaktor_table.csv  param_tariff_type.csv
   run.py
   product-spec.md  technical-notes.md  model.md  sources.md  <- the documents
   FRV_DE_S/                                                  <- formulas only
@@ -339,7 +344,7 @@ wherever the repository is checked out.
 | Reference | Cells | File |
 |---|---|---|
 | `model_point_file` | `model_point_table()` | `model_point_table.csv` |
-| `mort_file` | `mort_table()` | `mort_table.csv` |
+| (no file) | (the core's `mort_rate_at_age`, `mort_rate_tariff_at_age`) | `mort_table` in `param_tariff_type.csv` |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` |
 | `charge_file` | `charge_table()` | `charge_table.csv` |
 | `fund_scenario_file` | `fund_scenario_table()` | `fund_scenario_table.csv` |
@@ -357,7 +362,7 @@ being a *configuration* and not an assumption.
 | File | Contents | Provenance |
 |---|---|---|
 | `model_point_table.csv` | Thirteen model points. **Point 1 is the anchor cell** (M37 / monthly 200,00 € / 30 years / *Rentenbeginn* at 67 / *Beitragsrückgewähr* / `std_gross` / `base`). Points 2–13 exercise the *Einmalbeitrag*, all four frequencies, a `pct_fund` and a `sum_assured` death benefit, an in-force cell opening at duration 96, a *beitragsfrei* cell on a zero-return fund, a *Zuzahlung* and a *Teilentnahme*, a *Beitragsdynamik*, a *Nettotarif* on an ETF, a two-year premium term on a stress path, a non-zero *Stornoabzug*, and a *Rentenbeginn* at 70 where the `max()` bites | anchor cell **[std]**, the notes' worked example |
-| `mort_table.csv` | First-order annual death rates, ages 18–100 | **[std]** Gompertz proxy `0.00080 × 1.10^(age − 37)`, **anchored at `q(37) = 0.00080`** — the value the worked example rests on. *Not* a DAV table; those are cited and never shipped [R17] [REG-R48]. It stands for whichever first-order death basis a tariff uses, which at the one carrier that could be read is 65 % of DAV 1994 T rather than DAV 2008 T [S2]. A replacement must preserve the anchor, an insured-lives gradient and a first-order margin **above** best estimate |
+| (no file) the row `mort_table` of `param_tariff_type.csv` | First-order annual death rates by sex, ages 0–120: the table `dav2008t_proxy` of the core's table factory (`docs/core.md`, "The table factory"), its parameters rows of `core/Core/Data/param_tables.csv` | **[std]** Makeham proxy `q(M, x) = 0.00022 + 2.8820182383e-05 × 1.10^x` for men and a three-year setback for women, `0.00016 + 2.1653029589e-05 × 1.10^x`, **anchored at `q(M, 37) = 0.0012`**; the tariff rate is their 50/50 blend, 0,001048 at 37, the value the worked example rests on. *Not* a DAV table; those are cited and never shipped [R17] [REG-R48]. It stands for whichever first-order death basis a tariff uses, which at the one carrier that could be read is 65 % of DAV 1994 T rather than DAV 2008 T [S2]. The table is shared with the other tariffs that choose it, so a tariff changes its mortality by its choice or its factor, not by the table's rows; a replacement must preserve an insured-lives gradient and a first-order margin **above** best estimate |
 | `lapse_table.csv` | Annual lapse: 6 % in years 1–5, 3 % in 6–10, 2 % in 11–12, 3 % from 13 | **[std]** — **no German unit-linked *Stornoquote* was established anywhere**. The front-loading is inferred from the exit terms [R1] [R2] [REG-R45]; the ×2.5 tax step is not here but rows of `param_tariff_type.csv` applied in `Projection`, depending on age as well as duration |
 | `charge_table.csv` | Four tariffs: `std_gross`, `std_netto`, `std_high`, `std_low` | **[std]** but for `charge_acq_bsum_once` on `std_gross`, the 25 ‰ cap [R12] [R13] [REG-R16], and the five-year spread [R1] [REG-R28]. **One carrier's levels are now known** — 2,50 % acquisition, 6,90 % of premium, 0,42 % p.a. of fund, 18 €/yr [S15] — and `std_gross` is lighter than that on every line but the policy fee; nine other named carriers still supply none. The `std_gross`-to-`std_netto` gap is the acquisition load [S18] |
 | `fund_scenario_table.csv` | Gross return and TER by `(scenario_id, policy_year)`: `base`, `etf`, `zero`, `stress` | **[std]** deterministic paths. Not forecasts and **not PRIIPs scenarios** [R8] [R9] [REG-R32] — and note that on the profession's own standard a German Schicht-3 unit-linked annuity is a **PRIIP Kategorie 4** product whose scenarios come from a stochastic capital-market model, not from an underlying's own return history [R18] |
@@ -402,10 +407,10 @@ The *Abschluss-* and *Bestandsprovision* are `commissions`, their own column, an
 subtracts each once — the delib convention, and the opposite of the frlib chassis, where
 commission sits inside the expense total; taking both at once charges the commission twice.
 The worked example fixes the reading:
-`expenses(0) = 200,00 + 4,00 + 0,0075 + 0,2571 = 204,26 €` and
-`commissions(0) = 1 800,00 + 3,00 = 1 803,00 €`, together the 2 007,26 € of acquisition and
+`expenses(0) = 200,00 + 4,00 + 0,0113 + 0,2571 = 204,27 €` and
+`commissions(0) = 1 800,00 + 3,00 = 1 803,00 €`, together the 2 007,27 € of acquisition and
 first-month cash. Expect on a new-business cell a large negative `net_cf` in the inception
-month `t = 0` — −1 966,22 € on the anchor, commission and issue expense falling there while
+month `t = 0` — −1 966,23 € on the anchor, commission and issue expense falling there while
 the charge that funds them arrives over sixty months —
 then a thin positive margin growing with the fund. On the *Einmalbeitrag* cell the sign
 reverses: `t = 0` is **+1 060,45 €**, the 3 250,00 € withheld at inception more than covering
@@ -441,14 +446,15 @@ care:
 
 | Notes | Cells | Why |
 |---|---|---|
-| `qᴵ(t)`, `q(t)` | `mort_rate_tariff` / `mort_rate`, and their `_mth` forms | Two rates: the first-order table prices the *Risikobeitrag*, the second-order one produces the claims, and their difference is the *Risikoergebnis*. `mort_rate` is the projection's own decrement, per the library's shared vocabulary |
+| `qᴵ(t)`, `q(t)` | `mort_rate_tariff` / `mort_rate`, and their `_mth` forms | Two rates: the unisex blend of the first-order table prices the *Risikobeitrag*, the second-order rate on the policy's own sex produces the claims, and their difference is the *Risikoergebnis*. `mort_rate` is the projection's own decrement, per the library's shared vocabulary |
 | `w(t)` | `lapse_rate_base` / `lapse_tax_step` / `lapse_dyn_add` / `lapse_rate` / `lapse_rate_mth` | The library requires an annual `lapse_rate` beside the monthly one; the table rate, the tax multiplier and the dynamic addition are separate cells so each is testable alone |
 | `α(t)` | `charge_acq_pp` / `cum_charge_acq_pp` / `zillmer_amount` | The instalment, the ledger and the total the ledger must reach — `check_acq_charge` needs all three |
 | `D(t)` | `db_floor_pp` / `db_pp` | The guaranteed floor and what a death actually pays; keeping them apart makes `death_strain` exactly the net amount at risk |
 | (expense / commission) | `expense_acq_pp` / `comm_acq_pp`, `expenses` / `commissions` | Two lines, not one. `expenses` is the insurer's own outgo **excluding** commission and `commissions` is the *Abschluss-* and *Bestandsprovision*, which is what those two names mean on every delib model that has a commission to publish |
 
-`sex` and `kapitalwahl` drive no formula — the tariff is unisex from 21 December 2012
-[REG-R34] and the capital option is a reporting split — but both are exposed as documented
+`sex` drives no price — the tariff is unisex from 21 December 2012 [REG-R34], and only the
+best-estimate death rate reads the table on the policy's sex — and `kapitalwahl` drives no
+formula, the capital option being a reporting split; but both are exposed as documented
 cells rather than dropped, because the notes' model point attribute table lists them.
 
 ## Standardizations used
@@ -463,8 +469,8 @@ Every entry is **[std]**, and the rationale is what makes it honest.
 | *Stückkosten* `charge_admin_pp_mth` | 3.00 € per month | Middle of an argued 0–5 € range; **18 € per year — 1,50 €/month — observed at one carrier** [S15], so the composite is the dearer of the two. A euro amount, which is why it consumes a small paid-up fund — and why BaFin warns that a large absolute *Stückkosten* charge makes the *Effektivkosten* vary sharply with premium size [R10] |
 | *Stornoabzug*, composite | 0.00 % | § 169 Abs. 5 VVG permits one only where it is *vereinbart*, *beziffert* and *angemessen* and voids any deduction for unamortised acquisition cost [R1] [REG-R36]; zero avoids an unsourced number on a contested clause. **A real one exists and is a flat 150 €, not a percentage** [S2], so both the level and the shape are standardizations. 2.00 % on `std_high` exercises the machinery |
 | The three charge variants | `std_netto`, `std_high`, `std_low` | The ends of the argued range plus the commission-free tariff [S18]; the gap to `std_gross` **is** the acquisition load |
-| Mortality proxy | `0.00080 × 1.10^(x − 37)`, ages 18–100 | DAV tables are not redistributed [R17] [REG-R48]. Anchored at `q(37) = 0.00080` so the worked example reproduces; the 10 % gradient is insured-lives. It stands for **whichever first-order death table the tariff uses** — DAV 2008 T is the modern one, and the one fondsgebundene tariff whose bases could be read prices its *Risikobeiträge* on a unisex order at **65 % of DAV 1994 T** instead [S2] |
-| `mort_be_factor` | 0.75, flat | Crude, and said to be. It buys a *Risikoergebnis* that is exactly 25 % of the *Risikobeitrag* [REG-R47] |
+| Mortality proxy | the table factory's `dav2008t_proxy`, `a + b × 1.10^x` by sex, ages 0–120, blended 50/50 for the tariff rate | DAV tables are not redistributed [R17] [REG-R48]. Anchored at `q(M, 37) = 0.0012`; the blend at 37, 0,001048, is what the worked example rests on; the 10 % gradient is insured-lives. It stands for **whichever first-order death table the tariff uses** — DAV 2008 T is the modern one, and the one fondsgebundene tariff whose bases could be read prices its *Risikobeiträge* on a unisex order at **65 % of DAV 1994 T** instead [S2] |
+| `mort_be_factor` | 0.75, flat, on the table rate of the own sex | Crude, and said to be. Against the unisex tariff rate it leaves a *Risikoergebnis* of about 14 % of the *Risikobeitrag* on a man and about 36 % on a woman, no fixed share [REG-R47] |
 | Monthly conversions | mortality `/12`; lapse and return geometric | Charge and decrement must share a split; the lapse and return annual rates are the observables to reproduce |
 | Lapse table, the 40 % cap and the zero final month | 6 / 3 / 2 / 3 % by duration band; `lapse_cap = 40 %`; `lapse_rate_mth(n − 1) = 0` | **No German unit-linked *Stornoquote* exists in this corpus**; the front-loading is inferred from the exit terms [R1] [R2]. The cap stops a dynamic module producing an absurd rate; the zero final month is because a surrender and an annuitisation are then one event |
 | Tax-threshold lapse step | ×2.5 for twelve months from `max(13, 62 − issue_age + 1)` | The 12/62 rule is statutory — EStG § 20 Abs. 1 Nr. 6 Satz 2, which names the 60th year of life, raised to the **62nd** by § 52 Abs. 28 *"für Vertragsabschlüsse nach dem 31. Dezember 2011"*, and applying on surrender as well as at maturity [R20] [REG-R45]. It is the strongest single driver of German surrender behaviour; keying it on duration alone fires fourteen years early on the anchor. The ×2.5 magnitude is **[std]**. The 13 and the 62 are the items `tax_step_min_year` and `tax_step_age` of the core file `param_core.csv`, the ×2.5 the row `tax_step_factor` of `param_tariff_type.csv` |

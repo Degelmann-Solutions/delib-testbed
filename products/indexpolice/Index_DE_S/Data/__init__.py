@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The nine input CSVs are read here, **once per model**, and referenced from
+The eight input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Index_DE_S.Projection` as ``data``. :mod:`~.Index_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with
 its own cells cache; if the readers lived there, every model point would re-read every
@@ -35,7 +35,6 @@ index_return_file      index_return_table()        index_return_table.csv
 index_param_file       index_param_table()         index_param_table.csv
 surplus_rate_file      surplus_rate_table()        surplus_rate_table.csv
 election_file          election_table()            election_table.csv
-mort_file              mort_table()                mort_table.csv
 lapse_file             lapse_table()               lapse_table.csv
 prem_freq_file         prem_freq_table()           prem_freq_table.csv
 param_file             param()                     param_tariff_type.csv
@@ -43,8 +42,8 @@ param_file             param()                     param_tariff_type.csv
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table``,
-``lapse_table`` and ``prem_freq_table``, this space's ``index_return_table_dict``,
+``DataFrame.loc``: the core's for ``model_point_table``, ``lapse_table`` and
+``prem_freq_table``, this space's ``index_return_table_dict``,
 ``index_param_table_dict``, ``surplus_rate_table_dict`` and ``election_table_dict``.
 
 .. rubric:: Every table but the model point table is a [std] construction
@@ -57,15 +56,15 @@ per-row ``provenance`` tag that says so in the library's own vocabulary, and the
 overwhelmingly ``[std]``. That is the honest form of the evidence, not a placeholder for
 better data that was withheld.
 
-``mort_table.csv`` is a **[std] Gompertz-form proxy**, ``qx(M, x) = 0.001200 x
-1.095^(x - 40)`` over ages 20-100 with ``qx(F, x) = 0.65 x qx(M, x)``. The market bases
-are **DAV 2008 T** for death cover and **DAV 2004 R**, a *Generationentafel* in attained
-age *and* calendar year, for every annuity promise: they are the property of the Deutsche
-Aktuarvereinigung, are not public, and are cited by name in this library rather than
-redistributed. **The anchor a substitute table must preserve is ``qx(M, 40) = 0.001200``
-exactly**, so the technical notes' worked example still closes; the female ratio and the
-0.095 log-slope may move freely. Two properties of the real bases the proxy deliberately
-does not have, and a user replacing it should know which: it is a **period** table, not a
+**No mortality table is read here.** The death rates come from the core's table factory:
+the tariff chooses the table ``dav2008t_proxy`` in the row ``mort_table`` of
+``param_tariff_type.csv``, a **[std]** first-order proxy of **DAV 2008 T** on the law of
+Makeham, distinct by sex over ages 0-120, and the projection takes 0.75 of its rate, the
+row ``mort_be_factor``, as the best estimate. The market bases are **DAV 2008 T** for death
+cover and **DAV 2004 R**, a *Generationentafel* in attained age *and* calendar year, for
+every annuity promise: they are the property of the Deutsche Aktuarvereinigung, are not
+public, and are cited by name in this library rather than redistributed. Two properties of
+the real bases the proxy deliberately does not have: it is a **period** table, not a
 generational one, so it understates a long-deferred annuitisation; and it carries no
 selection effect. Neither matters much *here*, because mortality in this model is a
 **timing** assumption and not an amount assumption — the death benefit is the account
@@ -249,8 +248,6 @@ index_param_file = "index_param_table.csv"
 surplus_rate_file = "surplus_rate_table.csv"
 
 election_file = "election_table.csv"
-
-mort_file = "mort_table.csv"
 
 lapse_file = "lapse_table.csv"
 

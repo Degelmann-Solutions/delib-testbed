@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The eight input CSVs are read here, **once per model**, and referenced from
+The seven input CSVs are read here, **once per model**, and referenced from
 :mod:`~.KLV_DE_S.Projection` as ``data``. :mod:`~.KLV_DE_S.Projection` is parameterized by
 ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells cache;
 if the readers lived there, every model point would re-read every file. Holding them in an
@@ -30,7 +30,6 @@ and a reader Cells:
 Reference                 Cells                         File
 ========================  ============================  ==========================
 model_point_file          model_point_table()           model_point_table.csv
-mort_file                 mort_table()                  mort_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
 surplus_rate_file         surplus_rate_table()          surplus_rate_table.csv
 charge_file               charge_table()                cost_table.csv
@@ -41,8 +40,8 @@ param_file                param()                       param_tariff_type.csv
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table``,
-``lapse_table``, ``charge_table`` and ``prem_freq_table``, this space's
+``DataFrame.loc``: the core's for ``model_point_table``, ``lapse_table``,
+``charge_table`` and ``prem_freq_table``, this space's
 ``surplus_rate_table_dict`` with ``surplus_rate_years``, the policy-year range of each
 scenario, and ``deckrv_table_dict``.
 
@@ -50,29 +49,34 @@ Every file but ``model_point_table.csv`` carries a final **``provenance``** colu
 per row — this library's second ruling, and machine-checked. The model point table is the
 single exemption, because a model point is a configuration rather than an assumption.
 
-.. rubric:: The mortality table is a [std] proxy, and this is its anchor
+.. rubric:: The mortality table is a [std] proxy of the table factory
 
-``mort_table.csv`` is **not** a fitted or an industry table. It is a Makeham-form proxy,
-sex-specific over ages 0 to 120::
+**No mortality table is read here.** The death rates come from the core's table factory:
+the tariff chooses the table ``dav2008t_proxy`` in the row ``mort_table`` of
+``param_tariff_type.csv``. It is **not** a fitted or an industry table. It is a Makeham-form
+proxy, sex-specific over ages 0 to 120::
 
-    mort_rate_1st(M, x) = 0.00022 + B * 1.10 ** x
-    mort_rate_1st(F, x) = 0.00016 + B * 1.10 ** (x - 3)
+    q(M, x) = 0.00022 + b_M * 1.10 ** x
+    q(F, x) = 0.00016 + b_F * 1.10 ** x        b_F = b_M * 1.10 ** -3
 
-with the single free constant ``B`` fixed by one **anchor**:
+a three-year setback for women on the same curve, with the free constant ``b_M`` fixed by
+one **anchor**:
 
-    **mort_rate_1st(M, 37) = 0.001200 exactly**
+    **q(M, 37) = 0.0012**
 
-which is the first-order death rate at the worked example's entry age. That anchor is why
-the notes' twenty-five-year table reproduces to the cent, and it is the one number a
-replacement table must reproduce for the worked example to survive unchanged. Rates are
-capped at 1.0 at the top of the age range, which no shipped model point reaches.
+which is the first-order death rate at the worked example's entry age; ``b_M`` stands to
+eleven significant digits, so the anchor holds to 1e-14. The table's parameters are rows of
+``core/Core/Data/param_tables.csv``, each with its provenance, and the table is shared with
+the other tariffs that choose it: a tariff changes its mortality by its choice or its
+factor, not by the table's rows. Rates are capped at 1.0 at the top of the age range and
+are 1 at the closing age 120, which no shipped model point reaches.
 
 The table this proxy stands in for is **DAV 2008 T**, the market-standard first-order
 basis for German death-benefit business, derived over 2006–2008 from German insurers' own
 policy data, the cleansed insured data covering 60 % of the German market in the
 *Kapitallebensversicherung* segment. **It is the property of the Deutsche
 Aktuarvereinigung, is not public and is not redistributed here**; it is cited by name.
-A replacement must preserve four things beyond the anchor: an **insured-lives** level,
+A table in its place must have four things: an **insured-lives** level,
 materially lighter than the national population table at the working ages; **sex-specific**
 base tables, which are the raw material even though a German tariff written since
 21 December 2012 may not price on sex; **no projected improvement**, because for a death
@@ -85,7 +89,8 @@ The best-estimate basis is this same table scaled: ``mort_rate(t) = mort_rate_ba
 mort_be_factor`` with ``mort_be_factor = 0.75``, so the first-order table carries a 33 %
 safety loading. That wedge is the *Sicherheitszuschlag*, and its systematic release **is**
 the *Risikoüberschuss*. The model does not compute the *Risikoüberschuss*, and the two
-bases must not be crossed: ``mort_rate_base`` prices and reserves, ``mort_rate`` projects.
+bases must not be crossed: ``mort_rate_tariff_at_age``, the unisex blend of the table,
+prices and reserves, ``mort_rate`` projects.
 
 .. rubric:: The other six tables
 
@@ -212,8 +217,6 @@ def deckrv_table_dict():
 # References
 
 model_point_file = "model_point_table.csv"
-
-mort_file = "mort_table.csv"
 
 lapse_file = "lapse_table.csv"
 

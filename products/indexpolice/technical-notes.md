@@ -100,8 +100,8 @@ shipped index path so that the mechanics are asserted against them cell by cell.
   with the outgo-positive orientation published as `liability_cf(t) = −net_cf(t)`. **Rounding**: full
   precision internally, displayed money to the cent and `pols_if` to six decimals **[std]**.
 - **Unisex pricing, sex-distinct best-estimate mortality.** Sex may not be a rating factor [REG-R34], and
-  it is not: no premium, charge or benefit in this model depends on `sex`. It selects the
-  best-estimate mortality row only, and mortality here is a **timing** assumption — the death benefit is
+  it is not: no premium, charge or benefit in this model depends on `sex`. It selects the sex the
+  death table is read at for the best estimate only, and mortality here is a **timing** assumption — the death benefit is
   the account value with a floor, not a sum insured — so the choice moves the result very little.
 
 ### Model inputs — the external CSVs
@@ -117,7 +117,6 @@ final `provenance` column**, one tag per row — delib's second ruling, asserted
 | `index_param_table.csv` | `index_id`, `t` | `cap` (monthly Cap `C`), `quote` (*Partizipationsquote* `q`); `provenance` |
 | `surplus_rate_table.csv` | `t` | `surplus_rate` (the declared *Überschussanteilsatz* `b`, = the option budget); `provenance` |
 | `election_table.csv` | `elect_id`, `t` | `w` — the fraction of the year's surplus directed to the index arm; `provenance` |
-| `mort_table.csv` | `sex`, `age` | `qx`; `provenance` |
 | `lapse_table.csv` | `t` | `lapse_rate` (the base rate before the terminal-year override); `provenance` |
 | `prem_freq_table.csv` | `prem_freq` | `instalments` (a year, not read); `prem_freq_load` (the *Ratenzahlungszuschlag* multiplier); `provenance` |
 
@@ -164,7 +163,7 @@ from its base value, so that no column is carried without being tested.
 |---|---|---|---|
 | `point_id` | int | key; **model point 1 is the worked example's anchor cell** | all |
 | `policy_id` | str | label, `DE-IDX-nnnn`; reporting only | all |
-| `sex` | enum {M, F} | selects the best-estimate mortality row; **never a rating factor** [REG-R34] | 3, 5, 7, 10, 12 |
+| `sex` | enum {M, F} | selects the sex the death table is read at; **never a rating factor** [REG-R34] | 3, 5, 7, 10, 12 |
 | `issue_age` | int | age last birthday at inception; `age(t) = issue_age + t` | 3–13 |
 | `duration_init` | int | completed policy years at the valuation date; 0 = new business; the frame starts at `t_start() = 12 × duration_init`, `duration_init` already being a 0-based elapsed count of policy **years** | 8, 13 |
 | `pols_if_init` | float | policies represented at `t_start()` | — (1.0 everywhere) |
@@ -313,14 +312,24 @@ at all.
 **Mortality.** The market-standard bases are proprietary: **DAV 2008 T** for death cover and **DAV
 2004 R**, a *Generationentafel* in attained age **and calendar year**, for every annuity promise
 [REG-R48] [REG-R49]. They are the Deutsche Aktuarvereinigung's property, **are not public and are not
-redistributed here**. The shipped `mort_table.csv` is a **[std] Gompertz-form proxy**:
+redistributed here**. The product ships no mortality table: its death rates come from the core's table
+factory (`docs/core.md`, "The table factory"). The tariff chooses the table `dav2008t_proxy`, the row
+`mort_table` of `param_tariff_type.csv`, a **[std] first-order proxy of DAV 2008 T** on the law of
+Makeham, distinct by sex, whose parameters are rows of `core/Core/Data/param_tables.csv`:
 
-    qx(M, x) = 0.001200 × 1.095^(x − 40),    qx(F, x) = 0.65 × qx(M, x),    ages 20 … 100
+    q(M, x) = 0.00022 + 2.8820182383e-05 × 1.10^x,    q(F, x) = 0.00016 + 2.1653029589e-05 × 1.10^x,
+    ages 0 … 120, capped at 1, q = 1 at 120
 
-**The anchor a substitute table must preserve is `qx(M, 40) = 0.001200` exactly**, so the worked example
-still closes. Two properties of the real bases the proxy deliberately does **not** have, and a user
-replacing it should know which: it is a **period** table, not a generational one, so it understates a
-long-deferred annuitisation [REG-R49]; and it carries no selection effect. Neither matters much here,
+The best estimate is `mort_be_factor = 0,75` times the table rate on the model point's own sex, the
+step from the first-order table to the second order (the first-order margin of DAV 2008 T is 34 %,
+`1 / 1,34 = 0,75`), also a row of `param_tariff_type.csv`:
+
+    mort_rate(t) = 0.75 × q(sex, x(t))        mort_rate(0) = 0.75 × 0.00152438 = 0.00114328 for a man of 40
+
+The table is anchored at `q(M, 37) = 0.0012`, a Setzung of the proxy; the worked example below is
+computed on it and is recomputed if the table or the factor changes. Two properties of the real bases
+the proxy deliberately does **not** have: it is a **period** table, not a generational one, so it
+understates a long-deferred annuitisation [REG-R49]; and it carries no selection effect. Neither matters much here,
 because **mortality in this model is a timing assumption, not an amount assumption** — the death benefit
 is the account value with a floor — but both matter greatly to the *Rentenfaktor* the terminal capital
 buys, which is why the *Rentenfaktor* is a **[std]** input rather than a computed one.
@@ -540,7 +549,8 @@ delib's charge profile is already at the statutory floor. Set `acq_spread_years 
 
 ### Decrements
 
-    q_d(t)    = mort_table[sex, x(t)]                         the year's ANNUAL rate
+    q_d(t)    = mort_be_factor × q(mort_table, sex, x(t))     the year's ANNUAL rate: 0.75 of the
+                                                              table factory's rate of dav2008t_proxy
     q^m_d(t)  = 1 − ( 1 − q_d(t) )^(1/12)                     the monthly rate applied
     w_l(t)    = 0                          if duration(t) == n − 1
               = lapse_table[duration(t)]   otherwise           the year's ANNUAL rate
@@ -895,8 +905,9 @@ Monthly index returns from `eqidx_vol17` **[std]**: 40 years × 12 months from
 places — a monthly mean of 0,60 % and standard deviation of 5,00 %, an annualised 17,3 % — with row
 `k = 8` replaced by Example A (1,80 / −2,40 / 4,60 / 0,90 / −3,70 / 2,20 / 3,40 / −1,10 / 0,40 / 5,20 /
 −0,80 / 2,60 per cent) and row `k = 9` by Example B (6,50 / −2,10 / 5,80 / −1,90 / −2,40 / 4,20 /
-−3,10 / 0,60 / −2,80 / 5,10 / −1,70 / −1,20 per cent). Mortality `qx(M, x) = 0,001200 × 1,095^(x − 40)`
-**[std]**, so `mort_rate(0) = 0,001200` at attained age 40 and the proxy is anchored there; DAV 2008 T
+−3,10 / 0,60 / −2,80 / 5,10 / −1,70 / −1,20 per cent). Mortality `mort_be_factor = 0,75` times the table factory's `dav2008t_proxy`,
+`q(M, x) = 0,00022 + 2,8820182383e-05 × 1,10^x` **[std]**, so
+`mort_rate(0) = 0,75 × 0,00152438 = 0,00114328` at attained age 40; DAV 2008 T
 and DAV 2004 R are cited by name and never shipped [REG-R48] [REG-R49]. Surrender
 `lapse_rate_base` = 5 % in policy years 1–2 (`k = 0, 1`), 3 % in policy years 3–11, 6 % in policy year
 12 (`k = 11`), 2 % from policy year 13 **[std]**, with `lapse_rate` zero through the whole final policy
@@ -923,49 +934,49 @@ column is deliberately not totalled: adding twenty-seven opening balances is not
 
 | k | x(k) | pols_if | premiums | claims_death | claims_lapse | claims_maturity | expenses | guar_int | index_credit | av | net_cf |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 0 | 40 | 1.000000 | 2,400.00 | 37.98 | 98.87 | 0.00 | 1,655.15 | 19.99 | 0.00 | 0.00 | 608.00 |
-| 1 | 41 | 0.948860 | 2,277.26 | 39.46 | 188.31 | 0.00 | 34.02 | 38.08 | 81.79 | 1,915.73 | 2,015.48 |
-| 2 | 42 | 0.900233 | 2,160.56 | 41.39 | 163.80 | 0.00 | 33.23 | 55.21 | 186.81 | 3,730.48 | 1,922.14 |
-| 3 | 43 | 0.871969 | 2,092.73 | 43.90 | 217.08 | 0.00 | 32.83 | 73.17 | 1,204.06 | 5,587.67 | 1,798.92 |
-| 4 | 44 | 0.844477 | 2,026.75 | 46.55 | 297.50 | 0.00 | 32.43 | 100.28 | 0.00 | 8,360.99 | 1,650.27 |
-| 5 | 45 | 0.817730 | 1,962.55 | 49.36 | 346.53 | 0.00 | 32.03 | 116.82 | 41.78 | 9,807.67 | 1,534.63 |
-| 6 | 46 | 0.791700 | 1,900.08 | 52.33 | 393.74 | 0.00 | 31.62 | 132.75 | 0.00 | 11,465.08 | 1,422.38 |
-| 7 | 47 | 0.766360 | 1,839.26 | 55.46 | 436.73 | 0.00 | 31.22 | 147.26 | 0.00 | 12,978.50 | 1,315.85 |
-| 8 | 48 | 0.741686 | 1,780.05 | 58.78 | 476.85 | 0.00 | 30.82 | 160.80 | 1,239.56 | 14,394.07 | 1,213.60 |
-| 9 | 49 | 0.717651 | 1,722.36 | 62.28 | 550.86 | 0.00 | 30.41 | 185.79 | 0.00 | 16,954.47 | 1,078.81 |
-| 10 | 50 | 0.694231 | 1,666.15 | 65.97 | 584.59 | 0.00 | 30.00 | 197.19 | 0.00 | 18,152.02 | 985.59 |
-| 11 | 51 | 0.671401 | 1,611.36 | 68.87 | 1,231.45 | 0.00 | 29.17 | 207.72 | 0.00 | 19,261.02 | 281.87 |
-| 12 | 52 | 0.629062 | 1,509.75 | 75.18 | 416.27 | 0.00 | 28.41 | 210.68 | 823.46 | 19,656.70 | 989.89 |
-| 13 | 53 | 0.614282 | 1,474.28 | 89.77 | 453.85 | 0.00 | 28.29 | 229.75 | 0.00 | 21,602.56 | 902.36 |
-| 14 | 54 | 0.599646 | 1,439.15 | 102.63 | 473.76 | 0.00 | 28.17 | 239.88 | 0.00 | 22,651.89 | 834.59 |
-| 15 | 55 | 0.585141 | 1,404.34 | 116.85 | 492.49 | 0.00 | 28.03 | 249.41 | 0.00 | 23,641.56 | 766.97 |
-| 16 | 56 | 0.570753 | 1,369.81 | 132.54 | 510.02 | 0.00 | 27.88 | 258.35 | 0.00 | 24,571.29 | 699.37 |
-| 17 | 57 | 0.556471 | 1,335.53 | 149.81 | 526.34 | 0.00 | 27.72 | 266.69 | 0.00 | 25,440.64 | 631.65 |
-| 18 | 58 | 0.542280 | 1,301.47 | 168.80 | 541.45 | 0.00 | 27.55 | 274.43 | 0.00 | 26,249.06 | 563.67 |
-| 19 | 59 | 0.528168 | 1,267.60 | 189.63 | 555.33 | 0.00 | 27.36 | 281.55 | 0.00 | 26,995.84 | 495.28 |
-| 20 | 60 | 0.514121 | 1,233.89 | 212.44 | 567.95 | 0.00 | 27.16 | 288.05 | 0.00 | 27,680.11 | 426.34 |
-| 21 | 61 | 0.500125 | 1,200.30 | 237.36 | 579.30 | 0.00 | 26.94 | 293.91 | 0.00 | 28,300.85 | 356.71 |
-| 22 | 62 | 0.486168 | 1,166.80 | 264.53 | 589.34 | 0.00 | 26.70 | 299.14 | 0.00 | 28,856.92 | 286.23 |
-| 23 | 63 | 0.472234 | 1,133.36 | 294.08 | 598.06 | 0.00 | 26.44 | 303.70 | 0.00 | 29,346.98 | 214.77 |
-| 24 | 64 | 0.458311 | 1,099.95 | 326.15 | 605.42 | 0.00 | 26.17 | 307.59 | 0.00 | 29,769.58 | 142.21 |
-| 25 | 65 | 0.444386 | 1,066.53 | 360.85 | 611.39 | 0.00 | 25.87 | 310.80 | 0.00 | 30,123.10 | 68.42 |
-| 26 | 66 | 0.430446 | 1,033.07 | 402.00 | 0.00 | 31,240.67 | 25.78 | 313.29 | 0.00 | 30,405.82 | −30,635.38 |
-| **Total** | — | — | **42,474.94** | **3,744.94** | **12,507.30** | **31,240.67** | **2,411.39** | **5,562.28** | **3,577.46** | — | **−7,429.36** |
+| 0 | 40 | 1.000000 | 2,400.00 | 36.19 | 98.87 | 0.00 | 1,655.15 | 19.99 | 0.00 | 0.00 | 609.80 |
+| 1 | 41 | 0.948914 | 2,277.39 | 37.28 | 188.33 | 0.00 | 34.02 | 38.08 | 81.80 | 1,915.84 | 2,017.77 |
+| 2 | 42 | 0.900349 | 2,160.84 | 38.80 | 163.83 | 0.00 | 33.24 | 55.21 | 186.85 | 3,730.96 | 1,924.97 |
+| 3 | 43 | 0.872161 | 2,093.19 | 40.88 | 217.14 | 0.00 | 32.84 | 73.18 | 1,204.45 | 5,588.90 | 1,802.33 |
+| 4 | 44 | 0.844755 | 2,027.41 | 43.11 | 297.62 | 0.00 | 32.44 | 100.31 | 0.00 | 8,363.74 | 1,654.24 |
+| 5 | 45 | 0.818103 | 1,963.45 | 45.50 | 346.72 | 0.00 | 32.04 | 116.87 | 41.81 | 9,812.15 | 1,539.19 |
+| 6 | 46 | 0.792179 | 1,901.23 | 48.04 | 394.02 | 0.00 | 31.64 | 132.83 | 0.00 | 11,472.02 | 1,427.52 |
+| 7 | 47 | 0.766955 | 1,840.69 | 50.76 | 437.12 | 0.00 | 31.25 | 147.37 | 0.00 | 12,988.58 | 1,321.57 |
+| 8 | 48 | 0.742406 | 1,781.77 | 53.66 | 477.37 | 0.00 | 30.85 | 160.96 | 1,241.03 | 14,408.05 | 1,219.89 |
+| 9 | 49 | 0.718504 | 1,724.41 | 56.75 | 551.59 | 0.00 | 30.45 | 186.01 | 0.00 | 16,974.64 | 1,085.62 |
+| 10 | 50 | 0.695227 | 1,668.54 | 60.03 | 585.51 | 0.00 | 30.05 | 197.47 | 0.00 | 18,178.06 | 992.95 |
+| 11 | 51 | 0.672547 | 1,614.11 | 62.63 | 1,233.75 | 0.00 | 29.23 | 208.07 | 0.00 | 19,293.91 | 288.51 |
+| 12 | 52 | 0.630326 | 1,512.78 | 68.35 | 417.18 | 0.00 | 28.47 | 211.11 | 825.39 | 19,696.20 | 998.79 |
+| 13 | 53 | 0.615721 | 1,477.73 | 81.63 | 455.01 | 0.00 | 28.36 | 230.29 | 0.00 | 21,653.15 | 912.73 |
+| 14 | 54 | 0.601269 | 1,443.05 | 93.39 | 475.15 | 0.00 | 28.25 | 240.53 | 0.00 | 22,713.19 | 846.26 |
+| 15 | 55 | 0.586957 | 1,408.70 | 106.44 | 494.13 | 0.00 | 28.12 | 250.19 | 0.00 | 23,714.95 | 780.00 |
+| 16 | 56 | 0.572772 | 1,374.65 | 120.91 | 511.95 | 0.00 | 27.99 | 259.27 | 0.00 | 24,658.21 | 713.81 |
+| 17 | 57 | 0.558701 | 1,340.88 | 136.92 | 528.60 | 0.00 | 27.84 | 267.76 | 0.00 | 25,542.60 | 647.53 |
+| 18 | 58 | 0.544729 | 1,307.35 | 154.60 | 544.06 | 0.00 | 27.68 | 275.67 | 0.00 | 26,367.61 | 581.02 |
+| 19 | 59 | 0.530843 | 1,274.02 | 174.10 | 558.31 | 0.00 | 27.51 | 282.97 | 0.00 | 27,132.56 | 514.10 |
+| 20 | 60 | 0.517028 | 1,240.87 | 195.57 | 571.35 | 0.00 | 27.32 | 289.68 | 0.00 | 27,836.61 | 446.63 |
+| 21 | 61 | 0.503269 | 1,207.85 | 219.16 | 583.15 | 0.00 | 27.12 | 295.76 | 0.00 | 28,478.74 | 378.43 |
+| 22 | 62 | 0.489552 | 1,174.92 | 245.02 | 593.67 | 0.00 | 26.90 | 301.22 | 0.00 | 29,057.78 | 309.33 |
+| 23 | 63 | 0.475861 | 1,142.07 | 273.33 | 602.90 | 0.00 | 26.66 | 306.03 | 0.00 | 29,572.37 | 239.18 |
+| 24 | 64 | 0.462182 | 1,109.24 | 304.23 | 610.80 | 0.00 | 26.40 | 310.19 | 0.00 | 30,020.98 | 167.80 |
+| 25 | 65 | 0.448499 | 1,076.40 | 337.90 | 617.33 | 0.00 | 26.12 | 313.67 | 0.00 | 30,401.88 | 95.05 |
+| 26 | 66 | 0.434798 | 1,043.51 | 377.94 | 0.00 | 31,584.64 | 26.05 | 316.46 | 0.00 | 30,713.22 | −30,945.11 |
+| **Total** | — | — | **42,587.06** | **3,463.12** | **12,555.47** | **31,584.64** | **2,413.96** | **5,587.17** | **3,581.33** | — | **−7,430.12** |
 
-The **Total** row is the sum **at full precision, then rounded**, over all 324 months. Four of the
-eight totals differ from the sum of the twenty-seven already-rounded annual cells, each by a cent or
-two: `claims_death` 3 744,94 € against 3 744,95 €, `claims_lapse` 12 507,30 € against 12 507,28 €,
-`expenses` 2 411,39 € against 2 411,40 €, and `net_cf` −7 429,36 € against −7 429,38 €. **Assert the
-full-precision totals**; a test written against the rounded column will fail on four of them and look
-like a modelling error.
+The **Total** row is the sum **at full precision, then rounded**, over all 324 months. Five of the
+eight totals differ from the sum of the twenty-seven already-rounded annual cells, each by one to
+three cents: `premiums` 42 587,06 € against 42 587,05 €, `claims_lapse` 12 555,47 € against
+12 555,46 €, `expenses` 2 413,96 € against 2 413,99 €, `guar_int` 5 587,17 € against 5 587,15 €, and
+`net_cf` −7 430,12 € against −7 430,09 €. **Assert the full-precision totals**; a test written against
+the rounded column will fail on five of them and look like a modelling error.
 
 The shape is the one a *Zillmer*-financed savings contract has and no other: a **first year that is
 almost the whole story of the strain** — 1 620,00 € of acquisition expense against 2 400,00 € of
-premium, so the first policy year nets 608,00 € rather than the 2 000 € the premium suggests, and
-within it the first **month** nets +765,32 € while the other eleven are each mildly negative — then
+premium, so the first policy year nets 609,80 € rather than the 2 000 € the premium suggests, and
+within it the first **month** nets +765,47 € while the other eleven are each mildly negative — then
 twenty-five thin positive years while the account builds, then one very large negative year when the
 whole surviving cohort's capital falls due at once. The surrender spike in policy year 12 (`k = 11`,
-1 231,45 € against 584,59 € the year before) is the § 20 Abs. 1 Nr. 6 EStG threshold in the lapse
+1 233,75 € against 585,51 € the year before) is the § 20 Abs. 1 Nr. 6 EStG threshold in the lapse
 table and nothing else.
 
 **What the monthly grid moved, against the annual-step model this replaced.** Premiums, the maturity
@@ -975,8 +986,8 @@ thirteen model points. Two columns moved:
 
 | Column | Annual grid | Monthly grid | Why |
 |---|---|---|---|
-| `claims_death` / `claims_lapse` | 3 780,63 € / 12 476,88 € | **3 744,94 € / 12 507,30 €** | Deaths and surrenders compete month by month rather than once a year. The total exits at every anniversary are unchanged; the split is not |
-| `expenses` | 2 376,60 € | **2 365,47 €** | A policy leaving mid-year bears administration for the months it was there |
+| `claims_death` / `claims_lapse` | 3 496,07 € / 12 527,43 € | **3 463,12 € / 12 555,47 €** | Deaths and surrenders compete month by month rather than once a year. The total exits at every anniversary are unchanged; the split is not |
+| `expenses` | 2 425,59 € | **2 413,96 €** | A policy leaving mid-year bears administration for the months it was there |
 
 ### Independent checks
 
@@ -994,19 +1005,21 @@ administration charge is `0,03 × 2 400,00 = 72,00 €`; so `P⁺(0) = 2 400,00 
 `D(0) = 32 400,00 €`, and the surrender value is `V(0) = 2 018,9799 × 0,98 = 1 978,6003 €`. **Every
 line so far is annual and is unchanged by the move to a monthly grid.**
 
-The **decrements** are where the month enters. The year's rates are `q_d = 0,001200` at attained age 40
-— the proxy's own anchor — and `w_l = 0,05`; their geometric twelfths are
-`q^m_d = 1 − (1 − 0,0012)^(1/12) = 0,00010006` and `w^m_l = 1 − (1 − 0,05)^(1/12) = 0,00426532`, and
-twelve months of each compound back to the year exactly, so `pols_if(12) = 0,948860` — the table's
-second row to six decimals, and the annual grid's own number. Summed over the twelve months the year
-produces **0,001172** deaths and **0,049968** surrenders, against the annual grid's 0,001200 and
-0,049940: the competing-decrement shift, total exits unchanged. Hence
-`claims_death = 32 400,00 × 0,001172 = 37,98 €` and
-`claims_lapse = 1 978,6003 × 0,049968 = 98,87 €`. Expenses are `1 620,00` in the first month plus
+The **decrements** are where the month enters. The year's rates are
+`q_d = 0,75 × 0,00152438 = 0,00114328` at attained age 40 — `mort_be_factor` times the rate of
+`dav2008t_proxy` for a man of 40, `0,00022 + 2,8820182383e-05 × 1,10^40` — and `w_l = 0,05`; their
+geometric twelfths are `q^m_d = 1 − (1 − 0,00114328)^(1/12) = 0,00009532` and
+`w^m_l = 1 − (1 − 0,05)^(1/12) = 0,00426532`, and twelve months of each compound back to the year
+exactly, so `pols_if(12) = 0,948914` — the table's second row to six decimals, and the annual grid's
+own number. Summed over the twelve months the year produces **0,001117** deaths and **0,049969**
+surrenders, against the annual grid's 0,001143 and 0,049943: the competing-decrement shift, total
+exits unchanged. Hence `claims_death = 32 400,00 × 0,001117 = 36,19 €` and
+`claims_lapse = 1 978,6003 × 0,049969 = 98,87 €`. Expenses are `1 620,00` in the first month plus
 twelve twelfths of `36,00` on a falling in-force, `1 655,15 €` in all. The year nets
-`2 400,00 − 37,98 − 98,87 − 0 − 1 655,15 = 608,00 €`, of which **+765,32 €** falls in the first month
-— the whole *Beitrag* against the whole acquisition expense — and the other eleven are each about
-−14,50 €. Every figure in the first row is reproduced without the model.
+`2 400,00 − 36,1859 − 98,8692 − 0 − 1 655,1491 = 609,7958 €`, the table's 609,80 €, of which
+**+765,47 €** falls in the first month — the whole *Beitrag* against the whole acquisition expense —
+and the other eleven lie between −14,46 € and −13,85 €. Every figure in the first row is reproduced
+without the model.
 
 **2. The *Indexjahr* of `k = 8` — policy year 9 — rebuilt on its own terms.** The twelve capped
 monthly returns of research Example A sum to `S(8) = +8,90 %` (table below), which is positive, so
@@ -1014,46 +1027,47 @@ monthly returns of research Example A sum to `S(8) = +8,90 %` (table below), whi
 by one as `index_return_capped_mth(t)`; their sum is `index_sum(8)` by construction, which the test
 module asserts. The base is the **opening** balance `G(8) = av_pp(8) = 19 407,2450 €`, giving
 `X(8) = 0,0890 × 19 407,2450 = 1 727,2448 €` per policy; the credit goes to the survivors of all twelve
-months, `pols_surv_year_end(8) = 0,717651`, so
-`index_credit(8) = 1 727,2448 × 0,717651 = 1 239,5583 €` — the table's **1 239,56**, and the annual
+months, `pols_surv_year_end(8) = 0,718504`, so
+`index_credit(8) = 1 727,2448 × 0,718504 = 1 241,0331 €` — the table's **1 241,03**, and the annual
 grid's figure to the cent. Two contrasts a reader can check on the same twelve numbers: **compounding**
 the capped returns instead of summing them gives 8,9599 %, and the **raw** year return is
 `Y(8) = +13,4548 %` against a raw sum of +13,10 %.
 
-**3. The decrement closure.** Summed over all 324 **months**, deaths **0,073805**, surrenders
-**0,501218** and maturities **0,424977** add to **1,000000** exactly — the whole opening cohort, with
+**3. The decrement closure.** Summed over all 324 **months**, deaths **0,068114**, surrenders
+**0,502230** and maturities **0,429656** add to **1,000000** exactly — the whole opening cohort, with
 nothing left in force at `t = 324`. This is `check_pols_roll_fwd()`'s second condition, and it is built
 by direct summation over the exit cells with no reference to the recursion that produced `pols_if`. The
-maturity count is the annual grid's to fifteen decimals; deaths and surrenders have traded 0,000779 of
+maturity count is the annual grid's to fourteen decimals; deaths and surrenders have traded 0,000718 of
 a policy between them, which is the competing-decrement shift over the whole projection.
 
 **4. The account roll-forward in policy year `k = 8`, at fund level.**
 
-    av(8)              14,394.0730      = av_pp(8) x pols_if(96)
-    + prem_to_av(8)     1,726.6439      = 2,328.00 x 0.741686
-    − av_charge(8)         40.3018      = 54.3381 x 0.741686
-    + guar_int(8)         160.8042
+    av(8)              14,408.0474      = av_pp(8) x pols_if(96)
+    + prem_to_av(8)     1,728.3202      = 2,328.00 x 0.742406
+    − av_charge(8)         40.3409      = 54.3381 x 0.742406
+    + guar_int(8)         160.9603
     + surplus_credit(8)     0.0000      w(8) = 1, so the safe arm is empty
-    + index_credit(8)   1,239.5583      to pols_surv_year_end(8), not to pols_if(96)
-    − av_released(8)      526.3103      = 21,897.7159 x (0.0018141 + 0.0222208)
+    + index_credit(8)   1,241.0331      to pols_surv_year_end(8), not to pols_if(96)
+    − av_released(8)      523.3804      = 21,897.7159 x (0.0016561 + 0.0222450)
     -------------------------------
-    = av(9)            16,954.4673      the table's next row
+    = av(9)            16,974.6398      the table's next row
 
 Every term is struck on a **different population**, which is the whole difficulty of this product: the
 premium, the charge and the guaranteed interest on the year's opening in-force `pols_if(12k)`, the
 credit on the survivors of all twelve months, and `av_released` on the year's two exits at the balance
 they left with. This is `check_av_roll_fwd()`, and it is stated **per policy year**: the account is
 defined at anniversaries and the *Indexjahr* settles only at the year end, so there is no monthly
-residual to write. The exits are summed over the year — 0,0018141 deaths and 0,0222208 surrenders
-against the annual grid's 0,0018396 and 0,0221954 — and their total, which is what the balance
+residual to write. The exits are summed over the year — 0,0016561 deaths and 0,0222450 surrenders
+against the annual grid's 0,0016794 and 0,0222218 — and their total, which is what the balance
 release depends on, is unchanged.
 
-**5. The cash flow statement closes on the Total row.** `42 474,94 − 3 744,94 − 12 507,30 −
-31 240,67 − 2 411,39 = −7 429,36 €`, which is the `net_cf` total to the cent, and at full precision
-`42 474,939948 − 47 492,910425 − 2 411,388535 = −7 429,359012`. Note what is **not** in it: the
-guaranteed interest of 5 562,28 € and the index credits of 3 577,46 € are movements of the
+**5. The cash flow statement closes on the Total row.** `42 587,06 − 3 463,12 − 12 555,47 −
+31 584,64 − 2 413,96 = −7 430,13 €`, which is the `net_cf` total of −7 430,12 € to the cent of the
+rounded terms, and at full precision
+`42 587,057716 − 47 603,221632 − 2 413,961019 = −7 430,124935`. Note what is **not** in it: the
+guaranteed interest of 5 587,17 € and the index credits of 3 581,33 € are movements of the
 policyholder's account, live in `result_index()` rather than in the cash flow statement, and adding
-them would move `net_cf` by 9 139,74 €. This is `check_net_cf()`, and it is asserted in every one of
+them would move `net_cf` by 9 168,50 €. This is `check_net_cf()`, and it is asserted in every one of
 the 324 months.
 
 **6. The guarantee at *Rentenbeginn*.** The ledger closes at
@@ -1062,7 +1076,7 @@ credits over the 27 years, the safe arm being empty — and the *Beitragsgaranti
 `0,90 × 64 800,00 = 58 320,00 €`, so the guaranteed capital is `guar_cap_pp(27) = 63 171,4383 €`. The
 account stands at `av_pp(27) = 73 511,3936 €`, above it, so the floor **does not bind** on the anchor
 and `mat_pp(26) = 73 511,39 €`. The maturity cash flow
-is `73 511,3936 × 0,424977 = 31 240,67 €`, the table's last row. Reported beside it, and **not a cash
+is `73 511,3936 × 0,429656 = 31 584,64 €`, the table's last row. Reported beside it, and **not a cash
 flow of this model**: `ann_monthly_pp() = 73 511,3936 / 10 000 × 25,00 = 183,78 €` a month.
 
 ### The budget diagnostic
@@ -1141,19 +1155,21 @@ covers all 27 years, not only the six displayed:
 
 | t | x(t) | pols_if | premiums | claims_death | claims_lapse | claims_maturity | expenses | guar_int | index_credit | av | net_cf |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 0 | 40 | 1.000000 | 2,400.00 | 37.98 | 98.87 | 0.00 | 1,655.15 | 19.99 | 0.00 | 0.00 | 608.00 |
-| 3 | 43 | 0.871969 | 2,092.73 | 43.90 | 226.81 | 0.00 | 32.83 | 76.45 | 2,036.27 | 5,916.59 | 1,789.19 |
-| 8 | 48 | 0.741686 | 1,780.05 | 58.78 | 511.71 | 0.00 | 30.82 | 172.56 | 1,216.40 | 15,572.35 | 1,178.74 |
-| 9 | 49 | 0.717651 | 1,722.36 | 62.28 | 584.15 | 0.00 | 30.41 | 197.01 | 675.83 | 18,079.93 | 1,045.52 |
-| 12 | 52 | 0.629062 | 1,509.75 | 84.12 | 465.80 | 0.00 | 28.41 | 235.75 | 832.65 | 22,169.87 | 931.42 |
-| 26 | 66 | 0.430446 | 1,033.07 | 538.84 | 0.00 | 41,875.02 | 25.78 | 419.94 | 0.00 | 41,097.09 | −41,406.57 |
-| **Total** | | | **42,474.94** | **4,593.94** | **14,760.66** | **41,875.02** | **2,411.39** | **6,712.41** | **16,521.86** | — | **−21,166.07** |
+| 0 | 40 | 1.000000 | 2,400.00 | 36.19 | 98.87 | 0.00 | 1,655.15 | 19.99 | 0.00 | 0.00 | 609.80 |
+| 3 | 43 | 0.872161 | 2,093.19 | 40.88 | 226.88 | 0.00 | 32.84 | 76.47 | 2,036.94 | 5,917.89 | 1,792.59 |
+| 8 | 48 | 0.742406 | 1,781.77 | 53.66 | 512.26 | 0.00 | 30.85 | 172.72 | 1,217.85 | 15,587.47 | 1,185.00 |
+| 9 | 49 | 0.718504 | 1,724.41 | 56.75 | 584.92 | 0.00 | 30.45 | 197.25 | 676.80 | 18,101.44 | 1,052.29 |
+| 12 | 52 | 0.630326 | 1,512.78 | 76.48 | 466.82 | 0.00 | 28.47 | 236.23 | 834.60 | 22,214.42 | 941.01 |
+| 26 | 66 | 0.434798 | 1,043.51 | 506.59 | 0.00 | 42,336.08 | 26.05 | 424.18 | 0.00 | 41,512.58 | −41,825.20 |
+| **Total** | | | **42,587.06** | **4,250.06** | **14,820.59** | **42,336.08** | **2,413.96** | **6,743.87** | **16,585.83** | — | **−21,233.63** |
 
-Summed at full precision and then rounded, as above; here **four** of the eight totals differ from
-the sum of the twenty-seven rounded annual cells, each by a cent or two: `claims_death`
-(4 593,94 € against 4 593,95 €), `claims_lapse` (14 760,66 € against 14 760,64 €), `expenses`
-(2 411,39 € against 2 411,40 €) and `index_credit` (16 521,86 € against 16 521,85 €). `index_credit`
-agrees at the cent on the Cap design and does not here.
+Summed at full precision and then rounded, as above; here **seven** of the eight totals differ from
+the sum of the twenty-seven rounded annual cells, each by one to three cents: `premiums`
+(42 587,06 € against 42 587,05 €), `claims_death` (4 250,06 € against 4 250,05 €), `claims_lapse`
+(14 820,59 € against 14 820,60 €), `expenses` (2 413,96 € against 2 413,99 €), `guar_int`
+(6 743,87 € against 6 743,86 €), `index_credit` (16 585,83 € against 16 585,82 €) and `net_cf`
+(−21 233,63 € against −21 233,64 €). `index_credit` agrees at the cent on the Cap design and does
+not here.
 
 Every *Indexjahr* figure in this table is the annual-step model's: the `index_credit` column, the
 budget ratio and the two rows the designs are compared on are bit-identical, because the *Indexjahr*
@@ -1162,12 +1178,12 @@ is an annual construction and the conversion did not touch it. Only `claims_deat
 
 The single most instructive row is `k = 9`. On the Cap design that year credits **nothing**; on the
 *Quote* design the same twelve returns credit `max(0,60 × 6,4402 %, 0) = 3,8641 %` of `G(9)`, which is
-**675,83 €** at fund level. At `k = 8` the ranking reverses — the Cap design credits 8,90 % against the
+**676,80 €** at fund level. At `k = 8` the ranking reverses — the Cap design credits 8,90 % against the
 *Quote*'s `0,60 × 13,4548 % = 8,0729 %` — because Example A's give-up was concentrated in three months
 while the *Quote* gives away 40 % of the year in every state. **The two designs are not
 interchangeable and they fail differently**, which is why a product specification may not describe one
-and price the other. Over the whole projection the *Quote* design credits 16 521,86 € against the Cap
-design's 3 577,46 €, and its `index_budget_ratio()` is **0,9782** against **0,2082** — on this path, at
+and price the other. Over the whole projection the *Quote* design credits 16 585,83 € against the Cap
+design's 3 581,33 €, and its `index_budget_ratio()` is **0,9782** against **0,2082** — on this path, at
 these levels, `q = 60 %` on a 17 %-volatility price index is close to a fair spend of the budget and
 `C = 3,00 %` a month is not.
 
@@ -1177,7 +1193,7 @@ All four are the same 40-year-old paying 2 400,00 € a year to 67 under a 90 % 
 `i_g = 1,00 %`, differing only in what the declared surplus buys. Every column below is **per policy**
 at policy year `k = n = 27`, *Rentenbeginn*, so the credit columns are the ledger `credit_cum_pp(27)` and are
 larger than the frame's fund-level totals, which carry the decrements: the anchor's 4 851,44 € of per-policy index
-credits is the 3 577,46 € of the `index_credit` column above, before survivorship.
+credits is the 3 581,33 € of the `index_credit` column above, before survivorship.
 
 | Model point | Design | Index path | Index credits | Safe-arm credits | Account | Guaranteed capital | Benefit | Monthly *Rente* | `index_budget_ratio()` |
 |---|---|---|---|---|---|---|---|---|---|

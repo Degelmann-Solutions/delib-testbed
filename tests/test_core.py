@@ -474,7 +474,7 @@ CORE_CELLS = {
                 "risikolebensversicherung": "derived",
                 "sofortrente": "override"},
         "omega_age": {"basisrente": "override",
-                      "klassische_rentenversicherung": "derived",
+                      "klassische_rentenversicherung": "override",
                       "pflegerentenversicherung": "derived",
                       "riester_rente": "override",
                       "sofortrente": "derived"},
@@ -562,21 +562,25 @@ CORE_CELLS = {
                         "risikolebensversicherung": "derived"},
         "unisex_mix_male": {"berufsunfaehigkeit": "derived",
                             "kapitallebensversicherung": "derived",
+                            "klassische_rentenversicherung": "derived",
                             "pflegerentenversicherung": "derived",
                             "risikolebensversicherung": "derived",
                             "sofortrente": "derived"},
         "unisex_blend": {"berufsunfaehigkeit": "derived",
                          "kapitallebensversicherung": "derived",
+                         "klassische_rentenversicherung": "derived",
                          "pflegerentenversicherung": "derived"},
         "mort_load_tariff": {"fondsgebundene_rentenversicherung": "derived",
                              "kapitallebensversicherung": "derived",
+                             "klassische_rentenversicherung": "derived",
                              "risikolebensversicherung": "override"},
         "mort_rate_tariff_base": {"fondsgebundene_rentenversicherung": "derived",
                                   "kapitallebensversicherung": "derived",
+                                  "klassische_rentenversicherung": "derived",
                                   "risikolebensversicherung": "override"},
         "mort_rate_tariff": {"fondsgebundene_rentenversicherung": "derived",
                              "kapitallebensversicherung": "derived",
-                             "klassische_rentenversicherung": "override",
+                             "klassische_rentenversicherung": "derived",
                              "pflegerentenversicherung": "override",
                              "risikolebensversicherung": "derived",
                              "sofortrente": "override"},
@@ -612,7 +616,8 @@ CORE_CELLS = {
                      "riester_rente": "derived"},
         # The derivation hooks of the table factory (docs/core.md, "The table factory"): a
         # product that defines the name reads its own mortality file until its switch.
-        "birth_year": {"sofortrente": "override"},
+        "birth_year": {"klassische_rentenversicherung": "override",
+                       "sofortrente": "override"},
         "omega_age_table": {},
         "mort_table_name": {},
         "mort_rate_table": {},
@@ -620,14 +625,15 @@ CORE_CELLS = {
                              "berufsunfaehigkeit": "derived",
                              "indexpolice": "derived",
                              "kapitallebensversicherung": "override",
-                             "klassische_rentenversicherung": "override",
+                             "klassische_rentenversicherung": "derived",
                              "pflegerentenversicherung": "override",
                              "riester_rente": "override",
                              "risikolebensversicherung": "override",
                              "sofortrente": "override"},
         "mort_rate_tariff_at_age": {"berufsunfaehigkeit": "derived",
                                     "fondsgebundene_rentenversicherung": "override",
-                                    "kapitallebensversicherung": "override"},
+                                    "kapitallebensversicherung": "override",
+                                    "klassische_rentenversicherung": "derived"},
         "mort_be_trend": {"berufsunfaehigkeit": "derived",
                           "fondsgebundene_rentenversicherung": "derived",
                           "indexpolice": "derived",
@@ -647,7 +653,7 @@ CORE_CELLS = {
                            "fondsgebundene_rentenversicherung": "override",
                            "indexpolice": "derived",
                            "kapitallebensversicherung": "derived",
-                           "klassische_rentenversicherung": "override",
+                           "klassische_rentenversicherung": "derived",
                            "pflegerentenversicherung": "derived",
                            "riester_rente": "derived",
                            "risikolebensversicherung": "override"},
@@ -1776,9 +1782,12 @@ def test_param_equals_the_file_value(product, product_models):
                                              ("sofortrente", 121)])
 def test_omega_age_is_an_int(product, omega, product_models):
     """Every file writes ``omega_age`` as an integer, so ``param`` gives an ``int``; so does
-    Pflege's ``beitragssumme_cap_age`` (``85``)."""
+    Pflege's ``beitragssumme_cap_age`` (``85``). RV reads it off its table since its switch
+    to the table factory, the table's item ``dav2004r_proxy_end_age``, an integer too."""
     model = product_models(product)
-    assert type(model.Data.param("omega_age")) is int
+    item_name = ("dav2004r_proxy_end_age" if product == "klassische_rentenversicherung"
+                 else "omega_age")
+    assert type(model.Data.param(item_name)) is int
     item = model.Projection[model.Data.model_point_table().index[0]]
     assert item.omega_age() == omega and type(item.omega_age()) is int
     if product == "pflegerentenversicherung":

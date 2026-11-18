@@ -852,8 +852,10 @@ companion in-force table, **DAV 2004 R-Bestand**, exists for annuities already i
 [REG-R49].
 
 **The table is the property of the Deutsche Aktuarvereinigung, is not public and is not redistributed
-by delib.** The library cites it by name and ships a [std] proxy anchored so its own worked example
-reproduces exactly. A replacement must preserve three things: the **generational structure** — a
+by delib.** The library cites it by name and reads a [std] proxy, the generational table
+`dav2004r_proxy` of the core's table factory, on which its own worked example is recomputed: the
+tariff rate of the *Risikobeitrag* is its unisex blend, the best estimate 1,15 times its rate on
+the insured's own sex. A replacement must preserve three things: the **generational structure** — a
 `q(x, τ)` surface, not a period table, because a period-table proxy priced at a 40-year-old's
 annuitisation in 2055 understates the liability by a margin that dwarfs every other assumption in the
 model [REG-R49]; the **first-order margin over second order**, which for an annuity runs in **two

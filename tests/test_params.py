@@ -21,8 +21,10 @@
   ``tariff_type`` and the eight items of ``dav2008t_proxy`` in the layer ``tables``, each
   with its value, basis and provenance, and exits 0; BU lists its two choices,
   ``mort_table`` and ``mort_dis_table``, its derivation items and the items of both tables,
-  eight of ``dav2008t_proxy`` and fourteen of ``dav1997ti_proxy``; the eight products that
-  choose no table list no item of the layer.
+  eight of ``dav2008t_proxy`` and fourteen of ``dav1997ti_proxy``; RV lists its choice
+  ``mort_table``, ``mort_be_factor`` and ``unisex_mix_male`` and the fourteen items of
+  ``dav2004r_proxy``, and neither ``mort_base_year`` nor ``omega_age``; the seven products
+  that choose no table list no item of the layer.
 - A scratch copy of Index whose tariff chooses a fixture table lists that table's items with
   layer ``tables``, value, basis and provenance, after the core items and before the
   tariff-type items, and no other table's, the shipped one's neither, and exits 0; a copy
@@ -55,9 +57,10 @@ sys.path.insert(0, str(ROOT / "tools"))
 from run_baseline import model_dir  # noqa: E402
 
 from test_core import _add_params  # noqa: E402
-from test_tables import (BU, FIXTURE_DEFINITIONS, FIXTURE_VALUES, INDEX, SHIPPED_ITEMS,  # noqa: E402
-                         SHIPPED_PROVENANCE, SHIPPED_ROWS, SWITCHED, choosing_copy,
-                         fixture_copy, fixture_items, tables_file, unswitched_copy)
+from test_tables import (BU, FIXTURE_DEFINITIONS, FIXTURE_VALUES, INDEX, RV,  # noqa: E402
+                         SHIPPED_ITEMS, SHIPPED_PROVENANCE, SHIPPED_ROWS, SWITCHED,
+                         choosing_copy, fixture_copy, fixture_items, tables_file,
+                         unswitched_copy)
 
 
 def load_tool(name: str, path: Path):
@@ -310,8 +313,8 @@ def test_index_lists_its_choice_its_factor_and_the_items_of_its_table(capsys):
         value = int(text) if text.isdigit() else float(text)
         assert [item, repr(value), "tables", basis] in [line[:4] for line in split], item
     assert len([line for line in split if "dav2008t_proxy" in " ".join(line[:2])]) == 9
-    # no item of the table it does not choose
-    assert "dav1997ti_proxy" not in out
+    # no item of the tables it does not choose
+    assert "dav1997ti_proxy" not in out and "dav2004r_proxy" not in out
 
 
 def test_bu_lists_its_two_choices_and_the_items_of_both_tables(capsys):
@@ -342,12 +345,60 @@ def test_bu_lists_its_two_choices_and_the_items_of_both_tables(capsys):
     split = [line.split() for line in out.splitlines()]
     for item, (value, basis) in expected.items():
         assert [item, repr(value), "tariff_type", basis] in [line[:4] for line in split], item
-    for item, (text, basis) in SHIPPED_ROWS.items():
-        value = int(text) if text.isdigit() else float(text)
-        assert [item, repr(value), "tables", basis] in [line[:4] for line in split], item
+    for chosen in ("dav2008t_proxy", "dav1997ti_proxy"):
+        for item in SHIPPED_ITEMS[chosen]:
+            text, basis = SHIPPED_ROWS[item]
+            value = int(text) if text.isdigit() else float(text)
+            assert [item, repr(value), "tables", basis] in [line[:4] for line in split], item
     # the two choices and the items of both tables, 2 + 8 + 14 lines
     assert len([line for line in out.splitlines()
                 if "dav2008t_proxy" in line or "dav1997ti_proxy" in line]) == 24
+    assert "dav2004r_proxy" not in out
+
+
+def test_rv_lists_its_choice_its_derivation_items_and_the_items_of_its_table(capsys):
+    table, listed = tables_rows(PRODUCTS_DIR / RV, "ParamsShippedRv")
+    assert SWITCHED[RV] == {"mort_table": "dav2004r_proxy"}
+    assert [row["item"] for row in listed] == list(SHIPPED_ITEMS["dav2004r_proxy"])
+    assert len(listed) == 14
+    for row in listed:
+        text, basis = SHIPPED_ROWS[row["item"]]
+        assert row["value"] == (int(text) if text.isdigit() else float(text))
+        assert row["basis"] == basis == "Setzung"
+        assert row["provenance"].startswith(SHIPPED_PROVENANCE["dav2004r_proxy"])
+    by_item = {row["item"]: row for row in table}
+    expected = {"mort_table": "dav2004r_proxy", "mort_be_factor": 1.15, "unisex_mix_male": 0.45}
+    for item, value in expected.items():
+        row = by_item[item]
+        assert (row["value"], row["layer"], row["basis"]) == (value, "tariff_type", "Setzung")
+        assert row["provenance"], item
+    # the values package's provenance of the two new rows, verbatim
+    assert by_item["mort_table"]["provenance"] == (
+        "the first-order annuitant table, the proxy of DAV 2004 R with its trend, read at the"
+        " birth year, issue year less issue age")
+    assert by_item["unisex_mix_male"]["provenance"] == (
+        "male share of the unisex blend of the tariff rate, as Sofort's 0.45 on the same"
+        " table: sex does not enter the risk charge; before the switch the tariff rate was"
+        " read on the own sex (open point 1)")
+    # the two items the table's own replaced
+    assert "mort_base_year" not in by_item and "omega_age" not in by_item
+    assert by_item["dav2004r_proxy_base_year"]["value"] == 2005
+    assert by_item["dav2004r_proxy_end_age"]["value"] == 121
+
+    assert params.main([RV]) == 0
+    out, err = capsys.readouterr()
+    assert err == "" and headers(out) == [RV]
+    split = [line.split() for line in out.splitlines()]
+    for item, value in expected.items():
+        assert [item, repr(value), "tariff_type", "Setzung"] in [line[:4] for line in split], item
+    for item in SHIPPED_ITEMS["dav2004r_proxy"]:
+        text, basis = SHIPPED_ROWS[item]
+        value = int(text) if text.isdigit() else float(text)
+        assert [item, repr(value), "tables", basis] in [line[:4] for line in split], item
+    # the choice and the fourteen items of its table, and no other table's
+    assert len([line for line in out.splitlines() if "dav2004r_proxy" in line]) == 15
+    assert "dav2008t_proxy" not in out and "dav1997ti_proxy" not in out
+    assert not [line for line in split if line[:1] in (["mort_base_year"], ["omega_age"])]
 
 
 @pytest.mark.parametrize("product", [name for name in PRODUCTS if name not in SWITCHED])

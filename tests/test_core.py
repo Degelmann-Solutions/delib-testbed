@@ -50,7 +50,7 @@
   refund solve, are literals in its formula, and the tenth, ``mort_base_year``, went with its
   switch to the table factory. RV and Pflege never had one.
   Every product's core layer holds the items of ``CORE_ITEMS`` with their types, among them
-  ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's eleven guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 3 actuarial
+  ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's nine guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 3 actuarial
   formula literals (the tax step of ``lapse_tax_step``) are parameter items with their
   literals' types and values, the two statutory limbs in the core file; Index' five-year spread and KLV's
   five-year spread and three-year suicide window are items of the core file. Every other numeric literal of a
@@ -477,7 +477,7 @@ CORE_CELLS = {
                 "sofortrente": "override"},
         "omega_age": {"basisrente": "override",
                       "klassische_rentenversicherung": "override",
-                      "pflegerentenversicherung": "derived",
+                      "pflegerentenversicherung": "override",
                       "riester_rente": "override",
                       "sofortrente": "override"},
         "ret_age": {"basisrente": "derived",
@@ -633,7 +633,7 @@ CORE_CELLS = {
                              "indexpolice": "derived",
                              "kapitallebensversicherung": "derived",
                              "klassische_rentenversicherung": "derived",
-                             "pflegerentenversicherung": "override",
+                             "pflegerentenversicherung": "derived",
                              "riester_rente": "derived",
                              "risikolebensversicherung": "override",
                              "sofortrente": "derived"},
@@ -1180,8 +1180,15 @@ def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     for item in moved:
         assert (points[item] == basis.at[item, "value"]).all(), item
     basis = basis.drop(moved)
+    # The terminal age went with the switch to the table factory: the end age of the table
+    # of ``mort_table``; the six table choices stand first in its place.
+    table = merged.at["mort_table", "value"]
+    assert basis.at["omega_age", "value"] == model.CoreTables.end_age(table) == 110
+    basis = basis.drop(["omega_age"])
+    choices = ["mort_table"] + [f"mort_pg{grade}_table" for grade in range(1, 6)]
     assert list(merged.columns) == ["value", "basis", "provenance"]
-    assert list(merged.index) == list(basis.index) + list(expense.index)
+    assert list(merged.index) == choices + list(basis.index) + list(expense.index)
+    merged = merged.drop(choices).astype({"value": float})
     # Values and order are upstream's but the aligned ones; basis and provenance follow the
     # acceptance of 2026-11-09, which extended each provenance with its source or reason.
     # The expense rows' units stand in words at the end of their provenance.
@@ -1792,14 +1799,14 @@ def test_param_equals_the_file_value(product, product_models):
                                              ("pflegerentenversicherung", 110),
                                              ("sofortrente", 121)])
 def test_omega_age_is_an_int(product, omega, product_models):
-    """Every file writes ``omega_age`` as an integer, so ``param`` gives an ``int``; so does
-    Pflege's ``beitragssumme_cap_age`` (``85``). RV reads it off its table since its switch
-    to the table factory, the table's item ``dav2004r_proxy_end_age``, an integer too, and so
-    does Sofort since its switch."""
+    """``omega_age`` is an integer, so ``param`` gives an ``int``; so does Pflege's
+    ``beitragssumme_cap_age`` (``85``). RV, Sofort and Pflege read it off their tables since
+    their switches to the table factory, the items ``dav2004r_proxy_end_age`` and
+    ``pflege_aktive_proxy_end_age``, integers as the item ``omega_age`` was."""
     model = product_models(product)
-    item_name = ("dav2004r_proxy_end_age"
-                 if product in ("klassische_rentenversicherung", "sofortrente")
-                 else "omega_age")
+    item_name = {"klassische_rentenversicherung": "dav2004r_proxy_end_age",
+                 "sofortrente": "dav2004r_proxy_end_age",
+                 "pflegerentenversicherung": "pflege_aktive_proxy_end_age"}[product]
     assert type(model.Data.param(item_name)) is int
     item = model.Projection[model.Data.model_point_table().index[0]]
     assert item.omega_age() == omega and type(item.omega_age()) is int
@@ -2256,15 +2263,17 @@ def test_every_product_reads_the_core_items(product, product_models):
 
 
 def test_pflege_guards_read_the_core_epsilon():
-    """Pflege's eleven guards ``1.0 - 1e-12`` read ``1.0 - data.param("rate_cap_eps")``, and
-    no ``1e-12`` literal is left in its formulas (its docstrings still give the value)."""
+    """Pflege's guards ``1.0 - 1e-12`` read ``1.0 - data.param("rate_cap_eps")``, and no
+    ``1e-12`` literal is left in its formulas (its docstrings still give the value). Eleven
+    until its switch to the table factory, nine since: the caps of the two tariff death rates
+    went, a table rate of 1 passing through, and the force of a care grade took one."""
     path = PRODUCTS_DIR / "pflegerentenversicherung" / MODELS["pflegerentenversicherung"]
     text = (path / "Projection" / "__init__.py").read_text(encoding="utf-8")
     literals = [node for node in ast.walk(ast.parse(text))
                 if isinstance(node, ast.Constant) and type(node.value) is float
                 and node.value == 1e-12]
     assert literals == []
-    assert text.count('1.0 - data.param("rate_cap_eps")') == 11
+    assert text.count('1.0 - data.param("rate_cap_eps")') == 9
 
 
 # The structural numeric literals of the formula cells, by space, as ``repr`` of the value

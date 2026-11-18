@@ -17,11 +17,14 @@ The space ``core/Core/Tables``:
 
 - Every product holds it as the symlink ``CoreTables``, lists it in ``_spaces`` and names it
   as a base of no space; its ``Projection`` reads it through the Reference ``tables``, the
-  space reads the product's ``Data`` through ``data``, takes no parameter and holds the
-  core's cells and no other, so no product defines one.
+  space reads the product's ``Data`` through ``data`` and holds one Module Reference,
+  ``math``, takes no parameter and holds the core's cells and no other, so no product
+  defines one.
 - Its source holds no numeric literal but 0 and 1 and no cell name containing ``mort`` or
-  ``q`` besides ``q``, and its cells read only ``data.param`` and each other.
-- Five tables are defined, all on the law ``makeham``, in every product. For
+  ``q`` besides ``q``, and its cells read only ``data.param``, each other and ``math.exp``,
+  in the law ``gompertz_force``; a probe reading another module is reported.
+- Eleven tables are defined in every product, five on the law ``makeham`` and Pflege's six
+  on the law ``gompertz_force``. For
   ``dav2008t_proxy`` ``q`` gives ``a + b * c ** x`` in the law's float operations for both
   sexes, capped at 1 and exactly 1 at the closing age 120, the figures of the values package
   to their six digits; an age outside 0 to 120, a ``birth_year`` and a ``duration`` raise,
@@ -44,6 +47,13 @@ The space ``core/Core/Tables``:
   2.2 times non-smokers at every age below the cap, to the items' digits; the figures of
   the values package to their six digits; an age outside 0 to 120, a ``birth_year`` and a
   ``duration`` raise.
+- ``pflege_aktive_proxy`` and ``pflege_pg1_proxy`` to ``pflege_pg5_proxy`` are period tables
+  without selection on the law ``gompertz_force``: ``q`` gives ``1 - exp(-b * c ** x)`` with
+  each table's items at ages 18 to 108, below 1, and exactly 1 at 109; an age outside 18 to
+  109, a ``birth_year`` and a ``duration`` raise. The ``b`` of a care grade is the active
+  ``b`` times the grade's multiple, 1.5, 2.5, 3.5, 6.0 and 9.0, exact to the items' digits,
+  ``c`` the active ``c``, so a grade's force is the multiple of the active force to a
+  relative 1e-5. The 54 rate rows of the values package to their six digits.
 - On a scratch copy of Index with fixture tables and laws written into its ``CoreTables``
   and ``param_tables.csv`` beside the shipped table (``fixture_copy``): the period table
   gives its law's rate
@@ -65,14 +75,16 @@ The derivation hooks of the core's ``Projection``:
   the usage scan of Index, BU, KLV, FRV and Riester, which choose ``dav2008t_proxy`` as
   ``mort_table``, and of RV and Basis, which choose ``dav2004r_proxy``, and unreachable in
   RLV, whose two roles ``mort_nr_table`` and ``mort_r_table`` its own cell
-  ``mort_table_smoker`` reads, and in Pflege, which holds no choice. Sofort chooses
+  ``mort_table_smoker`` reads. Pflege chooses ``pflege_aktive_proxy`` as ``mort_table`` and
+  reaches the core's hooks for the best estimate of an active life; its five roles of the
+  care grades are read by its own cell ``mort_table_grade``. Sofort chooses
   ``dav2004r_proxy`` as ``mort_table`` and reaches ``mort_table_name`` from its own hook
   ``mort_rate_gen``, read for each of two lives, and not ``mort_rate_table`` or
   ``mort_rate_at_age``. BU's second
   role, ``mort_dis_table``, is read by a hook of its own, ``mort_rate_dis_at_age``, which
   no other product has, and Riester's, ``annuity_mort_table``, by its payout hook
   ``annuity_mort_rate`` and its ``omega_age``; ``omega_age_table`` is reachable in RV,
-  Basis and Sofort alone, whose ``omega_age`` reads it. Riester alone overrides
+  Basis, Sofort and Pflege alone, whose ``omega_age`` reads it. Riester alone overrides
   ``mort_rate_table``, to read its main role, a period table, without the birth year of its
   second.
 - Index reads its death rates through the factory alone: on every shipped point
@@ -203,6 +215,21 @@ The derivation hooks of the core's ``Projection``:
   own, its ``Projection`` no mortality cell of its own but the factor, the trend term, the
   hook and the per-life rates, and no read of the factory but ``q`` in the hook and the
   trend and base year in the trend term.
+- Pflege reads its death rates through the factory alone, the tenth and last switched
+  product, the reader of the six tables on ``gompertz_force``, whose care grades select their
+  tables: ``mort_table_grade`` maps the active state 0 to the table of ``mort_table`` and a
+  grade 1 to 5 to that of ``mort_pg<g>_table``, any other grade raises. The best estimate of
+  an active life is the core's ``mort_rate``, ``q(pflege_aktive_proxy, sex, age(t))`` without
+  a factor, the former file's rate to 1e-10, 1 at 109; in care ``mort_rate_care(t, g)`` is
+  ``q`` of the grade's table, the former ``1 - exp(-mort_mult(g) mu_A)`` to a relative 1e-5
+  below 109, and ``mort_force_care`` its force under the cap of ``mort_force``. The tariff
+  rates are ``min(1, 0.9 * blend)`` of the active table and ``min(1, 0.85 * blend)`` of the
+  grade's, the blend at 50/50, 1 at 109 and the same for a man and a woman. ``omega_age()``
+  is the tables' end age 110 and every frame is as long as before the switch. Its folder
+  holds no mortality file or column, ``care_table.csv`` no ``mort_mult``, its tariff-type file
+  no ``omega_age``, its ``Data`` no mortality Reference or cell, its ``Projection`` no
+  ``mort_rate_at_age`` of its own and no read of the factory but ``q`` in the rate of a grade
+  and in the blend of a state's rates.
 - On a scratch copy of Index that chooses a fixture table in its tariff-type file
   (``switched_copy``), the hooks deliver the table's rate on the point's own sex,
   its unisex blend and its end age, ``mort_rate`` stands on them, and the copy runs through
@@ -221,8 +248,9 @@ The usage scan ``core/param_usage.py`` (``docs/core.md``, "The usage check and t
   choices, the items of the second read through ``mort_rate_dis_at_age``, RLV its two, the
   items of both read through ``mort_table_smoker``, Riester its two, the items of the second
   read through ``annuity_mort_rate`` and ``omega_age``, Sofort its one, its items read
-  through ``mort_table_name`` as RV's; Pflege holds no choice and reads no tables item, and no
-  table is unchosen across the ten.
+  through ``mort_table_name`` as RV's, Pflege its six, the items of the active table read
+  through ``mort_table_name`` and those of the care grades' through ``mort_table_grade``; no
+  table is unchosen across the ten, and without Pflege its six would be.
 - On a scratch copy of Index that chooses a fixture table (``choosing_copy``) the scan holds
   the factory's ``items()`` and the choice, counts the chosen table's items as read by the
   cells reading the choice item and no other table's item, and reports nothing; a copy with
@@ -248,6 +276,7 @@ import hashlib
 import importlib
 import importlib.util
 import io
+import math
 import subprocess
 from pathlib import Path
 
@@ -259,6 +288,7 @@ from test_core import (CORE_MODEL, MODELS, PRODUCTS_DIR, ROOT, _add_params, _for
 
 RLV = "risikolebensversicherung"
 SOFORT = "sofortrente"
+PFLEGE = "pflegerentenversicherung"
 TABLES_FILE = "param_tables.csv"
 
 
@@ -279,6 +309,9 @@ SHIPPED_TABLES = {
                                             "first_age", "end_age")),
     "dav2008t_r_proxy": ("makeham", None, ("m_a", "m_b", "m_c", "f_a", "f_b", "f_c",
                                            "first_age", "end_age")),
+    **{table: ("gompertz_force", None, ("m_b", "m_c", "f_b", "f_c", "first_age", "end_age"))
+       for table in ("pflege_aktive_proxy", "pflege_pg1_proxy", "pflege_pg2_proxy",
+                     "pflege_pg3_proxy", "pflege_pg4_proxy", "pflege_pg5_proxy")},
 }
 SHIPPED_ITEMS = {table: tuple(f"{table}_{name}" for name in names)
                  for table, (_law, _trend, names) in SHIPPED_TABLES.items()}
@@ -335,6 +368,42 @@ SHIPPED_ROWS = {
     "dav2008t_r_proxy_f_c": ("1.1", "Setzung"),
     "dav2008t_r_proxy_first_age": ("0", "Setzung"),
     "dav2008t_r_proxy_end_age": ("121", "Setzung"),
+    "pflege_aktive_proxy_m_b": ("1.47884e-05", "Setzung"),
+    "pflege_aktive_proxy_m_c": ("1.11068", "Setzung"),
+    "pflege_aktive_proxy_f_b": ("4.7629e-06", "Setzung"),
+    "pflege_aktive_proxy_f_c": ("1.119962", "Setzung"),
+    "pflege_aktive_proxy_first_age": ("18", "Setzung"),
+    "pflege_aktive_proxy_end_age": ("110", "Setzung"),
+    "pflege_pg1_proxy_m_b": ("2.21826e-05", "Setzung"),
+    "pflege_pg1_proxy_m_c": ("1.11068", "Setzung"),
+    "pflege_pg1_proxy_f_b": ("7.14435e-06", "Setzung"),
+    "pflege_pg1_proxy_f_c": ("1.119962", "Setzung"),
+    "pflege_pg1_proxy_first_age": ("18", "Setzung"),
+    "pflege_pg1_proxy_end_age": ("110", "Setzung"),
+    "pflege_pg2_proxy_m_b": ("3.6971e-05", "Setzung"),
+    "pflege_pg2_proxy_m_c": ("1.11068", "Setzung"),
+    "pflege_pg2_proxy_f_b": ("1.190725e-05", "Setzung"),
+    "pflege_pg2_proxy_f_c": ("1.119962", "Setzung"),
+    "pflege_pg2_proxy_first_age": ("18", "Setzung"),
+    "pflege_pg2_proxy_end_age": ("110", "Setzung"),
+    "pflege_pg3_proxy_m_b": ("5.17594e-05", "Setzung"),
+    "pflege_pg3_proxy_m_c": ("1.11068", "Setzung"),
+    "pflege_pg3_proxy_f_b": ("1.667015e-05", "Setzung"),
+    "pflege_pg3_proxy_f_c": ("1.119962", "Setzung"),
+    "pflege_pg3_proxy_first_age": ("18", "Setzung"),
+    "pflege_pg3_proxy_end_age": ("110", "Setzung"),
+    "pflege_pg4_proxy_m_b": ("8.87304e-05", "Setzung"),
+    "pflege_pg4_proxy_m_c": ("1.11068", "Setzung"),
+    "pflege_pg4_proxy_f_b": ("2.85774e-05", "Setzung"),
+    "pflege_pg4_proxy_f_c": ("1.119962", "Setzung"),
+    "pflege_pg4_proxy_first_age": ("18", "Setzung"),
+    "pflege_pg4_proxy_end_age": ("110", "Setzung"),
+    "pflege_pg5_proxy_m_b": ("0.0001330956", "Setzung"),
+    "pflege_pg5_proxy_m_c": ("1.11068", "Setzung"),
+    "pflege_pg5_proxy_f_b": ("4.28661e-05", "Setzung"),
+    "pflege_pg5_proxy_f_c": ("1.119962", "Setzung"),
+    "pflege_pg5_proxy_first_age": ("18", "Setzung"),
+    "pflege_pg5_proxy_end_age": ("110", "Setzung"),
 }
 SHIPPED_LAYER = {item: (int(text) if text.isdigit() else float(text))
                  for item, (text, _basis) in SHIPPED_ROWS.items()}
@@ -349,6 +418,12 @@ SHIPPED_PROVENANCE = {
                          " table itself, whose values are DAV property and are not shipped; ",
     "dav2008t_r_proxy": "[std] proxy of DAV 2008 T R (smokers), first order, not the table"
                         " itself, whose values are DAV property and are not shipped; ",
+    "pflege_aktive_proxy": "[std] own table of active lives for the long-term care annuity,"
+                           " not DAV 2008 T and not DAV 2008 P, which are DAV property; ",
+    **{f"pflege_pg{grade}_proxy": f"[std] own table of lives in care grade {grade} for the"
+                                  " long-term care annuity, not DAV 2008 P, which is DAV"
+                                  " property; "
+       for grade in range(1, 6)},
 }
 # The products that have switched to the factory: {product: {choice item: table}}, and the
 # cell that reads each choice item.
@@ -363,12 +438,17 @@ SWITCHED = {
     "risikolebensversicherung": {"mort_nr_table": "dav2008t_nr_proxy",
                                  "mort_r_table": "dav2008t_r_proxy"},
     "sofortrente": {"mort_table": "dav2004r_proxy"},
+    "pflegerentenversicherung": {"mort_table": "pflege_aktive_proxy",
+                                 **{f"mort_pg{grade}_table": f"pflege_pg{grade}_proxy"
+                                    for grade in range(1, 6)}},
 }
 # Riester's second role is read by its payout hook and by its ``omega_age``, which names the
-# role whose end age is its horizon.
+# role whose end age is its horizon; Pflege's five roles of the care grades by the cell that
+# maps a state to its table.
 CHOICE_READERS = {"mort_table": {"mort_table_name"}, "mort_dis_table": {"mort_rate_dis_at_age"},
                   "mort_nr_table": {"mort_table_smoker"}, "mort_r_table": {"mort_table_smoker"},
-                  "annuity_mort_table": {"annuity_mort_rate", "omega_age"}}
+                  "annuity_mort_table": {"annuity_mort_rate", "omega_age"},
+                  **{f"mort_pg{grade}_table": {"mort_table_grade"} for grade in range(1, 6)}}
 
 
 def tables_file(folder: Path, product: str = RLV) -> Path:
@@ -540,7 +620,7 @@ def test_param_rejects_an_item_twice_in_the_tables_file(tmp_path):
 TABLES_SOURCE = CORE_MODEL / "Tables" / "__init__.py"
 TABLES_CELLS = ["definitions", "definition", "items", "parameter", "first_age", "end_age",
                 "base_year", "select_factors", "base_rate", "trend", "makeham",
-                "trend_linear", "q"]
+                "gompertz_force", "trend_linear", "q"]
 
 
 def raised_line(call) -> str:
@@ -566,6 +646,10 @@ def test_the_core_holds_the_tables_space_without_a_parameter():
         assert tables.formula is None
         assert list(tables.cells) == TABLES_CELLS
         assert tables.data is model.Data
+        # its References: ``data`` and the one Module Reference ``math``
+        assert tables.math is math
+        assert sorted(name for name in tables.refs if not name.startswith("_")) == [
+            "data", "math"]
         assert tables.bases == []
         assert list(tables.definitions()) == list(SHIPPED_TABLES)
         for table, (law_name, trend_name, names) in SHIPPED_TABLES.items():
@@ -1013,42 +1097,47 @@ def _local_names(cell: ast.AST) -> set[str]:
 
 def foreign_reads(path: Path) -> list[str]:
     """What the cells of a factory source read besides ``data.param``, each other, their own
-    names and Python's builtins: ``<cell>: <name>`` each, sorted."""
+    names and Python's builtins: ``<cell>: <name>`` each, or ``<cell>: <name>.<attribute>``
+    where the name is read for an attribute, sorted."""
     cells = dict(_formula_cells(path))
     found = set()
     for name, cell in cells.items():
         local = _local_names(cell)
-        loader = set()
+        attributed = set()
         for node in ast.walk(cell):
             if (isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
-                    and node.value.id == "data" and "data" not in local):
-                if node.attr == "param":
-                    loader.add(id(node.value))
-                else:
-                    found.add(f"{name}: data.{node.attr}")
-                    loader.add(id(node.value))
+                    and node.value.id not in local and node.value.id not in cells
+                    and not hasattr(builtins, node.value.id)):
+                attributed.add(id(node.value))
+                if (node.value.id, node.attr) != ("data", "param"):
+                    found.add(f"{name}: {node.value.id}.{node.attr}")
         for node in ast.walk(cell):
             if not isinstance(node, ast.Name) or node.id in local or node.id in cells:
                 continue
-            if node.id == "data":
-                if id(node) not in loader:
-                    found.add(f"{name}: data")
-            elif not hasattr(builtins, node.id):
+            if id(node) not in attributed and not hasattr(builtins, node.id):
                 found.add(f"{name}: {node.id}")
     return sorted(found)
 
 
-def test_the_factory_cells_read_only_data_param_and_each_other(tmp_path):
-    assert foreign_reads(TABLES_SOURCE) == []
+# The one read of the factory beyond ``data.param`` and its own cells: the exponential
+# function of the law ``gompertz_force``, from the space's Module Reference ``math``, which
+# holds no contract data (AD-2, amended by the values package, open point 18).
+ADMITTED_READS = ["gompertz_force: math.exp"]
+
+
+def test_the_factory_cells_read_only_data_param_each_other_and_math_exp(tmp_path):
+    assert foreign_reads(TABLES_SOURCE) == ADMITTED_READS
     probe = tmp_path / "probe.py"
     probe.write_text(
         "def a(table):\n    return data.param(table) + b()\n\n"
         "def b():\n    return data.model_point_table() + point_id + tables.q()\n\n"
         "def c(x):\n    y = [z for z in range(x)]\n    return len(y) + pd.NA\n\n"
-        "def d():\n    return a(data)\n",
+        "def d():\n    return a(data)\n\n"
+        "def e(x):\n    return math.exp(x) + math.log(x) + np.exp(x) + math\n",
         encoding="utf-8")
-    assert foreign_reads(probe) == ["b: data.model_point_table", "b: point_id", "b: tables",
-                                    "c: pd", "d: data"]
+    assert foreign_reads(probe) == ["b: data.model_point_table", "b: point_id", "b: tables.q",
+                                    "c: pd.NA", "d: data", "e: math", "e: math.exp",
+                                    "e: math.log", "e: np.exp"]
 
 
 # The fixture tables of a scratch copy: laws no shipped table has, numbers of no real table,
@@ -1157,8 +1246,9 @@ def test_the_fixture_is_written_into_the_copy_only(fixture_tables):
     assert "_fixture" not in TABLES_SOURCE.read_text(encoding="utf-8")
     assert "_fixture" not in (CORE_MODEL / "Data" / TABLES_FILE).read_text(encoding="utf-8")
     known = ("dav2008t_proxy", "dav2008t_nr_proxy", "dav2008t_r_proxy", "dav2004r_proxy",
-             "dav1997ti_proxy", "pflege_aktive_proxy")
-    assert set(SHIPPED_TABLES) <= set(known)
+             "dav1997ti_proxy", "pflege_aktive_proxy", "pflege_pg1_proxy", "pflege_pg2_proxy",
+             "pflege_pg3_proxy", "pflege_pg4_proxy", "pflege_pg5_proxy")
+    assert set(SHIPPED_TABLES) == set(known)
     assert not set(FIXTURE_DEFINITIONS) & set(known)
     # the shipped table is the same beside the fixture tables
     assert fixture_tables.q("dav2008t_proxy", "F", 50) == makeham_rate("F", 50)
@@ -1419,9 +1509,9 @@ def test_only_a_switched_product_reaches_a_hook_that_reads_the_factory(product, 
         # Riester reads its main role, a period table, without the birth year of its second
         assert model.Projection.cells[hook]._is_derived() or (
             product, hook) == ("riester_rente", "mort_rate_table"), hook
-    # the end age is read off the table by a switched product that runs to it: RV, Basis and
-    # Sofort; Riester, with two roles, names the role in its own ``omega_age``
-    assert ("omega_age_table" in reachable) == (product in (RV, "basisrente", SOFORT))
+    # the end age is read off the table by a switched product that runs to it: RV, Basis,
+    # Sofort and Pflege; Riester, with two roles, names the role in its own ``omega_age``
+    assert ("omega_age_table" in reachable) == (product in (RV, "basisrente", SOFORT, PFLEGE))
     choices = {item: value for item, value in model.Data.param_dict().items()
                if item.endswith("_table")}
     if product == RLV:
@@ -1442,18 +1532,17 @@ def test_only_a_switched_product_reaches_a_hook_that_reads_the_factory(product, 
         assert {"mort_rate_gen", "mort_be_trend"} <= reachable
         assert choices == SWITCHED[product]
         assert set().union(*(CHOICE_READERS[item] for item in choices)) <= reachable
-    elif product in SWITCHED:
+    else:
+        # every other product reads its main role through the core's hooks; Pflege's best
+        # estimate of an active life among them, its care grades through its own cell
         assert {"mort_table_name", "mort_rate_table", "mort_rate_at_age"} <= reachable
         assert choices == SWITCHED[product]
         assert set().union(*(CHOICE_READERS[item] for item in choices)) <= reachable
-    else:
-        for hook in TABLE_HOOKS:
-            assert hook not in reachable, hook
-        assert choices == {}
     # a second role is a hook of the product, not of the core, and so is the cell that maps
-    # a contract attribute to a role
+    # a contract attribute or a state to a role
     assert ("mort_rate_dis_at_age" in model.Projection.cells) == (product == BU)
     assert ("mort_table_smoker" in model.Projection.cells) == (product == RLV)
+    assert ("mort_table_grade" in model.Projection.cells) == (product == PFLEGE)
     assert ("annuity_mort_rate" in model.Projection.cells) == (product == "riester_rente")
     # the read of the main role without a birth year is Riester's, whose main role is a period
     # table and whose second role the generational one
@@ -3575,6 +3664,334 @@ def test_sofort_holds_no_mortality_file_item_reference_or_formula(product_models
     assert len(model.Data.cells["mort_table_dict"]) == 0
 
 
+# --------------------------------------------------------------------------- Pflege
+
+PFLEGE_ACTIVE = "pflege_aktive_proxy"
+PFLEGE_GRADES = {grade: f"pflege_pg{grade}_proxy" for grade in range(1, 6)}
+PFLEGE_TABLES = (PFLEGE_ACTIVE, *PFLEGE_GRADES.values())
+# the multiple of a care grade on the force of the active table: the column ``mort_mult`` of
+# ``care_table.csv`` that the switch removed
+PFLEGE_MULTIPLES = {1: 1.5, 2: 2.5, 3: 3.5, 4: 6.0, 5: 9.0}
+# The values package's rate rows of Pflege, {(table, sex, age): (New table, BE new, Tariff
+# new)}, six significant digits.
+PFLEGE_PACKAGE_RATES = {
+    ("pflege_aktive_proxy", "M", 30): (0.000344758, 0.000344758, 0.000219285),
+    ("pflege_aktive_proxy", "M", 40): (0.000984613, 0.000984613, 0.000642198),
+    ("pflege_aktive_proxy", "M", 50): (0.00281033, 0.00281033, 0.0018826),
+    ("pflege_aktive_proxy", "M", 65): (0.0134976, 0.0134976, 0.00944419),
+    ("pflege_aktive_proxy", "M", 80): (0.0635135, 0.0635135, 0.0467131),
+    ("pflege_aktive_proxy", "M", 95): (0.271569, 0.271569, 0.212874),
+    ("pflege_aktive_proxy", "F", 30): (0.000142541, 0.000142541, 0.000219285),
+    ("pflege_aktive_proxy", "F", 40): (0.000442493, 0.000442493, 0.000642198),
+    ("pflege_aktive_proxy", "F", 50): (0.00137321, 0.00137321, 0.0018826),
+    ("pflege_aktive_proxy", "F", 65): (0.00748952, 0.00748952, 0.00944419),
+    ("pflege_aktive_proxy", "F", 80): (0.0402934, 0.0402934, 0.0467131),
+    ("pflege_aktive_proxy", "F", 95): (0.201484, 0.201484, 0.212874),
+    ("pflege_aktive_proxy", "M", 18): (9.78365e-05, 9.78365e-05, 6.0498e-05),
+    ("pflege_aktive_proxy", "M", 109): (1, 1, 1),
+    ("pflege_pg1_proxy", "M", 65): (0.0201779, 0.0201779, 0.0133412),
+    ("pflege_pg1_proxy", "M", 80): (0.0937411, 0.0937411, 0.0652665),
+    ("pflege_pg1_proxy", "M", 95): (0.378298, 0.378298, 0.282517),
+    ("pflege_pg1_proxy", "F", 65): (0.0112132, 0.0112132, 0.0133412),
+    ("pflege_pg1_proxy", "F", 80): (0.0598272, 0.0598272, 0.0652665),
+    ("pflege_pg1_proxy", "F", 95): (0.286449, 0.286449, 0.282517),
+    ("pflege_pg1_proxy", "M", 18): (0.000146751, 0.000146751, 8.57038e-05),
+    ("pflege_pg1_proxy", "M", 109): (1, 1, 1),
+    ("pflege_pg2_proxy", "M", 65): (0.0334031, 0.0334031, 0.0221093),
+    ("pflege_pg2_proxy", "M", 80): (0.151301, 0.151301, 0.10583),
+    ("pflege_pg2_proxy", "M", 95): (0.547133, 0.547133, 0.415374),
+    ("pflege_pg2_proxy", "F", 65): (0.0186187, 0.0186187, 0.0221093),
+    ("pflege_pg2_proxy", "F", 80): (0.09771, 0.09771, 0.10583),
+    ("pflege_pg2_proxy", "F", 95): (0.430218, 0.430218, 0.415374),
+    ("pflege_pg2_proxy", "M", 18): (0.000244573, 0.000244573, 0.000142834),
+    ("pflege_pg2_proxy", "M", 109): (1, 1, 1),
+    ("pflege_pg3_proxy", "M", 65): (0.0464498, 0.0464498, 0.0307779),
+    ("pflege_pg3_proxy", "M", 80): (0.205205, 0.205205, 0.14419),
+    ("pflege_pg3_proxy", "M", 95): (0.670118, 0.670118, 0.516434),
+    ("pflege_pg3_proxy", "F", 65): (0.0259688, 0.0259688, 0.0307779),
+    ("pflege_pg3_proxy", "F", 80): (0.134066, 0.134066, 0.14419),
+    ("pflege_pg3_proxy", "F", 95): (0.54502, 0.54502, 0.516434),
+    ("pflege_pg3_proxy", "M", 18): (0.000342386, 0.000342386, 0.000199959),
+    ("pflege_pg3_proxy", "M", 109): (1, 1, 1),
+    ("pflege_pg4_proxy", "M", 65): (0.0783013, 0.0783013, 0.0520223),
+    ("pflege_pg4_proxy", "M", 80): (0.325458, 0.325458, 0.231257),
+    ("pflege_pg4_proxy", "M", 95): (0.850608, 0.850608, 0.676332),
+    ("pflege_pg4_proxy", "F", 65): (0.0441041, 0.0441041, 0.0520223),
+    ("pflege_pg4_proxy", "F", 80): (0.218677, 0.218677, 0.231257),
+    ("pflege_pg4_proxy", "F", 95): (0.740761, 0.740761, 0.676332),
+    ("pflege_pg4_proxy", "M", 18): (0.000586876, 0.000586876, 0.000342753),
+    ("pflege_pg4_proxy", "M", 109): (1, 1, 1),
+    ("pflege_pg5_proxy", "M", 65): (0.115122, 0.115122, 0.0767308),
+    ("pflege_pg5_proxy", "M", 80): (0.445995, 0.445995, 0.32103),
+    ("pflege_pg5_proxy", "M", 95): (0.942258, 0.942258, 0.769363),
+    ("pflege_pg5_proxy", "F", 65): (0.0654212, 0.0654212, 0.0767308),
+    ("pflege_pg5_proxy", "F", 80): (0.309369, 0.309369, 0.32103),
+    ("pflege_pg5_proxy", "F", 95): (0.868007, 0.868007, 0.769363),
+    ("pflege_pg5_proxy", "M", 18): (0.000880184, 0.000880184, 0.000514066),
+    ("pflege_pg5_proxy", "M", 109): (1, 1, 1),
+}
+PFLEGE_MORT_FILE = f"products/{PFLEGE}/mort_table.csv"
+PFLEGE_CARE_FILE = f"products/{PFLEGE}/care_table.csv"
+PFLEGE_BASELINE = f"baseline/{PFLEGE}/result_cf.csv"
+
+
+def gompertz_rate(table: str, sex: str, x: int) -> float:
+    """The rate of the law ``gompertz_force`` from the rows of a shipped table, in the float
+    operations of the law's cell: ``1 - exp(-b * c ** x)``."""
+    b, c = (SHIPPED_LAYER[f"{table}_{sex.lower()}_{name}"] for name in "bc")
+    return 1.0 - math.exp(-b * c ** x)
+
+
+def pflege_switch() -> tuple[str, str | None]:
+    """The revisions around Pflege's switch: the commit before it and the switch commit, the
+    one that deleted its mortality file; while the switch is not committed ``HEAD`` and
+    ``None``. Skips the test where the history does not hold the file."""
+    try:
+        deleting = git_bytes("log", "-1", "--format=%H", "--diff-filter=D", "--",
+                             PFLEGE_MORT_FILE).decode().strip()
+        before = f"{deleting}^" if deleting else "HEAD"
+        git_bytes("cat-file", "-e", f"{before}:{PFLEGE_MORT_FILE}")
+    except (OSError, subprocess.CalledProcessError):
+        pytest.skip("the git history does not hold Pflege's former mortality file")
+    return before, deleting or None
+
+
+def pflege_former_rates() -> tuple[dict, dict]:
+    """Pflege's former active rates ``{(sex, x): rate}`` and multiples ``{grade: mult}``, read
+    from git at the commit before its switch."""
+    before, _switch = pflege_switch()
+    data = git_bytes("show", f"{before}:{PFLEGE_MORT_FILE}").decode("utf-8")
+    rates = {(row["sex"], int(row["age"])): float(row["mort_rate"])
+             for row in csv.DictReader(io.StringIO(data, newline=""))}
+    care = git_bytes("show", f"{before}:{PFLEGE_CARE_FILE}").decode("utf-8")
+    multiples = {int(row["pflegegrad"]): float(row["mort_mult"])
+                 for row in csv.DictReader(io.StringIO(care, newline=""))}
+    return rates, multiples
+
+
+def pflege_points(model) -> list[int]:
+    return [int(point) for point in model.Data.model_point_table().index]
+
+
+@pytest.mark.parametrize("table", PFLEGE_TABLES)
+@pytest.mark.parametrize("sex", ["M", "F"])
+def test_the_pflege_tables_give_their_gompertz_rate_on_the_force(shipped_tables, table, sex):
+    assert SHIPPED_TABLES[table][0] == "gompertz_force"
+    for x in range(18, 109):
+        rate = shipped_tables.q(table, sex, x)
+        assert type(rate) is float
+        assert rate == min(1.0, gompertz_rate(table, sex, x)) == gompertz_rate(table, sex, x), x
+        assert shipped_tables.base_rate(table, sex, x) == gompertz_rate(table, sex, x), x
+        assert shipped_tables.gompertz_force(table, sex, x) == gompertz_rate(table, sex, x), x
+        assert rate < 1.0, x
+    # the closing age: exactly 1, below it the law's value
+    assert shipped_tables.q(table, sex, 109) == 1.0
+    assert shipped_tables.base_rate(table, sex, 109) < 1.0
+    assert (shipped_tables.first_age(table), shipped_tables.end_age(table)) == (18, 110)
+    for x in (17, 110, 0, 121):
+        for cell in (shipped_tables.q, shipped_tables.base_rate):
+            line = raised_line(lambda: cell(table, sex, x))
+            assert line == (f"ValueError: table {table!r}: x {x!r} is outside its ages 18 to"
+                            f" 109"), line
+    assert raised_line(lambda: shipped_tables.q(table, sex, 65, 1960)) == (
+        f"ValueError: table {table!r}: birth_year 1960 is given, the table is a period table")
+    assert raised_line(lambda: shipped_tables.q(table, sex, 65, None, 1)) == (
+        f"ValueError: table {table!r}: duration 1 is given, the table has no selection")
+    assert raised_line(lambda: shipped_tables.trend(table, sex, 65)) == (
+        f"ValueError: table {table!r}: a period table has no trend")
+    assert shipped_tables.select_factors(table) == ()
+
+
+@pytest.mark.parametrize("grade", sorted(PFLEGE_GRADES))
+def test_the_care_grade_tables_are_the_active_table_on_a_multiple_of_its_force(
+        shipped_tables, grade):
+    table = PFLEGE_GRADES[grade]
+    for sex in "mf":
+        active_b = SHIPPED_LAYER[f"{PFLEGE_ACTIVE}_{sex}_b"]
+        # the multiple times the active ``b``, exact to the items' digits
+        assert SHIPPED_LAYER[f"{table}_{sex}_b"] == float(
+            f"{PFLEGE_MULTIPLES[grade] * active_b:.12g}")
+        assert SHIPPED_LAYER[f"{table}_{sex}_c"] == SHIPPED_LAYER[f"{PFLEGE_ACTIVE}_{sex}_c"]
+    assert SHIPPED_LAYER["pflege_aktive_proxy_m_b"] == 1.47884e-05
+    assert SHIPPED_LAYER["pflege_aktive_proxy_m_c"] == 1.11068
+    assert SHIPPED_LAYER["pflege_aktive_proxy_f_b"] == 4.7629e-06
+    assert SHIPPED_LAYER["pflege_aktive_proxy_f_c"] == 1.119962
+    # so the grade's force is the multiple of the active force to a relative 1e-5
+    for sex in "MF":
+        for x in (18, 65, 95, 108):
+            force = -math.log(1.0 - shipped_tables.q(table, sex, x))
+            active = -math.log(1.0 - shipped_tables.q(PFLEGE_ACTIVE, sex, x))
+            assert force == pytest.approx(PFLEGE_MULTIPLES[grade] * active, rel=1e-5)
+
+
+@pytest.mark.parametrize(("table", "sex", "x"), sorted(PFLEGE_PACKAGE_RATES))
+def test_pflege_rates_are_the_values_packages(shipped_tables, product_models, table, sex, x):
+    new, best, tariff = PFLEGE_PACKAGE_RATES[(table, sex, x)]
+    item = product_models(PFLEGE).Projection[14]
+    grade = 0 if table == PFLEGE_ACTIVE else int(table[len("pflege_pg")])
+    assert item.mort_table_grade(grade) == table
+    assert six(shipped_tables.q(table, sex, x)) == new == best
+    blend = 0.5 * shipped_tables.q(table, "M", x) + 0.5 * shipped_tables.q(table, "F", x)
+    assert item.tar_mort_rate_blend(x, grade) == blend
+    if grade:
+        assert six(item.tar_mort_rate_care(x, grade)) == tariff
+    else:
+        assert six(item.mort_rate_tariff(item.age_month(x))) == tariff
+
+
+def test_pflege_best_estimate_of_an_active_life_is_the_tables_rate(product_models):
+    model = product_models(PFLEGE)
+    tables = model.CoreTables
+    for name in ("mort_table_name", "mort_rate_table", "mort_rate_at_age", "mort_rate_base",
+                 "mort_rate", "mort_be_factor", "mort_be_trend", "omega_age_table"):
+        assert model.Projection.cells[name]._is_derived(), name
+    assert model.Data.param("mort_table") == PFLEGE_ACTIVE
+    former, _multiples = pflege_former_rates()
+    for point in pflege_points(model):
+        item = model.Projection[point]
+        sex = item.sex()
+        for t in range(item.t_start(), item.proj_len(), 12):
+            rate = item.mort_rate(t)
+            assert rate == tables.q(PFLEGE_ACTIVE, sex, item.age(t)), (point, t)
+            # the law of the former file, written to ten decimals
+            assert rate == pytest.approx(former[(sex, item.age(t))], abs=1e-10), (point, t)
+        assert item.mort_rate(item.proj_len() - 1) == 1.0
+
+
+def test_pflege_best_estimate_in_care_is_the_grades_table_rate(product_models):
+    model = product_models(PFLEGE)
+    tables = model.CoreTables
+    former, multiples = pflege_former_rates()
+    assert multiples == PFLEGE_MULTIPLES
+    eps = model.Data.param("rate_cap_eps")
+    for point in (1, 2, 12, 14):
+        item = model.Projection[point]
+        sex = item.sex()
+        for t in range(item.t_start(), item.proj_len(), 12):
+            x = item.age(t)
+            for grade, table in PFLEGE_GRADES.items():
+                rate = item.mort_rate_care(t, grade)
+                assert rate == tables.q(table, sex, x), (point, t, grade)
+                assert item.mort_force_care(t, grade) == -math.log(1.0 - min(rate, 1.0 - eps))
+                if x == 109:
+                    assert rate == 1.0
+                    continue
+                # today's rate 1 - exp(-mort_mult(g) mu_A) on the former file, to the
+                # rounding of the items ``b``
+                then = 1.0 - math.exp(multiples[grade] * math.log(1.0 - former[(sex, x)]))
+                assert rate == pytest.approx(then, rel=1e-5), (point, t, grade)
+        # the force of a grade at the closing age is the capped force of the active state
+        last = item.proj_len() - 1
+        assert item.mort_force_care(last, 5) == item.mort_force(last) == -math.log(
+            1.0 - (1.0 - eps))
+
+
+def test_pflege_tariff_rates_are_the_loads_on_the_unisex_blend(product_models):
+    model = product_models(PFLEGE)
+    tables = model.CoreTables
+    assert (model.Data.param("mort_actv_load_first"), model.Data.param("mort_care_load_first"),
+            model.Data.param("unisex_mix_male")) == (0.9, 0.85, 0.5)
+    woman, man = model.Projection[14], model.Projection[2]
+    assert (woman.sex(), man.sex(), woman.issue_age()) == ("F", "M", 18)
+    for x in range(18, 110):
+        for grade in range(0, 6):
+            table = woman.mort_table_grade(grade)
+            blend = 0.5 * tables.q(table, "M", x) + 0.5 * tables.q(table, "F", x)
+            assert woman.tar_mort_rate_blend(x, grade) == blend
+            load = 0.9 if grade == 0 else 0.85
+            expected = 1.0 if blend == 1.0 else min(1.0, load * blend)
+            assert (x == 109) == (blend == 1.0)
+            if grade:
+                assert woman.tar_mort_rate_care(x, grade) == expected, (x, grade)
+                if x >= 45:
+                    assert man.tar_mort_rate_care(x, grade) == expected, (x, grade)
+            else:
+                assert woman.mort_rate_tariff(woman.age_month(x)) == expected, x
+                if x >= 45:
+                    assert man.mort_rate_tariff(man.age_month(x)) == expected, x
+    assert woman.mort_rate_tariff(woman.age_month(109)) == 1.0
+    assert woman.tar_mort_rate_care(109, 5) == 1.0
+    # the in-care tariff rate stands on the grade's table, no longer on the blended active
+    # force (open point 14 (b)): below today's at grade 5, 0.769363 against 0.775086 at 95
+    assert six(woman.tar_mort_rate_care(95, 5)) == 0.769363
+
+
+def test_pflege_maps_a_state_to_its_table(product_models):
+    model = product_models(PFLEGE)
+    item = model.Projection[1]
+    assert item.mort_table_grade(0) == PFLEGE_ACTIVE == item.mort_table_name()
+    for grade, table in PFLEGE_GRADES.items():
+        assert item.mort_table_grade(grade) == table == model.Data.param(f"mort_pg{grade}_table")
+    assert model.Data.pflegegrad_count() == len(PFLEGE_GRADES)
+    for grade in (6, -1, "1"):
+        line = raised_line(lambda: item.mort_table_grade(grade))
+        assert line == (f"ValueError: grade {grade!r} is neither 0, the active state, nor a care"
+                        " grade 1 to 5"), line
+
+
+def test_pflege_runs_to_the_tables_end_age_with_its_frames_unchanged(product_models):
+    model = product_models(PFLEGE)
+    assert model.Projection.cells["omega_age"]._is_defined()
+    before, _switch = pflege_switch()
+    old = git_bytes("show", f"{before}:{PFLEGE_BASELINE}").decode("utf-8")
+    old_keys = [tuple(row[:2]) for row in csv.reader(io.StringIO(old))][1:]
+    keys = []
+    for point in pflege_points(model):
+        item = model.Projection[point]
+        assert item.omega_age() == 110 == model.CoreTables.end_age(PFLEGE_ACTIVE)
+        assert item.proj_len() == 12 * (110 - item.issue_age())
+        keys += [(str(point), str(t)) for t in range(item.t_start(), item.proj_len())]
+    assert keys == old_keys and len(keys) == 9948
+
+
+def test_pflege_holds_no_mortality_file_column_item_reference_or_formula(product_models):
+    folder = PRODUCTS_DIR / PFLEGE
+    assert not (folder / "mort_table.csv").exists()
+    for path in sorted(folder.glob("*.csv")):
+        with path.open(encoding="utf-8", newline="") as handle:
+            header = next(csv.reader(handle))
+        assert not [column for column in header if column.startswith("mort")], path
+    with (folder / "care_table.csv").open(encoding="utf-8", newline="") as handle:
+        assert next(csv.reader(handle)) == ["pflegegrad", "entry_share", "det_rate",
+                                            "rec_rate", "provenance"]
+    model = product_models(PFLEGE)
+    layer = model.Data.param_layers()["tariff_type"]
+    assert "omega_age" not in layer
+    assert {item: layer[item] for item in layer if "mort" in item or "unisex" in item} == {
+        **SWITCHED[PFLEGE], "mort_care_load_first": 0.85, "mort_actv_load_first": 0.9,
+        "unisex_mix_male": 0.5}
+    assert not [name for name in model.Data.refs if "mort" in name]
+    assert not [name for name, cell in model.Data.cells.items()
+                if "mort" in name and cell._is_defined()]
+    own = sorted(name for name, cell in model.Projection.cells.items()
+                 if "mort" in name and cell._is_defined())
+    assert own == ["mort_actv_load_first", "mort_care_load_first", "mort_force",
+                   "mort_force_care", "mort_rate_care", "mort_rate_mth", "mort_rate_tariff",
+                   "mort_table_grade", "tar_mort_rate_blend", "tar_mort_rate_care"]
+    assert model.Projection.cells["mort_rate_at_age"]._is_derived()
+    usage = param_usage.scan(model)
+    assert usage.problems == []
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & usage.reachable
+    assert "omega_age" not in usage.reads and "mort_mult" not in usage.reads
+    for space in ("Data", "Projection"):
+        source = (folder / MODELS[PFLEGE] / space / "__init__.py").read_text(encoding="utf-8")
+        for name in ("mort_table.csv", "mort_file", "mort_table_dict", "mort_table()",
+                     "mort_mult", "data.param(\"omega_age\")"):
+            assert name not in source, (space, name)
+    # its reads of the factory: the rate of a grade and the blend of a state's rates
+    cells = dict(_formula_cells(folder / MODELS[PFLEGE] / "Projection" / "__init__.py"))
+    reads = {name: sorted(ast.unparse(node) for node in ast.walk(cell)
+                          if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
+                          and node.value.id == "tables")
+             for name, cell in cells.items()}
+    assert {name: found for name, found in reads.items() if found} == {
+        "mort_rate_care": ["tables.q"], "tar_mort_rate_blend": ["tables.q", "tables.q"]}
+    item = model.Projection[1]
+    item.result_cf()
+    assert len(model.CoreTables.q) > 0
+    assert len(model.Data.cells["mort_table"]) == 0
+
+
 def unswitched_copy(tmp_path: Path) -> Path:
     """A scratch copy of Index with the fixture tables that chooses no table: without its
     row ``mort_table`` and with a ``mort_rate_at_age`` of its own that reads no table, as a
@@ -3833,12 +4250,15 @@ def test_no_table_is_unchosen_in_the_ten_products(product_models):
     chosen = {table for usage in usages for table in usage.choices.values()}
     assert chosen == set(SHIPPED_TABLES) == {table for choices in SWITCHED.values()
                                              for table in choices.values()}
-    # without the products that chose them, the tables would be reported
-    others = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
-              if product not in SWITCHED]
-    assert param_usage.unchosen_tables(others) == sorted(SHIPPED_TABLES)
-    # the select table and the two smoker tables have one reader each, the generational
-    # table four and the aggregate table five
+    # every product has switched; without the products that chose them, the tables would be
+    # reported
+    assert sorted(SWITCHED) == sorted(MODELS)
+    # the select table, the two smoker tables and the six Pflege tables have one reader
+    # each, the generational table four and the aggregate table five
+    without_pflege = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
+                      if product != PFLEGE]
+    assert param_usage.unchosen_tables(without_pflege) == sorted(
+        table for table in SHIPPED_TABLES if table.startswith("pflege_"))
     without_bu = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
                   if product != BU]
     assert param_usage.unchosen_tables(without_bu) == [DAV1997TI]

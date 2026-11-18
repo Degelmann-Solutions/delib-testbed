@@ -37,8 +37,10 @@
   ``mort_base_year``; Sofort lists its choice ``mort_table``, ``mort_be_factor`` 1.2,
   ``mort_be_trend_factor`` 0.8, each with the provenance of the values package, its kept
   ``unisex_mix_male`` and the fourteen items of ``dav2004r_proxy``, and neither
-  ``mort_base_year`` nor ``omega_age``; Pflege, which chooses no table, lists no item of the
-  layer.
+  ``mort_base_year`` nor ``omega_age``; Pflege lists its six choices ``mort_table`` and
+  ``mort_pg1_table`` to ``mort_pg5_table``, each with the provenance of the values package, its
+  two kept loads ``mort_actv_load_first`` and ``mort_care_load_first``, ``unisex_mix_male`` and
+  the 36 items of its six tables, and no ``omega_age``.
 - A scratch copy of Index whose tariff chooses a fixture table lists that table's items with
   layer ``tables``, value, basis and provenance, after the core items and before the
   tariff-type items, and no other table's, the shipped one's neither, and exits 0; a copy
@@ -72,7 +74,8 @@ from run_baseline import model_dir  # noqa: E402
 
 from test_core import _add_params  # noqa: E402
 from test_tables import (BASIS, BU, FIXTURE_DEFINITIONS, FIXTURE_VALUES, FRV,  # noqa: E402
-                         INDEX, KLV, RIESTER, RV, SHIPPED_ITEMS, SHIPPED_PROVENANCE, SOFORT,
+                         INDEX, KLV, PFLEGE, RIESTER, RV, SHIPPED_ITEMS, SHIPPED_PROVENANCE,
+                         SOFORT,
                          SHIPPED_ROWS, SWITCHED,
                          choosing_copy, fixture_copy, fixture_items, tables_file,
                          unswitched_copy)
@@ -570,6 +573,55 @@ def test_sofort_lists_its_choice_its_derivation_items_and_the_items_of_its_table
     assert len([line for line in out.splitlines() if "dav2004r_proxy" in line]) == 15
     assert "dav2008t_proxy" not in out and "dav1997ti_proxy" not in out
     assert not [line for line in split if line[:1] in (["mort_base_year"], ["omega_age"])]
+
+
+PFLEGE_TABLES = ("pflege_aktive_proxy",) + tuple(f"pflege_pg{grade}_proxy" for grade in range(1, 6))
+
+
+def test_pflege_lists_its_six_choices_its_loads_and_the_items_of_its_tables(capsys):
+    table, listed = tables_rows(PRODUCTS_DIR / PFLEGE, "ParamsShippedPflege")
+    assert list(SWITCHED[PFLEGE].values()) == list(PFLEGE_TABLES)
+    assert [row["item"] for row in listed] == [
+        item for chosen in PFLEGE_TABLES for item in SHIPPED_ITEMS[chosen]]
+    assert len(listed) == 36
+    for row in listed:
+        text, basis = SHIPPED_ROWS[row["item"]]
+        assert row["value"] == (int(text) if text.isdigit() else float(text))
+        assert row["basis"] == basis == "Setzung"
+        (chosen,) = [name for name in PFLEGE_TABLES if row["item"] in SHIPPED_ITEMS[name]]
+        assert row["provenance"].startswith(SHIPPED_PROVENANCE[chosen])
+    by_item = {row["item"]: row for row in table}
+    expected = {**SWITCHED[PFLEGE], "mort_actv_load_first": 0.9, "mort_care_load_first": 0.85,
+                "unisex_mix_male": 0.5}
+    for item, value in expected.items():
+        row = by_item[item]
+        assert (row["value"], row["layer"], row["basis"]) == (value, "tariff_type", "Setzung")
+        assert row["provenance"], item
+    # the values package's provenance of the six new rows, verbatim
+    assert by_item["mort_table"]["provenance"] == "active lives: the product's own table"
+    for grade in range(1, 6):
+        assert by_item[f"mort_pg{grade}_table"]["provenance"] == (
+            f"lives in care grade {grade}: the product's own table of that grade; the care"
+            " grade selects the table")
+    # the item the table's own replaced
+    assert "omega_age" not in by_item
+    assert by_item["pflege_aktive_proxy_end_age"]["value"] == 110
+
+    assert params.main([PFLEGE]) == 0
+    out, err = capsys.readouterr()
+    assert err == "" and headers(out) == [PFLEGE]
+    split = [line.split() for line in out.splitlines()]
+    for item, value in expected.items():
+        assert [item, repr(value), "tariff_type", "Setzung"] in [line[:4] for line in split], item
+    for chosen in PFLEGE_TABLES:
+        for item in SHIPPED_ITEMS[chosen]:
+            text, basis = SHIPPED_ROWS[item]
+            value = int(text) if text.isdigit() else float(text)
+            assert [item, repr(value), "tables", basis] in [line[:4] for line in split], item
+    # the six choices and the 36 items of their tables, and no other table's
+    assert len([line for line in out.splitlines() if "pflege_" in line and "_proxy" in line]) == 42
+    assert "dav20" not in out and "dav1997ti_proxy" not in out
+    assert not [line for line in split if line[:1] == ["omega_age"]]
 
 
 def test_klv_lists_its_choice_its_derivation_items_and_the_items_of_its_table(capsys):

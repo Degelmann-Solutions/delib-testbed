@@ -13,10 +13,9 @@ each writing its figures with ``--json``; the tests read those figures and call 
 - A bound above a measured quota makes the report exit 1 and name the product on stderr.
 - The static usage scan ``core/param_usage.py`` reaches every executed ``Projection`` cell of
   every product (``Data`` cells are not compared, the quota does not count them).
-- Only a switched product executes cells of the table factory: Index, BU, RV, KLV, FRV, RLV,
-  Basis, Riester and Sofort do,
-  the cells behind ``q`` with the law ``makeham``, listed as ``tables.<cell>`` and counted as
-  core beside the hooks of their ``Projection``; Pflege executes none. RLV, whose
+- Every product has switched and executes cells of the table factory: the cells behind ``q``
+  with the law ``makeham``, Pflege's with the law ``gompertz_force``, listed as
+  ``tables.<cell>`` and counted as core beside the hooks of their ``Projection``. RLV, whose
   table depends on the life, executes no hook of the core: its hook and the cell that maps
   the smoker status to a role are product cells. BU's hook for
   its second role, ``mort_rate_dis_at_age``, is a product cell, and its tariff rates execute
@@ -39,6 +38,10 @@ each writing its figures with ``--json``; the tests read those figures and call 
   trend term ``mort_be_trend``, ``mort_be_factor``, ``omega_age``, ``birth_year`` and the
   per-life rates are product cells, and the core's ``mort_rate_table`` and
   ``mort_rate_at_age`` do not run.
+  Pflege, whose care grades select their tables, executes the core's best estimate of an
+  active life on the own sex, ``omega_age_table`` and the unisex blend; the cell that maps a
+  state to its table, ``mort_table_grade``, the rate and force of a grade, the blend of a
+  state's table rates, the two tariff death rates and ``omega_age`` are product cells.
 - A scratch copy of Index on a fixture table executes the same cells with the fixture law in
   place of ``makeham``; one with a ``mort_rate_at_age`` of its own and no choice executes
   neither the factory's cells nor the hooks, and its override counts as a product cell.
@@ -174,15 +177,31 @@ FACTORY_HOOKS = {"mort_table_name", "mort_rate_table", "birth_year"}
 def test_only_a_switched_product_executes_cells_of_the_table_factory(product, quotas):
     figures = quotas[product]
     executed = {name for name in figures["executed_cells"] if "." in name}
-    if product not in SWITCHED:
-        assert not executed
-        assert not FACTORY_HOOKS - {"birth_year"} & set(figures["executed_cells"])
-        return
-    assert product in ("basisrente", "berufsunfaehigkeit", "fondsgebundene_rentenversicherung",
-                       "indexpolice", "kapitallebensversicherung",
-                       "klassische_rentenversicherung", "riester_rente",
-                       "risikolebensversicherung", "sofortrente")
+    assert product in SWITCHED
     trend = {"tables.base_year", "tables.trend", "tables.trend_linear"}
+    if product == "pflegerentenversicherung":
+        # its tables are on the law ``gompertz_force``; the best estimate of an active life is
+        # the core's on the own sex, the grades read their tables through a cell of its own
+        assert executed == FACTORY_CELLS | {"tables.gompertz_force"}
+        assert executed <= set(figures["core_cells"])
+        assert FACTORY_HOOKS | {"mort_rate_at_age", "mort_rate_base", "mort_rate",
+                                "mort_be_factor", "mort_be_trend", "omega_age_table",
+                                "unisex_blend", "unisex_mix_male", "sex"} <= set(
+            figures["core_cells"])
+        own = {"omega_age", "horizon_age", "mort_table_grade", "mort_rate_care",
+               "mort_force_care", "tar_mort_rate_blend", "mort_rate_tariff",
+               "tar_mort_rate_care"}
+        assert own <= set(figures["executed_cells"])
+        assert not own & set(figures["core_cells"])
+        assert not {"mort_rate_tariff_at_age", "mort_rate_tariff_base",
+                    "mort_load_tariff"} & set(figures["executed_cells"])
+        assert sorted(name for name in set(figures["executed_cells"]) - set(figures["core_cells"])
+                      if "mort" in name) == [
+            "mort_actv_load_first", "mort_care_load_first", "mort_force", "mort_force_care",
+            "mort_rate_care", "mort_rate_tariff", "mort_table_grade", "tar_mort_rate_blend",
+            "tar_mort_rate_care"]
+        assert (figures["executed"], figures["core"]) == (147, 53)
+        return
     if product == "sofortrente":
         # two lives on the generational table through a hook of its own, the main role named
         # by the core's ``mort_table_name``, the end age the core's ``omega_age_table``, the

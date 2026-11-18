@@ -1,5 +1,10 @@
 item,value,basis,provenance
-omega_age,110,Setzung,"[std] terminal age; mort_rate is forced to 1 at omega_age - 1 so the model is a closed system. The DAV tables run higher [R15] [REG-R51]; the end age of the own Pflege table, 110 a choice of the shipped grid"
+mort_table,pflege_aktive_proxy,Setzung,active lives: the product's own table
+mort_pg1_table,pflege_pg1_proxy,Setzung,"lives in care grade 1: the product's own table of that grade; the care grade selects the table"
+mort_pg2_table,pflege_pg2_proxy,Setzung,"lives in care grade 2: the product's own table of that grade; the care grade selects the table"
+mort_pg3_table,pflege_pg3_proxy,Setzung,"lives in care grade 3: the product's own table of that grade; the care grade selects the table"
+mort_pg4_table,pflege_pg4_proxy,Setzung,"lives in care grade 4: the product's own table of that grade; the care grade selects the table"
+mort_pg5_table,pflege_pg5_proxy,Setzung,"lives in care grade 5: the product's own table of that grade; the care grade selects the table"
 unisex_mix_male,0.5,Setzung,"[std] the pricing blend; sex may not enter a premium for contracts concluded from 21 December 2012 [REG-R34]. Writing 60/40 against a 50/50 price is model risk 7; 50/50 absent a portfolio; unisex pricing is required, the mix is not"
 recov_age_ref,75,Setzung,"[std] age above which Reaktivierung is damped, so deterioration dominates recovery above 75 - property (b) a replacement table must preserve [R15]"
 recov_age_decay,0.1,Setzung,"[std] exp(-0.10 x (age - 75)) damping on the recovery rates; order-of-magnitude reasoning, unsourced [unverified]; recovery falls to about a third by age 86"

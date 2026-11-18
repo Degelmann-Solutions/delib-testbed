@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The nine input CSVs are read here, **once per model**, and referenced from
+The eight input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Pflege_DE_S.Projection` as ``data``. :mod:`~.Pflege_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its
 own cells cache; if the readers lived there, every model point would re-read every file.
@@ -32,7 +32,6 @@ Reference                  Cells                           File
 =========================  ==============================  =========================
 model_point_file           model_point_table()             model_point_table.csv
 benefit_scale_file         benefit_scale_table()           benefit_scale_table.csv
-mort_file                  mort_table()                    mort_table.csv
 incidence_file             incidence_table()               incidence_table.csv
 care_file                  care_table()                    care_table.csv
 lapse_file                 lapse_table()                   lapse_table.csv
@@ -43,8 +42,8 @@ param_file                 param()                         param_tariff_type.csv
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.at``: the core's for ``model_point_table``, ``mort_table``, ``lapse_table``
-and ``prem_freq_table``, this space's for ``benefit_scale_table``, ``incidence_table``,
+``DataFrame.at``: the core's for ``model_point_table``, ``lapse_table`` and
+``prem_freq_table``, this space's for ``benefit_scale_table``, ``incidence_table``,
 ``care_table`` and ``surrender_table``, with ``surrender_table_last_year``, the policy
 year the surrender lookup caps at, and ``pflegegrad_count``, the number of grades of
 ``care_table``.
@@ -63,19 +62,23 @@ Neither is DAV 2008 T, DAV 2004 R or any other DAV table. They are cited by name
 shaped proxies, and the anchors below are what a substitute must reproduce for the
 technical notes' worked example to close to the cent:
 
-* ``mort_table.csv`` — active-life mortality, a **Gompertz proxy**
-  ``1 - exp(-B c**age)`` by sex over ages 18 to 108, with ``mort_rate = 1.0`` at age 109.
-  Anchored at ``q(65) = 1.35 %`` and ``q(85) = 10.5 %`` male, ``q(65) = 0.75 %`` and
-  ``q(85) = 7.0 %`` female, which fix ``B_M = 1.47884e-05``, ``c_M = 1.110680``,
-  ``B_F = 4.76290e-06``, ``c_F = 1.119962``. **A replacement must preserve those four
-  anchor rates.**
+* Mortality is no file of this product: it comes from the model-wide table factory,
+  ``CoreTables``, whose six Pflege tables the rows ``mort_table`` and ``mort_pg1_table`` to
+  ``mort_pg5_table`` of ``param_tariff_type.csv`` choose. ``pflege_aktive_proxy`` is the
+  active-life **Gompertz proxy** ``1 - exp(-b c**age)`` by sex over ages 18 to 108, with
+  ``q = 1`` at age 109, anchored at ``q(65) = 1.35 %`` and ``q(85) = 10.5 %`` male,
+  ``q(65) = 0.75 %`` and ``q(85) = 7.0 %`` female (``b_M = 1.47884e-05``,
+  ``c_M = 1.11068``, ``b_F = 4.7629e-06``, ``c_F = 1.119962``); ``pflege_pg<g>_proxy`` is
+  the same law with ``b`` times the multiple of the grade on the force, 1.5, 2.5, 3.5, 6.0
+  and 9.0. **A replacement must preserve those four anchor rates.**
 * ``incidence_table.csv`` — the rate at which an active life enters *any* *Pflegegrad*,
   ``min(I0 exp(g (age - 65)), 0.50)`` with ``I0_F = 0.0110``, ``g_F = 0.1400``,
   ``I0_M = 0.0085``, ``g_M = 0.1380``. The slope is anchored on the one shape the research
   file states with confidence — prevalence roughly doubling every five years of age above
   75, a growth rate of ``ln 2 / 5 = 0.1386``.
-* ``care_table.csv`` — the whole in-care basis in five rows. ``mort_mult`` is a multiple
-  on the **force** of active mortality at the same age, not on the rate.
+* ``care_table.csv`` — the in-care transitions in five rows: the entry mix, deterioration
+  and recovery. The mortality of a grade is the grade's table, a multiple of the active
+  **force** at the same age, not of the rate.
 
 A replacement table must preserve four properties: **(a)** incidence by attained age, sex
 and *grade of entry*, because a stroke or a fracture enters directly at grade 3 or 4;
@@ -89,7 +92,7 @@ The remaining tables are standardizations of a different kind: ``lapse_table.csv
 five-year spread rather than from data — no lapse rate and no *Rückkaufswert* for a German
 *Pflegerente* at any duration was established — and ``param_tariff_type.csv`` holds the scalar
 parameters by ``item``; ``uv run python tools/params.py pflegerentenversicherung`` lists them.
-The bases and conventions: the terminal age ``omega_age``, the unisex mix ``unisex_mix_male``, the
+The bases and conventions: the six table choices, the unisex mix ``unisex_mix_male``, the
 recovery-damping shape ``recov_age_ref`` / ``recov_age_decay``, the ``inc_cap`` shape device,
 the *Beitragssumme* convention ``beitragssumme_cap_age`` and the five first-order prudence margins ``inc_load_first``,
 ``det_load_first``, ``recov_load_first``, ``mort_care_load_first`` and
@@ -146,13 +149,13 @@ def incidence_table():
 
 
 def care_table():
-    """The whole in-care basis in five rows, from *care_table.csv*.
+    """The in-care transitions in five rows, from *care_table.csv*.
 
     ``entry_share`` is the distribution of the grade first entered and sums to 1.00;
-    ``det_rate`` the annual deterioration rate to the next grade up, zero at grade 5;
+    ``det_rate`` the annual deterioration rate to the next grade up, zero at grade 5; and
     ``rec_rate`` the annual recovery rate to the grade below — to the active state from
-    grade 1 — before the age damping; and ``mort_mult`` the multiple on the **force** of
-    active mortality at the same age.
+    grade 1 — before the age damping.  The mortality of a grade is no column here: it is
+    the grade's table of the table factory.
 
     ``entry_share`` is deliberately **not** the stock distribution of about
     9 / 44 / 27 / 14 / 6 %: entrants skew lower than the stock because deterioration moves
@@ -200,8 +203,8 @@ def incidence_table_dict():
 def care_table_dict():
     """The in-care basis as a dict by column: ``{column: {pflegegrad: value}}``.
 
-    Built once per model from ``care_table()``; ``Projection.inc_share``, ``det_rate``,
-    ``rec_rate``, ``mort_force_care`` and ``tar_mort_rate_care`` read its columns.
+    Built once per model from ``care_table()``; ``Projection.inc_share``, ``det_rate`` and
+    ``rec_rate`` read its columns.
     """
     return care_table().to_dict()
 
@@ -242,8 +245,6 @@ def pflegegrad_count():
 model_point_file = "model_point_table.csv"
 
 benefit_scale_file = "benefit_scale_table.csv"
-
-mort_file = "mort_table.csv"
 
 incidence_file = "incidence_table.csv"
 

@@ -7,11 +7,13 @@
 
 One cell, ``q``, hands out the rates of the model-wide tables. A table is an entry of
 ``definitions()`` and its numbers, rows of the table parameter file read through ``data``,
-the sibling ``Data``; a law is a cell of this space. The space takes no parameter and holds
-no contract data: whatever depends on the contract is an argument of ``q``, so a rate is
-computed once per model and looked up afterwards. A product's ``Projection`` reads the space
-through its Reference ``tables``; no product space names it as a base, so no product
-overrides a cell of it.
+the sibling ``Data``; a law is a cell of this space: ``makeham`` on the rate and
+``gompertz_force`` on the force, with the trend law ``trend_linear`` beside them. The space
+takes no parameter and holds no contract data: whatever depends on the contract is an
+argument of ``q``, so a rate is computed once per model and looked up afterwards. Its one
+Module Reference, ``math``, gives ``gompertz_force`` the exponential function and holds no
+contract data. A product's ``Projection`` reads the space through its Reference ``tables``;
+no product space names it as a base, so no product overrides a cell of it.
 """
 
 from modelx.serialize.jsonvalues import *
@@ -50,6 +52,18 @@ def definitions():
             "m_a", "m_b", "m_c", "f_a", "f_b", "f_c", "first_age", "end_age")),
         "dav2008t_r_proxy": (makeham, None, (
             "m_a", "m_b", "m_c", "f_a", "f_b", "f_c", "first_age", "end_age")),
+        "pflege_aktive_proxy": (gompertz_force, None, (
+            "m_b", "m_c", "f_b", "f_c", "first_age", "end_age")),
+        "pflege_pg1_proxy": (gompertz_force, None, (
+            "m_b", "m_c", "f_b", "f_c", "first_age", "end_age")),
+        "pflege_pg2_proxy": (gompertz_force, None, (
+            "m_b", "m_c", "f_b", "f_c", "first_age", "end_age")),
+        "pflege_pg3_proxy": (gompertz_force, None, (
+            "m_b", "m_c", "f_b", "f_c", "first_age", "end_age")),
+        "pflege_pg4_proxy": (gompertz_force, None, (
+            "m_b", "m_c", "f_b", "f_c", "first_age", "end_age")),
+        "pflege_pg5_proxy": (gompertz_force, None, (
+            "m_b", "m_c", "f_b", "f_c", "first_age", "end_age")),
     }
 
 
@@ -145,6 +159,18 @@ def makeham(table, sex, x):
             + parameter(table, key + "_b") * parameter(table, key + "_c") ** x)
 
 
+def gompertz_force(table, sex, x):
+    """The law of Gompertz on the force: ``1 - exp(-b * c ** x)``, with the parameters of ``sex``.
+
+    Reads ``<m or f>_b`` and ``<m or f>_c`` of ``table``: the force of mortality ``b * c ** x``
+    held constant over the year of age, so a multiple of a table's force is the same
+    multiple of its ``b``.
+    """
+    key = sex.lower()
+    return 1.0 - math.exp(-parameter(table, key + "_b")              # noqa: F821
+                          * parameter(table, key + "_c") ** x)
+
+
 def trend_linear(table, sex, x):
     """The piecewise linear trend law: the annual improvement rate at age ``x``, for both sexes.
 
@@ -208,3 +234,5 @@ def q(table, sex, x, birth_year=None, duration=None):
 # References
 
 data = ("Interface", ("..", "Data"), "auto")
+
+math = ("Module", "math")

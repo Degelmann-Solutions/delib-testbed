@@ -13,10 +13,10 @@ each writing its figures with ``--json``; the tests read those figures and call 
 - A bound above a measured quota makes the report exit 1 and name the product on stderr.
 - The static usage scan ``core/param_usage.py`` reaches every executed ``Projection`` cell of
   every product (``Data`` cells are not compared, the quota does not count them).
-- Only a switched product executes cells of the table factory: Index, BU, RV, KLV, FRV, RLV
-  and Basis do,
+- Only a switched product executes cells of the table factory: Index, BU, RV, KLV, FRV, RLV,
+  Basis and Riester do,
   the cells behind ``q`` with the law ``makeham``, listed as ``tables.<cell>`` and counted as
-  core beside the hooks of their ``Projection``; the other four execute none. RLV, whose
+  core beside the hooks of their ``Projection``; the other two execute none. RLV, whose
   table depends on the life, executes no hook of the core: its hook and the cell that maps
   the smoker status to a role are product cells. BU's hook for
   its second role, ``mort_rate_dis_at_age``, is a product cell, and its tariff rates execute
@@ -29,6 +29,11 @@ each writing its figures with ``--json``; the tests read those figures and call 
   rates. Basis, the second reader of the generational table, executes its trend cells, the
   core's best estimate on the own sex and ``omega_age_table``, and no tariff rate from the
   table; its ``birth_year``, ``omega_age`` and ``mort_be_factor`` are product cells.
+  Riester, whose main role is a period table and whose second role the generational one,
+  executes the trend cells, the core's best estimate of the accumulation on the own sex and
+  the unisex blend of its annuity factor; its ``birth_year``, ``omega_age``, its override of
+  ``mort_rate_table``, the payout hook ``annuity_mort_rate``, ``mort_rate`` and
+  ``mort_be_factor`` are product cells, and ``omega_age_table`` does not run.
 - A scratch copy of Index on a fixture table executes the same cells with the fixture law in
   place of ``makeham``; one with a ``mort_rate_at_age`` of its own and no choice executes
   neither the factory's cells nor the hooks, and its override counts as a product cell.
@@ -170,7 +175,29 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
         return
     assert product in ("basisrente", "berufsunfaehigkeit", "fondsgebundene_rentenversicherung",
                        "indexpolice", "kapitallebensversicherung",
-                       "klassische_rentenversicherung", "risikolebensversicherung")
+                       "klassische_rentenversicherung", "riester_rente",
+                       "risikolebensversicherung")
+    trend = {"tables.base_year", "tables.trend", "tables.trend_linear"}
+    if product == "riester_rente":
+        # two roles on two kinds of table: the period table of the accumulation through the
+        # core's hooks but its own read without a birth year, the generational table of the
+        # payout through a hook of its own; the annuity factor on the core's unisex blend
+        assert executed == FACTORY_CELLS | {"tables.makeham"} | trend
+        assert executed <= set(figures["core_cells"])
+        assert {"mort_table_name", "mort_rate_at_age", "mort_rate_base", "mort_rate_mth",
+                "unisex_blend", "unisex_mix_male", "sex"} <= set(figures["core_cells"])
+        own = {"birth_year", "mort_rate_table", "annuity_mort_rate", "mort_rate",
+               "mort_be_factor", "omega_age", "horizon_age", "ann_factor"}
+        assert own <= set(figures["executed_cells"])
+        assert not own & set(figures["core_cells"])
+        assert "omega_age_table" not in figures["executed_cells"]
+        assert not {"mort_rate_tariff", "mort_rate_tariff_at_age",
+                    "calendar_year"} & set(figures["executed_cells"])
+        assert sorted(name for name in set(figures["executed_cells"]) - set(figures["core_cells"])
+                      if "mort" in name) == [
+            "annuity_mort_rate", "mort_be_factor", "mort_rate", "mort_rate_table"]
+        assert (figures["executed"], figures["core"]) == (174, 70)
+        return
     if product == "risikolebensversicherung":
         # its table depends on the life: the hook on the factory and the cell that maps the
         # smoker status to a role are its own, no hook of the core runs, and of the core's
@@ -188,7 +215,6 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
         return
     # the shipped tables are on the law ``makeham``, the select and the generational one too;
     # the generational one brings its base year and its trend
-    trend = {"tables.base_year", "tables.trend", "tables.trend_linear"}
     generational = product in ("basisrente", "klassische_rentenversicherung")
     assert executed == FACTORY_CELLS | {"tables.makeham"} | (trend if generational else set())
     assert executed <= set(figures["core_cells"])

@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The nine input CSVs are read here, **once per model**, and referenced from
+The seven input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Riester_DE_S.Projection` as ``data``. :mod:`~.Riester_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its
 own cells cache; if the readers lived there, every model point would re-read every file.
@@ -31,8 +31,6 @@ and a reader Cells:
 Reference                  Cells                           File
 =========================  ==============================  ==========================
 model_point_file           model_point_table()             model_point_table.csv
-mort_file                  mort_table()                    mort_table_accum.csv
-annuity_mort_file          annuity_mort_table()            annuity_mort_table.csv
 lapse_file                 lapse_table()                   lapse_table.csv
 zulage_file                zulage_schedule()               zulage_schedule.csv
 income_file                income_schedule()               income_schedule.csv
@@ -43,51 +41,55 @@ param_file                 param()                         param_tariff_type.csv
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.at`` and ``.loc``: the core's for ``mort_table``,
-``lapse_table`` and ``surplus_table``, this space's ``annuity_mort_table_dict``,
-``zulage_schedule_dict`` and ``income_schedule_dict``.
+``DataFrame.at`` and ``.loc``: the core's for ``lapse_table`` and ``surplus_table``, this
+space's ``zulage_schedule_dict`` and ``income_schedule_dict``.
 
 **Every file but ``model_point_table.csv`` carries a per-row ``provenance`` column**,
 which is delib's second ruling: a model point is a *configuration*, every other row is an
 *assumption* and says on the row where its number came from. The tags are the same
 vocabulary the prose uses — ``[S#]``, ``[R#]``, ``[REG-R#]``, ``[std]`` with a rationale.
 
-.. rubric:: The two decrement tables are [std] proxies, and what a replacement must preserve
+.. rubric:: No mortality table is read here, and what a replacement must preserve
 
 The German first-order tables are the property of the **Deutsche Aktuarvereinigung**, are
 not public, and are **not redistributed here**. They are cited by name and stood in for.
+The death rates come from the core's table factory: the tariff chooses two tables in
+``param_tariff_type.csv``, each a **[std]** proxy with the structure the real table has and
+none of its values, whose parameters are rows of ``core/Core/Data/param_tables.csv``, each
+with its provenance.
 
-``mort_table_accum.csv`` stands in for **DAV 2008 T**, the death-risk table. It is a
-Gompertz proxy, ``qx = 0.001500 x 1.10^(age - 50)`` over ages 16 to 109 with ``qx = 1`` at
-110, and it carries **no improvement projection at all**, because on a death cover
-improvement runs in the insurer's favour and a first-order death basis does not anticipate
-it. The projection applies ``mort_be_factor = 0.75`` on top, which is the direction of
+``mort_table`` = ``dav2008t_proxy`` stands in for **DAV 2008 T**, the death-risk table of
+the accumulation. It is a Makeham proxy by sex, ``0.00022 + 2.882e-05 x 1.10^age`` for men
+and ``0.00016 + 2.165e-05 x 1.10^age`` for women, women three years of age behind men,
+over ages 0 to 120 and closed with ``q = 1`` at 120, and it carries **no improvement projection at
+all**, because on a death cover improvement runs in the insurer's favour and a first-order
+death basis does not anticipate it; it is read without a birth year. The projection
+applies ``mort_be_factor = 0.75`` on the insured's own sex, which is the direction of
 prudence for a death table: a first-order death basis assumes mortality *higher* than
-expected, so the best estimate sits **below** it. **The anchor a substitute must preserve
-is the rate at age 50, ``qx = 0.001500``**, so the notes' worked example still closes;
-the slope is a placeholder and nothing in the corpus fixes it.
+expected, so the best estimate sits **below** it.
 
-``annuity_mort_table.csv`` stands in for **DAV 2004 R**, the annuitant table, and the one
-structural property that is *not* optional is that it is **two-dimensional**: a
-generational basis in age and calendar year,
-``q(x, tau) = qx_base(x) x (1 - improvement(x))^(tau - mort_base_year)`` with
-``mort_base_year = 2027``. A period-table proxy understates a twenty-year-deferred
-annuitisation by a margin that dwarfs every other assumption in the model, so a
-replacement may change the level and the improvement scale but must keep both arguments.
-The shipped base is ``qx_base = 0.006000 x 1.115^(age - 65)`` over ages 55 to 109, capped
-at 0.95, with ``qx_base = 1`` at 110; the improvement is 1,8 % a year to age 65, tapering
-by 0,045 pp per year of age to a floor of 0,2 %. It is applied at
-``annuity_mort_be_factor = 1.15`` in the projection — the opposite direction, because a
-first-order *annuity* table assumes mortality *lower* than expected — and at 1.00 inside
+``annuity_mort_table`` = ``dav2004r_proxy`` stands in for **DAV 2004 R**, the annuitant
+table, and the one structural property that is *not* optional is that it is
+**generational**: the rate at attained age ``x`` of the birth year ``g``, issue year less
+issue age, is ``q_base x (1 - trend)^(g + x - 2005)``, the rate of the calendar year
+``g + x``, with the base year 2005 the table's own. A period-table proxy understates a
+twenty-year-deferred annuitisation by a margin that dwarfs every other assumption in the
+model, so a replacement may change the level and the trend but must keep the cohort. The
+base rate is Gompertz, ``0.008 x 1.11^(age - 65)`` for men and 0.6 of it for women, over
+ages 0 to 120 and closed with ``q = 1`` at 120; the trend is 2,5 % a year up to age 75,
+grading linearly to 1,25 % at 90 and to zero at 120, the same for both sexes. It is applied
+at ``annuity_mort_be_factor = 1.15`` on the own sex in the projection — the opposite
+direction, because a first-order *annuity* table assumes mortality *lower* than expected —
+and at 1.00 on the unisex blend, 45 % men (``unisex_mix_male``), inside
 :func:`~.Riester_DE_S.Projection.ann_factor`, which is the first-order basis the market's
-*Rentenfaktor* is struck on. **The anchor a substitute must preserve is the first-order
-annuity factor at age 67 in calendar 2044, ``ann_factor() = 20.87222879``**, which is what
-puts ``rentenfaktor_curr()`` at 27,947822 — below the anchor's guaranteed 29,00 — so that
-the **guaranteed** *Rentenfaktor* binds on the worked example and the notes' conversion
-table reproduces exactly.
+*Rentenfaktor* is struck on. On the anchor — age 67 in calendar 2044, born 1977 — that is
+``ann_factor() = 24.78315099``, which puts ``rentenfaktor_curr()`` at 23,537497, below the
+anchor's guaranteed 29,00, so that the **guaranteed** *Rentenfaktor* binds on the worked
+example. Both tables end at 121, the limiting age ``omega_age()`` the projection runs to.
 
-The remaining six files are assumption or configuration tables rather than proxies for a
-named instrument; each row says so in its own ``provenance`` cell.
+The six files besides ``model_point_table.csv`` are assumption or configuration tables
+rather than proxies for a named instrument; each row says so in its own ``provenance``
+cell.
 """
 
 from modelx.serialize.jsonvalues import *
@@ -104,33 +106,6 @@ _spaces = []
 
 # ---------------------------------------------------------------------------
 # Cells
-
-def mort_table_index():
-    """The index columns of *mort_table_accum.csv*: ``age`` alone.
-
-    A **[std]** proxy for **DAV 2008 T**, which is proprietary and is not redistributed
-    here; see the Space docstring for the anchor a replacement must preserve.  Ages 16 to
-    110, no improvement dimension: a first-order death basis does not anticipate mortality
-    improvement, because on a death cover improvement favours the insurer.
-
-    Override reason: the death basis of the *Aufschubzeit* has no sex key, ``qx`` by ``age``
-    alone; the annuitant table is separate, products/riester_rente/technical-notes.md:123
-    """
-    return "age"
-
-
-def annuity_mort_table():
-    """Annuitant base rates and improvement scale by attained age.
-
-    Read from *annuity_mort_table.csv*, ages 55 to 110.  A **[std]** *generational* proxy
-    for **DAV 2004 R**: ``qx_base`` is the rate in the base calendar year and
-    ``improvement`` the annual rate of decline, so the applied rate depends on **both**
-    attained age and calendar year.  That two-dimensional structure is the property a
-    replacement may not drop.
-    """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / annuity_mort_file, index_col="age")            # noqa: F821
-
 
 def zulage_schedule():
     """The Zulage entitlement drivers by schedule id and projection period ``t``.
@@ -164,15 +139,6 @@ def income_schedule():
         input_dir() / income_file, index_col=["income_id", "t"])     # noqa: F821
 
 
-def annuity_mort_table_dict():
-    """The annuitant table as a dict by column: ``{column: {age: value}}``.
-
-    Built once per model from ``annuity_mort_table()``; ``Projection.annuity_mort_rate``
-    reads its ``qx_base`` and ``improvement`` columns.
-    """
-    return annuity_mort_table().to_dict()
-
-
 def zulage_schedule_dict():
     """The Zulage drivers as a dict by column: ``{column: {(zulage_id, t): value}}``.
 
@@ -196,10 +162,6 @@ def income_schedule_dict():
 # References
 
 model_point_file = "model_point_table.csv"
-
-mort_file = "mort_table_accum.csv"
-
-annuity_mort_file = "annuity_mort_table.csv"
 
 lapse_file = "lapse_table.csv"
 

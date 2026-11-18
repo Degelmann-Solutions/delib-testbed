@@ -48,14 +48,15 @@ the commutation test are **bit-identical** on all thirteen model points.
 benefit; the annual-step model booked twelve instalments together at the start of each
 payout year on that year's opening count, which paid a life that died in the first month of
 a year for the whole of it.  ``annuity_month_pp()`` is now paid to whoever
-:func:`pols_annuity_pay` says is alive that month, which takes 362,84 € off the anchor's
-annuity outgo and 575,26 € off model point 12's, whose *Rentengarantiezeit* is zero.  The
+:func:`pols_annuity_pay` says is alive that month, which takes 375,82 € off the anchor's
+annuity outgo and 556,84 € off model point 12's, whose *Rentengarantiezeit* is zero.  The
 *Rentengarantiezeit* itself becomes ``12m`` guaranteed **instalments**.  And the three
 accumulation decrements now **compete month by month** where the annual grid ran them in
 sequence at one year end — mortality first on the whole cohort, then surrender, then
 transfer on what two decrements had already thinned — which moves 5,62 € off the anchor's
-death outgo and 2,64 € off its surrender outgo and puts 8,30 € onto its transfers, with the
-survivorship at every anniversary unchanged.
+death outgo and 2,64 € off its surrender outgo and puts 8,30 € onto its transfers (at the
+former ``mort_be_factor`` 0.80, on the mortality files the model read before its switch to
+the table factory), with the survivorship at every anniversary unchanged.
 
 **Two phases in one projection.** ``k_conv() = ret_age - age(0)`` is the
 conversion year and ``t_conv() = 12 x k_conv()`` the conversion month. ``is_accum(t)``
@@ -85,8 +86,6 @@ Each table has a filename Reference and a reader Cells, both on
 Reference                  Cells                                  File
 =========================  =====================================  ==========================
 model_point_file           data.model_point_table()               model_point_table.csv
-mort_file                  data.mort_table()                      mort_table_accum.csv
-annuity_mort_file          data.annuity_mort_table()              annuity_mort_table.csv
 lapse_file                 data.lapse_table()                     lapse_table.csv
 zulage_file                data.zulage_schedule()                 zulage_schedule.csv
 income_file                data.income_schedule()                 income_schedule.csv
@@ -94,6 +93,11 @@ surplus_file               data.surplus_table()                   surplus_scenar
 prem_freq_file             data.prem_freq_table()                 prem_freq_table.csv
 param_file                 data.param()                           param_tariff_type.csv
 =========================  =====================================  ==========================
+
+No mortality file is read: the death rates come from the core's table factory through the
+``tables`` Reference, ``tables.q`` of the two tables the tariff chooses in
+*param_tariff_type.csv*, ``mort_table`` = ``dav2008t_proxy`` in the accumulation and
+``annuity_mort_table`` = ``dav2004r_proxy`` in the payout, on the insured's own sex.
 
 .. rubric:: Naming
 
@@ -117,7 +121,7 @@ n = omega - x(0)           proj_len_y()                    Number of projected y
 12 n                       proj_len()                      Number of projected months
 k = t // 12                proj_year(t)                    Projection year of month t
 (none)                     is_anniv(t)                     Last month of a projection year
-omega                      omega_age()                     Limiting age, table end + 1
+omega                      omega_age()                     Limiting age, table end age
 (none)                     prem_due(t)                     Is the contribution due in month t
 T                          k_conv()                        The conversion year
 12 T                       t_conv()                        The conversion month
@@ -140,7 +144,8 @@ l(t)(1-q), l(t+1)          pols_if_at(t, timing)           BEF_DECR / AFT_DEATH 
 q(t)                       mort_rate(t)                    ANNUAL death rate of the year
 q_mth(t)                   mort_rate_mth(t)                Its geometric twelfth
 (table)                    mort_rate_at_age(x)             Accumulation table rate at x
-q(x, tau)                  annuity_mort_rate(x, tau)       Generational annuitant rate
+g                          birth_year()                    Issue year less issue age
+q(s, x)                    annuity_mort_rate(s, x)         Generational annuitant rate
 w(t)                       lapse_rate(t)                   ANNUAL surrender rate
 (gate)                     lapse_factor(t)                 0 from t_conv()
 w_mth(t)                   lapse_rate_mth(t)               Its geometric twelfth
@@ -354,7 +359,7 @@ def beitragssumme():
     the projection actually collects, because the § 86 minimum moves with income.
 
     Override reason: the *Beitragssumme* is a contractual figure of the model point, not a
-    premium times the years, products/riester_rente/technical-notes.md:186
+    premium times the years, products/riester_rente/technical-notes.md:188
     """
     return float(model_point()["beitragssumme"])
 
@@ -603,59 +608,76 @@ def is_payout(t):
 
 
 def omega_age():
-    """omega: the limiting age, one above the last ``age`` in *mort_table_accum.csv*.
+    """omega: the limiting age, the end age of the payout phase's annuitant table.
 
-    111: both shipped tables end at attained age 110 **[std]** with ``q = 1`` there, so the
-    lifelong *Leibrente* is projected to exhaustion and the decrement closure is exact.
+    The first age nobody reaches, **121** on ``dav2004r_proxy``, the table of the role
+    ``annuity_mort_table``: its rate is 1 at 120, so the lifelong *Leibrente* is projected to
+    exhaustion and the decrement closure is exact.  The accumulation table ``dav2008t_proxy``
+    ends at 121 too, but the horizon is the lifelong phase's.
 
-    Override reason: the limiting age is read off the mortality table, one above its last
-    age 110, where ``q = 1``, products/riester_rente/technical-notes.md:60
+    Override reason: reads the end age off the table of the role it names,
+    ``annuity_mort_table``, the table factory's, products/riester_rente/technical-notes.md:60
     """
-    return int(max(data.mort_table_dict()["qx"])) + 1                # noqa: F821
+    return tables.end_age(data.param("annuity_mort_table"))         # noqa: F821
 
 
-def mort_rate_at_age(x):
-    """The accumulation-phase table death rate at attained age x.
+def birth_year():
+    """g: the year of birth the generational annuitant table is read at, issue year less issue age.
 
-    A **[std]** proxy for DAV 2008 T, read from *mort_table_accum.csv* and carrying no
-    improvement dimension.  Forced to 1 at ``omega_age() - 1`` so the closure identity is
-    exact there whatever the table says.
+    DAV 2004 R is a *Generationentafel*: mortality is indexed by birth cohort and the
+    expected future improvement is built into the table rather than applied on top of it.
+    The table's rate at attained age ``x`` is that of the calendar year ``g + x``, which is
+    ``calendar_year(t)`` at ``x = age(t)``: the age and the calendar year step together on
+    the anniversary, on an in-force point as on new business (``issue_year + duration_init``
+    is the valuation year 2027 on every point).
 
-    Override reason: the product reads its own mortality file until its switch to the
-    table factory, docs/core.md, section "The table factory"
+    Override reason: the payout table is generational, read at the attained age and the
+    birth year, products/riester_rente/technical-notes.md:420
     """
-    if x >= omega_age() - 1:
-        return 1.0
-    return float(data.mort_table_dict()["qx"][x])                    # noqa: F821
+    return issue_year() - issue_age()
 
 
-def annuity_mort_rate(x, tau):
-    """q(x, tau): the **generational** annuitant death rate at age x in calendar year tau.
+def mort_rate_table(sex_code, x):
+    """The rate of the accumulation table ``mort_table`` for ``sex_code`` at attained age x.
 
-    ``qx_base(x) x (1 - improvement(x))^(tau - mort_base_year)`` from
-    *annuity_mort_table.csv*, a **[std]** proxy for DAV 2004 R.  It depends on **both**
-    arguments, and that is the property a replacement may not drop: a twenty-year-deferred
-    annuitisation happens on the mortality of its own conversion year, and a period-table
-    proxy understates it by a margin that dwarfs every other assumption here.  Strictly
-    decreasing in ``tau`` below ``omega_age() - 1``, where it is forced to 1.
+    ``tables.q(mort_table_name(), sex_code, x)``, **without** a birth year: the main role
+    is the period table ``dav2008t_proxy``, and ``q`` refuses a birth year on a period
+    table.  The core's ``mort_rate_at_age``, ``mort_rate_base`` and ``mort_rate_mth`` read
+    it unchanged.
+
+    Override reason: the main role is a period table, while ``birth_year()`` is overridden
+    for the generational table of the second role, which the core's cell would hand to the
+    period table, products/riester_rente/technical-notes.md:419
     """
-    if x >= omega_age() - 1:
-        return 1.0
-    tab = data.annuity_mort_table_dict()                             # noqa: F821
-    qb = float(tab["qx_base"][x])
-    im = float(tab["improvement"][x])
-    return qb * (1.0 - im) ** (tau - data.param("mort_base_year"))     # noqa: F821
+    return tables.q(mort_table_name(), sex_code, x)                  # noqa: F821
+
+
+def annuity_mort_rate(sex_code, x):
+    """q(x): the **generational** annuitant death rate of ``sex_code`` at attained age x.
+
+    ``tables.q`` of the role ``annuity_mort_table``, ``dav2004r_proxy``, at the birth year
+    ``birth_year()``, the rate of the calendar year ``birth_year() + x``.  The cohort is the
+    property a replacement may not drop: a twenty-year-deferred annuitisation happens on
+    the mortality of its own conversion year, and a period-table proxy understates it by a
+    margin that dwarfs every other assumption here.  The table is 1 at its closing age 120.
+
+    A hook of the product for its second role, beside the core's hooks of the main role;
+    it names its choice item by a literal so that the usage scan sees the read.
+    """
+    return tables.q(data.param("annuity_mort_table"), sex_code, x,  # noqa: F821
+                    birth_year())
 
 
 def mort_be_factor():
     """The step from the accumulation death table to the best estimate, 0.75.
 
-    Read from *param_tariff_type.csv*; the payout phase's ``annuity_mort_be_factor`` runs the
-    other way and is a row of *param_tariff_type.csv* too.
+    Read from *param_tariff_type.csv*; it acts on the role ``mort_table``.  The payout
+    phase's ``annuity_mort_be_factor`` runs the other way, acts on the role
+    ``annuity_mort_table`` and is a row of *param_tariff_type.csv* too.
 
     Override reason: the best estimate sits at 0.75 of the first-order death table, below
     it because the direction of prudence forks by product, a tariff parameter in
-    *param_tariff_type.csv*, products/riester_rente/technical-notes.md:419
+    *param_tariff_type.csv*, products/riester_rente/technical-notes.md:421
     """
     return data.param("mort_be_factor")                              # noqa: F821
 
@@ -665,13 +687,15 @@ def mort_rate(t):
 
     The basis **switches at ``t_conv()``**, and the two adjustments run in opposite
     directions because the direction of prudence forks by product.  In accumulation the
-    rate is ``mort_rate_base(t) x mort_be_factor``, the core's ``mort_rate_at_age(x(t))``,
-    with the factor at 0.75: a
-    first-order *death* table assumes mortality higher than expected, so the best estimate
-    sits below it.  In payout it is ``annuity_mort_rate(x(t), tau(t)) x
-    annuity_mort_be_factor`` with the factor at 1.15: a first-order *annuity* table assumes
-    mortality lower than expected, so the best estimate sits above it.  Using one table for
-    both phases, or one factor in both directions, is a listed pitfall.
+    rate is ``mort_rate_base(t) x mort_be_factor``, the core's ``mort_rate_at_age(x(t))`` on
+    ``dav2008t_proxy`` and the own sex, with the factor at 0.75: a first-order *death* table
+    assumes mortality higher than expected, so the best estimate sits below it.  In payout
+    it is ``annuity_mort_rate(sex, x(t)) x annuity_mort_be_factor`` on ``dav2004r_proxy`` at
+    the birth year, with the factor at 1.15: a first-order *annuity* table assumes mortality
+    lower than expected, so the best estimate sits above it.  Using one table for both
+    phases, or one factor in both directions, is a listed pitfall.  Either rate is capped at
+    1, and a table rate of 1 passes through as 1 whatever the factor: nobody survives the
+    table's closing age 120.
 
     This is the library's two-speed convention: ``mort_rate`` is the **annual** rate and
     :func:`mort_rate_mth` is what the recursion applies.  The age and the calendar year step
@@ -679,21 +703,23 @@ def mort_rate(t):
 
     Override reason: the basis switches at ``t_conv()``, from the accumulation death table
     to the generational annuitant table with its own factor,
-    products/riester_rente/technical-notes.md:629
+    products/riester_rente/technical-notes.md:633
     """
-    if age(t) >= omega_age() - 1:
-        return 1.0
     if is_accum(t):
-        return min(1.0, mort_rate_base(t) * mort_be_factor())
-    return min(1.0, annuity_mort_rate(age(t), calendar_year(t))
-               * data.param("annuity_mort_be_factor"))               # noqa: F821
+        q, factor = mort_rate_base(t), mort_be_factor()
+    else:
+        q = annuity_mort_rate(sex(), age(t))
+        factor = data.param("annuity_mort_be_factor")                # noqa: F821
+    if q >= 1.0:
+        return 1.0
+    return min(1.0, q * factor)
 
 
 def lapse_factor(t):
     """The factor on the table surrender rate: 0 from ``t_conv()``, else 1.
 
     Override reason: a contract in payment cannot be surrendered, so the rate is zero from
-    ``t_conv()``, products/riester_rente/technical-notes.md:767
+    ``t_conv()``, products/riester_rente/technical-notes.md:774
     """
     if not is_accum(t):
         return 0.0
@@ -740,8 +766,8 @@ def pols_if(t):
     now compete month by month instead of running in sequence inside one year end.
 
     Override reason: the *Anbieterwechsel* is a third exit beside deaths and lapses,
-    products/riester_rente/technical-notes.md:619, and a commuted contract leaves whole in
-    its conversion month, products/riester_rente/technical-notes.md:623
+    products/riester_rente/technical-notes.md:623, and a commuted contract leaves whole in
+    its conversion month, products/riester_rente/technical-notes.md:627
     """
     if t < 0 or t > proj_len():
         return 0.0
@@ -765,7 +791,7 @@ def pols_death(t):
 
     Override reason: zero outside the frame and in the conversion month of a commuted
     contract, where the *Kleinbetragsrenten-Abfindung* takes the whole cohort,
-    products/riester_rente/technical-notes.md:623
+    products/riester_rente/technical-notes.md:627
     """
     if t < 0 or t >= proj_len():
         return 0.0
@@ -1326,23 +1352,26 @@ def garantieluecke_conv_pp():
 def ann_factor():
     """a-double-dot: the annuity-due factor at *Rentenbeginn* on the **first-order** basis.
 
-    ``sum_{k>=0} v^k x kp(x(T), tau(T)) - 11/24`` at ``annuity_rechnungszins``, with
-    survivorship on the generational annuitant table at factor **1.00** — the basis the
-    market's *Rentenfaktor* is struck on — and the Woolhouse ``-11/24`` correction, which
-    converts the annual-due factor to a monthly-due one.  The projection's own
-    survivorship, by contrast, runs on the **second-order** basis at
+    ``sum_{k>=0} v^k x kp - 11/24`` at ``annuity_rechnungszins``, from the attained age
+    ``x(T)`` at conversion, with survivorship on the **unisex blend** of the annuitant
+    table, ``unisex_blend(q_M, q_F)`` at ``unisex_mix_male`` 0.45, at the point's birth
+    year and at factor **1.00** — the basis the market's *Rentenfaktor* is struck on, the
+    same for a man and a woman of equal age and birth year — and the Woolhouse ``-11/24``
+    correction, which converts the annual-due factor to a monthly-due one.  The sum runs to
+    the table's closing age 120, where its rate is 1.  The projection's own survivorship,
+    by contrast, runs on the **second-order** basis of the own sex at
     ``annuity_mort_be_factor``; the wedge between the two is the *Risikoüberschuss* in
     payment, which this model does not distribute.
 
-    On the anchor — age 67 in calendar 2044 — it is 20,87222879, and that is the number a
-    substitute annuity table must reproduce for the notes' worked example to close.
+    On the anchor — age 67 in calendar 2044, born 1977 — it is 24,78315099.
     """
     v = 1.0 / (1.0 + data.param("annuity_rechnungszins"))            # noqa: F821
-    x0, tau0 = age_y(k_conv()), calendar_year_y(k_conv())
+    x0 = age_y(k_conv())
     total, kp, k = 0.0, 1.0, 0
     while kp > 0.0 and x0 + k < omega_age():
         total += v ** k * kp
-        kp *= 1.0 - annuity_mort_rate(x0 + k, tau0 + k)
+        kp *= 1.0 - unisex_blend(annuity_mort_rate("M", x0 + k),
+                                 annuity_mort_rate("F", x0 + k))
         k += 1
     return total - data.param("woolhouse")                          # noqa: F821
 
@@ -1355,7 +1384,7 @@ def rentenfaktor_curr():
     loading — the *Sicherheitsabschlag* and the administration margin — sits in this one
     deduction rather than being taken partly here and partly out of each instalment, which
     would double-count; the insurer's real payout administration is instead an explicit
-    expense cash flow.  On the anchor it is 27,947822, **below** the guaranteed 29,00, so
+    expense cash flow.  On the anchor it is 23,537497, **below** the guaranteed 29,00, so
     the guarantee binds.
     """
     return ((1.0 - data.param("rentenfaktor_margin")) * data.param("rf_unit")  # noqa: F821
@@ -1535,7 +1564,7 @@ def claim_kinds():
     contract year's exits release exactly what the annual-step model released.
 
     Override reason: the claims are death, lapse, transfer, lump sum, commutation and
-    annuity, products/riester_rente/technical-notes.md:163
+    annuity, products/riester_rente/technical-notes.md:165
     """
     return ("DEATH", "LAPSE", "TRANSFER", "LUMPSUM", "COMMUTATION", "ANNUITY")
 
@@ -1546,7 +1575,7 @@ def benefit_death_pp(t):
     Gross of the *Rückzahlungsbetrag*.  Zero in payout.
 
     Override reason: a death pays the contract year's ``db_pp(k)``,
-    products/riester_rente/technical-notes.md:658
+    products/riester_rente/technical-notes.md:665
     """
     return db_pp(proj_year(t))
 
@@ -1557,7 +1586,7 @@ def benefit_lapse_pp(t):
     Net of the *Stornoabzug* and gross of the *Rückzahlungsbetrag*.
 
     Override reason: a surrender pays the contract year's ``cv_pp(k)``,
-    products/riester_rente/technical-notes.md:659
+    products/riester_rente/technical-notes.md:666
     """
     return cv_pp(proj_year(t))
 
@@ -1589,7 +1618,7 @@ def claims_other(t, kind):
 
     Override reason: the transfer, the lump sum, the commutation and the annuity are paid on
     their own counts, ``pols_transfer``, ``pols_conv`` and ``pols_annuity_pay``,
-    products/riester_rente/technical-notes.md:660, :657, :658 and :659
+    products/riester_rente/technical-notes.md:667, :668, :669 and :670
     """
     if kind == "TRANSFER":
         return transfer_value_pp(proj_year(t)) * pols_transfer(t)
@@ -1619,7 +1648,7 @@ def prem_inst_pp(t):
     own ``l(k)``, and that column sums over a year to that model's premium income exactly.
 
     Override reason: the contribution is the *Eigenbeitrag* after the *Ratenzuschlag* plus
-    the unsubsidised extra, due once a year, products/riester_rente/technical-notes.md:665
+    the unsubsidised extra, due once a year, products/riester_rente/technical-notes.md:672
     """
     if not prem_due(t):
         return 0.0
@@ -1671,7 +1700,7 @@ def expenses_acq(t):
     because no German insurer publishes a unit cost; the commission is excluded.
 
     Override reason: the acquisition expense is a fixed amount plus a rate on the
-    *Beitragssumme* at issue, products/riester_rente/technical-notes.md:426
+    *Beitragssumme* at issue, products/riester_rente/technical-notes.md:428
     """
     if t == 0 and duration_init() == 0:
         return (data.param("expense_acq_pp_once")                    # noqa: F821
@@ -1693,8 +1722,8 @@ def expenses_maint(t):
     maintenance rather than the whole of it.
 
     Override reason: maintenance falls on the in-force in accumulation,
-    products/riester_rente/technical-notes.md:668, and the annuity expense on the
-    annuitants paid, products/riester_rente/technical-notes.md:669
+    products/riester_rente/technical-notes.md:675, and the annuity expense on the
+    annuitants paid, products/riester_rente/technical-notes.md:676
     """
     maint = (data.param("expense_admin_pp_ann") / 12.0               # noqa: F821
              * inflation_factor(t)
@@ -1706,7 +1735,7 @@ def expenses_claim(t):
     """``expense_claim_pp_once`` per death, surrender or transfer, whole in the month of the event.
 
     Override reason: the claim expense is an amount per death, surrender or transfer,
-    products/riester_rente/technical-notes.md:670
+    products/riester_rente/technical-notes.md:677
     """
     return data.param("expense_claim_pp_once") * (pols_death(t) + pols_lapse(t)  # noqa: F821
                                           + pols_transfer(t))
@@ -1722,7 +1751,7 @@ def comm_init_rate():
     once.
 
     Override reason: the initial commission is ``comm_acq_bsum_once`` of the *Beitragssumme* at
-    issue, products/riester_rente/technical-notes.md:671
+    issue, products/riester_rente/technical-notes.md:678
     """
     return data.param("comm_acq_bsum_once")                          # noqa: F821
 
@@ -1736,7 +1765,7 @@ def comm_renew(t):
     the month of the initial commission, which is paid instead of it.
 
     Override reason: the renewal commission is a rate on the *Eigenbeitrag* and the Zulagen
-    in the month they fall, products/riester_rente/technical-notes.md:672
+    in the month they fall, products/riester_rente/technical-notes.md:679
     """
     if t == 0 and duration_init() == 0:
         return 0.0
@@ -1757,7 +1786,7 @@ def income_other(t):
     the first month of a projection year.
 
     Override reason: the Zulagen are income beside the contributions,
-    products/riester_rente/technical-notes.md:674
+    products/riester_rente/technical-notes.md:681
     """
     return zulagen(t)
 
@@ -1784,7 +1813,7 @@ def net_cf_income_columns():
     removes the most tempting way to break the identity.
 
     Override reason: the *Zulagen* are income beside the contribution,
-    products/riester_rente/technical-notes.md:715
+    products/riester_rente/technical-notes.md:722
     """
     return ("premiums", "zulagen")
 
@@ -1802,7 +1831,7 @@ def check_net_cf_scale(t):
     of the month that failed.
 
     Override reason: the statement is checked relative to the guaranteed annuity at
-    Rentenbeginn, products/riester_rente/technical-notes.md:715
+    Rentenbeginn, products/riester_rente/technical-notes.md:722
     """
     return max(1.0, guar_pp(k_conv() + 1))                           # noqa: F821
 
@@ -2025,7 +2054,7 @@ def result_cf_columns():
     the end rather than being truncated.
 
     Override reason: the statement carries the annuity-paying count, the *Zulagen* and the
-    six claim kinds, products/riester_rente/technical-notes.md:694-696
+    six claim kinds, products/riester_rente/technical-notes.md:701-703
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821
@@ -2062,7 +2091,7 @@ def result_cf_annual():
 
     Override reason: indexed by the projection year k of the valuation clock, the
     annual-step model's own t, and summed over each year's twelve-month slice,
-    products/riester_rente/technical-notes.md:701
+    products/riester_rente/technical-notes.md:708
     """
     ks = list(range(proj_len_y()))
     flows = ["premiums", "zulagen", "claims_death", "claims_lapse", "claims_transfer",

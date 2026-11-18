@@ -13,8 +13,8 @@ each writing its figures with ``--json``; the tests read those figures and call 
 - A bound above a measured quota makes the report exit 1 and name the product on stderr.
 - The static usage scan ``core/param_usage.py`` reaches every executed ``Projection`` cell of
   every product (``Data`` cells are not compared, the quota does not count them).
-- Only a switched product executes cells of the table factory: Index, BU, RV, KLV, FRV and
-  RLV do,
+- Only a switched product executes cells of the table factory: Index, BU, RV, KLV, FRV, RLV
+  and Basis do,
   the cells behind ``q`` with the law ``makeham``, listed as ``tables.<cell>`` and counted as
   core beside the hooks of their ``Projection``; the other four execute none. RLV, whose
   table depends on the life, executes no hook of the core: its hook and the cell that maps
@@ -26,7 +26,9 @@ each writing its figures with ``--json``; the tests read those figures and call 
   the unisex blend, which its premium and its reserves read, and no mortality cell of its
   own but the factor. FRV executes the core's tariff rate on the unisex blend below its
   *Risikobeitrag* and, of its own mortality cells, the factor and the two linear monthly
-  rates.
+  rates. Basis, the second reader of the generational table, executes its trend cells, the
+  core's best estimate on the own sex and ``omega_age_table``, and no tariff rate from the
+  table; its ``birth_year``, ``omega_age`` and ``mort_be_factor`` are product cells.
 - A scratch copy of Index on a fixture table executes the same cells with the fixture law in
   place of ``makeham``; one with a ``mort_rate_at_age`` of its own and no choice executes
   neither the factory's cells nor the hooks, and its override counts as a product cell.
@@ -166,7 +168,7 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
         assert not executed
         assert not FACTORY_HOOKS - {"birth_year"} & set(figures["executed_cells"])
         return
-    assert product in ("berufsunfaehigkeit", "fondsgebundene_rentenversicherung",
+    assert product in ("basisrente", "berufsunfaehigkeit", "fondsgebundene_rentenversicherung",
                        "indexpolice", "kapitallebensversicherung",
                        "klassische_rentenversicherung", "risikolebensversicherung")
     if product == "risikolebensversicherung":
@@ -187,7 +189,7 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
     # the shipped tables are on the law ``makeham``, the select and the generational one too;
     # the generational one brings its base year and its trend
     trend = {"tables.base_year", "tables.trend", "tables.trend_linear"}
-    generational = product == "klassische_rentenversicherung"
+    generational = product in ("basisrente", "klassische_rentenversicherung")
     assert executed == FACTORY_CELLS | {"tables.makeham"} | (trend if generational else set())
     assert executed <= set(figures["core_cells"])
     assert FACTORY_HOOKS | {"mort_rate_at_age"} <= set(figures["executed_cells"])
@@ -204,6 +206,20 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
         assert "mort_rate_dis_at_age" not in figures["core_cells"]
         assert blend <= set(figures["core_cells"])
         assert (figures["executed"], figures["core"]) == (165, 48)
+    elif product == "basisrente":
+        # no tariff rate from the table: the best estimate on the own sex is the core's, the
+        # end age the table's; the cohort, the horizon and the factor are its own cells
+        assert {"omega_age_table", "mort_rate_at_age", "mort_rate_base", "mort_be_trend",
+                "mort_rate", "mort_rate_mth", "sex"} <= set(figures["core_cells"])
+        assert not blend & set(figures["executed_cells"])
+        assert not {"mort_rate_tariff", "mort_rate_tariff_base",
+                    "mort_load_tariff"} & set(figures["executed_cells"])
+        assert {"omega_age", "birth_year", "horizon_age"} <= set(figures["executed_cells"])
+        assert not {"omega_age", "birth_year", "horizon_age"} & set(figures["core_cells"])
+        assert sorted(name for name in set(figures["executed_cells"]) - set(figures["core_cells"])
+                      if name.startswith("mort")) == ["mort_be_factor"]
+        assert "calendar_year" not in figures["executed_cells"]
+        assert (figures["executed"], figures["core"]) == (127, 62)
     elif generational:
         # the tariff rate is the core's, on the unisex blend, and the end age the table's
         tariff = {"mort_rate_tariff", "mort_rate_tariff_base", "mort_load_tariff"}

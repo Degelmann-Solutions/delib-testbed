@@ -241,7 +241,7 @@ CORE_CELLS = {
     "Data": {
         "input_dir": dict.fromkeys(MODELS, "derived"),
         "model_point_table": dict.fromkeys(MODELS, "derived"),
-        "mort_table_index": {"basisrente": "override",
+        "mort_table_index": {"basisrente": "derived",
                              "fondsgebundene_rentenversicherung": "derived",
                              "indexpolice": "derived",
                              "kapitallebensversicherung": "derived",
@@ -617,12 +617,13 @@ CORE_CELLS = {
                      "riester_rente": "derived"},
         # The derivation hooks of the table factory (docs/core.md, "The table factory"): a
         # product that defines the name reads its own mortality file until its switch.
-        "birth_year": {"klassische_rentenversicherung": "override",
+        "birth_year": {"basisrente": "override",
+                       "klassische_rentenversicherung": "override",
                        "sofortrente": "override"},
         "omega_age_table": {},
         "mort_table_name": {},
         "mort_rate_table": {},
-        "mort_rate_at_age": {"basisrente": "override",
+        "mort_rate_at_age": {"basisrente": "derived",
                              "berufsunfaehigkeit": "derived",
                              "indexpolice": "derived",
                              "kapitallebensversicherung": "derived",
@@ -635,7 +636,8 @@ CORE_CELLS = {
                                     "fondsgebundene_rentenversicherung": "derived",
                                     "kapitallebensversicherung": "derived",
                                     "klassische_rentenversicherung": "derived"},
-        "mort_be_trend": {"berufsunfaehigkeit": "derived",
+        "mort_be_trend": {"basisrente": "derived",
+                          "berufsunfaehigkeit": "derived",
                           "fondsgebundene_rentenversicherung": "derived",
                           "indexpolice": "derived",
                           "kapitallebensversicherung": "derived",
@@ -649,7 +651,7 @@ CORE_CELLS = {
                            "klassische_rentenversicherung": "override",
                            "riester_rente": "override",
                            "risikolebensversicherung": "override"},
-        "mort_rate_base": {"basisrente": "override",
+        "mort_rate_base": {"basisrente": "derived",
                            "berufsunfaehigkeit": "derived",
                            "fondsgebundene_rentenversicherung": "derived",
                            "indexpolice": "derived",
@@ -658,7 +660,7 @@ CORE_CELLS = {
                            "pflegerentenversicherung": "derived",
                            "riester_rente": "derived",
                            "risikolebensversicherung": "override"},
-        "mort_rate": {"basisrente": "override",
+        "mort_rate": {"basisrente": "derived",
                       "berufsunfaehigkeit": "derived",
                       "fondsgebundene_rentenversicherung": "derived",
                       "indexpolice": "derived",
@@ -2000,10 +2002,11 @@ INDEX_MOVED_LITERALS = {"surr_spread_years": 5}
 # ``surr_spread_years`` was ``5.0`` there; its row is ``5``, an ``int`` as Index' row.
 KLV_MOVED_LITERALS = {"surr_spread_years": 5, "suicide_years": 3}
 
-# The 5 numeric References Basis' ``Projection`` held, as their former Python literals.
+# 4 of the 5 numeric References Basis' ``Projection`` held, as their former Python literals; the
+# fifth, ``mort_base_year`` 2005, an item until Basis' switch to the table factory, is the item
+# ``dav2004r_proxy_base_year`` of its table, 2005 as before.
 BASIS_MOVED_REFERENCES = {
     "elig_surv_prob": 0.55,
-    "mort_base_year": 2005,
     "acq_spread_years": 5,
     "rf_unit": 10000.0,
     "ann_freq": 12,
@@ -2165,7 +2168,10 @@ def test_basis_references_stand_in_their_layer(product_models):
     model = product_models("basisrente")
     data = model.Data
     layers = data.param_layers()
-    assert len(BASIS_MOVED_REFERENCES) == 5
+    assert len(BASIS_MOVED_REFERENCES) == 4
+    assert "mort_base_year" not in model.Projection.refs
+    assert "mort_base_year" not in data.param_dict()
+    assert data.param("dav2004r_proxy_base_year") == 2005
     for item, literal in BASIS_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item

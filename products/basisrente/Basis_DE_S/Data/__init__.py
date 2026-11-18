@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The eight input CSVs are read here, **once per model**, and referenced from
+The seven input CSVs are read here, **once per model**, and referenced from
 :mod:`~.Basis_DE_S.Projection` as ``data``. :mod:`~.Basis_DE_S.Projection` is
 parameterized by ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its
 own cells cache; if the readers lived there, every model point would re-read every file.
@@ -32,7 +32,6 @@ and a reader Cells:
 Reference                  Cells                           File
 =========================  ==============================  ==========================
 model_point_file           model_point_table()             model_point_table.csv
-mort_file                  mort_table()                    mort_table.csv
 surplus_file               surplus_table()                 surplus_table.csv
 rentenfaktor_file          rentenfaktor_table()            rentenfaktor_table.csv
 charge_file                charge_table()                  charge_table.csv
@@ -44,8 +43,8 @@ param_file                 param()                         param_tariff_type.csv
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.loc``: the core's for ``model_point_table``, ``mort_table``,
-``surplus_table``, ``rentenfaktor_table``, ``charge_table`` and ``prem_freq_table``, this space's
+``DataFrame.loc``: the core's for ``model_point_table``, ``surplus_table``,
+``rentenfaktor_table``, ``charge_table`` and ``prem_freq_table``, this space's
 ``behaviour_table_dict`` and ``option_table_dict``, with ``behaviour_table_durs`` and
 ``surplus_table_years``, the last row of each behaviour table and surplus scenario the
 lookups clamp to.
@@ -54,33 +53,37 @@ lookups clamp to.
 tag per row — delib's second ruling, asserted by the conventions suite. A model point is
 a *configuration* rather than an assumption, which is why it is the single exemption.
 
-.. rubric:: The mortality table is a [std] proxy, and here is its anchor
+.. rubric:: No mortality table is read here
 
-``mort_table.csv`` is **not** DAV 2004 R. **DAV 2004 R is the property of the Deutsche
-Aktuarvereinigung, is not public, and is not redistributed here**; it is cited by name in
-``sources.md`` and in the technical notes, and what ships instead is a shaped proxy:
-
-    ``qx(age) = min(1.0, 0.014000 x 1.085^(age - 67))`` over ages 20 to 121,
-    with ``qx(121) = 1.0`` and a flat improvement ``trend = 0.015`` at every age
-    applied from ``mort_base_year = 2005``.
-
-**The anchor a replacement must preserve is ``qx(67) = 0.014000`` exactly**, because the
-notes' worked example converts at attained age 67 and every figure in the payout phase of
-that example is struck off it. A replacement must also preserve three structural
+The first-order basis of this product is **DAV 2004 R**. **DAV 2004 R is the property of
+the Deutsche Aktuarvereinigung, is not public, and is not redistributed here**; it is cited
+by name in ``sources.md`` and in the technical notes. The death rates come from the core's
+table factory: the tariff chooses the table ``dav2004r_proxy`` in the row ``mort_table`` of
+``param_tariff_type.csv``, a **[std]** proxy with the structure the real table has and none
+of its values. Its base rate, for the base year **2005**, is Gompertz,
+``0.008 x 1.11^(age - 65)`` for men and 0.6 of it for women, over ages 0 to 120 and closed
+with ``q = 1`` at age 120; its annual improvement is 2,5 % up to age 75, grading linearly
+to 1,25 % at 90 and to zero at 120, the same for both sexes. The rate at attained age
+``x`` of the birth year ``g``, issue year less issue age, is
+``q_base x (1 - improve)^(g + x - 2005)``, the rate of the calendar year ``g + x``. The
+table's parameters are rows of ``core/Core/Data/param_tables.csv``, each with its
+provenance; the projection takes 1.15 of the rate on the insured's own sex, the row
+``mort_be_factor``, as the best estimate. A substitute table must keep three structural
 properties, or the model stops being a model of this product:
 
 * it must be **generational** — DAV 2004 R is a *Generationentafel*, with the improvement
-  inside the table rather than applied on top of it, which is why ``mort_rate_at_age``
-  takes a calendar year as well as an age and why ``calendar_year(t)`` is carried at all;
+  inside the table rather than applied on top of it, which is why the table is read at the
+  birth year;
 * it must be **first order**, carrying the DAV's prudential margins, because the
   guaranteed *Rentenfaktor* is struck on that basis and the projection's own
   ``mort_be_factor`` steps up from it to a best estimate;
-* it must run to a terminal age at which ``qx`` is 1.0, because ``proj_len()`` is derived
-  from the last age in this file and the projection has no tail state.
+* it must close with ``q = 1`` at its last age, because ``proj_len()`` runs to the table's
+  end age and the projection has no tail state.
 
-The 1.085 slope and the 1.5 % flat trend are **[std]** with nothing behind them: DAV
-2004 R's own trends are age-dependent, and no Basisrente-specific decrement evidence
-exists anywhere in the delib corpus.
+The table and the guaranteed *Rentenfaktor* are **not calibrated to each other**: no cell
+of this model forms a tariff rate from the table, and the *Rentenfaktor* is a model-point
+and table fact, so a substitution changes the best estimate and leaves the conversion as it
+is.
 
 .. rubric:: What the other six files are
 
@@ -136,20 +139,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def mort_table_index():
-    """The index columns of *mort_table.csv*: ``age`` alone.
-
-    Read from *mort_table.csv*, indexed by ``age``: ``qx`` is the rate at the base
-    calendar year ``mort_base_year`` and ``trend`` the annual improvement that makes the
-    basis generational.  A **[std]** proxy anchored at ``qx(67) = 0.014000``, not DAV
-    2004 R; see the Space docstring for what a replacement must preserve.
-
-    Override reason: the table is the unisex first-order basis with a generational ``trend``
-    column, keyed by ``age`` alone, products/basisrente/technical-notes.md:138
-    """
-    return "age"
-
-
 def charge_table_index():
     """The index column of *charge_table.csv*: ``tariff_id``.
 
@@ -160,7 +149,7 @@ def charge_table_index():
     what makes the split visible.
 
     Override reason: the charge scale is one row per tariff, keyed by ``tariff_id``,
-    products/basisrente/technical-notes.md:141
+    products/basisrente/technical-notes.md:144
     """
     return "tariff_id"
 
@@ -235,8 +224,6 @@ def surplus_table_years():
 # References
 
 model_point_file = "model_point_table.csv"
-
-mort_file = "mort_table.csv"
 
 surplus_file = "surplus_table.csv"
 

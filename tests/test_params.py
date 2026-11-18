@@ -29,8 +29,10 @@
   ``mort_table``, its new ``unisex_mix_male`` and its ``mort_be_factor``, each with the
   provenance of the values package, and the eight items of ``dav2008t_proxy``; RLV lists
   its two choices ``mort_nr_table`` and ``mort_r_table``, ``mort_be_factor`` and the sixteen
-  items of its two tables, and no ``mort_load_first``; the four products that choose no
-  table list no item of the layer.
+  items of its two tables, and no ``mort_load_first``; Basis lists its choice ``mort_table``,
+  its ``mort_be_factor`` and the fourteen items of ``dav2004r_proxy``, and neither
+  ``mort_base_year`` nor ``unisex_mix_male``; the three products that choose no table list
+  no item of the layer.
 - A scratch copy of Index whose tariff chooses a fixture table lists that table's items with
   layer ``tables``, value, basis and provenance, after the core items and before the
   tariff-type items, and no other table's, the shipped one's neither, and exits 0; a copy
@@ -63,8 +65,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 from run_baseline import model_dir  # noqa: E402
 
 from test_core import _add_params  # noqa: E402
-from test_tables import (BU, FIXTURE_DEFINITIONS, FIXTURE_VALUES, FRV, INDEX, KLV, RV,  # noqa: E402
-                         SHIPPED_ITEMS, SHIPPED_PROVENANCE, SHIPPED_ROWS, SWITCHED,
+from test_tables import (BASIS, BU, FIXTURE_DEFINITIONS, FIXTURE_VALUES, FRV,  # noqa: E402
+                         INDEX, KLV, RV, SHIPPED_ITEMS, SHIPPED_PROVENANCE, SHIPPED_ROWS, SWITCHED,
                          choosing_copy, fixture_copy, fixture_items, tables_file,
                          unswitched_copy)
 
@@ -413,6 +415,48 @@ def test_rv_lists_its_choice_its_derivation_items_and_the_items_of_its_table(cap
     assert len([line for line in out.splitlines() if "dav2004r_proxy" in line]) == 15
     assert "dav2008t_proxy" not in out and "dav1997ti_proxy" not in out
     assert not [line for line in split if line[:1] in (["mort_base_year"], ["omega_age"])]
+
+
+def test_basis_lists_its_choice_its_factor_and_the_items_of_its_table(capsys):
+    table, listed = tables_rows(PRODUCTS_DIR / BASIS, "ParamsShippedBasis")
+    assert SWITCHED[BASIS] == {"mort_table": "dav2004r_proxy"}
+    assert [row["item"] for row in listed] == list(SHIPPED_ITEMS["dav2004r_proxy"])
+    assert len(listed) == 14
+    for row in listed:
+        text, basis = SHIPPED_ROWS[row["item"]]
+        assert row["value"] == (int(text) if text.isdigit() else float(text))
+        assert row["basis"] == basis == "Setzung"
+        assert row["provenance"].startswith(SHIPPED_PROVENANCE["dav2004r_proxy"])
+    by_item = {row["item"]: row for row in table}
+    expected = {"mort_table": "dav2004r_proxy", "mort_be_factor": 1.15}
+    for item, value in expected.items():
+        row = by_item[item]
+        assert (row["value"], row["layer"], row["basis"]) == (value, "tariff_type", "Setzung")
+        assert row["provenance"], item
+    # the values package's provenance of the new row, verbatim
+    assert by_item["mort_table"]["provenance"] == (
+        "the tariff's first-order annuitant table, the proxy of DAV 2004 R its docs name; read"
+        " at the model point's sex and its birth year, issue year less issue age")
+    # the item the table's own replaced, and no unisex mix: Basis forms no tariff rate
+    assert "mort_base_year" not in by_item and "unisex_mix_male" not in by_item
+    assert by_item["dav2004r_proxy_base_year"]["value"] == 2005
+    assert by_item["dav2004r_proxy_end_age"]["value"] == 121
+
+    assert params.main([BASIS]) == 0
+    out, err = capsys.readouterr()
+    assert err == "" and headers(out) == [BASIS]
+    split = [line.split() for line in out.splitlines()]
+    for item, value in expected.items():
+        assert [item, repr(value), "tariff_type", "Setzung"] in [line[:4] for line in split], item
+    for item in SHIPPED_ITEMS["dav2004r_proxy"]:
+        text, basis = SHIPPED_ROWS[item]
+        value = int(text) if text.isdigit() else float(text)
+        assert [item, repr(value), "tables", basis] in [line[:4] for line in split], item
+    # the choice and the fourteen items of its table, and no other table's
+    assert len([line for line in out.splitlines() if "dav2004r_proxy" in line]) == 15
+    assert "dav2008t_proxy" not in out and "dav1997ti_proxy" not in out
+    assert not [line for line in split
+                if line[:1] in (["mort_base_year"], ["unisex_mix_male"])]
 
 
 def test_klv_lists_its_choice_its_derivation_items_and_the_items_of_its_table(capsys):

@@ -62,13 +62,13 @@ The derivation hooks of the core's ``Projection``:
 
 - Only a switched product reaches a hook that reads the factory: ``mort_table_name`` and
   ``mort_rate_table`` are derived everywhere, reachable in the usage scan of Index, BU, KLV
-  and FRV, which choose ``dav2008t_proxy`` as ``mort_table``, and of RV, which chooses
-  ``dav2004r_proxy``, and unreachable in RLV, whose two roles ``mort_nr_table`` and
-  ``mort_r_table`` its own cell ``mort_table_smoker`` reads, and in the other four, which
+  and FRV, which choose ``dav2008t_proxy`` as ``mort_table``, and of RV and Basis, which
+  choose ``dav2004r_proxy``, and unreachable in RLV, whose two roles ``mort_nr_table`` and
+  ``mort_r_table`` its own cell ``mort_table_smoker`` reads, and in the other three, which
   hold no choice. BU's second
   role, ``mort_dis_table``, is read by a hook of its own, ``mort_rate_dis_at_age``, which
-  no other product has; ``omega_age_table`` is reachable in RV alone, whose ``omega_age``
-  reads it.
+  no other product has; ``omega_age_table`` is reachable in RV and Basis alone, whose
+  ``omega_age`` reads it.
 - Index reads its death rates through the factory alone: on every shipped point
   ``mort_rate(t)`` is ``q(dav2008t_proxy, sex, age(t))`` times its ``mort_be_factor`` 0.75,
   through the core's cells, none overridden but the factor; its folder holds no mortality
@@ -143,6 +143,21 @@ The derivation hooks of the core's ``Projection``:
   ``mort_table_id``, its tariff-type file no ``mort_load_first``, its ``Data`` no Reference
   ``mort_file`` and no ``mort_table_index`` of its own, its ``Projection`` no cell
   ``mort_table_id`` and one read of the factory, through ``q``.
+- Basis reads its best estimate through the factory alone, the seventh switched product, the
+  second reader of ``dav2004r_proxy`` and the first that forms no tariff rate from a table:
+  on every shipped point ``mort_rate(t)`` is ``min(1, 1.15 * q(dav2004r_proxy, sex, age(t),
+  birth_year))`` through the core's cells, none overridden but the factor, and a woman's
+  table rate is 0.6 of a man's at equal age and birth year; the package's sixteen rate rows
+  to six digits. ``birth_year()`` is the issue year less the issue age, 1969 on the in-force
+  points 6 and 14, and ``birth_year() + age(t)`` the calendar year on every point.
+  ``omega_age()`` is the table's end age 121 and the frame runs to it, ``proj_len_y() = 121 -
+  age(0)``, one year less than before the switch; at age 120 the best estimate is exactly 1,
+  the certainty falls in the anniversary month and ``pols_if(proj_len())`` is 0, and age 121
+  raises. A scratch copy whose anchor is a woman has the man's annuity per annuitant and her
+  own decrements. Its folder holds no mortality file or column, its tariff-type file no
+  ``mort_base_year`` and no ``unisex_mix_male``, its ``Data`` no Reference ``mort_file`` and no
+  ``mort_table_index`` of its own, its ``Projection`` no mortality cell of its own but the
+  factor and no read of the factory besides the core's hooks.
 - On a scratch copy of Index that chooses a fixture table in its tariff-type file
   (``switched_copy``), the hooks deliver the table's rate on the point's own sex,
   its unisex blend and its end age, ``mort_rate`` stands on them, and the copy runs through
@@ -157,10 +172,10 @@ The derivation hooks of the core's ``Projection``:
 The usage scan ``core/param_usage.py`` (``docs/core.md``, "The usage check and the view"):
 
 - Every shipped product is clean and holds the factory's tables; Index holds its choice and
-  reads the table's items through ``mort_table_name``, as KLV, RV and FRV do, BU its two choices,
-  the items of the second read through ``mort_rate_dis_at_age``, RLV its two, the items of
-  both read through ``mort_table_smoker``; the other four hold no choice and read no tables
-  item, and no table is unchosen across the ten.
+  reads the table's items through ``mort_table_name``, as KLV, RV, FRV and Basis do, BU its two
+  choices, the items of the second read through ``mort_rate_dis_at_age``, RLV its two, the
+  items of both read through ``mort_table_smoker``; the other three hold no choice and read no
+  tables item, and no table is unchosen across the ten.
 - On a scratch copy of Index that chooses a fixture table (``choosing_copy``) the scan holds
   the factory's ``items()`` and the choice, counts the chosen table's items as read by the
   cells reading the choice item and no other table's item, and reports nothing; a copy with
@@ -294,6 +309,7 @@ SWITCHED = {
     "fondsgebundene_rentenversicherung": {"mort_table": "dav2008t_proxy"},
     "indexpolice": {"mort_table": "dav2008t_proxy"},
     "kapitallebensversicherung": {"mort_table": "dav2008t_proxy"},
+    "basisrente": {"mort_table": "dav2004r_proxy"},
     "klassische_rentenversicherung": {"mort_table": "dav2004r_proxy"},
     "risikolebensversicherung": {"mort_nr_table": "dav2008t_nr_proxy",
                                  "mort_r_table": "dav2008t_r_proxy"},
@@ -1348,8 +1364,8 @@ def test_only_a_switched_product_reaches_a_hook_that_reads_the_factory(product, 
     reachable = param_usage.scan(model).reachable
     for hook in TABLE_HOOKS:
         assert model.Projection.cells[hook]._is_derived(), hook
-    # the end age is read off the table by a switched product that runs to it: RV
-    assert ("omega_age_table" in reachable) == (product == RV)
+    # the end age is read off the table by a switched product that runs to it: RV and Basis
+    assert ("omega_age_table" in reachable) == (product in (RV, "basisrente"))
     choices = {item: value for item, value in model.Data.param_dict().items()
                if item.endswith("_table")}
     if product == RLV:
@@ -1373,8 +1389,10 @@ def test_only_a_switched_product_reaches_a_hook_that_reads_the_factory(product, 
     # a contract attribute to a role
     assert ("mort_rate_dis_at_age" in model.Projection.cells) == (product == BU)
     assert ("mort_table_smoker" in model.Projection.cells) == (product == RLV)
-    # the cohort of a generational table is the product's: RV's, and Sofort's since the scaffold
-    assert model.Projection.cells["birth_year"]._is_defined() == (product in (RV, "sofortrente"))
+    # the cohort of a generational table is the product's: RV's and Basis', and Sofort's since
+    # the scaffold
+    assert model.Projection.cells["birth_year"]._is_defined() == (
+        product in (RV, "basisrente", "sofortrente"))
 
 
 # The best-estimate rates of the values package on ``dav2008t_proxy`` at the factor 0.75, six
@@ -2747,6 +2765,195 @@ def test_rlv_holds_no_mortality_file_column_item_reference_or_formula(product_mo
     assert line == "ValueError: table 'dav2008t_nr_proxy': x 121 is outside its ages 0 to 120"
 
 
+# --------------------------------------------------------------------------- Basis
+
+BASIS = "basisrente"
+# The values package's rate rows of Basis on ``dav2004r_proxy`` by (sex, age, birth year),
+# six significant digits: "New table" and "BE new", the best estimate at the factor 1.15.
+BASIS_PACKAGE_RATES = {
+    ("M", 65, 1962): (0.00458344, 0.00527096), ("M", 80, 1962): (0.0175643, 0.0201989),
+    ("M", 95, 1962): (0.106244, 0.12218), ("F", 65, 1962): (0.00275006, 0.00316257),
+    ("F", 80, 1962): (0.0105386, 0.0121193), ("F", 95, 1962): (0.0637461, 0.0733081),
+    ("M", 40, 1990): (0.000312702, 0.000359608), ("M", 50, 1990): (0.000689298, 0.000792692),
+    ("M", 65, 1990): (0.0022559, 0.00259429), ("M", 80, 1990): (0.00974126, 0.0112024),
+    ("M", 95, 1990): (0.0792445, 0.0911312), ("F", 40, 1990): (0.000187621, 0.000215765),
+    ("F", 50, 1990): (0.000413579, 0.000475615), ("F", 65, 1990): (0.00135354, 0.00155657),
+    ("F", 80, 1990): (0.00584475, 0.00672147), ("F", 95, 1990): (0.0475467, 0.0546787),
+}
+BASIS_CORE_MORT_CELLS = TABLE_HOOKS + (
+    "mort_rate_at_age", "mort_rate_base", "mort_be_trend", "mort_rate", "mort_rate_mth")
+
+
+@pytest.mark.parametrize(("sex", "x", "birth_year"), sorted(BASIS_PACKAGE_RATES))
+def test_basis_rates_are_the_values_packages(shipped_tables, sex, x, birth_year):
+    rate = shipped_tables.q(DAV2004R, sex, x, birth_year)
+    table, best = BASIS_PACKAGE_RATES[(sex, x, birth_year)]
+    assert float(f"{rate:.6g}") == table
+    assert float(f"{min(1.0, 1.15 * rate):.6g}") == best
+
+
+def test_basis_best_estimate_is_the_factorys_rate_on_the_own_sex_times_its_factor(
+        product_models):
+    model = product_models(BASIS)
+    projection, tables = model.Projection, model.CoreTables
+    cells = projection.cells
+    for name in BASIS_CORE_MORT_CELLS:
+        assert cells[name]._is_derived(), name
+    assert cells["mort_be_factor"]._is_defined()
+    assert model.Data.param("mort_table") == DAV2004R
+    assert model.Data.param("mort_be_factor") == 1.15
+    certain, capped, sexes = set(), set(), set()
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        sex, cohort = item.sex(), item.birth_year()
+        sexes.add(sex)
+        assert item.mort_table_name() == DAV2004R and item.mort_be_factor() == 1.15
+        for t in range(item.t_start(), item.proj_len()):
+            x = item.age(t)
+            rate = tables.q(DAV2004R, sex, x, cohort)
+            assert rate == r_rate(sex, x, cohort), (point_id, t)
+            assert item.mort_rate_at_age(x) == rate == item.mort_rate_base(t)
+            assert item.mort_rate(t) == min(1.0, 1.15 * rate), (point_id, t)
+            if rate == 1.0:
+                certain.add((sex, x))
+            elif rate * 1.15 >= 1.0:
+                capped.add((sex, x))
+    assert sexes == {"M", "F"}
+    # the cohorts 1958 to 1997: the table's cap binds from 114 for a man and 118 for a woman,
+    # its closure at 120; the factor reaches 1 a year earlier
+    assert certain == ({("M", x) for x in range(114, 121)} | {("F", x) for x in range(118, 121)})
+    assert capped == {("M", 113), ("F", 117)}
+    # every death rate of the run came through the factory's one lookup, at a birth year
+    held = [key for key in tables.q if key[0] == DAV2004R]
+    assert held and all(key[3] in range(1958, 1998) and key[4] is None for key in held)
+    # a man and a woman of equal age and birth year: the best estimate is the own sex's
+    item = projection[1]
+    for x in (45, 67, 85, 100):
+        male, female = item.mort_rate_table("M", x), item.mort_rate_table("F", x)
+        assert female == pytest.approx(0.6 * male, rel=1e-8) and female < male
+        assert item.mort_rate_at_age(x) == male
+
+
+def test_basis_points_that_differ_in_sex_alone_share_the_annuity_and_not_the_decrements(
+        tmp_path):
+    """On a scratch copy whose anchor is a woman: the fund and the annuity per annuitant are
+    the man's, the guaranteed *Rentenfaktor* being a model-point and table fact and no rate of
+    the factory; the best estimate is her own."""
+    folder = product_copy(tmp_path, BASIS)
+    path = folder / "model_point_table.csv"
+    rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    assert rows[1].startswith("1,DE-BAS-0001,M,45,2027,")
+    rows[1] = rows[1].replace("1,DE-BAS-0001,M,45,2027,", "1,DE-BAS-0001,F,45,2027,", 1)
+    path.write_text("".join(rows), encoding="utf-8")
+    woman = mx.read_model(folder / MODELS[BASIS], name="BasisWomanProbe")
+    man = mx.read_model(PRODUCTS_DIR / BASIS / MODELS[BASIS], name="BasisManProbe")
+    try:
+        her, him = woman.Projection[1], man.Projection[1]
+        assert (her.sex(), him.sex()) == ("F", "M")
+        assert her.birth_year() == him.birth_year() == 1982
+        for t in range(0, him.proj_len(), 12):
+            assert her.mort_rate(t) < him.mort_rate(t) or him.mort_rate(t) == 1.0, t
+        conv = him.k_conv()
+        assert her.rentenfaktor_applied() == him.rentenfaktor_applied()
+        assert her.ann_pp(conv) == pytest.approx(him.ann_pp(conv), rel=1e-12)
+        assert her.pols_if(12 * conv) > him.pols_if(12 * conv)
+        assert her.result_cf()["claims_annuity"].sum() > him.result_cf()["claims_annuity"].sum()
+    finally:
+        woman.close()
+        man.close()
+
+
+def test_basis_runs_to_the_tables_end_age_and_closes_there(product_models):
+    model = product_models(BASIS)
+    projection, tables = model.Projection, model.CoreTables
+    cells = projection.cells
+    for name in ("birth_year", "omega_age", "horizon_age"):
+        assert cells[name]._is_defined(), name
+        assert "Override reason:" in cells[name].formula.source, name
+    assert tables.end_age(DAV2004R) == 121
+    rows = 0
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        assert item.omega_age() == 121 == item.omega_age_table() == item.horizon_age()
+        # one year less than the file's limiting age 122 gave before the switch
+        assert item.proj_len_y() == 121 - item.age(0)
+        assert item.proj_len() == 12 * item.proj_len_y()
+        last = item.proj_len() - 1
+        assert item.age(last) == 120 and item.age(last - 12) == 119
+        # the closing age: the table's certainty, in the anniversary month
+        assert tables.q(DAV2004R, item.sex(), 120, item.birth_year()) == 1.0
+        for t in range(last - 11, last + 1):
+            assert item.mort_rate(t) == 1.0
+            assert item.mort_rate_mth(t) == (1.0 if t == last else 0.0), (point_id, t)
+        assert item.pols_if(item.proj_len()) == 0.0
+        rows += item.proj_len()
+    with (ROOT / "baseline" / BASIS / "result_cf.csv").open(encoding="utf-8") as handle:
+        assert rows == sum(1 for _line in handle) - 1 == 12132 - 14 * 12
+    # age 121 is not reached; the table raises there and nothing clamps it
+    line = raised_line(lambda: projection[1].mort_rate_at_age(121))
+    assert line == "ValueError: table 'dav2004r_proxy': x 121 is outside its ages 0 to 120"
+
+
+def test_basis_reads_the_table_at_the_cohort_of_every_point(product_models):
+    model = product_models(BASIS)
+    projection = model.Projection
+    for point_id in model.Data.model_point_table().index:
+        item = projection[point_id]
+        assert item.birth_year() == item.issue_year() - item.issue_age()
+        for t in range(0, item.proj_len(), 12):
+            # the table's calendar year, birth year plus attained age, is the projection
+            # year's, on the valuation clock of an in-force point as of new business
+            assert item.birth_year() + item.age(t) == item.calendar_year(t), (point_id, t)
+    # the paying and the premium-free cohort of the 2009 contract issued at 40, in force 18
+    # years at the valuation date
+    for point_id in (6, 14):
+        item = projection[point_id]
+        assert (item.issue_year(), item.issue_age(), item.duration_init()) == (2009, 40, 18)
+        assert item.birth_year() == 1969
+        assert item.age(0) == 58 and item.calendar_year(0) == 2027
+
+
+def test_basis_holds_no_mortality_file_item_reference_or_formula(product_models):
+    folder = PRODUCTS_DIR / BASIS
+    assert not (folder / "mort_table.csv").exists()
+    for path in sorted(folder.glob("*.csv")):
+        with path.open(encoding="utf-8", newline="") as handle:
+            header = next(csv.reader(handle))
+        assert not [column for column in header
+                    if column.startswith("mort") or column in ("qx", "trend")], path
+    model = product_models(BASIS)
+    layer = model.Data.param_layers()["tariff_type"]
+    assert "mort_base_year" not in layer and "unisex_mix_male" not in layer
+    assert {item: layer[item] for item in layer if "mort" in item or "unisex" in item} == {
+        "mort_table": DAV2004R, "mort_be_factor": 1.15}
+    assert not [name for name in model.Data.refs if "mort" in name]
+    own = sorted(name for name, cell in model.Projection.cells.items()
+                 if name.startswith("mort") and cell._is_defined())
+    assert own == ["mort_be_factor"]
+    assert not [name for name, cell in model.Data.cells.items()
+                if "mort" in name and cell._is_defined()]
+    assert model.Data.cells["mort_table_index"]._is_derived()
+    usage = param_usage.scan(model)
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & usage.reachable
+    assert "mort_base_year" not in usage.reads and "unisex_mix_male" not in usage.reads
+    for space in ("Data", "Projection"):
+        source = (folder / MODELS[BASIS] / space / "__init__.py").read_text(encoding="utf-8")
+        for name in ("mort_table.csv", "mort_file", "mort_table_dict", "mort_table()",
+                     "mort_base_year", "mort_table_index", "1.085", "0.014"):
+            assert name not in source, (space, name)
+    # no read of the factory besides the core's hooks
+    cells = dict(_formula_cells(folder / MODELS[BASIS] / "Projection" / "__init__.py"))
+    reads = {name: ast.unparse(node) for name, cell in cells.items() for node in ast.walk(cell)
+             if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
+             and node.value.id == "tables"}
+    assert reads == {}
+    item = model.Projection[1]
+    item.result_cf()
+    assert len(model.CoreTables.q) > 0
+    assert len(model.Data.cells["mort_table"]) == 0
+    assert len(model.Data.cells["mort_table_dict"]) == 0
+
+
 def unswitched_copy(tmp_path: Path) -> Path:
     """A scratch copy of Index with the fixture tables that chooses no table: without its
     row ``mort_table`` and with a ``mort_rate_at_age`` of its own that reads no table, as a
@@ -3009,18 +3216,18 @@ def test_no_table_is_unchosen_in_the_ten_products(product_models):
     others = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
               if product not in SWITCHED]
     assert param_usage.unchosen_tables(others) == sorted(SHIPPED_TABLES)
-    # the select table, the generational table and the two smoker tables have one reader
-    # each, the aggregate table four
+    # the select table and the two smoker tables have one reader each, the generational
+    # table two and the aggregate table four
     without_bu = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
                   if product != BU]
     assert param_usage.unchosen_tables(without_bu) == [DAV1997TI]
-    without_rv = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
-                  if product != RV]
-    assert param_usage.unchosen_tables(without_rv) == [DAV2004R]
+    without_rv_basis = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
+                        if product not in (RV, "basisrente")]
+    assert param_usage.unchosen_tables(without_rv_basis) == [DAV2004R]
     without_rlv = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
                    if product != RLV]
     assert param_usage.unchosen_tables(without_rlv) == [NR, R]
-    for reader in (FRV, INDEX, KLV):
+    for reader in (FRV, INDEX, KLV, RV, "basisrente"):
         without = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
                    if product != reader]
         assert param_usage.unchosen_tables(without) == []

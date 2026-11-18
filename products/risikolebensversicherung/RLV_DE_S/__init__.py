@@ -21,8 +21,8 @@ the maximum the policyholder can ever be required to pay. What is billed is the
 § 153 VVG's surplus entitlement is delivered on a product with no account to credit. The
 MindZV obliges the insurer to allocate at least 90 % of the *Risikoergebnis* to
 policyholders, and on a term product the *Risikoergebnis* is essentially the whole
-technical result, so the spread is wide: on the worked example's anchor cell the
-*Beitragsverrechnungssatz* comes out at 0.4253 and the billed premium at 57,5 % of the
+technical result, so there is a spread: on the worked example's anchor cell the
+*Beitragsverrechnungssatz* comes out at 0.1828 and the billed premium at 81,7 % of the
 guaranteed one. The model therefore carries **two premium streams** — the guaranteed
 instalment ``prem_charged_inst_pp`` and ``premiums``, the billed one that enters ``net_cf``,
 with ``prem_rebate_inst_pp`` between them. A model knowing one premium cannot represent this
@@ -35,7 +35,7 @@ built on remain sex-distinct, so every German term tariff is a blend at a mixing
 the carrier chooses. ``mort_rate_tariff`` prices on a 50/50 blend and ``mort_rate``
 projects on the policy's own sex, so the cross-subsidy appears in the cash flows instead
 of in the price: model points 1 and 2 differ only in ``sex``, pay the same premium to the
-last cent, and have claim totals differing by a factor near two.
+last cent, and have claim totals differing by about a third.
 
 **There is no cash value anywhere.** § 169 Abs. 1 VVG confines the surrender-value duty
 to a life insurance whose insured event is certain to occur, which a term assurance's is
@@ -52,7 +52,7 @@ the modelling error this product invites, and ``check_res_roll_fwd()`` is what c
 **Spaces.** The model contains two:
 
 :mod:`~.RLV_DE_S.Data`
-    Reads the seven input CSVs and holds their filename References. It takes no
+    Reads the six input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.RLV_DE_S.Projection`
@@ -118,8 +118,8 @@ envelopes. Model point 1 is the anchor cell of the worked example in the technic
 **Verification.** ``tests/test_risikolebensversicherung_de.py`` asserts every row of the
 notes' twenty-five-year worked example to the cent — on ``result_cf_annual()`` — and the
 twelve months of policy year 1 on the monthly frame beside it, ``pols_if`` to six
-decimals, the *Bruttobeitrag* 1 275,411882 € and the *Beitragsverrechnungssatz*
-0,42527476 behind it, and one test per listed modeling pitfall.
+decimals, the *Bruttobeitrag* 826,875656 € and the *Beitragsverrechnungssatz*
+0,18282785 behind it, and one test per listed modeling pitfall.
 
 Example:
 

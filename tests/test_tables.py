@@ -21,7 +21,7 @@ The space ``core/Core/Tables``:
   core's cells and no other, so no product defines one.
 - Its source holds no numeric literal but 0 and 1 and no cell name containing ``mort`` or
   ``q`` besides ``q``, and its cells read only ``data.param`` and each other.
-- Three tables are defined, all on the law ``makeham``, in every product. For
+- Five tables are defined, all on the law ``makeham``, in every product. For
   ``dav2008t_proxy`` ``q`` gives ``a + b * c ** x`` in the law's float operations for both
   sexes, capped at 1 and exactly 1 at the closing age 120, the figures of the values package
   to their six digits; an age outside 0 to 120, a ``birth_year`` and a ``duration`` raise,
@@ -38,6 +38,12 @@ The space ``core/Core/Tables``:
   to their six digits at several birth years, with ``q_base(M, 65)`` 0.008 and women at 0.6
   of men; a missing ``birth_year`` and a ``duration`` raise; the rate at 120 is exactly 1
   for any birth year, and an age outside 0 to 120 raises.
+- ``dav2008t_nr_proxy`` and ``dav2008t_r_proxy`` are the aggregate table scaled, period
+  tables without selection: ``q`` gives ``a + b * 1.1 ** x`` with each table's items, capped
+  at 1 and exactly 1 at 120; non-smokers stand at 0.8 of ``dav2008t_proxy`` and smokers at
+  2.2 times non-smokers at every age below the cap, to the items' digits; the figures of
+  the values package to their six digits; an age outside 0 to 120, a ``birth_year`` and a
+  ``duration`` raise.
 - On a scratch copy of Index with fixture tables and laws written into its ``CoreTables``
   and ``param_tables.csv`` beside the shipped table (``fixture_copy``): the period table
   gives its law's rate
@@ -57,7 +63,9 @@ The derivation hooks of the core's ``Projection``:
 - Only a switched product reaches a hook that reads the factory: ``mort_table_name`` and
   ``mort_rate_table`` are derived everywhere, reachable in the usage scan of Index, BU, KLV
   and FRV, which choose ``dav2008t_proxy`` as ``mort_table``, and of RV, which chooses
-  ``dav2004r_proxy``, and unreachable in the other five, which hold no choice. BU's second
+  ``dav2004r_proxy``, and unreachable in RLV, whose two roles ``mort_nr_table`` and
+  ``mort_r_table`` its own cell ``mort_table_smoker`` reads, and in the other four, which
+  hold no choice. BU's second
   role, ``mort_dis_table``, is read by a hook of its own, ``mort_rate_dis_at_age``, which
   no other product has; ``omega_age_table`` is reachable in RV alone, whose ``omega_age``
   reads it.
@@ -121,6 +129,20 @@ The derivation hooks of the core's ``Projection``:
   its ``Data`` no Reference ``mort_file`` and no ``mort_table_index``, its ``Projection`` no
   ``mort_rate_tariff_at_age`` or ``mort_rate_base`` of its own and no read of the factory
   besides the core's hooks.
+- RLV reads its death rates through the factory alone, the sixth switched product and the
+  first whose table depends on the life: ``mort_table_smoker`` maps the smoker status ``N``
+  to the table of ``mort_nr_table`` and ``R`` to that of ``mort_r_table``, any other code
+  raises, and the second life reads the table of ``smoker2()``. The tariff rate: the rating
+  factor alone on the 50/50 blend of the life's table, no 2.25, the same for points that
+  differ in sex alone. Two lives: the first-death rule ``q_A + q_B - q_A q_B`` on the blends
+  and on the own-sex rates, before any factor. The best estimate: ``0.75 * rating_factor *
+  Q * sel_lapse_factor(t)``, capped at 1, and on a scratch copy whose table closes at an
+  attained age 1 there, for one life and for two; the rates are the values package's to six
+  digits. The declaration: ``beitragsverrechnung_rate`` stands on the margin share ``1 -
+  mort_be_factor`` = 0.25. Its folder holds no mortality file, its model points no column
+  ``mort_table_id``, its tariff-type file no ``mort_load_first``, its ``Data`` no Reference
+  ``mort_file`` and no ``mort_table_index`` of its own, its ``Projection`` no cell
+  ``mort_table_id`` and one read of the factory, through ``q``.
 - On a scratch copy of Index that chooses a fixture table in its tariff-type file
   (``switched_copy``), the hooks deliver the table's rate on the point's own sex,
   its unisex blend and its end age, ``mort_rate`` stands on them, and the copy runs through
@@ -136,8 +158,9 @@ The usage scan ``core/param_usage.py`` (``docs/core.md``, "The usage check and t
 
 - Every shipped product is clean and holds the factory's tables; Index holds its choice and
   reads the table's items through ``mort_table_name``, as KLV, RV and FRV do, BU its two choices,
-  the items of the second read through ``mort_rate_dis_at_age``; the other five hold no choice
-  and read no tables item, and no table is unchosen across the ten.
+  the items of the second read through ``mort_rate_dis_at_age``, RLV its two, the items of
+  both read through ``mort_table_smoker``; the other four hold no choice and read no tables
+  item, and no table is unchosen across the ten.
 - On a scratch copy of Index that chooses a fixture table (``choosing_copy``) the scan holds
   the factory's ``items()`` and the choice, counts the chosen table's items as read by the
   cells reading the choice item and no other table's item, and reports nothing; a copy with
@@ -189,6 +212,10 @@ SHIPPED_TABLES = {
         "m_a", "m_b", "m_c", "f_a", "f_b", "f_c",
         "trend_start", "trend_start_age", "trend_mid", "trend_mid_age", "trend_end_age",
         "base_year", "first_age", "end_age")),
+    "dav2008t_nr_proxy": ("makeham", None, ("m_a", "m_b", "m_c", "f_a", "f_b", "f_c",
+                                            "first_age", "end_age")),
+    "dav2008t_r_proxy": ("makeham", None, ("m_a", "m_b", "m_c", "f_a", "f_b", "f_c",
+                                           "first_age", "end_age")),
 }
 SHIPPED_ITEMS = {table: tuple(f"{table}_{name}" for name in names)
                  for table, (_law, _trend, names) in SHIPPED_TABLES.items()}
@@ -229,6 +256,22 @@ SHIPPED_ROWS = {
     "dav2004r_proxy_base_year": ("2005", "Setzung"),
     "dav2004r_proxy_first_age": ("0", "Setzung"),
     "dav2004r_proxy_end_age": ("121", "Setzung"),
+    "dav2008t_nr_proxy_m_a": ("0.000176", "Setzung"),
+    "dav2008t_nr_proxy_m_b": ("2.30561459064e-05", "Setzung"),
+    "dav2008t_nr_proxy_m_c": ("1.1", "Setzung"),
+    "dav2008t_nr_proxy_f_a": ("0.000128", "Setzung"),
+    "dav2008t_nr_proxy_f_b": ("1.73224236712e-05", "Setzung"),
+    "dav2008t_nr_proxy_f_c": ("1.1", "Setzung"),
+    "dav2008t_nr_proxy_first_age": ("0", "Setzung"),
+    "dav2008t_nr_proxy_end_age": ("121", "Setzung"),
+    "dav2008t_r_proxy_m_a": ("0.0003872", "Setzung"),
+    "dav2008t_r_proxy_m_b": ("5.07235209941e-05", "Setzung"),
+    "dav2008t_r_proxy_m_c": ("1.1", "Setzung"),
+    "dav2008t_r_proxy_f_a": ("0.0002816", "Setzung"),
+    "dav2008t_r_proxy_f_b": ("3.81093320766e-05", "Setzung"),
+    "dav2008t_r_proxy_f_c": ("1.1", "Setzung"),
+    "dav2008t_r_proxy_first_age": ("0", "Setzung"),
+    "dav2008t_r_proxy_end_age": ("121", "Setzung"),
 }
 SHIPPED_LAYER = {item: (int(text) if text.isdigit() else float(text))
                  for item, (text, _basis) in SHIPPED_ROWS.items()}
@@ -239,6 +282,10 @@ SHIPPED_PROVENANCE = {
                        " the claim year, not the table itself, which is not shipped; ",
     "dav2004r_proxy": "[std] proxy of DAV 2004 R, first order, generational, not the table"
                       " itself, whose values are DAV property and are not shipped; ",
+    "dav2008t_nr_proxy": "[std] proxy of DAV 2008 T NR (non-smokers), first order, not the"
+                         " table itself, whose values are DAV property and are not shipped; ",
+    "dav2008t_r_proxy": "[std] proxy of DAV 2008 T R (smokers), first order, not the table"
+                        " itself, whose values are DAV property and are not shipped; ",
 }
 # The products that have switched to the factory: {product: {choice item: table}}, and the
 # cell that reads each choice item.
@@ -248,8 +295,11 @@ SWITCHED = {
     "indexpolice": {"mort_table": "dav2008t_proxy"},
     "kapitallebensversicherung": {"mort_table": "dav2008t_proxy"},
     "klassische_rentenversicherung": {"mort_table": "dav2004r_proxy"},
+    "risikolebensversicherung": {"mort_nr_table": "dav2008t_nr_proxy",
+                                 "mort_r_table": "dav2008t_r_proxy"},
 }
-CHOICE_READERS = {"mort_table": "mort_table_name", "mort_dis_table": "mort_rate_dis_at_age"}
+CHOICE_READERS = {"mort_table": "mort_table_name", "mort_dis_table": "mort_rate_dis_at_age",
+                  "mort_nr_table": "mort_table_smoker", "mort_r_table": "mort_table_smoker"}
 
 
 def tables_file(folder: Path, product: str = RLV) -> Path:
@@ -519,7 +569,8 @@ def makeham_rate(sex: str, x: int, table: str = DAV2008T) -> float:
 
 @pytest.fixture(scope="module")
 def shipped_tables(product_models):
-    """The factory as a shipped product holds it, read off RLV, which reads no table of it."""
+    """The factory as a shipped product holds it, read off RLV: every product holds every
+    table, whichever it chooses."""
     return product_models(RLV).CoreTables
 
 
@@ -1301,7 +1352,16 @@ def test_only_a_switched_product_reaches_a_hook_that_reads_the_factory(product, 
     assert ("omega_age_table" in reachable) == (product == RV)
     choices = {item: value for item, value in model.Data.param_dict().items()
                if item.endswith("_table")}
-    if product in SWITCHED:
+    if product == RLV:
+        # its table depends on the life: it has no role ``mort_table``, reads the factory in
+        # its own ``mort_rate_at_age`` and reaches no hook of the core
+        for hook in TABLE_HOOKS:
+            assert hook not in reachable, hook
+        assert model.Projection.cells["mort_rate_at_age"]._is_defined()
+        assert "mort_rate_at_age" in reachable
+        assert choices == SWITCHED[product]
+        assert {CHOICE_READERS[item] for item in choices} <= reachable
+    elif product in SWITCHED:
         assert {"mort_table_name", "mort_rate_table", "mort_rate_at_age"} <= reachable
         assert choices == SWITCHED[product]
         assert {CHOICE_READERS[item] for item in choices} <= reachable
@@ -1309,8 +1369,10 @@ def test_only_a_switched_product_reaches_a_hook_that_reads_the_factory(product, 
         for hook in TABLE_HOOKS:
             assert hook not in reachable, hook
         assert choices == {}
-    # a second role is a hook of the product, not of the core
+    # a second role is a hook of the product, not of the core, and so is the cell that maps
+    # a contract attribute to a role
     assert ("mort_rate_dis_at_age" in model.Projection.cells) == (product == BU)
+    assert ("mort_table_smoker" in model.Projection.cells) == (product == RLV)
     # the cohort of a generational table is the product's: RV's, and Sofort's since the scaffold
     assert model.Projection.cells["birth_year"]._is_defined() == (product in (RV, "sofortrente"))
 
@@ -2316,6 +2378,375 @@ def test_frv_holds_no_mortality_file_reference_or_formula(product_models):
     assert line == "ValueError: table 'dav2008t_proxy': x 121 is outside its ages 0 to 120"
 
 
+# --------------------------------------------------------------------------- RLV
+
+NR, R = "dav2008t_nr_proxy", "dav2008t_r_proxy"
+# The values package's rows of RLV, six significant digits: the table rate by table, sex and
+# age ("New table"), the best estimate at the factor 0.75 ("BE new") and the tariff rate, the
+# 50/50 blend ("Tariff new").
+RLV_PACKAGE_RATES = {
+    (NR, "M", 0): 0.000199056, (NR, "M", 30): 0.000578316, (NR, "M", 40): 0.0012195,
+    (NR, "M", 50): 0.00288258, (NR, "M", 65): 0.0114821,
+    (NR, "F", 30): 0.000430266, (NR, "F", 40): 0.000912, (NR, "F", 50): 0.00216149,
+    (NR, "F", 65): 0.00862241,
+    (R, "M", 0): 0.000437924, (R, "M", 30): 0.0012723, (R, "M", 40): 0.00268291,
+    (R, "M", 50): 0.00634168, (R, "M", 65): 0.0252605,
+    (R, "F", 30): 0.000946585, (R, "F", 40): 0.0020064, (R, "F", 50): 0.00475529,
+    (R, "F", 65): 0.0189693,
+}
+RLV_BE_PACKAGE_RATES = {
+    (NR, "M", 40): 0.000914628, (NR, "M", 50): 0.00216194, (NR, "F", 40): 0.000684,
+    (NR, "F", 50): 0.00162112, (R, "M", 40): 0.00201218, (R, "M", 50): 0.00475626,
+}
+RLV_TARIFF_PACKAGE_RATES = {
+    (NR, 30): 0.000504291, (NR, 40): 0.00106575, (NR, 50): 0.00252204, (NR, 65): 0.0100522,
+    (R, 30): 0.00110944, (R, 40): 0.00234465, (R, 50): 0.00554848, (R, 65): 0.0221149,
+}
+RLV_ROLES = {"N": NR, "R": R}
+RLV_OWN_MORT_CELLS = ["mort_be_factor", "mort_load_tariff", "mort_rate", "mort_rate_at_age",
+                      "mort_rate_base", "mort_rate_blend", "mort_rate_tariff_base",
+                      "mort_table_smoker"]
+
+
+@pytest.mark.parametrize("table", [NR, R])
+@pytest.mark.parametrize("sex", ["M", "F"])
+def test_the_smoker_tables_give_their_makeham_rate_capped_at_1(shipped_tables, table, sex):
+    key = sex.lower()
+    a, b, c = (SHIPPED_LAYER[f"{table}_{key}_{name}"] for name in "abc")
+    assert c == 1.1
+    below_the_cap = 0
+    for x in range(0, 120):
+        rate = shipped_tables.q(table, sex, x)
+        assert type(rate) is float
+        assert rate == min(1.0, a + b * 1.1 ** x) == min(1.0, makeham_rate(sex, x, table)), x
+        assert shipped_tables.base_rate(table, sex, x) == a + b * 1.1 ** x, x
+        below_the_cap += rate < 1.0
+    # the cap binds in the last ages below the closing age, as in the aggregate table
+    assert 100 < below_the_cap < 120
+    assert shipped_tables.q(table, sex, below_the_cap - 1) < 1.0 == shipped_tables.q(
+        table, sex, below_the_cap)
+    # the closing age and the ages outside the table
+    rate = shipped_tables.q(table, sex, 120)
+    assert rate == 1.0 and type(rate) is float
+    for x in (121, -1):
+        line = raised_line(lambda: shipped_tables.q(table, sex, x))
+        assert line == f"ValueError: table {table!r}: x {x!r} is outside its ages 0 to 120"
+    # a period table without selection
+    assert shipped_tables.select_factors(table) == ()
+    assert raised_line(lambda: shipped_tables.q(table, sex, 40, 1980)) == (
+        f"ValueError: table {table!r}: birth_year 1980 is given, the table is a period table")
+    assert raised_line(lambda: shipped_tables.q(table, sex, 40, duration=1)) == (
+        f"ValueError: table {table!r}: duration 1 is given, the table has no selection")
+
+
+@pytest.mark.parametrize("sex", ["M", "F"])
+def test_the_smoker_tables_are_the_aggregate_table_scaled(shipped_tables, sex):
+    """Non-smokers at 0.8 of ``dav2008t_proxy`` and smokers at 2.2 times non-smokers, to the
+    digits of the items, at every age below the cap; the slope is the aggregate's."""
+    key = sex.lower()
+    for name in "ab":
+        aggregate = SHIPPED_LAYER[f"{DAV2008T}_{key}_{name}"]
+        assert SHIPPED_LAYER[f"{NR}_{key}_{name}"] == pytest.approx(0.8 * aggregate, rel=1e-11)
+        assert SHIPPED_LAYER[f"{R}_{key}_{name}"] == pytest.approx(1.76 * aggregate, rel=1e-11)
+    assert SHIPPED_LAYER[f"{NR}_{key}_c"] == SHIPPED_LAYER[f"{R}_{key}_c"] == SHIPPED_LAYER[
+        f"{DAV2008T}_{key}_c"]
+    for x in range(0, 100):
+        non_smoker, smoker = shipped_tables.q(NR, sex, x), shipped_tables.q(R, sex, x)
+        assert smoker < 1.0
+        assert smoker == pytest.approx(2.2 * non_smoker, rel=1e-11), x
+        assert non_smoker == pytest.approx(0.8 * shipped_tables.q(DAV2008T, sex, x), rel=1e-11)
+
+
+@pytest.mark.parametrize(("table", "sex", "x"), sorted(RLV_PACKAGE_RATES))
+def test_the_smoker_tables_give_the_rates_of_the_values_package(shipped_tables, table, sex, x):
+    assert float(f"{shipped_tables.q(table, sex, x):.6g}") == RLV_PACKAGE_RATES[(table, sex, x)]
+
+
+def rlv_points(model):
+    return [model.Projection[point_id] for point_id in model.Data.model_point_table().index]
+
+
+def test_rlv_maps_the_smoker_status_of_a_life_to_its_table(product_models, tmp_path):
+    model = product_models(RLV)
+    data = model.Data
+    assert data.param("mort_nr_table") == NR and data.param("mort_r_table") == R
+    statuses = set()
+    for item in rlv_points(model):
+        assert item.smoker_codes() == ("N", "R")
+        assert item.mort_table_smoker("N") == NR and item.mort_table_smoker("R") == R
+        for code in ("S", "-", "n", "", None):
+            assert raised_line(lambda: item.mort_table_smoker(code)) == (
+                f"ValueError: smoker status {code!r} is neither 'N' nor 'R'")
+        statuses.add((item.smoker(), item.smoker2() if item.lives() == 2 else None))
+        x = item.age(item.t_start())
+        for sex in ("M", "F"):
+            for code, table in RLV_ROLES.items():
+                assert item.mort_rate_at_age(sex, code, x) == model.CoreTables.q(table, sex, x)
+    assert statuses == {("N", None), ("R", None), ("N", "N")}
+    # each role's choice item is read by a literal, so the usage scan sees both
+    source = model.Projection.cells["mort_table_smoker"].formula.source
+    assert 'data.param("mort_nr_table")' in source and 'data.param("mort_r_table")' in source
+    # the second life by ``smoker2()``: a copy whose couple is a non-smoker and a smoker
+    folder = product_copy(tmp_path, RLV)
+    path = folder / "model_point_table.csv"
+    rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    assert rows[10].startswith("10,") and ",2,36,N," in rows[10]
+    rows[10] = rows[10].replace(",2,36,N,", ",2,36,R,", 1)
+    rows[1] = rows[1].replace(",M,N,", ",M,S,", 1)
+    path.write_text("".join(rows), encoding="utf-8")
+    copy = mx.read_model(folder / MODELS[RLV], name="RlvRoleProbe")
+    try:
+        item, tables = copy.Projection[10], copy.CoreTables
+        assert (item.sex(), item.smoker(), item.smoker2(), item.age(0), item.age2(0)) == (
+            "M", "N", "R", 38, 36)
+        q_a, q_b = tables.q(NR, "M", 38), tables.q(R, "M", 36)
+        assert item.mort_rate_base(0) == q_a + q_b - q_a * q_b
+        assert item.mort_rate_base(0) != product_models(RLV).Projection[10].mort_rate_base(0)
+        # another code is refused where the model point is read, as before the switch
+        assert "ValueError" in raised_line(lambda: copy.Projection[1].mort_rate(0))
+    finally:
+        copy.close()
+
+
+def test_rlv_tariff_rate_is_the_rating_factor_on_the_unisex_blend(product_models):
+    model = product_models(RLV)
+    tables = model.CoreTables
+    cells = model.Projection.cells
+    for name in ("mort_rate_tariff", "unisex_blend", "unisex_mix_male", "pols_tariff"):
+        assert cells[name]._is_derived(), name
+    for name in ("mort_load_tariff", "mort_rate_tariff_base", "mort_rate_at_age"):
+        assert cells[name]._is_defined() and "Override reason:" in cells[name].formula.source
+    assert model.Data.param("unisex_mix_male") == 0.5
+    seen, rated = set(), set()
+    for item in rlv_points(model):
+        if item.lives() != 1:
+            continue
+        table, factor = RLV_ROLES[item.smoker()], item.rating_factor()
+        rated.add(factor)
+        for t in range(item.t_start(), item.proj_len()):
+            x = item.age(t)
+            mixed = blend(makeham_rate("M", x, table), makeham_rate("F", x, table))
+            assert mixed == blend(tables.q(table, "M", x), tables.q(table, "F", x)) < 1.0
+            assert item.mort_rate_blend(t) == mixed == item.mort_rate_tariff_base(t)
+            # the rating factor alone: no further load on the first-order table
+            assert item.mort_load_tariff(t) == factor
+            assert item.mort_rate_tariff(t) == factor * mixed, (item.point_id, t)
+            assert item.mort_rate_tariff(t) != 2.25 * factor * mixed
+            if (table, x) in RLV_TARIFF_PACKAGE_RATES:
+                assert float(f"{mixed:.6g}") == RLV_TARIFF_PACKAGE_RATES[(table, x)]
+                seen.add((table, x))
+    assert rated == {1.0, 1.75}
+    # no shipped point attains 65, no smoker is 30
+    assert seen == set(RLV_TARIFF_PACKAGE_RATES) - {(NR, 65), (R, 30), (R, 65)}
+    # points 1 and 2 differ in sex alone: one tariff rate, one premium
+    man, woman = model.Projection[1], model.Projection[2]
+    assert (man.sex(), woman.sex()) == ("M", "F")
+    assert man.mort_rate_tariff(0) == woman.mort_rate_tariff(0)
+    assert man.prem_gross_level_pp() == woman.prem_gross_level_pp()
+    assert f"{man.mort_rate_tariff(0):.9f}" == "0.000719368"
+
+
+def test_rlv_combines_two_lives_by_the_first_death_rule_before_any_factor(product_models):
+    model = product_models(RLV)
+    tables = model.CoreTables
+    item = model.Projection[10]
+    assert (item.lives(), item.sex(), item.smoker(), item.smoker2()) == (2, "M", "N", "N")
+    assert item.mort_be_factor() == 0.75 and item.rating_factor() == 1.0
+    for t in range(item.t_start(), item.proj_len()):
+        x, x2 = item.age(t), item.age2(t)
+        assert x2 == x - 2
+        # the best estimate: the own-sex rates of the two lives
+        q_a, q_b = tables.q(NR, "M", x), tables.q(NR, "M", x2)
+        first = q_a + q_b - q_a * q_b
+        assert item.mort_rate_base(t) == first
+        assert item.mort_rate(t) == 0.75 * 1.0 * first * item.sel_lapse_factor(t)
+        # not the rule on the two best estimates
+        assert item.mort_rate(t) != 0.75 * q_a + 0.75 * q_b - 0.75 * q_a * 0.75 * q_b
+        # the tariff rate: the blends of the two lives
+        b_a = blend(tables.q(NR, "M", x), tables.q(NR, "F", x))
+        b_b = blend(tables.q(NR, "M", x2), tables.q(NR, "F", x2))
+        assert item.mort_rate_blend(t) == b_a + b_b - b_a * b_b
+        assert item.mort_rate_tariff(t) == 1.0 * (b_a + b_b - b_a * b_b)
+    assert f"{item.mort_rate_base(0):.10f}" == "0.0019262044"
+
+
+def test_rlv_best_estimate_is_the_factorys_rate_on_the_own_sex_times_its_factors(
+        product_models):
+    model = product_models(RLV)
+    tables = model.CoreTables
+    cells = model.Projection.cells
+    for name in ("mort_be_factor", "mort_rate", "mort_rate_base"):
+        assert cells[name]._is_defined() and "Override reason:" in cells[name].formula.source
+    assert cells["mort_rate_mth"]._is_derived() and cells["sel_lapse_factor"]._is_defined()
+    assert model.Data.param("mort_be_factor") == 0.75
+    seen, sexes = set(), set()
+    for item in rlv_points(model):
+        if item.lives() != 1:
+            continue
+        sex, table, factor = item.sex(), RLV_ROLES[item.smoker()], item.rating_factor()
+        sexes.add(sex)
+        assert item.mort_be_factor() == 0.75
+        for t in range(item.t_start(), item.proj_len()):
+            x = item.age(t)
+            rate = tables.q(table, sex, x)
+            assert rate == makeham_rate(sex, x, table) < 1.0
+            assert item.mort_rate_base(t) == rate == item.mort_rate_at_age(sex, item.smoker(), x)
+            # the selective-lapse loading is off in the shipped tariff
+            assert item.sel_lapse_factor(t) == 1.0
+            assert item.mort_rate(t) == 0.75 * factor * rate * 1.0, (item.point_id, t)
+            if factor == 1.0 and (table, sex, x) in RLV_BE_PACKAGE_RATES:
+                assert float(f"{item.mort_rate(t):.6g}") == RLV_BE_PACKAGE_RATES[(table, sex, x)]
+                seen.add((table, sex, x))
+    assert sexes == {"M", "F"}
+    assert seen == set(RLV_BE_PACKAGE_RATES)
+    # the anchor of the worked example, a non-smoking man of 35
+    anchor = model.Projection[1]
+    assert (anchor.sex(), anchor.smoker(), anchor.age(0)) == ("M", "N", 35)
+    assert f"{anchor.mort_rate(0):.12f}" == "0.000617950413"
+
+
+def test_rlv_loads_the_best_estimate_for_selective_lapse_and_caps_it_at_1(tmp_path):
+    """On a scratch copy with the selective-lapse module on: the best estimate is the factor,
+    the rating factor and the loading on the table rate, and the tariff rate is not loaded;
+    with a rating factor that carries the product past 1 the best estimate is 1."""
+    folder = product_copy(tmp_path, RLV)
+    path = folder / "param_tariff_type.csv"
+    text = path.read_text(encoding="utf-8")
+    assert text.count("sel_lapse_lambda,0.0,") == 1 and text.count("sel_lapse_ref,0.25,") == 1
+    path.write_text(text.replace("sel_lapse_lambda,0.0,", "sel_lapse_lambda,0.3,")
+                    .replace("sel_lapse_ref,0.25,", "sel_lapse_ref,0.05,"), encoding="utf-8")
+    path = folder / "model_point_table.csv"
+    rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    assert rows[13].startswith("13,") and ",-,1.0,0," in rows[13]
+    rows[13] = rows[13].replace(",-,1.0,0,", ",-,250.0,0,", 1)
+    path.write_text("".join(rows), encoding="utf-8")
+    model = mx.read_model(folder / MODELS[RLV], name="RlvSelProbe")
+    try:
+        item, tables = model.Projection[1], model.CoreTables
+        loaded = 0
+        for t in range(0, item.proj_len(), 12):
+            x = item.age(t)
+            factor = 1.0 + 0.3 * max(0.0, item.lapse_cum(t) - 0.05)
+            assert item.sel_lapse_factor(t) == factor
+            assert item.mort_rate(t) == min(1.0, 0.75 * 1.0 * tables.q(NR, "M", x) * factor)
+            assert item.mort_rate_tariff(t) == blend(tables.q(NR, "M", x), tables.q(NR, "F", x))
+            loaded += factor > 1.0
+        assert loaded == 24
+        rated = model.Projection[13]
+        assert (rated.rating_factor(), rated.age(0)) == (250.0, 60)
+        assert 0.75 * 250.0 * tables.q(NR, "M", 60) > 1.0 > tables.q(NR, "M", 60)
+        assert rated.mort_rate(0) == 1.0
+    finally:
+        model.close()
+
+
+def test_rlv_passes_a_table_rate_of_1_through_its_factors(tmp_path):
+    """On a scratch copy whose non-smoker table closes at 59, the last age the anchor and the
+    first life of the couple attain: the best estimate and the tariff rate are 1 there, for
+    one life and for two, not 0.75 of the table rate, and the monthly rate is the core's
+    certainty in the anniversary month."""
+    folder = product_copy(tmp_path, RLV)
+    path = tables_file(folder)
+    text = path.read_text(encoding="utf-8")
+    assert text.count(f"{NR}_end_age,121,") == 1
+    path.write_text(text.replace(f"{NR}_end_age,121,", f"{NR}_end_age,60,"), encoding="utf-8")
+    model = mx.read_model(folder / MODELS[RLV], name="RlvThruProbe")
+    try:
+        tables = model.CoreTables
+        assert tables.q(NR, "M", 59) == 1.0 == tables.q(NR, "F", 59)
+        for point_id, lives in ((1, 1), (10, 2)):
+            item = model.Projection[point_id]
+            last = item.proj_len() - 1
+            assert (item.lives(), item.age(last), item.mort_be_factor()) == (lives, 59, 0.75)
+            assert item.mort_rate_base(last) == 1.0 == item.mort_rate(last)
+            assert item.mort_rate_blend(last) == 1.0 == item.mort_rate_tariff(last)
+            assert item.mort_rate_mth(last) == 1.0 and item.mort_rate_mth(last - 1) == 0.0
+            # the year before, the factor acts on the table rate
+            before = last - 12
+            assert item.age(before) == 58
+            assert item.mort_rate(before) == 0.75 * item.mort_rate_base(before) < 0.75
+            assert item.mort_rate_tariff(before) == item.mort_rate_blend(before) < 1.0
+        couple = model.Projection[10]
+        last = couple.proj_len() - 1
+        # the second life is 57 there, below its table's end: the combined rate is set to 1
+        q_b = tables.q(NR, "M", couple.age2(last))
+        assert 0.0 < q_b < 1.0 and couple.mort_rate_base(last) == 1.0
+    finally:
+        model.close()
+
+
+def test_rlv_declares_on_the_margin_of_the_tables_over_the_best_estimate(product_models):
+    model = product_models(RLV)
+    data = model.Data
+    assert "mort_load_first" not in data.param_dict()
+    source = model.Projection.cells["beitragsverrechnung_rate"].formula.source
+    assert "1.0 - mort_be_factor()" in source and "data.param(\"mort_be" not in source
+    declared = 0
+    for item in rlv_points(model):
+        if item.surplus_form() == "keine":
+            assert item.beitragsverrechnung_rate() == 0.0
+            continue
+        share = 1.0 - item.mort_be_factor()
+        assert share == 0.25
+        raw = (data.param("decl_scale") * data.param("surplus_share") * share
+               * item.tariff_benefit_pv() / (item.prem_gross_level_pp() * item.tariff_annuity()))
+        assert item.beitragsverrechnung_rate() == min(data.param("v_max"), raw) == raw
+        # the Zahlbeitrag stands at about four fifths of the Bruttobeitrag, 0.57 before
+        assert 0.79 < 1.0 - item.beitragsverrechnung_rate() < 0.84
+        declared += 1
+    assert declared == 13
+    anchor = model.Projection[1]
+    assert f"{anchor.prem_gross_level_pp():.6f}" == "826.875656"
+    assert f"{anchor.beitragsverrechnung_rate():.8f}" == "0.18282785"
+
+
+def test_rlv_holds_no_mortality_file_column_item_reference_or_formula(product_models):
+    folder = PRODUCTS_DIR / RLV
+    assert not (folder / "mort_table.csv").exists()
+    for path in sorted(folder.glob("*.csv")):
+        with path.open(encoding="utf-8", newline="") as handle:
+            header = next(csv.reader(handle))
+        assert not [column for column in header
+                    if "mort" in column or column.startswith("qx")], path
+    model = product_models(RLV)
+    layer = model.Data.param_layers()["tariff_type"]
+    assert {item: layer[item] for item in layer
+            if "mort" in item or "unisex" in item or "sel_lapse" in item} == {
+        "mort_be_factor": 0.75, "mort_nr_table": NR, "mort_r_table": R,
+        "unisex_mix_male": 0.5, "sel_lapse_lambda": 0.0, "sel_lapse_ref": 0.25}
+    assert "mort_file" not in model.Data.refs
+    assert not [name for name in model.Data.refs if "mort" in name]
+    own = sorted(name for name, cell in model.Projection.cells.items()
+                 if "mort" in name and cell._is_defined())
+    assert own == RLV_OWN_MORT_CELLS
+    assert "mort_table_id" not in model.Projection.cells
+    assert not [name for name, cell in model.Data.cells.items()
+                if "mort" in name and cell._is_defined()]
+    assert model.Data.cells["mort_table_index"]._is_derived()
+    reachable = param_usage.scan(model).reachable
+    assert not {"mort_table", "mort_table_dict", "mort_table_index", "omega_age",
+                "mort_table_name"} & reachable
+    for space in ("Data", "Projection"):
+        source = (folder / MODELS[RLV] / space / "__init__.py").read_text(encoding="utf-8")
+        for name in ("mort_table.csv", "mort_file", "mort_table_dict", "mort_table()",
+                     "mort_table_id", "mort_load_first"):
+            assert name not in source, (space, name)
+    # one read of the factory, through ``q``, in the product's hook
+    cells = dict(_formula_cells(folder / MODELS[RLV] / "Projection" / "__init__.py"))
+    reads = {name: ast.unparse(node) for name, cell in cells.items() for node in ast.walk(cell)
+             if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
+             and node.value.id == "tables"}
+    assert reads == {"mort_rate_at_age": "tables.q"}
+    # every death rate of a run comes through the factory's one lookup, unclamped
+    item = model.Projection[1]
+    item.result_cf()
+    assert len(model.CoreTables.q) > 0
+    assert len(model.Data.cells["mort_table"]) == 0
+    assert len(model.Data.cells["mort_table_dict"]) == 0
+    line = raised_line(lambda: item.mort_rate_at_age("M", "N", 121))
+    assert line == "ValueError: table 'dav2008t_nr_proxy': x 121 is outside its ages 0 to 120"
+
+
 def unswitched_copy(tmp_path: Path) -> Path:
     """A scratch copy of Index with the fixture tables that chooses no table: without its
     row ``mort_table`` and with a ``mort_rate_at_age`` of its own that reads no table, as a
@@ -2422,12 +2853,12 @@ def test_a_generational_table_without_a_birth_year_cell_raises(tmp_path):
 
 
 def test_a_chosen_table_the_factory_does_not_hold_raises(tmp_path):
-    folder = switched_copy(tmp_path, "dav2008t_nr_proxy")
+    folder = switched_copy(tmp_path, "no_such_proxy")
     model = mx.read_model(folder / MODELS[INDEX], name="SwitchedUnknownProbe")
     try:
         item = model.Projection[1]
         for call in (lambda: item.mort_rate_at_age(50), lambda: item.mort_rate(item.t_start())):
-            assert raised_line(call) == "ValueError: table 'dav2008t_nr_proxy' is not defined"
+            assert raised_line(call) == "ValueError: table 'no_such_proxy' is not defined"
     finally:
         model.close()
 
@@ -2578,14 +3009,17 @@ def test_no_table_is_unchosen_in_the_ten_products(product_models):
     others = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
               if product not in SWITCHED]
     assert param_usage.unchosen_tables(others) == sorted(SHIPPED_TABLES)
-    # the select table and the generational table have one reader each, the aggregate
-    # table four
+    # the select table, the generational table and the two smoker tables have one reader
+    # each, the aggregate table four
     without_bu = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
                   if product != BU]
     assert param_usage.unchosen_tables(without_bu) == [DAV1997TI]
     without_rv = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
                   if product != RV]
     assert param_usage.unchosen_tables(without_rv) == [DAV2004R]
+    without_rlv = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
+                   if product != RLV]
+    assert param_usage.unchosen_tables(without_rlv) == [NR, R]
     for reader in (FRV, INDEX, KLV):
         without = [param_usage.scan(product_models(product)) for product in sorted(MODELS)
                    if product != reader]

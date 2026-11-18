@@ -86,8 +86,8 @@ BASELINE = {
         14,
         ("check_net_cf", "check_no_cash_value", "check_pols_roll_fwd", "check_prem_split",
          "check_res_roll_fwd"),
-        "e0f605d443fc56b06e776ffd27c007928caa42cd91ebd05ddeb8c643d026097f",
-        "a1740feecc92fd41a7312ccbcbfa849798e586f47de8c1e3a011e05b462627e2",
+        "cf60ccf6f67bc02709500df8e1e58e92316abea2a59fff0670268312abb980e9",
+        "c405c8f807af32210fcb01b03c68b2add2e44e5f45cba6530a3499caf8824442",
     ),
     "sofortrente": (
         14,

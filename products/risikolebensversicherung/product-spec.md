@@ -226,10 +226,10 @@ Footnotes to **[std]** rows:
 | Premium form (model-point parameter) | (i) `regular` — a **level *Bruttobeitrag*** payable at the start of each of the first `prem_term` policy years; (ii) `single` — a single *Einmalbeitrag* at issue | (i) mechanic 4 [R6] [R10]; (ii) **[std]** (5) |
 | What is guaranteed | The ***Bruttobeitrag*** — the maximum the policyholder can ever be required to pay, unchanged for the term | [R6] [REG-R27]; mechanic 5 |
 | What is billed | The ***Zahlbeitrag*** = *Bruttobeitrag* × (1 − `v`), with `v` the declared *Beitragsverrechnungssatz*. **Not guaranteed** and revisable annually by declaration alone | [R5] [R6] [R9] [S5]; level **[std]** (6) |
-| Representative `Zahl / Brutto` ratio | **0.57** | **[std]** (6) |
+| Representative `Zahl / Brutto` ratio | Research file: **0.57**. The model derives **0.82** on the anchor cell | **[std]** (6) |
 | Pricing bases (*Rechnungsgrundlagen erster Ordnung*) | DAV 2008 T-shaped mortality with its *Sicherheitszuschläge*, *Rechnungszins*, and α / β / γ expense loadings | [R12] [R10] [REG-R47] [REG-R48]; levels **[std]** (7) |
 | *Rechnungszins* | **1,00 %** — the *Höchstrechnungszins* for new business from 1 January 2025, raised from 0,25 % and the first increase since 1994 | [R10] [REG-R14] [REG-R15] |
-| *Sicherheitszuschlag* `m` | First-order `q1 = (1 + m) × q2` with **m = 1.25**, so `q1 = 2.25 × q2` | **[std]** (7) |
+| First-order margin | The model reads **first-order** proxy tables, `dav2008t_nr_proxy` and `dav2008t_r_proxy`, and takes the best estimate at `q2 = 0.75 × q1` on the table of the own sex (`mort_be_factor`), a margin share of **0.25**; it applies no *Sicherheitszuschlag* `m` of its own. The research file writes the margin as `q1 = (1 + m) × q2` and argues `m` between 1.0 and 1.5 | **[std]** (7) |
 | Unisex mixing ratio | **50 % male / 50 % female** blend of the sex-distinct base tables, applied to the **tariff** and never to the projection | **[std]** (8); [R13] [REG-R34] |
 | Rating factors | Entry age; *Versicherungsdauer*; sum insured; smoker status; occupation; declared hazardous pursuits; health evidence. **Sex may not be a rating factor** for contracts concluded from 21 December 2012 — AGG § 33 Abs. 5 confines the derogation to "Versicherungsverhältnisse, die vor dem 21. Dezember 2012 begründet werden", and § 20 Abs. 2 leaves no actuarial justification open for sex at all. [S3] § 18 confirms the smoker split and prices it, and [S3] § 13 Abs. 5 confirms that occupation, attained *rechnungsmäßiges Alter* and any agreed *Risikozuschlag* price an increase | mechanic 9; unisex [R13] [REG-R34]; [S3] |
 | *Risikozuschlag* (model-point parameter) | `rating_factor`, a multiplier on the **mortality basis**; 1.00 at standard rates | mechanics 9; value **[std]** (9) |
@@ -253,8 +253,8 @@ Footnotes to **[std]** rows:
    **can** be said: the ratio is below 1 for essentially every participating tariff; it is wider in
    the direct channel, less of the *Bruttobeitrag* being committed to acquisition cost [S3] [S12];
    and a narrow spread is marketed by some tariffs as a selling point [S17]. **The argued range is
-   0.45 to 1.00**, and the representative 0.57 is *derived*, not assumed — it falls out of
-   `m = 1.25` and the MindZV 90 % minimum [R9]. Changing `m` re-derives it; that is the point.
+   0.45 to 1.00** and the research file's representative is 0.57. The model's ratio is *derived*, not assumed — **0.82** on the anchor cell, out of
+   the margin share 0.25 and the MindZV 90 % minimum [R9]. Changing the margin share re-derives it; that is the point.
 7. **Every charge and margin level here is [std], but the reason given for that was wrong and is
    corrected** (gap 8). There is indeed no *Effektivkostenquote* — and the regulation says why in
    terms, confining the duty to contracts "bei dem der Eintritt der Verpflichtung des Versicherers
@@ -271,9 +271,9 @@ Footnotes to **[std]** rows:
    [std]**: one direct writer's model case is not a market, and the composite is not recalibrated to
    it. The magnitude of the DAV 2008 T *Sicherheitszuschlag* is **not public** —
    the *Richtlinie* regulates the **procedure** for setting it, not the level [R12] [REG-R48] — and
-   it determines the spread almost by itself. `m = 1.25` is calibrated so the **derived** ratio lands
-   near the market's "about half"; the argued range is **1.0 to 1.5** and the sensitivity is
-   tabulated below.
+   it determines the spread almost by itself. The research file argues `m` in the range **1.0 to 1.5**,
+   with the sensitivity tabulated below; the model carries no `m` and takes its best estimate at **0.75**
+   of its first-order proxy tables, a margin share of 0.25.
 8. **DAV 2008 T is sex-distinct** [R12] [REG-R48] while new business has been unisex since
    21 December 2012 [R13] [REG-R34], so every German unisex term tariff is a blend at **a mixing
    ratio the carrier chooses from its own expected new-business mix** — proprietary, unpublished,
@@ -449,9 +449,9 @@ model case gives 19,75 / 8,89 and 25,68 / 11,55 — `v = 0,550` in all four [S2]
 identical across product variants and stable across editions is § 138 VAG's *Gleichbehandlung*
 made visible**: one declared rate per *Gewinnverband*, not a per-contract negotiation [R11] [S1].
 **This is one direct writer's model case and is not generalised**: `v` is not set from it anywhere in
-this library, and the model's `v_d` remains derived from `m` and the MindZV minimum. It is used as a
+this library, and the model's `v_d` remains derived from the margin share of its tables and the MindZV minimum. It is used as a
 **check**, and the check is instructive — the observed 0,450 sits at the very bottom of the argued
-0.45–1.00 range and well below the representative 0.57.
+0.45–1.00 range, well below the research file's representative 0.57 and further below the model's 0.82.
 
 **Why the spread is wide, and why that is not a compliment.** An RLV's technical result is almost
 entirely *Risikoergebnis*, and the MindZV obliges the insurer to allocate at least **90 %** of it to
@@ -477,7 +477,10 @@ through three levels of `m` at entry age 35, 300 000 €, 25-year term:
 The *Bruttobeitrag* moves by **23 %** across that range; the *Zahlbeitrag* by **6 %**. **All six
 figures are [std] constructions and none is a market observation**; the *result* they demonstrate is
 not a construction — it follows from the MindZV 90 % rule [R9] — and it is why two German carriers
-can quote nearly identical *Zahlbeiträge* on very different *Bruttobeiträge*.
+can quote nearly identical *Zahlbeiträge* on very different *Bruttobeiträge*. **The model does not
+carry `m`**: it reads first-order proxy tables and takes the best estimate at 0.75 of them, a margin
+share of 0.25, and on the same cell its *Bruttobeitrag* is 827 EUR, its *Zahlbeitrag* 676 EUR and the
+ratio 0.82.
 
 **Modelling ruling.** The implementation **derives** the *Zahlbeitrag* from the first-order premium
 and the MindZV allocation rather than treating `v` as a free input, so the *Beitragsverrechnungssatz*
@@ -642,14 +645,14 @@ data with German population statistics; the *Richtlinie* **regulates both the de
 and the procedure for setting the *Sicherheitszuschläge***; the variants are **suitable for premium
 calculation** but **not for policies written without a *Gesundheitsprüfung***; adopted **4 December
 2008**, restated as a *Fachgrundsatz* dated **29 November 2022**. **The values are the property of
-the Deutsche Aktuarvereinigung, are not public, and are not redistributed here**; the technical notes
-ship a [std] proxy and state what a replacement must preserve. **Three structural reasons the
+the Deutsche Aktuarvereinigung, are not public, and are not redistributed here**; the model reads two [std]
+first-order proxies of the table factory, `dav2008t_nr_proxy` and `dav2008t_r_proxy`. **Three structural reasons the
 effective first-order margin on a contract written today is large**, none a criticism of the insurer:
 the table was derived on 2006–2008 experience and German mortality has improved since; it is applied
 to a **medically selected** portfolio in its early durations, where selection is strongest and the
 table's own allowance is generic; and the *Sicherheitszuschläge* sit on top of both — so a
-first-order to second-order ratio **in the region of two** is entirely plausible. **The ratio is
-[std]; the reasoning is not numeric.** A death-cover basis carries **no projected mortality
+first-order to second-order ratio **in the region of two** is entirely plausible. **The model's ratio is
+[std] and lower, `1/0.75`, about 1.33, on the table of the own sex; the reasoning is not numeric.** A death-cover basis carries **no projected mortality
 improvement**, improvement being favourable to the insurer — the exact opposite of the annuity tables
 [REG-R49], and the reason a single "German mortality table" does not exist. **Unisex** makes it
 worse: DAV 2008 T is sex-distinct, so every German unisex term tariff is a **blend at a mixing ratio
@@ -807,8 +810,8 @@ them**; they are recorded as checks.
 
 | Parameter | Range carried in this specification | Who sits where | Tag |
 |---|---|---|---|
-| `Zahl / Brutto` ratio | 0.45 to 1.00, representative **0.57** | **CosmosDirekt at 0.450**, on a published model case at age 41 / 19 years / 100 000 €, in four specimens across two editions and two product variants [S2] | **[std]**; observation does not set it |
-| *Sicherheitszuschlag* `m` implied | 1.0 to 1.5, representative **1.25** | **not established** | **[std]**, gap 6 |
+| `Zahl / Brutto` ratio | 0.45 to 1.00, research representative **0.57**; the model derives **0.82** on the anchor | **CosmosDirekt at 0.450**, on a published model case at age 41 / 19 years / 100 000 €, in four specimens across two editions and two product variants [S2] | **[std]**; observation does not set it |
+| *Sicherheitszuschlag* `m` implied | 1.0 to 1.5 argued; the model carries no `m`, its best estimate is 0.75 of first-order proxy tables | **not established** | **[std]**, gap 6 |
 | Smoker / non-smoker premium ratio | about 1.8 to 2.5, derived **2.04** | **not established** | **[std]**, gap 1 |
 | *Eintrittsalter* | 18 to 65, some carriers to 70 or 75 | **not established** | **[std]**, gap 22 |
 | *Endalter* | 75, with 80 and 85 offered | **not established** | **[std]**, gap 22 |

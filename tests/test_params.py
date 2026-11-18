@@ -27,8 +27,10 @@
   ``mort_table`` with the provenance of the values package, its unchanged ``mort_be_factor``
   and ``unisex_mix_male`` and the eight items of ``dav2008t_proxy``; FRV lists its choice
   ``mort_table``, its new ``unisex_mix_male`` and its ``mort_be_factor``, each with the
-  provenance of the values package, and the eight items of ``dav2008t_proxy``; the five
-  products that choose no table list no item of the layer.
+  provenance of the values package, and the eight items of ``dav2008t_proxy``; RLV lists
+  its two choices ``mort_nr_table`` and ``mort_r_table``, ``mort_be_factor`` and the sixteen
+  items of its two tables, and no ``mort_load_first``; the four products that choose no
+  table list no item of the layer.
 - A scratch copy of Index whose tariff chooses a fixture table lists that table's items with
   layer ``tables``, value, basis and provenance, after the core items and before the
   tariff-type items, and no other table's, the shipped one's neither, and exits 0; a copy
@@ -127,8 +129,16 @@ def test_one_product_lists_its_items(capsys):
     lines = out.splitlines()
     assert lines[0].startswith("risikolebensversicherung: ")
     assert lines[1].split() == list(params.COLUMNS)
-    assert any(line.split()[:4] == ["mort_load_first", "2.25", "tariff_type", "Setzung"]
-               for line in lines[2:])
+    rows = [line.split()[:4] for line in lines[2:]]
+    assert ["mort_be_factor", "0.75", "tariff_type", "Setzung"] in rows
+    # both table choices, the best-estimate factor and the sixteen items of the two tables
+    assert ["mort_nr_table", "'dav2008t_nr_proxy'", "tariff_type", "Setzung"] in rows
+    assert ["mort_r_table", "'dav2008t_r_proxy'", "tariff_type", "Setzung"] in rows
+    for table in ("dav2008t_nr_proxy", "dav2008t_r_proxy"):
+        assert len([row for row in rows if row[0].startswith(table + "_")
+                    and row[2] == "tables"]) == 8
+    assert not [row for row in rows if row[0] in ("mort_load_first", "mort_table")]
+    assert not [row for row in rows if row[0].startswith("dav2008t_proxy_")]
 
 
 def test_an_unknown_product_exits_2(capsys):

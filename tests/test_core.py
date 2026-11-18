@@ -248,7 +248,7 @@ CORE_CELLS = {
                              "klassische_rentenversicherung": "derived",
                              "pflegerentenversicherung": "derived",
                              "riester_rente": "override",
-                             "risikolebensversicherung": "override",
+                             "risikolebensversicherung": "derived",
                              "sofortrente": "override"},
         "mort_table": dict.fromkeys(MODELS, "derived"),
         "lapse_table_index": {"berufsunfaehigkeit": "derived",
@@ -569,7 +569,8 @@ CORE_CELLS = {
         "unisex_blend": {"berufsunfaehigkeit": "derived",
                          "kapitallebensversicherung": "derived",
                          "klassische_rentenversicherung": "derived",
-                         "pflegerentenversicherung": "derived"},
+                         "pflegerentenversicherung": "derived",
+                         "risikolebensversicherung": "derived"},
         "mort_load_tariff": {"fondsgebundene_rentenversicherung": "derived",
                              "kapitallebensversicherung": "derived",
                              "klassische_rentenversicherung": "derived",
@@ -647,7 +648,7 @@ CORE_CELLS = {
                            "kapitallebensversicherung": "override",
                            "klassische_rentenversicherung": "override",
                            "riester_rente": "override",
-                           "risikolebensversicherung": "derived"},
+                           "risikolebensversicherung": "override"},
         "mort_rate_base": {"basisrente": "override",
                            "berufsunfaehigkeit": "derived",
                            "fondsgebundene_rentenversicherung": "derived",
@@ -1741,8 +1742,9 @@ def test_param_reads_the_tariff_type_layer(product_models):
     assert data.param_core_path().is_file()
     for item in ("expense_claim_pp_once", "unisex_mix_male"):
         value = data.param(item)
-        assert type(value) is float and value == tariff_type_table(
-            "risikolebensversicherung").at[item, "value"], item
+        # the file holds table choices too, so pandas reads its values as text
+        assert type(value) is float and value == float(tariff_type_table(
+            "risikolebensversicherung").at[item, "value"]), item
 
 
 PARAM_TABLE_RE = re.compile(r"(?<!\w)param_table(_dict)?\(")
@@ -1915,11 +1917,12 @@ RIESTER_MOVED_REFERENCES = {
     "comm_renew_prem_inst": 0.015,
 }
 
-# The 17 numeric References RLV's ``Projection`` held, as their former Python literals;
-# ``val_tol``, aligned to 1e-08 by entry 12 of epic-parameter-files, is read as ``check_tol``; the
-# *Sicherheitszuschlag* ``sicherheitszuschlag_m`` 1.25 is the factor ``mort_load_first``, 1 + m.
+# The 16 numeric References RLV's ``Projection`` held and its cells read, as their former
+# Python literals; ``val_tol``, aligned to 1e-08 by entry 12 of epic-parameter-files, is read as
+# ``check_tol``. The *Sicherheitszuschlag* ``sicherheitszuschlag_m`` 1.25, the item
+# ``mort_load_first`` 2.25 until RLV's switch to the table factory, has no item: the tables are
+# first order, and the item ``mort_be_factor`` 0.75 steps from them to the best estimate.
 RLV_MOVED_REFERENCES = {
-    "mort_load_first": 1.0 + 1.25,
     "unisex_mix_male": 0.5,
     "surplus_share": 0.9,
     "decl_scale": 1.0,
@@ -2059,8 +2062,10 @@ def test_rlv_references_stand_in_their_layer(product_models):
     model = product_models("risikolebensversicherung")
     data = model.Data
     layers = data.param_layers()
-    assert len(RLV_MOVED_REFERENCES) == 17
+    assert len(RLV_MOVED_REFERENCES) == 16
     assert "sicherheitszuschlag_m" not in model.Projection.refs
+    assert "mort_load_first" not in data.param_dict()
+    assert data.param("mort_be_factor") == 0.75
     for item, literal in RLV_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item

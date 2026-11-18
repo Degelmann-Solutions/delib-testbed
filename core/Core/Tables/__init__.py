@@ -46,6 +46,10 @@ def definitions():
             "m_a", "m_b", "m_c", "f_a", "f_b", "f_c",
             "trend_start", "trend_start_age", "trend_mid", "trend_mid_age", "trend_end_age",
             "base_year", "first_age", "end_age")),
+        "dav2008t_nr_proxy": (makeham, None, (
+            "m_a", "m_b", "m_c", "f_a", "f_b", "f_c", "first_age", "end_age")),
+        "dav2008t_r_proxy": (makeham, None, (
+            "m_a", "m_b", "m_c", "f_a", "f_b", "f_c", "first_age", "end_age")),
     }
 
 

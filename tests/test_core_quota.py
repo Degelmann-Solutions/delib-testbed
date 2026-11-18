@@ -13,9 +13,12 @@ each writing its figures with ``--json``; the tests read those figures and call 
 - A bound above a measured quota makes the report exit 1 and name the product on stderr.
 - The static usage scan ``core/param_usage.py`` reaches every executed ``Projection`` cell of
   every product (``Data`` cells are not compared, the quota does not count them).
-- Only a switched product executes cells of the table factory: Index, BU, RV, KLV and FRV do,
+- Only a switched product executes cells of the table factory: Index, BU, RV, KLV, FRV and
+  RLV do,
   the cells behind ``q`` with the law ``makeham``, listed as ``tables.<cell>`` and counted as
-  core beside the hooks of their ``Projection``; the other five execute none. BU's hook for
+  core beside the hooks of their ``Projection``; the other four execute none. RLV, whose
+  table depends on the life, executes no hook of the core: its hook and the cell that maps
+  the smoker status to a role are product cells. BU's hook for
   its second role, ``mort_rate_dis_at_age``, is a product cell, and its tariff rates execute
   the core's unisex blend. RV, on the generational table, executes the trend cells of the
   factory too, the core's tariff rate on the unisex blend and ``omega_age_table``; its
@@ -165,7 +168,22 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
         return
     assert product in ("berufsunfaehigkeit", "fondsgebundene_rentenversicherung",
                        "indexpolice", "kapitallebensversicherung",
-                       "klassische_rentenversicherung")
+                       "klassische_rentenversicherung", "risikolebensversicherung")
+    if product == "risikolebensversicherung":
+        # its table depends on the life: the hook on the factory and the cell that maps the
+        # smoker status to a role are its own, no hook of the core runs, and of the core's
+        # mortality derivation it executes the unisex blend and the tariff rate
+        assert executed == FACTORY_CELLS | {"tables.makeham"}
+        assert executed <= set(figures["core_cells"])
+        assert not FACTORY_HOOKS & set(figures["executed_cells"])
+        assert {"unisex_blend", "unisex_mix_male", "mort_rate_tariff", "mort_rate_mth",
+                "pols_tariff"} <= set(figures["core_cells"])
+        assert sorted(name for name in set(figures["executed_cells"]) - set(figures["core_cells"])
+                      if "mort" in name) == [
+            "mort_be_factor", "mort_load_tariff", "mort_rate", "mort_rate_at_age",
+            "mort_rate_base", "mort_rate_blend", "mort_rate_tariff_base", "mort_table_smoker"]
+        assert (figures["executed"], figures["core"]) == (135, 80)
+        return
     # the shipped tables are on the law ``makeham``, the select and the generational one too;
     # the generational one brings its base year and its trend
     trend = {"tables.base_year", "tables.trend", "tables.trend_linear"}

@@ -290,9 +290,9 @@ from pathlib import Path
 import modelx as mx
 import pytest
 
-from helpers import (CORE_MODEL, MODELS, PRODUCTS_DIR, ROOT, TOOLS_DIR, formula_cells,
+from helpers import (CORE_MODEL, MODELS, PRODUCTS_DIR, ROOT, TOOLS_DIR, add_layer_rows,
+                     formula_cells,
                      load_runner, load_tool, loader_error, param_usage, product_copy)
-from test_core import _add_params
 
 RLV = "risikolebensversicherung"
 SOFORT = "sofortrente"
@@ -527,7 +527,7 @@ def test_param_without_the_tables_file_raises(tmp_path):
 def test_param_reads_an_item_of_the_tables_layer(tmp_path):
     folder = product_copy(tmp_path, RLV)
     shipped = (CORE_MODEL / "Data" / TABLES_FILE).read_text(encoding="utf-8")
-    _add_params(tables_file(folder), {"fixture_end_age": "121", "fixture_m_a": "0.0005"})
+    add_layer_rows(tables_file(folder), {"fixture_end_age": "121", "fixture_m_a": "0.0005"})
     copy = mx.read_model(folder / MODELS[RLV], name="TablesItemProbe")
     try:
         data = copy.Data
@@ -545,7 +545,7 @@ def test_param_reads_an_item_of_the_tables_layer(tmp_path):
 @pytest.mark.parametrize("file", ["param_tariff_type.csv", "param_tariff.csv"])
 def test_a_table_choice_is_loaded_as_a_name(tmp_path, file):
     folder = product_copy(tmp_path, RLV)
-    _add_params(folder / file, {"mort_table": "dav_x_proxy", "probe2_table": " t2 "})
+    add_layer_rows(folder / file, {"mort_table": "dav_x_proxy", "probe2_table": " t2 "})
     copy = mx.read_model(folder / MODELS[RLV], name="ChoiceProbe")
     try:
         data = copy.Data
@@ -572,7 +572,7 @@ def test_a_table_choice_is_loaded_as_a_name(tmp_path, file):
 def test_a_table_choice_that_is_no_name_raises(tmp_path, text, name):
     folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"
-    _add_params(path, {"mort_table": text})
+    add_layer_rows(path, {"mort_table": text})
     message = loader_error(folder / MODELS[RLV], name)
     assert f"parameter 'mort_table' has the value {text!r} in {path}, no table name" in message
 
@@ -580,7 +580,7 @@ def test_a_table_choice_that_is_no_name_raises(tmp_path, text, name):
 def test_an_empty_table_choice_has_no_value(tmp_path):
     folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"
-    _add_params(path, {"mort_table": ""})
+    add_layer_rows(path, {"mort_table": ""})
     message = loader_error(folder / MODELS[RLV], "EmptyChoiceProbe")
     assert f"parameter 'mort_table' has no value in {path}" in message
 
@@ -589,7 +589,7 @@ def test_an_empty_table_choice_has_no_value(tmp_path):
 def test_a_name_is_no_number_for_any_other_item(tmp_path, item):
     folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"
-    _add_params(path, {item: "dav_x_proxy"})
+    add_layer_rows(path, {item: "dav_x_proxy"})
     message = loader_error(folder / MODELS[RLV], "NameValueProbe")
     assert f"parameter {item!r} has the value 'dav_x_proxy' in {path}, no number" in message
 
@@ -598,8 +598,8 @@ def test_a_name_is_no_number_for_any_other_item(tmp_path, item):
 def test_param_rejects_a_tables_item_in_a_product_file(tmp_path, file):
     folder = product_copy(tmp_path, RLV)
     tables = tables_file(folder)
-    _add_params(tables, {"fixture_end_age": "121"})
-    _add_params(folder / file, {"fixture_end_age": "110"})
+    add_layer_rows(tables, {"fixture_end_age": "121"})
+    add_layer_rows(folder / file, {"fixture_end_age": "110"})
     message = loader_error(folder / MODELS[RLV], "TablesLockProbe")
     assert "'fixture_end_age' is a tables item of" in message
     assert str(tables) in message and str(folder / file) in message
@@ -608,7 +608,7 @@ def test_param_rejects_a_tables_item_in_a_product_file(tmp_path, file):
 def test_param_rejects_a_core_item_in_the_tables_file(tmp_path):
     folder = product_copy(tmp_path, RLV)
     tables = tables_file(folder)
-    _add_params(tables, {"check_tol": "1e-9"})
+    add_layer_rows(tables, {"check_tol": "1e-9"})
     message = loader_error(folder / MODELS[RLV], "CoreInTablesProbe")
     assert "'check_tol' is a core item of" in message
     assert str(tables.with_name("param_core.csv")) in message and str(tables) in message
@@ -617,8 +617,8 @@ def test_param_rejects_a_core_item_in_the_tables_file(tmp_path):
 def test_param_rejects_an_item_twice_in_the_tables_file(tmp_path):
     folder = product_copy(tmp_path, RLV)
     tables = tables_file(folder)
-    _add_params(tables, {"fixture_end_age": "121"})
-    _add_params(tables, {"fixture_end_age": "121"})
+    add_layer_rows(tables, {"fixture_end_age": "121"})
+    add_layer_rows(tables, {"fixture_end_age": "121"})
     message = loader_error(folder / MODELS[RLV], "TablesTwiceProbe")
     assert f"'fixture_end_age' stands twice in {tables}" in message
 
@@ -1223,9 +1223,9 @@ def write_fixture_tables(model_dir: Path) -> None:
         for table, (law, trend, names) in FIXTURE_DEFINITIONS.items()]
     path.write_text("".join(lines), encoding="utf-8")
     add_cells(path, FIXTURE_LAWS)
-    _add_params(model_dir / "CoreData" / TABLES_FILE,
-                {f"{table}_{name}": value for table, values in FIXTURE_VALUES.items()
-                 for name, value in values.items()})
+    add_layer_rows(model_dir / "CoreData" / TABLES_FILE,
+                   {f"{table}_{name}": value for table, values in FIXTURE_VALUES.items()
+                    for name, value in values.items()})
 
 
 def fixture_copy(tmp_path: Path, product: str = INDEX) -> Path:
@@ -4068,7 +4068,7 @@ def switched_copy(tmp_path: Path, table: str, birth_year: int | None = None) -> 
     choice = [row for row in rows if row.startswith("mort_table,")]
     assert len(choice) == 1
     path.write_text("".join(row for row in rows if row not in choice), encoding="utf-8")
-    _add_params(path, {"mort_table": table, "unisex_mix_male": "0.45"})
+    add_layer_rows(path, {"mort_table": table, "unisex_mix_male": "0.45"})
     return folder
 
 
@@ -4248,7 +4248,7 @@ def choosing_copy(tmp_path: Path, table: str, file: str = "param_tariff_type.csv
     dropped = [row for row in rows if row.startswith(("unisex_mix_male,", "mort_table,"))]
     assert len(choice) == 1 and len(dropped) == 2
     path.write_text("".join(row for row in rows if row not in dropped), encoding="utf-8")
-    _add_params(folder / file, {"mort_table": table})
+    add_layer_rows(folder / file, {"mort_table": table})
     return folder
 
 
@@ -4344,7 +4344,7 @@ def test_the_scan_reads_no_tables_item_without_a_choice(tmp_path):
 
 def test_the_scan_reads_no_item_of_a_table_whose_choice_no_cell_reads(tmp_path):
     folder = unswitched_copy(tmp_path)
-    _add_params(folder / "param_tariff_type.csv", {"probe_table": "period_fixture"})
+    add_layer_rows(folder / "param_tariff_type.csv", {"probe_table": "period_fixture"})
     usage = scan_of(folder, "UnreadChoiceScanProbe")
     assert usage.choices == {"probe_table": "period_fixture"}
     assert usage.problems == ["item 'probe_table' of the tariff_type layer"
@@ -4357,7 +4357,7 @@ def test_the_scan_reports_an_item_of_a_table_in_another_layer(tmp_path):
     """The item ``broken_fixture`` lacks in the tables layer, held by the tariff-type file:
     ``param`` would find it, the scan reports it."""
     folder = choosing_copy(tmp_path, "broken_fixture")
-    _add_params(folder / "param_tariff_type.csv", {"broken_fixture_f_b": "1.092"})
+    add_layer_rows(folder / "param_tariff_type.csv", {"broken_fixture_f_b": "1.092"})
     usage = scan_of(folder, "TableItemElsewhereScanProbe")
     assert usage.problems == [
         "item 'broken_fixture_f_b' of the table 'broken_fixture' stands in the tariff_type"
@@ -4368,7 +4368,7 @@ def test_the_scan_reports_an_item_of_a_table_in_another_layer(tmp_path):
                                              ("tables", TABLES_FILE)])
 def test_the_scan_reports_a_table_choice_in_the_core_or_the_tables_file(tmp_path, layer, file):
     folder = unswitched_copy(tmp_path)
-    _add_params(folder / MODELS[INDEX] / "CoreData" / file, {"mort_table": "period_fixture"})
+    add_layer_rows(folder / MODELS[INDEX] / "CoreData" / file, {"mort_table": "period_fixture"})
     usage = scan_of(folder, "ChoiceElsewhereScanProbe")
     assert usage.choices == {}
     assert (f"item 'mort_table' of the {layer} layer ({file}) is a table choice outside the"
@@ -4391,7 +4391,7 @@ def test_the_scan_reports_a_tables_item_of_no_table(tmp_path):
     """A row that is no table's item, and one that starts with a table's name but is not
     among the items its definition names."""
     folder = choosing_copy(tmp_path, "period_fixture")
-    _add_params(tables_file(folder, INDEX), {"stray_item": "1.5", "period_fixture_m_c": "2"})
+    add_layer_rows(tables_file(folder, INDEX), {"stray_item": "1.5", "period_fixture_m_c": "2"})
     usage = scan_of(folder, "StrayItemScanProbe")
     assert usage.problems == [
         "item 'stray_item' of the tables layer (param_tables.csv) belongs to no table",

@@ -64,8 +64,8 @@ import modelx as mx
 import pandas as pd
 import pytest
 
-from helpers import (MOVED_COST_ITEMS, PRODUCTS_DIR, ROOT, TOOLS_DIR, load_tool, param_usage,
-                     product_copy)
+from helpers import (MOVED_COST_ITEMS, PRODUCTS_DIR, ROOT, TOOLS_DIR, add_layer_rows,
+                     load_tool, param_usage, product_copy)
 
 PRODUCTS = sorted(p.name for p in PRODUCTS_DIR.iterdir() if p.is_dir())
 CORE_FILE = ROOT / "core" / "Core" / "Data" / "param_core.csv"
@@ -73,7 +73,6 @@ CORE_FILE = ROOT / "core" / "Core" / "Data" / "param_core.csv"
 sys.path.insert(0, str(TOOLS_DIR))
 from run_baseline import model_dir  # noqa: E402
 
-from test_core import _add_params  # noqa: E402
 from test_tables import (BASIS, BU, FIXTURE_DEFINITIONS, FIXTURE_VALUES, FRV,  # noqa: E402
                          INDEX, KLV, PFLEGE, RIESTER, RLV, RV, SHIPPED_ITEMS, SHIPPED_PROVENANCE,
                          SOFORT,
@@ -174,12 +173,6 @@ def test_an_unknown_product_exits_2(capsys):
     assert "nosuch" in err
 
 
-def add_row(folder: Path, item: str, value: str) -> None:
-    path = folder / "param_tariff_type.csv"
-    path.write_text(path.read_text(encoding="utf-8") + f"{item},{value},Setzung,test fixture\n",
-                    encoding="utf-8")
-
-
 def headers(out: str) -> list[str]:
     return [line.split(":", 1)[0] for line in out.splitlines() if line.endswith(" items read")]
 
@@ -196,7 +189,7 @@ def test_a_product_named_twice_exits_2(capsys):
 
 def test_an_unread_item_is_reported_and_exits_1(tmp_path, capsys):
     folder = product_copy(tmp_path, RLV)
-    add_row(folder, "probe_unused", "1.5")
+    add_layer_rows(folder / "param_tariff_type.csv", {"probe_unused": "1.5"}, basis="Setzung")
     assert params.main([str(folder)]) == 1
     out, err = capsys.readouterr()
     assert headers(out) == ["risikolebensversicherung"]
@@ -228,7 +221,7 @@ def test_an_undeclared_indirect_read_is_reported_and_exits_1(tmp_path, capsys):
 def test_a_loader_error_is_reported_and_the_next_product_listed(tmp_path, capsys,
                                                                 monkeypatch):
     folder = product_copy(tmp_path, RLV)
-    add_row(folder, "decl_scale", "1.0")
+    add_layer_rows(folder / "param_tariff_type.csv", {"decl_scale": "1.0"}, basis="Setzung")
     expected = (f"risikolebensversicherung: ValueError: parameter 'decl_scale' stands twice"
                 f" in {folder / 'param_tariff_type.csv'}")
     assert params.main([str(folder), "kapitallebensversicherung"]) == 1
@@ -789,7 +782,7 @@ def test_a_chosen_name_the_factory_lacks_is_reported_and_exits_1(tmp_path, capsy
 
 def test_a_tables_item_of_no_table_is_reported_and_exits_1(tmp_path, capsys):
     folder = choosing_copy(tmp_path, "period_fixture")
-    _add_params(tables_file(folder, INDEX), {"stray_item": "1.5"})
+    add_layer_rows(tables_file(folder, INDEX), {"stray_item": "1.5"})
     assert params.main([str(folder)]) == 1
     out, err = capsys.readouterr()
     assert headers(out) == [INDEX]
@@ -834,7 +827,8 @@ def test_a_choice_in_the_tariff_file_is_listed_in_the_tariff_layer(tmp_path, cap
 
 def test_an_item_of_a_table_in_another_layer_is_reported_and_exits_1(tmp_path, capsys):
     folder = choosing_copy(tmp_path, "broken_fixture")
-    add_row(folder, "broken_fixture_f_b", "1.092")
+    add_layer_rows(folder / "param_tariff_type.csv", {"broken_fixture_f_b": "1.092"},
+                   basis="Setzung")
     assert params.main([str(folder)]) == 1
     out, err = capsys.readouterr()
     assert headers(out) == [INDEX]
@@ -845,8 +839,8 @@ def test_an_item_of_a_table_in_another_layer_is_reported_and_exits_1(tmp_path, c
 
 def test_a_table_choice_in_the_core_file_is_reported_and_exits_1(tmp_path, capsys):
     folder = unswitched_copy(tmp_path)
-    _add_params(model_dir(folder) / "CoreData" / "param_core.csv",
-                {"mort_table": "period_fixture"})
+    add_layer_rows(model_dir(folder) / "CoreData" / "param_core.csv",
+                   {"mort_table": "period_fixture"})
     assert params.main([str(folder)]) == 1
     out, err = capsys.readouterr()
     assert headers(out) == [INDEX] and "_fixture" not in out

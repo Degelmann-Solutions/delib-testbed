@@ -116,6 +116,24 @@ def parse_output(stdout: str) -> dict[str, str]:
     return dict(line.split(": ", 1) for line in stdout.splitlines() if ": " in line)
 
 
+# --------------------------------------------------------------------------- layer files
+
+def add_layer_rows(path: Path, values: dict[str, str], basis: str = "") -> None:
+    """Append one row per item to a parameter layer file, its value as text, in the file's
+    columns, with ``basis`` and the provenance of a test fixture.
+
+    A file that does not exist is created with the columns of the layer files.
+    """
+    text = (path.read_text(encoding="utf-8") if path.exists()
+            else "item,value,basis,provenance\n")
+    columns = text.splitlines()[0].split(",")
+    for item, value in values.items():
+        row = {"item": item, "value": value, "basis": basis,
+               "provenance": "[std] test fixture"}
+        text += ",".join(row.get(column, "") for column in columns) + "\n"
+    path.write_text(text, encoding="utf-8")
+
+
 # --------------------------------------------------------------------------- modelx errors
 
 def raised_value_error(raised, message: str) -> bool:

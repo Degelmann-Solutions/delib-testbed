@@ -120,7 +120,7 @@ import pandas as pd
 import pytest
 
 from helpers import (CORE_DIR, CORE_MODEL, MODELS, MOVED_COST_ITEMS, PRODUCTS_DIR, ROOT,
-                     formula_cells, loader_error, param_usage, product_copy,
+                     add_layer_rows, formula_cells, loader_error, param_usage, product_copy,
                      raised_value_error, same_value)
 
 
@@ -2291,26 +2291,12 @@ def test_no_numeric_projection_reference_remains(product, product_models):
     assert numeric == {}
 
 
-def _add_params(path: Path, values: dict[str, str]) -> None:
-    """Append one row per item to a parameter file, its value as text, in the file's columns.
-
-    A file that does not exist is created with the columns of the layer files.
-    """
-    text = (path.read_text(encoding="utf-8") if path.exists()
-            else "item,value,basis,provenance\n")
-    columns = text.splitlines()[0].split(",")
-    for item, value in values.items():
-        row = {"item": item, "value": value, "provenance": "[std] test fixture"}
-        text += ",".join(row.get(column, "") for column in columns) + "\n"
-    path.write_text(text, encoding="utf-8")
-
-
 def test_param_keeps_an_integer_literal_int(tmp_path, product_models):
     param_file = product_models("risikolebensversicherung").Data.param_file
     folder = product_copy(tmp_path, "risikolebensversicherung")
-    _add_params(folder / param_file,
-                {"probe_int": "3", "probe_neg": "-2", "probe_float": "3.0",
-                 "probe_pad": " 3 "})
+    add_layer_rows(folder / param_file,
+                   {"probe_int": "3", "probe_neg": "-2", "probe_float": "3.0",
+                    "probe_pad": " 3 "})
     copy = mx.read_model(folder / MODELS["risikolebensversicherung"], name="IntProbe")
     try:
         data = copy.Data
@@ -2328,8 +2314,8 @@ def test_param_reads_a_core_item_and_a_tariff_item(tmp_path):
     core_file = model_dir / "CoreData" / "param_core.csv"
     assert not core_file.is_symlink()
     shipped = (CORE_MODEL / "Data" / "param_core.csv").read_text(encoding="utf-8")
-    _add_params(core_file, {"probe_core": "0.125"})
-    _add_params(folder / "param_tariff.csv", {"probe_tariff": "7"})
+    add_layer_rows(core_file, {"probe_core": "0.125"})
+    add_layer_rows(folder / "param_tariff.csv", {"probe_tariff": "7"})
     copy = mx.read_model(model_dir, name="CoreItemProbe")
     try:
         assert copy.Data.param("probe_core") == 0.125
@@ -2381,7 +2367,7 @@ def test_param_layers_hold_every_item_once_and_merge_into_param_dict(product, pr
 
 def test_param_rejects_an_item_in_two_layers(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
-    _add_params(folder / "param_tariff.csv", {"expense_claim_pp_once": "300.0"})
+    add_layer_rows(folder / "param_tariff.csv", {"expense_claim_pp_once": "300.0"})
     message = loader_error(folder / MODELS["risikolebensversicherung"], "TwoLayerProbe")
     assert "'expense_claim_pp_once' stands in two layers" in message
     assert str(folder / "param_tariff_type.csv") in message
@@ -2390,7 +2376,7 @@ def test_param_rejects_an_item_in_two_layers(tmp_path):
 
 def test_param_rejects_an_item_twice_in_one_file(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
-    _add_params(folder / "param_tariff_type.csv", {"expense_claim_pp_once": "250.0"})
+    add_layer_rows(folder / "param_tariff_type.csv", {"expense_claim_pp_once": "250.0"})
     message = loader_error(folder / MODELS["risikolebensversicherung"], "TwiceProbe")
     assert "'expense_claim_pp_once' stands twice in" in message
     assert str(folder / "param_tariff_type.csv") in message
@@ -2399,7 +2385,7 @@ def test_param_rejects_an_item_twice_in_one_file(tmp_path):
 def test_param_rejects_a_core_item_in_the_tariff_type_file(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     model_dir = folder / MODELS["risikolebensversicherung"]
-    _add_params(model_dir / "CoreData" / "param_core.csv", {"expense_claim_pp_once": "250.0"})
+    add_layer_rows(model_dir / "CoreData" / "param_core.csv", {"expense_claim_pp_once": "250.0"})
     message = loader_error(model_dir, "CoreLockProbe")
     assert "'expense_claim_pp_once' is a core item of" in message
     assert str(folder / "param_tariff_type.csv") in message
@@ -2408,8 +2394,8 @@ def test_param_rejects_a_core_item_in_the_tariff_type_file(tmp_path):
 def test_param_rejects_a_core_item_in_the_tariff_file(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     model_dir = folder / MODELS["risikolebensversicherung"]
-    _add_params(model_dir / "CoreData" / "param_core.csv", {"probe_core": "0.125"})
-    _add_params(folder / "param_tariff.csv", {"probe_core": "0.25"})
+    add_layer_rows(model_dir / "CoreData" / "param_core.csv", {"probe_core": "0.125"})
+    add_layer_rows(folder / "param_tariff.csv", {"probe_core": "0.25"})
     message = loader_error(model_dir, "CoreLockTariffProbe")
     assert "'probe_core' is a core item of" in message
     assert str(folder / "param_tariff.csv") in message
@@ -2426,7 +2412,7 @@ def test_param_rejects_a_core_item_in_the_tariff_file(tmp_path):
 ])
 def test_param_rejects_a_value_that_is_no_finite_number(tmp_path, text, name, words):
     folder = product_copy(tmp_path, "risikolebensversicherung")
-    _add_params(folder / "param_tariff_type.csv", {"probe_value": text})
+    add_layer_rows(folder / "param_tariff_type.csv", {"probe_value": text})
     message = loader_error(folder / MODELS["risikolebensversicherung"], name)
     assert "'probe_value'" in message and words in message, message
     assert str(folder / "param_tariff_type.csv") in message
@@ -2440,7 +2426,7 @@ def test_param_rejects_an_item_padded_with_whitespace(tmp_path, item, name):
     """A padded item would be a key of its own and slip past the core lock; it is rejected,
     not stripped."""
     folder = product_copy(tmp_path, "risikolebensversicherung")
-    _add_params(folder / "param_tariff_type.csv", {item: "1.0"})
+    add_layer_rows(folder / "param_tariff_type.csv", {item: "1.0"})
     message = loader_error(folder / MODELS["risikolebensversicherung"], name)
     assert repr(item) in message and "padded with whitespace" in message, message
     assert str(folder / "param_tariff_type.csv") in message
@@ -2448,7 +2434,7 @@ def test_param_rejects_an_item_padded_with_whitespace(tmp_path, item, name):
 
 def test_param_rejects_an_empty_item(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
-    _add_params(folder / "param_tariff_type.csv", {"": "1.0"})
+    add_layer_rows(folder / "param_tariff_type.csv", {"": "1.0"})
     message = loader_error(folder / MODELS["risikolebensversicherung"], "EmptyItemProbe")
     assert "item '' in" in message, message
     assert str(folder / "param_tariff_type.csv") in message
@@ -2566,8 +2552,8 @@ def test_the_usage_scan_counts_a_core_cell_only_where_it_is_reachable(product_mo
 
 def test_the_usage_scan_reports_an_unused_item_in_each_product_layer(tmp_path):
     def edit(folder):
-        _add_params(folder / "param_tariff_type.csv", {"probe_unused": "1.5"})
-        _add_params(folder / "param_tariff.csv", {"probe_unused_tariff": "2.5"})
+        add_layer_rows(folder / "param_tariff_type.csv", {"probe_unused": "1.5"})
+        add_layer_rows(folder / "param_tariff.csv", {"probe_unused_tariff": "2.5"})
 
     copy = _usage_copy(tmp_path, "UnusedProbe", edit)
     try:
@@ -2728,7 +2714,7 @@ def test_a_core_item_read_by_one_product_is_used():
 def test_an_unused_core_item_is_named(tmp_path):
     def edit(folder):
         model_dir = folder / MODELS["risikolebensversicherung"]
-        _add_params(model_dir / "CoreData" / "param_core.csv", {"probe_core": "0.125"})
+        add_layer_rows(model_dir / "CoreData" / "param_core.csv", {"probe_core": "0.125"})
 
     copy = _usage_copy(tmp_path, "UnusedCoreProbe", edit)
     try:
@@ -3032,7 +3018,7 @@ def test_no_cost_item_stands_in_a_cost_table_and_a_layer(product, product_models
 ])
 def test_param_rejects_an_item_of_the_cost_table_in_a_layer(tmp_path, product, file):
     folder = product_copy(tmp_path, product)
-    _add_params(folder / file, {"charge_acq_bsum_once": "0.025"})
+    add_layer_rows(folder / file, {"charge_acq_bsum_once": "0.025"})
     message = loader_error(folder / MODELS[product], "CostTwiceProbe")
     assert "'charge_acq_bsum_once' stands in the cost table" in message
     assert str(folder / "charge_table.csv") in message

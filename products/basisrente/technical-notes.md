@@ -141,7 +141,7 @@ ruling, asserted by the conventions suite.
 | `model_point_table.csv` | `point_id` | the 25 attributes below | The policies. Exempt from the provenance rule: a model point is a configuration, not an assumption |
 | `surplus_table.csv` | `scenario_id`, `t` | `decl_rate`, `ann_bonus_rate` | The declared *laufende Verzinsung* in the *Aufschubphase* and the *Überschussrente* uplift in the *Rentenphase*, by scenario and projection year |
 | `rentenfaktor_table.csv` | `rf_scenario_id`, `age` | `rf_curr` | The insurer's *aktueller Rentenfaktor* at each conversion age, by scenario |
-| `charge_table.csv` | `tariff_id` | `charge_acq_bsum_once`, `charge_acq_sp_once`, `charge_admin_prem_inst`, `charge_admin_av_ann`, `charge_admin_pp_ann`, `terminal_bonus_rate`, `expense_acq_pp_once`, `comm_acq_bsum_once`, `comm_renew_prem_inst`, `expense_admin_pp_ann`, `expense_annuity_pp_ann` | One row per tariff: the charge scale and the insurer's own expense and commission scale |
+| `charge_table.csv` | `cost_group` | `charge_acq_bsum_once` | One row per cost group: the one cost item the groups differ in. The other charges, `terminal_bonus_rate` and the insurer's own expense and commission scale, equal in both groups, are rows of `param_tariff_type.csv` |
 | `behaviour_table.csv` | `beh_table_id`, `dur` | `bf_rate`, `zuz_take_up` | The two behavioural assumptions that vary by policy duration: the *Beitragsfreistellung* rate and the *Zuzahlung* take-up. **`dur` is the policy year, `duration(t) + 1`**, so "durations 1–5" below reads off the file directly |
 | `prem_freq_table.csv` | `prem_freq` | `instalments`, `prem_freq_load` | The premium payment frequencies: the instalments a year and the *Ratenzahlungszuschlag* on the *laufender Beitrag* |
 | `option_table.csv` | `option_id`, `option_key` | `factor` | One multiplicative factor per contractual option: `guarantee_period` and `survivor` → the reduction in the *Rentenfaktor* |
@@ -186,7 +186,7 @@ basis and provenance.
 | `guarantee_period_y` | int | *Rentengarantiezeit* in years from *Rentenbeginn*; 0 = none | 4 (10), 12 (20) |
 | `surv_annuity_rate` | rate | Survivor's annuity as a fraction of the main annuity; 0 = **rider off**, which is the base design | 3 (0.60), 12 (0.60) |
 | `buz_prem_share` | rate | Share of the **total** contribution attributable to a BUZ. Must satisfy `buz_prem_share < 0.50` [R1] | 11 (0.49, the boundary) |
-| `tariff_id` | str | Key into `charge_table.csv` | all |
+| `cost_group` | str | Key into `charge_table.csv` | all |
 | `beh_table_id` | str | Key into `behaviour_table.csv` | all |
 | `scenario_id` | str | Key into `surplus_table.csv` | all |
 | `rf_scenario_id` | str | Key into `rentenfaktor_table.csv` | 13 (`low`) |
@@ -377,7 +377,7 @@ best-estimate factor for a Basisrente, and the research file records the absence
 | Renewal commission `comm_renew_prem_inst` | **1,5 %** of premiums plus *Zuzahlungen* from policy year 2 | Market convention; no level established |
 | Maintenance expense `expense_admin_pp_ann` | **60,00 €** per in-force policy p.a., inflating | Placeholder |
 | Annuity administration `expense_annuity_pp_ann` | **36,00 €** per annuitant p.a., inflating | Placeholder; the payout phase is administratively cheaper than the accumulation phase |
-| Expense inflation `expense_infl` | **2,0 %** p.a. | The house-wide rate, the item `expense_infl` of the core file `core/Core/Data/param_core.csv`, not a column of `charge_table.csv` |
+| Expense inflation `expense_infl` | **2,0 %** p.a. | The house-wide rate, the item `expense_infl` of the core file `core/Core/Data/param_core.csv` |
 | *Zillmerung* spread `acq_spread_years` | **5** years | **Cited, not [std] — gap 8 is closed.** The AltZertG's own five-year rule (§ 1 Abs. 1 Satz 1 Nr. 8) sits in the *Altersvorsorgevertrag* definition and § 5a does not import it [R10]; but **VVG § 165 Abs. 2** computes the premium-free benefit on the *Rückkaufswert* of § 169 Abs. 3, whose floor is the reserve "*bei gleichmäßiger Verteilung der angesetzten Abschluss- und Vertriebskosten auf die ersten fünf Vertragsjahre*" [R14] — and a *Beitragsfreistellung* is the only exit this product has. Two retrieved wordings state it directly: GDV model conditions § 10 Abs. 1 (with the shorter premium term as the alternative) and CosmosDirekt LA 1079 A § 8 Abs. 1 [S12] [S1] |
 
 **No decrement other than death and the *Beitragsfreistellung* transition exists in this model.** No
@@ -963,7 +963,7 @@ so `prem_freq_load = 1.000`; `prem_dyn_rate = 0.02`; `zuzahlung_pp = 4,000.00 �
 `zuzahlung_end_dur = 22`; `paidup_at_init = 0`; `av_pp_init = 0.00 €`; `ann_pp_init = 0.00 €`;
 `rechnungszins = 0.0100`; `rentenfaktor_gtd = 28.00 €` per month per 10 000 €; `guarantee_period_y = 0`;
 `surv_annuity_rate = 0.00`, so the survivor rider is **off** and `claims_death(t) = 0` at every `t`;
-`buz_prem_share = 0.00`; `tariff_id = de_basis_std`; `beh_table_id = base`;
+`buz_prem_share = 0.00`; `cost_group = de_basis_std`; `beh_table_id = base`;
 `scenario_id = base`; `rf_scenario_id = base`. Hence `age(0) = 45`,
 `k_conv() = 67 − 45 = 22` and `t_conv() = 264`, `birth_year() = 2027 − 45 = 1982`,
 `omega_age() = 121`, `proj_len_y() = 121 − 45 = 76` and `proj_len() = 912`: twenty-two

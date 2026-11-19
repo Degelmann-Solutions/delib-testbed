@@ -109,9 +109,8 @@ move to a 0-based frame. Every time-like key column keeps its own scale:
 | `deckrv_table.csv` | `issue_year` | **unchanged** | The same cohort key |
 | (no file) the death rates of the table factory | attained age | **unchanged** | An attained age, reached through `age(t)`, and the rates stay **annual** |
 
-`cost_table.csv` and `prem_freq_table.csv` carry no time-like column at all — but
-`prem_freq_table.csv`'s `instalments` column, which the annual grid could not use for anything,
-now sets the premium collection cycle.
+`prem_freq_table.csv` carries no time-like column at all — but its `instalments` column,
+which the annual grid could not use for anything, now sets the premium collection cycle.
 
 ## The declared rate is a total, not an add-on — the German delta
 
@@ -338,7 +337,7 @@ collect the whole year's premium from a cohort measured at the year's start.
 
 ## Inputs are external files
 
-The seven input CSVs live **in this directory**, beside `run.py` — not inside the model
+The six input CSVs live **in this directory**, beside `run.py` — not inside the model
 folder. `KLV_DE_S/` holds nothing but formulas:
 
 ```
@@ -346,7 +345,6 @@ products/kapitallebensversicherung/
   model_point_table.csv        <- inputs live here
   lapse_table.csv
   surplus_rate_table.csv
-  cost_table.csv
   prem_freq_table.csv
   deckrv_table.csv
   param_tariff_type.csv
@@ -388,10 +386,9 @@ model shows logic changes only, and an input can be swapped in place with no for
 | (no file) | (the core's `mort_rate_at_age`, `mort_rate_tariff_at_age`) | `mort_table` in `param_tariff_type.csv` | First-order death rates by sex and age 0–120: the table `dav2008t_proxy` of the core's table factory (`docs/core.md`, "The table factory"), its parameters rows of `core/Core/Data/param_tables.csv`. **[std]** Makeham proxy `q(M, x) = 0.00022 + 2.8820182383e-05 × 1.10^x` for males and a three-year setback for females, `0.00016 + 2.1653029589e-05 × 1.10^x`, the male factor fixed by the anchor `q(M, 37) = 0.0012`. Stands in for **DAV 2008 T**, which is cited and never shipped [R14]. The table is shared with the other tariffs that choose it, so a tariff changes its mortality by its choice or its factor, not by the table's rows |
 | `lapse_file` | `lapse_table()` | `lapse_table.csv` | Two different things by policy year: `lapse_rate`, the surrender **decrement**, and `stornoabzug_rate`, the **deduction**. Both **[std]** — the only German data are market aggregates that count conversions to *beitragsfrei* alongside surrenders [R20] |
 | `surplus_rate_file` | `surplus_rate_table()` | `surplus_rate_table.csv` | `decl_rate`, `term_rate`, `ans_rate` by scenario and policy year; `base`, `low`, `nil`. The 2,70 % declared rate is [S11]; held level, and the other two paths, **[std]** |
-| `cost_file` | `cost_table()` | `cost_table.csv` | The first-order tariff loadings and the second-order expense basis **on the same row**, because the difference between them *is* the *Kostenüberschuss*. Ceilings cited [R7] [REG-R16] [R29]; every level **[std]** |
 | `prem_freq_file` | `prem_freq_table()` | `prem_freq_table.csv` | `instalments` and the *Ratenzahlungszuschlag* by frequency. The 2 / 3 / 5 % market convention [R28]; the single values **[std]** |
 | `deckrv_file` | `deckrv_table()` | `deckrv_table.csv` | Both DeckRV ceilings by `issue_year` — § 2's *Höchstrechnungszins* and § 4's *Höchstzillmersatz* — because both are **cohort facts** that travel with the contract [REG-R14] [REG-R15] [REG-R16] |
-| `param_file` | `param()` | `param_tariff_type.csv` | The tariff-type parameters by `item`, each with its `value`, `basis` and `provenance`: `mort_table`, the tariff's choice of its death table, `dav2008t_proxy`; `mort_be_factor` 0.75, the step from the first-order table to the best estimate, and `unisex_mix_male` 0.5, the male share of the unisex tariff blend, are **[std]**; the house-wide, technical and statutory items, the check tolerance `check_tol` (a float comparison tolerance, not an actuarial assumption), the § 169 Abs. 3 spread `surr_spread_years` and the § 161 window `suicide_years` among them, are in the core file `core/Core/Data/param_core.csv`, read by the same `param()`; `uv run python tools/params.py kapitallebensversicherung` lists every item the tariff reads with its value, layer, basis and provenance |
+| `param_file` | `param()` | `param_tariff_type.csv` | The tariff-type parameters by `item`, each with its `value`, `basis` and `provenance`: `mort_table`, the tariff's choice of its death table, `dav2008t_proxy`; `mort_be_factor` 0.75, the step from the first-order table to the best estimate, and `unisex_mix_male` 0.5, the male share of the unisex tariff blend, are **[std]**; the first-order tariff loadings and the second-order expense basis, `load_*`, `expense_*` and `comm_*`, stand **on the same level** as rows of this file, because the difference between them *is* the *Kostenüberschuss*: the tariff has one cost row, so it has no cost table (ceilings cited [R7] [REG-R16] [R29]; every level **[std]**); the house-wide, technical and statutory items, the check tolerance `check_tol` (a float comparison tolerance, not an actuarial assumption), the § 169 Abs. 3 spread `surr_spread_years` and the § 161 window `suicide_years` among them, are in the core file `core/Core/Data/param_core.csv`, read by the same `param()`; `uv run python tools/params.py kapitallebensversicherung` lists every item the tariff reads with its value, layer, basis and provenance |
 
 Every file but the model point table carries a per-row `provenance` column, which is this
 library's second ruling and is machine-checked.

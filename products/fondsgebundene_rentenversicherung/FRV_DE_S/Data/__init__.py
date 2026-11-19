@@ -98,9 +98,11 @@ is generational and is likewise cited and not shipped: a replacement must preser
 
 ``charge_table.csv``, ``lapse_table.csv`` and ``fund_scenario_table.csv`` are
 standardizations of the same kind, each row carrying its own rationale in the
-``provenance`` column. The one anchor in the charge stack is the *Höchstzillmersatz* of
-25 ‰ of the *Beitragssumme*, and ``std_gross`` takes the cap rather than a guessed
-interior point.
+``provenance`` column. ``charge_table.csv`` holds one row per cost group, keyed by
+``cost_group``, with the charges the four groups differ in; the acquisition spread
+``acq_spread_years``, 5 in every group, is a row of ``param_tariff_type.csv``. The one
+anchor in the charge stack is the *Höchstzillmersatz* of 25 ‰ of the *Beitragssumme*, and
+``std_gross`` takes the cap rather than a guessed interior point.
 """
 
 from modelx.serialize.jsonvalues import *
@@ -161,10 +163,10 @@ def fund_scenario_table_dict():
 
 
 def charge_table_rows():
-    """The core's ``charge_table()`` as a dict by row: ``{charge_id: {column: value}}``.
+    """The core's ``charge_table()`` as a dict by row: ``{cost_group: {column: value}}``.
 
     Built once per model, like the core's ``model_point_table_dict``; ``Projection.charge_row``
-    returns the row of the policy's ``charge_id``, which its callers index by column.  The
+    returns the row of the policy's ``cost_group``, which its callers index by column.  The
     row is shared and read-only.
     """
     return charge_table().to_dict("index")

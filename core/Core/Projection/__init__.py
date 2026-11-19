@@ -259,19 +259,12 @@ def age(t):
 
 
 def omega_age():
-    """omega: the limiting age, from the product's *param_tariff_type.csv*.
+    """omega: the limiting age, the end age of the table of the main mortality role.
 
-    The first age nobody reaches: the death rate is 1 at ``omega_age() - 1``, so a
-    projection run to it ends with no survivors.
-    """
-    return data.param("omega_age")                                   # noqa: F821
-
-
-def omega_age_table():
-    """The limiting age read off the table of the main mortality role, its end age.
-
-    The first age the table has nobody reach.  A product whose mortality comes from the
-    table factory overrides ``omega_age()`` with it.
+    The first age nobody reaches: the table's death rate is 1 at ``omega_age() - 1``, so a
+    projection run to it ends with no survivors.  Read off the table factory,
+    ``tables.end_age(mort_table_name())``; a product whose lifelong phase stands on the
+    table of another role overrides it with that role's end age.
     """
     return tables.end_age(mort_table_name())                         # noqa: F821
 

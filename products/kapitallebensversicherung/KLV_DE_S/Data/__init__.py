@@ -5,7 +5,7 @@
 
 """Input data shared by every by-policy projection.
 
-The seven input CSVs are read here, **once per model**, and referenced from
+The six input CSVs are read here, **once per model**, and referenced from
 :mod:`~.KLV_DE_S.Projection` as ``data``. :mod:`~.KLV_DE_S.Projection` is parameterized by
 ``point_id``, so each ``Projection[N]`` is a separate ItemSpace with its own cells cache;
 if the readers lived there, every model point would re-read every file. Holding them in an
@@ -32,7 +32,6 @@ Reference                 Cells                         File
 model_point_file          model_point_table()           model_point_table.csv
 lapse_file                lapse_table()                 lapse_table.csv
 surplus_rate_file         surplus_rate_table()          surplus_rate_table.csv
-charge_file               charge_table()                cost_table.csv
 prem_freq_file            prem_freq_table()             prem_freq_table.csv
 deckrv_file               deckrv_table()                deckrv_table.csv
 param_file                param()                       param_tariff_type.csv
@@ -40,8 +39,8 @@ param_file                param()                       param_tariff_type.csv
 
 Beside each reader stands a dict cell ``<reader>_dict()``, the same table as plain Python
 dicts by column, built once per model, which the projection's lookups read instead of
-``DataFrame.loc``: the core's for ``model_point_table``, ``lapse_table``,
-``charge_table`` and ``prem_freq_table``, this space's
+``DataFrame.loc``: the core's for ``model_point_table``, ``lapse_table`` and
+``prem_freq_table``, this space's
 ``surplus_rate_table_dict`` with ``surplus_rate_years``, the policy-year range of each
 scenario, and ``deckrv_table_dict``.
 
@@ -92,7 +91,7 @@ the *Risikoüberschuss*. The model does not compute the *Risikoüberschuss*, and
 bases must not be crossed: ``mort_rate_tariff_at_age``, the unisex blend of the table,
 prices and reserves, ``mort_rate`` projects.
 
-.. rubric:: The other six tables
+.. rubric:: The other five tables
 
 ``lapse_table.csv`` carries two duration-keyed rates that are easily confused.
 ``lapse_rate`` is the **surrender decrement** — the only voluntary exit modelled — and
@@ -112,10 +111,11 @@ book, held level for the whole projection — a modelling choice, not a forecast
 ``nil`` exist so that the sensitivity is exercisable rather than argued, ``nil`` resting on
 the sourced statement that the surplus may be zero euros.
 
-``cost_table.csv`` deliberately carries the **first-order tariff loadings and the
-second-order expense assumptions on the same row**, because the difference between them
-*is* the *Kostenüberschuss*. ``deckrv_table.csv`` carries both DeckRV ceilings — § 2's
-*Höchstrechnungszins* and § 4's *Höchstzillmersatz* — keyed by ``issue_year``, both being
+``param_tariff_type.csv`` deliberately carries the **first-order tariff loadings and the
+second-order expense assumptions on the same level**, one row per item, because the
+difference between them *is* the *Kostenüberschuss*; the tariff has one cost row, so there
+is no cost table to choose a row from. ``deckrv_table.csv`` carries both DeckRV ceilings —
+§ 2's *Höchstrechnungszins* and § 4's *Höchstzillmersatz* — keyed by ``issue_year``, both being
 cohort facts that travel with the contract for its whole term. ``prem_freq_table.csv``
 carries the *Ratenzahlungszuschlag*, which applies only where the sub-annual premium is an
 instalment of an annual *Versicherungsperiode* (``unecht``) and not where the period is
@@ -150,22 +150,6 @@ def surplus_rate_table():
     return pd.read_csv(                                              # noqa: F821
         input_dir() / surplus_rate_file,                             # noqa: F821
         index_col=["scenario_id", "policy_year"])
-
-
-def charge_table_index():
-    """The index column of *cost_table.csv*: ``cost_id``.
-
-    The table holds the tariff loadings and the expense basis by ``cost_id``: first order
-    and second order on the same row — ``load_acq_bsum_once``, ``load_admin_prem_inst``
-    and ``load_admin_sum_ann`` are what the tariff charges, ``expense_acq_pp_once``,
-    ``expense_admin_pp_ann``, ``expense_claim_pp_once``, ``comm_acq_bsum_once`` and
-    ``comm_renew_prem_inst`` are what the insurer expects to
-    spend — because the difference between them **is** the *Kostenüberschuss*.
-
-    Override reason: the tariff loadings and the expense basis share one row per
-    ``cost_id``, products/kapitallebensversicherung/technical-notes.md:215
-    """
-    return "cost_id"
 
 
 def deckrv_table():
@@ -221,8 +205,6 @@ model_point_file = "model_point_table.csv"
 lapse_file = "lapse_table.csv"
 
 surplus_rate_file = "surplus_rate_table.csv"
-
-charge_file = "cost_table.csv"
 
 prem_freq_file = "prem_freq_table.csv"
 

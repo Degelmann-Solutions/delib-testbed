@@ -142,7 +142,6 @@ Every column of `model_point_table.csv` is published as a cells of the same name
 | `unterjaehrig_form` | enum {echt, unecht} | Whether the sub-annual premium is a genuine sub-annual *Versicherungsperiode* (**no** loading) or an instalment of an annual one (loaded) [R28] | 4 / 5 |
 | `rechnungszins` | rate | The contract's own guaranteed technical rate, fixed at conclusion [REG-R14] | 10 (1.75%) |
 | `zillmer_on` | 0/1 | Whether the *Deckungskapital* is *gezillmert*. **[std]** — § 4 DeckRV sets a ceiling, not a mandate [R7], and no retrieved carrier wording is un-zillmered | 13 (0) |
-| `cost_id` | str | Key into `cost_table.csv`: the tariff loadings and the expense basis | all |
 | `surplus_use` | enum {ansammlung, bonus, beitragsverrechnung} | *Überschussverwendung* [R28] | 8, 9 |
 | `scenario_id` | str | Key into `surplus_rate_table.csv`: the declared-rate path | 3 (low), 14 (nil) |
 | `rating_factor` | float | *Risikozuschlag* multiplier on the risk premium; 1.00 at standard rates [R5] | 14 (1.50) |
@@ -212,13 +211,12 @@ per row: delib's second ruling, machine-checked.
 | (no file) the table `dav2008t_proxy` of the core's table factory, chosen by `mort_table` in `param_tariff_type.csv` | `sex`, attained age | the first-order death rate, `tables.q`; its parameters and their `provenance` are rows of `core/Core/Data/param_tables.csv` |
 | `lapse_table.csv` | `policy_year` (**1-based label**, read as `policy_year(t) = t + 1`) | `lapse_rate`, `stornoabzug_rate`, `provenance` |
 | `surplus_rate_table.csv` | `scenario_id`, `policy_year` (**1-based label**, read as `t + 1`) | `decl_rate`, `term_rate`, `ans_rate`, `provenance` |
-| `cost_table.csv` | `cost_id` | `load_acq_bsum_once`, `load_admin_prem_inst`, `load_admin_sum_ann`, `expense_acq_pp_once`, `expense_admin_pp_ann`, `expense_claim_pp_once`, `comm_acq_bsum_once`, `comm_renew_prem_inst`, `provenance` |
 | `prem_freq_table.csv` | `prem_freq` | `instalments`, `prem_freq_load`, `provenance` |
 | `deckrv_table.csv` | `issue_year` | `hoechstrechnungszins`, `hoechstzillmersatz`, `provenance` |
-| `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance` of the tariff-type parameters; the statutory items `surr_spread_years` and `suicide_years` are in the core file `core/Core/Data/param_core.csv`; `uv run python tools/params.py kapitallebensversicherung` lists every item the tariff reads with its value, layer, basis and provenance |
+| `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance` of the tariff-type parameters, the tariff loadings and the expense basis among them; the statutory items `surr_spread_years` and `suicide_years` are in the core file `core/Core/Data/param_core.csv`; `uv run python tools/params.py kapitallebensversicherung` lists every item the tariff reads with its value, layer, basis and provenance |
 
-`cost_table.csv` deliberately carries the **first-order tariff loadings and the second-order expense
-assumptions on the same row**, because the difference between them *is* the *Kostenüberschuss*, and
+`param_tariff_type.csv` deliberately carries the **first-order tariff loadings and the second-order expense
+assumptions on the same level**, because the difference between them *is* the *Kostenüberschuss*, and
 `deckrv_table.csv` carries both DeckRV ceilings — § 2's *Höchstrechnungszins* and § 4's
 *Höchstzillmersatz* — keyed by `issue_year`, both being cohort facts that travel with the contract
 [REG-R14] [REG-R15] [REG-R16]. The scalars that are not tables are rows of `param_tariff_type.csv`, and the
@@ -369,10 +367,10 @@ a maturity. Unlike frlib's term product this is not a bookkeeping split — a fi
 the § 169 value while a maturity pays the sum insured plus surplus — so it decides a real payment, and
 is stated as an assumption and asserted as pitfall 18.
 
-**Expenses, commission and the tariff loadings, side by side.** `cost_table.csv` carries both, on one
-row per `cost_id`, because the difference between them **is** the *Kostenüberschuss*:
+**Expenses, commission and the tariff loadings, side by side.** `param_tariff_type.csv` carries both,
+on one level, because the difference between them **is** the *Kostenüberschuss*:
 
-| Input | Basis `std_2026` | Class | Tag |
+| Input | Value | Class | Tag |
 |---|---|---|---|
 | `load_acq_bsum_once` | 25 ‰ of the *Beitragssumme*, zillmered | first order | ceiling [R7] [REG-R16]; level **[std]** |
 | `load_admin_prem_inst` | 3.0% of the *Bruttobeitrag*, over the *Beitragszahlungsdauer* | first order | form [R28]; level **[std]** |
@@ -381,7 +379,7 @@ row per `cost_id`, because the difference between them **is** the *Kostenübersc
 | `comm_acq_bsum_once` | 2.5% of the *Beitragssumme* at conclusion | second order | set at the 25 ‰ *zillmering* ceiling [R7], which is **not** a commission cap — "Eine Deckelung der Provisionen ist gesetzlich nicht vorgesehen" [R29]; **no carrier commission rate is established**, so **[std]** with no observation behind it |
 | `comm_renew_prem_inst` | 1.5% of the *Bruttobeitrag* from year 2 (*Bestandsprovision*) | second order | mechanism [R29]; level **[std]** |
 | `expense_admin_pp_ann` | 45 EUR per in-force policy p.a. | second order | **[std]** |
-| `expense_infl` | 2.0% p.a., the core item, not a column of `cost_table.csv` | second order | **[std]** |
+| `expense_infl` | 2.0% p.a., the core item of `core/Core/Data/param_core.csv` | second order | **[std]** |
 | `expense_claim_pp_once` | 120 EUR per death, maturity or surrender claim | second order | **[std]** |
 
 **No charge level of any kind was established for any German carrier** (gap 7). The levels are
@@ -941,7 +939,7 @@ guaranteed death sum equals the guaranteed survival sum and the contract is the 
 auf den Todes- und Erlebensfall* proper; `prem_freq` **annual** and `unterjaehrig_form` **unecht**, so
 `prem_freq_load = 1.000` and the *Ratenzahlungszuschlag* is inert; `rechnungszins` **1.00%**, the
 *Höchstrechnungszins* for new business written from 1 January 2025 [R7] [REG-R15]; `zillmer_on` **1**;
-`cost_id` **`std_2026`**; `surplus_use` **`ansammlung`**; `scenario_id` **`base`**; `rating_factor`
+`surplus_use` **`ansammlung`**; `scenario_id` **`base`**; `rating_factor`
 **1.00**; `av_sur_pp_init` **0.00**; `bonus_si_init` **0.00**; `term_bonus_pp_init` **0.00**;
 `bfz_year` **0**, so no *Beitragsfreistellung* is elected. The *Bruttobeitrag* is **not** a model point column: it is derived
 by the equivalence principle above and reported in the table, because **no German endowment premium

@@ -73,10 +73,10 @@ MIT, see [LICENSE](LICENSE). Files copied from lifelib keep lifelib's licence no
 
 ## Status
 
-Phases 1 to 3 are done; phase 4 is under way, starting with the initiative *parameter tables*: each tariff's parameters in layered files read through one loader, then a mortality table factory.
+Phases 1 to 3 are done; phase 4 is under way, and its first initiative, *parameter tables*, is built: each tariff's parameters in layered files read through one loader, then a mortality table factory.
 
 - **Phase 1.** The ten products are imported unchanged from lifelib at commit `fb1d195ab5423031cfd6d2548fe25a86b76cd0a1` (2026-09-26); the `delib` tree is identical at `b706d8bbab530cc9ef94e06600e9c9d1468d8cb1` (v0.17.2, 2026-10-10). Every product runs on its own shipped model points with all built-in checks true, and its results are stored as its baseline.
 - **Phases 2 and 3.** The runner, the common core and the night run are delivered on `main` (table above).
-- **Phase 4.** The parameters of all ten products are in layered files, read through `param()` ([docs/core.md](docs/core.md), "The parameter files"); the night forecast on that code is 4.7 h at `02b20b1` (2026-11-10), measured before the premium columns of PR #53 and not remeasured since ([docs/performance.md](docs/performance.md), "Parameter tables: night forecast on the final code").
+- **Phase 4.** The initiative *parameter tables* is built, both of its epics: the parameters of all ten products are in layered files, read through `param()` ([docs/core.md](docs/core.md), "The parameter files"); every death rate of the ten products comes through `q(...)` from the mortality table factory, eleven shared parametric tables that each tariff chooses by name ([docs/core.md](docs/core.md), "The table factory"); and the cost tables of KLV, Basis, RV and FRV have one shape, each cost item on one level ([docs/core.md](docs/core.md), "Contract data and charges"). M = 5,335 (M_core = 260, Σ M_p = 5,075; [docs/roadmap.md](docs/roadmap.md), "Where the parameter tables stand"); the night forecast is 5.4 h at `7533922` (2026-11-19, [docs/performance.md](docs/performance.md), "Mortality table factory: night forecast after the last switch").
 
 The wall time of one runner process per product, then and now, is in [docs/performance.md](docs/performance.md), "Runner wall time per product".

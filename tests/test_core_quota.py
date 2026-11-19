@@ -20,28 +20,28 @@ each writing its figures with ``--json``; the tests read those figures and call 
   the smoker status to a role are product cells. BU's hook for
   its second role, ``mort_rate_dis_at_age``, is a product cell, and its tariff rates execute
   the core's unisex blend. RV, on the generational table, executes the trend cells of the
-  factory too, the core's tariff rate on the unisex blend and ``omega_age_table``; its
-  ``birth_year`` and ``omega_age`` are product cells. KLV executes the core's tariff rate on
+  factory too, the core's tariff rate on the unisex blend and ``omega_age``, the end age of
+  its table; its ``birth_year`` and ``horizon_age`` are product cells. KLV executes the core's tariff rate on
   the unisex blend, which its premium and its reserves read, and no mortality cell of its
   own but the factor. FRV executes the core's tariff rate on the unisex blend below its
   *Risikobeitrag* and, of its own mortality cells, the factor and the two linear monthly
   rates. Basis, the second reader of the generational table, executes its trend cells, the
-  core's best estimate on the own sex and ``omega_age_table``, and no tariff rate from the
-  table; its ``birth_year``, ``omega_age`` and ``mort_be_factor`` are product cells.
+  core's best estimate on the own sex and ``omega_age``, and no tariff rate from the
+  table; its ``birth_year``, ``horizon_age`` and ``mort_be_factor`` are product cells.
   Riester, whose main role is a period table and whose second role the generational one,
   executes the trend cells, the core's best estimate of the accumulation on the own sex and
   the unisex blend of its annuity factor; its ``birth_year``, ``omega_age``, its override of
   ``mort_rate_table``, the payout hook ``annuity_mort_rate``, ``mort_rate`` and
-  ``mort_be_factor`` are product cells, and ``omega_age_table`` does not run.
+  ``mort_be_factor`` are product cells, its ``omega_age`` on the table of its second role.
   Sofort, with two lives on the generational table, executes its trend cells, the core's
-  ``mort_table_name``, ``omega_age_table`` and unisex blend; its hook ``mort_rate_gen``, the
-  trend term ``mort_be_trend``, ``mort_be_factor``, ``omega_age``, ``birth_year`` and the
+  ``mort_table_name``, ``omega_age`` and unisex blend; its hook ``mort_rate_gen``, the
+  trend term ``mort_be_trend``, ``mort_be_factor``, ``birth_year`` and the
   per-life rates are product cells, and the core's ``mort_rate_table`` and
   ``mort_rate_at_age`` do not run.
   Pflege, whose care grades select their tables, executes the core's best estimate of an
-  active life on the own sex, ``omega_age_table`` and the unisex blend; the cell that maps a
+  active life on the own sex, ``omega_age`` and the unisex blend; the cell that maps a
   state to its table, ``mort_table_grade``, the rate and force of a grade, the blend of a
-  state's table rates, the two tariff death rates and ``omega_age`` are product cells.
+  state's table rates and the two tariff death rates are product cells.
 - A scratch copy of Index on a fixture table executes the same cells with the fixture law in
   place of ``makeham``; one with a ``mort_rate_at_age`` of its own and no choice executes
   neither the factory's cells nor the hooks, and its override counts as a product cell.
@@ -185,10 +185,10 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
         assert executed == FACTORY_CELLS | {"tables.gompertz_force"}
         assert executed <= set(figures["core_cells"])
         assert FACTORY_HOOKS | {"mort_rate_at_age", "mort_rate_base", "mort_rate",
-                                "mort_be_factor", "mort_be_trend", "omega_age_table",
+                                "mort_be_factor", "mort_be_trend", "omega_age",
                                 "unisex_blend", "unisex_mix_male", "sex"} <= set(
             figures["core_cells"])
-        own = {"omega_age", "horizon_age", "mort_table_grade", "mort_rate_care",
+        own = {"horizon_age", "mort_table_grade", "mort_rate_care",
                "mort_force_care", "tar_mort_rate_blend", "mort_rate_tariff",
                "tar_mort_rate_care"}
         assert own <= set(figures["executed_cells"])
@@ -200,17 +200,17 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
             "mort_actv_load_first", "mort_care_load_first", "mort_force", "mort_force_care",
             "mort_rate_care", "mort_rate_tariff", "mort_table_grade", "tar_mort_rate_blend",
             "tar_mort_rate_care"]
-        assert (figures["executed"], figures["core"]) == (147, 53)
+        assert (figures["executed"], figures["core"]) == (146, 53)
         return
     if product == "sofortrente":
         # two lives on the generational table through a hook of its own, the main role named
-        # by the core's ``mort_table_name``, the end age the core's ``omega_age_table``, the
+        # by the core's ``mort_table_name``, the end age the core's ``omega_age``, the
         # tariff rate the core's unisex blend; the trend term reads the factory's trend
         assert executed == FACTORY_CELLS | {"tables.makeham"} | trend
         assert executed <= set(figures["core_cells"])
-        assert {"mort_table_name", "omega_age_table", "unisex_blend",
+        assert {"mort_table_name", "omega_age", "unisex_blend",
                 "unisex_mix_male"} <= set(figures["core_cells"])
-        own = {"birth_year", "omega_age", "horizon_mths", "mort_rate_gen", "mort_be_trend",
+        own = {"birth_year", "horizon_mths", "mort_rate_gen", "mort_be_trend",
                "mort_be_factor", "mort_rate", "mort_rate_mth", "mort_rate_tariff",
                "mort_rate_tariff_mth"}
         assert own <= set(figures["executed_cells"])
@@ -221,7 +221,7 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
                       if "mort" in name) == [
             "mort_be_factor", "mort_be_trend", "mort_rate", "mort_rate_gen", "mort_rate_mth",
             "mort_rate_tariff", "mort_rate_tariff_mth"]
-        assert (figures["executed"], figures["core"]) == (108, 35)
+        assert (figures["executed"], figures["core"]) == (107, 35)
         return
     if product == "riester_rente":
         # two roles on two kinds of table: the period table of the accumulation through the
@@ -235,7 +235,6 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
                "mort_be_factor", "omega_age", "horizon_age", "ann_factor"}
         assert own <= set(figures["executed_cells"])
         assert not own & set(figures["core_cells"])
-        assert "omega_age_table" not in figures["executed_cells"]
         assert not {"mort_rate_tariff", "mort_rate_tariff_at_age",
                     "calendar_year"} & set(figures["executed_cells"])
         assert sorted(name for name in set(figures["executed_cells"]) - set(figures["core_cells"])
@@ -280,26 +279,26 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
     elif product == "basisrente":
         # no tariff rate from the table: the best estimate on the own sex is the core's, the
         # end age the table's; the cohort, the horizon and the factor are its own cells
-        assert {"omega_age_table", "mort_rate_at_age", "mort_rate_base", "mort_be_trend",
+        assert {"omega_age", "mort_rate_at_age", "mort_rate_base", "mort_be_trend",
                 "mort_rate", "mort_rate_mth", "sex"} <= set(figures["core_cells"])
         assert not blend & set(figures["executed_cells"])
         assert not {"mort_rate_tariff", "mort_rate_tariff_base",
                     "mort_load_tariff"} & set(figures["executed_cells"])
-        assert {"omega_age", "birth_year", "horizon_age"} <= set(figures["executed_cells"])
-        assert not {"omega_age", "birth_year", "horizon_age"} & set(figures["core_cells"])
+        assert {"birth_year", "horizon_age"} <= set(figures["executed_cells"])
+        assert not {"birth_year", "horizon_age"} & set(figures["core_cells"])
         assert sorted(name for name in set(figures["executed_cells"]) - set(figures["core_cells"])
                       if name.startswith("mort")) == ["mort_be_factor"]
         assert "calendar_year" not in figures["executed_cells"]
-        assert (figures["executed"], figures["core"]) == (127, 62)
+        assert (figures["executed"], figures["core"]) == (126, 62)
     elif generational:
         # the tariff rate is the core's, on the unisex blend, and the end age the table's
         tariff = {"mort_rate_tariff", "mort_rate_tariff_base", "mort_load_tariff"}
-        assert blend | tariff | {"omega_age_table", "mort_rate_base"} <= set(
+        assert blend | tariff | {"omega_age", "mort_rate_base"} <= set(
             figures["core_cells"])
-        assert {"omega_age", "birth_year", "horizon_age"} <= set(figures["executed_cells"])
-        assert not {"omega_age", "birth_year", "horizon_age"} & set(figures["core_cells"])
+        assert {"birth_year", "horizon_age"} <= set(figures["executed_cells"])
+        assert not {"birth_year", "horizon_age"} & set(figures["core_cells"])
         assert "improve_rate" not in figures["executed_cells"]
-        assert (figures["executed"], figures["core"]) == (175, 75)
+        assert (figures["executed"], figures["core"]) == (174, 75)
     elif product == "kapitallebensversicherung":
         # the tariff rate that prices and reserves is the core's, on the unisex blend; of
         # its own mortality cells only the factor is left
@@ -308,7 +307,8 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
             figures["core_cells"])
         assert sorted(name for name in set(figures["executed_cells"]) - set(figures["core_cells"])
                       if "mort" in name) == ["mort_be_factor"]
-        assert (figures["executed"], figures["core"]) == (184, 94)
+        assert "cost_id" not in figures["executed_cells"]   # went with its cost table
+        assert (figures["executed"], figures["core"]) == (183, 94)
     elif product == "fondsgebundene_rentenversicherung":
         # the tariff rate below the Risikobeitrag is the core's, on the unisex blend, and the
         # base of the best estimate the core's, on the own sex; its own mortality cells are

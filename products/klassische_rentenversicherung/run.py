@@ -29,9 +29,9 @@ print("premium {:,.2f} EUR p.a. x {} y (freq load {:.3f})   Beitragssumme {:,.2f
       "alpha {:,.2f}".format(
           proj.prem_pp(proj.k_start()), mp["prem_term_y"],
           proj.prem_freq_load(), proj.beitragssumme(), proj.zillmer_amount()))
-print("Rechnungszins {:.2%}   declared {:.2%}   bonus {:.2%}   charge set {}".format(
+print("Rechnungszins {:.2%}   declared {:.2%}   bonus {:.2%}   cost group {}".format(
     proj.rechnungszins(), proj.decl_rate(proj.k_start()),
-    proj.bonus_rate(proj.k_start()), mp["charge_id"]))
+    proj.bonus_rate(proj.k_start()), mp["cost_group"]))
 print("Rentenbeginn: last accumulation month t = {} (age {}):  capital {:,.2f}  "
       "Rentenfaktor max({:.2f}, {:.2f}) = {:.2f}  ->  garantierte Rente {:,.2f} "
       "EUR/month".format(

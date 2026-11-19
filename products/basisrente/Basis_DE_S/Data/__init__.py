@@ -101,12 +101,14 @@ range or time series exists anywhere in the delib corpus, so both this table and
 guaranteed factors on the model points are **[std]**; the ``low`` scenario exists so that
 model point 13 exercises the other branch of ``max(garantiert, aktuell)``.
 
-``charge_table.csv`` holds one row per tariff: the four charges struck against the
-policyholder's *Deckungskapital* (the *Zillmerung* rate, the premium charge β, the
-reserve charge γ and the *Stückkosten*), the *Schlussüberschussanteil* rate, and the
-insurer's own expense and commission scale. Two tariffs ship, differing only in
-``charge_acq_bsum_once``: 25 ‰ of the *Beitragssumme* for business written from 1 January 2015 and
-40 ‰ for the pre-LVRG in-force cohorts.
+``charge_table.csv`` holds one row per cost group, keyed by ``cost_group``, with the one
+cost item the groups differ in, the *Zillmerung* rate ``charge_acq_bsum_once``: 25 ‰ of
+the *Beitragssumme* for business written from 1 January 2015 (``de_basis_std``) and 40 ‰
+for the pre-LVRG in-force cohorts (``de_basis_zill40``). Every other charge struck against
+the policyholder's *Deckungskapital* (the premium charge β, the reserve charge γ, the
+*Stückkosten*, the *Zuzahlung* charge), the *Schlussüberschussanteil* rate and the
+insurer's own expense and commission scale are equal in both groups and are rows of
+``param_tariff_type.csv``.
 
 ``behaviour_table.csv`` holds the two behavioural assumptions that vary by duration —
 the *Beitragsfreistellung* rate and the *Zuzahlung* take-up. **Its ``dur`` index is the
@@ -138,21 +140,6 @@ _spaces = []
 
 # ---------------------------------------------------------------------------
 # Cells
-
-def charge_table_index():
-    """The index column of *charge_table.csv*: ``tariff_id``.
-
-    The table is the charge, expense and commission scale by tariff.  The first four
-    columns are deductions from the policyholder's *Deckungskapital* and are therefore
-    insurer **income**; the last five are the insurer's own **outgo**.  Booking a charge as
-    both is the fourth listed modeling pitfall, and keeping the two groups in one file is
-    what makes the split visible.
-
-    Override reason: the charge scale is one row per tariff, keyed by ``tariff_id``,
-    products/basisrente/technical-notes.md:144
-    """
-    return "tariff_id"
-
 
 def behaviour_table():
     """The duration-varying behavioural assumptions, from *behaviour_table.csv*.

@@ -143,7 +143,7 @@ The right-hand column names the points that exercise each attribute away from it
 | `prem_term_y` | int | Premium-paying **years** from inception, a count: premiums fall in policy years `k < prem_term_y` | 4 (20 of 22), 5 (25 of 27) |
 | `aufschub_y` | int | Deferment in **years**, a count: *Rentenbeginn* at the end of month `t = 12 × aufschub_y − 1` | all |
 | `rechnungszins` | rate | The contract's *Rechnungszins* — **a model-point attribute, not a global assumption** [R7] [REG-R14] [REG-R15] | 6 (2,75 %), 14 (0,90 %) |
-| `charge_id` | str | Key into `charge_table.csv`; `zillmer_25` or the pre-2015 `zillmer_40` [REG-R16] | 6 (`zillmer_40`) |
+| `cost_group` | str | Key into `charge_table.csv`; `zillmer_25` or the pre-2015 `zillmer_40` [REG-R16] | 6 (`zillmer_40`) |
 | `annuity_rate_guar` | EUR/month per 10 000 € | *garantierter Rentenfaktor*, fixed at inception [S8] [R24] | all (levels **[std]**) |
 | `rf_scenario_id` | str | Key into `rentenfaktor_table.csv` for the *aktueller Rentenfaktor* | 5 (`high`), 13 (`low`) |
 | `scenario_id` | str | Key into `decl_rate_table.csv` for the declared *laufende Verzinsung* | 14 (`low`) |
@@ -220,7 +220,7 @@ table carries a per-row `provenance` column, this library's second ruling.
 | (no mortality file) | — | the death rates come from the table `dav2004r_proxy` of the core's table factory, chosen by the row `mort_table` of `param_tariff_type.csv`; its parameters are rows of `core/Core/Data/param_tables.csv` |
 | `decl_rate_table.csv` | `scenario_id`, `calendar_year` | `decl_rate`, `provenance` |
 | `rentenfaktor_table.csv` | `rf_scenario_id`, `age` | `annuity_rate_curr`, `provenance` |
-| `charge_table.csv` | `charge_id`, `item` | `value`, `provenance` |
+| `charge_table.csv` | `cost_group` | `charge_acq_bsum_once`, `stornoabzug_rate`, `provenance` |
 | `lapse_table.csv` | `policy_year` | `lapse_rate`, `provenance` |
 | `prem_freq_table.csv` | `prem_freq` | `instalments` (**recorded, not applied**), `prem_freq_load`, `provenance` |
 | `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance` |
@@ -384,18 +384,18 @@ rate.
 **Charges — and the distinction from expenses is load-bearing.** A *charge* is a deduction the tariff
 makes from the premium or the *Deckungskapital*; it moves money **inside** the contract and produces
 **no cash flow**. An *expense* is the insurer's actual outgo and is a cash flow. Confusing them is
-pitfall 6. `charge_table.csv` is keyed by `(charge_id, item)` so each number carries its own
-`provenance` tag:
+pitfall 6. `charge_table.csv` holds one row per cost group, keyed by `cost_group`, with the items the
+groups differ in; the items equal in both are rows of `param_tariff_type.csv`, each with its `provenance`:
 
 | Item | `zillmer_25` | `zillmer_40` | Basis |
 |---|---|---|---|
 | `charge_acq_bsum_once` | 0,025 of the *Beitragssumme* | 0,040 | cap [REG-R16]; use of the cap **[std]** |
 | (not in the table: core item `surr_spread_years`, 5) | — | — | § 169 Abs. 3 [REG-R28] |
-| `charge_admin_prem_inst` | 0,040 of each gross premium | 0,040 | **[std]** |
-| `charge_admin_av_ann` | 0,0020 p.a. of the *Deckungskapital* | 0,0020 | **[std]** |
-| `charge_admin_pup_av_ann` | 0,0030 p.a. while premium-free | 0,0030 | **[std]** |
+| `charge_admin_prem_inst` (`param_tariff_type.csv`) | 0,040 of each gross premium | 0,040 | **[std]** |
+| `charge_admin_av_ann` (`param_tariff_type.csv`) | 0,0020 p.a. of the *Deckungskapital* | 0,0020 | **[std]** |
+| `charge_admin_pup_av_ann` (`param_tariff_type.csv`) | 0,0030 p.a. while premium-free | 0,0030 | **[std]** |
 | `stornoabzug_rate` | 0,020 of the pre-deduction value | 0,000 | conditions [R1] [REG-R28]; level and flat, duration-free shape **[std]** — observed forms are none [S8] [S9], a flat 250 EUR [S4], or percentages tapering to nil over the last ten years [S11] |
-| `min_annuity_mth` | 30,00 € a month | 30,00 € | § 165 threshold [R2]; level **[std]**, against 25,00 € a month at two carriers [S4] [S9] |
+| `min_annuity_mth` (`param_tariff_type.csv`) | 30,00 € a month | 30,00 € | § 165 threshold [R2]; level **[std]**, against 25,00 € a month at two carriers [S4] [S9] |
 | (not in the table: no payout administration charge) | — | — | **not applied** — see pitfall 12 |
 
 `prem_freq_table.csv` carries the *Ratenzahlungszuschlag* **[std]** (gap 14): annual 1,000 (1
@@ -856,7 +856,7 @@ becomes a test in `tests/test_klassische_rentenversicherung_de.py`.
     by a half and then falls back to its opening level.
 12. **Deducting the payout-phase administration charge from the annuity.** The *Rentenfaktor* is
     exogenous here and already carries the tariff's payout loading, so no such charge is
-    held in `charge_table.csv` or **applied**. Assert
+    held in `charge_table.csv` or `param_tariff_type.csv` or **applied**. Assert
     `annuity_payments(t) = (G + U(duration(t))) × pols_annuity(t)` exactly, with no charge term, and
     that the model's payout-phase `expenses` are a twelfth of the inflated per-policy
     `expense_annuity_pp_ann` on the exposed count plus the `expense_claim_pp_once` settlement cost of that
@@ -946,7 +946,7 @@ valuation date 1 January 2027;
 premium; `prem_freq = annual`, hence `prem_freq_load = 1,000`; `prem_term_y = 17`;
 `aufschub_y = 17`, so the *Rentenbeginn* falls at the end of month `t = 203` — the end of the
 seventeenth policy year — at attained age 67;
-`rechnungszins = 1,00 %`, the 2027 vintage [REG-R15]; `charge_id = zillmer_25`;
+`rechnungszins = 1,00 %`, the 2027 vintage [REG-R15]; `cost_group = zillmer_25`;
 `annuity_rate_guar = 28,00 €` per month per 10 000 €; `rf_scenario_id = base`;
 `scenario_id = base`; `guar_capital_pp = 0,00 €`, so the guaranteed-contract-value floor is
 inoperative on this cell; `death_benefit_form = prem_refund`; `db_incl_surplus = 0`;

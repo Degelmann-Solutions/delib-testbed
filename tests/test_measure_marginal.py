@@ -8,14 +8,14 @@ from __future__ import annotations
 
 import hashlib
 import json
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-from helpers import ROOT, TOOLS_DIR, edit_point, folder_hashes, load_runner, load_tool
+from helpers import (ROOT, TOOLS_DIR, edit_point, folder_hashes, load_runner, load_tool,
+                     product_copy)
 
 TOOL = TOOLS_DIR / "measure_marginal.py"
 PRODUCT = "risikolebensversicherung"
@@ -260,8 +260,7 @@ def runs(tmp_path_factory):
     others are usage errors.
     """
     tmp_path = tmp_path_factory.mktemp("measure")
-    prepared = tmp_path / "prepared"
-    shutil.copytree(FOLDER, prepared)
+    prepared = product_copy(tmp_path, PRODUCT, "prepared")
     table = prepared / "model_point_table.csv"
     table.write_bytes(mm.replicate_table(table.read_bytes().decode("ascii"), 2).encode("ascii"))
     edit_point(prepared, N_POINTS + 1, sum_assured="123456.0")

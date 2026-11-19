@@ -111,7 +111,6 @@ import hashlib
 import io
 import math
 import re
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -121,8 +120,8 @@ import pandas as pd
 import pytest
 
 from helpers import (CORE_DIR, CORE_MODEL, MODELS, MOVED_COST_ITEMS, PRODUCTS_DIR, ROOT,
-                     formula_cells, loader_error, param_usage, raised_value_error,
-                     same_value)
+                     formula_cells, loader_error, param_usage, product_copy,
+                     raised_value_error, same_value)
 
 
 MODEL_PREFIXES = ("Basis", "BU", "FRV", "Index", "KLV", "RV", "Pflege", "Riester", "RLV", "Sofort")
@@ -1272,13 +1271,6 @@ def test_sofort_age_reads_the_second_life_from_surv_age(product_models):
         assert item.age(0) == int(points.at[point_id, "issue_age"])
         assert item.age(0, 2) == int(points.at[point_id, "surv_age"])
         assert item.age(24, 2) == int(points.at[point_id, "surv_age"]) + 2
-
-
-def product_copy(tmp_path, product: str) -> Path:
-    """A scratch copy of a product folder; ``copytree`` follows the core symlinks."""
-    folder = tmp_path / product
-    shutil.copytree(PRODUCTS_DIR / product, folder)
-    return folder
 
 
 def test_rlv_smoker_reads_its_codes_and_rejects_others(tmp_path, product_models):

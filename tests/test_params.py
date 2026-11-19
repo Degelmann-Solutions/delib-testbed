@@ -57,7 +57,6 @@
 """
 from __future__ import annotations
 
-import shutil
 import sys
 from pathlib import Path
 
@@ -65,7 +64,8 @@ import modelx as mx
 import pandas as pd
 import pytest
 
-from helpers import MOVED_COST_ITEMS, PRODUCTS_DIR, ROOT, TOOLS_DIR, load_tool, param_usage
+from helpers import (MOVED_COST_ITEMS, PRODUCTS_DIR, ROOT, TOOLS_DIR, load_tool, param_usage,
+                     product_copy)
 
 PRODUCTS = sorted(p.name for p in PRODUCTS_DIR.iterdir() if p.is_dir())
 CORE_FILE = ROOT / "core" / "Core" / "Data" / "param_core.csv"
@@ -75,7 +75,7 @@ from run_baseline import model_dir  # noqa: E402
 
 from test_core import _add_params  # noqa: E402
 from test_tables import (BASIS, BU, FIXTURE_DEFINITIONS, FIXTURE_VALUES, FRV,  # noqa: E402
-                         INDEX, KLV, PFLEGE, RIESTER, RV, SHIPPED_ITEMS, SHIPPED_PROVENANCE,
+                         INDEX, KLV, PFLEGE, RIESTER, RLV, RV, SHIPPED_ITEMS, SHIPPED_PROVENANCE,
                          SOFORT,
                          SHIPPED_ROWS, SWITCHED,
                          choosing_copy, fixture_copy, fixture_items, tables_file,
@@ -174,12 +174,6 @@ def test_an_unknown_product_exits_2(capsys):
     assert "nosuch" in err
 
 
-def rlv_copy(tmp_path) -> Path:
-    folder = tmp_path / "risikolebensversicherung"
-    shutil.copytree(PRODUCTS_DIR / "risikolebensversicherung", folder)
-    return folder
-
-
 def add_row(folder: Path, item: str, value: str) -> None:
     path = folder / "param_tariff_type.csv"
     path.write_text(path.read_text(encoding="utf-8") + f"{item},{value},Setzung,test fixture\n",
@@ -201,7 +195,7 @@ def test_a_product_named_twice_exits_2(capsys):
 
 
 def test_an_unread_item_is_reported_and_exits_1(tmp_path, capsys):
-    folder = rlv_copy(tmp_path)
+    folder = product_copy(tmp_path, RLV)
     add_row(folder, "probe_unused", "1.5")
     assert params.main([str(folder)]) == 1
     out, err = capsys.readouterr()
@@ -213,7 +207,7 @@ def test_an_unread_item_is_reported_and_exits_1(tmp_path, capsys):
 
 
 def test_an_undeclared_indirect_read_is_reported_and_exits_1(tmp_path, capsys):
-    folder = rlv_copy(tmp_path)
+    folder = product_copy(tmp_path, RLV)
     path = model_dir(folder) / "Projection" / "__init__.py"
     marker = "# ---------------------------------------------------------------------------\n# References"
     text = path.read_text(encoding="utf-8")
@@ -233,7 +227,7 @@ def test_an_undeclared_indirect_read_is_reported_and_exits_1(tmp_path, capsys):
 
 def test_a_loader_error_is_reported_and_the_next_product_listed(tmp_path, capsys,
                                                                 monkeypatch):
-    folder = rlv_copy(tmp_path)
+    folder = product_copy(tmp_path, RLV)
     add_row(folder, "decl_scale", "1.0")
     expected = (f"risikolebensversicherung: ValueError: parameter 'decl_scale' stands twice"
                 f" in {folder / 'param_tariff_type.csv'}")
@@ -252,7 +246,7 @@ def test_a_loader_error_is_reported_and_the_next_product_listed(tmp_path, capsys
 
 
 def test_a_missing_tariff_type_file_is_a_loader_error(tmp_path, capsys):
-    folder = rlv_copy(tmp_path)
+    folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"
     path.unlink()
     assert params.main([str(folder), "kapitallebensversicherung"]) == 1
@@ -264,7 +258,7 @@ def test_a_missing_tariff_type_file_is_a_loader_error(tmp_path, capsys):
 
 
 def test_a_read_item_in_no_layer_is_missing_and_exits_1(tmp_path, capsys):
-    folder = rlv_copy(tmp_path)
+    folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"
     frame = pd.read_csv(path, dtype=str, keep_default_na=False)
     assert "decl_scale" in set(frame["item"])
@@ -287,7 +281,7 @@ def test_a_read_item_in_no_layer_is_missing_and_exits_1(tmp_path, capsys):
 
 
 def test_an_item_of_the_tariff_file_is_listed_in_the_tariff_layer(tmp_path, capsys):
-    folder = rlv_copy(tmp_path)
+    folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"
     frame = pd.read_csv(path, dtype=str, keep_default_na=False)
     moved = frame["item"] == "decl_scale"

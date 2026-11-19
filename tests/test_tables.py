@@ -291,8 +291,8 @@ import modelx as mx
 import pytest
 
 from helpers import (CORE_MODEL, MODELS, PRODUCTS_DIR, ROOT, TOOLS_DIR, formula_cells,
-                     load_runner, load_tool, loader_error, param_usage)
-from test_core import _add_params, product_copy
+                     load_runner, load_tool, loader_error, param_usage, product_copy)
+from test_core import _add_params
 
 RLV = "risikolebensversicherung"
 SOFORT = "sofortrente"

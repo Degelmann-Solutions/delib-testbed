@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import importlib.util
+import shutil
 from pathlib import Path
 
 import modelx as mx
@@ -82,6 +83,14 @@ MOVED_COST_ITEMS = {
 
 
 # --------------------------------------------------------------------------- folders and runs
+
+def product_copy(tmp_path, product: str, name: str | None = None) -> Path:
+    """A scratch copy of a product folder in ``tmp_path``, under the product's name or
+    ``name``; ``copytree`` follows the core symlinks, so the copy holds real files."""
+    folder = tmp_path / (name or product)
+    shutil.copytree(PRODUCTS_DIR / product, folder)
+    return folder
+
 
 def folder_hashes(folder: Path) -> dict[str, str]:
     return {p.relative_to(folder).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()

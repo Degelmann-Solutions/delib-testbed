@@ -6,14 +6,14 @@ the slowest run only.
 from __future__ import annotations
 
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-from helpers import ROOT, RUNNER, edit_point, folder_hashes, load_runner, parse_output
+from helpers import (ROOT, RUNNER, edit_point, folder_hashes, load_runner, parse_output,
+                     product_copy)
 
 PRODUCT = "risikolebensversicherung"
 FOLDER = ROOT / "products" / PRODUCT
@@ -26,12 +26,6 @@ def guarded() -> dict[str, str]:
     hashes = folder_hashes(FOLDER)
     hashes.update({f"core/{k}": v for k, v in folder_hashes(ROOT / "core").items()})
     return hashes
-
-
-def scratch_copy(tmp_path: Path, name: str) -> Path:
-    target = tmp_path / name
-    shutil.copytree(FOLDER, target)
-    return target
 
 
 @pytest.fixture(scope="session")
@@ -50,12 +44,12 @@ def runs(tmp_path_factory):
     ``workers_mx`` and ``workers_nc`` are the usage errors of ``--workers``.
     """
     tmp_path = tmp_path_factory.mktemp("runner")
-    false_check = scratch_copy(tmp_path, "false_check")
+    false_check = product_copy(tmp_path, PRODUCT, "false_check")
     edit_point(false_check, 1, duration_init="25")
-    raises = scratch_copy(tmp_path, "raises")
+    raises = product_copy(tmp_path, PRODUCT, "raises")
     edit_point(raises, 2, benefit_schedule_id="nosuch")
     edit_point(raises, 13, benefit_schedule_id="nosuch")
-    named = scratch_copy(tmp_path / "named", PRODUCT)
+    named = product_copy(tmp_path / "named", PRODUCT)
 
     out = tmp_path / "out"
     commands = {
@@ -224,7 +218,7 @@ def test_cleanup_deletes_every_itemspace_also_of_raising_points(tmp_path, monkey
 
     from modelx.core.space import UserSpace
 
-    raises = scratch_copy(tmp_path, "raises")
+    raises = product_copy(tmp_path, PRODUCT, "raises")
     edit_point(raises, 2, benefit_schedule_id="nosuch")
     edit_point(raises, 13, benefit_schedule_id="nosuch")
     deleted = []
@@ -305,7 +299,7 @@ def run_without_garbage_collection(folder: Path, monkeypatch):
 def test_cleanup_frees_every_exported_itemspace_without_garbage_collection(tmp_path, monkeypatch):
     """With the collector off, no deleted point's item survives its ``del``: the runner broke
     the item's reference cycles first. Points 2 and 13 raise, so their release runs too."""
-    raises = scratch_copy(tmp_path, "raises")
+    raises = product_copy(tmp_path, PRODUCT, "raises")
     edit_point(raises, 2, benefit_schedule_id="nosuch")
     edit_point(raises, 13, benefit_schedule_id="nosuch")
     count, failures, keys, survivors = run_without_garbage_collection(raises, monkeypatch)

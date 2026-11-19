@@ -246,6 +246,38 @@ def test_a_missing_tariff_type_file_is_a_loader_error(tmp_path, capsys):
                           f" cannot be read: ")
 
 
+def test_a_missing_cost_table_is_reported_and_the_next_product_listed_whole(tmp_path,
+                                                                              capsys):
+    """Until entry 22 the read error of Basis' cost table escaped the product loop and Index
+    was never listed."""
+    assert params.main(["indexpolice"]) == 0
+    alone, err = capsys.readouterr()
+    assert err == ""
+    folder = product_copy(tmp_path, "basisrente")
+    path = folder / "charge_table.csv"
+    path.unlink()
+    assert params.main([str(folder), "indexpolice"]) == 1
+    out, err = capsys.readouterr()
+    assert out == alone
+    assert len(err.splitlines()) == 1
+    assert err.startswith(f"basisrente: ValueError: cost table {path} cannot be read: ")
+
+
+def test_an_invalid_cost_table_is_reported_by_product(tmp_path, capsys):
+    folder = product_copy(tmp_path, "fondsgebundene_rentenversicherung")
+    path = folder / "charge_table.csv"
+    header, first, *rest = path.read_text(encoding="utf-8").splitlines()
+    group, _value, tail = first.split(",", 2)
+    path.write_text("\n".join([header, f"{group},nan,{tail}", *rest]) + "\n", encoding="utf-8")
+    assert params.main([str(folder), "indexpolice"]) == 1
+    out, err = capsys.readouterr()
+    assert headers(out) == ["indexpolice"]
+    item = header.split(",")[1]
+    assert err.splitlines() == [
+        f"fondsgebundene_rentenversicherung: ValueError: cost item {item!r} of cost group"
+        f" {group!r} in {path} is no finite number: nan"]
+
+
 def test_a_read_item_in_no_layer_is_missing_and_exits_1(tmp_path, capsys):
     folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"

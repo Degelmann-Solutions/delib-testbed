@@ -649,7 +649,7 @@ tables.q(table, sex, x, birth_year=None, duration=None)
 - The rate is capped at 1. At the table's last age, `end_age - 1`, it is exactly 1, whatever the trend and the selection: the closure is the table's.
 - Rates are computed in double precision and are not rounded.
 
-Where a call does not fit the table, `q` raises a `ValueError` naming the table and the argument: an unknown table, a `sex` other than `M` and `F`, an age outside `first_age .. end_age - 1`, a missing or a refused `birth_year` or `duration`, a `duration` below 1. It never clamps an age; a product that needs a guard keeps it in a cell of its own, with its reason (Sofort's hook `mort_rate_gen` is the one, section "The decrement rates"). A table that names a parameter the tables layer does not hold raises the loader's `KeyError`. Every product holds the same factory: `q("dav2008t_proxy", "M", 40)` is the same rate in all ten, and a name `definitions()` does not hold raises.
+Where a call does not fit the table, `q` raises a `ValueError` naming the table and the argument, before the law, the closure or a select factor is applied: an unknown table, a `sex` other than `M` and `F`, an age outside `first_age .. end_age - 1` (the last age included and nothing above it, so 109.5 on a table whose last age is 109), a missing or a refused `birth_year` or `duration`, a `birth_year` that is not finite (NaN or infinite), a `duration` below 1 or one that is not a whole year (1.5, also past the select period and at the last age; `2.0` is the whole year 2). Until entry 21 a NaN birth year gave 1, a fractional duration a rate, a `TypeError` or 1, and an age half a year above the last a rate (retrospective of epic-table-factory, F3). It never clamps an age; a product that needs a guard keeps it in a cell of its own, with its reason (Sofort's hook `mort_rate_gen` is the one, section "The decrement rates"). A table that names a parameter the tables layer does not hold raises the loader's `KeyError`. Every product holds the same factory: `q("dav2008t_proxy", "M", 40)` is the same rate in all ten, and a name `definitions()` does not hold raises.
 
 Beside `q` stand the two cells a best-estimate trend term needs: `base_rate(table, sex, x)`, the law's own rate after the checks of table, sex and age, neither capped nor closed, and `trend(table, sex, x)`, the trend law's annual improvement rate, a `ValueError` on a period table. Sofort's trend term, the one, reads `trend` and `base_year(table)`. `q` takes no derivation argument.
 
@@ -722,6 +722,7 @@ Each product switched in one commit marked `Result-Change` with its baselines (s
 | 14 | `7e0e924` | Pflege | `pflege_aktive_proxy`, `pflege_pg1_proxy` to `pflege_pg5_proxy` (law `gompertz_force`) | 260 | 809 → 821 | 5,335 |
 | 15 | `02cc8f3` | core: old mortality cells removed, probe | | 260 | | 5,335 |
 | 16 | `7533922` | cost tables of one shape | | 260 | | 5,335 |
+| 21 | `65812ee` | core: `q` checks birth year, duration and last age | | 266 | | 5,341 |
 
 What each switch did and what moved:
 
@@ -757,7 +758,7 @@ The view follows from the scan. `tools/params.py <product>` lists the scan's rea
 
 ### Mutants and quota
 
-The factory's cells are core formulas. The roadmap's counting command adds `core/Core/Tables` to its `core` row, so a mutant of a factory cell runs all ten products; the counts by entry are in the table of section "The switches", M_core = 260 and M = 5,335 on the end state. The core quota counts an executed cell of `CoreTables` as core, `tables.<cell>` (section "The core quota"). A mutant of a factory cell misses one piece of the runner's transform cache, its piece of `CoreTables`, where a mutant of an inherited core cell misses two; `tools/measure_marginal.py` finds a cell's pieces by its name.
+The factory's cells are core formulas. The roadmap's counting command adds `core/Core/Tables` to its `core` row, so a mutant of a factory cell runs all ten products; the counts by entry are in the table of section "The switches", M_core = 260 and M = 5,335 on the end state of the switches, M_core = 266 and M = 5,341 since the argument checks of entry 21. The core quota counts an executed cell of `CoreTables` as core, `tables.<cell>` (section "The core quota"). A mutant of a factory cell misses one piece of the runner's transform cache, its piece of `CoreTables`, where a mutant of an inherited core cell misses two; `tools/measure_marginal.py` finds a cell's pieces by its name.
 
 ### Not built yet
 

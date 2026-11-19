@@ -119,7 +119,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from helpers import (CORE_DIR, CORE_MODEL, MODELS, MOVED_COST_ITEMS, PRODUCTS_DIR, ROOT,
+from helpers import (CORE_DIR, CORE_MODEL, LAYER_FILES, MODELS, MOVED_COST_ITEMS, PRODUCTS_DIR,
+                     ROOT,
                      add_layer_rows, drop_layer_rows, formula_cells, loader_error,
                      param_usage, product_copy, raised_value_error, read_layer, same_value)
 
@@ -1783,8 +1784,7 @@ def test_an_item_of_several_files_has_one_type():
 def test_basis_is_source_or_setzung():
     """Every row of every parameter file has ``basis`` ``source`` or ``Setzung``; since entry 12
     of epic-parameter-files aligned the last values, no row is left empty."""
-    files = sorted(PRODUCTS_DIR.glob("*/param_tariff_type.csv"))
-    files += sorted(PRODUCTS_DIR.glob("*/param_tariff.csv"))
+    files = [path for name in LAYER_FILES for path in sorted(PRODUCTS_DIR.glob(f"*/{name}"))]
     files.append(CORE_MODEL / "Data" / "param_core.csv")
     for path in files:
         table = read_layer(path)

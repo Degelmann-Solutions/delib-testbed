@@ -120,6 +120,11 @@ def parse_output(stdout: str) -> dict[str, str]:
 
 # --------------------------------------------------------------------------- layer files
 
+# The parameter layer files of a product folder, in the loader's order; the tariff file is
+# optional.
+LAYER_FILES = ("param_tariff_type.csv", "param_tariff.csv")
+
+
 def read_layer(path: Path) -> pd.DataFrame:
     """A parameter layer file as the loader reads it, as text (``dtype=str``,
     ``keep_default_na=False``), under its header's columns.
@@ -163,6 +168,18 @@ def add_layer_rows(path: Path, values: dict[str, str], basis: str = "") -> None:
                "provenance": "[std] test fixture"}
         text += ",".join(row.get(column, "") for column in columns) + "\n"
     path.write_text(text, encoding="utf-8")
+
+
+def table_choices(folder: Path) -> dict[str, str]:
+    """The table choices of a product folder's layer files: ``{item: table}`` for each
+    ``*_table`` item, read as text."""
+    found = {}
+    for name in LAYER_FILES:
+        if (folder / name).is_file():
+            table = read_layer(folder / name)
+            found.update({item: value for item, value in zip(table["item"], table["value"])
+                          if item.endswith("_table") and value})
+    return found
 
 
 # --------------------------------------------------------------------------- modelx errors

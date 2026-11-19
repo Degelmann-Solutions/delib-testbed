@@ -1,5 +1,6 @@
 """What two or more test files share: paths, the products, loaders of the tools and of the
-usage scan, and helpers on modelx errors and formula sources.
+usage scan, pinned data, scratch copies, the parameter layer files as text, and helpers on
+modelx errors and formula sources.
 
 No test file imports from another test file what stands here; a helper used by one test
 file alone stays in that file.
@@ -62,6 +63,33 @@ param_usage = load_tool("param_usage", CORE_DIR / "param_usage.py")
 
 
 # --------------------------------------------------------------------------- pinned data
+
+# The items of the core file ``core/Core/Data/param_core.csv``, as their former Python literals;
+# ``tests/test_core.py`` checks every product's core layer against them.
+CORE_ITEMS = {
+    "rate_cap_eps": 1e-12,
+    "check_tol": 1e-08,
+    "suicide_years": 3,
+    "surr_spread_years": 5,
+    "runoff_months": 3,
+    "tax_step_min_year": 13,
+    "tax_step_age": 62,
+    "mmkt_return_ann": 0.015,
+    "expense_infl": 0.02,
+    "zillmer_cap_bsum": 0.025,
+    "valuation_year": 2027,
+    "grundzulage": 175.0,
+    "kinderzulage_pre2008": 185.0,
+    "kinderzulage_post2008": 300.0,
+    "berufseinsteiger_bonus": 200.0,
+    "mindesteigenbeitrag_rate": 0.04,
+    "foerder_ceiling": 2100.0,
+    "sockelbeitrag": 60.0,
+    "zulage_lag": 1,
+    "guar_carve_out_cap": 0.2,
+    "teilkapital_cap": 0.3,
+    "kleinbetrag_threshold_mth": 59.33,
+}
 
 # The items that moved from a cost table to the tariff-type file (docs/core.md, "Contract data
 # and charges"), with the value the table held.

@@ -802,6 +802,54 @@ All ten products together at M = 5,249, P = 10,000 (1,000 per product), W = 24, 
 
 Against 5.1 h (R11) the branch mean is 6.9 % lower, against the unrounded 5.06 h 6.1 % lower; with the phase 3 counts (M_core = 186, Σ M_p = 5,119) it would be 4.77 h, 5.8 % lower. R11 is met without a reason to give. The branch mean is 1.6 % below the control's, within the control's spread of 3.6 %, so this session shows no cost of the epic's entries 11 to 18 either, and no gain it could tell from the spread. The same control, `e16c935`, gave 5.49 h in the session above and 4.83 h here, 12 % less at loads below 3 instead of 3 to 10: the session accounts for more than the 9.7 % that the section above reports against phase 3. This figure is the recorded forecast of the branch; the 5.6 h above stays as the measurement of `d849151` on a loaded machine. The assumptions of the command apply: a linear extrapolation without trace pruning, the coverage filter ignored, M the pinned counts, a forecast, not a measurement.
 
+# Mortality table factory: night forecast after the last switch
+
+Entry 17 of epic-table-factory (Done-when 4: the night forecast for all ten products under 10 h, any rise above 10 % against 5.1 h reasoned, Riester's longer projection frames among the reasons, values package open point 12 (b)): after the ten switches to the table factory and the two cleanup commits (entries 15 and 16), the night forecast is measured on the end state, alternating with a control from before the first switch. `main` itself is no control here, since it holds all ten switches already.
+
+- Date: 2026-11-19, 12:00 to 12:13 (all-products runs), 12:13 to 12:17 (Riester alone)
+- Commits: branch `7533922` (`table-factory-cleanup`, entries 15 and 16 on `main`'s `9bfdcde`), clean tree; control `8dbefc9` (`main` after the scaffold of the table factory, PR #58, before the first switch) in the worktree `/tmp/tf-ctrl`, run with the branch's virtual environment, so the same installed packages
+- Machine: the same as above (Python 3.12.13, modelx 0.33.0, pandas 3.1.0, numpy 2.5.4)
+- Command: `python tools/measure_marginal.py --all --workers 24 --json /tmp/s217-<i>-<side>.json` (defaults: engine export, cleanup on, transform cache off, K = 32, R = 3, P = 10,000), each side at its own pinned counts: M = 5,335 (M_core = 260, Σ M_p = 5,075) on the branch, M = 5,313 (M_core = 226, Σ M_p = 5,087) on the control; exit 0 and status `ok` for all ten products in every run, wall time 87 to 92 s each
+- Load: each run started only once the 1-minute load was below 3; the load before each run is in the table.
+
+## The six runs at W = 24
+
+| Run | Side | Commit | load (1 min) | Σ t_marginal ms | Σ fixed s | forecast h |
+|---|---|---|---:|---:|---:|---:|
+| 1 | control | `8dbefc9` | 0.50 | 14.23 | 10.25 | 5.26 |
+| 2 | branch | `7533922` | 2.82 | 14.18 | 9.91 | 5.42 |
+| 3 | branch | `7533922` | 2.73 | 14.54 | 9.91 | 5.50 |
+| 4 | control | `8dbefc9` | 2.88 | 13.65 | 9.85 | 5.05 |
+| 5 | control | `8dbefc9` | 2.58 | 14.29 | 9.86 | 5.21 |
+| 6 | branch | `7533922` | 2.74 | 14.17 | 9.93 | 5.42 |
+
+`t_marginal` per product in ms, runs 1 to 6 in the order above, and each side's mean:
+
+| Product | 1 c | 2 b | 3 b | 4 c | 5 c | 6 b | branch mean | control mean |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| basisrente | 1.27 | 1.16 | 1.19 | 1.22 | 1.31 | 1.17 | 1.18 | 1.27 |
+| berufsunfaehigkeit | 2.64 | 2.68 | 2.80 | 2.52 | 2.62 | 2.68 | 2.72 | 2.59 |
+| fondsgebundene_rentenversicherung | 1.01 | 0.93 | 0.98 | 0.99 | 1.02 | 0.95 | 0.95 | 1.00 |
+| indexpolice | 0.54 | 0.53 | 0.53 | 0.51 | 0.55 | 0.56 | 0.54 | 0.53 |
+| kapitallebensversicherung | 0.66 | 0.64 | 0.61 | 0.58 | 0.62 | 0.59 | 0.61 | 0.62 |
+| klassische_rentenversicherung | 1.65 | 1.52 | 1.56 | 1.57 | 1.67 | 1.54 | 1.54 | 1.63 |
+| pflegerentenversicherung | 3.09 | 3.24 | 3.38 | 2.99 | 3.21 | 3.22 | 3.28 | 3.10 |
+| riester_rente | 1.32 | 1.44 | 1.44 | 1.28 | 1.31 | 1.45 | 1.44 | 1.30 |
+| risikolebensversicherung | 0.80 | 0.73 | 0.77 | 0.75 | 0.74 | 0.78 | 0.76 | 0.76 |
+| sofortrente | 1.25 | 1.31 | 1.26 | 1.23 | 1.24 | 1.23 | 1.27 | 1.24 |
+
+One product's branch mean lies more than 10 % above its control (N4): `riester_rente`, 1.44 against 1.30 ms (+10.8 %), every branch run above every control run. It was measured again alone, control and branch in turn, five runs a side, each started at a 1-minute load below 3 (2.32 to 2.90, wall time 8 to 9 s):
+
+- `python tools/measure_marginal.py riester_rente --workers 24`: control 1.228, 1.239, 1.289, 1.239, 1.308 ms (mean 1.261), branch 1.390, 1.463, 1.422, 1.210, 1.374 ms (mean 1.372), +8.8 %.
+
+The rise is the one the values package foresaw (open point 12 (b), accepted as proposed): since its switch Riester projects to the end age 121 of `dav2004r_proxy`, the table of its role `annuity_mort_table`, where its own files ended at 110 and its end age was 111, so every frame is 120 months longer, 11 % to 20 % of its length by issue age. Its baseline has 11,016 data rows against 9,456 at the control, +16.5 %. The time per contract rises by less, 8.8 % alone and 10.8 % in the all-products runs, because a contract's cost is not only its months (the read of the model point, the checks, the hash). No other product rises by more than 6 %: `pflegerentenversicherung` +5.9 % (its runs lie just above the control's, 3.22 to 3.38 against 2.99 to 3.21 ms) and `berufsunfaehigkeit` +4.9 %; `basisrente`, `klassische_rentenversicherung` and `fondsgebundene_rentenversicherung` are 5 % to 7.5 % faster than before their switches.
+
+## Forecast
+
+All ten products together at M = 5,335, P = 10,000 (1,000 per product), W = 24, fixed cost included, are forecast at **5.4 h** on the end state of the table factory (branch mean 5.45 h, min–max 5.42 to 5.50 h over three runs), within the 10 h night; the control before the first switch gave 5.05 to 5.26 h (mean 5.17 h) at its M = 5,313. Σ t_marginal is 14.3 ms on the branch (14.17 to 14.54) against 14.1 ms on the control (13.65 to 14.29), Σ fixed 9.92 s against 9.99 s.
+
+Against 5.1 h, the forecast of "Phase 3: night forecast remeasured", the branch mean is 6.8 % higher (7.7 % against the unrounded 5.06 h), below 10 %, so no reason is needed; it is given anyway. The branch mean is 5.3 % above the control's. Most of that is M, not speed: the core formulas added since the scaffold (`8dbefc9` to `7533922`, in `core/Core/Projection` and `core/Core/Tables`) raise M_core by 34 mutants, from 226 to 260, and a core mutant runs all ten products, so the core's share of the forecast rises from 1.51 h to 1.75 h (branch means) while the products' share stays at 3.70 h against 3.66 h. Σ t_marginal is 1.7 % higher (+0.24 ms), within the control's own spread of 4.7 %: Pflege (+0.18 ms), Riester (+0.14 ms) and BU (+0.13 ms) rise, each below 10 % but for Riester and each beyond its control's runs, Basis, RV and FRV fall (−0.24 ms together); Riester's longer frames are the one rise with a named cause. Against the 4.7 h of the section before (at M = 5,249, `02b20b1`) the session and the 86 mutants more both count; this figure is the recorded forecast of the end state. The assumptions of the command apply: a linear extrapolation without trace pruning, the coverage filter ignored, M the pinned counts, a forecast, not a measurement.
+
 # Runner wall time per product
 
 The wall time of one runner process per product, one product at a time, on its shipped model points: the modelx import, the run, the checks and the hash. Phase 1 ran the traced modelx model without per-contract cleanup; today's runner runs by default on the exported model with cleanup, at W = 1. One run per product on each side, so the figures show the order of magnitude, not a measurement to compare changes with (for that, `tools/measure_marginal.py` above).

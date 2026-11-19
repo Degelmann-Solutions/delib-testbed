@@ -108,7 +108,6 @@ from __future__ import annotations
 
 import ast
 import hashlib
-import importlib.util
 import io
 import math
 import re
@@ -121,24 +120,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
-CORE_DIR = ROOT / "core"
-CORE_MODEL = CORE_DIR / "Core"
-PRODUCTS_DIR = ROOT / "products"
+from helpers import (CORE_DIR, CORE_MODEL, MODELS, MOVED_COST_ITEMS, PRODUCTS_DIR, ROOT,
+                     formula_cells, loader_error, param_usage, raised_value_error,
+                     same_value)
 
-# Product folder -> model folder; the same ten products as tests/test_provenance.py.
-MODELS = {
-    "basisrente": "Basis_DE_S",
-    "berufsunfaehigkeit": "BU_DE_S",
-    "fondsgebundene_rentenversicherung": "FRV_DE_S",
-    "indexpolice": "Index_DE_S",
-    "kapitallebensversicherung": "KLV_DE_S",
-    "klassische_rentenversicherung": "RV_DE_S",
-    "pflegerentenversicherung": "Pflege_DE_S",
-    "riester_rente": "Riester_DE_S",
-    "risikolebensversicherung": "RLV_DE_S",
-    "sofortrente": "Sofort_DE_S",
-}
+
 MODEL_PREFIXES = ("Basis", "BU", "FRV", "Index", "KLV", "RV", "Pflege", "Riester", "RLV", "Sofort")
 FORBIDDEN = sorted(set(MODELS) | set(MODELS.values()) | set(MODEL_PREFIXES))
 FORBIDDEN_RE = re.compile(r"\b(" + "|".join(map(re.escape, FORBIDDEN)) + r")\b")
@@ -1004,7 +990,6 @@ def test_a_unified_cell_is_derived_or_overridden(space, cell, product, kind, pro
         assert OVERRIDE_REASON_RE.search(product_cell.doc or "")
 
 
-
 def _core_cell():
     """The core's version."""
     return 1
@@ -1560,7 +1545,6 @@ def test_klv_lapses_are_taken_from_the_survivors_of_the_deaths(product_models):
                 == item.pols_if(t) * (1.0 - item.mort_rate_mth(t))), t
 
 
-
 @pytest.mark.parametrize("product", ["fondsgebundene_rentenversicherung", "indexpolice",
                                      "kapitallebensversicherung", "risikolebensversicherung"])
 def test_the_survivors_of_both_decrements_mature_in_the_last_month(product, product_models):
@@ -1577,7 +1561,6 @@ def test_the_survivors_of_both_decrements_mature_in_the_last_month(product, prod
     assert item.pols_lapse(last) == 0.0
     assert item.pols_maturity(last) > 0.0
     assert item.pols_maturity(last) == item.pols_if_at(last, "AFT_DEATH")
-
 
 
 def test_rlv_opens_at_pols_if_init_on_new_and_in_force_points(product_models):
@@ -1617,20 +1600,6 @@ def test_klv_premium_is_the_instalment_times_the_in_force(product_models):
         for t in range(item.t_start(), item.proj_len()):
             assert item.pols_prem(t) == item.pols_if(t), (point_id, t)
             assert item.premiums(t) == item.prem_inst_pp(t) * item.pols_prem(t), (point_id, t)
-
-
-def raised_value_error(raised, message: str) -> bool:
-    """Whether a modelx error carries a ``ValueError`` with ``message``.
-
-    modelx re-raises a formula's error as a FormulaError without chaining it, and names the
-    original type in its message.
-    """
-    chain, error = [], raised.value
-    while error is not None and error not in chain:
-        chain.append(error)
-        error = error.__cause__ or error.__context__
-    return (any(isinstance(e, ValueError) for e in chain)
-            or f"ValueError: {message}" in str(raised.value))
 
 
 def test_rlv_claim_total_is_the_death_claim_and_the_cash_values_are_zero(product_models):
@@ -1701,7 +1670,6 @@ def test_rlv_liability_cf_is_the_negated_net_cf(product_models):
             assert item.liability_cf(t) == -item.net_cf(t), (point_id, t)
             assert (math.copysign(1.0, item.liability_cf(t))
                     == -math.copysign(1.0, item.net_cf(t))), (point_id, t)
-
 
 
 ROLL_FWD_TOL = {
@@ -2288,18 +2256,6 @@ STRUCTURAL_LITERALS = {
 }
 
 
-def _formula_cells(path: Path):
-    """The formula cells of a ``Projection``, as docs/roadmap.md, "The new M", counts them:
-    module-level ``def``s and non-underscore ``name = lambda``, each with its name."""
-    for node in ast.parse(path.read_text(encoding="utf-8")).body:
-        if isinstance(node, ast.FunctionDef):
-            yield node.name, node
-        elif (isinstance(node, ast.Assign) and isinstance(node.value, ast.Lambda)
-              and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
-              and not node.targets[0].id.startswith("_")):
-            yield node.targets[0].id, node.value
-
-
 def test_formula_literals_are_listed_as_structural():
     """Every numeric literal of a formula cell but 0, 1, 0.0 and 1.0, subscripts and
     ``range(...)`` included, is listed for its space, and every listed value occurs there."""
@@ -2310,7 +2266,7 @@ def test_formula_literals_are_listed_as_structural():
     unlisted, found = [], {}
     for space, path in paths.items():
         found[space] = set()
-        for name, cell in _formula_cells(path):
+        for name, cell in formula_cells(path):
             for node in ast.walk(cell):
                 if (isinstance(node, ast.Constant) and type(node.value) in (int, float)
                         and node.value not in (0, 1)):
@@ -2431,31 +2387,10 @@ def test_param_layers_hold_every_item_once_and_merge_into_param_dict(product, pr
     assert list(data.param_dict()) == list(merged)
 
 
-def _loader_error(model_dir: Path, name: str, item: str = "check_tol") -> str:
-    """The error line of the loader's error on ``param(item)`` in a scratch copy, which must be
-    a ``ValueError``.
-
-    modelx wraps it in a ``FormulaError`` whose text also holds the formula source; only the
-    line before ``Formula traceback:`` is the raised error.
-    """
-    copy = mx.read_model(model_dir, name=name)
-    try:
-        with pytest.raises(Exception) as raised:
-            copy.Data.param(item)
-    finally:
-        copy.close()
-    if isinstance(raised.value, ValueError):
-        return f"ValueError: {raised.value}"
-    head = str(raised.value).split("Formula traceback:", 1)[0]
-    line = [text for text in head.splitlines() if text.strip()][-1]
-    assert line.startswith("ValueError: "), str(raised.value)
-    return line
-
-
 def test_param_rejects_an_item_in_two_layers(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     _add_params(folder / "param_tariff.csv", {"expense_claim_pp_once": "300.0"})
-    message = _loader_error(folder / MODELS["risikolebensversicherung"], "TwoLayerProbe")
+    message = loader_error(folder / MODELS["risikolebensversicherung"], "TwoLayerProbe")
     assert "'expense_claim_pp_once' stands in two layers" in message
     assert str(folder / "param_tariff_type.csv") in message
     assert str(folder / "param_tariff.csv") in message
@@ -2464,7 +2399,7 @@ def test_param_rejects_an_item_in_two_layers(tmp_path):
 def test_param_rejects_an_item_twice_in_one_file(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     _add_params(folder / "param_tariff_type.csv", {"expense_claim_pp_once": "250.0"})
-    message = _loader_error(folder / MODELS["risikolebensversicherung"], "TwiceProbe")
+    message = loader_error(folder / MODELS["risikolebensversicherung"], "TwiceProbe")
     assert "'expense_claim_pp_once' stands twice in" in message
     assert str(folder / "param_tariff_type.csv") in message
 
@@ -2473,7 +2408,7 @@ def test_param_rejects_a_core_item_in_the_tariff_type_file(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     model_dir = folder / MODELS["risikolebensversicherung"]
     _add_params(model_dir / "CoreData" / "param_core.csv", {"expense_claim_pp_once": "250.0"})
-    message = _loader_error(model_dir, "CoreLockProbe")
+    message = loader_error(model_dir, "CoreLockProbe")
     assert "'expense_claim_pp_once' is a core item of" in message
     assert str(folder / "param_tariff_type.csv") in message
 
@@ -2483,7 +2418,7 @@ def test_param_rejects_a_core_item_in_the_tariff_file(tmp_path):
     model_dir = folder / MODELS["risikolebensversicherung"]
     _add_params(model_dir / "CoreData" / "param_core.csv", {"probe_core": "0.125"})
     _add_params(folder / "param_tariff.csv", {"probe_core": "0.25"})
-    message = _loader_error(model_dir, "CoreLockTariffProbe")
+    message = loader_error(model_dir, "CoreLockTariffProbe")
     assert "'probe_core' is a core item of" in message
     assert str(folder / "param_tariff.csv") in message
 
@@ -2500,7 +2435,7 @@ def test_param_rejects_a_core_item_in_the_tariff_file(tmp_path):
 def test_param_rejects_a_value_that_is_no_finite_number(tmp_path, text, name, words):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     _add_params(folder / "param_tariff_type.csv", {"probe_value": text})
-    message = _loader_error(folder / MODELS["risikolebensversicherung"], name)
+    message = loader_error(folder / MODELS["risikolebensversicherung"], name)
     assert "'probe_value'" in message and words in message, message
     assert str(folder / "param_tariff_type.csv") in message
 
@@ -2514,7 +2449,7 @@ def test_param_rejects_an_item_padded_with_whitespace(tmp_path, item, name):
     not stripped."""
     folder = product_copy(tmp_path, "risikolebensversicherung")
     _add_params(folder / "param_tariff_type.csv", {item: "1.0"})
-    message = _loader_error(folder / MODELS["risikolebensversicherung"], name)
+    message = loader_error(folder / MODELS["risikolebensversicherung"], name)
     assert repr(item) in message and "padded with whitespace" in message, message
     assert str(folder / "param_tariff_type.csv") in message
 
@@ -2522,7 +2457,7 @@ def test_param_rejects_an_item_padded_with_whitespace(tmp_path, item, name):
 def test_param_rejects_an_empty_item(tmp_path):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     _add_params(folder / "param_tariff_type.csv", {"": "1.0"})
-    message = _loader_error(folder / MODELS["risikolebensversicherung"], "EmptyItemProbe")
+    message = loader_error(folder / MODELS["risikolebensversicherung"], "EmptyItemProbe")
     assert "item '' in" in message, message
     assert str(folder / "param_tariff_type.csv") in message
 
@@ -2537,7 +2472,7 @@ def test_param_rejects_a_file_with_other_columns(tmp_path, change, name):
     path = folder / "param_tariff_type.csv"
     table = change(pd.read_csv(path, dtype=str, keep_default_na=False))
     table.to_csv(path, index=False)
-    message = _loader_error(folder / MODELS["risikolebensversicherung"], name)
+    message = loader_error(folder / MODELS["risikolebensversicherung"], name)
     assert f"parameter file {path} has the columns {list(table.columns)}" in message, message
 
 
@@ -2551,19 +2486,8 @@ def test_param_rejects_a_row_wider_than_the_header(tmp_path, every_row):
     rows = [row + ",x" if every_row or number == 1 else row for number, row in enumerate(rows)]
     path.write_text("\n".join([header, *rows]) + "\n", encoding="utf-8")
     name = "WideRowsProbe" if every_row else "WideRowProbe"
-    message = _loader_error(folder / MODELS["risikolebensversicherung"], name)
+    message = loader_error(folder / MODELS["risikolebensversicherung"], name)
     assert f"parameter file {path} cannot be read" in message, message
-
-
-def load_param_usage():
-    """The static usage scan ``core/param_usage.py``, a plain module beside the core model."""
-    spec = importlib.util.spec_from_file_location("param_usage", CORE_DIR / "param_usage.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-param_usage = load_param_usage()
 
 
 def _usage_copy(tmp_path, name: str, edit=None):
@@ -2976,10 +2900,6 @@ DICT_READERS = {
 }
 
 
-def same_value(a, b) -> bool:
-    return a == b or (pd.isna(a) and pd.isna(b))
-
-
 @pytest.mark.parametrize("product", sorted(MODELS))
 def test_every_dict_cell_equals_its_reader(product, product_models):
     data = product_models(product).Data
@@ -3045,23 +2965,6 @@ def test_frv_charge_row_is_read_only(product_models):
 # items that moved from a cost table to the tariff-type file, with the value the table held.
 COST_TABLE_PRODUCTS = ("basisrente", "fondsgebundene_rentenversicherung",
                        "klassische_rentenversicherung")
-MOVED_COST_ITEMS = {
-    "kapitallebensversicherung": {
-        "load_acq_bsum_once": 0.025, "load_admin_prem_inst": 0.03, "load_admin_sum_ann": 0.0015,
-        "expense_acq_pp_once": 300.0, "expense_admin_pp_ann": 45.0,
-        "expense_claim_pp_once": 120.0, "comm_acq_bsum_once": 0.025,
-        "comm_renew_prem_inst": 0.015},
-    "basisrente": {
-        "charge_acq_sp_once": 0.025, "charge_admin_prem_inst": 0.075,
-        "charge_admin_av_ann": 0.0035, "charge_admin_pp_ann": 36.0,
-        "terminal_bonus_rate": 0.04, "expense_acq_pp_once": 250.0,
-        "comm_acq_bsum_once": 0.025, "comm_renew_prem_inst": 0.015,
-        "expense_admin_pp_ann": 60.0, "expense_annuity_pp_ann": 36.0},
-    "klassische_rentenversicherung": {
-        "charge_admin_prem_inst": 0.04, "charge_admin_av_ann": 0.002,
-        "charge_admin_pup_av_ann": 0.003, "min_annuity_mth": 30.0},
-    "fondsgebundene_rentenversicherung": {"acq_spread_years": 5},
-}
 
 
 @pytest.mark.parametrize("product", COST_TABLE_PRODUCTS)
@@ -3138,7 +3041,7 @@ def test_no_cost_item_stands_in_a_cost_table_and_a_layer(product, product_models
 def test_param_rejects_an_item_of_the_cost_table_in_a_layer(tmp_path, product, file):
     folder = product_copy(tmp_path, product)
     _add_params(folder / file, {"charge_acq_bsum_once": "0.025"})
-    message = _loader_error(folder / MODELS[product], "CostTwiceProbe")
+    message = loader_error(folder / MODELS[product], "CostTwiceProbe")
     assert "'charge_acq_bsum_once' stands in the cost table" in message
     assert str(folder / "charge_table.csv") in message
     assert str(folder / file) in message

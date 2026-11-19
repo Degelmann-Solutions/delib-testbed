@@ -5,8 +5,6 @@ the slowest run only.
 """
 from __future__ import annotations
 
-import hashlib
-import importlib.util
 import re
 import shutil
 import subprocess
@@ -15,24 +13,12 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
-RUNNER = ROOT / "tools" / "run_baseline.py"
+from helpers import ROOT, RUNNER, edit_point, folder_hashes, load_runner, parse_output
+
 PRODUCT = "risikolebensversicherung"
 FOLDER = ROOT / "products" / PRODUCT
 N_POINTS = 14
 BASELINE = ROOT / "baseline" / PRODUCT / "result_cf.csv"
-
-
-def load_runner():
-    spec = importlib.util.spec_from_file_location("run_baseline", RUNNER)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def folder_hashes(folder: Path) -> dict[str, str]:
-    return {p.relative_to(folder).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in sorted(folder.rglob("*")) if p.is_file()}
 
 
 def guarded() -> dict[str, str]:
@@ -46,24 +32,6 @@ def scratch_copy(tmp_path: Path, name: str) -> Path:
     target = tmp_path / name
     shutil.copytree(FOLDER, target)
     return target
-
-
-def edit_point(folder: Path, point_id: int, **changes: str) -> None:
-    """Change columns of one model point in a scratch copy, as text."""
-    path = folder / "model_point_table.csv"
-    lines = path.read_bytes().decode("ascii").split("\n")
-    columns = lines[0].split(",")
-    values = lines[point_id].split(",")
-    assert values[0] == str(point_id)
-    for column, value in changes.items():
-        assert values[columns.index(column)] != value
-        values[columns.index(column)] = value
-    lines[point_id] = ",".join(values)
-    path.write_bytes("\n".join(lines).encode("ascii"))
-
-
-def parse_output(stdout: str) -> dict[str, str]:
-    return dict(line.split(": ", 1) for line in stdout.splitlines() if ": " in line)
 
 
 @pytest.fixture(scope="session")

@@ -57,7 +57,6 @@
 """
 from __future__ import annotations
 
-import importlib.util
 import shutil
 import sys
 from pathlib import Path
@@ -66,15 +65,15 @@ import modelx as mx
 import pandas as pd
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
-PRODUCTS_DIR = ROOT / "products"
+from helpers import MOVED_COST_ITEMS, PRODUCTS_DIR, ROOT, TOOLS_DIR, load_tool, param_usage
+
 PRODUCTS = sorted(p.name for p in PRODUCTS_DIR.iterdir() if p.is_dir())
 CORE_FILE = ROOT / "core" / "Core" / "Data" / "param_core.csv"
 
-sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(TOOLS_DIR))
 from run_baseline import model_dir  # noqa: E402
 
-from test_core import MOVED_COST_ITEMS, _add_params  # noqa: E402
+from test_core import _add_params  # noqa: E402
 from test_tables import (BASIS, BU, FIXTURE_DEFINITIONS, FIXTURE_VALUES, FRV,  # noqa: E402
                          INDEX, KLV, PFLEGE, RIESTER, RV, SHIPPED_ITEMS, SHIPPED_PROVENANCE,
                          SOFORT,
@@ -83,15 +82,7 @@ from test_tables import (BASIS, BU, FIXTURE_DEFINITIONS, FIXTURE_VALUES, FRV,  #
                          unswitched_copy)
 
 
-def load_tool(name: str, path: Path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-params = load_tool("params", ROOT / "tools" / "params.py")
-param_usage = load_tool("param_usage", ROOT / "core" / "param_usage.py")
+params = load_tool("params", TOOLS_DIR / "params.py")
 
 
 def read(path: Path) -> pd.DataFrame:

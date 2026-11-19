@@ -23,7 +23,6 @@
 """
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import subprocess
@@ -32,8 +31,9 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
-TOOL = ROOT / "tools" / "baseline_deviations.py"
+from helpers import ROOT, TOOLS_DIR, load_tool
+
+TOOL = TOOLS_DIR / "baseline_deviations.py"
 TAG = "phase-2-baseline"
 MARKER = ("Result-Change: {products}\n"
           "Reason: products/{first}/technical-notes.md, section Test\n"
@@ -41,14 +41,7 @@ MARKER = ("Result-Change: {products}\n"
 CO_AUTHOR = "Co-Authored-By: Someone <someone@example.com>"
 
 
-def load_tool():
-    spec = importlib.util.spec_from_file_location("baseline_deviations", TOOL)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-baseline_deviations = load_tool()
+baseline_deviations = load_tool("baseline_deviations", TOOL)
 
 GIT_ENV = {
     **os.environ,

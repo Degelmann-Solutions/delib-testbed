@@ -13,13 +13,12 @@ from __future__ import annotations
 import hashlib
 import subprocess
 import sys
-from pathlib import Path
 
 import numpy as np
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
-RUNNER = ROOT / "tools" / "run_baseline.py"
+from helpers import ROOT, RUNNER, parse_output
+
 BASELINE_DIR = ROOT / "baseline"
 
 # product: (model points, check cells, recipe hash, SHA-256 of baseline/<product>/result_cf.csv)
@@ -98,10 +97,6 @@ BASELINE = {
         "ca329dd71db4d50af24e649d0e6f3186c6200888f2e1cb5ce5969fe92eed6584",
     ),
 }
-
-
-def parse_output(stdout: str) -> dict[str, str]:
-    return dict(line.split(": ", 1) for line in stdout.splitlines() if ": " in line)
 
 
 def recipe_hash_of_csv(data: bytes) -> str:

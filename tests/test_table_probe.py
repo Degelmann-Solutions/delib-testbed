@@ -27,11 +27,9 @@ from pathlib import Path
 import modelx as mx
 import pytest
 
-from test_baseline import BASELINE, RUNNER, parse_output
+from helpers import CORE_DIR, PRODUCTS_DIR, RUNNER, parse_output
+from test_baseline import BASELINE
 
-ROOT = Path(__file__).resolve().parent.parent
-CORE_DIR = ROOT / "core"
-PRODUCTS_DIR = ROOT / "products"
 TABLES_FILE = CORE_DIR / "Core" / "Data" / "param_tables.csv"
 LAYER_FILES = ("param_tariff_type.csv", "param_tariff.csv")
 SCALED = "m_b"

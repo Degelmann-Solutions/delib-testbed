@@ -30,6 +30,7 @@ import re
 import modelx as mx
 import pytest
 
+import helpers
 from helpers import (CORE_DIR, CORE_MODEL, LAYER_FILES, MODELS, PRODUCTS_DIR, ROOT,
                      add_layer_rows, loader_error, product_copy, read_layer)
 
@@ -358,3 +359,16 @@ def test_param_rejects_an_item_of_the_cost_table_in_a_layer(tmp_path, product, f
     assert "'charge_acq_bsum_once' stands in the cost table" in message
     assert str(folder / "charge_table.csv") in message
     assert str(folder / file) in message
+
+
+def test_dropping_a_row_keeps_every_other_row_of_a_layer_file(tmp_path):
+    """``helpers.drop_layer_rows`` rewrites a file from its own lines: on a copy of the core
+    file every other row keeps its bytes, an integer its text."""
+    shipped = CORE_MODEL / "Data" / "param_core.csv"
+    copy = tmp_path / shipped.name
+    copy.write_bytes(shipped.read_bytes())
+    helpers.drop_layer_rows(copy, "check_tol")
+    kept = [line for line in shipped.read_bytes().splitlines(keepends=True)
+            if not line.startswith(b"check_tol,")]
+    assert copy.read_bytes() == b"".join(kept)
+    assert b"\nsuicide_years,3," in copy.read_bytes()

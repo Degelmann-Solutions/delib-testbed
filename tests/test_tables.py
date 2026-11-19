@@ -166,8 +166,9 @@ The derivation hooks of the core's ``Projection``:
   on every shipped point ``mort_rate(t)`` is ``min(1, 1.15 * q(dav2004r_proxy, sex, age(t),
   birth_year))`` through the core's cells, none overridden but the factor, and a woman's
   table rate is 0.6 of a man's at equal age and birth year; the package's sixteen rate rows
-  to six digits. ``birth_year()`` is the issue year less the issue age, 1969 on the in-force
-  points 6 and 14, and ``birth_year() + age(t)`` the calendar year on every point.
+  are among those the table's own check holds to six digits. ``birth_year()`` is the issue
+  year less the issue age, 1969 on the in-force points 6 and 14, and ``birth_year() +
+  age(t)`` the calendar year on every point.
   ``omega_age()`` is the table's end age 121 and the frame runs to it, ``proj_len_y() = 121 -
   age(0)``, one year less than before the switch; at age 120 the best estimate is exactly 1,
   the certainty falls in the anniversary month and ``pols_if(proj_len())`` is 0, and age 121
@@ -1009,7 +1010,8 @@ def test_dav2004r_proxy_is_anchored_at_65_with_women_at_six_tenths_of_men(shippe
 
 # The values package's "New table" figures of dav2004r_proxy by (sex, age, birth year), six
 # significant digits, with the best estimate at the factor 1.15 and, by (age, birth year),
-# the tariff rate of the blend of 45 % men: the rows of RV.
+# the tariff rate of the blend of 45 % men: the rows of RV. The sixteen rate rows of Basis,
+# the second reader of the table at the same factor, are among the first two.
 R_PACKAGE_RATES = {
     ("M", 65, 1962): 0.00458344, ("M", 80, 1962): 0.0175643, ("M", 95, 1962): 0.106244,
     ("M", 105, 1962): 0.352527, ("M", 115, 1962): 1.0, ("M", 120, 1962): 1.0,
@@ -2968,28 +2970,8 @@ def test_rlv_holds_no_mortality_file_column_item_reference_or_formula(product_mo
 # --------------------------------------------------------------------------- Basis
 
 BASIS = "basisrente"
-# The values package's rate rows of Basis on ``dav2004r_proxy`` by (sex, age, birth year),
-# six significant digits: "New table" and "BE new", the best estimate at the factor 1.15.
-BASIS_PACKAGE_RATES = {
-    ("M", 65, 1962): (0.00458344, 0.00527096), ("M", 80, 1962): (0.0175643, 0.0201989),
-    ("M", 95, 1962): (0.106244, 0.12218), ("F", 65, 1962): (0.00275006, 0.00316257),
-    ("F", 80, 1962): (0.0105386, 0.0121193), ("F", 95, 1962): (0.0637461, 0.0733081),
-    ("M", 40, 1990): (0.000312702, 0.000359608), ("M", 50, 1990): (0.000689298, 0.000792692),
-    ("M", 65, 1990): (0.0022559, 0.00259429), ("M", 80, 1990): (0.00974126, 0.0112024),
-    ("M", 95, 1990): (0.0792445, 0.0911312), ("F", 40, 1990): (0.000187621, 0.000215765),
-    ("F", 50, 1990): (0.000413579, 0.000475615), ("F", 65, 1990): (0.00135354, 0.00155657),
-    ("F", 80, 1990): (0.00584475, 0.00672147), ("F", 95, 1990): (0.0475467, 0.0546787),
-}
 BASIS_CORE_MORT_CELLS = TABLE_HOOKS + (
     "mort_rate_at_age", "mort_rate_base", "mort_be_trend", "mort_rate", "mort_rate_mth")
-
-
-@pytest.mark.parametrize(("sex", "x", "birth_year"), sorted(BASIS_PACKAGE_RATES))
-def test_basis_rates_are_the_values_packages(shipped_tables, sex, x, birth_year):
-    rate = shipped_tables.q(DAV2004R, sex, x, birth_year)
-    table, best = BASIS_PACKAGE_RATES[(sex, x, birth_year)]
-    assert float(f"{rate:.6g}") == table
-    assert float(f"{min(1.0, 1.15 * rate):.6g}") == best
 
 
 def test_basis_best_estimate_is_the_factorys_rate_on_the_own_sex_times_its_factor(

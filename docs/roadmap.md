@@ -221,6 +221,14 @@ Phase 3 is done (2026-10-31): the common core is delivered (above) and so is the
 
 The forecast keeps the assumptions of "The new M": a linear extrapolation without trace pruning, the coverage filter ignored, the mutant counts at `790706b`; mutants exist only once the separate test-set repository generates them, so it is a forecast, not a measurement.
 
+## Where the parameter tables stand
+
+The initiative *parameter tables*, the first of phase 4, is built in both of its epics (2026-11-19, branch `table-factory-cleanup`, entries 15 to 17 of epic-table-factory): the parameters of all ten products are in layered files, read through `param()` ([core.md](core.md), "The parameter files"); every death rate of the ten products comes through `q(...)` from the mortality table factory, eleven shared parametric tables that each tariff chooses by name ([core.md](core.md), "The table factory"); and the cost tables of KLV, Basis, RV and FRV have one shape, each cost item on one level ([core.md](core.md), "Contract data and charges").
+
+The roadmap's counting command (section "The new M"), run on that code, gives **M = 5,335** (M_core = 260, Σ M_p = 5,075), against 5,305 at `790706b`; the counts moved in both epics, by the literals that left the formulas for parameter files ([core.md](core.md), "Formula literals") and by the table factory, which entered the core's row, M_core 190 to 260 ([core.md](core.md), "The switches", which lists the counts by entry). The section "The new M" keeps its counts at `790706b` and the speeds of 2026-10-28, as the forecast's reference. The night forecast on the end state (`7533922`, M = 5,335, W = 24) is **5.4 h**, within the 10 h night and +6.8 % against the 5.1 h at the end of phase 3; the control before the first switch (`8dbefc9`) gave 5.17 h, most of the difference the larger M_core ([performance.md](performance.md), "Mortality table factory: night forecast after the last switch").
+
+No baseline tag is set. The initiative changed results by decision, the ten switches to the table factory among them, each change a marked `Result-Change` commit with its baselines ([core.md](core.md), "Commit trailers"); `uv run python tools/baseline_deviations.py` lists every marked `Result-Change` commit as a deviation from `phase-2-baseline`, with its commit and reason; the tag `phase-2-baseline` stays the reference of phase 3.
+
 ## Decisions
 
 - Phase 3 goes through all ten products together, not product by product: one commit unifies one quantity in every product, and one PR is one group of quantities (2026-10-25, reported to the strategist the same day). It replaces the product order of 2026-10-24, which started with `risikolebensversicherung` and ended with `pflegerentenversicherung`; `risikolebensversicherung` stayed the probe for the first core cell.

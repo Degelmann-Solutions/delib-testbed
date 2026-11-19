@@ -403,7 +403,7 @@ def test_the_cost_table_refuses_an_item_named_twice_in_its_header(tmp_path, prod
 
 
 @pytest.mark.parametrize("product", COST_PRODUCTS)
-@pytest.mark.parametrize("text", ["nan", "inf", "-inf", "", "abc"])
+@pytest.mark.parametrize("text", ["nan", "inf", "-inf", "", "abc", "1_000", "True"])
 def test_the_cost_table_refuses_a_value_that_is_no_finite_number(tmp_path, product, text):
     folder = product_copy(tmp_path, product)
     path = folder / "charge_table.csv"
@@ -430,6 +430,18 @@ def test_the_shipped_cost_tables_pass_the_checks(product_models, product):
     table = product_models(product).Data.charge_table()
     assert not table.index.duplicated().any()
     assert len(table.columns) >= 2 and table.columns[-1] == "provenance"
+    for item in table.columns[:-1]:
+        assert table[item].dtype == "float64", item
+
+
+@pytest.mark.parametrize("product", COST_PRODUCTS)
+def test_the_cost_table_refuses_a_row_wider_than_its_header(tmp_path, product):
+    folder = product_copy(tmp_path, product)
+    path = folder / "charge_table.csv"
+    header, first, *rest = cost_rows(path)
+    write_cost_rows(path, [header, first + ",x,y", *rest])
+    message = loader_error(folder / MODELS[product], "CostWideProbe")
+    assert f"ValueError: cost table {path} cannot be read: " in message, message
 
 
 def test_dropping_a_row_keeps_every_other_row_of_a_layer_file(tmp_path):

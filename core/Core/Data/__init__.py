@@ -268,7 +268,8 @@ def charge_table():
     naming the file and, for a row, the cost group and the item: a file that is missing or
     cannot be read or parsed, an item named twice in the header (read as written, before
     pandas renames a second ``<item>`` to ``<item>.1``), a cost group standing twice and a
-    cost value that is empty, no number or not finite (``nan``, ``inf``).
+    cost value that is empty, no number or not finite (``nan``, ``inf``); a number is what
+    pandas reads as one, so text such as ``1_000`` and a ``True`` are refused.
     """
     path = input_dir() / charge_file                                 # noqa: F821
     try:
@@ -286,10 +287,9 @@ def charge_table():
         if item == "provenance":
             continue
         for group, value in table[item].items():
-            try:
+            number = float("nan")
+            if pd.api.types.is_number(value) and not pd.api.types.is_bool(value):  # noqa: F821
                 number = float(value)
-            except (TypeError, ValueError):
-                number = float("nan")
             if not abs(number) < float("inf"):
                 raise ValueError(
                     f"cost item {item!r} of cost group {group!r} in {path} is no finite"

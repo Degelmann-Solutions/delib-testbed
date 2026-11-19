@@ -124,13 +124,13 @@ def base_rate(table, sex, x):
 
     The law's own value in full precision: neither capped at 1 nor closed at the last age,
     which ``q`` does.  Raises ``ValueError`` on an unknown table, a ``sex`` other than ``M``
-    and ``F`` and an age outside ``first_age(table) .. end_age(table) - 1``; an age is never
-    clamped.
+    and ``F`` and an age outside ``first_age(table) .. end_age(table) - 1``, the last age
+    included and nothing above it, so not ``end_age(table) - 0.5``; an age is never clamped.
     """
     law, _trend, _names = definition(table)
     if sex not in ("M", "F"):
         raise ValueError(f"table {table!r}: sex {sex!r} is neither 'M' nor 'F'")
-    if not first_age(table) <= x < end_age(table):
+    if not first_age(table) <= x <= end_age(table) - 1:
         raise ValueError(
             f"table {table!r}: x {x!r} is outside its ages {first_age(table)} to"
             f" {end_age(table) - 1}")
@@ -201,16 +201,18 @@ def q(table, sex, x, birth_year=None, duration=None):
     rate is 1 whatever the trend and the selection.
 
     Raises ``ValueError``, naming the table and the argument, where the call does not fit
-    the table: the cases of ``base_rate``, a generational table without ``birth_year``, a
-    period table with one, a select table without ``duration`` or with one below 1, and a
-    table without selection with one.
+    the table, before the law, the closure or a select factor is applied: the cases of
+    ``base_rate``, a generational table without ``birth_year`` or with one that is not
+    finite, a period table with one, a select table without ``duration``, with one below 1
+    or with one that is not a whole year, and a table without selection with one.
     """
-    rate = base_rate(table, sex, x)
     _law, trend_law, _names = definition(table)
     generational = trend_law is not None
     factors = select_factors(table)
     if generational and birth_year is None:
         raise ValueError(f"table {table!r}: birth_year is missing, the table is generational")
+    if generational and not abs(birth_year) < float("inf"):
+        raise ValueError(f"table {table!r}: birth_year {birth_year!r} is not finite")
     if not generational and birth_year is not None:
         raise ValueError(
             f"table {table!r}: birth_year {birth_year!r} is given, the table is a period table")
@@ -218,15 +220,18 @@ def q(table, sex, x, birth_year=None, duration=None):
         raise ValueError(f"table {table!r}: duration is missing, the table is select")
     if factors and duration < 1:
         raise ValueError(f"table {table!r}: duration {duration!r} is below 1")
+    if factors and not float(duration).is_integer():
+        raise ValueError(f"table {table!r}: duration {duration!r} is not a whole year")
     if not factors and duration is not None:
         raise ValueError(
             f"table {table!r}: duration {duration!r} is given, the table has no selection")
+    rate = base_rate(table, sex, x)
     if x == end_age(table) - 1:
         return 1.0
     if generational:
         rate = rate * (1.0 - trend(table, sex, x)) ** (birth_year + x - base_year(table))
     if factors:
-        rate = rate * factors[min(duration, len(factors)) - 1]
+        rate = rate * factors[min(int(duration), len(factors)) - 1]
     return min(1.0, rate)
 
 

@@ -901,6 +901,26 @@ def test_dav1997ti_proxy_closes_at_120_and_raises_outside_its_ages(shipped_table
                             f" 18 to 120"), line
 
 
+@pytest.mark.parametrize("sex", ["M", "F"])
+def test_dav1997ti_proxy_refuses_a_duration_that_is_not_a_whole_year(shipped_tables, sex):
+    """Within the select period (1.5), beyond it (6.5, the sixth factor the last) and at the
+    closing age 120, where the rate would be 1 whatever the factor."""
+    for x, duration in [(40, 1.5), (40, 6.5), (40, 11.25), (120, 1.5), (120, 6.5)]:
+        line = raised_line(lambda: shipped_tables.q(DAV1997TI, sex, x, duration=duration))
+        assert line == (f"ValueError: table 'dav1997ti_proxy': duration {duration!r} is not a"
+                        f" whole year"), (x, duration)
+    for duration in (float("nan"), float("inf")):
+        line = raised_line(lambda: shipped_tables.q(DAV1997TI, sex, 40, duration=duration))
+        assert line == (f"ValueError: table 'dav1997ti_proxy': duration {duration!r} is not a"
+                        f" whole year")
+    # a whole year keeps its factor, as an int or a float
+    for duration in (1, 3, 6, 7):
+        rate = shipped_tables.q(DAV1997TI, sex, 40, duration=float(duration))
+        assert rate == shipped_tables.q(DAV1997TI, sex, 40, duration=duration)
+        assert rate == ti_rate(sex, 40, duration)
+    assert shipped_tables.q(DAV1997TI, sex, 120, duration=2.0) == 1.0
+
+
 DAV2004R = "dav2004r_proxy"
 
 
@@ -1079,6 +1099,18 @@ def test_dav2004r_proxy_is_a_generational_table_without_selection(shipped_tables
                         " has no selection")
         assert line == raised_line(
             lambda: shipped_tables.q(DAV2004R, "M", x, birth_year=1962, duration=1))
+
+
+@pytest.mark.parametrize("sex", ["M", "F"])
+def test_dav2004r_proxy_refuses_a_birth_year_that_is_not_finite(shipped_tables, sex):
+    """NaN at 65 gave 1.0 until entry 21, the cap masking the NaN; at the closing age 120 the
+    closure would return 1 without reading the birth year."""
+    for birth_year in (float("nan"), float("inf"), float("-inf")):
+        for x in (65, 120):
+            line = raised_line(lambda: shipped_tables.q(DAV2004R, sex, x, birth_year))
+            assert line == (f"ValueError: table 'dav2004r_proxy': birth_year {birth_year!r} is"
+                            f" not finite"), (birth_year, x)
+    assert shipped_tables.q(DAV2004R, sex, 65, 1962.0) == shipped_tables.q(DAV2004R, sex, 65, 1962)
 
 
 def test_the_factory_source_holds_no_number_but_0_and_1():
@@ -1416,6 +1448,56 @@ def test_a_table_without_selection_with_a_duration_raises(fixture_tables, table)
         line = raised_line(lambda: fixture_tables.q(table, "M", x, birth_year, 1))
         assert line == (f"ValueError: table {table!r}: duration 1 is given, the table has no"
                         f" selection")
+
+
+@pytest.mark.parametrize("birth_year", [float("nan"), float("inf"), float("-inf")])
+def test_a_generational_table_with_a_birth_year_that_is_not_finite_raises(fixture_tables,
+                                                                         birth_year):
+    for x in (40, 120):
+        line = raised_line(lambda: fixture_tables.q("gen_fixture", "M", x, birth_year))
+        assert line == (f"ValueError: table 'gen_fixture': birth_year {birth_year!r} is not"
+                        f" finite")
+
+
+@pytest.mark.parametrize("duration", [1.5, 2.25, 3.5, 4.5, 80.5, float("nan"), float("inf")])
+def test_a_select_table_with_a_duration_that_is_not_a_whole_year_raises(fixture_tables,
+                                                                       duration):
+    """Within the select period, beyond its last factor and at the closing age, where the
+    rate would be 1 whatever the factor."""
+    for x in (40, 120):
+        line = raised_line(lambda: fixture_tables.q("sel_fixture", "M", x, None, duration))
+        assert line == f"ValueError: table 'sel_fixture': duration {duration!r} is not a whole year"
+
+
+def test_a_select_table_takes_a_whole_duration_as_a_float(fixture_tables):
+    for duration in (1, 2, 3, 4, 80):
+        assert fixture_tables.q("sel_fixture", "F", 40, duration=float(duration)) == (
+            fixture_tables.q("sel_fixture", "F", 40, duration=duration))
+    assert fixture_tables.q("sel_fixture", "F", 120, duration=2.0) == 1.0
+
+
+@pytest.mark.parametrize(("table", "x"), [
+    ("period_fixture", 120.5), ("steep_fixture", 110.5), ("steep_fixture", 110.001),
+    ("period_fixture", -0.5), ("steep_fixture", 19.5),
+])
+def test_an_age_between_the_published_ages_and_beyond_raises(fixture_tables, table, x):
+    """Above the last age, one below the end age, there is no rate, not even part of a year:
+    the closure holds at the last age and nothing above it."""
+    for cell in (fixture_tables.q, fixture_tables.base_rate):
+        line = raised_line(lambda: cell(table, "M", x))
+        assert line == (f"ValueError: table {table!r}: x {x!r} is outside its ages"
+                        f" {fixture_tables.first_age(table)} to"
+                        f" {fixture_tables.end_age(table) - 1}"), line
+
+
+def test_the_checks_come_before_the_closure(fixture_tables):
+    """At the last age the rate is 1 for a valid call and an error for an invalid one."""
+    assert fixture_tables.q("gen_fixture", "M", 120, 1960) == 1.0
+    assert fixture_tables.q("sel_fixture", "M", 120, duration=3) == 1.0
+    assert fixture_tables.q("period_fixture", "M", 120) == 1.0
+    for call in (lambda: fixture_tables.q("gen_fixture", "M", 120, float("nan")),
+                 lambda: fixture_tables.q("sel_fixture", "M", 120, duration=1.5)):
+        assert raised_line(call).startswith("ValueError: table "), raised_line(call)
 
 
 def test_a_table_naming_an_item_the_layer_lacks_raises_the_loaders_key_error(fixture_tables):
@@ -3808,7 +3890,7 @@ def test_the_pflege_tables_give_their_gompertz_rate_on_the_force(shipped_tables,
     assert shipped_tables.q(table, sex, 109) == 1.0
     assert shipped_tables.base_rate(table, sex, 109) < 1.0
     assert (shipped_tables.first_age(table), shipped_tables.end_age(table)) == (18, 110)
-    for x in (17, 110, 0, 121):
+    for x in (17, 110, 0, 121, 109.5, 17.5):
         for cell in (shipped_tables.q, shipped_tables.base_rate):
             line = raised_line(lambda: cell(table, sex, x))
             assert line == (f"ValueError: table {table!r}: x {x!r} is outside its ages 18 to"

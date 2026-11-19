@@ -1495,9 +1495,10 @@ def test_the_checks_come_before_the_closure(fixture_tables):
     assert fixture_tables.q("gen_fixture", "M", 120, 1960) == 1.0
     assert fixture_tables.q("sel_fixture", "M", 120, duration=3) == 1.0
     assert fixture_tables.q("period_fixture", "M", 120) == 1.0
-    for call in (lambda: fixture_tables.q("gen_fixture", "M", 120, float("nan")),
-                 lambda: fixture_tables.q("sel_fixture", "M", 120, duration=1.5)):
-        assert raised_line(call).startswith("ValueError: table "), raised_line(call)
+    assert raised_line(lambda: fixture_tables.q("gen_fixture", "M", 120, float("nan"))) == (
+        "ValueError: table 'gen_fixture': birth_year nan is not finite")
+    assert raised_line(lambda: fixture_tables.q("sel_fixture", "M", 120, duration=1.5)) == (
+        "ValueError: table 'sel_fixture': duration 1.5 is not a whole year")
 
 
 def test_a_table_naming_an_item_the_layer_lacks_raises_the_loaders_key_error(fixture_tables):

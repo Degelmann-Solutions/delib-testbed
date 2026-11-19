@@ -120,8 +120,8 @@ import pandas as pd
 import pytest
 
 from helpers import (CORE_DIR, CORE_MODEL, MODELS, MOVED_COST_ITEMS, PRODUCTS_DIR, ROOT,
-                     add_layer_rows, formula_cells, loader_error, param_usage, product_copy,
-                     raised_value_error, same_value)
+                     add_layer_rows, drop_layer_rows, formula_cells, loader_error,
+                     param_usage, product_copy, raised_value_error, read_layer, same_value)
 
 
 MODEL_PREFIXES = ("Basis", "BU", "FRV", "Index", "KLV", "RV", "Pflege", "Riester", "RLV", "Sofort")
@@ -1100,11 +1100,6 @@ def upstream_table(product: str, name: str, **read_csv) -> pd.DataFrame:
     return pd.read_csv(io.BytesIO(data), **read_csv)
 
 
-def tariff_type_table(product):
-    """The product's ``param_tariff_type.csv`` as pandas reads it, by ``item``."""
-    return pd.read_csv(PRODUCTS_DIR / product / "param_tariff_type.csv", index_col="item")
-
-
 # Pflege's items renamed after the merge (docs/core.md, "Parameter names"): upstream name ->
 # current name. ``acq_permille`` 25 (per mille) is the fraction ``load_acq_bsum_once`` 0.025.
 PFLEGE_RENAMED = {
@@ -1139,7 +1134,7 @@ PFLEGE_UNIT_WORDS = {
 def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     product = "pflegerentenversicherung"
     model = product_models(product)
-    merged = tariff_type_table(product)
+    merged = read_layer(PRODUCTS_DIR / product / "param_tariff_type.csv").set_index("item")
     basis = upstream_table(product, "basis_table.csv", index_col="param")
     expense = upstream_table(product, "expense_table.csv", index_col="item")
     basis = basis.rename(index=PFLEGE_RENAMED)
@@ -1693,8 +1688,7 @@ def test_roll_fwd_tol_is_read_from_the_core_file(product, product_models):
 def test_roll_fwd_tol_without_its_row_raises_key_error(tmp_path):
     folder = product_copy(tmp_path, "kapitallebensversicherung")
     table = folder / MODELS["kapitallebensversicherung"] / "CoreData" / "param_core.csv"
-    params = pd.read_csv(table, index_col="item")
-    params.drop(index="check_tol").to_csv(table)
+    drop_layer_rows(table, "check_tol")
     copy = mx.read_model(folder / MODELS["kapitallebensversicherung"], name="TolProbe")
     try:
         point_id = copy.Data.model_point_table().index[0]
@@ -1713,9 +1707,9 @@ def test_param_reads_the_tariff_type_layer(product_models):
     assert data.param_core_path().is_file()
     for item in ("expense_claim_pp_once", "unisex_mix_male"):
         value = data.param(item)
-        # the file holds table choices too, so pandas reads its values as text
-        assert type(value) is float and value == float(tariff_type_table(
-            "risikolebensversicherung").at[item, "value"]), item
+        text = read_layer(PRODUCTS_DIR / "risikolebensversicherung"
+                          / "param_tariff_type.csv").set_index("item").at[item, "value"]
+        assert type(value) is float and value == float(text), item
 
 
 PARAM_TABLE_RE = re.compile(r"(?<!\w)param_table(_dict)?\(")
@@ -1740,10 +1734,11 @@ def test_no_param_table_reader_remains(product_models):
 
 @pytest.mark.parametrize("product", sorted(MODELS))
 def test_param_equals_the_file_value(product, product_models):
-    """``param(item)`` is the value pandas reads for every item of the tariff-type file; a
-    table choice is the name as written, and pandas reads a column with one as text."""
+    """``param(item)`` is the number every item of the tariff-type file writes, the file read
+    as text; a table choice is the name as written."""
     data = product_models(product).Data
-    values = tariff_type_table(product)["value"].to_dict()
+    values = read_layer(PRODUCTS_DIR / product / "param_tariff_type.csv").set_index(
+        "item")["value"].to_dict()
     assert values
     for item, value in values.items():
         expected = value if item.endswith("_table") else float(value)
@@ -1778,8 +1773,7 @@ def test_an_item_of_several_files_has_one_type():
     files.append(CORE_MODEL / "Data" / "param_core.csv")
     types = {}
     for path in files:
-        for item, text in pd.read_csv(path, dtype=str, keep_default_na=False)[
-                ["item", "value"]].itertuples(index=False):
+        for item, text in read_layer(path)[["item", "value"]].itertuples(index=False):
             kind = "int" if text.strip().lstrip("+-").isdigit() else "float"
             types.setdefault(item, {}).setdefault(kind, []).append(path.parent.name)
     mixed = {item: kinds for item, kinds in types.items() if len(kinds) > 1}
@@ -1793,7 +1787,7 @@ def test_basis_is_source_or_setzung():
     files += sorted(PRODUCTS_DIR.glob("*/param_tariff.csv"))
     files.append(CORE_MODEL / "Data" / "param_core.csv")
     for path in files:
-        table = pd.read_csv(path, dtype=str, keep_default_na=False)
+        table = read_layer(path)
         wrong = table.loc[~table["basis"].isin(["source", "Setzung"]), "item"].tolist()
         assert not wrong, (path, wrong)
 
@@ -1803,8 +1797,7 @@ def test_no_product_doc_calls_a_core_item_a_row_of_the_tariff_type_file():
     ``param_tariff_type.csv``: no product ``.md`` file names one, in backticks, within the same table
     cell and the 80 characters before "a row of `param_tariff_type.csv`" (or "rows of", or
     "the tariff-type file")."""
-    core_items = pd.read_csv(CORE_MODEL / "Data" / "param_core.csv", dtype=str,
-                             keep_default_na=False)["item"].tolist()
+    core_items = read_layer(CORE_MODEL / "Data" / "param_core.csv")["item"].tolist()
     phrase = re.compile(r"rows? of (`param_tariff_type\.csv`|the tariff-type file)")
     docs = sorted(PRODUCTS_DIR.glob("*/*.md"))
     assert len(docs) >= 40, docs
@@ -2354,8 +2347,7 @@ def test_param_layers_hold_every_item_once_and_merge_into_param_dict(product, pr
     expected = ["core", "tables", "tariff_type"] + (
         ["tariff"] if data.param_tariff_path().is_file() else [])
     assert list(layers) == expected
-    tariff_type = pd.read_csv(data.input_dir() / data.param_file, dtype=str,
-                              keep_default_na=False)["item"].tolist()
+    tariff_type = read_layer(data.input_dir() / data.param_file)["item"].tolist()
     assert sorted(layers["tariff_type"]) == sorted(tariff_type)
     assert len(tariff_type) == len(set(tariff_type))
     items = [item for layer in layers.values() for item in layer]
@@ -2448,7 +2440,7 @@ def test_param_rejects_an_empty_item(tmp_path):
 def test_param_rejects_a_file_with_other_columns(tmp_path, change, name):
     folder = product_copy(tmp_path, "risikolebensversicherung")
     path = folder / "param_tariff_type.csv"
-    table = change(pd.read_csv(path, dtype=str, keep_default_na=False))
+    table = change(read_layer(path))
     table.to_csv(path, index=False)
     message = loader_error(folder / MODELS["risikolebensversicherung"], name)
     assert f"parameter file {path} has the columns {list(table.columns)}" in message, message
@@ -2569,9 +2561,7 @@ def test_the_usage_scan_reports_an_unused_item_in_each_product_layer(tmp_path):
 
 def test_the_usage_scan_reports_a_call_to_a_missing_item(tmp_path):
     def edit(folder):
-        table = folder / "param_tariff_type.csv"
-        params = pd.read_csv(table, dtype=str, keep_default_na=False, index_col="item")
-        params.drop(index="expense_claim_pp_once").to_csv(table)
+        drop_layer_rows(folder / "param_tariff_type.csv", "expense_claim_pp_once")
 
     copy = _usage_copy(tmp_path, "MissingProbe", edit)
     try:
@@ -3045,8 +3035,7 @@ def test_a_prem_freq_outside_the_table_raises(tmp_path):
 def test_expense_infl_without_its_row_raises_key_error(tmp_path):
     folder = product_copy(tmp_path, "klassische_rentenversicherung")
     table = folder / MODELS["klassische_rentenversicherung"] / "CoreData" / "param_core.csv"
-    params = pd.read_csv(table, index_col="item")
-    params.drop(index="expense_infl").to_csv(table)
+    drop_layer_rows(table, "expense_infl")
     copy = mx.read_model(folder / MODELS["klassische_rentenversicherung"], name="InflProbe")
     try:
         assert copy.Projection.expense_infl._is_derived()
@@ -3332,8 +3321,7 @@ def test_pflege_tariff_deterioration_is_zero_at_grade_5(product_models):
 def test_pflege_recov_load_first_without_its_row_raises_key_error(tmp_path):
     folder = product_copy(tmp_path, "pflegerentenversicherung")
     table = folder / "param_tariff_type.csv"
-    params = pd.read_csv(table, index_col="item")
-    params.drop(index="recov_load_first").to_csv(table)
+    drop_layer_rows(table, "recov_load_first")
     copy = mx.read_model(folder / MODELS["pflegerentenversicherung"], name="RecProbe")
     try:
         point_id = copy.Data.model_point_table().index[0]

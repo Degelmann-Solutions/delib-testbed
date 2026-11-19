@@ -61,11 +61,10 @@ import sys
 from pathlib import Path
 
 import modelx as mx
-import pandas as pd
 import pytest
 
 from helpers import (MOVED_COST_ITEMS, PRODUCTS_DIR, ROOT, TOOLS_DIR, add_layer_rows,
-                     load_tool, param_usage, product_copy)
+                     drop_layer_rows, load_tool, param_usage, product_copy, read_layer)
 
 PRODUCTS = sorted(p.name for p in PRODUCTS_DIR.iterdir() if p.is_dir())
 CORE_FILE = ROOT / "core" / "Core" / "Data" / "param_core.csv"
@@ -82,10 +81,6 @@ from test_tables import (BASIS, BU, FIXTURE_DEFINITIONS, FIXTURE_VALUES, FRV,  #
 
 
 params = load_tool("params", TOOLS_DIR / "params.py")
-
-
-def read(path: Path) -> pd.DataFrame:
-    return pd.read_csv(path, dtype=str, keep_default_na=False).set_index("item")
 
 
 def test_ten_products():
@@ -105,8 +100,9 @@ def test_the_rows_agree_with_the_scan_and_the_loader(product):
     finally:
         model.close()
     assert list(layers) == ["core", "tables", "tariff_type"]
-    frames = {"core": read(CORE_FILE), "tables": read(CORE_FILE.with_name("param_tables.csv")),
-              "tariff_type": read(folder / "param_tariff_type.csv")}
+    frames = {layer: read_layer(path).set_index("item") for layer, path in (
+        ("core", CORE_FILE), ("tables", CORE_FILE.with_name("param_tables.csv")),
+        ("tariff_type", folder / "param_tariff_type.csv"))}
     assert [row["item"] for row in table] and len(table) == len(reads)
     assert {row["item"] for row in table} == set(reads)
     order = [(layer, item) for layer, values in layers.items()
@@ -153,7 +149,7 @@ def test_a_moved_cost_item_is_listed_in_the_tariff_type_layer(product, capsys):
         by_item = {row["item"]: row for row in params.rows(model)}
     finally:
         model.close()
-    frame = read(folder / "param_tariff_type.csv")
+    frame = read_layer(folder / "param_tariff_type.csv").set_index("item")
     for item, value in MOVED_COST_ITEMS[product].items():
         row = by_item[item]
         assert (row["value"], row["layer"]) == (value, "tariff_type"), item
@@ -253,9 +249,8 @@ def test_a_missing_tariff_type_file_is_a_loader_error(tmp_path, capsys):
 def test_a_read_item_in_no_layer_is_missing_and_exits_1(tmp_path, capsys):
     folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"
-    frame = pd.read_csv(path, dtype=str, keep_default_na=False)
-    assert "decl_scale" in set(frame["item"])
-    frame[frame["item"] != "decl_scale"].to_csv(path, index=False)
+    assert "decl_scale" in set(read_layer(path)["item"])
+    drop_layer_rows(path, "decl_scale")
 
     model = mx.read_model(model_dir(folder), name="ParamsMissing")
     try:
@@ -276,7 +271,7 @@ def test_a_read_item_in_no_layer_is_missing_and_exits_1(tmp_path, capsys):
 def test_an_item_of_the_tariff_file_is_listed_in_the_tariff_layer(tmp_path, capsys):
     folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"
-    frame = pd.read_csv(path, dtype=str, keep_default_na=False)
+    frame = read_layer(path)
     moved = frame["item"] == "decl_scale"
     assert moved.sum() == 1
     frame[moved].to_csv(folder / "param_tariff.csv", index=False)

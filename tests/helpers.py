@@ -7,8 +7,10 @@ file alone stays in that file.
 from __future__ import annotations
 
 import ast
+import csv
 import hashlib
 import importlib.util
+import io
 import shutil
 from pathlib import Path
 
@@ -117,6 +119,35 @@ def parse_output(stdout: str) -> dict[str, str]:
 
 
 # --------------------------------------------------------------------------- layer files
+
+def read_layer(path: Path) -> pd.DataFrame:
+    """A parameter layer file as the loader reads it, as text (``dtype=str``,
+    ``keep_default_na=False``), under its header's columns.
+
+    No value is typed here: the typing is the loader's, and a typed value comes from a
+    model's ``Data.param_layers()``.
+    """
+    return pd.read_csv(path, dtype=str, keep_default_na=False)
+
+
+def drop_layer_rows(path: Path, *items: str) -> None:
+    """Drop the rows of ``items`` from a parameter layer file; each must stand in it once.
+
+    The file is rewritten from its own lines, so every other row keeps its text byte for
+    byte (an integer stays ``3``, not ``3.0``).
+    """
+    lines = list(io.StringIO(path.read_bytes().decode("utf-8"), newline=""))
+    reader = csv.reader(lines)
+    kept, dropped, start = [], [], 0
+    for number, row in enumerate(reader):
+        if number and row and row[0] in items:
+            dropped.append(row[0])
+        else:
+            kept += lines[start:reader.line_num]
+        start = reader.line_num
+    assert sorted(dropped) == sorted(items), (path, items, dropped)
+    path.write_bytes("".join(kept).encode("utf-8"))
+
 
 def add_layer_rows(path: Path, values: dict[str, str], basis: str = "") -> None:
     """Append one row per item to a parameter layer file, its value as text, in the file's

@@ -82,7 +82,6 @@ Reference                 Cells                              File
 model_point_file          data.model_point_table()           model_point_table.csv
 lapse_file                data.lapse_table()                 lapse_table.csv
 surplus_rate_file         data.surplus_rate_table()          surplus_rate_table.csv
-charge_file               data.charge_table()                cost_table.csv
 prem_freq_file            data.prem_freq_table()             prem_freq_table.csv
 deckrv_file               data.deckrv_table()                deckrv_table.csv
 param_file                data.param()                       param_tariff_type.csv
@@ -461,11 +460,6 @@ def zillmer_on():
     return int(model_point()["zillmer_on"])
 
 
-def cost_id():
-    """The key into *cost_table.csv* naming this policy's loadings and expense basis."""
-    return model_point()["cost_id"]
-
-
 def surplus_use():
     """The *Überschussverwendung*: ``ansammlung``, ``bonus`` or ``beitragsverrechnung``.
 
@@ -551,7 +545,7 @@ def mort_be_factor():
 
     Override reason: the best estimate is 0.75 of the first-order table, a 33 % safety
     loading and a tariff parameter in *param_tariff_type.csv*,
-    products/kapitallebensversicherung/model.md:513
+    products/kapitallebensversicherung/model.md:510
     """
     return data.param("mort_be_factor")                              # noqa: F821
 
@@ -567,7 +561,7 @@ def hoechstrechnungszins():
 
     Override reason: the ceiling is read from the product's year-keyed *deckrv_table.csv*,
     clamped to its range, with the split years 1994 and 2000 at the higher rate,
-    products/kapitallebensversicherung/technical-notes.md:253
+    products/kapitallebensversicherung/technical-notes.md:251
     """
     rates = data.deckrv_table_dict()["hoechstrechnungszins"]         # noqa: F821
     y = min(max(issue_year(), int(min(rates))), int(max(rates)))
@@ -613,7 +607,7 @@ def alpha_rate():
     public.  It is charged in the premium whether or not the contract is zillmered; only
     :func:`zillmer_amount` carries ``zillmer_on``.
     """
-    return float(data.charge_table_dict()["load_acq_bsum_once"][cost_id()])  # noqa: F821
+    return data.param("load_acq_bsum_once")                          # noqa: F821
 
 
 def load_admin_prem_inst():
@@ -622,7 +616,7 @@ def load_admin_prem_inst():
     3,0 % **[std]**.  The *form* - a percentage of the gross premium over the premium-paying
     period - is what the corpus establishes; the level is not.
     """
-    return float(data.charge_table_dict()["load_admin_prem_inst"][cost_id()])  # noqa: F821
+    return data.param("load_admin_prem_inst")                        # noqa: F821
 
 
 def load_admin_sum_ann():
@@ -634,7 +628,7 @@ def load_admin_sum_ann():
     pricing equation funds the running cost and the classical reserve convention assumes the
     ongoing loadings meet it.
     """
-    return float(data.charge_table_dict()["load_admin_sum_ann"][cost_id()])  # noqa: F821
+    return data.param("load_admin_sum_ann")                          # noqa: F821
 
 
 # --- pricing on the first-order basis --------------------------------------
@@ -656,7 +650,7 @@ def tariff_death_sum():
     The core's :func:`tariff_death_pv` multiplies its sum over the policy years by it.
 
     Override reason: the death leg pays the guaranteed Todesfallleistung SD,
-    products/kapitallebensversicherung/technical-notes.md:448
+    products/kapitallebensversicherung/technical-notes.md:446
     """
     return sum_death()
 
@@ -665,7 +659,7 @@ def tariff_death_load(y):
     """f: the *Risikozuschlag* :func:`rating_factor`, on the **claim rate in the death leg only**.
 
     Override reason: the Risikozuschlag loads the death leg only, never the survival leg,
-    products/kapitallebensversicherung/technical-notes.md:468
+    products/kapitallebensversicherung/technical-notes.md:466
     """
     return rating_factor()
 
@@ -677,7 +671,7 @@ def tariff_maturity_sum():
     of the term by it.
 
     Override reason: the endowment pays the Erlebensfallleistung SE at maturity,
-    products/kapitallebensversicherung/technical-notes.md:449
+    products/kapitallebensversicherung/technical-notes.md:447
     """
     return sum_assured()
 
@@ -1273,7 +1267,7 @@ def prem_inst_pp(t):
 
     Override reason: the instalment is the year's *Zahlbeitrag*, net of the
     *Beitragsverrechnung*, over the elected instalments where one falls due,
-    products/kapitallebensversicherung/technical-notes.md:617
+    products/kapitallebensversicherung/technical-notes.md:615
     """
     return (prem_paid_pp(duration(t)) / instalments()
             if prem_due(t) else 0.0)
@@ -1310,7 +1304,7 @@ def lapse_rate(t):
 
     Override reason: § 165 VVG turns a *Beitragsfreistellung* election that fails the
     minimum-sum test into a surrender, a rate of 1 in that year, and the final year's end is
-    the *Ablauf*, products/kapitallebensversicherung/technical-notes.md:544
+    the *Ablauf*, products/kapitallebensversicherung/technical-notes.md:542
     """
     if duration(t) >= proj_len_y() - 1:
         return 0.0
@@ -1372,7 +1366,7 @@ def pols_if(t):
 
     Override reason: the roll-forward subtracts no maturity, so ``pols_if(proj_len())`` is
     the maturing cohort its checks read, and it multiplies the survival factors, another
-    float order, products/kapitallebensversicherung/technical-notes.md:623
+    float order, products/kapitallebensversicherung/technical-notes.md:621
     """
     if t < t_start() or t > proj_len():
         return 0.0
@@ -1493,7 +1487,7 @@ def benefit_death_pp(t):
     to zero is a defensible variant.  Paying **nil** on the excluded share is not.
 
     Override reason: a death pays the full benefit, with the *Rückkaufswert* on the suicide
-    share in the first three years, products/kapitallebensversicherung/technical-notes.md:627
+    share in the first three years, products/kapitallebensversicherung/technical-notes.md:625
     """
     if duration(t) < data.param("suicide_years"):                    # noqa: F821
         return ((1.0 - data.param("suicide_share")) * benefit_full_pp(t)  # noqa: F821
@@ -1519,7 +1513,7 @@ def benefit_maturity_pp(t):
     A *beitragsfrei* contract matures on ``bfz_si_pp()`` in place of :func:`sum_assured`.
 
     Override reason: the *Ablauf* pays the sum assured plus the surplus balances,
-    products/kapitallebensversicherung/technical-notes.md:630
+    products/kapitallebensversicherung/technical-notes.md:628
     """
     if t != proj_len() - 1:
         return 0.0
@@ -1557,7 +1551,7 @@ def claim_kinds():
     """The benefit kinds of :func:`claims` in the order of its total: death, maturity, lapse.
 
     Override reason: the claim columns are death, maturity and lapse in that order,
-    products/kapitallebensversicherung/technical-notes.md:663
+    products/kapitallebensversicherung/technical-notes.md:661
     """
     return ("DEATH", "MATURITY", "LAPSE")
 
@@ -1570,7 +1564,7 @@ def benefit_lapse_pp(t):
     decides a payment rather than only a label.
 
     Override reason: a lapse pays the *Rückkaufswert*,
-    products/kapitallebensversicherung/technical-notes.md:637
+    products/kapitallebensversicherung/technical-notes.md:635
     """
     return surr_value_pp(t)
 
@@ -1584,7 +1578,7 @@ def claim_expenses(t):
     the only expense line that scales with **claims** rather than with policies, and it is
     inside :func:`expenses`.
     """
-    ce = float(data.charge_table_dict()["expense_claim_pp_once"][cost_id()])  # noqa: F821
+    ce = data.param("expense_claim_pp_once")                         # noqa: F821
     return ce * (pols_death(t) + pols_lapse(t) + pols_maturity(t))
 
 
@@ -1604,10 +1598,9 @@ def expenses_pp(t):
     modestly exceeds what the *Zillmerung* recovers, so that the anchor cell carries the
     new-business strain a real German endowment carries.
     """
-    cost = data.charge_table_dict()                                  # noqa: F821
-    acq = (float(cost["expense_acq_pp_once"][cost_id()])
+    acq = (data.param("expense_acq_pp_once")                         # noqa: F821
            if (t == t_start() and duration_init() == 0) else 0.0)
-    return (acq + float(cost["expense_admin_pp_ann"][cost_id()]) / 12.0
+    return (acq + data.param("expense_admin_pp_ann") / 12.0          # noqa: F821
             * inflation_factor(t))
 
 
@@ -1623,8 +1616,8 @@ def expenses_maint(t):
     ``FRV_DE_S`` — so ``expenses`` means the same quantity across the library.
 
     Override reason: the in-force carries the acquisition expense at issue,
-    products/kapitallebensversicherung/technical-notes.md:639, and the monthly maintenance,
-    products/kapitallebensversicherung/technical-notes.md:640, in one per-policy rate
+    products/kapitallebensversicherung/technical-notes.md:637, and the monthly maintenance,
+    products/kapitallebensversicherung/technical-notes.md:638, in one per-policy rate
     """
     return expenses_pp(t) * pols_if(t)
 
@@ -1633,23 +1626,23 @@ def expenses_claim(t):
     """The claim handling expense, :func:`claim_expenses`.
 
     Override reason: the claim expense falls per death, lapse and maturity,
-    products/kapitallebensversicherung/technical-notes.md:641
+    products/kapitallebensversicherung/technical-notes.md:639
     """
     return claim_expenses(t)
 
 
 def comm_init_rate():
-    """The initial commission rate on the *Beitragssumme*, from the cost table **[std]**.
+    """The initial commission rate on the *Beitragssumme*, ``comm_acq_bsum_once`` **[std]**.
 
     2,5 % of the *Beitragssumme* at conclusion - anchored to the 25 ‰ § 4 DeckRV ceiling and
     to one carrier's reported 25 ‰, a single amount in month ``t_start()``.  It does not
     apply at ``t_start()`` on an in-force point: it was paid at conclusion, long before the
     frame opens.  Commission is excluded from :func:`expenses`.
 
-    Override reason: the initial commission is the cost table's ``comm_acq_bsum_once`` of the
-    *Beitragssumme*, products/kapitallebensversicherung/technical-notes.md:381
+    Override reason: the initial commission is the tariff's ``comm_acq_bsum_once`` of the
+    *Beitragssumme*, products/kapitallebensversicherung/technical-notes.md:379
     """
-    return float(data.charge_table_dict()["comm_acq_bsum_once"][cost_id()])  # noqa: F821
+    return data.param("comm_acq_bsum_once")                          # noqa: F821
 
 
 def comm_renew(t):
@@ -1665,10 +1658,9 @@ def comm_renew(t):
     being a policyholder rebate rather than a price reduction.
 
     Override reason: the renewal commission is a rate on the charged instalment from the
-    second policy year, products/kapitallebensversicherung/technical-notes.md:643
+    second policy year, products/kapitallebensversicherung/technical-notes.md:641
     """
-    cost = data.charge_table_dict()                                  # noqa: F821
-    return (float(cost["comm_renew_prem_inst"][cost_id()]) * prem_charged_inst_pp(t) * pols_if(t)
+    return (data.param("comm_renew_prem_inst") * prem_charged_inst_pp(t) * pols_if(t)  # noqa: F821
             if duration(t) > 0 else 0.0)
 
 
@@ -1687,7 +1679,7 @@ def check_net_cf_scale(t):
     failed.
 
     Override reason: the statement is checked relative to the sum insured,
-    products/kapitallebensversicherung/technical-notes.md:700
+    products/kapitallebensversicherung/technical-notes.md:698
     """
     return max(sum_assured(), 1.0)                                   # noqa: F821
 

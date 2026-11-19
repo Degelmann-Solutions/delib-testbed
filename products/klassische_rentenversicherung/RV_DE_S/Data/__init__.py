@@ -108,6 +108,18 @@ chosen: the *Höchstzillmersatz* of 25 ‰ of the *Beitragssumme* (40 ‰ before
 surrender floor. The lapse table's one shaped feature is the **duration-12 step**, at the
 twelve-year threshold § 20 Abs. 1 Nr. 6 EStG puts on the halving of the taxable gain: the
 shape is argued, every level is a placeholder.
+
+``charge_table.csv`` holds one row per cost group, keyed by ``cost_group``: ``zillmer_25``
+for contracts concluded from 1 January 2015 and ``zillmer_40`` for the earlier
+*Höchstzillmersatz*, with the two items the groups differ in, ``charge_acq_bsum_once`` and
+``stornoabzug_rate``; the row's provenance names each item's source.  The charges equal in
+both groups, ``charge_admin_prem_inst``, ``charge_admin_av_ann``,
+``charge_admin_pup_av_ann`` and ``min_annuity_mth``, are rows of ``param_tariff_type.csv``,
+and the five-year spread is the core's ``surr_spread_years``.  A **charge** is a deduction
+the tariff makes from the premium or the *Deckungskapital*: it moves money inside the
+contract and produces no cash flow.  An **expense** is the insurer's own outgo and is a cash
+flow.  The two are different things and confusing them is a listed pitfall; the expense
+levels live in the parameter file ``param_file``, read through ``param``.
 """
 
 from modelx.serialize.jsonvalues import *
@@ -157,29 +169,6 @@ def decl_rate_years():
         "scenario_id")["calendar_year"]
     return {scen: (int(lo), int(hi))
             for scen, lo, hi in zip(years.min().index, years.min(), years.max())}
-
-
-def charge_table_index():
-    """The index columns of *charge_table.csv*: ``charge_id`` and ``item``.
-
-    Two charge sets: ``zillmer_25`` for contracts concluded from 1 January 2015 and
-    ``zillmer_40`` for the earlier *Höchstzillmersatz*.  Six items each —
-    ``charge_acq_bsum_once``, ``charge_admin_prem_inst``, ``charge_admin_av_ann``,
-    ``charge_admin_pup_av_ann``, ``stornoabzug_rate`` and ``min_annuity_mth``; the
-    five-year spread is the core's ``surr_spread_years``.  Keyed per item so each number
-    carries its own provenance tag.
-
-    A **charge** is a deduction the tariff makes from the premium or the
-    *Deckungskapital*: it moves money inside the contract and produces no cash flow.  An
-    **expense** is the insurer's own outgo and is a cash flow.  The two are different
-    things and confusing them is a listed pitfall; the expense levels live in
-    the parameter file ``param_file``, read through ``param``.
-
-    Override reason: the table is keyed per item, so each number carries its own
-    provenance, by ``charge_id`` and ``item``,
-    products/klassische_rentenversicherung/technical-notes.md:223
-    """
-    return ["charge_id", "item"]
 
 
 # ---------------------------------------------------------------------------

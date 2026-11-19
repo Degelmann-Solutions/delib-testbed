@@ -124,7 +124,9 @@ def param_layers():
     an item that is empty or padded with whitespace, a value that is empty, no number or not
     finite (``nan``, ``inf``), a table choice whose value is no name, an item standing twice
     in one file, an item of the core file or the table parameter file in a later file (the
-    core lock, naming both files), an item standing in both product files (uniqueness).
+    core lock, naming both files), an item standing in both product files (uniqueness), an
+    item of any layer that is also a column of the product's cost table,
+    ``charge_table_items()`` (one level for each cost item, naming both files).
     """
     paths = param_paths()
     layers = {}
@@ -169,6 +171,11 @@ def param_layers():
         for item in values:
             seen[item] = (layer, path)
         layers[layer] = values
+    for item, file in charge_table_items().items():
+        if item in seen:
+            raise ValueError(
+                f"parameter {item!r} stands in the cost table {file} and in {seen[item][1]};"
+                f" a cost item stands on one level")
     return layers
 
 
@@ -245,14 +252,38 @@ def surplus_table():
 
 
 def charge_table_index():
-    """The index column of the charge table: ``charge_id``."""
-    return "charge_id"
+    """The index column of the cost table: ``cost_group``."""
+    return "cost_group"
 
 
 def charge_table():
-    """The tariff charges, read from ``charge_file`` by ``charge_table_index()``."""
+    """The cost table, read from ``charge_file`` by ``charge_table_index()``.
+
+    One shape in every product that has one: one row per cost group, the key column
+    ``cost_group`` first, one column per cost item and the row's ``provenance`` last.  An
+    item equal in every group is no column of it but a row of the tariff-type file, read
+    through ``param``; ``param_layers()`` refuses an item standing in both.
+    """
     return pd.read_csv(                                              # noqa: F821
         input_dir() / charge_file, index_col=charge_table_index())   # noqa: F821
+
+
+def charge_table_items():
+    """The cost items of the product's cost table: ``{item: file}``, empty without one.
+
+    Every column of ``charge_table()`` but ``provenance``, each with the table's file, which
+    ``param_layers()`` checks against the parameter layers.  A product has a cost table where
+    its ``Data`` defines the Reference ``charge_file``; the core's ``Data`` defines no
+    References, so a product without one reaches the name unbound, a ``NameError`` under
+    modelx and an ``AttributeError`` in the exported model, where a formula's global name is
+    an attribute of its space, and the cell gives ``{}`` there without reading a file.
+    """
+    try:
+        name = charge_file                                           # noqa: F821
+    except (NameError, AttributeError):
+        return {}
+    file = input_dir() / name
+    return {item: file for item in charge_table().columns if item != "provenance"}
 
 
 def hoechstrechnungszins_table():

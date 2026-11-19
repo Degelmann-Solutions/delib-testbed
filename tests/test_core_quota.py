@@ -307,7 +307,8 @@ def test_only_a_switched_product_executes_cells_of_the_table_factory(product, qu
             figures["core_cells"])
         assert sorted(name for name in set(figures["executed_cells"]) - set(figures["core_cells"])
                       if "mort" in name) == ["mort_be_factor"]
-        assert (figures["executed"], figures["core"]) == (184, 94)
+        assert "cost_id" not in figures["executed_cells"]   # went with its cost table
+        assert (figures["executed"], figures["core"]) == (183, 94)
     elif product == "fondsgebundene_rentenversicherung":
         # the tariff rate below the Risikobeitrag is the core's, on the unisex blend, and the
         # base of the best estimate the core's, on the own sex; its own mortality cells are

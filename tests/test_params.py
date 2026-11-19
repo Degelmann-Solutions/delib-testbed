@@ -41,6 +41,8 @@
   ``mort_pg1_table`` to ``mort_pg5_table``, each with the provenance of the values package, its
   two kept loads ``mort_actv_load_first`` and ``mort_care_load_first``, ``unisex_mix_male`` and
   the 36 items of its six tables, and no ``omega_age``.
+- KLV, Basis, RV and FRV list each cost item that moved from their cost table to the
+  tariff-type file in the layer ``tariff_type``, with its value, basis and provenance.
 - A scratch copy of Index whose tariff chooses a fixture table lists that table's items with
   layer ``tables``, value, basis and provenance, after the core items and before the
   tariff-type items, and no other table's, the shipped one's neither, and exits 0; a copy
@@ -72,7 +74,7 @@ CORE_FILE = ROOT / "core" / "Core" / "Data" / "param_core.csv"
 sys.path.insert(0, str(ROOT / "tools"))
 from run_baseline import model_dir  # noqa: E402
 
-from test_core import _add_params  # noqa: E402
+from test_core import MOVED_COST_ITEMS, _add_params  # noqa: E402
 from test_tables import (BASIS, BU, FIXTURE_DEFINITIONS, FIXTURE_VALUES, FRV,  # noqa: E402
                          INDEX, KLV, PFLEGE, RIESTER, RV, SHIPPED_ITEMS, SHIPPED_PROVENANCE,
                          SOFORT,
@@ -151,6 +153,28 @@ def test_one_product_lists_its_items(capsys):
                     and row[2] == "tables"]) == 8
     assert not [row for row in rows if row[0] in ("mort_load_first", "mort_table")]
     assert not [row for row in rows if row[0].startswith("dav2008t_proxy_")]
+
+
+@pytest.mark.parametrize("product", sorted(MOVED_COST_ITEMS))
+def test_a_moved_cost_item_is_listed_in_the_tariff_type_layer(product, capsys):
+    folder = PRODUCTS_DIR / product
+    model = mx.read_model(model_dir(folder))
+    try:
+        by_item = {row["item"]: row for row in params.rows(model)}
+    finally:
+        model.close()
+    frame = read(folder / "param_tariff_type.csv")
+    for item, value in MOVED_COST_ITEMS[product].items():
+        row = by_item[item]
+        assert (row["value"], row["layer"]) == (value, "tariff_type"), item
+        assert row["basis"] == frame.at[item, "basis"] and row["basis"], item
+        assert row["provenance"] == frame.at[item, "provenance"] and row["provenance"], item
+    assert params.main([product]) == 0
+    out, err = capsys.readouterr()
+    assert err == ""
+    listed = [line.split()[:3] for line in out.splitlines()[2:]]
+    for item, value in MOVED_COST_ITEMS[product].items():
+        assert [item, repr(value), "tariff_type"] in listed, item
 
 
 def test_an_unknown_product_exits_2(capsys):

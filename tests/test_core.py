@@ -89,6 +89,14 @@
   through the attained age, as the age-keyed transitions assume.
 - The shared caches are read-only: every product's ``model_point()``, FRV's ``charge_row()``
   and BU's cohort index and step arrays, their slices included, raise on a write.
+- The cost tables: Basis', RV's and FRV's ``charge_table.csv`` have the one shape, the key
+  ``cost_group`` first, one column per item, ``provenance`` last, one row per group, and no
+  item column equal in every row; their model points carry the key ``cost_group``, no
+  ``tariff_id`` or ``charge_id``, and an unknown group raises ``KeyError``; KLV has no cost
+  table, no Reference ``charge_file``, no cell or column ``cost_id``, and its eight cost items
+  are rows of its tariff-type file; each moved item stands in the tariff-type layer at the
+  value the table gave; a scratch copy with an item of the cost table also in the tariff-type
+  or the tariff file raises ``ValueError`` naming the item and both files.
 - RV's and KLV's own dict cells and scenario bounds equal their readers; their
   decrement-closure residual equals the old sum over the exit cells up to floating-point
   noise, on a new and an in-force point; their lookups keep their clamps (the declared rate
@@ -278,14 +286,13 @@ CORE_CELLS = {
                                 "riester_rente": "derived"},
         "surplus_table": {"basisrente": "derived",
                           "riester_rente": "derived"},
-        "charge_table_index": {"basisrente": "override",
+        "charge_table_index": {"basisrente": "derived",
                                "fondsgebundene_rentenversicherung": "derived",
-                               "kapitallebensversicherung": "override",
-                               "klassische_rentenversicherung": "override"},
+                               "klassische_rentenversicherung": "derived"},
         "charge_table": {"basisrente": "derived",
                          "fondsgebundene_rentenversicherung": "derived",
-                         "kapitallebensversicherung": "derived",
                          "klassische_rentenversicherung": "derived"},
+        "charge_table_items": dict.fromkeys(MODELS, "derived"),
         "hoechstrechnungszins_table": {"sofortrente": "derived"},
         "model_point_table_dict": dict.fromkeys(MODELS, "derived"),
         "param_core_path": dict.fromkeys(MODELS, "derived"),
@@ -3026,12 +3033,115 @@ def test_frv_charge_row_is_read_only(product_models):
     model = product_models("fondsgebundene_rentenversicherung")
     item = model.Projection[model.Data.model_point_table().index[0]]
     row = item.charge_row()
-    shared = model.Data.charge_table_rows()[item.charge_id()]
+    shared = model.Data.charge_table_rows()[item.cost_group()]
     before = dict(shared)
     column = next(iter(row))
     with pytest.raises(TypeError):
         row[column] = 5
     assert shared == before and dict(row) == before
+
+
+# The cost tables (docs/core.md, "Contract data and charges"): the products with one, and the
+# items that moved from a cost table to the tariff-type file, with the value the table held.
+COST_TABLE_PRODUCTS = ("basisrente", "fondsgebundene_rentenversicherung",
+                       "klassische_rentenversicherung")
+MOVED_COST_ITEMS = {
+    "kapitallebensversicherung": {
+        "load_acq_bsum_once": 0.025, "load_admin_prem_inst": 0.03, "load_admin_sum_ann": 0.0015,
+        "expense_acq_pp_once": 300.0, "expense_admin_pp_ann": 45.0,
+        "expense_claim_pp_once": 120.0, "comm_acq_bsum_once": 0.025,
+        "comm_renew_prem_inst": 0.015},
+    "basisrente": {
+        "charge_acq_sp_once": 0.025, "charge_admin_prem_inst": 0.075,
+        "charge_admin_av_ann": 0.0035, "charge_admin_pp_ann": 36.0,
+        "terminal_bonus_rate": 0.04, "expense_acq_pp_once": 250.0,
+        "comm_acq_bsum_once": 0.025, "comm_renew_prem_inst": 0.015,
+        "expense_admin_pp_ann": 60.0, "expense_annuity_pp_ann": 36.0},
+    "klassische_rentenversicherung": {
+        "charge_admin_prem_inst": 0.04, "charge_admin_av_ann": 0.002,
+        "charge_admin_pup_av_ann": 0.003, "min_annuity_mth": 30.0},
+    "fondsgebundene_rentenversicherung": {"acq_spread_years": 5},
+}
+
+
+@pytest.mark.parametrize("product", COST_TABLE_PRODUCTS)
+def test_a_cost_table_has_the_one_shape_and_no_equal_column(product, product_models):
+    data = product_models(product).Data
+    assert data.charge_file == "charge_table.csv"
+    assert data.charge_table_index() == "cost_group"
+    assert data.charge_table_index._is_derived()
+    raw = pd.read_csv(data.input_dir() / data.charge_file, dtype=str, keep_default_na=False)
+    columns = list(raw.columns)
+    assert columns[0] == "cost_group" and columns[-1] == "provenance"
+    assert len(columns) > 2
+    assert raw["cost_group"].is_unique
+    assert len(raw) >= 2
+    for column in columns[1:-1]:
+        assert data.charge_table()[column].nunique() >= 2, (product, column)
+    assert set(data.charge_table_items()) == set(columns[1:-1])
+
+
+@pytest.mark.parametrize("product", COST_TABLE_PRODUCTS)
+def test_the_model_points_read_the_key_cost_group(tmp_path, product, product_models):
+    model = product_models(product)
+    points = model.Data.model_point_table()
+    assert "tariff_id" not in points.columns and "charge_id" not in points.columns
+    assert set(points["cost_group"]) <= set(model.Data.charge_table().index)
+
+    folder = product_copy(tmp_path, product)
+    table = folder / "model_point_table.csv"
+    changed = pd.read_csv(table, dtype=str, keep_default_na=False)
+    changed.loc[0, "cost_group"] = "no_such_group"
+    changed.to_csv(table, index=False)
+    copy = mx.read_model(folder / MODELS[product], name="CostGroupProbe")
+    try:
+        with pytest.raises(Exception, match=r"KeyError: 'no_such_group'"):
+            copy.Projection[int(changed.loc[0, "point_id"])].alpha_rate()
+    finally:
+        copy.close()
+
+
+def test_klv_has_no_cost_table(product_models):
+    model = product_models("kapitallebensversicherung")
+    folder = PRODUCTS_DIR / "kapitallebensversicherung"
+    assert not (folder / "cost_table.csv").exists()
+    assert "charge_file" not in model.Data.refs
+    assert "cost_id" not in model.Projection.cells
+    assert "cost_id" not in model.Data.model_point_table().columns
+    assert model.Data.charge_table_items() == {}
+    assert set(MOVED_COST_ITEMS["kapitallebensversicherung"]) <= set(
+        model.Data.param_layers()["tariff_type"])
+
+
+@pytest.mark.parametrize("product", sorted(MOVED_COST_ITEMS))
+def test_a_moved_cost_item_stands_in_the_tariff_type_layer(product, product_models):
+    layers = product_models(product).Data.param_layers()
+    for item, value in MOVED_COST_ITEMS[product].items():
+        moved = layers["tariff_type"][item]
+        assert moved == value and type(moved) is type(value), (product, item)
+        assert all(item not in layers[layer] for layer in layers if layer != "tariff_type")
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_no_cost_item_stands_in_a_cost_table_and_a_layer(product, product_models):
+    data = product_models(product).Data
+    items = {item for layer in data.param_layers().values() for item in layer}
+    assert not items & set(data.charge_table_items())
+    assert bool(data.charge_table_items()) == (product in COST_TABLE_PRODUCTS)
+
+
+@pytest.mark.parametrize("product, file", [
+    ("basisrente", "param_tariff_type.csv"),
+    ("klassische_rentenversicherung", "param_tariff.csv"),
+    ("fondsgebundene_rentenversicherung", "param_tariff_type.csv"),
+])
+def test_param_rejects_an_item_of_the_cost_table_in_a_layer(tmp_path, product, file):
+    folder = product_copy(tmp_path, product)
+    _add_params(folder / file, {"charge_acq_bsum_once": "0.025"})
+    message = _loader_error(folder / MODELS[product], "CostTwiceProbe")
+    assert "'charge_acq_bsum_once' stands in the cost table" in message
+    assert str(folder / "charge_table.csv") in message
+    assert str(folder / file) in message
 
 
 def test_a_prem_freq_outside_the_table_raises(tmp_path):

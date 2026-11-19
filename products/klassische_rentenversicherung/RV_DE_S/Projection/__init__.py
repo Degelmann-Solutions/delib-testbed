@@ -409,7 +409,7 @@ monthly payments — and it is a thing the annual grid could only approximate.
 .. rubric:: Modules that are recorded and not applied
 
 - A payout-phase administration charge on each instalment is **not applied**, and
-  ``charge_table.csv`` holds none. The *Rentenfaktor* is exogenous here and already
+  neither ``charge_table.csv`` nor ``param_tariff_type.csv`` holds one. The *Rentenfaktor* is exogenous here and already
   carries the tariff's payout loading, so deducting a further administration charge from
   the annuity would charge it twice. ``annuity_payments(t)`` is ``(G + U(k)) a(t)`` exactly.
 - ``annuity_due_factor()`` is a **diagnostic and nothing else**. It is the annuity-due
@@ -564,7 +564,7 @@ def beitragssumme():
 
 
 def alpha_rate():
-    """The *Zillmersatz* of the model point's charge set, from *charge_table.csv*.
+    """The *Zillmersatz* of the model point's cost group, from *charge_table.csv*.
 
     :func:`zillmer_amount`, the total acquisition charge, is ``charge_acq_bsum_once x
     beitragssumme()``.  The *Höchstzillmersatz* is 25 ‰ of the *Beitragssumme* for
@@ -573,8 +573,8 @@ def alpha_rate():
     makes the year-one *Sparbeitrag* small and the § 169 Abs. 3 floor bite.  1 275,00 € on
     the anchor cell.
     """
-    return float(data.charge_table_dict()["value"][                  # noqa: F821
-        (model_point()["charge_id"], "charge_acq_bsum_once")])
+    return float(data.charge_table_dict()["charge_acq_bsum_once"][   # noqa: F821
+        model_point()["cost_group"]])
 
 
 def alpha_cum_pp(k):
@@ -675,8 +675,7 @@ def charge_prem_pp(k):
     4,0 % of each gross premium.  An internal deduction, not an expense: it reduces the
     *Sparbeitrag* and produces no cash flow.
     """
-    return float(data.charge_table_dict()["value"][                  # noqa: F821
-        (model_point()["charge_id"], "charge_admin_prem_inst")]) * prem_pp(k)
+    return data.param("charge_admin_prem_inst") * prem_pp(k)         # noqa: F821
 
 
 def charge_admin_pp(k):
@@ -688,9 +687,9 @@ def charge_admin_pp(k):
     what makes *Beitragsfreistellung* cost something instead of being free.  Struck on the
     start-of-year balance so the recursion stays acyclic.
     """
-    item = "charge_admin_pup_av_ann" if paid_up(k) else "charge_admin_av_ann"
-    return float(data.charge_table_dict()["value"][                  # noqa: F821
-        (model_point()["charge_id"], item)]) * av_pp(k)
+    rate = (data.param("charge_admin_pup_av_ann") if paid_up(k)      # noqa: F821
+            else data.param("charge_admin_av_ann"))                  # noqa: F821
+    return rate * av_pp(k)
 
 
 def nar_pp(k):
@@ -1153,8 +1152,8 @@ def surr_charge_pp(k):
     years would be exactly the void kind.  2,0 % on ``zillmer_25`` and nil on ``zillmer_40``
     **[std]**; whatever it is set to, :func:`cv_pp` cannot fall below :func:`cv_floor_pp`.
     """
-    return (float(data.charge_table_dict()["value"][                 # noqa: F821
-        (model_point()["charge_id"], "stornoabzug_rate")])
+    return (float(data.charge_table_dict()["stornoabzug_rate"][      # noqa: F821
+        model_point()["cost_group"]])
         * (av_pp_at(k, "AFT_INT") + av_sur_pp_at(k, "AFT_INT")))
 
 
@@ -1232,8 +1231,7 @@ def pup_cashout():
     pup = int(model_point()["pup_year"])
     if pup <= 0:
         return False
-    threshold = float(data.charge_table_dict()["value"][             # noqa: F821
-        (model_point()["charge_id"], "min_annuity_mth")])
+    threshold = data.param("min_annuity_mth")                        # noqa: F821
     return bool(pup_value_pp() / data.param("rf_unit") * annuity_rate_guar()  # noqa: F821
                 < threshold)
 

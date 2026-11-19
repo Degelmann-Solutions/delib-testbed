@@ -434,9 +434,9 @@ def db_pct():
     return float(model_point()["db_pct"])
 
 
-def charge_id():
-    """The key into ``charge_table.csv`` naming this policy's charge scale."""
-    return model_point()["charge_id"]
+def cost_group():
+    """The key into ``charge_table.csv`` naming this policy's cost group, its charge scale."""
+    return model_point()["cost_group"]
 
 
 def rentenfaktor_id():
@@ -569,14 +569,14 @@ def horizon_age():
 # ----------------------------------------  the charge scale
 
 def charge_row():
-    """The row of ``charge_table.csv`` for this policy's ``charge_id``, a dict by column.
+    """The row of ``charge_table.csv`` for this policy's ``cost_group``, a dict by column.
 
     Read through ``data.charge_table_rows()``, built once per model; the row is shared, so it
     is returned read-only, as a ``types.MappingProxyType`` (the core's Module reference),
     and an assignment into it raises ``TypeError``.
     """
     return types.MappingProxyType(                                   # noqa: F821
-        data.charge_table_rows()[charge_id()])                       # noqa: F821
+        data.charge_table_rows()[cost_group()])                      # noqa: F821
 
 
 def alpha_rate():
@@ -600,14 +600,15 @@ def alpha_rate():
 
 
 def acq_spread_years():
-    """The tariff's own years over which it collects the acquisition charge — 5 on every tariff.
+    """The tariff's own years over which it collects the acquisition charge, 5.
 
     The tariff's window, as Index' ``acq_spread_years``, set equal to the § 169 Abs. 3 VVG
     floor ``surr_spread_years`` of five contract years but not that floor itself.  A
     unit-linked tariff collects inside the *Beitragsverrechnung*: one sixtieth a month, so
     units are bought from the start and the surrender value is positive from the first month.
+    The same on every cost group, so a row of ``param_tariff_type.csv``.
     """
-    return int(charge_row()["acq_spread_years"])
+    return data.param("acq_spread_years")                            # noqa: F821
 
 
 def charge_admin_prem_inst():

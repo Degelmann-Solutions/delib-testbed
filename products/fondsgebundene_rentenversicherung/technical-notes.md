@@ -128,7 +128,7 @@ that exercise the attribute non-trivially, so a reader can find the row that tes
 | `db_form` | enum {`fund`, `prem_return`, `pct_fund`, `sum_assured`} | *Todesfallleistung* shape | 2, 13 (`fund`); 4, 12 (`pct_fund`); 7 (`sum_assured`); rest `prem_return` |
 | `db_pct` | float | multiple of the fund used by `pct_fund` | 4, 12 (1.10) |
 | `sum_assured` | EUR | *garantierte Mindesttodesfallleistung* used by `sum_assured` | 7 (40,000) |
-| `charge_id` | str | key into `charge_table.csv` | 5 (`std_high`), 11 (`std_netto`), 13 (`std_low`) |
+| `cost_group` | str | key into `charge_table.csv` | 5 (`std_high`), 11 (`std_netto`), 13 (`std_low`) |
 | `scenario_id` | str | key into `fund_scenario_table.csv` | 7 (`zero`), 11 (`etf`), 12 (`stress`) |
 | `rentenfaktor_id` | str | key into `rentenfaktor_table.csv` | 13 (`rich_current`) |
 | `unit_price_init` | EUR | *Anteilspreis* at the projection's opening, i.e. `unit_price_open(t_start())` | 6 (118.40); 100.00 elsewhere |
@@ -848,7 +848,7 @@ unisex [REG-R34], so the *Risikobeitrag* does not read it);
 `t = 0 … 359`;
 `prem_form = regular`; `prem_charged_inst_level_pp = 200.00 EUR`; `prem_freq = monthly`; `prem_term_y = 30`;
 `dynamik_rate = 0.00`; `pup_month = 0`; `db_form = prem_return`, so `db_pct` and `sum_assured` are
-unused; `charge_id = std_gross`; `scenario_id = base`; `rentenfaktor_id = std_2026`;
+unused; `cost_group = std_gross`; `scenario_id = base`; `rentenfaktor_id = std_2026`;
 `unit_price_init = 100.00 EUR`; `units_init = 0.0`; `prem_cum_pp_init = 0.00 EUR`;
 `topup_month = 0`, `topup_amount = 0.00`; `wd_month = 0`, `wd_amount = 0.00`;
 `ablauf_flag = False`; `kapitalwahl = False`. Hence `beitragssumme() = 200.00 × 12 × 30 =
@@ -859,7 +859,7 @@ instalment is `1 800,00 / 60 = 30,00 € per month` — **15 % of each of the fi
 **Assumptions, each tagged.** *Charges*, from row `std_gross` of `charge_table.csv`, every level
 **[std]** except where noted: acquisition rate `charge_acq_bsum_once = 2.50 %` of the *Beitragssumme*, which
 is the *Höchstzillmersatz* [R12] [REG-R16] and, as it happens, the rate one real tariff charges
-[S15], spread over the tariff's `acq_spread_years = 5`, set equal to the § 169 Abs. 3 VVG floor `surr_spread_years`
+[S15], spread over the tariff's `acq_spread_years = 5`, a row of `param_tariff_type.csv`, set equal to the § 169 Abs. 3 VVG floor `surr_spread_years`
 [R1] [REG-R28], which a real tariff applies to only *part* of its acquisition cost, taking the
 rest as a percentage of every premium for the whole term [S2]; premium-based admin
 `charge_admin_prem_inst = 4.00 %` of each gross *Beitrag*, against 6,90 % observed [S15]; fund-based admin

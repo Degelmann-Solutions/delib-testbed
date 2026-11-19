@@ -614,13 +614,13 @@ def prem_total_pp(k):
 
 
 def alpha_rate():
-    """The *Zillmersatz* ``charge_acq_bsum_once`` of the tariff, from *charge_table.csv*.
+    """The *Zillmersatz* ``charge_acq_bsum_once`` of the cost group, from *charge_table.csv*.
 
     :func:`zillmer_amount`, the zillmerised acquisition charge written into the account, is
     ``charge_acq_bsum_once x beitragssumme()``.  The *Höchstzillmersatz* caps it at **25 ‰
     of the *Beitragssumme*** for business written from 1 January 2015, reduced from 40 ‰ by
-    the LVRG; the shipped tariffs carry the two rates and the in-force pre-2015 model
-    points take the older one.
+    the LVRG; the two cost groups of *charge_table.csv* carry the two rates, keyed by the
+    model point's ``cost_group``, and the in-force pre-2015 model points take the older one.
 
     This is a **deduction from the policyholder's *Deckungskapital***, hence insurer
     income — not an expense.  The insurer's own acquisition outgo is ``expense_acq_pp_once``
@@ -628,7 +628,7 @@ def alpha_rate():
     pays out is sized to what it may write into the reserve.
     """
     return float(data.charge_table_dict()["charge_acq_bsum_once"][   # noqa: F821
-        model_point()["tariff_id"]])
+        model_point()["cost_group"]])
 
 
 def alpha_amort_pp(k):
@@ -667,8 +667,7 @@ def alpha_zuz_pp(k):
     *Zillmerung*; it carries its own single charge instead, which is the normal German
     treatment of a top-up.  Zero where no *Zuzahlung* is paid.
     """
-    return (float(data.charge_table_dict()["charge_acq_sp_once"][    # noqa: F821
-        model_point()["tariff_id"]]) * zuz_pp(k))
+    return data.param("charge_acq_sp_once") * zuz_pp(k)              # noqa: F821
 
 
 def inflation_years(t):
@@ -694,9 +693,7 @@ def unit_cost_pp(k):
     An account deduction, not an expense.  The insurer's own maintenance outgo is
     ``expense_admin_pp_ann`` and is a separate line of :func:`expenses`.
     """
-    return (float(data.charge_table_dict()["charge_admin_pp_ann"][   # noqa: F821
-        model_point()["tariff_id"]])
-        * inflation_factor(12 * k))
+    return data.param("charge_admin_pp_ann") * inflation_factor(12 * k)  # noqa: F821
 
 
 def prem_to_av_pp(k):
@@ -715,8 +712,7 @@ def prem_to_av_pp(k):
     """
     if k < 0 or k >= k_conv() or k >= proj_len_y():
         return 0.0
-    beta = float(data.charge_table_dict()["charge_admin_prem_inst"][  # noqa: F821
-        model_point()["tariff_id"]])
+    beta = data.param("charge_admin_prem_inst")                      # noqa: F821
     return ((prem_pp(k) + zuz_pp(k)) * (1.0 - beta)
             - alpha_amort_pp(k) - alpha_zuz_pp(k) - unit_cost_pp(k))
 
@@ -1101,8 +1097,7 @@ def av_pp_at(k, timing):
     if timing == "AFT_PREM":
         return av_pp_at(k, "BEF_PREM") + prem_to_av_pp(k)
     if timing == "AFT_INT":
-        gamma = float(data.charge_table_dict()["charge_admin_av_ann"][  # noqa: F821
-            model_point()["tariff_id"]])
+        gamma = data.param("charge_admin_av_ann")                    # noqa: F821
         return av_pp_at(k, "AFT_PREM") * (1.0 + cred_rate(k) - gamma)
     raise ValueError("invalid timing")
 
@@ -1148,8 +1143,7 @@ def av_pu_at(k, timing):
     if timing == "AFT_PREM":
         return av_pu_at(k, "BEF_PREM") - unit_cost_pp(k) * pols_paidup(12 * k)
     if timing == "AFT_INT":
-        gamma = float(data.charge_table_dict()["charge_admin_av_ann"][  # noqa: F821
-            model_point()["tariff_id"]])
+        gamma = data.param("charge_admin_av_ann")                    # noqa: F821
         return av_pu_at(k, "AFT_PREM") * (1.0 + cred_rate(k) - gamma)
     raise ValueError("invalid timing")
 
@@ -1265,8 +1259,7 @@ def fund_at_conv():
     """
     if k_conv() < 0:
         return 0.0
-    sigma = float(data.charge_table_dict()["terminal_bonus_rate"][   # noqa: F821
-        model_point()["tariff_id"]])
+    sigma = data.param("terminal_bonus_rate")                        # noqa: F821
     return av_at(k_conv(), "BEF_PREM") * (1.0 + sigma)
 
 
@@ -1467,9 +1460,7 @@ def expenses_acq(t):
     if t < 0 or t >= proj_len():
         return 0.0
     if t == 0 and duration_init() == 0:
-        tariff = model_point()["tariff_id"]
-        return (float(data.charge_table_dict()["expense_acq_pp_once"][tariff])  # noqa: F821
-                * pols_if_init())
+        return data.param("expense_acq_pp_once") * pols_if_init()    # noqa: F821
     return 0.0
 
 
@@ -1494,17 +1485,15 @@ def expenses_maint(t):
     """
     if t < 0 or t >= proj_len():
         return 0.0
-    charges = data.charge_table_dict()                               # noqa: F821
-    tariff = model_point()["tariff_id"]
     infl = inflation_factor(t)
     if t < t_conv():
-        return float(charges["expense_admin_pp_ann"][tariff]) / 12.0 * infl * pols_if(t)
-    return (float(charges["expense_annuity_pp_ann"][tariff]) / 12.0 * infl
+        return data.param("expense_admin_pp_ann") / 12.0 * infl * pols_if(t)  # noqa: F821
+    return (data.param("expense_annuity_pp_ann") / 12.0 * infl       # noqa: F821
             * (pols_if(t) + pols_gtd(t)))
 
 
 def comm_init_rate():
-    """The *Abschlussprovision* rate on the *Beitragssumme*, from the charge table **[std]**.
+    """The *Abschlussprovision* rate on the *Beitragssumme*, ``comm_acq_bsum_once`` **[std]**.
 
     Sized to the *Zillmerung* cap, which is the German design in which what the insurer pays
     out is what it may write into the reserve; the corpus's only datum is a 1 575 €
@@ -1516,8 +1505,7 @@ def comm_init_rate():
     Override reason: the initial commission is the tariff's ``comm_acq_bsum_once`` of the
     *Beitragssumme*, products/basisrente/technical-notes.md:661
     """
-    return float(data.charge_table_dict()["comm_acq_bsum_once"][     # noqa: F821
-        model_point()["tariff_id"]])
+    return data.param("comm_acq_bsum_once")                          # noqa: F821
 
 
 def comm_renew(t):
@@ -1536,8 +1524,7 @@ def comm_renew(t):
     """
     if duration(t) < 1 or t >= proj_len():
         return 0.0
-    rate = float(data.charge_table_dict()["comm_renew_prem_inst"][   # noqa: F821
-        model_point()["tariff_id"]])
+    rate = data.param("comm_renew_prem_inst")                        # noqa: F821
     return rate * premiums(t)
 
 

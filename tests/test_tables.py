@@ -166,8 +166,9 @@ The derivation hooks of the core's ``Projection``:
   on every shipped point ``mort_rate(t)`` is ``min(1, 1.15 * q(dav2004r_proxy, sex, age(t),
   birth_year))`` through the core's cells, none overridden but the factor, and a woman's
   table rate is 0.6 of a man's at equal age and birth year; the package's sixteen rate rows
-  to six digits. ``birth_year()`` is the issue year less the issue age, 1969 on the in-force
-  points 6 and 14, and ``birth_year() + age(t)`` the calendar year on every point.
+  are among those the table's own check holds to six digits. ``birth_year()`` is the issue
+  year less the issue age, 1969 on the in-force points 6 and 14, and ``birth_year() +
+  age(t)`` the calendar year on every point.
   ``omega_age()`` is the table's end age 121 and the frame runs to it, ``proj_len_y() = 121 -
   age(0)``, one year less than before the switch; at age 120 the best estimate is exactly 1,
   the certainty falls in the anniversary month and ``pols_if(proj_len())`` is 0, and age 121
@@ -290,8 +291,9 @@ from pathlib import Path
 import modelx as mx
 import pytest
 
-from test_core import (CORE_MODEL, MODELS, PRODUCTS_DIR, ROOT, _add_params, _formula_cells,
-                       _loader_error, param_usage, product_copy)
+from helpers import (CORE_MODEL, MODELS, PRODUCTS_DIR, ROOT, TOOLS_DIR, add_layer_rows,
+                     drop_layer_rows, formula_cells,
+                     load_runner, load_tool, loader_error, param_usage, product_copy)
 
 RLV = "risikolebensversicherung"
 SOFORT = "sofortrente"
@@ -519,14 +521,14 @@ def test_param_without_the_tables_file_raises(tmp_path):
     folder = product_copy(tmp_path, RLV)
     path = tables_file(folder)
     path.unlink()
-    message = _loader_error(folder / MODELS[RLV], "NoTablesProbe")
+    message = loader_error(folder / MODELS[RLV], "NoTablesProbe")
     assert f"parameter file {path} cannot be read" in message
 
 
 def test_param_reads_an_item_of_the_tables_layer(tmp_path):
     folder = product_copy(tmp_path, RLV)
     shipped = (CORE_MODEL / "Data" / TABLES_FILE).read_text(encoding="utf-8")
-    _add_params(tables_file(folder), {"fixture_end_age": "121", "fixture_m_a": "0.0005"})
+    add_layer_rows(tables_file(folder), {"fixture_end_age": "121", "fixture_m_a": "0.0005"})
     copy = mx.read_model(folder / MODELS[RLV], name="TablesItemProbe")
     try:
         data = copy.Data
@@ -544,7 +546,7 @@ def test_param_reads_an_item_of_the_tables_layer(tmp_path):
 @pytest.mark.parametrize("file", ["param_tariff_type.csv", "param_tariff.csv"])
 def test_a_table_choice_is_loaded_as_a_name(tmp_path, file):
     folder = product_copy(tmp_path, RLV)
-    _add_params(folder / file, {"mort_table": "dav_x_proxy", "probe2_table": " t2 "})
+    add_layer_rows(folder / file, {"mort_table": "dav_x_proxy", "probe2_table": " t2 "})
     copy = mx.read_model(folder / MODELS[RLV], name="ChoiceProbe")
     try:
         data = copy.Data
@@ -571,16 +573,16 @@ def test_a_table_choice_is_loaded_as_a_name(tmp_path, file):
 def test_a_table_choice_that_is_no_name_raises(tmp_path, text, name):
     folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"
-    _add_params(path, {"mort_table": text})
-    message = _loader_error(folder / MODELS[RLV], name)
+    add_layer_rows(path, {"mort_table": text})
+    message = loader_error(folder / MODELS[RLV], name)
     assert f"parameter 'mort_table' has the value {text!r} in {path}, no table name" in message
 
 
 def test_an_empty_table_choice_has_no_value(tmp_path):
     folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"
-    _add_params(path, {"mort_table": ""})
-    message = _loader_error(folder / MODELS[RLV], "EmptyChoiceProbe")
+    add_layer_rows(path, {"mort_table": ""})
+    message = loader_error(folder / MODELS[RLV], "EmptyChoiceProbe")
     assert f"parameter 'mort_table' has no value in {path}" in message
 
 
@@ -588,8 +590,8 @@ def test_an_empty_table_choice_has_no_value(tmp_path):
 def test_a_name_is_no_number_for_any_other_item(tmp_path, item):
     folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"
-    _add_params(path, {item: "dav_x_proxy"})
-    message = _loader_error(folder / MODELS[RLV], "NameValueProbe")
+    add_layer_rows(path, {item: "dav_x_proxy"})
+    message = loader_error(folder / MODELS[RLV], "NameValueProbe")
     assert f"parameter {item!r} has the value 'dav_x_proxy' in {path}, no number" in message
 
 
@@ -597,9 +599,9 @@ def test_a_name_is_no_number_for_any_other_item(tmp_path, item):
 def test_param_rejects_a_tables_item_in_a_product_file(tmp_path, file):
     folder = product_copy(tmp_path, RLV)
     tables = tables_file(folder)
-    _add_params(tables, {"fixture_end_age": "121"})
-    _add_params(folder / file, {"fixture_end_age": "110"})
-    message = _loader_error(folder / MODELS[RLV], "TablesLockProbe")
+    add_layer_rows(tables, {"fixture_end_age": "121"})
+    add_layer_rows(folder / file, {"fixture_end_age": "110"})
+    message = loader_error(folder / MODELS[RLV], "TablesLockProbe")
     assert "'fixture_end_age' is a tables item of" in message
     assert str(tables) in message and str(folder / file) in message
 
@@ -607,8 +609,8 @@ def test_param_rejects_a_tables_item_in_a_product_file(tmp_path, file):
 def test_param_rejects_a_core_item_in_the_tables_file(tmp_path):
     folder = product_copy(tmp_path, RLV)
     tables = tables_file(folder)
-    _add_params(tables, {"check_tol": "1e-9"})
-    message = _loader_error(folder / MODELS[RLV], "CoreInTablesProbe")
+    add_layer_rows(tables, {"check_tol": "1e-9"})
+    message = loader_error(folder / MODELS[RLV], "CoreInTablesProbe")
     assert "'check_tol' is a core item of" in message
     assert str(tables.with_name("param_core.csv")) in message and str(tables) in message
 
@@ -616,9 +618,9 @@ def test_param_rejects_a_core_item_in_the_tables_file(tmp_path):
 def test_param_rejects_an_item_twice_in_the_tables_file(tmp_path):
     folder = product_copy(tmp_path, RLV)
     tables = tables_file(folder)
-    _add_params(tables, {"fixture_end_age": "121"})
-    _add_params(tables, {"fixture_end_age": "121"})
-    message = _loader_error(folder / MODELS[RLV], "TablesTwiceProbe")
+    add_layer_rows(tables, {"fixture_end_age": "121"})
+    add_layer_rows(tables, {"fixture_end_age": "121"})
+    message = loader_error(folder / MODELS[RLV], "TablesTwiceProbe")
     assert f"'fixture_end_age' stands twice in {tables}" in message
 
 
@@ -1008,7 +1010,8 @@ def test_dav2004r_proxy_is_anchored_at_65_with_women_at_six_tenths_of_men(shippe
 
 # The values package's "New table" figures of dav2004r_proxy by (sex, age, birth year), six
 # significant digits, with the best estimate at the factor 1.15 and, by (age, birth year),
-# the tariff rate of the blend of 45 % men: the rows of RV.
+# the tariff rate of the blend of 45 % men: the rows of RV. The sixteen rate rows of Basis,
+# the second reader of the table at the same factor, are among the first two.
 R_PACKAGE_RATES = {
     ("M", 65, 1962): 0.00458344, ("M", 80, 1962): 0.0175643, ("M", 95, 1962): 0.106244,
     ("M", 105, 1962): 0.352527, ("M", 115, 1962): 1.0, ("M", 120, 1962): 1.0,
@@ -1079,7 +1082,7 @@ def test_dav2004r_proxy_is_a_generational_table_without_selection(shipped_tables
 
 
 def test_the_factory_source_holds_no_number_but_0_and_1():
-    cells = dict(_formula_cells(TABLES_SOURCE))
+    cells = dict(formula_cells(TABLES_SOURCE))
     assert list(cells) == TABLES_CELLS
     numbers = [(name, node.value) for name, cell in cells.items() for node in ast.walk(cell)
                if isinstance(node, ast.Constant) and type(node.value) in (int, float, complex)
@@ -1088,7 +1091,7 @@ def test_the_factory_source_holds_no_number_but_0_and_1():
 
 
 def test_only_q_says_mortality_in_the_factory():
-    names = [name for name, _cell in _formula_cells(TABLES_SOURCE)]
+    names = [name for name, _cell in formula_cells(TABLES_SOURCE)]
     assert "q" in names
     assert [name for name in names if name != "q" and ("mort" in name or "q" in name)] == []
 
@@ -1106,7 +1109,7 @@ def foreign_reads(path: Path) -> list[str]:
     """What the cells of a factory source read besides ``data.param``, each other, their own
     names and Python's builtins: ``<cell>: <name>`` each, or ``<cell>: <name>.<attribute>``
     where the name is read for an attribute, sorted."""
-    cells = dict(_formula_cells(path))
+    cells = dict(formula_cells(path))
     found = set()
     for name, cell in cells.items():
         local = _local_names(cell)
@@ -1222,9 +1225,9 @@ def write_fixture_tables(model_dir: Path) -> None:
         for table, (law, trend, names) in FIXTURE_DEFINITIONS.items()]
     path.write_text("".join(lines), encoding="utf-8")
     add_cells(path, FIXTURE_LAWS)
-    _add_params(model_dir / "CoreData" / TABLES_FILE,
-                {f"{table}_{name}": value for table, values in FIXTURE_VALUES.items()
-                 for name, value in values.items()})
+    add_layer_rows(model_dir / "CoreData" / TABLES_FILE,
+                   {f"{table}_{name}": value for table, values in FIXTURE_VALUES.items()
+                    for name, value in values.items()})
 
 
 def fixture_copy(tmp_path: Path, product: str = INDEX) -> Path:
@@ -1431,14 +1434,6 @@ def test_a_gap_in_the_select_factors_raises_the_loaders_key_error(fixture_tables
 
 
 # --------------------------------------------------------------------------- the runner
-
-def load_runner():
-    spec = importlib.util.spec_from_file_location("run_baseline",
-                                                  ROOT / "tools" / "run_baseline.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
 
 def held_rates(space_model) -> dict:
     """The rates the factory of an exported model holds, by the arguments of ``q``."""
@@ -1876,7 +1871,7 @@ def test_bu_holds_no_mortality_file_column_reference_or_formula(product_models):
                      "mort_table_ages", "mort_table_index", "sel_factor", "mort_rate_actv"):
             assert name not in source, (space, name)
     # one read of the factory besides the core's hooks, and it goes through ``q``
-    cells = dict(_formula_cells(folder / MODELS[BU] / "Projection" / "__init__.py"))
+    cells = dict(formula_cells(folder / MODELS[BU] / "Projection" / "__init__.py"))
     reads = {name: ast.unparse(node) for name, cell in cells.items() for node in ast.walk(cell)
              if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
              and node.value.id == "tables"}
@@ -2146,7 +2141,7 @@ def test_rv_holds_no_mortality_file_item_reference_or_formula(product_models):
                      "mort_base_year", "improve_rate", '"omega_age"'):
             assert name not in source, (space, name)
     # no read of the factory besides the core's hooks
-    cells = dict(_formula_cells(folder / MODELS[RV] / "Projection" / "__init__.py"))
+    cells = dict(formula_cells(folder / MODELS[RV] / "Projection" / "__init__.py"))
     reads = {name: ast.unparse(node) for name, cell in cells.items() for node in ast.walk(cell)
              if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
              and node.value.id == "tables"}
@@ -2332,10 +2327,8 @@ def test_klv_results_moved_within_rounding_at_its_switch():
     old = git_bytes("show", f"{before}:{KLV_BASELINE}").decode("utf-8")
     new = (git_bytes("show", f"{switch}:{KLV_BASELINE}").decode("utf-8") if switch
            else (ROOT / KLV_BASELINE).read_text(encoding="utf-8"))
-    spec = importlib.util.spec_from_file_location(
-        "baseline_deviations_for_tables", ROOT / "tools" / "baseline_deviations.py")
-    deviations = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(deviations)
+    deviations = load_tool("baseline_deviations_for_tables",
+                           TOOLS_DIR / "baseline_deviations.py")
     old_rows, new_rows = (list(csv.reader(io.StringIO(text))) for text in (old, new))
     assert old_rows[0] == new_rows[0] and len(old_rows) == len(new_rows) == 3865
     assert [row[:2] for row in old_rows] == [row[:2] for row in new_rows]
@@ -2374,7 +2367,7 @@ def test_klv_holds_no_mortality_file_reference_or_formula(product_models):
                      "mort_rate_1st"):
             assert name not in source, (space, name)
     # no read of the factory besides the core's hooks
-    cells = dict(_formula_cells(folder / MODELS[KLV] / "Projection" / "__init__.py"))
+    cells = dict(formula_cells(folder / MODELS[KLV] / "Projection" / "__init__.py"))
     reads = {name: ast.unparse(node) for name, cell in cells.items() for node in ast.walk(cell)
              if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
              and node.value.id == "tables"}
@@ -2591,7 +2584,7 @@ def test_frv_holds_no_mortality_file_reference_or_formula(product_models):
                      "qx_tariff"):
             assert name not in source, (space, name)
     # no read of the factory besides the core's hooks
-    cells = dict(_formula_cells(folder / MODELS[FRV] / "Projection" / "__init__.py"))
+    cells = dict(formula_cells(folder / MODELS[FRV] / "Projection" / "__init__.py"))
     reads = {name: ast.unparse(node) for name, cell in cells.items() for node in ast.walk(cell)
              if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
              and node.value.id == "tables"}
@@ -2959,7 +2952,7 @@ def test_rlv_holds_no_mortality_file_column_item_reference_or_formula(product_mo
                      "mort_table_id", "mort_load_first"):
             assert name not in source, (space, name)
     # one read of the factory, through ``q``, in the product's hook
-    cells = dict(_formula_cells(folder / MODELS[RLV] / "Projection" / "__init__.py"))
+    cells = dict(formula_cells(folder / MODELS[RLV] / "Projection" / "__init__.py"))
     reads = {name: ast.unparse(node) for name, cell in cells.items() for node in ast.walk(cell)
              if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
              and node.value.id == "tables"}
@@ -2976,28 +2969,8 @@ def test_rlv_holds_no_mortality_file_column_item_reference_or_formula(product_mo
 # --------------------------------------------------------------------------- Basis
 
 BASIS = "basisrente"
-# The values package's rate rows of Basis on ``dav2004r_proxy`` by (sex, age, birth year),
-# six significant digits: "New table" and "BE new", the best estimate at the factor 1.15.
-BASIS_PACKAGE_RATES = {
-    ("M", 65, 1962): (0.00458344, 0.00527096), ("M", 80, 1962): (0.0175643, 0.0201989),
-    ("M", 95, 1962): (0.106244, 0.12218), ("F", 65, 1962): (0.00275006, 0.00316257),
-    ("F", 80, 1962): (0.0105386, 0.0121193), ("F", 95, 1962): (0.0637461, 0.0733081),
-    ("M", 40, 1990): (0.000312702, 0.000359608), ("M", 50, 1990): (0.000689298, 0.000792692),
-    ("M", 65, 1990): (0.0022559, 0.00259429), ("M", 80, 1990): (0.00974126, 0.0112024),
-    ("M", 95, 1990): (0.0792445, 0.0911312), ("F", 40, 1990): (0.000187621, 0.000215765),
-    ("F", 50, 1990): (0.000413579, 0.000475615), ("F", 65, 1990): (0.00135354, 0.00155657),
-    ("F", 80, 1990): (0.00584475, 0.00672147), ("F", 95, 1990): (0.0475467, 0.0546787),
-}
 BASIS_CORE_MORT_CELLS = TABLE_HOOKS + (
     "mort_rate_at_age", "mort_rate_base", "mort_be_trend", "mort_rate", "mort_rate_mth")
-
-
-@pytest.mark.parametrize(("sex", "x", "birth_year"), sorted(BASIS_PACKAGE_RATES))
-def test_basis_rates_are_the_values_packages(shipped_tables, sex, x, birth_year):
-    rate = shipped_tables.q(DAV2004R, sex, x, birth_year)
-    table, best = BASIS_PACKAGE_RATES[(sex, x, birth_year)]
-    assert float(f"{rate:.6g}") == table
-    assert float(f"{min(1.0, 1.15 * rate):.6g}") == best
 
 
 def test_basis_best_estimate_is_the_factorys_rate_on_the_own_sex_times_its_factor(
@@ -3151,7 +3124,7 @@ def test_basis_holds_no_mortality_file_item_reference_or_formula(product_models)
                      "mort_base_year", "mort_table_index", "1.085", "0.014"):
             assert name not in source, (space, name)
     # no read of the factory besides the core's hooks
-    cells = dict(_formula_cells(folder / MODELS[BASIS] / "Projection" / "__init__.py"))
+    cells = dict(formula_cells(folder / MODELS[BASIS] / "Projection" / "__init__.py"))
     reads = {name: ast.unparse(node) for name, cell in cells.items() for node in ast.walk(cell)
              if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
              and node.value.id == "tables"}
@@ -3420,7 +3393,7 @@ def test_riester_holds_no_mortality_file_item_reference_or_formula(product_model
     # its reads of the factory: the period table without a birth year in its override of
     # ``mort_rate_table``, the annuitant table at the birth year in its payout hook, and the
     # end age of the annuitant table in ``omega_age``
-    cells = dict(_formula_cells(folder / MODELS[RIESTER] / "Projection" / "__init__.py"))
+    cells = dict(formula_cells(folder / MODELS[RIESTER] / "Projection" / "__init__.py"))
     reads = {name: sorted(ast.unparse(node) for node in ast.walk(cell)
                           if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
                           and node.value.id == "tables")
@@ -3698,7 +3671,7 @@ def test_sofort_holds_no_mortality_file_item_reference_or_formula(product_models
             assert name not in source, (space, name)
     # its reads of the factory: the rate in its hook, the trend and the base year in its
     # trend term; the end age through the core's ``omega_age``
-    cells = dict(_formula_cells(folder / MODELS[SOFORT] / "Projection" / "__init__.py"))
+    cells = dict(formula_cells(folder / MODELS[SOFORT] / "Projection" / "__init__.py"))
     reads = {name: sorted(ast.unparse(node) for node in ast.walk(cell)
                           if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
                           and node.value.id == "tables")
@@ -4026,7 +3999,7 @@ def test_pflege_holds_no_mortality_file_column_item_reference_or_formula(product
                      "mort_mult", "data.param(\"omega_age\")"):
             assert name not in source, (space, name)
     # its reads of the factory: the rate of a grade and the blend of a state's rates
-    cells = dict(_formula_cells(folder / MODELS[PFLEGE] / "Projection" / "__init__.py"))
+    cells = dict(formula_cells(folder / MODELS[PFLEGE] / "Projection" / "__init__.py"))
     reads = {name: sorted(ast.unparse(node) for node in ast.walk(cell)
                           if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
                           and node.value.id == "tables")
@@ -4045,10 +4018,7 @@ def unswitched_copy(tmp_path: Path) -> Path:
     product before its switch."""
     folder = fixture_copy(tmp_path)
     path = folder / "param_tariff_type.csv"
-    rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
-    choice = [row for row in rows if row.startswith("mort_table,")]
-    assert len(choice) == 1
-    path.write_text("".join(row for row in rows if row not in choice), encoding="utf-8")
+    drop_layer_rows(path, "mort_table")
     add_cells(folder / MODELS[INDEX] / "Projection" / "__init__.py",
               'def mort_rate_at_age(x):\n'
               '    """A rate of its own, read off no table.\n\n'
@@ -4072,11 +4042,8 @@ def switched_copy(tmp_path: Path, table: str, birth_year: int | None = None) -> 
                   '    Override reason: test fixture, tests/test_tables.py\n    """\n'
                   f'    return {birth_year}\n')
     path = folder / "param_tariff_type.csv"
-    rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
-    choice = [row for row in rows if row.startswith("mort_table,")]
-    assert len(choice) == 1
-    path.write_text("".join(row for row in rows if row not in choice), encoding="utf-8")
-    _add_params(path, {"mort_table": table, "unisex_mix_male": "0.45"})
+    drop_layer_rows(path, "mort_table")
+    add_layer_rows(path, {"mort_table": table, "unisex_mix_male": "0.45"})
     return folder
 
 
@@ -4251,12 +4218,8 @@ def choosing_copy(tmp_path: Path, table: str, file: str = "param_tariff_type.csv
     cell of Index reads."""
     folder = switched_copy(tmp_path, table)
     path = folder / "param_tariff_type.csv"
-    rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
-    choice = [row for row in rows if row.startswith("mort_table,")]
-    dropped = [row for row in rows if row.startswith(("unisex_mix_male,", "mort_table,"))]
-    assert len(choice) == 1 and len(dropped) == 2
-    path.write_text("".join(row for row in rows if row not in dropped), encoding="utf-8")
-    _add_params(folder / file, {"mort_table": table})
+    drop_layer_rows(path, "mort_table", "unisex_mix_male")
+    add_layer_rows(folder / file, {"mort_table": table})
     return folder
 
 
@@ -4352,7 +4315,7 @@ def test_the_scan_reads_no_tables_item_without_a_choice(tmp_path):
 
 def test_the_scan_reads_no_item_of_a_table_whose_choice_no_cell_reads(tmp_path):
     folder = unswitched_copy(tmp_path)
-    _add_params(folder / "param_tariff_type.csv", {"probe_table": "period_fixture"})
+    add_layer_rows(folder / "param_tariff_type.csv", {"probe_table": "period_fixture"})
     usage = scan_of(folder, "UnreadChoiceScanProbe")
     assert usage.choices == {"probe_table": "period_fixture"}
     assert usage.problems == ["item 'probe_table' of the tariff_type layer"
@@ -4365,7 +4328,7 @@ def test_the_scan_reports_an_item_of_a_table_in_another_layer(tmp_path):
     """The item ``broken_fixture`` lacks in the tables layer, held by the tariff-type file:
     ``param`` would find it, the scan reports it."""
     folder = choosing_copy(tmp_path, "broken_fixture")
-    _add_params(folder / "param_tariff_type.csv", {"broken_fixture_f_b": "1.092"})
+    add_layer_rows(folder / "param_tariff_type.csv", {"broken_fixture_f_b": "1.092"})
     usage = scan_of(folder, "TableItemElsewhereScanProbe")
     assert usage.problems == [
         "item 'broken_fixture_f_b' of the table 'broken_fixture' stands in the tariff_type"
@@ -4376,7 +4339,7 @@ def test_the_scan_reports_an_item_of_a_table_in_another_layer(tmp_path):
                                              ("tables", TABLES_FILE)])
 def test_the_scan_reports_a_table_choice_in_the_core_or_the_tables_file(tmp_path, layer, file):
     folder = unswitched_copy(tmp_path)
-    _add_params(folder / MODELS[INDEX] / "CoreData" / file, {"mort_table": "period_fixture"})
+    add_layer_rows(folder / MODELS[INDEX] / "CoreData" / file, {"mort_table": "period_fixture"})
     usage = scan_of(folder, "ChoiceElsewhereScanProbe")
     assert usage.choices == {}
     assert (f"item 'mort_table' of the {layer} layer ({file}) is a table choice outside the"
@@ -4399,7 +4362,7 @@ def test_the_scan_reports_a_tables_item_of_no_table(tmp_path):
     """A row that is no table's item, and one that starts with a table's name but is not
     among the items its definition names."""
     folder = choosing_copy(tmp_path, "period_fixture")
-    _add_params(tables_file(folder, INDEX), {"stray_item": "1.5", "period_fixture_m_c": "2"})
+    add_layer_rows(tables_file(folder, INDEX), {"stray_item": "1.5", "period_fixture_m_c": "2"})
     usage = scan_of(folder, "StrayItemScanProbe")
     assert usage.problems == [
         "item 'stray_item' of the tables layer (param_tables.csv) belongs to no table",

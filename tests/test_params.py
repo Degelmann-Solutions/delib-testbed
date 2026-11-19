@@ -57,45 +57,30 @@
 """
 from __future__ import annotations
 
-import importlib.util
-import shutil
 import sys
 from pathlib import Path
 
 import modelx as mx
-import pandas as pd
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
-PRODUCTS_DIR = ROOT / "products"
+from helpers import (MOVED_COST_ITEMS, PRODUCTS_DIR, ROOT, TOOLS_DIR, add_layer_rows,
+                     drop_layer_rows, load_tool, param_usage, product_copy, read_layer)
+
 PRODUCTS = sorted(p.name for p in PRODUCTS_DIR.iterdir() if p.is_dir())
 CORE_FILE = ROOT / "core" / "Core" / "Data" / "param_core.csv"
 
-sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(TOOLS_DIR))
 from run_baseline import model_dir  # noqa: E402
 
-from test_core import MOVED_COST_ITEMS, _add_params  # noqa: E402
 from test_tables import (BASIS, BU, FIXTURE_DEFINITIONS, FIXTURE_VALUES, FRV,  # noqa: E402
-                         INDEX, KLV, PFLEGE, RIESTER, RV, SHIPPED_ITEMS, SHIPPED_PROVENANCE,
+                         INDEX, KLV, PFLEGE, RIESTER, RLV, RV, SHIPPED_ITEMS, SHIPPED_PROVENANCE,
                          SOFORT,
                          SHIPPED_ROWS, SWITCHED,
                          choosing_copy, fixture_copy, fixture_items, tables_file,
                          unswitched_copy)
 
 
-def load_tool(name: str, path: Path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-params = load_tool("params", ROOT / "tools" / "params.py")
-param_usage = load_tool("param_usage", ROOT / "core" / "param_usage.py")
-
-
-def read(path: Path) -> pd.DataFrame:
-    return pd.read_csv(path, dtype=str, keep_default_na=False).set_index("item")
+params = load_tool("params", TOOLS_DIR / "params.py")
 
 
 def test_ten_products():
@@ -115,8 +100,9 @@ def test_the_rows_agree_with_the_scan_and_the_loader(product):
     finally:
         model.close()
     assert list(layers) == ["core", "tables", "tariff_type"]
-    frames = {"core": read(CORE_FILE), "tables": read(CORE_FILE.with_name("param_tables.csv")),
-              "tariff_type": read(folder / "param_tariff_type.csv")}
+    frames = {layer: read_layer(path).set_index("item") for layer, path in (
+        ("core", CORE_FILE), ("tables", CORE_FILE.with_name("param_tables.csv")),
+        ("tariff_type", folder / "param_tariff_type.csv"))}
     assert [row["item"] for row in table] and len(table) == len(reads)
     assert {row["item"] for row in table} == set(reads)
     order = [(layer, item) for layer, values in layers.items()
@@ -163,7 +149,7 @@ def test_a_moved_cost_item_is_listed_in_the_tariff_type_layer(product, capsys):
         by_item = {row["item"]: row for row in params.rows(model)}
     finally:
         model.close()
-    frame = read(folder / "param_tariff_type.csv")
+    frame = read_layer(folder / "param_tariff_type.csv").set_index("item")
     for item, value in MOVED_COST_ITEMS[product].items():
         row = by_item[item]
         assert (row["value"], row["layer"]) == (value, "tariff_type"), item
@@ -183,18 +169,6 @@ def test_an_unknown_product_exits_2(capsys):
     assert "nosuch" in err
 
 
-def rlv_copy(tmp_path) -> Path:
-    folder = tmp_path / "risikolebensversicherung"
-    shutil.copytree(PRODUCTS_DIR / "risikolebensversicherung", folder)
-    return folder
-
-
-def add_row(folder: Path, item: str, value: str) -> None:
-    path = folder / "param_tariff_type.csv"
-    path.write_text(path.read_text(encoding="utf-8") + f"{item},{value},Setzung,test fixture\n",
-                    encoding="utf-8")
-
-
 def headers(out: str) -> list[str]:
     return [line.split(":", 1)[0] for line in out.splitlines() if line.endswith(" items read")]
 
@@ -210,8 +184,8 @@ def test_a_product_named_twice_exits_2(capsys):
 
 
 def test_an_unread_item_is_reported_and_exits_1(tmp_path, capsys):
-    folder = rlv_copy(tmp_path)
-    add_row(folder, "probe_unused", "1.5")
+    folder = product_copy(tmp_path, RLV)
+    add_layer_rows(folder / "param_tariff_type.csv", {"probe_unused": "1.5"}, basis="Setzung")
     assert params.main([str(folder)]) == 1
     out, err = capsys.readouterr()
     assert headers(out) == ["risikolebensversicherung"]
@@ -222,7 +196,7 @@ def test_an_unread_item_is_reported_and_exits_1(tmp_path, capsys):
 
 
 def test_an_undeclared_indirect_read_is_reported_and_exits_1(tmp_path, capsys):
-    folder = rlv_copy(tmp_path)
+    folder = product_copy(tmp_path, RLV)
     path = model_dir(folder) / "Projection" / "__init__.py"
     marker = "# ---------------------------------------------------------------------------\n# References"
     text = path.read_text(encoding="utf-8")
@@ -242,8 +216,8 @@ def test_an_undeclared_indirect_read_is_reported_and_exits_1(tmp_path, capsys):
 
 def test_a_loader_error_is_reported_and_the_next_product_listed(tmp_path, capsys,
                                                                 monkeypatch):
-    folder = rlv_copy(tmp_path)
-    add_row(folder, "decl_scale", "1.0")
+    folder = product_copy(tmp_path, RLV)
+    add_layer_rows(folder / "param_tariff_type.csv", {"decl_scale": "1.0"}, basis="Setzung")
     expected = (f"risikolebensversicherung: ValueError: parameter 'decl_scale' stands twice"
                 f" in {folder / 'param_tariff_type.csv'}")
     assert params.main([str(folder), "kapitallebensversicherung"]) == 1
@@ -261,7 +235,7 @@ def test_a_loader_error_is_reported_and_the_next_product_listed(tmp_path, capsys
 
 
 def test_a_missing_tariff_type_file_is_a_loader_error(tmp_path, capsys):
-    folder = rlv_copy(tmp_path)
+    folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"
     path.unlink()
     assert params.main([str(folder), "kapitallebensversicherung"]) == 1
@@ -273,11 +247,10 @@ def test_a_missing_tariff_type_file_is_a_loader_error(tmp_path, capsys):
 
 
 def test_a_read_item_in_no_layer_is_missing_and_exits_1(tmp_path, capsys):
-    folder = rlv_copy(tmp_path)
+    folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"
-    frame = pd.read_csv(path, dtype=str, keep_default_na=False)
-    assert "decl_scale" in set(frame["item"])
-    frame[frame["item"] != "decl_scale"].to_csv(path, index=False)
+    assert "decl_scale" in set(read_layer(path)["item"])
+    drop_layer_rows(path, "decl_scale")
 
     model = mx.read_model(model_dir(folder), name="ParamsMissing")
     try:
@@ -296,9 +269,9 @@ def test_a_read_item_in_no_layer_is_missing_and_exits_1(tmp_path, capsys):
 
 
 def test_an_item_of_the_tariff_file_is_listed_in_the_tariff_layer(tmp_path, capsys):
-    folder = rlv_copy(tmp_path)
+    folder = product_copy(tmp_path, RLV)
     path = folder / "param_tariff_type.csv"
-    frame = pd.read_csv(path, dtype=str, keep_default_na=False)
+    frame = read_layer(path)
     moved = frame["item"] == "decl_scale"
     assert moved.sum() == 1
     frame[moved].to_csv(folder / "param_tariff.csv", index=False)
@@ -804,7 +777,7 @@ def test_a_chosen_name_the_factory_lacks_is_reported_and_exits_1(tmp_path, capsy
 
 def test_a_tables_item_of_no_table_is_reported_and_exits_1(tmp_path, capsys):
     folder = choosing_copy(tmp_path, "period_fixture")
-    _add_params(tables_file(folder, INDEX), {"stray_item": "1.5"})
+    add_layer_rows(tables_file(folder, INDEX), {"stray_item": "1.5"})
     assert params.main([str(folder)]) == 1
     out, err = capsys.readouterr()
     assert headers(out) == [INDEX]
@@ -849,7 +822,8 @@ def test_a_choice_in_the_tariff_file_is_listed_in_the_tariff_layer(tmp_path, cap
 
 def test_an_item_of_a_table_in_another_layer_is_reported_and_exits_1(tmp_path, capsys):
     folder = choosing_copy(tmp_path, "broken_fixture")
-    add_row(folder, "broken_fixture_f_b", "1.092")
+    add_layer_rows(folder / "param_tariff_type.csv", {"broken_fixture_f_b": "1.092"},
+                   basis="Setzung")
     assert params.main([str(folder)]) == 1
     out, err = capsys.readouterr()
     assert headers(out) == [INDEX]
@@ -860,8 +834,8 @@ def test_an_item_of_a_table_in_another_layer_is_reported_and_exits_1(tmp_path, c
 
 def test_a_table_choice_in_the_core_file_is_reported_and_exits_1(tmp_path, capsys):
     folder = unswitched_copy(tmp_path)
-    _add_params(model_dir(folder) / "CoreData" / "param_core.csv",
-                {"mort_table": "period_fixture"})
+    add_layer_rows(model_dir(folder) / "CoreData" / "param_core.csv",
+                   {"mort_table": "period_fixture"})
     assert params.main([str(folder)]) == 1
     out, err = capsys.readouterr()
     assert headers(out) == [INDEX] and "_fixture" not in out

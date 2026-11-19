@@ -48,31 +48,21 @@ each writing its figures with ``--json``; the tests read those figures and call 
 """
 from __future__ import annotations
 
-import importlib.util
 import json
 import subprocess
 import sys
-from pathlib import Path
 
 import modelx as mx
 import pytest
 
+from helpers import ROOT, TOOLS_DIR, load_tool, param_usage
 from test_tables import SWITCHED, switched_copy, unswitched_copy
 
-ROOT = Path(__file__).resolve().parent.parent
-TOOL = ROOT / "tools" / "core_quota.py"
+TOOL = TOOLS_DIR / "core_quota.py"
 PRODUCTS = sorted(p.name for p in (ROOT / "products").iterdir() if p.is_dir())
 
 
-def load_tool(name: str = "core_quota", path: Path = TOOL):
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-core_quota = load_tool()
-param_usage = load_tool("param_usage", ROOT / "core" / "param_usage.py")
+core_quota = load_tool("core_quota", TOOL)
 
 
 @pytest.fixture(scope="session")

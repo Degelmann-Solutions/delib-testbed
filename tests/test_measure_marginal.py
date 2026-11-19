@@ -7,17 +7,17 @@ tests assert no timings, since those depend on the machine.
 from __future__ import annotations
 
 import hashlib
-import importlib.util
 import json
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
-TOOL = ROOT / "tools" / "measure_marginal.py"
+from helpers import (ROOT, TOOLS_DIR, edit_point, folder_hashes, load_runner, load_tool,
+                     product_copy)
+
+TOOL = TOOLS_DIR / "measure_marginal.py"
 PRODUCT = "risikolebensversicherung"
 FOLDER = ROOT / "products" / PRODUCT
 N_POINTS = 14
@@ -26,14 +26,7 @@ N_POINTS = 14
 # fixture made T(K·n) come out below T(n) now and then, and the tool rightly said unreliable.
 FACTOR = 8
 
-_spec = importlib.util.spec_from_file_location("measure_marginal", TOOL)
-mm = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(mm)
-
-
-def folder_hashes(folder: Path) -> dict[str, str]:
-    return {p.relative_to(folder).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in sorted(folder.rglob("*")) if p.is_file()}
+mm = load_tool("measure_marginal", TOOL)
 
 
 def guarded() -> dict[str, str]:
@@ -43,20 +36,6 @@ def guarded() -> dict[str, str]:
     hashes["tools/run_baseline.py"] = hashlib.sha256(
         (ROOT / "tools" / "run_baseline.py").read_bytes()).hexdigest()
     return hashes
-
-
-def edit_point(folder: Path, point_id: int, **changes: str) -> None:
-    """Change columns of one model point in a scratch copy, as text."""
-    path = folder / "model_point_table.csv"
-    lines = path.read_bytes().decode("ascii").split("\n")
-    columns = lines[0].split(",")
-    values = lines[point_id].split(",")
-    assert values[0] == str(point_id)
-    for column, value in changes.items():
-        assert values[columns.index(column)] != value
-        values[columns.index(column)] = value
-    lines[point_id] = ",".join(values)
-    path.write_bytes("\n".join(lines).encode("ascii"))
 
 
 # --------------------------------------------------------------------------- pure tests
@@ -281,8 +260,7 @@ def runs(tmp_path_factory):
     others are usage errors.
     """
     tmp_path = tmp_path_factory.mktemp("measure")
-    prepared = tmp_path / "prepared"
-    shutil.copytree(FOLDER, prepared)
+    prepared = product_copy(tmp_path, PRODUCT, "prepared")
     table = prepared / "model_point_table.csv"
     table.write_bytes(mm.replicate_table(table.read_bytes().decode("ascii"), 2).encode("ascii"))
     edit_point(prepared, N_POINTS + 1, sum_assured="123456.0")
@@ -664,9 +642,7 @@ def test_mutant_cache_of_an_empty_or_missing_warm_cache(tmp_path, state):
 def test_mutant_cache_of_bu_drops_the_two_entries_of_one_core_cell(tmp_path, monkeypatch):
     import pickle
 
-    spec = importlib.util.spec_from_file_location("run_baseline", ROOT / "tools" / "run_baseline.py")
-    runner = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(runner)
+    runner = load_runner()
     monkeypatch.setitem(sys.modules, "run_baseline", runner)
     warm = tmp_path / "warm"
     folder = ROOT / "products" / "berufsunfaehigkeit"
@@ -692,9 +668,7 @@ def test_a_tables_cell_is_held_by_one_piece_and_a_derived_core_cell_by_two(tmp_p
     one piece, that of ``CoreTables``; ``mutant_cache`` finds the pieces by the cell's name."""
     import pickle
 
-    spec = importlib.util.spec_from_file_location("run_baseline", ROOT / "tools" / "run_baseline.py")
-    runner = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(runner)
+    runner = load_runner()
     monkeypatch.setitem(sys.modules, "run_baseline", runner)
     warm = tmp_path / "warm"
     model = runner.mx.read_model(runner.model_dir(FOLDER))

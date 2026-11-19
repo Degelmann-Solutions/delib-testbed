@@ -5,34 +5,20 @@ the slowest run only.
 """
 from __future__ import annotations
 
-import hashlib
-import importlib.util
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
-RUNNER = ROOT / "tools" / "run_baseline.py"
+from helpers import (ROOT, RUNNER, edit_point, folder_hashes, load_runner, parse_output,
+                     product_copy)
+
 PRODUCT = "risikolebensversicherung"
 FOLDER = ROOT / "products" / PRODUCT
 N_POINTS = 14
 BASELINE = ROOT / "baseline" / PRODUCT / "result_cf.csv"
-
-
-def load_runner():
-    spec = importlib.util.spec_from_file_location("run_baseline", RUNNER)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def folder_hashes(folder: Path) -> dict[str, str]:
-    return {p.relative_to(folder).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in sorted(folder.rglob("*")) if p.is_file()}
 
 
 def guarded() -> dict[str, str]:
@@ -40,30 +26,6 @@ def guarded() -> dict[str, str]:
     hashes = folder_hashes(FOLDER)
     hashes.update({f"core/{k}": v for k, v in folder_hashes(ROOT / "core").items()})
     return hashes
-
-
-def scratch_copy(tmp_path: Path, name: str) -> Path:
-    target = tmp_path / name
-    shutil.copytree(FOLDER, target)
-    return target
-
-
-def edit_point(folder: Path, point_id: int, **changes: str) -> None:
-    """Change columns of one model point in a scratch copy, as text."""
-    path = folder / "model_point_table.csv"
-    lines = path.read_bytes().decode("ascii").split("\n")
-    columns = lines[0].split(",")
-    values = lines[point_id].split(",")
-    assert values[0] == str(point_id)
-    for column, value in changes.items():
-        assert values[columns.index(column)] != value
-        values[columns.index(column)] = value
-    lines[point_id] = ",".join(values)
-    path.write_bytes("\n".join(lines).encode("ascii"))
-
-
-def parse_output(stdout: str) -> dict[str, str]:
-    return dict(line.split(": ", 1) for line in stdout.splitlines() if ": " in line)
 
 
 @pytest.fixture(scope="session")
@@ -82,12 +44,12 @@ def runs(tmp_path_factory):
     ``workers_mx`` and ``workers_nc`` are the usage errors of ``--workers``.
     """
     tmp_path = tmp_path_factory.mktemp("runner")
-    false_check = scratch_copy(tmp_path, "false_check")
+    false_check = product_copy(tmp_path, PRODUCT, "false_check")
     edit_point(false_check, 1, duration_init="25")
-    raises = scratch_copy(tmp_path, "raises")
+    raises = product_copy(tmp_path, PRODUCT, "raises")
     edit_point(raises, 2, benefit_schedule_id="nosuch")
     edit_point(raises, 13, benefit_schedule_id="nosuch")
-    named = scratch_copy(tmp_path / "named", PRODUCT)
+    named = product_copy(tmp_path / "named", PRODUCT)
 
     out = tmp_path / "out"
     commands = {
@@ -256,7 +218,7 @@ def test_cleanup_deletes_every_itemspace_also_of_raising_points(tmp_path, monkey
 
     from modelx.core.space import UserSpace
 
-    raises = scratch_copy(tmp_path, "raises")
+    raises = product_copy(tmp_path, PRODUCT, "raises")
     edit_point(raises, 2, benefit_schedule_id="nosuch")
     edit_point(raises, 13, benefit_schedule_id="nosuch")
     deleted = []
@@ -337,7 +299,7 @@ def run_without_garbage_collection(folder: Path, monkeypatch):
 def test_cleanup_frees_every_exported_itemspace_without_garbage_collection(tmp_path, monkeypatch):
     """With the collector off, no deleted point's item survives its ``del``: the runner broke
     the item's reference cycles first. Points 2 and 13 raise, so their release runs too."""
-    raises = scratch_copy(tmp_path, "raises")
+    raises = product_copy(tmp_path, PRODUCT, "raises")
     edit_point(raises, 2, benefit_schedule_id="nosuch")
     edit_point(raises, 13, benefit_schedule_id="nosuch")
     count, failures, keys, survivors = run_without_garbage_collection(raises, monkeypatch)

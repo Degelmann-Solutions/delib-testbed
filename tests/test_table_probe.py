@@ -27,13 +27,10 @@ from pathlib import Path
 import modelx as mx
 import pytest
 
-from test_baseline import BASELINE, RUNNER, parse_output
+from helpers import CORE_DIR, PRODUCTS_DIR, RUNNER, parse_output, table_choices
+from test_baseline import BASELINE
 
-ROOT = Path(__file__).resolve().parent.parent
-CORE_DIR = ROOT / "core"
-PRODUCTS_DIR = ROOT / "products"
 TABLES_FILE = CORE_DIR / "Core" / "Data" / "param_tables.csv"
-LAYER_FILES = ("param_tariff_type.csv", "param_tariff.csv")
 SCALED = "m_b"
 FACTOR = 1.01
 
@@ -49,25 +46,12 @@ def table_names() -> list[str]:
 TABLES = table_names()
 
 
-def choices(product: str) -> dict[str, str]:
-    """The table choices of a product's layer files: ``{item: table}`` for each ``*_table``."""
-    found = {}
-    for name in LAYER_FILES:
-        path = PRODUCTS_DIR / product / name
-        if not path.is_file():
-            continue
-        with path.open(encoding="utf-8", newline="") as handle:
-            for row in csv.DictReader(handle):
-                if row["item"].endswith("_table") and row["value"]:
-                    found[row["item"]] = row["value"]
-    return found
-
-
 def choosers(table: str) -> set[str]:
-    return {product for product in BASELINE if table in choices(product).values()}
+    return {product for product in BASELINE
+            if table in table_choices(PRODUCTS_DIR / product).values()}
 
 
-def scratch_copy(tmp_path: Path, table: str) -> Path:
+def probe_copy(tmp_path: Path, table: str) -> Path:
     """``core/`` and ``products/`` copied side by side, the table's ``m_b`` scaled in the copy."""
     ignore = shutil.ignore_patterns("__pycache__")
     shutil.copytree(CORE_DIR, tmp_path / "core", ignore=ignore)
@@ -86,7 +70,7 @@ def scratch_copy(tmp_path: Path, table: str) -> Path:
 
 def test_every_table_has_a_chooser_and_the_copy_resolves_into_itself(tmp_path):
     assert TABLES and all(choosers(table) for table in TABLES)
-    products = scratch_copy(tmp_path, TABLES[0])
+    products = probe_copy(tmp_path, TABLES[0])
     for product in BASELINE:
         for link in (products / product).glob("*/Core*"):
             assert link.is_symlink(), link
@@ -98,7 +82,7 @@ def test_every_table_has_a_chooser_and_the_copy_resolves_into_itself(tmp_path):
 @pytest.mark.parametrize("table", TABLES)
 def test_a_table_value_moves_exactly_the_results_of_its_choosers(tmp_path, table):
     before = TABLES_FILE.read_bytes()
-    products = scratch_copy(tmp_path, table)
+    products = probe_copy(tmp_path, table)
     processes = {
         product: subprocess.Popen(
             [sys.executable, str(RUNNER), str(products / product)],

@@ -361,6 +361,77 @@ def test_param_rejects_an_item_of_the_cost_table_in_a_layer(tmp_path, product, f
     assert str(folder / file) in message
 
 
+COST_PRODUCTS = ["basisrente", "klassische_rentenversicherung",
+                 "fondsgebundene_rentenversicherung"]
+
+
+def cost_rows(path):
+    """The lines of a cost table, the header first, as text."""
+    return path.read_text(encoding="utf-8").splitlines()
+
+
+def write_cost_rows(path, rows):
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+
+@pytest.mark.parametrize("product", COST_PRODUCTS)
+def test_the_cost_table_refuses_a_cost_group_standing_twice(tmp_path, product):
+    """The last row won before entry 22 (Basis, RV); FRV's dict by row failed on its own."""
+    folder = product_copy(tmp_path, product)
+    path = folder / "charge_table.csv"
+    rows = cost_rows(path)
+    group = rows[1].split(",", 1)[0]
+    write_cost_rows(path, rows + [rows[1]])
+    message = loader_error(folder / MODELS[product], "CostGroupTwiceProbe")
+    assert f"ValueError: cost group {group!r} stands twice in {path}" in message, message
+
+
+@pytest.mark.parametrize("product", COST_PRODUCTS)
+def test_the_cost_table_refuses_an_item_named_twice_in_its_header(tmp_path, product):
+    """pandas would read the second column as ``<item>.1``, a new item."""
+    folder = product_copy(tmp_path, product)
+    path = folder / "charge_table.csv"
+    rows = []
+    for row in cost_rows(path):
+        group, item, rest = row.split(",", 2)
+        rows.append(",".join([group, item, item, rest]))
+    write_cost_rows(path, rows)
+    item = rows[0].split(",")[1]
+    message = loader_error(folder / MODELS[product], "CostItemTwiceProbe")
+    assert (f"ValueError: cost item {item!r} stands twice in the header of {path}"
+            in message), message
+
+
+@pytest.mark.parametrize("product", COST_PRODUCTS)
+@pytest.mark.parametrize("text", ["nan", "inf", "-inf", "", "abc"])
+def test_the_cost_table_refuses_a_value_that_is_no_finite_number(tmp_path, product, text):
+    folder = product_copy(tmp_path, product)
+    path = folder / "charge_table.csv"
+    header, first, *rest = cost_rows(path)
+    group, _value, tail = first.split(",", 2)
+    write_cost_rows(path, [header, ",".join([group, text, tail]), *rest])
+    item = header.split(",")[1]
+    message = loader_error(folder / MODELS[product], "CostNanProbe")
+    assert (f"ValueError: cost item {item!r} of cost group {group!r} in {path} is no finite"
+            f" number: " in message), message
+
+
+@pytest.mark.parametrize("product", COST_PRODUCTS)
+def test_a_missing_cost_table_is_a_loader_error(tmp_path, product):
+    folder = product_copy(tmp_path, product)
+    path = folder / "charge_table.csv"
+    path.unlink()
+    message = loader_error(folder / MODELS[product], "CostMissingProbe")
+    assert f"ValueError: cost table {path} cannot be read: " in message, message
+
+
+@pytest.mark.parametrize("product", COST_PRODUCTS)
+def test_the_shipped_cost_tables_pass_the_checks(product_models, product):
+    table = product_models(product).Data.charge_table()
+    assert not table.index.duplicated().any()
+    assert len(table.columns) >= 2 and table.columns[-1] == "provenance"
+
+
 def test_dropping_a_row_keeps_every_other_row_of_a_layer_file(tmp_path):
     """``helpers.drop_layer_rows`` rewrites a file from its own lines: on a copy of the core
     file every other row keeps its bytes, an integer its text."""

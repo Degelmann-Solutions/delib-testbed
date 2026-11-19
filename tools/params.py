@@ -30,8 +30,8 @@ items read``, then a column header and one fixed-width line per item: item, valu
 ``tariff_type``, ``tariff``, within a layer in the order of its file, the ``missing`` ones
 last by name. A blank line separates the products. After a product's listing every problem
 of ``scan(model).problems`` stands on stderr, one line ``<product>: <problem>`` each. A
-product whose loader fails (a broken parameter file, ``ValueError`` on the first ``param``
-call) is not listed: its error line stands on stderr as ``<product>: ValueError: <message>``
+product whose loader fails (a broken parameter file or cost table, ``ValueError`` on the
+first ``param`` call) is not listed: its error line stands on stderr as ``<product>: ValueError: <message>``
 and the tool goes on with the next product.
 
 Exit status: 0 if no product has a scan problem or a loader error; 1 if any has; 2 on a

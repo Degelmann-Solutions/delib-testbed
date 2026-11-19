@@ -263,9 +263,38 @@ def charge_table():
     ``cost_group`` first, one column per cost item and the row's ``provenance`` last.  An
     item equal in every group is no column of it but a row of the tariff-type file, read
     through ``param``; ``param_layers()`` refuses an item standing in both.
+
+    Read once per model and checked as the parameter layers are, raising ``ValueError``
+    naming the file and, for a row, the cost group and the item: a file that is missing or
+    cannot be read or parsed, an item named twice in the header (read as written, before
+    pandas renames a second ``<item>`` to ``<item>.1``), a cost group standing twice and a
+    cost value that is empty, no number or not finite (``nan``, ``inf``).
     """
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / charge_file, index_col=charge_table_index())   # noqa: F821
+    path = input_dir() / charge_file                                 # noqa: F821
+    try:
+        header = pd.read_csv(path, header=None, nrows=1, dtype=str,   # noqa: F821
+                             keep_default_na=False).values.tolist()[0]
+        table = pd.read_csv(path, index_col=charge_table_index())     # noqa: F821
+    except (OSError, ValueError) as error:
+        raise ValueError(f"cost table {path} cannot be read: {error}") from None
+    for item in header:
+        if header.count(item) > 1:
+            raise ValueError(f"cost item {item!r} stands twice in the header of {path}")
+    for group in table.index[table.index.duplicated()]:
+        raise ValueError(f"cost group {group!r} stands twice in {path}")
+    for item in table.columns:
+        if item == "provenance":
+            continue
+        for group, value in table[item].items():
+            try:
+                number = float(value)
+            except (TypeError, ValueError):
+                number = float("nan")
+            if not abs(number) < float("inf"):
+                raise ValueError(
+                    f"cost item {item!r} of cost group {group!r} in {path} is no finite"
+                    f" number: {value}")
+    return table
 
 
 def charge_table_items():

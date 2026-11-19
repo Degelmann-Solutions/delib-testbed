@@ -42,7 +42,6 @@ Reference                  Cells                                File
 =========================  ===================================  =========================
 model_point_file           data.model_point_table()             model_point_table.csv
 benefit_scale_file         data.benefit_scale_table()           benefit_scale_table.csv
-mort_file                  data.mort_table()                    mort_table.csv
 incidence_file             data.incidence_table()               incidence_table.csv
 care_file                  data.care_table()                    care_table.csv
 lapse_file                 data.lapse_table()                   lapse_table.csv
@@ -75,13 +74,15 @@ pi_g                        benefit_pct(g)                  Leistungsstaffel per
 P                           premium_mth_pp()                Level monthly gross Beitrag
 (none)                      prem_net_level_pp()             Net level premium, A / U
 m                           prem_cycle()                    1, 3, 6, 12; prem_form single
+omega                       omega_age()                     End age of the active table
+(table)                     mort_table_grade(g)             Table of the state, 0 active
 (table)                     mort_rate_at_age(x)             Active table rate at age x
 (table)                     mort_rate_base(t)               Its value at age(t)
 q_A(x)                      mort_rate(t)                    Active annual death rate
 (none)                      mort_rate_mth(t)                The same rate, monthly
 mu_A(t)                     mort_force(t)                   Active force of mortality
-q_g(x)                      mort_rate_care(t, g)            Annual death rate at grade g
-mu_g(t)                     mort_force_care(t, g)           mort_mult(g) x mu_A(t)
+q_g(x)                      mort_rate_care(t, g)            Grade g's table rate at x
+mu_g(t)                     mort_force_care(t, g)           -ln(1 - q_g), m_g x mu_A(t)
 i(x)                        inc_rate(t)                     Annual incidence into care
 iota(t)                     inc_force(t)                    Force of incidence, 0 in the
                                                             Wartezeit
@@ -141,6 +142,7 @@ net_cf(t)                   net_cf(t)                       Net cash flow, incom
 -net_cf(t)                  liability_cf(t)                 The same stream, outgo positive
 i                           rechnungszins()                 Technical rate, pricing only
 v**t                        disc_factor_mth(t)              (1 + i)^(-t/12)
+(first order)               tar_mort_rate_blend(x, g)       Blended table q of a state
 (first order)               mort_rate_tariff(t)             Blended, margined active q
 (first order)               tar_mort_rate_care(x, g)        Blended, margined in-care q
 (first order)               tar_inc_rate(x)                 Blended, margined incidence
@@ -185,10 +187,12 @@ the split is driven by :func:`waiver_flag` rather than by membership of the care
 and why ``pols_prem(t)`` is **not monotone**: a *Herabstufung* out of the insured grades
 revives the premium.
 
-``mort_rate(t)`` is the **active-life** rate. In-care mortality is not tabulated at all:
-:func:`mort_force_care` is ``mort_mult(g)`` times the active *force*, so
-:func:`mort_rate_care` is ``1 - exp(-mort_mult(g) mu_A)``. The multiple is on the force and
-not on the rate, which matters at the oldest ages where the rate saturates.
+``mort_rate(t)`` is the **active-life** rate. In-care mortality has a table of its own
+for each grade, all six in the model-wide table factory: :func:`mort_table_grade` maps the
+state to its table, and :func:`mort_rate_care` is the grade's table rate
+``1 - exp(-m_g b c^x)``, the active table's force ``b c^x`` times the grade's multiple
+``m_g`` (1.5 at grade 1 to 9.0 at grade 5). The multiple is on the force and not on the
+rate, which matters at the oldest ages where the rate saturates.
 
 .. rubric:: The monthly step: constant forces, proportional allocation
 
@@ -205,12 +209,12 @@ identity rather than an approximation. Adding monthly rates instead, or applying
 gives different answers wherever the forces are large — which on this product is exactly
 where the money is.
 
-The limiting-age convention needs one number. ``mort_rate`` is forced to 1.0 at
-``omega_age() - 1``, whose force is infinite; it is capped at ``-ln(1e-12) = 27.63`` so
-the proportional allocation stays finite, and the incidence, deterioration and recovery
-forces are set to zero there so that every exit at the limiting age is death. What
-survives to ``omega_age`` is then ``1e-12`` of the age-109 cohort, which on the anchor
-cell is of the order of ``1e-17`` of the original policy.
+The limiting-age convention needs one number. Every table closes with a rate of 1.0 at
+``omega_age() - 1``, age 109, whose force is infinite; it is capped at
+``-ln(1e-12) = 27.63`` so the proportional allocation stays finite, and the incidence,
+deterioration and recovery forces are set to zero there so that every exit at the limiting
+age is death. What survives to ``omega_age`` is then ``1e-12`` of the age-109 cohort, which
+on the anchor cell is of the order of ``1e-22`` of the original policy.
 
 .. rubric:: The pricing engine, and why it is a separate ledger
 
@@ -476,16 +480,40 @@ def waiver_flag(g):
     return benefit_pct(g) > 0.0
 
 
-def mort_rate_at_age(x):
-    """q_A(x): the table's annual **active-life** death rate at attained age x, by sex.
+def omega_age():
+    """omega: the limiting age, the end age of the table of the role ``mort_table``, 110.
 
-    A lookup into *mort_table.csv* at ``(sex(), x)``; the core's ``mort_rate_base(t)`` reads
-    it at ``age(t)``.
+    The first age nobody reaches: ``pflege_aktive_proxy`` and the five tables of the care
+    grades close with ``q = 1`` at attained age 109, so the projection runs the whole
+    multi-state system to exhaustion.
 
-    Override reason: the product reads its own mortality file until its switch to the
-    table factory, docs/core.md, section "The table factory"
+    Override reason: reads the end age off its table, docs/core.md, section "The time axis"
     """
-    return float(data.mort_table_dict()["mort_rate"][(sex(), x)])    # noqa: F821
+    return omega_age_table()
+
+
+def mort_table_grade(g):
+    """The death table of a state, a table of the table factory: 0 active, 1 to 5 a grade.
+
+    The care grade selects the table, it is no factor on one: the active state reads the
+    table the row ``mort_table`` of *param_tariff_type.csv* names, ``pflege_aktive_proxy``,
+    through the core's ``mort_table_name()``, and grade ``g`` the table of the row
+    ``mort_pg<g>_table``, ``pflege_pg<g>_proxy``, whose force is a multiple of the active
+    table's at every age.  Any other grade raises ``ValueError``.
+    """
+    if g == 0:
+        return mort_table_name()
+    if g == 1:
+        return data.param("mort_pg1_table")                          # noqa: F821
+    if g == 2:
+        return data.param("mort_pg2_table")                          # noqa: F821
+    if g == 3:
+        return data.param("mort_pg3_table")                          # noqa: F821
+    if g == 4:
+        return data.param("mort_pg4_table")                          # noqa: F821
+    if g == 5:
+        return data.param("mort_pg5_table")                          # noqa: F821
+    raise ValueError("grade %r is neither 0, the active state, nor a care grade 1 to 5" % (g,))
 
 
 def mort_rate_mth(t):
@@ -510,22 +538,24 @@ def mort_rate_mth(t):
 def mort_force(t):
     """mu_A(t): the force of active-life mortality, ``-ln(1 - mort_rate(t))``.
 
-    Held constant over the month.  At the limiting age ``mort_rate`` is 1.0 and the force
+    Held constant over the month.  At the limiting age the table's rate is 1.0 and the force
     is infinite; it is capped at ``-ln(1e-12) = 27.63`` so the proportional allocation of
     the month's exits stays finite.  What survives the year of age 109 is then ``1e-12`` of
-    the cohort that entered it — of the order of ``1e-17`` of the original policy on the
+    the cohort that entered it — of the order of ``1e-22`` of the original policy on the
     anchor cell — so the closure identity is exact to far beyond the tolerance.
     """
     return -math.log(1.0 - min(mort_rate(t), 1.0 - data.param("rate_cap_eps")))  # noqa: F821
 
 
 def mort_rate_care(t, g):
-    """q_g(x): the annual death rate of a life in *Pflegegrad* ``g``.
+    """q_g(x): the annual death rate of a life in *Pflegegrad* ``g``, its table's rate.
 
-    ``1 - exp(-mort_force_care(t, g))``.  Published so the single most load-bearing
-    biometric statement in this product is visible as a number: the mortality of a
-    *Pflegebedürftiger* is a large multiple of an active life's at the same age, rising
-    sharply with the grade.
+    ``tables.q`` of the grade's table, :func:`mort_table_grade`, on the model point's own sex
+    at ``age(t)``: ``1 - exp(-m_g b c^x)``, the force of the active table times the grade's
+    multiple ``m_g``, so it reaches 1 at the tables' closing age 109.  Published so the
+    single most load-bearing biometric statement in this product is visible as a number:
+    the mortality of a *Pflegebedürftiger* is a large multiple of an active life's at the
+    same age, rising sharply with the grade.
 
     Two consequences.  **The annuity in payment is short** — three to five years, not the
     fifteen to twenty of a healthy-life pension at the same age — so pricing it on an
@@ -535,20 +565,22 @@ def mort_rate_care(t, g):
     model applying an average benefit percentage to a survival curve computed at an average
     mortality gets the wrong answer in a way no total will reveal.
     """
-    return 1.0 - math.exp(-mort_force_care(t, g))                    # noqa: F821
+    return tables.q(mort_table_grade(g), sex(), age(t))              # noqa: F821
 
 
 def mort_force_care(t, g):
-    """mu_g(t): ``mort_mult(g)`` times the **force** of active mortality at the same age.
+    """mu_g(t): the force of mortality in grade ``g``, ``-ln(1 - mort_rate_care(t, g))``.
 
-    On the force and not on the rate, which is what makes the multiple mean the same thing
-    at every age: 1.5 at grade 1 rising to 9.0 at grade 5, carrying the research file's
-    order of magnitude — two to three times an active life at grade 2, five to ten times at
-    grade 5.  On *rates* the ratio compresses towards 1 as ``mort_rate`` saturates at the
-    oldest ages, which is an artefact of the rate scale and not a change in the basis.
+    Capped as :func:`mort_force` is, at ``-ln(1e-12) = 27.63`` where the rate is 1.  Below
+    the closing age it is ``m_g b c^x``, the grade's multiple times the **force** of active
+    mortality at the same age: 1.5 at grade 1 rising to 9.0 at grade 5, carrying the
+    research file's order of magnitude — two to three times an active life at grade 2, five
+    to ten times at grade 5.  On *rates* the ratio compresses towards 1 as the rate
+    saturates at the oldest ages, which is an artefact of the rate scale and not a change in
+    the basis.
     """
-    mult = float(data.care_table_dict()["mort_mult"][g])             # noqa: F821
-    return mult * mort_force(t)
+    return -math.log(1.0 - min(mort_rate_care(t, g),                 # noqa: F821
+                               1.0 - data.param("rate_cap_eps")))    # noqa: F821
 
 
 def inc_rate(t):
@@ -723,11 +755,11 @@ def p_pg_age(x, g):
     """The grade-``g`` month transitions at attained age ``x``, ``(stay, death, worse, better)``.
 
     Keyed by age, not by month: the care-grade force of mortality :func:`mort_force_care`
-    depends on the month only through ``age(t)`` (the core's ``mort_rate(t)`` reads the
+    depends on the month only through ``age(t)`` (:func:`mort_rate_care` reads the grade's
     table at the attained age), and :func:`det_force` and :func:`rec_force` are keyed by
     age already, so the transitions are the same in every month of a year of age.  The
-    force is read at :func:`age_month`, the first month of that age.  If the core's
-    ``mort_rate`` ever depends on the month beyond the age, this keying is wrong and has to
+    force is read at :func:`age_month`, the first month of that age.  If
+    :func:`mort_rate_care` ever depends on the month beyond the age, this keying is wrong and has to
     go back to ``t`` (Moritz, 2026-10-29, lifting story 2.7's choice to keep ``t``).
 
     Three forces compete out of a paying state, not one — death, deterioration and
@@ -1434,11 +1466,23 @@ def recov_load_first():
     return data.param("recov_load_first")                            # noqa: F821
 
 
+def tar_mort_rate_blend(x, g):
+    """The unisex blend of the table rates of state ``g`` at age ``x``; 0 the active state.
+
+    ``unisex_blend(q_M, q_F)`` of the table :func:`mort_table_grade` names, at
+    ``unisex_mix_male``; the base of the two first-order death rates, before the margin.
+    Keyed by age and state, so it is evaluated once per age and state.
+    """
+    table = mort_table_grade(g)
+    return unisex_blend(tables.q(table, "M", x), tables.q(table, "F", x))  # noqa: F821
+
+
 def mort_rate_tariff(t):
     """The first-order active-life death rate: blended across the sexes, margined.
 
-    ``mort_actv_load_first x [ mix q_M(x) + (1 - mix) q_F(x) ]``, forced to 1.0 at the limiting
-    age.  Two separate things are happening and both are deliberate.
+    ``mort_actv_load_first x [ mix q_M(x) + (1 - mix) q_F(x) ]`` on ``pflege_aktive_proxy``,
+    capped at 1, and 1 where the blend is 1, at the table's closing age 109: a certainty
+    passes through the margin.  Two separate things are happening and both are deliberate.
 
     The **blend** is the unisex constraint: sex may not enter the premium of a contract
     concluded from 21 December 2012, so the price is struck on a mixed basis while the
@@ -1455,38 +1499,32 @@ def mort_rate_tariff(t):
     Override reason: the first-order rate is the table rate times its prudence margin, the
     sexes blended, products/pflegerentenversicherung/model.md:204
     """
-    if age(t) >= omega_age() - 1:
+    q = tar_mort_rate_blend(age(t), 0)
+    if q >= 1.0:
         return 1.0
-    margin = mort_actv_load_first()
-    q_m = float(data.mort_table_dict()["mort_rate"][("M", age(t))])  # noqa: F821
-    q_f = float(data.mort_table_dict()["mort_rate"][("F", age(t))])  # noqa: F821
-    return min(1.0 - data.param("rate_cap_eps"), margin * unisex_blend(q_m, q_f))  # noqa: F821
+    return min(1.0, mort_actv_load_first() * q)
 
 
 def tar_mort_rate_care(x, g):
     """The first-order in-care death rate at *Pflegegrad* ``g`` and attained age ``x``.
 
-    ``mort_care_load_first x [ 1 - exp(-mort_mult(g) mu_blend) ]``, where ``mu_blend`` is the
-    force of the **unmargined** blended active rate.  Taking the multiple on the unmargined
-    force is what keeps the two mortality margins from compounding: the active margin
-    lengthens the pre-claim period and the in-care margin lengthens the annuity, and they
-    are separate prudence statements about separate risks.  ``mort_care_load_first = 0.85``
-    lowers in-care mortality, which lengthens the annuity — prudent in the direction that
-    costs money here, and the opposite of what an annuity table would do.
+    ``mort_care_load_first x [ mix q_{g,M}(x) + (1 - mix) q_{g,F}(x) ]``, the margin on the
+    unisex blend of the grade's table rates, capped at 1, and 1 where the blend is 1, at the
+    tables' closing age 109.  The margin stands on the grade's own table and not on the
+    margined active rate, which is what keeps the two mortality margins from compounding:
+    the active margin lengthens the pre-claim period and the in-care margin lengthens the
+    annuity, and they are separate prudence statements about separate risks.
+    ``mort_care_load_first = 0.85`` lowers in-care mortality, which lengthens the annuity —
+    prudent in the direction that costs money here, and the opposite of what an annuity
+    table would do.
 
     Keyed by age, not by month: every input depends on ``x`` and ``g`` alone, so it is
     evaluated once per age and grade; :func:`tar_p_pg` reads it at the attained age.
     """
-    if x >= omega_age() - 1:
+    q = tar_mort_rate_blend(x, g)
+    if q >= 1.0:
         return 1.0
-    margin = mort_care_load_first()
-    mult = float(data.care_table_dict()["mort_mult"][g])             # noqa: F821
-    q_m = float(data.mort_table_dict()["mort_rate"][("M", x)])       # noqa: F821
-    q_f = float(data.mort_table_dict()["mort_rate"][("F", x)])       # noqa: F821
-    q = min(1.0 - data.param("rate_cap_eps"), unisex_blend(q_m, q_f))  # noqa: F821
-    mu = -math.log(1.0 - q)                                          # noqa: F821
-    return min(1.0 - data.param("rate_cap_eps"),                     # noqa: F821
-               margin * (1.0 - math.exp(-mult * mu)))                # noqa: F821
+    return min(1.0, mort_care_load_first() * q)
 
 
 def tar_inc_rate(x):
@@ -1973,8 +2011,8 @@ def check_states_resid(t):
     That independence is what makes it more than the telescope of
     :func:`check_pols_roll_fwd`.  It catches a wrong seeding of an in-force model point, a
     life counted in two grades at once, an entrant into care who never leaves the active
-    ledger, and a *Karenz* cohort that graduates twice.  Because ``mort_rate`` is forced to
-    1 at the limiting age, it also closes at the far end: the decrements account for the
+    ledger, and a *Karenz* cohort that graduates twice.  Because every death table closes with
+    a rate of 1 at the limiting age, it also closes at the far end: the decrements account for the
     whole policy rather than leaving a truncation residue.
     """
     n = data.pflegegrad_count()                                      # noqa: F821

@@ -4,8 +4,8 @@ Source ids [S#]/[R#] are carried verbatim from `_research/sofortrente.md` (the c
 truth for this product) and are **frozen — never renumber**. All fifteen primary sources
 **S1–S15** are cited by `product-spec.md` or `technical-notes.md` and appear below. An entry appears
 here if **any** document or shipped input file of this product cites it, which is why the R section
-also carries **R12**: no specification document cites it, but `model.md` does and so does every row
-of `improvement_table.csv`. Eight of the twenty-five product-level references are cited by no
+also carries **R12**: no specification document cites it, but `model.md` does, and so did every row
+of `improvement_table.csv` until the switch to the table factory removed the file. Eight of the twenty-five product-level references are cited by no
 document and no input file and are therefore absent, leaving gaps in the R numbering: **R3**
 (VVG § 153, *Überschussbeteiligung*), **R7**
 (DeckRV § 2, the *Höchstrechnungszins*), **R15** (MindZV), **R16** (VAG §§ 138–140 and the
@@ -255,7 +255,7 @@ the whole of that number the corpus holds**.
 - Publisher / doc type: Deutsche Aktuarvereinigung e. V.; *DAV-Richtlinie*, the profession's derivation guideline for the annuity table. In use since June 2004, for new business from 2005, the DAV document dated 22 February 2005, the derivation guideline reissued 28 June 2023
 - URL: not established — no DAV derivation document was located on 2026-08-30; the document and its 2023 reissue remain the sibling file's search record
 - Retrieved: no — the *Herleitung* is a DAV members' document, not published on the open web, so this is a permanent rather than a temporary condition. **DAV 2004 R is DAV property, is not public and is not redistributed by delib.** What retrieval adds is external corroboration that the table is in live use and how: [S2] and [S3] name "die Sterbetafel DAV 2004R (**Aggregattafel**)" as the basis of a 2025/2026 annuity tariff — the first time the corpus can attach a named variant to it — while [S4] shows a carrier pricing the same product on its own "NÜRNBERGER Tafel 2013 R" instead. **DAV 2004 R is therefore the profession's reference table, not a universal tariff basis**, and `product-spec.md` no longer asserts it as the mortality basis of *every* German annuity
-- Used for: **the mortality basis of this product, structurally.** Four claims rest on it and each shapes the model. That DAV 2004 R is a ***Generationentafel***, mortality given per birth cohort with the expected improvement **inside** the table — which is why `birth_year` is a model point attribute, why `mort_rate_gen` takes a cohort, and why a period proxy is pitfall 8. That its component structure carries a **mortality trend in both a first- and a second-order version** — which is why the shipped proxy's first-order margin reaches the trend as well as the level and why collapsing them is pitfall 9. That first-order probabilities carry safety margins relative to the second-order realistic ones, and that for an annuity prudent means **lighter** mortality. And that the table carries an *Altersverschiebung* whose **convention was not established**, which `technical-notes.md` records as a condition on any replacement table (research gap 12)
+- Used for: **the mortality basis of this product, structurally.** Four claims rest on it and each shapes the model. That DAV 2004 R is a ***Generationentafel***, mortality given per birth cohort with the expected improvement **inside** the table — which is why `birth_year` is a model point attribute, why `mort_rate_gen` takes a cohort, and why a period proxy is pitfall 8. That its component structure carries a **mortality trend in both a first- and a second-order version** — which is why the model's first-order margin reaches the trend as well as the level — the best estimate improving at `mort_be_trend_factor` 0.8 of the trend of the table factory's `dav2004r_proxy` — and why collapsing them is pitfall 9. That first-order probabilities carry safety margins relative to the second-order realistic ones, and that for an annuity prudent means **lighter** mortality. And that the table carries an *Altersverschiebung* whose **convention was not established**, which `technical-notes.md` records as a condition on any replacement table (research gap 12)
 
 (delib-sofortrente-r11)=
 
@@ -263,7 +263,7 @@ the whole of that number the corpus holds**.
 - Publisher / doc type: Deutsche Aktuarvereinigung e. V.; the companion table for the existing annuity book, paired with the new-business table in a 2004 presentation titled "DAV 2004 R und RBx"
 - URL: not established — no DAV presentation or table was located on 2026-08-30; the pairing remains the sibling file's search record
 - Retrieved: no — like [R10] a DAV members' document, not published; and none of the five insurer AVB retrieved for this product mentions a *Bestand* table, so the retrieved corpus is silent on it as well as unable to reach it
-- Used for: **the pairing and nothing else.** `product-spec.md` cites it for the fact that a *Sofortrente* is priced on the new-business table at inception and then spends thirty years in the *Bestand* to which the other table applies, and — explicitly — for the disclosure that **the difference in level, in trend, in age range and in application rule between the two was not established**, so nothing about it is asserted downstream (research gap 12). `mort_table.csv`'s `provenance` names both tables as cited-not-shipped
+- Used for: **the pairing and nothing else.** `product-spec.md` cites it for the fact that a *Sofortrente* is priced on the new-business table at inception and then spends thirty years in the *Bestand* to which the other table applies, and — explicitly — for the disclosure that **the difference in level, in trend, in age range and in application rule between the two was not established**, so nothing about it is asserted downstream (research gap 12). `mort_table.csv`'s `provenance` named both tables as cited-not-shipped until the switch to the table factory removed the file
 
 (delib-sofortrente-r12)=
 
@@ -271,7 +271,7 @@ the whole of that number the corpus holds**.
 - Publisher / doc type: Deutsche Gesellschaft für Versicherungs- und Finanzmathematik (DGVFM); General Reinsurance AG; the *qx-Club* actuarial seminar series — the profession's own explanation of the table to practitioners, where the *Sicherheitszuschlag* structure and the trend construction were set out
 - URL: not established. `_research/sofortrente.md` records, from the sibling file `_research/klassische_rentenversicherung.md` (R14 there), presentations of **16 August 2004** and **14 September 2004** and a reinsurer's exposition of **27 October 2004**; all three dates are `[unverified]`
 - Retrieved: no — no DGVFM, General Re or *qx-Club* item was located on 2026-08-30; these are conference and seminar materials with no stable public address, and **no content was established beyond the existence of the presentations and their dates**, which remain `[unverified]`
-- Used for: **nothing affirmative, and that is the whole of its role here.** It is the entry the documents point at where they say what could *not* be established, and it is cited only outside the two specification documents: `model.md` names it beside [R10] at the two places where the shipped *Trendfunktion* is declared **[std]** — in the input-file table and in the standardization table — and `improvement_table.csv` carries it in the `provenance` tag of every row, to record that **DAV 2004 R's own trend is not public** and that these are the documents a later build should fetch to substantiate the first-order margin. No number in this library rests on it
+- Used for: **nothing affirmative, and that is the whole of its role here.** It is the entry the documents point at where they say what could *not* be established, and it is cited only outside the two specification documents: `model.md` names it beside [R10] at the two places where the shipped *Trendfunktion* is declared **[std]** — in the input-file table and in the standardization table — and `improvement_table.csv` carried it in the `provenance` tag of every row until the switch to the table factory removed the file, to record that **DAV 2004 R's own trend is not public** and that these are the documents a later build should fetch to substantiate the first-order margin. No number in this library rests on it
 
 (delib-sofortrente-r13)=
 
@@ -397,7 +397,7 @@ product, the entry below says so. Entries cited by the `sofortrente` documents:
 - **REG-R45** — EStG § 20 Abs. 1 Nr. 6, the 12/62 rule: cited with [R14] for the boundary a *Sofortrente* can never cross.
 - **REG-R46** — ErbStG and SGB V §§ 226, 229, 240: the *Erbschaftsteuer* treatment of a post-death payment and social-contribution treatment of an annuity in payment, both **not established** for this product (research gap 15).
 - **REG-R47** — *Rechnungsgrundlagen erster und zweiter Ordnung*, and the DAV as owner of the tables: the entry behind the two-dimensional *Sicherheitszuschlag* — lighter level **and** stronger trend — and behind the statement that the DAV tables are not redistributed here.
-- **REG-R49** — DAV 2004 R and DAV 2004 R-Bestand, the generational annuity tables: the cross-product entry behind [R10] and [R11], and the authority for the generational structure a replacement table must preserve.
+- **REG-R49** — DAV 2004 R and DAV 2004 R-Bestand, the generational annuity tables: the cross-product entry behind [R10] and [R11], and the authority for the generational structure a replacement for the table factory's `dav2004r_proxy` must preserve.
 - **REG-R52** — Destatis *Sterbetafeln* and *Generationensterbetafeln*, with their reuse licence: the intended base for a user-supplied replacement decrement table, and the comparator for the statement that population mortality overstates deaths in an annuity book.
 - **REG-R53** — the German life market in numbers (GDV, BaFin, Assekurata, Map-Report, Morgen & Morgen, Franke und Bornberg): the cross-product carrier of the market statistics [R25] and [R22] could not supply.
 - **REG-R54** — HGB §§ 341–341o and RechVersV: the statutory accounts in which the *Bewertungsreserven* the model excludes are measured.
@@ -460,8 +460,8 @@ declared surplus and no charge parameter of any kind** was read — α, β, *Eff
 *Renditeminderung* remain **[std]** with no observed range, and whether a payout-only
 *Sofortrente* is within PRIIPs scope is unresolved. No *Standmitteilung* specimen was found
 [S15]. DAV 2004 R remains DAV property, established structurally and not numerically [R10], its
-*Bestand* companion barely at all [R11], so the shipped decrement CSV is still a **[std]** proxy
-and the `Data` docstring still says so. No carrier's short-deferment variant was located, "Rente
+*Bestand* companion barely at all [R11], so the table factory's `dav2004r_proxy`, which replaced
+the shipped decrement CSV, is still a **[std]** proxy and the `Data` docstring still says so. No carrier's short-deferment variant was located, "Rente
 flex" having turned out to be a hybrid unit-linked deferred annuity [S14], so gap 17 closes as a
 negative. And the *Hinterbliebenenrente* percentages stay `[unverified]`: the GDV rider template
 states no level at all [S9].

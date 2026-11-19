@@ -298,7 +298,7 @@ the footnote says so in those words: a **[std]** with no range is weaker than on
 |---|---|---|
 | Medical evidence | **None** | **[std]** (4), [unverified] |
 | Rating factors | Attained age at *Rentenbeginn*; birth cohort; the elected options; the *Einmalbeitrag*. **Sex may not be a rating factor** for business written from 21 December 2012 | [S6]; unisex [REG-R34] |
-| Mortality basis | **DAV 2004 R at two carriers, a company table at a third.** Zurich Deutscher Herold: "Die Kalkulation … basiert auf der Sterbetafel DAV 2004R (Aggregattafel); es wird ein Rechnungszins in Höhe von 1,00 % verwendet" [S2] [S3]. NÜRNBERGER prices the same product on "die anerkannte Rententafel NÜRNBERGER Tafel 2013 R mit einem garantierten Rechnungszins von 1 % p. a." [S4]. DAV 2004 R is the **profession's reference**, not a mandate [REG-R47] | [S2] [S3] [S4] [R10] [REG-R49] |
+| Mortality basis | **DAV 2004 R at two carriers, a company table at a third.** Zurich Deutscher Herold: "Die Kalkulation … basiert auf der Sterbetafel DAV 2004R (Aggregattafel); es wird ein Rechnungszins in Höhe von 1,00 % verwendet" [S2] [S3]. NÜRNBERGER prices the same product on "die anerkannte Rententafel NÜRNBERGER Tafel 2013 R mit einem garantierten Rechnungszins von 1 % p. a." [S4]. DAV 2004 R is the **profession's reference**, not a mandate [REG-R47]. The model reads `dav2004r_proxy`, a **[std]** proxy of the core's table factory, at each life's year of birth: on the unisex blend of 45 % men for the tariff, on the own sex for the best estimate | [S2] [S3] [S4] [R10] [REG-R49] |
 | Table type | A ***Generationentafel*** — a two-dimensional basis `q(x, τ)` in attained age and calendar year, **not** a period table; the improvement is **inside** the table | [R10] [REG-R49] |
 | First against second order | First-order probabilities carry safety margins relative to the second-order ("realistic") ones. For an annuity, prudent means **lighter** mortality **and a stronger improvement trend** — safety in two dimensions | [R10] [REG-R47] |
 | Interest basis | The insurer's own choice **at or below** the cap, § 2 DeckRV setting a maximum and not a rate [REG-R14]. **Every retrieved tariff prices at the cap of its own vintage**: 1,00 % in three 2025/2026 AVB [S2] [S3] [S4], 0,90 % in a 01/2017 one [S6], each equal to the *Höchstrechnungszins* then in force [REG-R15]. No below-cap pricing was observed | [S2] [S4] [S6] [REG-R14] [REG-R15] |
@@ -308,9 +308,9 @@ the footnote says so in those words: a **[std]** with no range is weaker than on
 **What delib ships instead of the table.** DAV 2004 R and DAV 2004 R-Bestand are the property of the
 Deutsche Aktuarvereinigung, distributed to members rather than published, and **not
 redistributable**; `delib` ships **no version of either** and quotes no `q_x`, no improvement rate
-and no annuity factor from them [REG-R47] [REG-R49]. The decrement CSV shipped with `Sofort_DE_S` is
-a **[std] proxy**, anchored so the worked example reproduces exactly, and **a replacement must
-preserve three things**: the **generational** structure — a `q(x, cohort)` surface, because a
+and no annuity factor from them [REG-R47] [REG-R49]. `Sofort_DE_S` reads `dav2004r_proxy` of the
+core's table factory, a **[std] proxy** with the structure of the real table and none of its
+values, and **a replacement must preserve three things**: the **generational** structure — a `q(x, cohort)` surface, because a
 period-table proxy applied to a forty-year annuity understates the liability by a margin that dwarfs
 every other assumption in the model [REG-R49]; the **first-order margin in both dimensions**, level
 and trend [REG-R47]; and the *Altersverschiebung* convention [R10]. Destatis's
@@ -324,8 +324,8 @@ new-business table was established** [R11] (gap 12) — though it matters here, 
 built sex-distinctly while a tariff sold since 21 December 2012 must be unisex [REG-R34] [REG-R49],
 and a *Sofortrente* is the purest longevity bet in the market, so a unisex tariff must be struck on
 an **assumed portfolio sex mix no insurer publishes**. The realised mix drives the *Risikoergebnis*
-the MindZV then shares [REG-R18], and the reference implementation's decrement table is a **unisex
-[std] proxy** with a stated mix assumption, described as one (gap 13).
+the MindZV then shares [REG-R18], and the reference implementation strikes its unisex tariff on a
+sex-distinct **[std] proxy** at a stated mix assumption, described as one (gap 13).
 
 ### Charges
 
@@ -428,7 +428,8 @@ age, rate and guarantee period and net of both [std] charges, gives **349 €** 
 than the one real quotation in the corpus**. The gap is the honest measure of what a constructed
 table is worth: it is consistent with the [std] Gompertz–Makeham proxy being lighter than a real
 first-order German annuitant basis, with α and β being too small, or with both, and nothing in the
-corpus separates the three. **The model is not recalibrated to it in this pass** — doing so would
+corpus separates the three. The model itself, which reads the table factory's `dav2004r_proxy`,
+gives **308 €** on the same case, about 2 % above the quotation (`technical-notes.md`). **The model is not recalibrated to it in this pass** — doing so would
 move the worked example and its golden tests — and the [std] table below is unchanged; the
 divergence is recorded here and in `technical-notes.md` so that no reader mistakes the constructed
 figures for market rates. Market-average *Rentenfaktoren* for the deferred market, on the same

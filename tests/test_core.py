@@ -39,16 +39,18 @@
   ``param_table()`` and ``param_table_dict()`` are gone with every read of them; every
   product's ``param_file`` is its ``param_tariff_type.csv`` with the layer columns, and no
   ``param_table.csv`` is left.
-  Riester's 32 former numeric References are rows of its tariff-type file with their
+  31 of Riester's 32 former numeric References are rows of its tariff-type file with their
   literals' types and values, and no numeric Reference but ``point_id`` is left on its
-  ``Projection``. RLV's 17 likewise, and its premium-shock test switches the module on
-  through a row of a scratch copy's tariff-type file. KLV's 4 read ones likewise; its
+  ``Projection``; the 32nd, ``mort_base_year``, went with its switch to the table factory.
+  RLV's 17 likewise, and its premium-shock test switches the module on through a row of a
+  scratch copy's tariff-type file. KLV's 4 read ones likewise; its
   three References of the lapse modules that were never built, read by no cell, are in
   neither its ``Projection`` nor its parameter files. BU's 11, FRV's 12, Basis' 5,
-  Index' 10 and 8 of Sofort's 10 likewise; Sofort's other 2, the bisection settings of its
-  refund solve, are literals in its formula. RV and Pflege never had one.
+  Index' 10 and 7 of Sofort's 10 likewise; 2 more of Sofort's, the bisection settings of its
+  refund solve, are literals in its formula, and the tenth, ``mort_base_year``, went with its
+  switch to the table factory. RV and Pflege never had one.
   Every product's core layer holds the items of ``CORE_ITEMS`` with their types, among them
-  ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's eleven guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 3 actuarial
+  ``rate_cap_eps``, 1e-12 as a ``float``; Pflege's nine guards read it, and no ``1e-12`` literal is left in its formulas. FRV's 3 actuarial
   formula literals (the tax step of ``lapse_tax_step``) are parameter items with their
   literals' types and values, the two statutory limbs in the core file; Index' five-year spread and KLV's
   five-year spread and three-year suicide window are items of the core file. Every other numeric literal of a
@@ -241,15 +243,15 @@ CORE_CELLS = {
     "Data": {
         "input_dir": dict.fromkeys(MODELS, "derived"),
         "model_point_table": dict.fromkeys(MODELS, "derived"),
-        "mort_table_index": {"basisrente": "override",
+        "mort_table_index": {"basisrente": "derived",
                              "fondsgebundene_rentenversicherung": "derived",
                              "indexpolice": "derived",
                              "kapitallebensversicherung": "derived",
                              "klassische_rentenversicherung": "derived",
                              "pflegerentenversicherung": "derived",
-                             "riester_rente": "override",
+                             "riester_rente": "derived",
                              "risikolebensversicherung": "derived",
-                             "sofortrente": "override"},
+                             "sofortrente": "derived"},
         "mort_table": dict.fromkeys(MODELS, "derived"),
         "lapse_table_index": {"berufsunfaehigkeit": "derived",
                               "fondsgebundene_rentenversicherung": "derived",
@@ -475,9 +477,9 @@ CORE_CELLS = {
                 "sofortrente": "override"},
         "omega_age": {"basisrente": "override",
                       "klassische_rentenversicherung": "override",
-                      "pflegerentenversicherung": "derived",
+                      "pflegerentenversicherung": "override",
                       "riester_rente": "override",
-                      "sofortrente": "derived"},
+                      "sofortrente": "override"},
         "ret_age": {"basisrente": "derived",
                     "fondsgebundene_rentenversicherung": "derived",
                     "indexpolice": "derived",
@@ -564,12 +566,14 @@ CORE_CELLS = {
                             "kapitallebensversicherung": "derived",
                             "klassische_rentenversicherung": "derived",
                             "pflegerentenversicherung": "derived",
+                            "riester_rente": "derived",
                             "risikolebensversicherung": "derived",
                             "sofortrente": "derived"},
         "unisex_blend": {"berufsunfaehigkeit": "derived",
                          "kapitallebensversicherung": "derived",
                          "klassische_rentenversicherung": "derived",
                          "pflegerentenversicherung": "derived",
+                         "riester_rente": "derived",
                          "risikolebensversicherung": "derived"},
         "mort_load_tariff": {"fondsgebundene_rentenversicherung": "derived",
                              "kapitallebensversicherung": "derived",
@@ -617,30 +621,34 @@ CORE_CELLS = {
                      "riester_rente": "derived"},
         # The derivation hooks of the table factory (docs/core.md, "The table factory"): a
         # product that defines the name reads its own mortality file until its switch.
-        "birth_year": {"klassische_rentenversicherung": "override",
+        "birth_year": {"basisrente": "override",
+                       "klassische_rentenversicherung": "override",
+                       "riester_rente": "override",
                        "sofortrente": "override"},
         "omega_age_table": {},
         "mort_table_name": {},
-        "mort_rate_table": {},
-        "mort_rate_at_age": {"basisrente": "override",
+        "mort_rate_table": {"riester_rente": "override"},
+        "mort_rate_at_age": {"basisrente": "derived",
                              "berufsunfaehigkeit": "derived",
                              "indexpolice": "derived",
                              "kapitallebensversicherung": "derived",
                              "klassische_rentenversicherung": "derived",
-                             "pflegerentenversicherung": "override",
-                             "riester_rente": "override",
+                             "pflegerentenversicherung": "derived",
+                             "riester_rente": "derived",
                              "risikolebensversicherung": "override",
-                             "sofortrente": "override"},
+                             "sofortrente": "derived"},
         "mort_rate_tariff_at_age": {"berufsunfaehigkeit": "derived",
                                     "fondsgebundene_rentenversicherung": "derived",
                                     "kapitallebensversicherung": "derived",
                                     "klassische_rentenversicherung": "derived"},
-        "mort_be_trend": {"berufsunfaehigkeit": "derived",
+        "mort_be_trend": {"basisrente": "derived",
+                          "berufsunfaehigkeit": "derived",
                           "fondsgebundene_rentenversicherung": "derived",
                           "indexpolice": "derived",
                           "kapitallebensversicherung": "derived",
                           "klassische_rentenversicherung": "derived",
-                          "pflegerentenversicherung": "derived"},
+                          "pflegerentenversicherung": "derived",
+                          "sofortrente": "override"},
         "mort_be_factor": {"basisrente": "override",
                            "berufsunfaehigkeit": "override",
                            "fondsgebundene_rentenversicherung": "override",
@@ -648,8 +656,9 @@ CORE_CELLS = {
                            "kapitallebensversicherung": "override",
                            "klassische_rentenversicherung": "override",
                            "riester_rente": "override",
-                           "risikolebensversicherung": "override"},
-        "mort_rate_base": {"basisrente": "override",
+                           "risikolebensversicherung": "override",
+                           "sofortrente": "override"},
+        "mort_rate_base": {"basisrente": "derived",
                            "berufsunfaehigkeit": "derived",
                            "fondsgebundene_rentenversicherung": "derived",
                            "indexpolice": "derived",
@@ -658,7 +667,7 @@ CORE_CELLS = {
                            "pflegerentenversicherung": "derived",
                            "riester_rente": "derived",
                            "risikolebensversicherung": "override"},
-        "mort_rate": {"basisrente": "override",
+        "mort_rate": {"basisrente": "derived",
                       "berufsunfaehigkeit": "derived",
                       "fondsgebundene_rentenversicherung": "derived",
                       "indexpolice": "derived",
@@ -1171,8 +1180,15 @@ def test_pflege_tariff_type_file_holds_the_two_merged_tables(product_models):
     for item in moved:
         assert (points[item] == basis.at[item, "value"]).all(), item
     basis = basis.drop(moved)
+    # The terminal age went with the switch to the table factory: the end age of the table
+    # of ``mort_table``; the six table choices stand first in its place.
+    table = merged.at["mort_table", "value"]
+    assert basis.at["omega_age", "value"] == model.CoreTables.end_age(table) == 110
+    basis = basis.drop(["omega_age"])
+    choices = ["mort_table"] + [f"mort_pg{grade}_table" for grade in range(1, 6)]
     assert list(merged.columns) == ["value", "basis", "provenance"]
-    assert list(merged.index) == list(basis.index) + list(expense.index)
+    assert list(merged.index) == choices + list(basis.index) + list(expense.index)
+    merged = merged.drop(choices).astype({"value": float})
     # Values and order are upstream's but the aligned ones; basis and provenance follow the
     # acceptance of 2026-11-09, which extended each provenance with its source or reason.
     # The expense rows' units stand in words at the end of their provenance.
@@ -1783,12 +1799,14 @@ def test_param_equals_the_file_value(product, product_models):
                                              ("pflegerentenversicherung", 110),
                                              ("sofortrente", 121)])
 def test_omega_age_is_an_int(product, omega, product_models):
-    """Every file writes ``omega_age`` as an integer, so ``param`` gives an ``int``; so does
-    Pflege's ``beitragssumme_cap_age`` (``85``). RV reads it off its table since its switch
-    to the table factory, the table's item ``dav2004r_proxy_end_age``, an integer too."""
+    """``omega_age`` is an integer, so ``param`` gives an ``int``; so does Pflege's
+    ``beitragssumme_cap_age`` (``85``). RV, Sofort and Pflege read it off their tables since
+    their switches to the table factory, the items ``dav2004r_proxy_end_age`` and
+    ``pflege_aktive_proxy_end_age``, integers as the item ``omega_age`` was."""
     model = product_models(product)
-    item_name = ("dav2004r_proxy_end_age" if product == "klassische_rentenversicherung"
-                 else "omega_age")
+    item_name = {"klassische_rentenversicherung": "dav2004r_proxy_end_age",
+                 "sofortrente": "dav2004r_proxy_end_age",
+                 "pflegerentenversicherung": "pflege_aktive_proxy_end_age"}[product]
     assert type(model.Data.param(item_name)) is int
     item = model.Projection[model.Data.model_point_table().index[0]]
     assert item.omega_age() == omega and type(item.omega_age()) is int
@@ -1880,8 +1898,11 @@ def param_layer_of(item):
     return "core" if item in CORE_ITEMS else "tariff_type"
 
 
-# The 32 numeric References Riester's ``Projection`` held, as their former Python literals, with
-# the value entry 12 of epic-parameter-files aligned (``kleinbetrag_threshold_mth`` 39.55 to 59.33).
+# 31 of the 32 numeric References Riester's ``Projection`` held, as their former Python literals,
+# with the value entry 12 of epic-parameter-files aligned (``kleinbetrag_threshold_mth`` 39.55 to
+# 59.33); the 32nd, ``mort_base_year`` 2027, an item until Riester's switch to the table factory,
+# went for the item ``dav2004r_proxy_base_year`` of its annuitant table, 2005 (values package,
+# open point 8).
 RIESTER_MOVED_REFERENCES = {
     "valuation_year": 2027,
     "grundzulage": 175.0,
@@ -1905,7 +1926,6 @@ RIESTER_MOVED_REFERENCES = {
     "annuity_rechnungszins": 0.01,
     "woolhouse": 0.4583333333333333,
     "annuity_mort_be_factor": 1.15,
-    "mort_base_year": 2027,
     "stornoabzug_rate": 0.02,
     "charge_transfer_pp_once": 50.0,
     "expense_admin_pp_ann": 30.0,
@@ -2000,10 +2020,11 @@ INDEX_MOVED_LITERALS = {"surr_spread_years": 5}
 # ``surr_spread_years`` was ``5.0`` there; its row is ``5``, an ``int`` as Index' row.
 KLV_MOVED_LITERALS = {"surr_spread_years": 5, "suicide_years": 3}
 
-# The 5 numeric References Basis' ``Projection`` held, as their former Python literals.
+# 4 of the 5 numeric References Basis' ``Projection`` held, as their former Python literals; the
+# fifth, ``mort_base_year`` 2005, an item until Basis' switch to the table factory, is the item
+# ``dav2004r_proxy_base_year`` of its table, 2005 as before.
 BASIS_MOVED_REFERENCES = {
     "elig_surv_prob": 0.55,
-    "mort_base_year": 2005,
     "acq_spread_years": 5,
     "rf_unit": 10000.0,
     "ann_freq": 12,
@@ -2023,8 +2044,10 @@ INDEX_MOVED_REFERENCES = {
     "rentenfaktor_curr": 25.0,
 }
 
-# 8 of the 10 numeric References Sofort's ``Projection`` held, as their former Python literals;
-# the other 2, ``solve_tol`` 1e-10 and ``solve_max_iter`` 200, are literals of ``annuity_pp_derived``.
+# 7 of the 10 numeric References Sofort's ``Projection`` held, as their former Python literals;
+# 2 more, ``solve_tol`` 1e-10 and ``solve_max_iter`` 200, are literals of ``annuity_pp_derived``;
+# the tenth, ``mort_base_year`` 2025, an item until Sofort's switch to the table factory, went
+# for the item ``dav2004r_proxy_base_year`` of its table, 2005 (values package, open point 8).
 SOFORT_MOVED_REFERENCES = {
     "load_acq_sp_once": 0.025,
     "load_admin_annval_once": 0.02,
@@ -2033,7 +2056,6 @@ SOFORT_MOVED_REFERENCES = {
     "expense_admin_pp_ann": 60.0,
     "expense_pay_pp_inst": 1.5,
     "unisex_mix_male": 0.45,
-    "mort_base_year": 2025,
 }
 
 # The products whose numeric References have all moved into their parameter files: all ten,
@@ -2050,7 +2072,10 @@ def test_riester_references_stand_in_their_layer(product_models):
     model = product_models("riester_rente")
     data = model.Data
     layers = data.param_layers()
-    assert len(RIESTER_MOVED_REFERENCES) == 32
+    assert len(RIESTER_MOVED_REFERENCES) == 31
+    assert "mort_base_year" not in model.Projection.refs
+    assert "mort_base_year" not in data.param_dict()
+    assert data.param("dav2004r_proxy_base_year") == 2005
     for item, literal in RIESTER_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
@@ -2165,7 +2190,10 @@ def test_basis_references_stand_in_their_layer(product_models):
     model = product_models("basisrente")
     data = model.Data
     layers = data.param_layers()
-    assert len(BASIS_MOVED_REFERENCES) == 5
+    assert len(BASIS_MOVED_REFERENCES) == 4
+    assert "mort_base_year" not in model.Projection.refs
+    assert "mort_base_year" not in data.param_dict()
+    assert data.param("dav2004r_proxy_base_year") == 2005
     for item, literal in BASIS_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
@@ -2189,7 +2217,10 @@ def test_sofort_references_stand_in_their_layer(product_models):
     model = product_models("sofortrente")
     data = model.Data
     layers = data.param_layers()
-    assert len(SOFORT_MOVED_REFERENCES) == 8
+    assert len(SOFORT_MOVED_REFERENCES) == 7
+    assert "mort_base_year" not in model.Projection.refs
+    assert "mort_base_year" not in data.param_dict()
+    assert data.param("dav2004r_proxy_base_year") == 2005
     for item, literal in SOFORT_MOVED_REFERENCES.items():
         value = data.param(item)
         assert type(value) is type(literal) and value == literal, item
@@ -2232,15 +2263,17 @@ def test_every_product_reads_the_core_items(product, product_models):
 
 
 def test_pflege_guards_read_the_core_epsilon():
-    """Pflege's eleven guards ``1.0 - 1e-12`` read ``1.0 - data.param("rate_cap_eps")``, and
-    no ``1e-12`` literal is left in its formulas (its docstrings still give the value)."""
+    """Pflege's guards ``1.0 - 1e-12`` read ``1.0 - data.param("rate_cap_eps")``, and no
+    ``1e-12`` literal is left in its formulas (its docstrings still give the value). Eleven
+    until its switch to the table factory, nine since: the caps of the two tariff death rates
+    went, a table rate of 1 passing through, and the force of a care grade took one."""
     path = PRODUCTS_DIR / "pflegerentenversicherung" / MODELS["pflegerentenversicherung"]
     text = (path / "Projection" / "__init__.py").read_text(encoding="utf-8")
     literals = [node for node in ast.walk(ast.parse(text))
                 if isinstance(node, ast.Constant) and type(node.value) is float
                 and node.value == 1e-12]
     assert literals == []
-    assert text.count('1.0 - data.param("rate_cap_eps")') == 11
+    assert text.count('1.0 - data.param("rate_cap_eps")') == 9
 
 
 # The structural numeric literals of the formula cells, by space, as ``repr`` of the value
@@ -3352,7 +3385,6 @@ PRODUCT_DICT_READERS = {
         "election_table": "election_file",
     },
     "sofortrente": {
-        "improvement_table": "improvement_file",
         "surplus_scale_table": "surplus_scale_file",
     },
     "berufsunfaehigkeit": {
@@ -3361,7 +3393,6 @@ PRODUCT_DICT_READERS = {
         "occupation_table": "occupation_file",
     },
     "riester_rente": {
-        "annuity_mort_table": "annuity_mort_file",
         "zulage_schedule": "zulage_file",
         "income_schedule": "income_file",
     },
@@ -3378,10 +3409,6 @@ PRODUCT_BOUNDS = {
     "basisrente": {
         "behaviour_table_durs": ("behaviour_table", "beh_table_id", "dur", "last"),
         "surplus_table_years": ("surplus_table", "scenario_id", "t", "last"),
-    },
-    "sofortrente": {
-        "mort_table_ages": ("mort_table", None, "age", "range"),
-        "improvement_table_ages": ("improvement_table", None, "age", "range"),
     },
     "berufsunfaehigkeit": {
         "inception_table_ages": ("inception_table", None, "age", "range"),
@@ -3937,28 +3964,6 @@ def test_a_frequency_outside_the_table_raises_and_a_row_admits_it(product, tmp_p
         copy.close()
 
 
-def test_sofort_ages_outside_the_tables_hold_their_ends(product_models):
-    model = product_models("sofortrente")
-    mort = model.Data.mort_table()
-    improve = model.Data.improvement_table()
-    item = model.Projection[model.Data.model_point_table().index[0]]
-    ages = mort.index.get_level_values("age")
-    lo, hi = int(ages.min()), int(ages.max())
-    for basis in ("FIRST", "SECOND"):
-        for sex in ("M", "F"):
-            assert item.mort_rate_at_age(lo - 5, sex, basis) == float(
-                mort.at[(basis, sex, lo), "mort_rate"]), (basis, sex)
-            assert item.mort_rate_at_age(hi + 5, sex, basis) == float(
-                mort.at[(basis, sex, hi), "mort_rate"]), (basis, sex)
-    ages = improve.index.get_level_values("age")
-    lo, hi = int(ages.min()), int(ages.max())
-    for basis in ("FIRST", "SECOND"):
-        assert item.improve_rate_at_age(lo - 5, basis) == float(
-            improve.at[(basis, lo), "improve_rate"]), basis
-        assert item.improve_rate_at_age(hi + 5.5, basis) == float(
-            improve.at[(basis, hi), "improve_rate"]), basis
-
-
 def test_bu_ages_outside_the_inception_table_hold_its_ends(product_models):
     """The mortality lookups clamp nothing: they read the table factory
     (``tests/test_tables.py``)."""
@@ -4219,19 +4224,6 @@ def test_index_lapse_beyond_the_table_raises_key_error():
         assert "KeyError" in str(raised.value) or isinstance(raised.value, KeyError)
     finally:
         copy.close()
-
-
-def test_riester_ages_from_omega_minus_one_read_no_table(product_models):
-    model = product_models("riester_rente")
-    item = model.Projection[1]
-    assert item.omega_age() == int(model.Data.mort_table().index.max()) + 1 == 111
-    # 115 is in neither table, so a lookup there would raise.
-    assert 115 not in model.Data.mort_table().index
-    assert 115 not in model.Data.annuity_mort_table().index
-    for x in (110, 115):
-        assert item.mort_rate_at_age(x) == 1.0, x
-        assert item.annuity_mort_rate(x, 2050) == 1.0, x
-    assert item.mort_rate_at_age(109) == float(model.Data.mort_table().at[109, "qx"])
 
 
 def test_riester_after_conversion_reads_no_schedule(product_models):

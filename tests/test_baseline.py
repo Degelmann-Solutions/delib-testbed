@@ -28,8 +28,8 @@ BASELINE = {
         14,
         ("check_annuity_roll_fwd", "check_av_roll_fwd", "check_conversion", "check_net_cf",
          "check_no_capital", "check_pols_roll_fwd"),
-        "ebbca4d2757fbf9f8861d8272e25f8596fd04ddef2c373705f6ec24e625bf7e2",
-        "62bd45506d6b91cb48a8d22a6d5b0384d115e07dd88ea4c43cc84d1e1f4932a6",
+        "00edff73201b6dcf0c2144eba3112bf6d89515458049ceb8a46197ea1001eb57",
+        "81b6329f2eed571172e8a46c987aebdc4df1f1a84837c607c812d7691b230f1f",
     ),
     "berufsunfaehigkeit": (
         13,
@@ -72,15 +72,15 @@ BASELINE = {
         14,
         ("check_esc_ledger", "check_net_cf", "check_pols_roll_fwd", "check_prem_equiv",
          "check_states", "check_waiver"),
-        "4ac42207035fadf16fbc4ea56ed3bbf21068a6263de3ee473c3f4708204d0111",
-        "99ae33f23a1894ec84deebbc309267cc290cb1707e80918ee98d0d709382c7a7",
+        "79e7fd6f38cf4c9bbfc557d0a669398201f783cbc826618b3074525f833e2c61",
+        "2b86cb89d59979227ca3d5869b8fd60e45bf7bd6d831ec99f6baa9e69c9a9316",
     ),
     "riester_rente": (
         13,
         ("check_av_roll_fwd", "check_conversion", "check_guar_roll_fwd", "check_net_cf",
          "check_pols_roll_fwd", "check_zulage_lag"),
-        "91b6a3faf175b0d437c1ccf19113f6543a73cc8add4c07ad1c58d231ed6be03a",
-        "736388e3f32fa5593af50116e88d4b2a5935efe61f80cba50105b7d861e673d7",
+        "3950712ac294110e0c3262e918816837c918e83389ac014570fcc98e0defc991",
+        "38f86fdece377378d61e38fb4a06d9e1b8db36e4d538128dae8f61cca26eefa0",
     ),
     "risikolebensversicherung": (
         14,
@@ -94,8 +94,8 @@ BASELINE = {
         ("check_annuity_roll_fwd", "check_death_option_xor", "check_equivalence",
          "check_guarantee_certain", "check_lives_roll_fwd", "check_net_cf",
          "check_payment_factor", "check_refund_run_off", "check_tariff_int_rate"),
-        "fb4644f8a7f74d09d2d0f73029cb8c9c9f5e026f4237fbbca6d3e48d15afdffd",
-        "195d2c63fdd3dec208aa070b8f70d4224c5d01abe69cd49c87629d2f9b92f3b4",
+        "d9e07e5d60e3817dba588b6052d4be20f37dfb0b7fc0b599529e8c5bcf919950",
+        "ca329dd71db4d50af24e649d0e6f3186c6200888f2e1cb5ce5969fe92eed6584",
     ),
 }
 

@@ -57,7 +57,7 @@ German terms of art keep their German form in prose.
   library ruling asserted in `tests/test_model_conventions_de.py`:
   `result_cf().index[-1] == proj_len() − 1` and `len(result_cf()) == proj_len()`.
   `proj_len_y() = omega_age() − age(0)`, with `age(0) = issue_age + duration_init` and
-  `omega_age() = 111`, the limiting age one above the last age 110 of the mortality tables, where `q = 1` **[std]**. The frame is contiguous `0 … proj_len() − 1` on every model point,
+  `omega_age() = 121`, the limiting age, the end age of the annuitant table `dav2004r_proxy` of the core's table factory, whose rate is `q = 1` at 120 **[std]**. The frame is contiguous `0 … proj_len() − 1` on every model point,
   including a point that commutes at *Rentenbeginn* and therefore carries zeros to the end — a
   uniform frame is what lets two model points be read side by side, and truncating a commuted point
   is a numbered pitfall.
@@ -84,16 +84,18 @@ German terms of art keep their German form in prose.
   model these notes were first written for paid **twelve instalments as one annual amount at the
   start of the payout year**, to those alive at the start: for a life dying during the year it paid
   a full year where the contract pays only the instalments falling due, an overstatement of roughly
-  `½ · q(x) · 12R` a year, about 0,7 % of the annuity at attained age 70 on the shipped proxy. That
+  `½ · q(x) · 12R` a year, about 0,16 % of the annuity at attained age 70 on the anchor's cohort. That
   approximation is gone — `annuity_month_pp()` is paid to whoever `pols_annuity_pay(t)` says is paid
-  that month — and it is worth 362,84 € of the anchor's payout phase and 575,26 € of model point
+  that month — and it is worth 375,82 € of the anchor's payout phase and 556,84 € of model point
   12's, which carries no *Rentengarantiezeit*. Inside a guarantee window the two grids agree **to
   the cent**, the count being fixed there. The *level* of the annuity was always right, the
   conversion factor carrying the Woolhouse `−11/24` correction (`woolhouse`, a row of `param_tariff_type.csv`).
 - **Age basis.** Age last birthday, `age_y(k) = issue_age + duration_init + k`, stepping on the
   anniversary so the twelve months of a projection year share one rate. Riester tariffs
-  are **unisex** from a 2006 vintage [R23] [REG-R34], so `sex` is carried for reporting only and
-  must not enter any rate.
+  are **unisex** from a 2006 vintage [R23] [REG-R34], so `sex` enters no tariff quantity: the
+  first-order annuity factor and with it the *Rentenfaktor* stand on the unisex blend of the
+  annuitant table, 45 % men (`unisex_mix_male`). It enters the **best-estimate** decrements only,
+  which are read on the insured's own sex (values package of the table factory, open point 10).
 - **Currency, sign and rounding.** EUR throughout. `net_cf(t)` is **income-positive** — contributions
   and Zulagen positive, benefits and expenses negative — with the outgo-positive orientation
   published as `liability_cf(t) = −net_cf(t)`. Intermediate values at full precision; displayed cash
@@ -120,31 +122,31 @@ reaches it through a `data` Reference and holds no `*_file` Reference and no `in
 | File | Index columns | Value columns |
 |---|---|---|
 | `model_point_table.csv` | `point_id` | the twenty-seven attributes tabulated below |
-| `mort_table_accum.csv` | `age` (16–110) | `qx`, `provenance` |
-| `annuity_mort_table.csv` | `age` (55–110) | `qx_base`, `improvement`, `provenance` |
 | `lapse_table.csv` | `policy_year` (1–60) | `lapse_rate`, `transfer_rate`, `provenance` |
 | `zulage_schedule.csv` | `zulage_id`, `t` | `unmittelbar`, `n_kinder_pre2008`, `n_kinder_post2008`, `bonus`, `provenance` |
 | `income_schedule.csv` | `income_id`, `t` | `income`, `provenance` |
 | `surplus_scenario.csv` | `scenario_id`, `t` | `decl_rate`, `provenance` |
 | `prem_freq_table.csv` | `prem_freq` | `instalments` (a year, not read), `prem_freq_load`, `provenance` |
-| `param_tariff_type.csv` | `item` | `value` (`mort_be_factor` and the tariff's scalars), `basis`, `provenance`; `expense_infl` is an item of the core file `param_core.csv` |
+| `param_tariff_type.csv` | `item` | `value` (the table choices `mort_table` and `annuity_mort_table`, `mort_be_factor`, `unisex_mix_male` and the tariff's scalars), `basis`, `provenance`; `expense_infl` is an item of the core file `param_core.csv` |
 
 **Every file except `model_point_table.csv` carries a per-row `provenance` column**, delib's second
 ruling: a model point is a configuration, every other row is an assumption and says where its number
-came from. The two decrement tables are **[std] proxies** for proprietary DAV tables that this
-library does not ship [REG-R47] [REG-R48] [REG-R49], anchored so that the worked example reproduces
-exactly; what a replacement must preserve is stated in assumption class (c) and in `sources.md`.
+came from. No mortality file is read: the death rates come from the core's table factory, the
+tables `dav2008t_proxy` and `dav2004r_proxy` the tariff chooses in `param_tariff_type.csv`, each a
+**[std] proxy** for a proprietary DAV table that this library does not ship [REG-R47] [REG-R48]
+[REG-R49], their parameters rows of `core/Core/Data/param_tables.csv`; what a replacement must
+preserve is stated in assumption class (c) and in `sources.md`.
 
 ### Cells vocabulary
 
-`Data` publishes `input_dir`, `model_point_table`, `mort_table`, `annuity_mort_table`,
+`Data` publishes `input_dir`, `model_point_table`,
 `lapse_table`, `zulage_schedule`, `income_schedule`, `surplus_table`, `prem_freq_table`
 and the parameter loader `param`.
 
 `Projection` publishes the library's shared names — **`model_point`, `proj_len`, `age`, `pols_if`,
 `mort_rate`, `claims`, `expenses`, `net_cf`, `result_cf`** — plus, in the same lifelib spelling:
 `pols_if_init`, `pols_if_at`, `pols_death`, `pols_lapse`, `pols_transfer`, `pols_conv`,
-`pols_annuity_pay`; `mort_rate_at_age`, `annuity_mort_rate`, `lapse_rate`, `transfer_rate`;
+`pols_annuity_pay`; `mort_rate_at_age`, `annuity_mort_rate`, `birth_year`, `lapse_rate`, `transfer_rate`;
 `duration`, `duration_y`, `duration_mth`, `policy_year`, `calendar_year`, `calendar_year_y`,
 `proj_len_y`, `proj_year`, `is_anniv`, `prem_due`, `k_conv`, `t_conv`, `is_accum`, `is_accum_y`,
 `is_payout`, `is_payout_y`; `mort_rate_mth`, `lapse_rate_mth`, `transfer_rate_mth`; `income_ref`,
@@ -176,7 +178,7 @@ value; the thirteen points are described under *Worked example*.
 | Attribute | Type | Meaning | Exercised by |
 |---|---|---|---|
 | `point_id` | int | Row key; `Projection` is parameterized by it | all |
-| `sex` | enum {M, F} | Reporting only. Pricing, the conversion and every rate are **unisex** [R23] | all |
+| `sex` | enum {M, F} | Pricing and the conversion are **unisex** [R23]; the best-estimate death rates are read on the own sex | all |
 | `issue_age` | int | Attained age at conclusion of the contract | all |
 | `issue_year` | int | Calendar year of conclusion, `2027 − duration_init`: every point opens at the 1 January 2027 valuation date, on its policy anniversary; the core's `issue_year()` reads it | 2 (2027), 3 (2018) |
 | `duration_init` | int | Completed contract years at the valuation date; 0 for a point projected from issue | 2, 6, 13 at 0 or 1 |
@@ -230,7 +232,7 @@ contract carries, an at-issue point beside the in-force ones, and four boundary 
 | **12** | **No lump sum, no guarantee period** — `teilkapital_share = 0`, `rentengarantie_years = 0` | The pure lifelong annuity, and the invariance of `annuity_pp` to the guarantee period |
 | **13** | **Late entrant at the statutory floor** — issue age 60 in 2026, *Rentenbeginn* **62**, monthly | The earliest certifiable payout age for a post-2012 contract (boundary); the shortest accumulation and the least guarantee headroom |
 
-**Model point 1 is the worked example's anchor cell** and is `Projection[1]`.
+**Model point 1 is the worked example's anchor cell** and is `Projection[1]`. The opening state of the in-force points (`pols_if_init`, `dk_pp_init`, `surplus_pp_init`, `guar_pp_init`) was rolled forward on the mortality files the model read before its switch to the table factory and is kept as contract data.
 
 ---
 
@@ -414,8 +416,8 @@ not from data.
 
 | Input | Value | Rationale |
 |---|---|---|
-| Accumulation mortality `mort_table_accum.csv` | **[std]** proxy standing in for **DAV 2008 T** [REG-R48], applied with `mort_be_factor = 0.75`, the step down from the first-order margin of DAV 2008 T (bib `DAV-Fortbildung/DAV vor Ort/Niedersachsen-Bremen/NBr-2022-11-08_Keil_Klimwandel-und-LV.pdf` p. 4), one view of the table with FRV and KLV (acceptance of 2026-11-09, was 0.80) | The DAV tables are proprietary and **not redistributed** [REG-R47]. A death-benefit basis carries **no** improvement projection, because for death cover improvement favours the insurer |
-| Annuity mortality `annuity_mort_table.csv` | **[std]** **generational** proxy standing in for **DAV 2004 R** [REG-R49]: `q(x, τ) = qx_base(x) · (1 − improvement(x))^(τ − 2027)`, applied with `annuity_mort_be_factor = 1.15`, its base year `mort_base_year = 2027`, both rows of `param_tariff_type.csv` | The one structural property that is **not optional** is that the basis is two-dimensional in age and calendar year; a period-table proxy understates a twenty-year-deferred annuitisation by a margin that dwarfs every other assumption [REG-R49] |
+| Accumulation mortality `mort_table` = `dav2008t_proxy` | **[std]** proxy of the core's table factory standing in for **DAV 2008 T** [REG-R48], Makeham by sex over ages 0 to 120 and read without a birth year, applied on the own sex with `mort_be_factor = 0.75`, the step down from the first-order margin of DAV 2008 T (bib `DAV-Fortbildung/DAV vor Ort/Niedersachsen-Bremen/NBr-2022-11-08_Keil_Klimwandel-und-LV.pdf` p. 4), one view of the table with FRV and KLV (acceptance of 2026-11-09, was 0.80) | The DAV tables are proprietary and **not redistributed** [REG-R47]. A death-benefit basis carries **no** improvement projection, because for death cover improvement favours the insurer |
+| Annuity mortality `annuity_mort_table` = `dav2004r_proxy` | **[std]** **generational** proxy of the core's table factory standing in for **DAV 2004 R** [REG-R49]: `q(x, g) = q_base(x) · (1 − trend(x))^(g + x − 2005)` at the birth year `g`, issue year less issue age, the base year 2005 the table's own (`dav2004r_proxy_base_year`); applied on the own sex with `annuity_mort_be_factor = 1.15`, and at factor 1 on the unisex blend, `unisex_mix_male = 0.45`, in the annuity factor, all three rows of `param_tariff_type.csv` | The one structural property that is **not optional** is that the basis is generational, read at the cohort; a period-table proxy understates a twenty-year-deferred annuitisation by a margin that dwarfs every other assumption [REG-R49] |
 | Why two factors, in opposite directions | 0.75 on the death basis, 1.15 on the annuity basis | The direction of prudence **forks by product** [REG-R47]: a first-order death table assumes mortality **higher** than expected, a first-order annuity table **lower**. The best estimate therefore sits below the one and above the other |
 | Surrender `lapse_rate(t)` | **0,8 %** p.a. at contract durations 1–5, **0,6 %** at 6–10, **0,4 %** from 11 | Materially **below** a Schicht-3 rate, because a *Kündigung* repays all Zulagen and all § 10a relief (§ 93 Abs. 1 Satz 1) and taxes the growth (§ 22 Nr. 5 Satz 3) [R14] [REG-R42], and because EStG § 97 makes the subsidised capital non-transferable and ZPO § 851 Abs. 1 therefore unattachable [R16] [REG-R40] |
 | Transfer out `transfer_rate(t)` | **1,2 %** p.a. at durations 1–5, **0,9 %** at 6–10, **0,6 %** from 11 | Set **above** surrender, because the *Wechselrecht* is free of subsidy consequences (§ 93 Abs. 2 Satz 1 EStG) [R1] [R14] and is therefore the rational exit; the ceding provider may charge at most 150,00 € for it and one retrieved insurer charges nothing [S4]. A model carrying only a lapse rate has mis-specified the book |
@@ -463,7 +465,7 @@ not from data.
 | `G(k)`, `κ(k)` | `guar_pp`, `guar_carve_out_pp` | The *Beitragsgarantie* accumulator; the biometric carve-out |
 | `Λ` | `garantieluecke_conv_pp()` | The *Garantielücke* funded at *Rentenbeginn* |
 | `V` | `capital_conv_pp()` | The conversion capital |
-| `ä` | `ann_factor()` | `ä⁽¹²⁾(x(T), τ(T))` on the **first-order** annuity basis at `annuity_rechnungszins` |
+| `ä` | `ann_factor()` | `ä⁽¹²⁾(x(T))` on the **first-order** annuity basis, the unisex blend at the birth year, at `annuity_rechnungszins` |
 | `R`, `R_g`, `R_c` | `rentenfaktor_applied`, `rentenfaktor_guar`, `rentenfaktor_curr` | Applied, guaranteed and current *Rentenfaktor* |
 | `a(k)` | `annuity_pp(k)` | The **annual** annuity, a reporting figure: twelve monthly instalments |
 | `a(k)/12` | `annuity_month_pp()` | The monthly instalment, which is what is paid |
@@ -579,7 +581,7 @@ that a reader should see — but it is a diagnostic: **the guarantee is tested o
     V                 = max( account_conv_pp() , G(T + 1) )
     Λ                 = max( 0 , G(T + 1) − account_conv_pp() )
 
-    ä    = Σ_{k ≥ 0} v^k · k p( x(T), τ(T) )  −  11/24,     v = 1 / (1 + annuity_rechnungszins)
+    ä    = Σ_{k ≥ 0} v^k · k p( x(T) )  −  11/24,     v = 1 / (1 + annuity_rechnungszins)
     R_c  = ( 1 − rentenfaktor_margin ) · 10 000 / ( 12 · ä )
     R    = max( R_g , R_c )
 
@@ -593,9 +595,11 @@ that a reader should see — but it is a diagnostic: **the guarantee is tested o
     annuity_month_pp() = annuity_capital_pp() / rf_unit · R      the instalment, paid monthly; rf_unit = 10 000, a row of param_tariff_type.csv
     a(k)               = 12 · annuity_month_pp()   for is_payout_y(k) and not commuted
 
-`k p(x, τ)` is survivorship on the **first-order** annuity basis — the same basis the market's
-*Rentenfaktor* is struck on — while the projection's own survivorship uses the **second-order**
-basis, `annuity_mort_rate(x, τ) · annuity_mort_be_factor`. The wedge between them is the
+`k p(x)` is survivorship on the **first-order** annuity basis — the same basis the market's
+*Rentenfaktor* is struck on: the unisex blend `0.45 · q_M + 0.55 · q_F` of `dav2004r_proxy` at the
+point's birth year, at factor 1, to the table's closing age 120 — while the projection's own
+survivorship uses the **second-order** basis of the own sex,
+`annuity_mort_rate(sex, x) · annuity_mort_be_factor`. The wedge between them is the
 *Risikoüberschuss* in payment [REG-R47], which this model does not distribute (assumption class (b),
 footnote 5). The commutation test is applied to the annuity **actually payable after the elected
 lump sum**. The statute does not settle the point, but **the GDV model wording does, and against this
@@ -626,9 +630,11 @@ ones, `q_mth = 1 − (1 − q)^(1/12)` and likewise for `w` and `θ`:
     pols_annuity_pay(t)  = pols_conv()   if 0 ≤ t − 12T < 12 · rentengarantie_years
                          = l(t)          otherwise
 
-with `q(t) = mort_rate_at_age(x(t)) · mort_be_factor` in accumulation and
-`annuity_mort_rate(x(t), τ(t)) · annuity_mort_be_factor` in payout, and `q(t) = 1` at `x = omega_age() − 1`
-so the closure identity closes exactly — the certainty falling in the terminal year's **last month**.
+with `q(t) = mort_rate_at_age(x(t)) · mort_be_factor` in accumulation, the own sex's rate of
+`dav2008t_proxy`, and `annuity_mort_rate(sex, x(t)) · annuity_mort_be_factor` in payout, the own
+sex's rate of `dav2004r_proxy` at the birth year, each capped at 1; the table's rate is 1 at
+`x = omega_age() − 1 = 120` and passes through the factor as 1, so the closure identity closes
+exactly — the certainty falling in the terminal year's **last month**.
 Twelve geometric twelfths compound back to each annual rate exactly, so `l(12k)` is the annual-step
 model's `l(k)` to the last bit; `q(t)/12` would close nothing.
 
@@ -638,7 +644,8 @@ rather than once at a year end. That is the one thing the finer grid changes abo
 annual model mortality took the whole cohort as its base and the transfer took what two decrements
 had already thinned, while month by month the three **compete**. The survivorship at every
 anniversary is unchanged and only the split moves — 5,62 € off the anchor's death outgo and 2,64 €
-off its surrender outgo onto 8,30 € of transfers (at the former `mort_be_factor` 0.80).
+off its surrender outgo onto 8,30 € of transfers (at the former `mort_be_factor` 0.80, on the
+mortality files read before the switch to the table factory).
 
 `pols_annuity_pay` is the whole
 of the *Rentengarantiezeit*, now measured in ``12m`` **instalments**: the guarantee period changes
@@ -835,8 +842,8 @@ becomes a test in `tests/test_riester_rente_de.py`.
     freezes, that `zulage_pp` goes to zero, and that `av_total_pp` keeps rolling.
 15. **Using one mortality table for both phases, or a period table for the annuity.** The direction
     of prudence forks by product [REG-R47], and DAV 2004 R is generational [REG-R49]. Assert that
-    `mort_rate(t)` switches basis at `t_conv()`, that `annuity_mort_rate(x, τ)` depends on **both**
-    arguments, and that `annuity_mort_rate(x, τ + 1) < annuity_mort_rate(x, τ)`. Assert too that
+    `mort_rate(t)` switches basis at `t_conv()`, that `annuity_mort_rate(sex, x)` reads the table
+    at the **birth year**, and that a later cohort has the lower rate at the same age. Assert too that
     `mort_rate_mth` is the **geometric** twelfth of the year's annual rate, so
     `(1 − q_mth)^12 = 1 − q` exactly and the annual survivorship is reproduced; `q/12` closes
     nothing.
@@ -895,8 +902,8 @@ Every formula here is **[std]**; there is no German Riester calibration evidence
 ## Worked example
 
 **Configuration.** Model point 1, the anchor: an in-force *klassische Riester-Rentenversicherung* at
-the **1 January 2027** valuation date. `point_id = 1`; `sex = F` (reporting only — the tariff and the
-conversion are unisex [R23]); `issue_age = 47`, the contract having been concluded on 1 January
+the **1 January 2027** valuation date. `point_id = 1`; `sex = F` (the tariff and the
+conversion are unisex [R23]; the best-estimate decrements are a woman's); `issue_age = 47`, the contract having been concluded on 1 January
 **2024**; `duration_init = 3`, so `age(0) = 50`, `duration(0) = 3` — contract year 4 — and
 `calendar_year(0) = 2027`;
 `pols_if_init = 1.0`; `ret_age = 67`; `rechnungszins = 0.0025`, the *Höchstrechnungszins* of
@@ -915,8 +922,8 @@ which is **above** the account, so the anchor opens with a positive `garantielue
 `teilkapital_share = 0.30`, the statutory maximum lump sum; `rentenfaktor_guar = 29.00`;
 `rentengarantie_years = 10`; and `scenario_id = base`. Hence `t_conv() = 67 − 50 = 17`, so
 accumulation runs `t = 0 … 16` (attained ages 50 to 66, calendar 2027 to 2043), conversion falls at
-`t = 17` (age 67, calendar 2044), the payout phase runs `t = 17 … 60`, and
-`proj_len() = 110 − 50 + 1 = 61` periods. The opening balances are **[std]** seeds produced by the
+`t = 17` (age 67, calendar 2044), the payout phase runs `t = 17 … 70`, and
+`proj_len() = 121 − 50 = 71` periods; the birth year is `2024 − 47 = 1977`. The opening balances are **[std]** seeds produced by the
 same charge basis over contract years 2024 to 2026. **Model point 2 is this contract projected from
 its own inception. It reconciles the two account seeds to the cent — `dk_pp_init` to 3 860,499285 €
 and `surplus_pp_init` to 150,483132 € — and from its own `t = 3` onward reproduces every
@@ -941,11 +948,12 @@ plus a fixed **12,00 €** a year **[std]**. Frequency loading **1.0000** (annua
 **[std]**. *Risikobeitrag* **zero**, the death benefit being the account value. *Schlussüberschuss*
 **2,0 %** of contributions credited and *Bewertungsreserven* share **1,0 %** of the account, both at
 *Rentenbeginn*, both counted toward the guarantee — [REG-R24], levels and the counting convention
-**[std]** (gap 9). Accumulation mortality: the shipped **[std]** proxy for **DAV 2008 T** [REG-R48]
-at `mort_be_factor = 0.75`. Annuity mortality: the shipped **[std]** **generational** proxy for
-**DAV 2004 R** [REG-R49], `q(x, τ) = qx_base(x) · (1 − improvement(x))^(τ − 2027)`, at
-`annuity_mort_be_factor = 1.15` for the projection and at **1.00** — the first-order basis — inside
-`ann_factor()`. Annuitisation interest **1,00 %** [REG-R15] **[std]**, with the Woolhouse
+**[std]** (gap 9). Accumulation mortality: the table factory's **[std]** proxy for **DAV 2008 T**
+[REG-R48], `dav2008t_proxy`, a woman's rate at `mort_be_factor = 0.75`. Annuity mortality: the
+table factory's **[std]** **generational** proxy for **DAV 2004 R** [REG-R49], `dav2004r_proxy`,
+`q(x, g) = q_base(x) · (1 − trend(x))^(g + x − 2005)` at the birth year 1977, at
+`annuity_mort_be_factor = 1.15` on a woman's rate for the projection and at **1.00** on the unisex
+blend of 45 % men — the first-order basis — inside `ann_factor()`. Annuitisation interest **1,00 %** [REG-R15] **[std]**, with the Woolhouse
 `−11/24` correction **[std]**; *Rentenfaktor* margin **30 %** **[std]**; guaranteed *Rentenfaktor*
 **29,00 €** per 10 000 € per month **[std]** (gap 9). *Kleinbetragsrente* threshold **59,33 €** per
 month, 1,5 % of the 2026 monthly *Bezugsgröße* of 3 955,00 € [R15] [REG-R42] [REG-R46] (it was
@@ -956,8 +964,9 @@ now known to sit inside a statutory ceiling of **150,00 €** [R1] and to be the
 provider actually charges [S9] (gap 8 closed). Expenses **[std]**: maintenance 30,00 € per in-force policy per year inflating at **2,0 %**,
 annuity administration 24,00 € per annuitant per year, claim expense 80,00 € per death, surrender or
 transfer; no acquisition expense and no initial commission, because `duration_init = 3` puts them in
-the past. Renewal commission **1,5 %** of the contributions credited **[std]**. last age 110
-**[std]** (`omega_age() = 111`), with `q = 1` at that age so the decrements close exactly.
+the past. Renewal commission **1,5 %** of the contributions credited **[std]**. Last age 120,
+the tables' closing age (`omega_age() = 121`), with `q = 1` at that age so the decrements close
+exactly.
 
 All amounts in euros; `pols_if` and `pols_annuity_pay` to six decimals, cash flows to the cent.
 Totals are summed at **full precision and then rounded**, not summed from rounded cells.
@@ -972,25 +981,25 @@ payout table below.
 
 | k | pols_if | premiums | zulagen | int_credited | claims_death | claims_lapse | claims_transfer | claims_lumpsum | claims_annuity | expenses | commissions | net_cf |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 0 | 1.000000 | 1,205.00 | 475.00 | 125.21 | 6.21 | 43.39 | 65.90 | 0.00 | 0.00 | 33.21 | 25.20 | 1,506.09 |
-| 1 | 0.978993 | 1,212.58 | 465.02 | 158.38 | 8.64 | 54.89 | 83.53 | 0.00 | 0.00 | 33.14 | 25.16 | 1,472.25 |
-| 2 | 0.958320 | 1,507.31 | 455.20 | 201.67 | 12.13 | 52.49 | 79.98 | 0.00 | 0.00 | 32.75 | 29.44 | 1,755.73 |
-| 3 | 0.942712 | 1,515.72 | 164.97 | 239.80 | 15.86 | 62.41 | 95.18 | 0.00 | 0.00 | 32.85 | 25.21 | 1,449.19 |
-| 4 | 0.927232 | 1,523.89 | 162.27 | 278.26 | 20.25 | 72.41 | 110.51 | 0.00 | 0.00 | 32.94 | 25.29 | 1,424.76 |
-| 5 | 0.911869 | 1,531.81 | 159.58 | 317.04 | 25.37 | 82.49 | 125.97 | 0.00 | 0.00 | 33.03 | 25.37 | 1,399.15 |
-| 6 | 0.896613 | 1,539.44 | 156.91 | 356.11 | 31.35 | 92.65 | 141.54 | 0.00 | 0.00 | 33.11 | 25.45 | 1,372.26 |
-| 7 | 0.881452 | 1,546.76 | 154.25 | 395.46 | 38.38 | 68.68 | 104.92 | 0.00 | 0.00 | 32.91 | 25.52 | 1,430.61 |
-| 8 | 0.870745 | 1,561.58 | 152.38 | 437.25 | 46.68 | 75.93 | 116.02 | 0.00 | 0.00 | 33.16 | 25.71 | 1,416.46 |
-| 9 | 0.859980 | 1,576.13 | 150.50 | 479.66 | 56.33 | 83.28 | 127.29 | 0.00 | 0.00 | 33.40 | 25.90 | 1,400.43 |
-| 10 | 0.849142 | 1,590.37 | 148.60 | 522.67 | 67.52 | 90.74 | 138.71 | 0.00 | 0.00 | 33.63 | 26.08 | 1,382.28 |
-| 11 | 0.838218 | 1,604.24 | 146.69 | 566.24 | 80.47 | 98.28 | 150.27 | 0.00 | 0.00 | 33.86 | 26.26 | 1,361.78 |
-| 12 | 0.827192 | 1,592.35 | 144.76 | 609.77 | 95.32 | 105.82 | 161.82 | 0.00 | 0.00 | 34.08 | 26.06 | 1,314.00 |
-| 13 | 0.816049 | 1,570.89 | 142.81 | 653.01 | 112.29 | 113.30 | 173.28 | 0.00 | 0.00 | 34.30 | 25.71 | 1,254.83 |
-| 14 | 0.804770 | 1,549.18 | 140.83 | 695.89 | 131.63 | 120.72 | 184.64 | 0.00 | 0.00 | 34.50 | 25.35 | 1,193.18 |
-| 15 | 0.793338 | 1,527.18 | 138.83 | 738.35 | 153.62 | 128.05 | 195.88 | 0.00 | 0.00 | 34.69 | 24.99 | 1,128.77 |
-| 16 | 0.781733 | 1,504.84 | 136.80 | 780.31 | 178.59 | 135.30 | 206.98 | 0.00 | 0.00 | 34.87 | 24.62 | 1,061.28 |
-| 17 | 0.769933 | 0.00 | 134.74 | 0.00 | 0.00 | 0.00 | 0.00 | 10,568.81 | 858.19 | 18.87 | 0.00 | −11,311.13 |
-| **Total, k = 0 … 60** | | **25,659.28** | **3,630.14** | **7,555.08** | **1,080.65** | **1,480.83** | **2,262.42** | **10,568.81** | **19,853.56** | **1,059.50** | **437.32** | **−7,453.67** |
+| 0 | 1.000000 | 1,205.00 | 475.00 | 125.21 | 11.18 | 43.37 | 65.87 | 0.00 | 0.00 | 33.27 | 25.20 | 1,501.11 |
+| 1 | 0.978110 | 1,211.49 | 464.60 | 158.24 | 15.46 | 54.81 | 83.41 | 0.00 | 0.00 | 33.17 | 25.14 | 1,464.10 |
+| 2 | 0.956516 | 1,504.48 | 454.35 | 201.29 | 21.58 | 52.36 | 79.78 | 0.00 | 0.00 | 32.76 | 29.38 | 1,742.96 |
+| 3 | 0.939934 | 1,511.25 | 164.49 | 239.09 | 28.07 | 62.18 | 94.84 | 0.00 | 0.00 | 32.82 | 25.14 | 1,432.69 |
+| 4 | 0.923425 | 1,517.64 | 161.60 | 277.12 | 35.64 | 72.06 | 109.98 | 0.00 | 0.00 | 32.88 | 25.19 | 1,403.49 |
+| 5 | 0.906975 | 1,523.59 | 158.72 | 315.34 | 44.44 | 81.99 | 125.20 | 0.00 | 0.00 | 32.93 | 25.23 | 1,372.52 |
+| 6 | 0.890569 | 1,529.07 | 155.85 | 353.71 | 54.64 | 91.95 | 140.47 | 0.00 | 0.00 | 32.97 | 25.27 | 1,339.61 |
+| 7 | 0.874191 | 1,534.02 | 152.98 | 392.20 | 66.59 | 68.05 | 103.96 | 0.00 | 0.00 | 32.73 | 25.31 | 1,390.36 |
+| 8 | 0.862151 | 1,546.17 | 150.88 | 432.93 | 80.63 | 75.10 | 114.77 | 0.00 | 0.00 | 32.93 | 25.46 | 1,368.17 |
+| 9 | 0.849960 | 1,557.77 | 148.74 | 474.07 | 96.87 | 82.22 | 125.67 | 0.00 | 0.00 | 33.11 | 25.60 | 1,343.04 |
+| 10 | 0.837597 | 1,568.74 | 146.58 | 515.56 | 115.61 | 89.40 | 136.66 | 0.00 | 0.00 | 33.29 | 25.73 | 1,314.64 |
+| 11 | 0.825041 | 1,579.02 | 144.38 | 557.34 | 137.18 | 96.62 | 147.72 | 0.00 | 0.00 | 33.45 | 25.85 | 1,282.59 |
+| 12 | 0.812270 | 1,563.62 | 142.15 | 598.77 | 161.80 | 103.77 | 158.68 | 0.00 | 0.00 | 33.60 | 25.59 | 1,222.34 |
+| 13 | 0.799259 | 1,538.57 | 139.87 | 639.57 | 189.76 | 110.80 | 169.46 | 0.00 | 0.00 | 33.73 | 25.18 | 1,149.52 |
+| 14 | 0.785982 | 1,513.02 | 137.55 | 679.64 | 221.46 | 117.70 | 180.03 | 0.00 | 0.00 | 33.84 | 24.76 | 1,072.78 |
+| 15 | 0.772415 | 1,486.90 | 135.17 | 718.87 | 257.28 | 124.45 | 190.36 | 0.00 | 0.00 | 33.93 | 24.33 | 991.72 |
+| 16 | 0.758528 | 1,460.17 | 132.74 | 757.15 | 297.68 | 131.02 | 200.43 | 0.00 | 0.00 | 34.00 | 23.89 | 905.89 |
+| 17 | 0.744292 | 0.00 | 130.25 | 0.00 | 0.00 | 0.00 | 0.00 | 10,216.83 | 829.61 | 18.01 | 0.00 | −10,934.20 |
+| **Total, k = 0 … 70** | | **25,350.51** | **3,595.90** | **7,436.12** | **1,835.86** | **1,457.86** | **2,227.29** | **10,216.83** | **24,821.63** | **1,159.38** | **432.24** | **−13,204.69** |
 
 The table is `result_cf_annual()` — the monthly frame summed into projection years — with
 `int_credited` read from `result_acct()`, which is where the annual state lives. **Its accumulation
@@ -998,25 +1007,27 @@ rows are the annual-step model's to the last bit** on the contribution, the Zula
 and both balances; what moved when the grid did is the split of the exits between the three
 decrements, the annuity, and the expenses.
 
-**The Total row covers all sixty-one years, not only the eighteen displayed**, and is summed
-**at full precision and then rounded**. Five of its eleven columns differ from the sum of the
-already-rounded cells: `premiums` 25 659,28 € against 25 659,27 €, `claims_death` 1 080,65 €
-against 1 080,64 €, `claims_annuity` 19 853,56 € against 19 853,61 €, `expenses` 1 059,50 €
-against 1 059,51 €, and `net_cf` −7 453,67 € against −7 453,69 €. The other six agree. **Assert the
+**The Total row covers all seventy-one years, not only the eighteen displayed**, and is summed
+**at full precision and then rounded**. Seven of its eleven columns differ from the sum of the
+already-rounded cells: `premiums` 25 350,51 € against 25 350,52 €, `int_credited` 7 436,12 €
+against 7 436,10 €, `claims_death` 1 835,86 € against 1 835,87 €, `claims_lapse` 1 457,86 €
+against 1 457,85 €, `expenses` 1 159,38 € against 1 159,39 €, `commissions` 432,24 € against
+432,25 €, and `net_cf` −13 204,69 € against −13 204,68 €. The other four agree. **Assert the
 full-precision totals.**
 
 **What the monthly grid moved, against the annual-step model this replaced.** The contribution
-(25 659,28 €), the Zulage (3 630,14 €), the interest credited (7 555,08 €), the commission
-(437,32 €) and the lump sum (10 568,81 €) are unchanged, as are both balances, the guarantee
+(25 350,51 €), the Zulage (3 595,90 €), the interest credited (7 436,12 €), the commission
+(432,24 €) and the lump sum (10 216,83 €) are unchanged, as are both balances, the guarantee
 accumulator, the capital at *Rentenbeginn* and the *Kleinbetragsrente* verdict. The annuity falls,
 because the instalment now stops with the month of death rather than being paid for the whole year
 of it; the expenses fall, because a mid-year exit bears only the months it was there; and the exits
 redistribute between death, surrender and transfer, because the three decrements now compete month
 by month instead of running in sequence at a year end. (The annual-step model's own figures were
-struck at the former `mort_be_factor` 0.80 and are not restated at 0.75.)
+struck at the former `mort_be_factor` 0.80, on the mortality files read before the switch to the
+table factory, and are not restated.)
 
 Four things to read off before the checks. **`zulagen` steps down between `k = 2` and `k = 3`**,
-455,20 € to 164,97 €, while `premiums` *rises*: *Kindergeld* for the child born in 2010 stops
+454,35 € to 164,49 €, while `premiums` *rises*: *Kindergeld* for the child born in 2010 stops
 after the 2028 contribution year, so the entitlement falls at `k = 2` and the credit follows one
 year later at `k = 3`, while the *Eigenbeitrag* jumps at `k = 2` because the § 86 minimum is 4 %
 of income **less the entitlement** — a Zulage that stops is a contribution the saver must make
@@ -1028,53 +1039,54 @@ ending rather than the contribution rising, and it is why `garantieluecke_pp(k)`
 at every `k` by about half again**, because the *Anbieterwechsel* rate is set above the surrender
 rate at every duration and a transfer pays the full account less a flat 50,00 € against a
 surrender's 98 %; both fall at `k = 7`, where contract duration passes 10 and the bands step
-down. And **`net_cf` is positive in every accumulation year** before −11 311,13 € in the
+down. And **`net_cf` is positive in every accumulation year** before −10 934,20 € in the
 conversion year: an in-force Riester cell is a positive cash flow to the insurer for as long as
 it accumulates, and the whole liability is the conversion year and the annuity tail.
 
 On the **monthly** frame the same year is a saw-tooth: the whole year's contribution and Zulage land
-in its first month and nothing else does, so month 0 nets +1 642,29 € while each of the other eleven
-carries a twelfth of the maintenance expense and that month's exits and nets about −12,47 €.
+in its first month and nothing else does, so month 0 nets +1 641,86 € while each of the other eleven
+carries a twelfth of the maintenance expense and that month's exits and nets about −12,80 €.
 
-### The payout phase — selected rows, `k = 17 … 60`
+### The payout phase — selected rows, `k = 17 … 70`
 
 `premiums`, `int_credited`, `claims_death`, `claims_lapse` and `claims_transfer` are **0.00 at
 every `k` from 17 onward**: the account is extinguished at conversion, so there is no interest to
-credit and a death pays nothing outside the *Rentengarantiezeit*. `zulagen` is 134,74 € at
+credit and a death pays nothing outside the *Rentengarantiezeit*. `zulagen` is 130,25 € at
 `k = 17` — the final contribution year's subsidy, landing in the conversion year — and zero
 thereafter. The counts are read at the **start** of the year; the instalments inside it are paid
 monthly.
 
 | k | age | pols_if | pols_annuity_pay | claims_annuity | expenses | net_cf |
 |---|---|---|---|---|---|---|
-| 17 | 67 | 0.769933 | 0.769933 | 858.19 | 18.87 | −11,311.13 |
-| 18 | 68 | 0.765007 | 0.769933 | 858.19 | 18.91 | −877.10 |
-| 26 | 76 | 0.703546 | 0.769933 | 858.19 | 19.39 | −877.58 |
-| 27 | 77 | 0.692122 | 0.692122 | 765.04 | 17.47 | −782.51 |
-| 28 | 78 | 0.679601 | 0.679601 | 750.47 | 17.26 | −767.73 |
-| 34 | 84 | 0.576218 | 0.576218 | 630.55 | 15.40 | −645.95 |
-| 44 | 94 | 0.274655 | 0.274655 | 287.39 | 9.05 | −296.44 |
-| 54 | 104 | 0.016062 | 0.016062 | 14.00 | 0.86 | −14.85 |
-| 60 | 110 | 0.000079 | 0.000079 | 0.09 | 0.01 | −0.10 |
-| **Subtotal, k = 18 … 60** | | **17.024474** | **17.314559** | **18,937.51** | **468.77** | **−19,406.28** |
+| 17 | 67 | 0.744292 | 0.744292 | 829.61 | 18.01 | −10,934.20 |
+| 18 | 68 | 0.742406 | 0.744292 | 829.61 | 18.03 | −847.63 |
+| 26 | 76 | 0.720853 | 0.744292 | 829.61 | 18.17 | −847.78 |
+| 27 | 77 | 0.716977 | 0.716977 | 796.93 | 17.51 | −814.44 |
+| 28 | 78 | 0.712623 | 0.712623 | 791.80 | 17.44 | −809.24 |
+| 34 | 84 | 0.672240 | 0.672240 | 744.16 | 16.83 | −760.98 |
+| 44 | 94 | 0.497690 | 0.497690 | 540.49 | 13.85 | −554.33 |
+| 54 | 104 | 0.165935 | 0.165935 | 167.83 | 6.19 | −174.03 |
+| 60 | 110 | 0.023237 | 0.023237 | 20.29 | 1.23 | −21.53 |
+| 70 | 120 | 0.000000 | 0.000000 | 0.00 | 0.00 | 0.00 |
+| **Subtotal, k = 18 … 70** | | **21.756437** | **21.861910** | **23,992.02** | **575.99** | **−24,568.01** |
 
 The *Rentengarantiezeit* is the whole of the difference between the two count columns. From
 `k = 17` to `k = 26` — **120 instalments** from *Rentenbeginn*, `t = 204 … 323` —
 `pols_annuity_pay` is frozen at
-`pols_conv() = 0.769933` while `pols_if` decays to 0.703546, so `claims_annuity` is **exactly
-858,19 € in each of those ten years** although a tenth of the annuitants have died. Those ten years
+`pols_conv() = 0.744292` while `pols_if` decays to 0.720853, so `claims_annuity` is **exactly
+829,61 € in each of those ten years** although 3 % of the annuitants have died. Those ten years
 are also the annual-step model's **to the cent**: inside a guarantee window the count is fixed, and
 120 monthly instalments on a fixed count are ten annual payments on it,
-`120 × 92,885458 × 0,769933 = 8 581,87 €`. From `k = 27`
-the columns join and the outgo falls with the survivors — and there the two grids part, 765,04 €
-against the annual model's 771,46 €, because the instalment now stops with the month of death
-rather than being paid for the whole year of it. Over the payout phase that is 362,84 €.
+`120 × 92,885458 × 0,744292 = 8 296,07 €`. From `k = 27`
+the columns join and the outgo falls with the survivors — and there the two grids part, 796,93 €
+against the annual model's 799,16 €, because the instalment now stops with the month of death
+rather than being paid for the whole year of it. Over the payout phase that is 375,82 €.
 
 What is paid is `annuity_month_pp() = 92,885458 €`, one instalment a month, level for life;
 `annuity_pp(k) = 1 114,625493 €` is the annual figure the twelve sum to, and it is the same in
 **every** payout year, guarantee period or not — the guarantee changes who is paid, never how much
-(pitfall 17). The subtotals say the same in aggregate: 17.367468 instalment-years paid against
-17.076497 policy-years in force.
+(pitfall 17). The subtotals say the same in aggregate: 21.861910 instalment-years paid against
+21.756437 policy-years in force.
 
 ### Independent checks
 
@@ -1095,28 +1107,29 @@ clock.
 
 The decrements are monthly. At attained age 50, contract
 year 4 (`d(0) = 3`, the band read at `d(0) + 1 = 4`), the **annual** rates are
-`q = 0,001500 × 1,10⁰ × 0,75 = 0,001125`, `w = 0,008` and `θ = 0,012`; their geometric twelfths are
-`q_mth = 1 − (1 − 0,001125)^(1/12) = 0,000093798`, `w_mth = 0,000669124` and
+`q = 0,75 × q(dav2008t_proxy, F, 50) = 0,75 × 0,002701868 = 0,002026401`, a woman's rate of the
+period table, `w = 0,008` and `θ = 0,012`; their geometric twelfths are
+`q_mth = 1 − (1 − 0,002026401)^(1/12) = 0,000169024`, `w_mth = 0,000669124` and
 `θ_mth = 0,001005543`, applied in that order within the month, so
-`pols_death(0) = 0,000093798`, `pols_lapse(0) = (1 − q_mth) × 0,000669124 = 0,000669061` and
-`pols_transfer(0) = (1 − q_mth)(1 − w_mth) × 0,001005543 = 0,001004775`. Benefits struck on the
+`pols_death(0) = 0,000169024`, `pols_lapse(0) = (1 − q_mth) × 0,000669124 = 0,000669011` and
+`pols_transfer(0) = (1 − q_mth)(1 − w_mth) × 0,001005543 = 0,001004700`. Benefits struck on the
 **annual** `A(1)`, the end-of-year account every exit of that contract year takes:
-`claims_death(0) = 5 568,986940 × 0,000093798 = 0,522362 €`;
-`claims_lapse(0) = 0,98 × 5 568,986940 × 0,000669061 = 3,651472 €`;
-`claims_transfer(0) = (5 568,986940 − 50,00) × 0,001004775 = 5,545343 €`. Expenses: a **twelfth**
+`claims_death(0) = 5 568,986940 × 0,000169024 = 0,941291 €`;
+`claims_lapse(0) = 0,98 × 5 568,986940 × 0,000669011 = 3,651197 €`;
+`claims_transfer(0) = (5 568,986940 − 50,00) × 0,001004700 = 5,544925 €`. Expenses: a **twelfth**
 of `30,00 × 1,02³ = 31,836240 €` of maintenance, inflated on **contract** duration and not on
-projection year, plus `80,00 × (0,000093798 + 0,000669061 + 0,001004775) = 0,141411 €` of claim
-expense, which is a per-**event** cost and falls whole — 2,794431 €. Commission
+projection year, plus `80,00 × (0,000169024 + 0,000669011 + 0,001004700) = 0,147419 €` of claim
+expense, which is a per-**event** cost and falls whole — 2,800439 €. Commission
 `0,015 × (1 205,00 + 475,00) = 25,20 €`, in the month the contribution falls. And
-`1 680,00 − 0,522362 − 3,651472 − 5,545343 − 2,794431 − 25,200000 = 1 642,286393 €`, the frame's
-`net_cf(0) = 1 642,29 €`. The other eleven months of the year carry no contribution and net about
-−12,47 € each; the year sums to the annual table's 1 506,09 €.
+`1 680,00 − 0,941291 − 3,651197 − 5,544925 − 2,800439 − 25,200000 = 1 641,862148 €`, the frame's
+`net_cf(0) = 1 641,86 €`. The other eleven months of the year carry no contribution and net about
+−12,80 € each; the year sums to the annual table's 1 501,11 €.
 
 *And the year's exits are the annual rates, compounded.* Over the twelve months the cohort loses
-`0,001114702` to death, `0,007951134` to surrender and `0,011940772` to transfer. The annual-step
-model's sequential split at one year end was `0,001125`, `0,007991` and `0,011891`: the total is the
+`0,002007854` to death, `0,007947259` to surrender and `0,011934954` to transfer. The annual-step
+model's sequential split at one year end is `0,002026`, `0,007984` and `0,011880`: the total is the
 same to the last bit — `1 − (1 − q)(1 − w)(1 − θ)` either way, which is why `pols_if(12)` is
-`0,9789933920` on both — and only the **split** moves, from the decrement applied first toward the
+`0,9781099328` on both — and only the **split** moves, from the decrement applied first toward the
 one applied last.
 
 *The conversion year rebuilt a different way.* At `k = 17` the *Deckungskapital* is
@@ -1131,50 +1144,53 @@ which is exactly the guarantee accumulator: `0,02 × 37 877,2308 = 757,544616 �
 **7 879,15 € below** the account, so `capital_conv_pp() = 45 756,383140 €` and the
 *Garantielücke* is zero on the `base` scenario. **Every one of those figures is the annual-step
 model's to the last bit**, the account being an annual construction. The annuity factor at age 67 in
-calendar 2044 on the first-order generational basis is `ä = 20,8722287915`, so the current
-*Rentenfaktor* is
-`0,70 × 10 000 / (12 × 20,8722287915) = 7 000 / 250,466746 = 27,947822`, **below** the
+calendar 2044 on the first-order generational basis, the unisex blend of 45 % men of
+`dav2004r_proxy` at the birth year 1977 to the closing age 120, is `ä = 24,7831509910`, so the
+current *Rentenfaktor* is
+`0,70 × 10 000 / (12 × 24,7831509910) = 7 000 / 297,397812 = 23,537497`, **below** the
 guaranteed 29,00, and the guaranteed factor applies. The lump sum is
 `0,30 × 45 756,383140 = 13 726,914942 €`, leaving 32 029,468198 € to annuitise; the monthly
 instalment is `32 029,468198 / 10 000 × 29,00 = 92,885458 €`, comfortably above the 59,33 €
 *Kleinbetragsrente* threshold — and above the 39,55 € the model used until the acceptance of
 2026-11-09, so this cell did not move with it — so the contract annuitises. That instalment is paid **monthly**,
 in advance, from `t = t_conv() = 204`; `annuity_pp(17) = 12 × 92,885458 = 1 114,625493 €` is the
-annual figure it sums to. Weighted on `pols_conv() = 0,7699332357`, that is
-`claims_lumpsum(204) = 10 568,81 €` and, over the conversion year's twelve months — all inside the
-guarantee window, so all on the same frozen count — `claims_annuity` of 858,19 €: the table's
+annual figure it sums to. Weighted on `pols_conv() = 0,7442920774`, that is
+`claims_lumpsum(204) = 10 216,83 €` and, over the conversion year's twelve months — all inside the
+guarantee window, so all on the same frozen count — `claims_annuity` of 829,61 €: the table's
 row 17.
 
 *The aggregate account rolls forward, and the charge the insurer keeps is what closes it.* The
-account at the start of year 1 is `A(1) × l(12) = 5 568,986940 × 0,9789933920 = 5 452,001414 €`.
+account at the start of year 1 is `A(1) × l(12) = 5 568,986940 × 0,9781099328 = 5 447,081441 €`.
 Rebuilt from year 0's own published parts: the opening account 4 010,98 €, plus the *Sparbeitrag*
-1 432,80 €, plus the interest 125,206940 €, less the year's three exit benefits — 6,207760 €,
-43,394165 € and 65,900967 €, each the sum of its twelve months — less the **exit charge the
-insurer retains**, 1,482634 € of *Stornoabzug* and transfer charge over the same twelve months,
-gives `5 568,986940 − 116,985526 = 5 452,001414 €`. The two agree to the last printed digit, **and
+1 432,80 €, plus the interest 125,206940 €, less the year's three exit benefits — 11,181714 €,
+43,373020 € and 65,868854 €, each the sum of its twelve months — less the **exit charge the
+insurer retains**, 1,481911 € of *Stornoabzug* and transfer charge over the same twelve months,
+gives `5 568,986940 − 121,905499 = 5 447,081441 €`. The two agree to the last printed digit, **and
 they agree whatever the split of the year's exits between the three decrements**, because all three
 release the same annual end-of-year account value — which is what lets the monthly grid move the
 split without touching the account. Dropping
 the exit charge — which looks like income rather than like account released — leaves a residual
 of 1,48 € at `k = 0`, and is the usual way this identity fails.
 
-*Closure: the decrements sum to one.* Over the whole 732-month projection, expected deaths
-in accumulation are **0,03859219**, deaths in payout **0,76993324**, surrenders **0,07655237**
-and transfers out **0,11492220**. They sum to **1,00000000** exactly, and `pols_if(732) = 0`
-because `mort_rate` is forced to 1 at age 110, `omega_age() − 1`, and `mort_rate_mth` places that certainty
-in the terminal year's last month. Nothing is left in force and no exit is
-counted twice. Note what the split says about the product: **23,01 % of the cohort leaves before
-*Rentenbeginn*, and of those, 50,0 % leave by *Anbieterwechsel* against 33,3 % by *Kündigung*
-and 16,8 % by death** — half again as many transfers as surrenders, at every duration and in
+*Closure: the decrements sum to one.* Over the whole 852-month projection, expected deaths
+in accumulation are **0,06616391**, deaths in payout **0,74429208**, surrenders **0,07578045**
+and transfers out **0,11376356**. They sum to **1,00000000** exactly, and `pols_if(852) = 0`
+because the table's rate is 1 at age 120, `omega_age() − 1`, `mort_rate` passes it through the
+factor as 1, and `mort_rate_mth` places that certainty in the terminal year's last month. Nothing is
+left in force and no exit is
+counted twice. Note what the split says about the product: **25,57 % of the cohort leaves before
+*Rentenbeginn*, and of those, 44,5 % leave by *Anbieterwechsel* against 29,6 % by *Kündigung*
+and 25,9 % by death** — half again as many transfers as surrenders, at every duration and in
 aggregate. A book modelled with a lapse rate alone would have mis-specified where the money goes
 as well as how much of it goes.
 
 *Closure: the statement reconciles.* On the Total row,
-`25 659,28 + 3 630,14 − 35 246,27 − 1 059,50 − 437,32 = −7 453,67 €`, where 35 246,27 € is the
-sum of all six `claims_*` columns. `int_credited` of 7 555,08 € is **not** in that sum: it moves
+`25 350,51 + 3 595,90 − 40 559,47 − 1 159,38 − 432,24 = −13 204,68 €`, the Total's −13 204,69 € at
+full precision, where 40 559,47 € is the sum of all six `claims_*` columns. `int_credited` of
+7 436,12 € is **not** in that sum: it moves
 money inside the account rather than across the insurer's boundary — and on the monthly grid it is
 not a column of the cash flow frame at all — and adding it would report
-the cell's undiscounted deficit as 101,41 € instead of 7 453,67 €. This is `check_net_cf()`,
+the cell's undiscounted deficit as 5 768,57 € instead of 13 204,69 €. This is `check_net_cf()`,
 delib's first ruling, evaluated on the totals rather than month by month.
 
 ### Variant 1 — the `low` scenario and a binding *Beitragsgarantie* (model point 11)
@@ -1188,26 +1204,26 @@ binds from `k = 0` and `E(k) = 2 100 − Z*(k)`; `zulage_id = k1_2010` and
 `zulage_init_pp = 475,00` as on the anchor; `beitragssumme = 17 500,00`; `prem_freq = annual`;
 opening balances `dk_pp_init = 4 900,00`, `surplus_pp_init = 200,00`, `guar_pp_init = 5 825,00`,
 so the cell opens 725,00 € under water; `teilkapital_share = 0.30`,
-`rentenfaktor_guar = 29,00`, `rentengarantie_years = 10`; `proj_len_y() = 51` years and
-`proj_len() = 612` months.
+`rentenfaktor_guar = 29,00`, `rentengarantie_years = 10`; `proj_len_y() = 61` years and
+`proj_len() = 732` months.
 
 | k | pols_if | premiums | zulagen | int_credited | claims_death | claims_lapse | claims_transfer | claims_commutation | expenses | commissions | net_cf |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 0 | 1.000000 | 1,625.00 | 475.00 | 35.08 | 20.39 | 54.89 | 83.52 | 0.00 | 33.32 | 31.50 | 1,876.37 |
-| 1 | 0.977236 | 1,588.01 | 464.19 | 43.82 | 28.01 | 68.55 | 104.47 | 0.00 | 33.20 | 30.78 | 1,787.18 |
-| 2 | 0.954711 | 1,837.82 | 453.49 | 53.96 | 38.03 | 63.40 | 96.69 | 0.00 | 32.76 | 34.37 | 2,026.05 |
-| 3 | 0.937121 | 1,803.96 | 164.00 | 62.63 | 48.55 | 73.56 | 112.26 | 0.00 | 32.79 | 29.52 | 1,671.27 |
-| 4 | 0.919530 | 1,770.10 | 160.92 | 70.97 | 60.52 | 83.34 | 127.26 | 0.00 | 32.82 | 28.97 | 1,598.10 |
-| 5 | 0.901917 | 1,736.19 | 157.84 | 79.00 | 74.11 | 92.74 | 141.67 | 0.00 | 32.83 | 28.41 | 1,524.26 |
-| 6 | 0.884262 | 1,702.20 | 154.75 | 86.70 | 89.46 | 101.76 | 155.49 | 0.00 | 32.83 | 27.85 | 1,449.55 |
-| 7 | 0.866543 | 0.00 | 151.65 | 0.00 | 0.00 | 0.00 | 0.00 | 18,197.40 | 0.00 | 0.00 | −18,045.76 |
+| 0 | 1.000000 | 1,625.00 | 475.00 | 35.08 | 35.39 | 54.83 | 83.43 | 0.00 | 33.46 | 31.50 | 1,861.40 |
+| 1 | 0.975132 | 1,584.59 | 463.19 | 43.73 | 48.41 | 68.32 | 104.11 | 0.00 | 33.27 | 30.72 | 1,762.94 |
+| 2 | 0.950410 | 1,829.54 | 451.44 | 53.72 | 65.45 | 63.02 | 96.12 | 0.00 | 32.77 | 34.21 | 1,989.41 |
+| 3 | 0.930491 | 1,791.20 | 162.84 | 62.18 | 83.18 | 72.92 | 111.30 | 0.00 | 32.73 | 29.31 | 1,624.59 |
+| 4 | 0.910442 | 1,752.60 | 159.33 | 70.27 | 103.23 | 82.38 | 125.79 | 0.00 | 32.67 | 28.68 | 1,539.17 |
+| 5 | 0.890234 | 1,713.70 | 155.79 | 77.97 | 125.82 | 91.37 | 139.58 | 0.00 | 32.59 | 28.04 | 1,452.08 |
+| 6 | 0.869840 | 1,674.44 | 152.22 | 85.28 | 151.17 | 99.90 | 152.65 | 0.00 | 32.49 | 27.40 | 1,363.05 |
+| 7 | 0.849231 | 0.00 | 148.62 | 0.00 | 0.00 | 0.00 | 0.00 | 17,833.85 | 0.00 | 0.00 | −17,685.23 |
 | 8 | 0.000000 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| **Total, k = 0 … 50** | | **12,063.28** | **2,181.82** | **432.16** | **359.08** | **538.24** | **821.38** | **18,197.40** | **230.55** | **211.40** | **−6,112.97** |
+| **Total, k = 0 … 60** | | **11,971.07** | **2,168.42** | **428.24** | **612.66** | **532.74** | **812.99** | **17,833.85** | **229.99** | **209.86** | **−6,092.60** |
 
 Again the Total is summed at full precision and then rounded; the two differ on `zulagen`,
-`claims_death`, `claims_transfer` and `net_cf`. Every accumulation figure here is the annual-step
+`int_credited`, `claims_death`, `claims_transfer`, `expenses` and `net_cf`. Every accumulation figure here is the annual-step
 model's, and the exits redistribute the way the anchor's do. The cell pays no annuity: from `k = 8`
-the frame carries zeros to `t = 611`.
+the frame carries zeros to `t = 731`.
 
 **The guarantee binds, and this is the number the product exists to produce.** At `k = 7` the
 raw account is 19 863,088636 €; the *Schlussüberschussanteil* adds 420,00 € and the
@@ -1220,7 +1236,7 @@ own resources, 2,5 % of the capital, so that the saver receives at least what wa
 guaranteed capital is then commuted.** After the elected 30 % lump sum it would buy
 `14 700 / 10 000 × 29,00 = 42,63 €` a month, below the 59,33 € *Kleinbetragsrente* threshold, so
 `is_kleinbetrag()` holds and the whole capital is paid as an *Abfindung*,
-`claims_commutation(t_conv()) = 21 000,00 × 0,8665429082 = 18 197,40 €`, with no
+`claims_commutation(t_conv()) = 21 000,00 × 0,8492307983 = 17 833,85 €`, with no
 *Teilkapitalauszahlung* beside it. On the whole capital the annuity would be
 `21 000 / 10 000 × 29,00 = 60,90 €`, above the threshold: the cell commutes only because the model
 tests the annuity **after** the lump sum, which the GDV model wording excludes (*Model-relevant
@@ -1248,31 +1264,31 @@ fixed` with `contrib_fixed_pp = 60,00`, the *Sockelbeitrag*, and `income_id = ze
 `M(k) = max(60, min(0, 2 100) − 175) = 60,00 €`, the floor binds by construction, `E(k) = M(k)`
 and the full *Grundzulage* is granted. `F`, `issue_age = 50`, `duration_init = 6`, so
 `age(0) = 56` and `k_conv() = 11`; `beitragssumme = 1 020,00`; opening balances 1 150,00 €,
-60,00 € and 1 400,00 €; `proj_len_y() = 55` years and `proj_len() = 660` months.
+60,00 € and 1 400,00 €; `proj_len_y() = 65` years and `proj_len() = 780` months.
 `claims_lumpsum` and `claims_annuity` are 0.00
 throughout and `claims_commutation` replaces them.
 
 | k | pols_if | premiums | zulagen | int_credited | claims_death | claims_lapse | claims_transfer | claims_commutation | expenses | commissions | net_cf |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 0 | 1.000000 | 60.00 | 175.00 | 32.74 | 2.88 | 8.52 | 12.60 | 0.00 | 34.87 | 3.52 | 172.60 |
-| 1 | 0.983091 | 58.99 | 172.04 | 37.76 | 3.66 | 9.82 | 14.61 | 0.00 | 34.96 | 3.47 | 164.52 |
-| 10 | 0.858808 | 51.53 | 150.29 | 82.14 | 18.80 | 14.24 | 21.55 | 0.00 | 36.16 | 3.03 | 108.04 |
-| 11 | 0.845846 | 0.00 | 148.02 | 0.00 | 0.00 | 0.00 | 0.00 | 3,837.79 | 0.00 | 0.00 | −3,689.76 |
+| 0 | 1.000000 | 60.00 | 175.00 | 32.74 | 5.06 | 8.51 | 12.59 | 0.00 | 34.97 | 3.52 | 170.34 |
+| 1 | 0.981609 | 58.90 | 171.78 | 37.70 | 6.39 | 9.80 | 14.57 | 0.00 | 35.01 | 3.46 | 161.45 |
+| 10 | 0.838970 | 50.34 | 146.82 | 80.24 | 31.55 | 13.88 | 21.01 | 0.00 | 35.51 | 2.96 | 92.24 |
+| 11 | 0.823225 | 0.00 | 144.06 | 0.00 | 0.00 | 0.00 | 0.00 | 3,735.15 | 0.00 | 0.00 | −3,591.09 |
 | 12 | 0.000000 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 54 | 0.000000 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| **Total, k = 0 … 54** | | **610.34** | **1,928.19** | **632.49** | **101.55** | **123.66** | **185.79** | **3,837.79** | **388.76** | **35.86** | **−2,134.88** |
+| 64 | 0.000000 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| **Total, k = 0 … 64** | | **604.42** | **1,906.96** | **624.90** | **172.99** | **122.14** | **183.49** | **3,735.15** | **386.33** | **35.51** | **−2,124.23** |
 
-The saver pays 610,34 € over the whole projection and the state pays 1 928,19 € — **the Zulage
+The saver pays 604,42 € over the whole projection and the state pays 1 906,96 € — **the Zulage
 is 76 % of the contribution**, which is why a statement that folded `zulagen` into `premiums`
 would be describing a different product. The contract never produces an annuity: at `k = 11` the
 capital is 4 537,217342 €, and the annuity after the elected 30 % lump sum would be
 `0,70 × 4 537,217342 / 10 000 × 29,00 = 9,21 €` a month against the 59,33 € threshold — and it
 failed the former 39,55 € threshold too, so this cell did not move with it — so the
 *Kleinbetragsrente* test commutes it and the whole capital is paid as an *Abfindung*,
-`3 837,79 € = 4 537,217342 × 0,84584567`. There is **no** *Teilkapitalauszahlung* beside it,
+`3 735,15 € = 4 537,217342 × 0,82322498`. There is **no** *Teilkapitalauszahlung* beside it,
 `pols_if` is zero from `t_conv() + 1` because the *Abfindung* discharges the contract outright — an
 exit `check_pols_roll_fwd()` counts as a commuted cohort rather than as a decrement — and the
-frame carries zeros to `t = 659` rather than being truncated. Every figure of this cell's
+frame carries zeros to `t = 779` rather than being truncated. Every figure of this cell's
 accumulation, and the *Abfindung* itself, is the annual-step model's: a commuted contract pays no
 annuity, so the one thing the monthly grid buys does not arise here, and only the split of the
 exits and the expenses move.
@@ -1330,10 +1346,11 @@ A seventh was settled later, when the model moved from an annual step to a month
    bit-identical to the annual-step model's on all thirteen model points, the *Garantielücke* and
    the *Kleinbetragsrente* verdict included. What the finer grid was adopted for is the **monthly**
    *Leibrente* the AltZertG requires: pitfall 17's compression is gone, the *Rentengarantiezeit* is
-   `12m` instalments, and the anchor's payout phase falls 362,84 €. It also dates the three
+   `12m` instalments, and the anchor's payout phase falls 375,82 €. It also dates the three
    accumulation exits, which now compete month by month instead of running in sequence at a year
    end, moving outgo off the anchor's death and surrender claims onto its transfers (at the former
-   `mort_be_factor` 0.80, 5,62 € and 2,64 € onto 8,30 €).
+   `mort_be_factor` 0.80 and on the mortality files read before the switch to the table factory,
+   5,62 € and 2,64 € onto 8,30 €).
 
 ---
 
@@ -1409,8 +1426,9 @@ In rough order of leverage on a German Riester block.
    acquisition charge on a Zulagen-inclusive *Beitragssumme* and the observed 1,0 % on *Eigenbeiträge*
    alone moves it further. A calibration against [S4] is the highest-value next step in this file.
 3. **The annuity basis and its generational structure.** A twenty-year deferral means the conversion
-   happens on `τ = 2044` mortality. The improvement function, not the base table's level, is what
-   decides the annuity factor, and it is entirely **[std]** [REG-R49]. The `rentenfaktor_margin` of
+   happens on the mortality of 2044, the anchor's cohort of 1977 at 67. The trend of the annuitant
+   table `dav2004r_proxy`, as much as its level, decides the annuity factor, and both are entirely
+   **[std]** [REG-R49]: a round redraw of the table factory, not the DAV's values. The `rentenfaktor_margin` of
    30 % compounds the same uncertainty in the opposite direction.
 4. **Which surplus components close the guarantee.** Counting the *Schlussüberschussanteil* and the
    *Bewertungsreserven* share toward the *Beitragsgarantie* is the provider-favourable reading and
@@ -1434,8 +1452,8 @@ In rough order of leverage on a German Riester block.
 8. **This risk is retired: the *Leibrente* is paid monthly.** The annual grid paid a full year to a
    life that died in the payout year, overstating the annuity outgo by roughly `½ · q(x) · 12R` a
    year — small at 67 and growing with attained age. The monthly step pays one instalment at a time
-   to whoever is alive that month, which removes it: 362,84 € of the anchor's payout phase and
-   575,26 € of model point 12's. What remains **[std]** is *vorschüssig* against *nachschüssig*,
+   to whoever is alive that month, which removes it: 375,82 € of the anchor's payout phase and
+   556,84 € of model point 12's. What remains **[std]** is *vorschüssig* against *nachschüssig*,
    worth about one month's interest on the annuity.
 9. **This risk is retired. Gap 4 is closed.** Every statutory paragraph number in this file was
    checked against the canonical XML on 2026-08-30, with the instrument's *Stand* recorded at each

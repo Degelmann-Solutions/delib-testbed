@@ -26,8 +26,8 @@ understates it. ``check_states()`` and ``check_waiver()`` assert the ledger and 
 premium split that hangs off it, on every model point.
 
 **Grade and mortality are correlated, and the highest-paying state is the shortest-lived.**
-``mort_mult`` is a multiple on the **force** of active mortality — 1.5 at PG1 rising to
-9.0 at PG5 — so the annuity in payment runs three to five years, not the fifteen to
+Each grade has a death table of its own, the active table's **force** times a multiple
+— 1.5 at PG1 rising to 9.0 at PG5 — so the annuity in payment runs three to five years, not the fifteen to
 twenty a healthy-life annuity would at the same age. Pricing this benefit on an annuity
 table would be prudent in exactly the wrong direction. The consequence for the code is
 that the annuity is weighted on ``esc_pg(t, g)`` grade by grade and never on an average
@@ -44,7 +44,7 @@ ledgers rather than from the closed form.
 **Spaces.** The model contains two:
 
 :mod:`~.Pflege_DE_S.Data`
-    Reads the nine input CSVs and holds their filename References. It takes no
+    Reads the eight input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.Pflege_DE_S.Projection`

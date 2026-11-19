@@ -45,7 +45,7 @@ much.
 **Spaces.** The model contains two:
 
 :mod:`~.Riester_DE_S.Data`
-    Reads the nine input CSVs and holds their filename References. It takes no
+    Reads the seven input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.Riester_DE_S.Projection`
@@ -89,11 +89,12 @@ every contribution, both balances, the guarantee accumulator, the capital at *Re
 the *Garantielücke* and the *Kleinbetragsrente* verdict are unchanged. What the finer grid
 buys is the *Leibrente*, which the AltZertG requires to be lifelong and monthly and which
 the annual model compressed into one payment at the start of each payout year on that
-year's opening count — worth 362,84 € of the anchor's annuity outgo and 575,26 € of model
+year's opening count — worth 375,82 € of the anchor's annuity outgo and 556,84 € of model
 point 12's, which has no *Rentengarantiezeit* to hold the count still. It also dates the
 three accumulation exits, which now compete month by month instead of running in sequence
 at one year end: 5,62 € moves off the anchor's death outgo and 2,64 € off its surrender
-outgo onto 8,30 € of transfers (at the former ``mort_be_factor`` 0.80).
+outgo onto 8,30 € of transfers (at the former ``mort_be_factor`` 0.80, on the mortality
+files the model read before its switch to the table factory).
 
 **What is sourced and what is not.** The statutory mechanics are cited: who is
 *zulageberechtigt*, the *Grundzulage* / *Kinderzulage* / *Berufseinsteiger-Bonus*
@@ -103,11 +104,12 @@ structure, the § 86 *Mindesteigenbeitrag* with its 4 % rate, its 2 100 € ceil
 acquisition-cost spreading, the *Wechselrecht*, the *Kleinbetragsrenten-Abfindung* and
 the *schädliche Verwendung* consequences of a *Kündigung*. **No carrier-specific
 parameter was established for any German Riester product, at any house, for any year**,
-so every charge, every declared rate, every *Rentenfaktor*, every behavioural rate and
-both decrement tables are standardizations marked ``[std]`` in the shipped CSVs and in
-the notes. The DAV tables (DAV 2008 T, DAV 2004 R) are the property of the Deutsche
-Aktuarvereinigung, are not public and are **not redistributed here**: they are cited by
-name and stood in for by anchored proxies, and :mod:`~.Riester_DE_S.Data` says what a
+so every charge, every declared rate, every *Rentenfaktor* and every behavioural rate are
+standardizations marked ``[std]`` in the shipped CSVs and in the notes. The DAV tables
+(DAV 2008 T, DAV 2004 R) are the property of the Deutsche Aktuarvereinigung, are not
+public and are **not redistributed here**: they are cited by name and stood in for by the
+proxies ``dav2008t_proxy`` and ``dav2004r_proxy`` of the core's table factory, which the
+tariff chooses in *param_tariff_type.csv*, and :mod:`~.Riester_DE_S.Data` says what a
 replacement must preserve. **This model is a mechanics demonstration, not a pricing or
 reserving result.** Replace the decrement, charge and surplus tables with company data
 before drawing any conclusion from the output.

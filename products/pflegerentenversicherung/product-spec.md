@@ -534,8 +534,11 @@ the break directly**: the DAV publishes a companion *Ergebnisbericht* re-derivin
 Pflegegrad g ist erreicht"* — not a five-state per-grade chain. And the DAV is candid that *"[z]u
 Invalidisierungswahrscheinlichkeiten oder gar Invalidensterblichkeiten, für diese fünf Pflegegrade,
 fehlt naturgemäß jegliche statistische Information"*: the bases are transitions from *Pflegestufen*
-experience, not observations. delib's transition rates remain an explicitly labelled `[std]` proxy
-shaped on *Pflegegrad* prevalence, and are **not** a reproduction of DAV 2008 P.
+experience, not observations. delib's transition rates, and its death rates of the active state
+and of each grade — the six tables `pflege_aktive_proxy` and `pflege_pg1_proxy` to
+`pflege_pg5_proxy` of the core's table factory, each grade's force a multiple of the active force —
+remain an explicitly labelled `[std]` proxy shaped on *Pflegegrad* prevalence, and are **not** a
+reproduction of DAV 2008 P.
 
 ### The *Leistungsstaffel*
 

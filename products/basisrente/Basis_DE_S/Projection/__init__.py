@@ -49,17 +49,20 @@ are bit-identical on all fourteen model points.
 quoted in euro a **month** and a *Leibrente* is paid monthly; the annual-step model booked
 twelve instalments together at the start of each payout year on the opening in-force
 count, named that as a pitfall and as a stated approximation, and was generous to the year
-of death by up to a full year's annuity — 4 182,97 € of the anchor cell's payout phase,
-1,8 % of it. Here the instalment is paid to whoever is alive at the start of each month.
+of death by up to a full year's annuity — 4 457,98 € of the anchor cell's payout phase,
+2,0 % of it. Here the instalment is paid to whoever is alive at the start of each month.
 The *Rentengarantiezeit* becomes ``12m`` guaranteed **instalments** beginning in the month
 after the death that triggered them rather than in the following year, which moves
-149,64 € onto model point 4 and 691,81 € onto model point 12; and a policy that dies in
+51,42 € onto model point 4 and 434,25 € onto model point 12; and a policy that dies in
 the third month of a year now bears three twelfths of that year's maintenance expense
 rather than the whole of it.
 
-The annuity is lifelong, so the projection runs to the end of the mortality table; in the
-terminal year ``mort_rate`` is 1, the certainty falls in that year's **last month**, the
-last survivor dies at ``t = proj_len() - 1`` and ``pols_if(proj_len())`` is zero.
+The annuity is lifelong, so the projection runs to the end age of the mortality table, 121 on
+the table factory's ``dav2004r_proxy``; in the terminal year the table's rate is 1 and passes
+through ``mort_rate`` as 1, the certainty falls in that year's **last month**, the last
+survivor dies at ``t = proj_len() - 1`` at the latest and ``pols_if(proj_len())`` is zero.
+The death rates are the table's at the insured's own sex and birth year, read through the
+core's ``mort_rate_at_age``; this space reads no mortality file.
 
 .. rubric:: Input data
 
@@ -76,7 +79,6 @@ Each table has a filename Reference and a reader Cells, both on
 Reference                  Cells                                File
 =========================  ===================================  ==========================
 model_point_file           data.model_point_table()             model_point_table.csv
-mort_file                  data.mort_table()                    mort_table.csv
 surplus_file               data.surplus_table()                 surplus_table.csv
 rentenfaktor_file          data.rentenfaktor_table()            rentenfaktor_table.csv
 charge_file                data.charge_table()                  charge_table.csv
@@ -113,7 +115,7 @@ d(t)                       duration(t)                     The same, read from a
 d(k) + 1                   policy_year_y(k)                The same, in projection year k
 y(k)                       calendar_year_y(k)              Calendar year in year k
 y(t)                       calendar_year(t)                The same, read from a month
-omega                      omega_age()                     Limiting age, table end + 1
+omega                      omega_age()                     Limiting age, the table's end age
 T                          k_conv()                        Projection year of Rentenbeginn
 12 T                       t_conv()                        Month of the first instalment
 (none)                     gtd_end_t()                     Last month of the Rentengarantiezeit
@@ -142,7 +144,8 @@ A(k, .)                    av_at(k, timing)                Whole Deckungskapital
 A(k)                       av(k)                           Its start-of-year value
 (declared)                 decl_rate(k)                    Declared laufende Verzinsung
 i(k)                       cred_rate(k)                    max(rechnungszins, decl_rate(k))
-q^t(x, y)                  mort_rate_at_age(x, y)          First-order table rate
+g                          birth_year()                    Year of birth the table is read at
+q^t(x)                     mort_rate_at_age(x)             First-order table rate, own sex
 (table)                    mort_rate_base(t)               Table rate of the year of month t
 q(t)                       mort_rate(t)                    Best-estimate annual death rate
 q_mth(t)                   mort_rate_mth(t)                Its geometric twelfth
@@ -320,10 +323,12 @@ the thirteenth pitfall.
 **The conversion basis is not the projection basis, and that is deliberate.**
 ``rentenfaktor_gtd`` was struck at inception on first-order DAV 2004 R with a prudential
 margin and a conservative interest basis; the projection runs on the best estimate,
-``mort_rate(t) = mort_be_factor x mort_rate_base(t)``. The wedge between the two is the
-payout phase's *Risikoüberschuss*, and ``ann_bonus_rate`` — a *teildynamische Rente* —
-is the mechanism that gives it back to the annuitant. :func:`ann_pp` at ``t_conv()`` is
-therefore invariant to ``mort_be_factor`` while ``claims_annuity`` is not. A model that
+``mort_rate(t) = mort_be_factor x mort_rate_base(t)``, 1.15 times the rate of the table
+factory's ``dav2004r_proxy`` on the insured's own sex; no cell forms a tariff rate from it.
+The wedge between the two is the payout phase's *Risikoüberschuss*, and ``ann_bonus_rate``
+— a *teildynamische Rente* — is the mechanism that gives it back to the annuitant.
+:func:`ann_pp` at ``t_conv()`` is therefore invariant to ``mort_be_factor`` while
+``claims_annuity`` is not. A model that
 converted on its own best-estimate mortality would abolish the wedge and with it the
 whole German payout-phase surplus mechanic, which is the eleventh pitfall.
 
@@ -418,26 +423,42 @@ _spaces = []
 # Cells
 
 def omega_age():
-    """omega: the limiting age, one above the last ``age`` in *mort_table.csv*.
+    """omega: the limiting age, the end age of the tariff's mortality table.
 
-    122 on the shipped **[std]** table, whose last age, 121, is the age German annuity tables
-    are conventionally carried to.  The projection runs to it because the annuity is
-    lifelong, and :func:`mort_rate` returns 1.0 from ``omega_age() - 1``, so the last
-    survivor dies in the last month of the terminal year, at ``t = proj_len() - 1``, and
-    there is no tail state of any kind.
+    The first age nobody reaches, **121** on ``dav2004r_proxy``: the table's rate is 1 at
+    120, the age German annuity tables are conventionally closed at.  The projection runs to
+    it because the annuity is lifelong, and the table's rate of 1 at ``omega_age() - 1``
+    passes through :func:`mort_rate` as 1, so the last survivor dies in the last month of
+    the terminal year, at ``t = proj_len() - 1``, and there is no tail state of any kind.
 
-    Override reason: the limiting age is read off the mortality table, one above its last
-    age, where ``qx = 1.0``, products/basisrente/technical-notes.md:81
+    Override reason: reads the end age off its table, the table factory's, docs/core.md,
+    section "The decrement rates"
     """
-    return int(max(data.mort_table_dict()["qx"])) + 1                # noqa: F821
+    return omega_age_table()
+
+
+def birth_year():
+    """g: the year of birth the generational table is read at, issue year less issue age.
+
+    DAV 2004 R is a *Generationentafel*: mortality is indexed by birth cohort and the
+    expected future improvement is built into the table rather than applied on top of it.
+    The table's rate at attained age ``x`` is that of the calendar year ``g + x``, which is
+    ``calendar_year(t)`` at ``x = age(t)``: the age and the calendar year step together on
+    the anniversary, on an in-force point as on new business (``issue_year + duration_init``
+    is the valuation year 2027 on every point).
+
+    Override reason: the first-order table is generational, read at the attained age and
+    the birth year, products/basisrente/technical-notes.md:126
+    """
+    return issue_year() - issue_age()
 
 
 def horizon_age():
     """The attained age at which the projection ends: ``omega_age()``.
 
-    The annuity is lifelong, so ``proj_len_y() = omega_age() - age(0)``, 77 on the anchor
-    cell — twenty-two years of *Aufschubphase* at attained ages 45 to 66 and fifty-five
-    years of *Rentenphase* at ages 67 to 121.  ``k = 0 ... proj_len_y() - 1`` indexes
+    The annuity is lifelong, so ``proj_len_y() = omega_age() - age(0)``, 76 on the anchor
+    cell — twenty-two years of *Aufschubphase* at attained ages 45 to 66 and fifty-four
+    years of *Rentenphase* at ages 67 to 120.  ``k = 0 ... proj_len_y() - 1`` indexes
     exactly the rows the annual-step model projected.
 
     Override reason: the annuity is lifelong, so the projection runs from the valuation
@@ -498,7 +519,7 @@ def beitragssumme():
     so an in-force model point carries the same S it was written with.
 
     Override reason: the premiums escalate with the *Beitragsdynamik*, so the sum runs over
-    the schedule, not a level premium times the years, products/basisrente/technical-notes.md:464
+    the schedule, not a level premium times the years, products/basisrente/technical-notes.md:481
     """
     dyn = float(model_point()["prem_dyn_rate"])
     base = float(model_point()["prem_gross_level_pp"])
@@ -672,7 +693,7 @@ def inflation_years(t):
     ``k``, stepping on the anniversary; ``inflation_factor(12 k)`` is the factor of year ``k``.
 
     Override reason: the expense inflation compounds over the projection years ``k``,
-    products/basisrente/technical-notes.md:641
+    products/basisrente/technical-notes.md:659
     """
     return proj_year(t)                                              # noqa: F821
 
@@ -761,7 +782,7 @@ def prem_inst_pp(t):
     column sums over a year to that model's premium and *Zuzahlung* income.
 
     Override reason: the year's premium ``prem_pp(proj_year(t))`` and *Zuzahlung* fall due
-    whole in the first month of the projection year, products/basisrente/model.md:225
+    whole in the first month of the projection year, products/basisrente/model.md:230
     """
     if t % 12 != 0:
         return 0.0
@@ -777,85 +798,18 @@ def pols_prem(t):
     ``(1 - mort_rate(t))`` here applies the death rule twice.
 
     Override reason: the premium is paid by the premium-paying cohort only, the paid-up
-    cohort pays none, products/basisrente/technical-notes.md:684
+    cohort pays none, products/basisrente/technical-notes.md:702
     """
     return pols_paying(t)
-
-
-def mort_rate_at_age(x, y):
-    """q^t(x, y): the **first-order** table death rate at age x in calendar year y.
-
-    ``qx(x) x (1 - trend(x))^(y - mort_base_year)``, clipped to ``[0, 1]``.  The
-    generational form: the improvement lives **inside** the basis, which is what makes
-    DAV 2004 R a *Generationentafel* and what a replacement table must preserve.  Two
-    model points at the same attained age in different calendar years see different rates,
-    and the shipped table is anchored at ``mort_rate_at_age(67, 2005) = 0.014000``.
-
-    First order, so it carries the DAV's prudential margins.  The guaranteed
-    *Rentenfaktor* is struck on this basis; the projection runs on :func:`mort_rate`.
-
-    Override reason: the product reads its own mortality file until its switch to the
-    table factory, docs/core.md, section "The table factory"
-    """
-    table = data.mort_table_dict()                                   # noqa: F821
-    rate = (float(table["qx"][x])
-            * (1.0 - float(table["trend"][x])) ** (y - data.param("mort_base_year")))  # noqa: F821
-    return min(max(rate, 0.0), 1.0)
-
-
-def mort_rate_base(t):
-    """The first-order table rate applying in projection month t, an **annual** rate.
-
-    ``mort_rate_at_age(age(t), calendar_year(t))``.  Split from :func:`mort_rate` so that the
-    table rate and the best-estimate rate have separate names and the step between them is
-    a single visible factor.  Both are annual rates of the projection year the month falls
-    in: the age and the calendar year step on the anniversary, so the twelve months of a
-    year share one table rate.
-
-    Override reason: the first-order table is generational, read at the attained age and the
-    calendar year, products/basisrente/technical-notes.md:960
-    """
-    return mort_rate_at_age(age(t), calendar_year(t))
 
 
 def mort_be_factor():
     """The step from the first-order table to the best estimate, 1.15, from *param_tariff_type.csv*.
 
-    Override reason: the best estimate is 1.15 of the shipped first-order annuitant table, as
-    RV's, a tariff parameter in *param_tariff_type.csv*, products/basisrente/technical-notes.md:354
+    Override reason: the best estimate is 1.15 of the first-order annuitant table, as
+    RV's, a tariff parameter in *param_tariff_type.csv*, products/basisrente/technical-notes.md:370
     """
     return data.param("mort_be_factor")                              # noqa: F821
-
-
-def mort_rate(t):
-    """q(t): the best-estimate **annual** death rate of the year month t falls in.
-
-    ``mort_be_factor x mort_rate_base(t)``, the step from the shipped first-order annuitant
-    table up to a best estimate.  ``mort_be_factor = 1.15`` is a Setzung and is the single
-    largest unanchored number in the payout phase.
-
-    This is the library's two-speed convention: ``mort_rate`` is the **annual** rate and
-    :func:`mort_rate_mth` the monthly rate the recursion actually applies.  Reading this
-    one into a monthly roll-forward projects twelve years of mortality in one year.
-
-    **The terminal age is absorbing**: ``mort_rate(t) = 1.0`` where
-    ``age(t) >= omega_age() - 1``, whatever ``mort_be_factor`` says, so the last survivor dies
-    in the **last month** of the terminal year, ``pols_if(proj_len()) = 0`` exactly and the
-    decrement closure identity holds to the last euro.  Without it the generational trend
-    would carry the table's own terminal rate below 1 and leave a residue in force after
-    the end of the table.
-
-    Deaths fall at the end of the **month**, after that month's annuity instalment; the
-    interest credit and the premium are annual and fall at the two ends of the year, so a
-    dying policy has been credited its year's interest and has paid its year's premium.
-
-    Override reason: the terminal age is absorbing, the rate is 1 from ``omega_age() - 1``
-    whatever the factor, where the generational trend would carry the table's own terminal
-    rate below 1, products/basisrente/technical-notes.md:82
-    """
-    if age(t) >= omega_age() - 1:
-        return 1.0
-    return min(1.0, mort_be_factor() * mort_rate_base(t))
 
 
 def bf_rate(t):
@@ -951,7 +905,7 @@ def pols_if(t):
 
     Override reason: the count is the sum of the paying and the paid-up ledger, between
     which the *Beitragsfreistellung* moves policies,
-    products/basisrente/technical-notes.md:260
+    products/basisrente/technical-notes.md:276
     """
     return pols_paying(t) + pols_paidup(t)
 
@@ -977,7 +931,7 @@ def pols_if_at(t, timing):
 
     Override reason: the timing ``"AFT_FREEZE"``, after the *Beitragsfreistellung* has moved
     policies between the paying and the paid-up cohort, stands where the core has
-    ``"AFT_DECR"``, products/basisrente/technical-notes.md:263
+    ``"AFT_DECR"``, products/basisrente/technical-notes.md:279
     """
     if timing == "BEF_DECR":
         return pols_if(t)
@@ -1017,7 +971,7 @@ def pols_death(t):
     running.
 
     Override reason: the deaths are summed over the two cohorts, paying and paid-up, whose
-    deaths release different reserves, products/basisrente/technical-notes.md:540
+    deaths release different reserves, products/basisrente/technical-notes.md:557
     """
     return pols_death_paying(t) + pols_death_paidup(t)
 
@@ -1445,7 +1399,7 @@ def claim_kinds():
     """The three benefit kinds of :func:`claims`: death, annuity and survivor.
 
     Override reason: the claim kinds are death, annuity and the *Rentengarantiezeit*
-    survivor stream, products/basisrente/technical-notes.md:646
+    survivor stream, products/basisrente/technical-notes.md:664
     """
     return ("DEATH", "ANNUITY", "SURVIVOR")
 
@@ -1486,7 +1440,7 @@ def claims(t, kind=None):
 
     Override reason: the death benefit releases the reserve of two cohorts, the paying and
     the paid-up, weighted by the survivor's eligibility, and the annuity kinds are no
-    per-policy amount times a decrement, products/basisrente/technical-notes.md:637
+    per-policy amount times a decrement, products/basisrente/technical-notes.md:655
     """
     if kind is None:
         return sum(claims(t, k) for k in claim_kinds())
@@ -1523,7 +1477,7 @@ def expenses_acq(t):
     well is the fourth pitfall.
 
     Override reason: the acquisition expense falls at inception on new business only,
-    products/basisrente/technical-notes.md:640
+    products/basisrente/technical-notes.md:658
     """
     if t < 0 or t >= proj_len():
         return 0.0
@@ -1550,8 +1504,8 @@ def expenses_maint(t):
     the whole of it, which is the second thing the finer grid changes on this product.
 
     Override reason: the maintenance falls per in-force policy before *Rentenbeginn*,
-    products/basisrente/technical-notes.md:641, and per annuitant and guarantee
-    continuation after it, products/basisrente/technical-notes.md:642
+    products/basisrente/technical-notes.md:659, and per annuitant and guarantee
+    continuation after it, products/basisrente/technical-notes.md:660
     """
     if t < 0 or t >= proj_len():
         return 0.0
@@ -1575,7 +1529,7 @@ def comm_init_rate():
     flow.
 
     Override reason: the initial commission is the tariff's ``comm_acq_bsum_once`` of the
-    *Beitragssumme*, products/basisrente/technical-notes.md:643
+    *Beitragssumme*, products/basisrente/technical-notes.md:661
     """
     return float(data.charge_table_dict()["comm_acq_bsum_once"][     # noqa: F821
         model_point()["tariff_id"]])
@@ -1593,7 +1547,7 @@ def comm_renew(t):
     ``t = 0`` as well.  **[std]**.
 
     Override reason: the renewal commission is a rate on the premiums and *Zuzahlungen*
-    from policy year 2, products/basisrente/technical-notes.md:644
+    from policy year 2, products/basisrente/technical-notes.md:662
     """
     if duration(t) < 1 or t >= proj_len():
         return 0.0
@@ -1624,7 +1578,7 @@ def check_net_cf_resid(t):
     either: the BUZ premium buys a cover this model does not project.
 
     Override reason: the identity is taken as the rebuilt flow less ``net_cf``, the reverse
-    of the core's sign, products/basisrente/technical-notes.md:722
+    of the core's sign, products/basisrente/technical-notes.md:740
     """
     cf = result_cf_dict()
     return float(cf["premiums"][t]
@@ -1643,7 +1597,7 @@ def check_net_cf():
     it means the same thing on a 300 € contribution and on a 30 826 € one.
 
     Override reason: one tolerance over the run, roll_fwd_tol() times the largest
-    abs(net_cf) of the run, products/basisrente/model.md:410
+    abs(net_cf) of the run, products/basisrente/model.md:426
     """
     scale = max([1.0] + [abs(net_cf(t)) for t in range(proj_len())])
     return all(abs(check_net_cf_resid(t)) <= roll_fwd_tol() * scale   # noqa: F821
@@ -1864,7 +1818,7 @@ def result_cf_columns():
     same stream summed into projection years, which is the view the technical notes print.
 
     Override reason: the statement carries the premium-paying count and the three claim
-    kinds of a *Basisrente*, products/basisrente/technical-notes.md:683-692
+    kinds of a *Basisrente*, products/basisrente/technical-notes.md:701-710
     """
     return (
         ("pols_if", pols_if),                                        # noqa: F821
@@ -1903,7 +1857,7 @@ def result_cf_annual():
 
     Override reason: indexed by the projection year k of the valuation clock, the
     annual-step model's own t, and summed over each year's twelve-month slice,
-    products/basisrente/technical-notes.md:705
+    products/basisrente/technical-notes.md:723
     """
     ks = list(range(proj_len_y()))
     flows = ["premiums", "claims_death", "claims_annuity",
@@ -1936,7 +1890,7 @@ def result_pols():
     point projected from issue.
 
     Override reason: the frame is the annual state, indexed by the projection year k, with the
-    year's deaths and freezes summed over its months, products/basisrente/technical-notes.md:708
+    year's deaths and freezes summed over its months, products/basisrente/technical-notes.md:726
     """
     ks = list(range(proj_len_y()))
     return pd.DataFrame(                                             # noqa: F821

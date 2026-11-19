@@ -54,7 +54,7 @@ Converting on the projection's own mortality abolishes it, which is the eleventh
 **Spaces.** The model contains two:
 
 :mod:`~.Basis_DE_S.Data`
-    Reads the nine input CSVs and holds their filename References. It takes no
+    Reads the eight input CSVs and holds their filename References. It takes no
     parameters, so each file is read **once per model**.
 
 :mod:`~.Basis_DE_S.Projection`
@@ -96,7 +96,7 @@ the annual rate exactly and the whole *Aufschubphase* is **bit-identical** to th
 annual-step model this replaced, on all fourteen model points. What the finer grid buys is
 the *Rente*: a *Rentenfaktor* is quoted in euro a **month**, and where the annual model
 booked twelve instalments at the start of each payout year on the opening count — its own
-twelfth pitfall, and a stated approximation worth 4 182,97 € of the anchor's payout phase —
+twelfth pitfall, and a stated approximation worth 4 457,98 € of the anchor's payout phase —
 the instalment is now paid to whoever is alive at the start of each month. The
 *Rentengarantiezeit* is ``12m`` instalments beginning in the month after the death that
 triggered them, and a mid-year death now bears only the months of maintenance expense it
@@ -113,10 +113,10 @@ was blocked and the session's search budget was exhausted before this product �
 charge, every behavioural rate and both *Rentenfaktoren* are **[std]** figures with a
 stated rationale and nothing behind them. The DAV tables (DAV 2004 R here) are the
 property of the Deutsche Aktuarvereinigung, are not public, and are cited by name and
-never redistributed; ``mort_table.csv`` is a shaped proxy anchored so the notes' worked
-example reproduces exactly. **This model is a mechanics demonstration, not a pricing or
-reserving result.** Replace the decrement, charge and surplus tables with company data
-before drawing any conclusion from the output.
+never redistributed; the death rates come from ``dav2004r_proxy``, a proxy of the core's
+table factory with the structure of DAV 2004 R and none of its values. **This model is a
+mechanics demonstration, not a pricing or reserving result.** Replace the decrement,
+charge and surplus tables with company data before drawing any conclusion from the output.
 
 **Model points.** Fourteen, every one opening at the valuation date 1 January 2027,
 covering both premium forms, all four payment frequencies, all three in-force shapes

@@ -56,9 +56,9 @@ German terms of art keep their German form in prose.
   `t = 779`, 780 monthly rows, attained ages 45 to 109. A point opening at `duration_mth_init() = d0`
   publishes `proj_len() - d0` rows and still ends at its own `proj_len() - 1`:
   `duration_mth_init` shortens the frame at the front, never at the back.
-- **Terminal age.** `omega_age = 110` **[std]**, with `mort_rate(t) = 1.0` forced in the final year
-  of age so the model is a closed system rather than a truncated one and the decrement closure holds
-  exactly. It is a modelling choice, not a table fact — the DAV tables run higher [R15] [REG-R51] —
+- **Terminal age.** `omega_age = 110` **[std]**, the end age of `pflege_aktive_proxy`, every death
+  table closing with a rate of 1.0 at 109 so the model is a closed system rather than a truncated one
+  and the decrement closure holds exactly. It is a modelling choice, not a table fact — the DAV tables run higher [R15] [REG-R51] —
   and it costs nothing material: an active life aged 45 survives to 110 with probability of the
   order of 1e-4 on the shipped basis.
 - **Timing conventions [std].** Within month `t`: the *Beitrag* is collected **at the start** of the
@@ -145,9 +145,9 @@ not a modest loading, and at a *Rechnungszins* of 1,00 % it is close to the whol
 nominal premiums on a death that is on average forty years away is worth about 0.67 of what was paid,
 against a premium stream whose own present value is discounted *and* thinned by survival. Written
 with a lifelong *Beitragszahlungsdauer* the equivalence's denominator, `U (1 − β) − D1 − a1`, falls to
-3.6 of 313.5 units and the model point becomes a knife-edge: the premium is 2,659.56 € a month and a
+7.0 of 313.5 units and the model point becomes a knife-edge: the premium is 2,702.18 € a month and a
 small change in any basis would send it negative. Point 9 therefore pays to 65, which is how the
-German market writes a *Beitragsrückgewähr* tariff, and its premium is 622.92 € a month — still **9,7
+German market writes a *Beitragsrückgewähr* tariff, and its premium is 628.11 € a month — still **9,7
 times** the anchor's, which is the honest measure of what a gross return of premiums costs on this
 basis rather than the "roughly doubles" the research file reasons to at a higher technical rate.
 
@@ -163,9 +163,9 @@ cells in the `Data` Space (the `annuallife/TradLife_A` layout). Every file **exc
 |---|---|---|---|
 | `model_point_table.csv` | `point_id` | the nineteen attributes above | The fourteen model points. **Exempt** from `provenance` |
 | `benefit_scale_table.csv` | `staffel_id`, `pflegegrad` | `benefit_pct`, `provenance` | The *Leistungsstaffel*: 0/30/50/75/100 % for `delib_std`, 10/20/30/40/100 % for `bahr` [R8] |
-| `mort_table.csv` | `sex`, `age` | `mort_rate`, `provenance` | Annual **active-life** mortality, ages 18–109, both sexes |
+| (table factory) | `sex`, `age` | `pflege_aktive_proxy`, `pflege_pg1_proxy` … `pflege_pg5_proxy` | No file: the annual death rates of the active state and of each *Pflegegrad*, ages 18–109, both sexes, from the core's table factory, chosen by `mort_table` and `mort_pg1_table` … `mort_pg5_table` of `param_tariff_type.csv` |
 | `incidence_table.csv` | `sex`, `age` | `inc_rate`, `provenance` | Annual rate of entering **any** *Pflegegrad* from the active state, ages 18–109, both sexes |
-| `care_table.csv` | `pflegegrad` | `entry_share`, `det_rate`, `rec_rate`, `mort_mult`, `provenance` | The whole in-care basis in five rows: the distribution of the grade first entered, the annual deterioration rate to the next grade, the annual recovery rate to the previous grade or to active, and the force-of-mortality multiple over an active life of the same age |
+| `care_table.csv` | `pflegegrad` | `entry_share`, `det_rate`, `rec_rate`, `provenance` | The in-care transitions in five rows: the distribution of the grade first entered, the annual deterioration rate to the next grade and the annual recovery rate to the previous grade or to active; the mortality of a grade is its table |
 | `lapse_table.csv` | `policy_year` | `lapse_rate`, `provenance` | Annual lapse from the **active** state, policy years 1–40; year 40's rate applies to every later year |
 | `surrender_table.csv` | `policy_year` | `rkw_prem_ratio`, `provenance` | The guaranteed *Rückkaufswert* as a fraction of premiums paid to date, policy years 1–40, clamped as for lapse at its last policy year `Y` (40), which `surrender_table_last_year()` reads from the table |
 | `param_tariff_type.csv` | `item` | `value`, `basis`, `provenance` | The tariff-type parameters, the first-order margins and the expense loadings, each expense row's unit at the end of its provenance; upstream's `basis_table.csv` and `expense_table.csv`; the house-wide and technical items, `check_tol` and `expense_infl` among them, are in the core file `core/Core/Data/param_core.csv`; `uv run python tools/params.py pflegerentenversicherung` lists every item the tariff reads with its value, layer, basis and provenance |
@@ -296,16 +296,16 @@ enters directly at grade 3 or 4; (b) deterioration dominating recovery above age
 care as a grade-increasing multiple of active mortality; and (d) transition probabilities out of each
 state summing, with the stay probability, to one.
 
-**Active-life mortality [std]** — a Gompertz proxy, sex-specific, German-population-shaped, and
-**not** DAV 2008 T or the DAV 2008 P active-life table [R16] [REG-R48] [REG-R52]:
+**Active-life mortality [std]** — `pflege_aktive_proxy` of the table factory, a Gompertz proxy on the
+force (law `gompertz_force`), sex-specific, **not** DAV 2008 T or DAV 2008 P [R16] [REG-R48] [REG-R52]:
 
-    mort_rate(sex, x) = 1 - exp(-B_sex * c_sex ** x)      ages 18 to omega_age - 2
-    mort_rate(sex, omega_age - 1) = 1.0                   the limiting-age convention
+    q(pflege_aktive_proxy, sex, x) = 1 - exp(-b_sex * c_sex ** x)    ages 18 to omega_age - 2
+    q(pflege_aktive_proxy, sex, omega_age - 1) = 1.0                 the table's closing age
 
-`B_M = 1.47884e-05`, `c_M = 1.110680`, `B_F = 4.76290e-06`, `c_F = 1.119962`, fixed by two anchors
-per sex — `q(65) = 1.35 %` and `q(85) = 10.5 %` male, `0.75 %` and `7.0 %` female **[std]**. Those
-anchors are what a substitute table must reproduce for the worked example to close, and the `Data`
-docstring states them.
+`b_M = 1.47884e-05`, `c_M = 1.11068`, `b_F = 4.7629e-06`, `c_F = 1.119962`, fixed by two anchors
+per sex — `q(65) = 1.35 %` and `q(85) = 10.5 %` male, `0.75 %` and `7.0 %` female **[std]**; the best
+estimate is the table rate, without a factor. The anchors are what a substitute table must reproduce
+for the worked example to close, and the `Data` docstring states them.
 
 **Incidence into care [std]** — the rate at which an active life enters **any** *Pflegegrad*:
 
@@ -326,7 +326,7 @@ exponential exceeds one before age 100.
 
 **The in-care basis [std]**, five rows of `care_table.csv`, and the most consequential table here:
 
-| *Pflegegrad* | `entry_share` | `det_rate` (to `g+1`, annual) | `rec_rate` (to `g-1`/aktiv, annual) | `mort_mult` |
+| *Pflegegrad* | `entry_share` | `det_rate` (to `g+1`, annual) | `rec_rate` (to `g-1`/aktiv, annual) | force multiple of its table |
 |---|---|---|---|---|
 | 1 | 0.20 | 0.28 | 0.10 | 1.5 |
 | 2 | 0.38 | 0.24 | 0.06 | 2.5 |
@@ -341,8 +341,8 @@ people up over a spell, and using the stock as the entry mix is pitfall 17; the 
 with 54,2 % rather than 53 % in the two lowest grades, does not disturb that argument. **What no
 source supplies is the entry mix itself, or the time spent at each grade** — Assekurata states in
 terms that no information exists on how long people remain in each *Pflegegrad*, the grades dating
-only from 2017 [S14] — so `entry_share` stays **[std]**. `mort_mult` is a
-multiple on the **force** of active mortality at the same age, carrying the research file's most
+only from 2017 [S14] — so `entry_share` stays **[std]**. A grade's table `pflege_pg<g>_proxy` is the
+active table with `b` times the multiple, so it is a multiple on the **force** — the research file's most
 load-bearing biometric statement — the mortality of a *Pflegebedürftiger* is **of the order of two to
 three times an active life's at grade 2 and five to ten times at grade 5** [unverified]. Recovery is
 further damped with age, `rec_rate(g, x) = rec_rate_g * exp(-recov_age_decay * max(0, x - recov_age_ref))`
@@ -445,7 +445,7 @@ a 50 / 50 mix while writing 60 / 40" is model risk 7 [REG-R34].
 | `R` | `rente_mth`, the *vereinbarte Pflegerente* at *Pflegegrad* 5 |
 | `P` | `premium_mth_pp()`, the level monthly gross *Beitrag* per policy |
 | `m` | `prem_cycle()` — 1, 3, 6, 12, `12 // instalments()` from `prem_freq_table.csv`; the *Einmalbeitrag* is `prem_form = single` |
-| `μ_A(t)`, `μ_g(t)`, `ι(t)` | force of active-life mortality at `x(t)`; force of mortality in *Pflegegrad* `g` = `mort_mult(g) × μ_A(t)`; force of incidence into care, **0** while `t < wartezeit_months` |
+| `μ_A(t)`, `μ_g(t)`, `ι(t)` | force of active-life mortality at `x(t)`; force of mortality in *Pflegegrad* `g`, `−ln(1 − q_g)` of the grade's table, the grade's multiple × `μ_A(t)` below the closing age; force of incidence into care, **0** while `t < wartezeit_months` |
 | `s_g` | `entry_share(g)`, the distribution of the grade first entered |
 | `δ_g(t)`, `ρ_g(t)`, `w(t)` | forces of deterioration `g → g+1` and recovery `g → g-1` (from PG1, to active); and the monthly lapse probability from the active state, `lapse_rate_mth`, **0** outside the premium term |
 | `ℓ_A(t)`, `W_{g,z}(t)`, `ℓ_g(t)` | `pols_act(t)`, `pols_karenz(t, g, z)`, `pols_pg(t, g)` |
@@ -529,7 +529,7 @@ that it reports only the aggregate escalation, which is all the cash flow needs.
 
     pols_if(t) + pols_dead_cum(t) + pols_lapse_cum(t) = pols_if_init()     for every t
 
-The last line is `check_states()`. Because `mort_rate` is forced to 1 in the final year of age, the
+The last line is `check_states()`. Because every death table is 1 in the final year of age, the
 identity closes at `t = n` — one past the last projected month — with `pols_if = 0`, so the
 decrements sum to `pols_if_init()` exactly
 — a closure a reader can check with a calculator on the worked example.
@@ -703,7 +703,7 @@ this list executed in a different sequence.
    on `pols_if(t)`, inflated; premium-related administration on the premium just collected; and
    `claim_expenses(t)` on the annuity payments just made.
 6. **Look up the month's forces at `x(t)`.** `μ_A`, and `ι` — **zero while `t < wartezeit_months`**;
-   `μ_g = mort_mult(g) × μ_A`; `δ_g`; `ρ_g`, damped above `recov_age_ref`. Then `w(t)`, zero outside
+   `μ_g`, the force of the grade's table; `δ_g`; `ρ_g`, damped above `recov_age_ref`. Then `w(t)`, zero outside
    the premium term.
 7. **Apply the transitions over the month**, constant forces, proportional allocation. From the
    active state: death, entry into care split by `entry_share`, or stay. From each grade, in both
@@ -736,8 +736,8 @@ The specific ways an implementation of *this* product looks right and is wrong. 
 2. **Pricing the annuity in payment on an annuity table.** DAV 2004 R is prudent about people living
    *longer* [REG-R49]; this annuity is paid to a heavily impaired population. Assert
    `mort_rate_care(t, g) ≥ mort_rate(t)` for every `g` and `t`, strictly increasing in `g`, and that
-   the **force** multiple `mort_force_care(t, g) / mort_force(t)` is exactly `mort_mult(g)` — 9.0 at
-   grade 5 — at every age below the limiting one. Assert it on forces and not on rates: the *rate*
+   the **force** multiple `mort_force_care(t, g) / mort_force(t)` is the grade's, 9.0 at grade 5, to a
+   relative 1e-5 (the tables' items) at every age below the limiting one. On forces, not on rates: the *rate*
    ratio at grade 5 falls from 8.97 at age 45 to 6.85 at 85, 4.31 at 95 and 1.00 at the limiting age,
    because a rate saturates and a force does not. That compression is the scale, not the basis.
 3. **Treating "in claim" as one state exited only by death.** There are three exits. Assert
@@ -864,16 +864,16 @@ monthly rows, of which the table below shows a representative selection together
 full-precision totals.
 
 **Assumptions, each tagged.** *Rechnungszins* `i = 1.00 %` p.a., used **only** in the pricing
-engine [REG-R14] [REG-R15]. Active-life mortality
-`mort_rate(F, x) = 1 − exp(−4.76290e−06 × 1.119962^x)` **[std]**, anchored at
-`q(65) = 0.75 %` and `q(85) = 7.0 %`, with `mort_rate(F, 109) = 1.0` by the limiting-age convention
+engine [REG-R14] [REG-R15]. Active-life mortality, `pflege_aktive_proxy`,
+`q(F, x) = 1 − exp(−4.7629e−06 × 1.119962^x)` **[std]**, anchored at
+`q(65) = 0.75 %` and `q(85) = 7.0 %`, with `q(F, 109) = 1.0` at the table's closing age
 **[std]**. Incidence `inc_rate(F, x) = min(0.0110 × exp(0.1400 × (x − 65)), 0.50)` **[std]**,
 anchored on prevalence doubling every five years of age above 75 — an anchor the retrieved
 *Pflegequoten* put nearer a factor of 1,8 over 70–90 [R18], reported and not changed. Entry mix
 0.20 / 0.38 / 0.24 / 0.13 / 0.05 across grades 1 to 5 **[std]**. Deterioration
 0.28 / 0.24 / 0.20 / 0.16 / 0.00 and recovery 0.10 / 0.06 / 0.04 / 0.02 / 0.01 a year **[std]**, the
-recovery rates damped by `exp(−0.10 × max(0, x − 75))` **[std]**. In-care mortality multiples
-1.5 / 2.5 / 3.5 / 6.0 / 9.0 on the active force **[std]**. Lapse from the active state
+recovery rates damped by `exp(−0.10 × max(0, x − 75))` **[std]**. In-care mortality the tables
+`pflege_pg1_proxy` … `pflege_pg5_proxy`, 1.5 / 2.5 / 3.5 / 6.0 / 9.0 times the active force **[std]**. Lapse from the active state
 6.0 / 5.0 / 4.0 / 3.5 / 3.0 % in policy years 1 to 5, 2.5 % in years 6–10, 2.0 % in 11–20 and 1.5 %
 from year 21 **[std]**, converted by `1 − (1 − q)^(1/12)`. *Rückkaufswert*
 0.00 / 0.00 / 0.05 / 0.12 / 0.20 of premiums paid in policy years 1 to 5, rising to 0.42 by year 10
@@ -881,8 +881,8 @@ and 0.70 by year 40 **[std]**, with `stornoabzug_rate = 0`. Expenses **[std]**: 
 `25 ‰ × Beitragssumme` at `t = 0`, the *Beitragssumme* being `P × 12 × (85 − 45) = 480 P`;
 administration 3.0 % of each *Beitrag* collected plus 2.00 € per policy in force per month;
 claim expense 1.50 € per annuity payment; expense inflation 2.0 % a year. First-order margins
-**[std]**: incidence × 1.25, deterioration × 1.15, recovery × 0.80, in-care mortality × 0.85,
-active mortality × 0.90, and **no lapse** in the tariff basis. Pricing blended 50 / 50 male / female
+**[std]**: incidence × 1.25, deterioration × 1.15, recovery × 0.80, in-care mortality × 0.85 on the
+blend of the grade's table, active mortality × 0.90, and **no lapse** in the tariff basis. Pricing blended 50 / 50 male / female
 **[std]** [REG-R34]; the projection runs on the female basis. No *Wartezeit*, no *Karenzzeit*, no
 *Leistungsdynamik*, no *Beitragsrückgewähr*, no *Überschussbeteiligung* and no behaviour modules.
 
@@ -898,30 +898,30 @@ Every figure is transcribed from `Projection[1].result_cf()`, money to the cent 
 six decimals. The frame has **780 rows**, `t = 0 … 779`; fourteen are shown. `claims_death` is a
 column of the frame, is **structurally zero at every `t`** here (`beitragsrueckgewaehr = False`), and
 is omitted rather than printed as 780 zeros. The equivalence premium is
-**`premium_mth_pp() = 64.539230` € a month**.
+**`premium_mth_pp() = 64.766836` € a month**.
 
 | `t` | `x(t)` | `pols_if` | `pols_care` | `pols_prem` | `premiums` | `claims_annuity` | `claims_lapse` | `expenses` | `claim_expenses` | `net_cf` |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 | 45 | 1.000000 | 0.000000 | 1.000000 | 64.54 | 0.00 | 0.00 | 778.41 | 0.00 | -713.87 |
-| 1 | 45 | 0.994793 | 0.000056 | 0.994748 | 64.20 | 0.02 | 0.00 | 3.92 | 0.00 | 60.26 |
-| 2 | 45 | 0.989613 | 0.000111 | 0.989523 | 63.86 | 0.04 | 0.00 | 3.90 | 0.00 | 59.92 |
-| 12 | 46 | 0.939288 | 0.000644 | 0.938758 | 60.59 | 0.26 | 0.00 | 3.73 | 0.00 | 56.59 |
-| 60 | 50 | 0.798781 | 0.003771 | 0.795452 | 51.34 | 1.86 | 1.61 | 3.30 | 0.01 | 44.56 |
-| 120 | 55 | 0.698284 | 0.009864 | 0.689306 | 44.49 | 5.52 | 3.94 | 3.04 | 0.02 | 31.98 |
-| 240 | 65 | 0.547048 | 0.035456 | 0.514343 | 33.20 | 21.39 | 5.68 | 2.62 | 0.07 | 3.43 |
-| 360 | 75 | 0.391509 | 0.080375 | 0.318167 | 20.53 | 45.97 | 5.86 | 2.03 | 0.20 | -33.53 |
-| 420 | 80 | 0.276904 | 0.092056 | 0.193720 | 12.50 | 49.35 | 4.23 | 1.48 | 0.25 | -42.81 |
-| 480 | 85 | 0.143383 | 0.073044 | 0.078218 | 5.05 | 36.02 | 1.88 | 0.78 | 0.22 | -33.85 |
-| 540 | 90 | 0.039295 | 0.028934 | 0.013981 | 0.90 | 12.90 | 0.30 | 0.22 | 0.09 | -12.61 |
-| 600 | 95 | 0.003283 | 0.003060 | 0.000696 | 0.04 | 1.20 | 0.01 | 0.02 | 0.01 | -1.20 |
+| 0 | 45 | 1.000000 | 0.000000 | 1.000000 | 64.77 | 0.00 | 0.00 | 781.15 | 0.00 | -716.38 |
+| 1 | 45 | 0.994793 | 0.000056 | 0.994748 | 64.43 | 0.02 | 0.00 | 3.93 | 0.00 | 60.48 |
+| 2 | 45 | 0.989613 | 0.000111 | 0.989523 | 64.09 | 0.04 | 0.00 | 3.91 | 0.00 | 60.14 |
+| 12 | 46 | 0.939288 | 0.000644 | 0.938758 | 60.80 | 0.26 | 0.00 | 3.74 | 0.00 | 56.80 |
+| 60 | 50 | 0.798781 | 0.003771 | 0.795452 | 51.52 | 1.86 | 1.61 | 3.31 | 0.01 | 44.73 |
+| 120 | 55 | 0.698284 | 0.009864 | 0.689306 | 44.64 | 5.52 | 3.96 | 3.04 | 0.02 | 32.11 |
+| 240 | 65 | 0.547048 | 0.035456 | 0.514343 | 33.31 | 21.39 | 5.70 | 2.63 | 0.07 | 3.52 |
+| 360 | 75 | 0.391509 | 0.080375 | 0.318167 | 20.61 | 45.97 | 5.88 | 2.04 | 0.20 | -33.48 |
+| 420 | 80 | 0.276904 | 0.092056 | 0.193720 | 12.55 | 49.35 | 4.24 | 1.48 | 0.25 | -42.78 |
+| 480 | 85 | 0.143383 | 0.073044 | 0.078218 | 5.07 | 36.02 | 1.89 | 0.79 | 0.22 | -33.84 |
+| 540 | 90 | 0.039295 | 0.028934 | 0.013981 | 0.91 | 12.90 | 0.30 | 0.22 | 0.09 | -12.61 |
+| 600 | 95 | 0.003283 | 0.003060 | 0.000696 | 0.05 | 1.20 | 0.01 | 0.02 | 0.01 | -1.20 |
 | 660 | 100 | 0.000055 | 0.000053 | 0.000015 | 0.00 | 0.02 | 0.00 | 0.00 | 0.00 | -0.02 |
 | 779 | 109 | 0.000000 | 0.000000 | 0.000000 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| **Total** | | **268.956131** | **24.241784** | **247.014740** | **15,942.14** | **13,200.11** | **2,203.35** | **2,014.04** | **61.74** | **-1,537.11** |
+| **Total** | | **268.956131** | **24.241784** | **247.014740** | **15,998.36** | **13,200.11** | **2,211.12** | **2,018.45** | **61.74** | **-1,493.07** |
 
 **The Total row is summed over all 780 rows at full precision and then rounded**, not summed from the
-rounded cells, and here the two visibly differ: summing the rounded cells gives premiums 15,942.06,
-`claims_annuity` 13,200.02, `claims_lapse` 2,203.24, expenses 2,013.94, `claim_expenses` 61.65 and
-`net_cf` -1,537.07 — the last of these 0,04 € away. The gap is not noise that cancels. **107 of the
+rounded cells, and here the two visibly differ: summing the rounded cells gives premiums 15,998.38,
+`claims_annuity` 13,200.02, `claims_lapse` 2,211.06, expenses 2,018.42, `claim_expenses` 61.65 and
+`net_cf` -1,493.10 — the last of these 0,03 € away. The gap is not noise that cancels. **107 of the
 780 `claims_annuity` cells are positive amounts below half a cent**, and every one of them rounds
 down to 0.00, so the error accumulates in one direction; `claim_expenses` does the same, its 1,50 €
 per payment falling on a paying population of the order of 1e-5 for the first two decades.
@@ -930,22 +930,22 @@ per payment falling on a paying population of the order of 1e-5 for the first tw
 
 **Check 1 — the equivalence premium, from the four actuarial values.** The premium is not read off a
 rate card; it is the solution of the first-order equivalence, and the values that determine it are
-published as cells: `tariff_benefit_pv() = A = 17,789.761930`, `tariff_annuity() = U = 313.500018`,
-`epv_admin() = G = 980.607132`, `epv_claim_expense() = C = 81.218362`, with `β = load_admin_prem_inst =
+published as cells: `tariff_benefit_pv() = A = 17,855.667691`, `tariff_annuity() = U = 313.500495`,
+`epv_admin() = G = 980.954843`, `epv_claim_expense() = C = 81.477536`, with `β = load_admin_prem_inst =
 0.030` and the *Zillmerung* allowance `a1 = 0.025 × 12 × (85 − 45) = 12.000000` in units of `P`:
 
-    P = (17,789.761930 + 980.607132 + 81.218362) / (313.500018 x 0.970 - 12.000000)
-      = 18,851.587424 / 292.095018  =  64.539230
+    P = (17,855.667691 + 980.954843 + 81.477536) / (313.500495 x 0.970 - 12.000000)
+      = 18,918.100069 / 292.095480  =  64.766836
 
 which is `premium_mth_pp()` to the sixth decimal. Two by-products are worth reading. `U` is
 **26,13 years'** worth of discounted premium, against the "of the order of 27 years' worth" the
-research file argues from the other direction. And `prem_net_level_pp() = A / U = 56.745649`, so the
-whole expense loading is `64.539230 / 56.745649 = 1.137342` — **13,73 %** over the net level premium,
-of which the *Zillmerung* allowance alone is 2,55 € a month: strike `a1` out of the denominator and
-the premium falls to `18,851.587424 / 304.095018 = 61.992`.
+research file argues from the other direction. And `prem_net_level_pp() = A / U = 56.955788`, so the
+whole expense loading is `64.766836 / 56.955788 = 1.137142` — **13,71 %** over the net level premium,
+of which the *Zillmerung* allowance alone is 2,56 € a month: strike `a1` out of the denominator and
+the premium falls to `18,918.100069 / 304.095480 = 62.211`.
 
 **Check 2 — the first month's decrements, from the annual rates.** Nothing here needs the model. Read
-two annual rates out of the CSVs at age 45 female, convert them to forces, allocate one month's exits
+two annual rates at age 45 female, the table's and the incidence CSV's, convert them to forces, allocate one month's exits
 between them in proportion, and apply the lapse rate afterwards:
 
     q_A(45) = 0.00077956    mu_A = -ln(1 - q_A) = 0.00077986
@@ -993,31 +993,31 @@ mean to `Σ_t pols_care(t) = 24.241784` gives 9,248.24 € against 13,200.11 €
 of the whole benefit**, produced by an error no total in the frame would reveal.
 
 **The closure identity.** Read one month past the last projected row, at `t = proj_len() = 780`:
-`pols_dead_cum(780) = 0.493968059928` and
-`pols_lapse_cum(780) = 0.506031940072` sum to **1.000000000000** with `pols_if(780) = 1.5e-23`: the
-decrements account for the entire policy, exactly, because `mort_rate` is forced to 1.0 at age 109.
+`pols_dead_cum(780) = 0.493968059987` and
+`pols_lapse_cum(780) = 0.506031940013` sum to **1.000000000000** with `pols_if(780) = 2.0e-22`: the
+decrements account for the entire policy, exactly, because every death table is 1.0 at age 109.
 The cash flow statement closes the same way at every `t` — at `t = 0`,
-`64.539230 − 778.406933 = −713.867703`, with `expenses(0) = 774.470756 + 2.000000 + 1.936177`, the
-allowance `0.025 × 30,978.830231`, the month's per-policy administration and 3,0 % of the *Beitrag*
+`64.766836 − 781.145038 = −716.378202`, with `expenses(0) = 777.202033 + 2.000000 + 1.943005`, the
+allowance `0.025 × 31,088.081301`, the month's per-policy administration and 3,0 % of the *Beitrag*
 just collected. The largest `check_net_cf_resid(t)` anywhere in the frame is 1.4e-14, and
-`check_prem_equiv()` closes to 9.3e-12.
+`check_prem_equiv()` closes to 5.2e-11.
 
 ### Reading the result
 
-**The premium lands at 64,54 € a month, in the lower half of the argued 50,00–100,00 € band** [std].
+**The premium lands at 64,77 € a month, in the lower half of the argued 50,00–100,00 € band** [std].
 Three things put it there. The entry mix is weighted to the two lowest grades, which pay 0 % and
 30 %, so the stock-weighted average benefit is 54,5 % of the *vereinbarte Rente*. The model's own
 mean spell in an **insured** grade is 5,5 years, at the top of the three-to-five the research file
-argues. And the expense loading is 13,73 %, modest because the claims cost is per payment and low.
+argues. And the expense loading is 13,71 %, modest because the claims cost is per payment and low.
 
-**The sign pattern is the product's whole economic story.** Month 0 is -713,87 €, almost all of it the
+**The sign pattern is the product's whole economic story.** Month 0 is -716,38 €, almost all of it the
 25 ‰ *Zillmerung* allowance charged in one go. From `t = 1` the contract runs positive — the level
-*Beitrag* is far above the risk premium — and the monthly margin decays from 60,26 € to 3,43 € by age
-65. **`net_cf` turns negative for good at `t = 252`, attained age 66**, where the incidence curve
+*Beitrag* is far above the risk premium — and the monthly margin decays from 60,48 € to 3,52 € by age
+65. **`net_cf` turns negative for good at `t = 253`, attained age 66**, where the incidence curve
 overtakes the level premium and, in the layer this model does not compute, where the *Deckungskapital*
 peaks. Annuity outgo peaks at 49,82 € in month 407 (age 78) and the population in care at 0.092120 in
 month 417 (age 79); the last three decades are run-off. Undiscounted the contract collects
-15,942.14 € and pays 17,479.25 € of benefit and expense, for -1,537.11 € — not a loss but the
+15,998.36 € and pays 17,491.44 € of benefit and expense, for -1,493.07 € — not a loss but the
 consequence of publishing an **undiscounted** stream whose income falls thirty years before its outgo.
 
 ### A second scenario: the male twin, model point 2
@@ -1027,22 +1027,22 @@ the unisex tension: **the two cells are priced identically and project different
 
 | `t` | `x(t)` | `pols_if` | `pols_care` | `pols_prem` | `premiums` | `claims_annuity` | `claims_lapse` | `expenses` | `claim_expenses` | `net_cf` |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 | 45 | 1.000000 | 0.000000 | 1.000000 | 64.54 | 0.00 | 0.00 | 778.41 | 0.00 | -713.87 |
-| 1 | 45 | 0.994719 | 0.000045 | 0.994683 | 64.20 | 0.02 | 0.00 | 3.92 | 0.00 | 60.26 |
-| 12 | 46 | 0.938452 | 0.000517 | 0.938027 | 60.54 | 0.21 | 0.00 | 3.73 | 0.00 | 56.60 |
-| 120 | 55 | 0.688060 | 0.007570 | 0.681181 | 43.96 | 4.20 | 3.90 | 3.00 | 0.01 | 32.86 |
-| 240 | 65 | 0.517213 | 0.024372 | 0.494872 | 31.94 | 14.23 | 5.47 | 2.50 | 0.05 | 9.69 |
-| 360 | 75 | 0.332372 | 0.045899 | 0.291187 | 18.79 | 24.19 | 5.39 | 1.77 | 0.11 | -12.67 |
-| 420 | 80 | 0.214158 | 0.047250 | 0.172470 | 11.13 | 22.80 | 3.82 | 1.19 | 0.13 | -16.80 |
-| 480 | 85 | 0.098388 | 0.033682 | 0.069319 | 4.47 | 14.73 | 1.73 | 0.57 | 0.10 | -12.66 |
+| 0 | 45 | 1.000000 | 0.000000 | 1.000000 | 64.77 | 0.00 | 0.00 | 781.15 | 0.00 | -716.38 |
+| 1 | 45 | 0.994719 | 0.000045 | 0.994683 | 64.42 | 0.02 | 0.00 | 3.93 | 0.00 | 60.48 |
+| 12 | 46 | 0.938452 | 0.000517 | 0.938027 | 60.75 | 0.21 | 0.00 | 3.74 | 0.00 | 56.81 |
+| 120 | 55 | 0.688060 | 0.007570 | 0.681181 | 44.12 | 4.20 | 3.91 | 3.00 | 0.01 | 33.00 |
+| 240 | 65 | 0.517213 | 0.024372 | 0.494872 | 32.05 | 14.23 | 5.49 | 2.50 | 0.05 | 9.78 |
+| 360 | 75 | 0.332372 | 0.045899 | 0.291187 | 18.86 | 24.19 | 5.41 | 1.77 | 0.11 | -12.63 |
+| 420 | 80 | 0.214158 | 0.047250 | 0.172470 | 11.17 | 22.80 | 3.83 | 1.19 | 0.13 | -16.78 |
+| 480 | 85 | 0.098388 | 0.033682 | 0.069319 | 4.49 | 14.73 | 1.74 | 0.57 | 0.10 | -12.65 |
 | 540 | 90 | 0.023361 | 0.012108 | 0.013274 | 0.86 | 4.73 | 0.33 | 0.14 | 0.04 | -4.38 |
 | 600 | 95 | 0.001538 | 0.001188 | 0.000612 | 0.04 | 0.40 | 0.01 | 0.01 | 0.00 | -0.38 |
-| **Total** | | **251.397804** | **13.561865** | **239.326567** | **15,445.95** | **6,936.34** | **2,097.36** | **1,934.86** | **32.92** | **4,444.47** |
+| **Total** | | **251.397804** | **13.561865** | **239.326567** | **15,500.42** | **6,936.34** | **2,104.76** | **1,939.22** | **32.92** | **4,487.18** |
 
-`premium_mth_pp()` is **64.539230** on both cells, to every decimal, because the pricing engine reads
+`premium_mth_pp()` is **64.766836** on both cells, to every decimal, because the pricing engine reads
 the unisex blend and never `sex()`. The projections are not close: the male cell's `claims_annuity`
-total is **6,936.34 €, 52,5 % of the female cell's**, and its `net_cf` total is **+4,444.47 €** against
-**-1,537.11 €**. That 5,981.58 € gap is the cross-subsidy the unisex rule requires, priced on a
+total is **6,936.34 €, 52,5 % of the female cell's**, and its `net_cf` total is **+4,487.18 €** against
+**-1,493.07 €**. That 5,980.25 € gap is the cross-subsidy the unisex rule requires, priced on a
 50 / 50 mix; a book written 60 / 40 female against this price carries a tenth of it — about 598 € of
 undiscounted net cash flow per policy — unfunded. Two drivers pull in opposite directions and
 incidence wins: male active mortality is higher at every age (`q(M, 45) = 0.0016637` against
@@ -1058,14 +1058,14 @@ summed at full precision and then rounded:
 | | 1 — anchor | 2 — male twin | 5 — `bahr` grid | 8 — *Leistungsdynamik* |
 |---|---:|---:|---:|---:|
 | Configuration | F 45, `delib_std` | M 45, `delib_std` | F 50, `bahr`, annual | F 45, `d = 0.02` |
-| `premium_mth_pp()` | 64.539230 | 64.539230 | 55.738573 | 72.379198 |
+| `premium_mth_pp()` | 64.766836 | 64.766836 | 55.966495 | 72.652506 |
 | `proj_len()` | 780 | 780 | 720 | 780 |
-| `premiums` | 15,942.14 | 15,445.95 | 12,354.45 | 17,878.73 |
+| `premiums` | 15,998.36 | 15,500.42 | 12,404.97 | 17,946.24 |
 | `claims_annuity` | 13,200.11 | 6,936.34 | 10,110.36 | 15,101.44 |
-| `claims_lapse` | 2,203.35 | 2,097.36 | 1,489.87 | 2,471.01 |
-| `expenses` | 2,014.04 | 1,934.86 | 1,611.68 | 2,166.21 |
+| `claims_lapse` | 2,211.12 | 2,104.76 | 1,495.97 | 2,480.34 |
+| `expenses` | 2,018.45 | 1,939.22 | 1,615.59 | 2,171.52 |
 | `claim_expenses` | 61.74 | 32.92 | 66.20 | 61.74 |
-| `net_cf` | -1,537.11 | 4,444.47 | -923.68 | -1,921.68 |
+| `net_cf` | -1,493.07 | 4,487.18 | -883.16 | -1,868.81 |
 
 **The `bahr` grid is not simply a cheaper contract.** Point 5 enters five years later, so its premium
 is not comparable with the anchor's; the *shape* is. On 10 / 20 / 30 / 40 / 100 % the middle steps are
@@ -1077,7 +1077,7 @@ generates an annuity payment and so a per-payment cost — about a tenth of the 
 same life is also **waived** on `bahr` and **pays** on `delib_std`.
 
 **The *Leistungsdynamik* costs more than the draft of these notes predicted**, and pitfall 10 has been
-rewritten to the model's number: +14,4 % on the annuity total and +12,1 % on the premium, not the
+rewritten to the model's number: +14,4 % on the annuity total and +12,2 % on the premium, not the
 "less than 5 %" a four-year spell suggests. `esc_pg == pols_pg` exactly on the anchor at all 780 × 5
 combinations — `check_esc_ledger()` asserts it — and diverges on point 8: at `t = 480`,
 `esc_pg(480, 3) = 0.024913` against `pols_pg(480, 3) = 0.022576`, a factor of 1.1035 which is exactly
@@ -1189,7 +1189,7 @@ In rough order of leverage for a German *Pflegerente* block.
 9. **No select mortality after onset.** Mortality is highest immediately after onset, especially at
    grades 4 and 5 [unverified]; the model uses an aggregate. **The model therefore understates how
    much a *Karenzzeit* removes**, so point 7's reduction is a floor rather than an estimate.
-10. **The terminal age and the payment convention.** `omega_age = 110` with `q = 1` forced in the
+10. **The terminal age and the payment convention.** `omega_age = 110` with `q = 1` in the tables'
     last year of age, and annuity and premium both in advance — declared conventions rather than
     facts. Moving the annuity to arrears would shift the benefit stream a month and break the
     waiver's alignment with it.

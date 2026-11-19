@@ -4,7 +4,9 @@ from __future__ import annotations
 import modelx as mx
 import pytest
 
-from helpers import MODELS, PRODUCTS_DIR
+pytest.register_assert_rewrite("helpers")
+
+from helpers import MODELS, PRODUCTS_DIR  # noqa: E402
 
 FIXTURE = "product_models"
 _models = {}
@@ -36,8 +38,12 @@ def product_models():
 
 
 def pytest_collection_modifyitems(session, config, items):
-    """Note the test files that use ``product_models``."""
-    config.stash[_USERS] = {item.path for item in items if FIXTURE in item.fixturenames}
+    """Note the test files that use this file's ``product_models``, not a fixture of that
+    name of their own (``tests/test_tables.py``)."""
+    config.stash[_USERS] = {
+        item.path for item in items
+        if (defs := item._fixtureinfo.name2fixturedefs.get(FIXTURE))
+        and defs[-1].func.__module__ == __name__}
 
 
 def pytest_runtest_teardown(item, nextitem):

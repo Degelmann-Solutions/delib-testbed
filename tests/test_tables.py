@@ -292,7 +292,7 @@ import modelx as mx
 import pytest
 
 from helpers import (CORE_MODEL, MODELS, PRODUCTS_DIR, ROOT, TOOLS_DIR, add_layer_rows,
-                     formula_cells,
+                     drop_layer_rows, formula_cells,
                      load_runner, load_tool, loader_error, param_usage, product_copy)
 
 RLV = "risikolebensversicherung"
@@ -1434,7 +1434,6 @@ def test_a_gap_in_the_select_factors_raises_the_loaders_key_error(fixture_tables
 
 
 # --------------------------------------------------------------------------- the runner
-
 
 def held_rates(space_model) -> dict:
     """The rates the factory of an exported model holds, by the arguments of ``q``."""
@@ -4019,10 +4018,7 @@ def unswitched_copy(tmp_path: Path) -> Path:
     product before its switch."""
     folder = fixture_copy(tmp_path)
     path = folder / "param_tariff_type.csv"
-    rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
-    choice = [row for row in rows if row.startswith("mort_table,")]
-    assert len(choice) == 1
-    path.write_text("".join(row for row in rows if row not in choice), encoding="utf-8")
+    drop_layer_rows(path, "mort_table")
     add_cells(folder / MODELS[INDEX] / "Projection" / "__init__.py",
               'def mort_rate_at_age(x):\n'
               '    """A rate of its own, read off no table.\n\n'
@@ -4046,10 +4042,7 @@ def switched_copy(tmp_path: Path, table: str, birth_year: int | None = None) -> 
                   '    Override reason: test fixture, tests/test_tables.py\n    """\n'
                   f'    return {birth_year}\n')
     path = folder / "param_tariff_type.csv"
-    rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
-    choice = [row for row in rows if row.startswith("mort_table,")]
-    assert len(choice) == 1
-    path.write_text("".join(row for row in rows if row not in choice), encoding="utf-8")
+    drop_layer_rows(path, "mort_table")
     add_layer_rows(path, {"mort_table": table, "unisex_mix_male": "0.45"})
     return folder
 
@@ -4225,11 +4218,7 @@ def choosing_copy(tmp_path: Path, table: str, file: str = "param_tariff_type.csv
     cell of Index reads."""
     folder = switched_copy(tmp_path, table)
     path = folder / "param_tariff_type.csv"
-    rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
-    choice = [row for row in rows if row.startswith("mort_table,")]
-    dropped = [row for row in rows if row.startswith(("unisex_mix_male,", "mort_table,"))]
-    assert len(choice) == 1 and len(dropped) == 2
-    path.write_text("".join(row for row in rows if row not in dropped), encoding="utf-8")
+    drop_layer_rows(path, "mort_table", "unisex_mix_male")
     add_layer_rows(folder / file, {"mort_table": table})
     return folder
 

@@ -477,18 +477,6 @@ def horizon_age():
     return omega_age()
 
 
-def omega_age():
-    """omega: the limiting age, the end age of the tariff's mortality table.
-
-    The first age nobody reaches, **121** on ``dav2004r_proxy``: the table's rate is 1 at
-    120, so a projection run to it ends with no survivors.
-
-    Override reason: reads the end age off its table, the table factory's, docs/core.md,
-    section "The decrement rates"
-    """
-    return omega_age_table()
-
-
 def birth_year():
     """g: the year of birth the generational table is read at, issue year less issue age.
 

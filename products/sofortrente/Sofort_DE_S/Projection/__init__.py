@@ -500,17 +500,6 @@ def age(t, life=1):
     return issue_age(life) + t // 12
 
 
-def omega_age():
-    """omega: the limiting age, the end age of the table of the role ``mort_table``, 121.
-
-    The first age nobody reaches: ``dav2004r_proxy`` closes with ``q = 1`` at attained age
-    120, so a life's survival reaches zero inside :func:`horizon_mths`.
-
-    Override reason: reads the end age off its table, docs/core.md, section "The time axis"
-    """
-    return omega_age_table()
-
-
 def mort_be_factor():
     """The step from the first-order annuitant table to the best estimate, 1.2.
 

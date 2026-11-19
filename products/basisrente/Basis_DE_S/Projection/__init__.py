@@ -422,21 +422,6 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
-def omega_age():
-    """omega: the limiting age, the end age of the tariff's mortality table.
-
-    The first age nobody reaches, **121** on ``dav2004r_proxy``: the table's rate is 1 at
-    120, the age German annuity tables are conventionally closed at.  The projection runs to
-    it because the annuity is lifelong, and the table's rate of 1 at ``omega_age() - 1``
-    passes through :func:`mort_rate` as 1, so the last survivor dies in the last month of
-    the terminal year, at ``t = proj_len() - 1``, and there is no tail state of any kind.
-
-    Override reason: reads the end age off its table, the table factory's, docs/core.md,
-    section "The decrement rates"
-    """
-    return omega_age_table()
-
-
 def birth_year():
     """g: the year of birth the generational table is read at, issue year less issue age.
 

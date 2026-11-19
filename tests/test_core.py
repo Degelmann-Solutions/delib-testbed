@@ -243,16 +243,6 @@ CORE_CELLS = {
     "Data": {
         "input_dir": dict.fromkeys(MODELS, "derived"),
         "model_point_table": dict.fromkeys(MODELS, "derived"),
-        "mort_table_index": {"basisrente": "derived",
-                             "fondsgebundene_rentenversicherung": "derived",
-                             "indexpolice": "derived",
-                             "kapitallebensversicherung": "derived",
-                             "klassische_rentenversicherung": "derived",
-                             "pflegerentenversicherung": "derived",
-                             "riester_rente": "derived",
-                             "risikolebensversicherung": "derived",
-                             "sofortrente": "derived"},
-        "mort_table": dict.fromkeys(MODELS, "derived"),
         "lapse_table_index": {"berufsunfaehigkeit": "derived",
                               "fondsgebundene_rentenversicherung": "derived",
                               "indexpolice": "override",
@@ -307,7 +297,6 @@ CORE_CELLS = {
         "param_dict": dict.fromkeys(MODELS, "derived"),
         "param": dict.fromkeys(MODELS, "derived"),
         "param_indirect": dict.fromkeys(MODELS, "derived"),
-        "mort_table_dict": dict.fromkeys(MODELS, "derived"),
         "lapse_table_dict": dict.fromkeys(MODELS, "derived"),
         "rentenfaktor_table_dict": dict.fromkeys(MODELS, "derived"),
         "prem_freq_table_dict": dict.fromkeys(MODELS, "derived"),
@@ -475,11 +464,11 @@ CORE_CELLS = {
                 "riester_rente": "derived",
                 "risikolebensversicherung": "derived",
                 "sofortrente": "override"},
-        "omega_age": {"basisrente": "override",
-                      "klassische_rentenversicherung": "override",
-                      "pflegerentenversicherung": "override",
+        "omega_age": {"basisrente": "derived",
+                      "klassische_rentenversicherung": "derived",
+                      "pflegerentenversicherung": "derived",
                       "riester_rente": "override",
-                      "sofortrente": "override"},
+                      "sofortrente": "derived"},
         "ret_age": {"basisrente": "derived",
                     "fondsgebundene_rentenversicherung": "derived",
                     "indexpolice": "derived",
@@ -625,7 +614,6 @@ CORE_CELLS = {
                        "klassische_rentenversicherung": "override",
                        "riester_rente": "override",
                        "sofortrente": "override"},
-        "omega_age_table": {},
         "mort_table_name": {},
         "mort_rate_table": {"riester_rente": "override"},
         "mort_rate_at_age": {"basisrente": "derived",
@@ -1800,8 +1788,8 @@ def test_param_equals_the_file_value(product, product_models):
                                              ("sofortrente", 121)])
 def test_omega_age_is_an_int(product, omega, product_models):
     """``omega_age`` is an integer, so ``param`` gives an ``int``; so does Pflege's
-    ``beitragssumme_cap_age`` (``85``). RV, Sofort and Pflege read it off their tables since
-    their switches to the table factory, the items ``dav2004r_proxy_end_age`` and
+    ``beitragssumme_cap_age`` (``85``). RV, Sofort and Pflege read it off their tables
+    through the core's ``omega_age()``, the items ``dav2004r_proxy_end_age`` and
     ``pflege_aktive_proxy_end_age``, integers as the item ``omega_age`` was."""
     model = product_models(product)
     item_name = {"klassische_rentenversicherung": "dav2004r_proxy_end_age",
@@ -2972,7 +2960,6 @@ def test_pflege_inflation_factor_compounds_continuously(product_models):
 # The core's dict cells: reader -> the file Reference whose presence says a product has it.
 DICT_READERS = {
     "model_point_table": "model_point_file",
-    "mort_table": "mort_file",
     "lapse_table": "lapse_file",
     "rentenfaktor_table": "rentenfaktor_file",
     "prem_freq_table": "prem_freq_file",

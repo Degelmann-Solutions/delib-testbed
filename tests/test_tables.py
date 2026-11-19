@@ -83,8 +83,8 @@ The derivation hooks of the core's ``Projection``:
   ``mort_rate_at_age``. BU's second
   role, ``mort_dis_table``, is read by a hook of its own, ``mort_rate_dis_at_age``, which
   no other product has, and Riester's, ``annuity_mort_table``, by its payout hook
-  ``annuity_mort_rate`` and its ``omega_age``; ``omega_age_table`` is reachable in RV,
-  Basis, Sofort and Pflege alone, whose ``omega_age`` reads it. Riester alone overrides
+  ``annuity_mort_rate`` and its ``omega_age``; the core's ``omega_age``, the end age of the
+  main role's table, is reachable in RV, Basis, Sofort and Pflege alone, which derive it. Riester alone overrides
   ``mort_rate_table``, to read its main role, a period table, without the birth year of its
   second.
 - Index reads its death rates through the factory alone: on every shipped point
@@ -240,6 +240,13 @@ The derivation hooks of the core's ``Projection``:
   fixture table closes at the last age a point attains, with Index' best-estimate factor and a
   trend term below 1 and a loading above 1, ``mort_rate`` and ``mort_rate_tariff`` are 1 at the end age minus
   one and the factor and the loading times the table rate the year before.
+- No product and not the core holds the old mortality cells: no ``mort_table``,
+  ``mort_table_index`` or ``mort_table_dict`` in ``Data``, no Reference ``mort_file``, no
+  ``omega_age_table``; the core's ``omega_age()`` is ``tables.end_age(mort_table_name())``,
+  derived by RV, Basis, Sofort and Pflege (121, 121, 121, 110) and overridden by Riester
+  alone; no source under ``core``, ``tools`` or a product model names them, and no product
+  folder holds a ``mort*.csv``. ``tests/test_table_probe.py`` proves on full runs that the
+  choice is the only path from a table value to a result.
 
 The usage scan ``core/param_usage.py`` (``docs/core.md``, "The usage check and the view"):
 
@@ -1498,7 +1505,7 @@ def test_the_runner_keeps_the_rates_of_an_earlier_point(tmp_path, monkeypatch):
 
 # --------------------------------------------------------------------------- the hooks
 
-TABLE_HOOKS = ("mort_table_name", "mort_rate_table", "omega_age_table")
+TABLE_HOOKS = ("mort_table_name", "mort_rate_table", "omega_age")
 
 
 @pytest.mark.parametrize("product", sorted(MODELS))
@@ -1506,12 +1513,15 @@ def test_only_a_switched_product_reaches_a_hook_that_reads_the_factory(product, 
     model = product_models(product)
     reachable = param_usage.scan(model).reachable
     for hook in TABLE_HOOKS:
-        # Riester reads its main role, a period table, without the birth year of its second
-        assert model.Projection.cells[hook]._is_derived() or (
-            product, hook) == ("riester_rente", "mort_rate_table"), hook
-    # the end age is read off the table by a switched product that runs to it: RV, Basis,
-    # Sofort and Pflege; Riester, with two roles, names the role in its own ``omega_age``
-    assert ("omega_age_table" in reachable) == (product in (RV, "basisrente", SOFORT, PFLEGE))
+        # Riester reads its main role, a period table, without the birth year of its second,
+        # and its end age off the table of its second role
+        assert model.Projection.cells[hook]._is_derived() or (product, hook) in (
+            ("riester_rente", "mort_rate_table"), ("riester_rente", "omega_age")), hook
+    # the end age is read off the table by a product that runs to it: RV, Basis, Sofort and
+    # Pflege through the core's ``omega_age``; Riester, with two roles, names the role in its
+    # own ``omega_age``
+    assert ("omega_age" in reachable) == (
+        product in (RV, "basisrente", SOFORT, PFLEGE, "riester_rente"))
     choices = {item: value for item, value in model.Data.param_dict().items()
                if item.endswith("_table")}
     if product == RLV:
@@ -1552,6 +1562,50 @@ def test_only_a_switched_product_reaches_a_hook_that_reads_the_factory(product, 
     # Sofort's since the scaffold
     assert model.Projection.cells["birth_year"]._is_defined() == (
         product in (RV, "basisrente", "riester_rente", "sofortrente"))
+
+
+OLD_MORTALITY_LOADERS = ("mort_table", "mort_table_index", "mort_table_dict")
+
+
+@pytest.mark.parametrize("product", sorted(MODELS))
+def test_the_core_holds_no_old_mortality_cell_and_its_end_age_is_the_tables(product,
+                                                                           product_models):
+    """The commit after the last switch removed the core's ``mort_table*`` loaders and
+    ``omega_age_table``; the core's ``omega_age()`` is the end age of the main role's table."""
+    model = product_models(product)
+    assert not set(OLD_MORTALITY_LOADERS) & set(model.Data.cells)
+    assert "mort_file" not in model.Data.refs
+    assert "omega_age_table" not in model.Projection.cells
+    cell = model.Projection.cells["omega_age"]
+    assert cell._is_derived() == (product != "riester_rente")
+    if product in (RV, "basisrente", SOFORT, PFLEGE):
+        item = model.Projection[model.Data.model_point_table().index[0]]
+        assert item.omega_age() == model.CoreTables.end_age(item.mort_table_name())
+        assert item.omega_age() == {PFLEGE: 110}.get(product, 121)
+
+
+def test_the_core_model_has_no_old_mortality_cell():
+    model = mx.read_model(CORE_MODEL, name="OldMortalityProbe")
+    try:
+        assert not set(OLD_MORTALITY_LOADERS) & set(model.Data.cells)
+        assert "omega_age_table" not in model.Projection.cells
+        source = model.Projection.cells["omega_age"].formula.source
+        assert "tables.end_age(mort_table_name())" in source and "param" not in source
+    finally:
+        model.close()
+
+
+def test_no_code_reads_the_old_mortality_cells_or_files():
+    names = ("omega_age_table", "mort_table_index", "mort_table_dict", "mort_file",
+             'param("omega_age")', "mort_table()")
+    paths = [*(ROOT / "core").rglob("*.py"), *(ROOT / "tools").rglob("*.py"),
+             *(path for path in PRODUCTS_DIR.glob("*/*_DE_S/**/*.py"))]
+    assert paths
+    hits = [(path.relative_to(ROOT).as_posix(), name) for path in paths
+            if "__pycache__" not in path.parts
+            for name in names if name in path.read_text(encoding="utf-8")]
+    assert hits == []
+    assert not list(PRODUCTS_DIR.glob("*/mort*.csv"))
 
 
 # The best-estimate rates of the values package on ``dav2008t_proxy`` at the factor 0.75, six
@@ -1618,8 +1672,7 @@ def test_index_holds_no_mortality_file_reference_or_formula(product_models):
     item = model.Projection[1]
     item.result_cf()
     assert len(model.CoreTables.q) > 0
-    assert len(model.Data.cells["mort_table"]) == 0
-    assert len(model.Data.cells["mort_table_dict"]) == 0
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
 
 
 # The tariff rates of the values package for BU by age, six significant digits: active lives,
@@ -1835,8 +1888,7 @@ def test_bu_holds_no_mortality_file_column_reference_or_formula(product_models):
     assert {key[0] for key in model.CoreTables.q} == {DAV2008T, DAV1997TI}
     assert all(key[4] is None for key in model.CoreTables.q if key[0] == DAV2008T)
     assert all(key[4] in range(1, 12) for key in model.CoreTables.q if key[0] == DAV1997TI)
-    assert len(model.Data.cells["mort_table"]) == 0
-    assert len(model.Data.cells["mort_table_dict"]) == 0
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
 
 
 def test_bu_reads_its_ages_unclamped(product_models):
@@ -1916,9 +1968,10 @@ def test_rv_reads_the_table_at_the_cohort_and_runs_to_its_end_age(product_models
     model = product_models(RV)
     projection, tables = model.Projection, model.CoreTables
     cells = projection.cells
-    for name in ("birth_year", "omega_age", "horizon_age"):
+    for name in ("birth_year", "horizon_age"):
         assert cells[name]._is_defined(), name
         assert "Override reason:" in cells[name].formula.source, name
+    assert cells["omega_age"]._is_derived()
     assert model.Data.param("mort_table") == DAV2004R
     assert tables.end_age(DAV2004R) == 121
     cohorts, rows = set(), 0
@@ -1926,7 +1979,7 @@ def test_rv_reads_the_table_at_the_cohort_and_runs_to_its_end_age(product_models
         item = projection[point_id]
         assert item.mort_table_name() == DAV2004R
         assert item.birth_year() == item.issue_year() - item.issue_age()
-        assert item.omega_age() == 121 == item.omega_age_table() == item.horizon_age()
+        assert item.omega_age() == 121 == tables.end_age(DAV2004R) == item.horizon_age()
         # the frame is the one the item omega_age 121 gave: to the end age, no survivor left
         assert item.proj_len_y() == 121 - item.issue_age()
         assert item.proj_len() == 12 * item.proj_len_y()
@@ -2101,8 +2154,7 @@ def test_rv_holds_no_mortality_file_item_reference_or_formula(product_models):
     item = model.Projection[1]
     item.result_cf()
     assert len(model.CoreTables.q) > 0
-    assert len(model.Data.cells["mort_table"]) == 0
-    assert len(model.Data.cells["mort_table_dict"]) == 0
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
     line = raised_line(lambda: item.mort_rate_at_age(121))
     assert line == "ValueError: table 'dav2004r_proxy': x 121 is outside its ages 0 to 120"
 
@@ -2331,8 +2383,7 @@ def test_klv_holds_no_mortality_file_reference_or_formula(product_models):
     item = model.Projection[1]
     item.result_cf()
     assert len(model.CoreTables.q) > 0
-    assert len(model.Data.cells["mort_table"]) == 0
-    assert len(model.Data.cells["mort_table_dict"]) == 0
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
     line = raised_line(lambda: item.mort_rate_at_age(121))
     assert line == "ValueError: table 'dav2008t_proxy': x 121 is outside its ages 0 to 120"
 
@@ -2531,7 +2582,7 @@ def test_frv_holds_no_mortality_file_reference_or_formula(product_models):
         assert model.Projection.cells[name]._is_derived(), name
     assert not [name for name, cell in model.Data.cells.items()
                 if "mort" in name and cell._is_defined()]
-    assert model.Data.cells["mort_table_index"]._is_derived()
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
     reachable = param_usage.scan(model).reachable
     assert not {"mort_table", "mort_table_dict", "mort_table_index", "omega_age"} & reachable
     for space in ("Data", "Projection"):
@@ -2549,8 +2600,7 @@ def test_frv_holds_no_mortality_file_reference_or_formula(product_models):
     item = model.Projection[1]
     item.result_cf()
     assert len(model.CoreTables.q) > 0
-    assert len(model.Data.cells["mort_table"]) == 0
-    assert len(model.Data.cells["mort_table_dict"]) == 0
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
     line = raised_line(lambda: item.mort_rate_at_age(121))
     assert line == "ValueError: table 'dav2008t_proxy': x 121 is outside its ages 0 to 120"
 
@@ -2899,7 +2949,7 @@ def test_rlv_holds_no_mortality_file_column_item_reference_or_formula(product_mo
     assert "mort_table_id" not in model.Projection.cells
     assert not [name for name, cell in model.Data.cells.items()
                 if "mort" in name and cell._is_defined()]
-    assert model.Data.cells["mort_table_index"]._is_derived()
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
     reachable = param_usage.scan(model).reachable
     assert not {"mort_table", "mort_table_dict", "mort_table_index", "omega_age",
                 "mort_table_name"} & reachable
@@ -2918,8 +2968,7 @@ def test_rlv_holds_no_mortality_file_column_item_reference_or_formula(product_mo
     item = model.Projection[1]
     item.result_cf()
     assert len(model.CoreTables.q) > 0
-    assert len(model.Data.cells["mort_table"]) == 0
-    assert len(model.Data.cells["mort_table_dict"]) == 0
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
     line = raised_line(lambda: item.mort_rate_at_age("M", "N", 121))
     assert line == "ValueError: table 'dav2008t_nr_proxy': x 121 is outside its ages 0 to 120"
 
@@ -3026,14 +3075,15 @@ def test_basis_runs_to_the_tables_end_age_and_closes_there(product_models):
     model = product_models(BASIS)
     projection, tables = model.Projection, model.CoreTables
     cells = projection.cells
-    for name in ("birth_year", "omega_age", "horizon_age"):
+    for name in ("birth_year", "horizon_age"):
         assert cells[name]._is_defined(), name
         assert "Override reason:" in cells[name].formula.source, name
+    assert cells["omega_age"]._is_derived()
     assert tables.end_age(DAV2004R) == 121
     rows = 0
     for point_id in model.Data.model_point_table().index:
         item = projection[point_id]
-        assert item.omega_age() == 121 == item.omega_age_table() == item.horizon_age()
+        assert item.omega_age() == 121 == tables.end_age(DAV2004R) == item.horizon_age()
         # one year less than the file's limiting age 122 gave before the switch
         assert item.proj_len_y() == 121 - item.age(0)
         assert item.proj_len() == 12 * item.proj_len_y()
@@ -3091,7 +3141,7 @@ def test_basis_holds_no_mortality_file_item_reference_or_formula(product_models)
     assert own == ["mort_be_factor"]
     assert not [name for name, cell in model.Data.cells.items()
                 if "mort" in name and cell._is_defined()]
-    assert model.Data.cells["mort_table_index"]._is_derived()
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
     usage = param_usage.scan(model)
     assert not {"mort_table", "mort_table_dict", "mort_table_index"} & usage.reachable
     assert "mort_base_year" not in usage.reads and "unisex_mix_male" not in usage.reads
@@ -3109,8 +3159,7 @@ def test_basis_holds_no_mortality_file_item_reference_or_formula(product_models)
     item = model.Projection[1]
     item.result_cf()
     assert len(model.CoreTables.q) > 0
-    assert len(model.Data.cells["mort_table"]) == 0
-    assert len(model.Data.cells["mort_table_dict"]) == 0
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
 
 
 # --------------------------------------------------------------------------- Riester
@@ -3355,7 +3404,7 @@ def test_riester_holds_no_mortality_file_item_reference_or_formula(product_model
     assert own == ["annuity_mort_rate", "mort_be_factor", "mort_rate", "mort_rate_table"]
     assert not [name for name, cell in model.Data.cells.items()
                 if "mort" in name and cell._is_defined()]
-    assert model.Data.cells["mort_table_index"]._is_derived()
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
     for name in ("annuity_mort_table", "annuity_mort_table_dict"):
         assert name not in model.Data.cells, name
     usage = param_usage.scan(model)
@@ -3382,8 +3431,7 @@ def test_riester_holds_no_mortality_file_item_reference_or_formula(product_model
     item = model.Projection[1]
     item.result_cf()
     assert len(model.CoreTables.q) > 0
-    assert len(model.Data.cells["mort_table"]) == 0
-    assert len(model.Data.cells["mort_table_dict"]) == 0
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
 
 
 # --------------------------------------------------------------------------- Sofort
@@ -3451,11 +3499,11 @@ def test_sofort_best_estimate_is_the_tables_rate_times_its_factor_and_trend_term
     model = product_models(SOFORT)
     projection = model.Projection
     cells = projection.cells
-    for name in ("omega_age", "mort_be_factor", "mort_be_trend", "mort_rate", "mort_rate_mth",
+    for name in ("mort_be_factor", "mort_be_trend", "mort_rate", "mort_rate_mth",
                  "birth_year"):
         assert cells[name]._is_defined(), name
         assert "Override reason:" in cells[name].formula.source, name
-    for name in ("mort_table_name", "omega_age_table", "unisex_blend", "unisex_mix_male"):
+    for name in ("mort_table_name", "omega_age", "unisex_blend", "unisex_mix_male"):
         assert cells[name]._is_derived(), name
     assert model.Data.param("mort_table") == DAV2004R
     assert model.Data.param("mort_be_factor") == 1.2
@@ -3599,7 +3647,7 @@ def test_sofort_runs_to_the_tables_end_age_with_its_frames_unchanged(product_mod
     rows = 0
     for point_id in model.Data.model_point_table().index:
         item = projection[point_id]
-        assert item.omega_age() == 121 == item.omega_age_table()
+        assert item.omega_age() == 121 == tables.end_age(DAV2004R)
         assert type(item.omega_age()) is int
         for life in sofort_lives(item):
             assert item.horizon_mths(life) == 12 * (121 - item.issue_age(life))
@@ -3631,7 +3679,7 @@ def test_sofort_holds_no_mortality_file_item_reference_or_formula(product_models
                    "mort_rate_mth", "mort_rate_tariff", "mort_rate_tariff_mth"]
     assert not [name for name, cell in model.Data.cells.items()
                 if ("mort" in name or "improve" in name) and cell._is_defined()]
-    assert model.Data.cells["mort_table_index"]._is_derived()
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
     assert model.Projection.cells["mort_rate_at_age"]._is_derived()
     for name in ("improvement_table", "improvement_table_dict", "mort_table_ages",
                  "improvement_table_ages"):
@@ -3649,7 +3697,7 @@ def test_sofort_holds_no_mortality_file_item_reference_or_formula(product_models
                      "\"SECOND\""):
             assert name not in source, (space, name)
     # its reads of the factory: the rate in its hook, the trend and the base year in its
-    # trend term; the end age through the core's ``omega_age_table``
+    # trend term; the end age through the core's ``omega_age``
     cells = dict(_formula_cells(folder / MODELS[SOFORT] / "Projection" / "__init__.py"))
     reads = {name: sorted(ast.unparse(node) for node in ast.walk(cell)
                           if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
@@ -3660,8 +3708,7 @@ def test_sofort_holds_no_mortality_file_item_reference_or_formula(product_models
     item = model.Projection[1]
     item.result_cf()
     assert len(model.CoreTables.q) > 0
-    assert len(model.Data.cells["mort_table"]) == 0
-    assert len(model.Data.cells["mort_table_dict"]) == 0
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
 
 
 # --------------------------------------------------------------------------- Pflege
@@ -3843,7 +3890,7 @@ def test_pflege_best_estimate_of_an_active_life_is_the_tables_rate(product_model
     model = product_models(PFLEGE)
     tables = model.CoreTables
     for name in ("mort_table_name", "mort_rate_table", "mort_rate_at_age", "mort_rate_base",
-                 "mort_rate", "mort_be_factor", "mort_be_trend", "omega_age_table"):
+                 "mort_rate", "mort_be_factor", "mort_be_trend", "omega_age"):
         assert model.Projection.cells[name]._is_derived(), name
     assert model.Data.param("mort_table") == PFLEGE_ACTIVE
     former, _multiples = pflege_former_rates()
@@ -3931,7 +3978,7 @@ def test_pflege_maps_a_state_to_its_table(product_models):
 
 def test_pflege_runs_to_the_tables_end_age_with_its_frames_unchanged(product_models):
     model = product_models(PFLEGE)
-    assert model.Projection.cells["omega_age"]._is_defined()
+    assert model.Projection.cells["omega_age"]._is_derived()
     before, _switch = pflege_switch()
     old = git_bytes("show", f"{before}:{PFLEGE_BASELINE}").decode("utf-8")
     old_keys = [tuple(row[:2]) for row in csv.reader(io.StringIO(old))][1:]
@@ -3989,7 +4036,7 @@ def test_pflege_holds_no_mortality_file_column_item_reference_or_formula(product
     item = model.Projection[1]
     item.result_cf()
     assert len(model.CoreTables.q) > 0
-    assert len(model.Data.cells["mort_table"]) == 0
+    assert not {"mort_table", "mort_table_dict", "mort_table_index"} & set(model.Data.cells)
 
 
 def unswitched_copy(tmp_path: Path) -> Path:
@@ -4049,7 +4096,7 @@ def test_the_hooks_deliver_the_chosen_table(tmp_path):
             sexes.add(sex)
             assert item.mort_table_name() == "period_fixture"
             assert item.birth_year() == 0          # no birth year: the factory gets None
-            assert item.omega_age_table() == 121 == tables.end_age("period_fixture")
+            assert item.omega_age() == 121 == tables.end_age("period_fixture")
             for x in (0, 40, 67, 119, 120):
                 rate = tables.q("period_fixture", sex, x)
                 assert item.mort_rate_table(sex, x) == rate
@@ -4081,7 +4128,7 @@ def test_the_hooks_pass_the_birth_year_on(tmp_path):
         rate = item.mort_rate_at_age(50)
         assert rate == tables.q("gen_fixture", sex, 50, 1975)
         assert rate == law(sex, 50) * (1.0 - trend) ** (1975 + 50 - 1999)
-        assert item.omega_age_table() == 121
+        assert item.omega_age() == 121 == tables.end_age("gen_fixture")
     finally:
         model.close()
 
@@ -4151,7 +4198,7 @@ def test_a_table_rate_of_1_passes_through_the_factor_and_the_load(tmp_path):
         for point_id in points.index[:4]:
             item = model.Projection[point_id]
             sexes.add(item.sex())
-            assert item.omega_age_table() == 67 == item.ret_age()
+            assert item.omega_age() == 67 == item.ret_age()
             last = item.proj_len() - 1
             assert item.age(last) == 66
             # at the closing age, end age minus one: 1, not the factor, the trend or the load

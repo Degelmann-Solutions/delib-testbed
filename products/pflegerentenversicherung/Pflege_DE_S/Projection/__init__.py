@@ -480,18 +480,6 @@ def waiver_flag(g):
     return benefit_pct(g) > 0.0
 
 
-def omega_age():
-    """omega: the limiting age, the end age of the table of the role ``mort_table``, 110.
-
-    The first age nobody reaches: ``pflege_aktive_proxy`` and the five tables of the care
-    grades close with ``q = 1`` at attained age 109, so the projection runs the whole
-    multi-state system to exhaustion.
-
-    Override reason: reads the end age off its table, docs/core.md, section "The time axis"
-    """
-    return omega_age_table()
-
-
 def mort_table_grade(g):
     """The death table of a state, a table of the table factory: 0 active, 1 to 5 a grade.
 

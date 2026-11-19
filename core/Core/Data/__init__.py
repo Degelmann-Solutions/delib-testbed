@@ -200,17 +200,6 @@ def param_indirect():
     return {}
 
 
-def mort_table_index():
-    """The index columns of the mortality table: ``sex`` and attained ``age``."""
-    return ["sex", "age"]
-
-
-def mort_table():
-    """The annual death rates, read from ``mort_file`` by ``mort_table_index()``."""
-    return pd.read_csv(                                              # noqa: F821
-        input_dir() / mort_file, index_col=mort_table_index())       # noqa: F821
-
-
 def lapse_table_index():
     """The index column of the lapse table: the **1-based** ``policy_year``."""
     return "policy_year"
@@ -284,15 +273,6 @@ def model_point_table_dict():
     ``int``, ``float``, ``bool`` and ``str`` with the same bits.
     """
     return model_point_table().to_dict("index")
-
-
-def mort_table_dict():
-    """The mortality table as a dict by column: ``{column: {key: rate}}``.
-
-    Keyed as ``mort_table()`` is indexed, by the tuple of ``mort_table_index()`` (a scalar
-    for a single index column); the products' lookups read the column they use.
-    """
-    return mort_table().to_dict()
 
 
 def lapse_table_dict():
